@@ -3585,23 +3585,13 @@ html, body {
 
     <!-- === Quality View === -->
     <div class="view-quality" id="viewQuality" style="display:none;">
-      <div class="quality-header">
-        <div class="quality-tabs">
-          <div class="quality-tab active" onclick="switchQualityTab(this,'overview')">质量概览</div>
-          <div class="quality-tab" onclick="switchQualityTab(this,'rules')">质量规则</div>
-          <div class="quality-tab" onclick="switchQualityTab(this,'history')">检查历史</div>
+      <div class="ops-layout">
+        <div class="ops-sidebar">
+          <div class="ops-sidebar-item active" onclick="switchQualityTab(this,'overview')">质量概览</div>
+          <div class="ops-sidebar-item" onclick="switchQualityTab(this,'rules')">质量规则</div>
+          <div class="ops-sidebar-item" onclick="switchQualityTab(this,'history')">检查历史</div>
         </div>
-        <div class="quality-actions">
-          <button class="btn btn-primary btn-sm" onclick="showAddRuleDialog()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 2v10M2 7h10"/></svg>
-            新建规则
-          </button>
-          <button class="btn btn-sm" onclick="runAllQualityRules()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2l8 5-8 5z"/></svg>
-            全量检查
-          </button>
-        </div>
-      </div>
+        <div class="ops-main">
 
       <!-- 质量概览 -->
       <div class="quality-panel" id="qualityOverviewPanel">
@@ -3677,29 +3667,27 @@ html, body {
           </div>
         </div>
       </div>
+      </div><!-- ops-main -->
+      </div><!-- ops-layout -->
     </div>
 
     <!-- === Metrics View === -->
     <div class="view-quality" id="viewMetrics" style="display:none;">
-      <div class="quality-header">
-        <div class="quality-tabs">
-          <div class="quality-tab active">指标列表</div>
+      <div class="ops-layout">
+        <div class="ops-sidebar">
+          <div class="ops-sidebar-item active" onclick="switchMetricsTab(this,'list')">指标列表</div>
+          <div class="ops-sidebar-item" onclick="switchMetricsTab(this,'category')">分类管理</div>
         </div>
-        <div class="quality-actions">
-          <input type="text" id="metricSearchInput" placeholder="搜索指标名称/编码..."
-            style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-main);color:var(--text-primary);font-size:12px;width:200px;"
-            oninput="loadMetricList()">
-          <select id="metricCategoryFilter" onchange="loadMetricList()"
-            style="padding:5px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-main);color:var(--text-primary);font-size:12px;">
-            <option value="">全部分类</option>
-          </select>
-          <button class="btn btn-primary btn-sm" onclick="showAddMetricDialog()">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 2v10M2 7h10"/></svg>
-            新建指标
-          </button>
-        </div>
-      </div>
-      <div class="quality-panel" id="metricsListPanel">
+        <div class="ops-main">
+          <div class="ops-dashboard" id="metricsListPanel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">指标列表</h2>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="metricSearchInput" placeholder="搜索指标名称/编码..." class="prop-input" style="width:200px;" oninput="loadMetricList()">
+                <select id="metricCategoryFilter" onchange="loadMetricList()" class="prop-select" style="width:120px;"><option value="">全部分类</option></select>
+                <button class="btn btn-primary btn-sm" onclick="showAddMetricDialog()">新建指标</button>
+              </div>
+            </div>
         <div id="metricsListContent">
           <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
         </div>
@@ -4278,108 +4266,66 @@ html, body {
 
 <!-- Project Management Page -->
 <div id="viewProject" class="page-view" style="display:none">
-  <div class="section-title">项目管理</div>
-  <div class="module-grid">
-    <a class="module-card" href="#">
-      <div class="m-icon ic-blue">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h14v11H3z"/><path d="M3 5l2.5-3h5L13 5"/><path d="M8 9v4M6 11h4"/></svg>
+  <div class="ops-layout" style="height:calc(100vh - 48px);">
+    <div class="ops-sidebar">
+      <div class="ops-sidebar-item active" onclick="switchProjectTab(this,'space')">项目空间</div>
+      <div class="ops-sidebar-item" onclick="switchProjectTab(this,'member')">成员权限</div>
+      <div class="ops-sidebar-item" onclick="switchProjectTab(this,'release')">发布管理</div>
+    </div>
+    <div class="ops-main">
+      <div class="ops-dashboard" id="projectSpacePanel">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">项目空间</h2>
+        <div style="padding:32px;text-align:center;color:var(--text-muted);">项目创建、成员管理、资源配额和环境隔离<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
       </div>
-      <div class="m-body">
-        <h4>项目空间</h4>
-        <p>项目创建、成员管理、资源配额和环境隔离</p>
-        <span class="m-tag tag-plan">规划中</span>
+      <div class="ops-dashboard" id="projectMemberPanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">成员权限</h2>
+        <div style="padding:32px;text-align:center;color:var(--text-muted);">团队成员管理、角色分配和数据权限控制<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
       </div>
-    </a>
-    <a class="module-card" href="#">
-      <div class="m-icon ic-green">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="7" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+      <div class="ops-dashboard" id="projectReleasePanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">发布管理</h2>
+        <div style="padding:32px;text-align:center;color:var(--text-muted);">版本发布流程、变更审批和上线记录<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
       </div>
-      <div class="m-body">
-        <h4>成员权限</h4>
-        <p>团队成员管理、角色分配和数据权限控制</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
-    <a class="module-card" href="#">
-      <div class="m-icon ic-orange">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 8h6M7 12h4"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>发布管理</h4>
-        <p>版本发布流程、变更审批和上线记录</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
+    </div>
   </div>
 </div>
 
 <!-- Settings Page -->
 <div id="viewSettings" class="page-view" style="display:none">
-  <div class="section-title">系统配置</div>
-  <div class="setting-grid">
-    <a class="setting-card" href="#">
-      <div class="s-icon ic-blue">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="7" r="4"/><path d="M3 19c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+  <div class="ops-layout" style="height:calc(100vh - 48px);">
+    <div class="ops-sidebar">
+      <div class="ops-sidebar-item active" onclick="switchSettingsTab(this,'user')">用户管理</div>
+      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'datasource')">数据源管理</div>
+      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'env')">环境配置</div>
+      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'security')">安全设置</div>
+      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'ai')">AI 配置</div>
+      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'monitor')">系统监控</div>
+    </div>
+    <div class="ops-main">
+      <div class="ops-dashboard" id="settingsUserPanel">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">用户管理</h2>
+        <div style="padding:24px;color:var(--text-muted);">管理平台用户、角色分配和操作权限</div>
       </div>
-      <div class="s-body">
-        <h4>用户管理</h4>
-        <p>管理平台用户、角色分配和操作权限</p>
+      <div class="ops-dashboard" id="settingsDatasourcePanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">数据源管理</h2>
+        <div style="padding:24px;color:var(--text-muted);">配置 MySQL、Hive、HDFS 等数据源连接信息</div>
       </div>
-    </a>
-    <a class="setting-card" href="#">
-      <div class="s-icon ic-green">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="11" cy="6" rx="7" ry="3"/><path d="M4 6v5c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M4 11v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>
+      <div class="ops-dashboard" id="settingsEnvPanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">环境配置</h2>
+        <div style="padding:24px;color:var(--text-muted);">管理 Hadoop、Hive、DataX 等组件路径和参数</div>
       </div>
-      <div class="s-body">
-        <h4>数据源管理</h4>
-        <p>配置 MySQL、Hive、HDFS 等数据源连接信息</p>
+      <div class="ops-dashboard" id="settingsSecurityPanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">安全设置</h2>
+        <div style="padding:24px;color:var(--text-muted);">登录策略、密码规则、操作日志和审计</div>
       </div>
-    </a>
-    <a class="setting-card" href="#">
-      <div class="s-icon ic-orange">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="16" height="14" rx="2"/><path d="M3 9h16"/><path d="M8 4v5M14 4v5"/></svg>
+      <div class="ops-dashboard" id="settingsAiPanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">AI 配置</h2>
+        <div style="padding:24px;"><button class="btn btn-primary btn-sm" onclick="openAiConfig()">打开 AI 配置</button></div>
       </div>
-      <div class="s-body">
-        <h4>环境配置</h4>
-        <p>管理 Hadoop、Hive、DataX 等组件路径和参数</p>
+      <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
+        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">系统监控</h2>
+        <div style="padding:24px;color:var(--text-muted);">CPU、内存、磁盘使用率监控和服务健康检查</div>
       </div>
-    </a>
-    <a class="setting-card" href="http://localhost:12345/dolphinscheduler/ui" target="_blank">
-      <div class="s-icon ic-cyan">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M11 5v6l4 3"/></svg>
-      </div>
-      <div class="s-body">
-        <h4>调度管理</h4>
-        <p>DolphinScheduler 资源组、Worker 分组和租户管理</p>
-      </div>
-    </a>
-    <a class="setting-card" href="#">
-      <div class="s-icon ic-purple">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h16v12H3z" rx="2"/><path d="M7 6V4a4 4 0 018 0v2"/><circle cx="11" cy="13" r="2"/></svg>
-      </div>
-      <div class="s-body">
-        <h4>安全设置</h4>
-        <p>登录策略、密码规则、操作日志和审计</p>
-      </div>
-    </a>
-    <a class="setting-card" href="#" onclick="openAiConfig();return false;">
-      <div class="s-icon ic-pink" style="background:rgba(235,87,87,.08);color:#eb5757;">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2L2 7v8l9 5 9-5V7z"/><circle cx="11" cy="11" r="3"/></svg>
-      </div>
-      <div class="s-body">
-        <h4>AI 配置</h4>
-        <p>配置大模型 API Key、模型选择，启用 NL2SQL 和 AI 辅助功能</p>
-      </div>
-    </a>
-    <a class="setting-card" href="#">
-      <div class="s-icon ic-red">
-        <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2v4M11 16v4M2 11h4M16 11h4M4.9 4.9l2.8 2.8M14.3 14.3l2.8 2.8M4.9 17.1l2.8-2.8M14.3 7.7l2.8-2.8"/></svg>
-      </div>
-      <div class="s-body">
-        <h4>系统监控</h4>
-        <p>CPU、内存、磁盘使用率监控和服务健康检查</p>
-      </div>
-    </a>
+    </div>
   </div>
 </div>
 
@@ -9788,7 +9734,7 @@ function deleteMetric(id) {
 var qualityDatasources = [];
 
 function switchQualityTab(el, tab) {
-  document.querySelectorAll('.quality-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   el.classList.add('active');
   var panels = ['qualityOverviewPanel', 'qualityRulesPanel', 'qualityHistoryPanel'];
   panels.forEach(function(id) { document.getElementById(id).style.display = 'none'; });
@@ -11528,6 +11474,35 @@ function createNewScript() {
     rightPanel.style.width = '';
   };
 })();
+
+// ===== 指标管理 tab 切换 =====
+function switchMetricsTab(el, tab) {
+  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  ['metricsListPanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  if (tab === 'list') { document.getElementById('metricsListPanel').style.display = ''; loadMetricList(); }
+  else if (tab === 'category') { document.getElementById('metricsListPanel').style.display = ''; loadMetricCategories(); }
+}
+
+// ===== 项目管理 tab 切换 =====
+function switchProjectTab(el, tab) {
+  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  ['projectSpacePanel', 'projectMemberPanel', 'projectReleasePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  if (tab === 'space') document.getElementById('projectSpacePanel').style.display = '';
+  else if (tab === 'member') document.getElementById('projectMemberPanel').style.display = '';
+  else if (tab === 'release') document.getElementById('projectReleasePanel').style.display = '';
+}
+
+// ===== 系统管理 tab 切换 =====
+function switchSettingsTab(el, tab) {
+  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  ['settingsUserPanel', 'settingsDatasourcePanel', 'settingsEnvPanel', 'settingsSecurityPanel', 'settingsAiPanel', 'settingsMonitorPanel']
+    .forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  var panelMap = { user: 'settingsUserPanel', datasource: 'settingsDatasourcePanel', env: 'settingsEnvPanel', security: 'settingsSecurityPanel', ai: 'settingsAiPanel', monitor: 'settingsMonitorPanel' };
+  if (panelMap[tab]) document.getElementById(panelMap[tab]).style.display = '';
+}
 
 // ===== 补数据历史（数据运维页）=====
 function loadOpsBackfillHistory() {
