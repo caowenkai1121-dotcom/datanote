@@ -4043,6 +4043,35 @@ html, body {
     </div>
   </div>
 
+      <!-- 部署数据 -->
+      <div class="right-content" id="rightContent5" style="display:none">
+        <div class="prop-group">
+          <div class="prop-group-title">补数据配置</div>
+          <div class="prop-row">
+            <span class="prop-label">开始日期</span>
+            <div class="prop-value"><input class="prop-input" id="backfillStart" type="date"></div>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">结束日期</span>
+            <div class="prop-value"><input class="prop-input" id="backfillEnd" type="date"></div>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label"></span>
+            <div class="prop-value" style="display:flex;gap:6px;">
+              <button class="btn btn-sm" onclick="previewBackfill()">预览日期</button>
+              <button class="btn btn-primary btn-sm" onclick="startBackfill()">开始部署</button>
+            </div>
+          </div>
+          <div id="backfillPreview" style="display:none;padding:8px 12px;font-size:12px;color:var(--text-muted);line-height:1.8;"></div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">部署记录</div>
+          <div id="backfillList" style="font-size:12px;">
+            <div style="color:var(--text-muted);">暂无部署记录</div>
+          </div>
+        </div>
+      </div>
+
   <!-- ===== Right Toggle Bar ===== -->
   <div class="right-toggle-bar">
     <button class="toggle-btn" onclick="toggleRightTab(0)" data-tab="0">基本信息</button>
@@ -4050,6 +4079,7 @@ html, body {
     <button class="toggle-btn" onclick="toggleRightTab(2)" data-tab="2">依赖关系</button>
     <button class="toggle-btn" onclick="toggleRightTab(3)" data-tab="3">运行日志</button>
     <button class="toggle-btn" onclick="toggleRightTab(4)" data-tab="4">历史版本</button>
+    <button class="toggle-btn" onclick="toggleRightTab(5)" data-tab="5">部署数据</button>
   </div>
 
 </div>
@@ -5328,6 +5358,9 @@ function refreshRightPanelIfOpen() {
   } else if (currentRightTab === 4) {
     // 历史版本
     if (scriptId) loadScriptVersions(scriptId);
+  } else if (currentRightTab === 5) {
+    // 部署数据
+    loadBackfillList();
   }
 }
 
@@ -5727,7 +5760,7 @@ function intgSaveTask() {
 
 // ===== Right panel =====
 var currentRightTab = -1;
-var rightTabNames = ['基本信息', '调度配置', '依赖关系', '运行日志', '历史版本'];
+var rightTabNames = ['基本信息', '调度配置', '依赖关系', '运行日志', '历史版本', '部署数据'];
 
 function toggleRightTab(idx) {
   var panel = document.getElementById('rightPanel');
@@ -5768,6 +5801,7 @@ function toggleRightTab(idx) {
   else if (idx === 2 && currentScriptId) loadDependencies();
   else if (idx === 3) loadDsLogs();
   else if (idx === 4 && currentScriptId) loadScriptVersions(currentScriptId);
+  else if (idx === 5) loadBackfillList();
 
   // 浮层模式：恢复用户拖拽宽度
   if (typeof lastRightWidth !== 'undefined' && lastRightWidth > 0) {
@@ -11482,6 +11516,118 @@ function createNewScript() {
     rightPanel.style.width = '';
   };
 })();
+
+// ===== 部署数据（补数据）=====
+function previewBackfill() {
+  var start = document.getElementById('backfillStart').value;
+  var end = document.getElementById('backfillEnd').value;
+  if (!start || !end) { msgBox('请选择日期范围'); return; }
+  apiPost('/api/backfill/preview', { startDate: start, endDate: end }).then(function(res) {
+    if (res.code === 0 && res.data) {
+      var container = document.getElementById('backfillPreview');
+      container.style.display = 'block';
+      container.innerHTML = '<div style="font-weight:600;margin-bottom:4px;">共 ' + res.data.totalDays + ' 天：</div>'
+        + res.data.dates.map(function(d) { return '<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 8px;background:rgba(24,144,255,.08);border-radius:3px;">' + d + '</span>'; }).join('');
+    }
+  });
+}
+
+function startBackfill() {
+  var start = document.getElementById('backfillStart').value;
+  var end = document.getElementById('backfillEnd').value;
+  if (!start || !end) { msgBox('请选择日期范围'); return; }
+
+  var taskId = currentScriptId || currentSyncTaskId;
+  var taskType = currentScriptId ? 'script' : 'syncTask';
+  var activeTab = document.querySelector('.editor-tab.active');
+  var taskName = activeTab ? (activeTab.dataset.scriptName || activeTab.textContent.trim()) : '';
+
+  if (!taskId) { msgBox('请先选择一个任务'); return; }
+
+  msgConfirm('确认部署', '将对任务 [' + taskName + '] 进行 ' + start + ' 至 ' + end + ' 的补数据，确认执行？').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/backfill/start', {
+      taskId: String(taskId), taskType: taskType, taskName: taskName,
+      startDate: start, endDate: end
+    }).then(function(res) {
+      if (res.code === 0) {
+        msgBox('补数据任务已启动');
+        loadBackfillList();
+      } else {
+        msgBox('启动失败: ' + (res.msg || ''));
+      }
+    });
+  });
+}
+
+function loadBackfillList() {
+  var taskId = currentScriptId || currentSyncTaskId;
+  var taskType = currentScriptId ? 'script' : 'syncTask';
+  if (!taskId) return;
+  var container = document.getElementById('backfillList');
+  container.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/backfill/list?taskId=' + taskId + '&taskType=' + taskType).then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      container.innerHTML = '<div style="color:var(--text-muted);">暂无部署记录</div>';
+      return;
+    }
+    var html = '';
+    res.data.forEach(function(t) {
+      var sc = t.status === 'COMPLETED' ? 'ok' : (t.status === 'RUNNING' ? 'running' : t.status === 'FAILED' || t.status === 'STOPPED' ? 'fail' : '');
+      html += '<div class="run-log-entry">'
+        + '<div class="run-log-head">'
+        + '<span class="run-log-status ' + sc + '">' + t.status + '</span>'
+        + '<span class="run-log-time">' + (t.startedAt || '').replace('T', ' ').substring(0, 19) + '</span></div>'
+        + '<div class="run-log-title">' + escapeHtml(t.startDate) + ' ~ ' + escapeHtml(t.endDate) + ' (' + (t.completed || 0) + '/' + (t.totalDays || 0) + ')</div>'
+        + '<div style="margin-top:4px;display:flex;gap:4px;">';
+      if (t.status === 'RUNNING') {
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:1px 6px;" onclick="backfillAction(\'pause\',' + t.id + ')">暂停</button>';
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:1px 6px;color:var(--error);" onclick="backfillAction(\'stop\',' + t.id + ')">停止</button>';
+      } else if (t.status === 'PAUSED' || t.status === 'STOPPED') {
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:1px 6px;" onclick="backfillAction(\'resume\',' + t.id + ')">继续</button>';
+      }
+      html += '<span class="run-log-toggle" onclick="toggleBackfillDetail(this,' + t.id + ')">展开详情</span>';
+      html += '</div>';
+      html += '<div id="backfillDetail_' + t.id + '" style="display:none;margin-top:6px;"></div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  });
+}
+
+function backfillAction(action, id) {
+  apiPost('/api/backfill/' + action + '/' + id, {}).then(function(res) {
+    if (res.code === 0) { loadBackfillList(); }
+    else { msgBox('操作失败: ' + (res.msg || '')); }
+  });
+}
+
+function toggleBackfillDetail(el, backfillId) {
+  var detail = document.getElementById('backfillDetail_' + backfillId);
+  if (detail.style.display === 'block') {
+    detail.style.display = 'none'; el.textContent = '展开详情'; return;
+  }
+  detail.style.display = 'block'; el.textContent = '收起详情';
+  detail.innerHTML = '加载中...';
+  api('/api/backfill/instances/' + backfillId).then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      detail.innerHTML = '<div style="color:var(--text-muted);">无实例数据</div>'; return;
+    }
+    var html = '<table style="width:100%;font-size:11px;border-collapse:collapse;">'
+      + '<tr style="background:rgba(0,0,0,.04);"><th style="padding:3px 6px;">日期</th><th>状态</th><th>开始</th><th>结束</th><th>耗时</th></tr>';
+    res.data.forEach(function(inst) {
+      var sc = inst.status === 'SUCCESS' ? 'color:#52c41a;' : inst.status === 'FAILED' ? 'color:#e74c3c;' : inst.status === 'RUNNING' ? 'color:#1890ff;' : '';
+      html += '<tr style="border-bottom:1px solid rgba(0,0,0,.05);">'
+        + '<td style="padding:3px 6px;">' + inst.runDate + '</td>'
+        + '<td style="' + sc + 'font-weight:600;">' + inst.status + '</td>'
+        + '<td>' + (inst.startTime || '-').substring(11, 19) + '</td>'
+        + '<td>' + (inst.endTime || '-').substring(11, 19) + '</td>'
+        + '<td>' + (inst.duration > 0 ? inst.duration + 's' : '-') + '</td></tr>';
+    });
+    html += '</table>';
+    detail.innerHTML = html;
+  });
+}
 
 // ===== AI 配置 =====
 function openAiConfig() {
