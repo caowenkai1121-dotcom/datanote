@@ -3355,6 +3355,7 @@ html, body {
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'backfill')">补数据</div>
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'manual')">手动任务</div>
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'integration')">数据集成</div>
+          <div class="ops-sidebar-item" onclick="switchOpsTab(this,'lineage')">血缘管理</div>
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'baseline')">基线管理</div>
         </div>
         <!-- 右侧内容区 -->
@@ -3486,17 +3487,44 @@ html, body {
 
           <!-- 手动任务 -->
           <div class="ops-dashboard" id="opsManualPanel" style="display:none;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">手动任务</h2>
+            <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;">手动任务统计</h2>
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+              <select class="prop-select" id="opsManualTask" style="width:240px;" onchange="loadOpsManual()">
+                <option value="">选择任务...</option>
+              </select>
+              <input class="prop-input" id="opsManualFrom" type="date" style="width:140px;">
+              <span style="color:var(--text-muted);">~</span>
+              <input class="prop-input" id="opsManualTo" type="date" style="width:140px;">
+              <button class="btn btn-sm" onclick="loadOpsManual()">查询</button>
+            </div>
             <div id="opsManualContent">
-              <div style="padding:32px;text-align:center;color:var(--text-muted);">暂无手动任务记录</div>
+              <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">请选择任务和日期范围查询</div>
             </div>
           </div>
 
           <!-- 数据集成 -->
           <div class="ops-dashboard" id="opsIntegrationPanel" style="display:none;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">数据集成</h2>
+            <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;">数据集成统计</h2>
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+              <input class="prop-input" id="opsIntgDate" type="date" style="width:140px;">
+              <button class="btn btn-sm" onclick="loadOpsIntegration()">查询</button>
+              <span id="opsIntgSummary" style="font-size:12px;color:var(--text-muted);margin-left:8px;"></span>
+            </div>
             <div id="opsIntegrationContent">
-              <div style="padding:32px;text-align:center;color:var(--text-muted);">暂无数据集成记录</div>
+              <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">选择日期查询同步任务执行情况</div>
+            </div>
+          </div>
+
+          <!-- 血缘管理 -->
+          <div class="ops-dashboard" id="opsLineagePanel" style="display:none;">
+            <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;">血缘管理</h2>
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+              <input class="prop-input" id="opsLineageSearch" placeholder="搜索任务名..." style="width:280px;" onkeydown="if(event.keyCode===13)loadOpsLineage()">
+              <button class="btn btn-sm" onclick="loadOpsLineage()">查看血缘</button>
+              <button class="btn btn-sm" onclick="opsLineageRefresh()">刷新依赖</button>
+            </div>
+            <div id="opsLineageContent" style="overflow:auto;border:1px solid var(--border);border-radius:4px;min-height:200px;">
+              <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">输入任务名查看上下游血缘关系</div>
             </div>
           </div>
 
@@ -10218,7 +10246,7 @@ function getTodayMinus1() {
 function switchOpsTab(el, tab) {
   document.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
-  var panels = ['opsOverviewPanel', 'opsPeriodicPanel', 'opsBackfillPanel', 'opsManualPanel', 'opsIntegrationPanel', 'opsBaselinePanel'];
+  var panels = ['opsOverviewPanel', 'opsPeriodicPanel', 'opsBackfillPanel', 'opsManualPanel', 'opsIntegrationPanel', 'opsLineagePanel', 'opsBaselinePanel'];
   panels.forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
 
   if (tab === 'overview') {
@@ -10235,10 +10263,13 @@ function switchOpsTab(el, tab) {
     loadBackfillHistory();
   } else if (tab === 'manual') {
     document.getElementById('opsManualPanel').style.display = '';
-    renderOpsManual();
+    initOpsManualTaskList();
   } else if (tab === 'integration') {
     document.getElementById('opsIntegrationPanel').style.display = '';
-    renderOpsIntegration();
+    if (!document.getElementById('opsIntgDate').value) document.getElementById('opsIntgDate').value = getTodayMinus1();
+    loadOpsIntegration();
+  } else if (tab === 'lineage') {
+    document.getElementById('opsLineagePanel').style.display = '';
   } else if (tab === 'baseline') {
     document.getElementById('opsBaselinePanel').style.display = '';
     loadBaselineList();
@@ -11516,6 +11547,149 @@ function createNewScript() {
     rightPanel.style.width = '';
   };
 })();
+
+// ===== 手动任务统计 =====
+function initOpsManualTaskList() {
+  var sel = document.getElementById('opsManualTask');
+  if (sel.options.length > 1) return;
+  api('/api/script/tree').then(function(res) {
+    if (res.code !== 0) return;
+    function walk(nodes) {
+      (nodes || []).forEach(function(n) {
+        if (n.type === 'script') sel.innerHTML += '<option value="script:' + n.id + '">' + escapeHtml(n.name) + '</option>';
+        if (n.type === 'syncTask') sel.innerHTML += '<option value="syncTask:' + n.id + '">' + escapeHtml(n.name) + '</option>';
+        walk(n.children);
+      });
+    }
+    walk(res.data);
+  });
+}
+
+function loadOpsManual() {
+  var sel = document.getElementById('opsManualTask').value;
+  var from = document.getElementById('opsManualFrom').value;
+  var to = document.getElementById('opsManualTo').value;
+  var params = '?';
+  if (sel) { var p = sel.split(':'); params += 'taskType=' + p[0] + '&taskId=' + p[1] + '&'; }
+  if (from) params += 'startDate=' + from + '&';
+  if (to) params += 'endDate=' + to + '&';
+  var container = document.getElementById('opsManualContent');
+  container.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/task-execution/manual' + params).then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无记录</div>';
+      return;
+    }
+    var html = '<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">共 ' + res.data.length + ' 条手动执行记录</div>';
+    html += '<table class="datamap-table"><thead><tr><th>执行时间</th><th>任务</th><th>状态</th><th>耗时</th></tr></thead><tbody>';
+    res.data.forEach(function(r) {
+      var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : r.status === 'FAILED' ? 'color:#e74c3c' : '';
+      html += '<tr><td>' + (r.startTime || '').replace('T', ' ').substring(0, 19) + '</td>'
+        + '<td>' + escapeHtml(r.taskType || '') + ':' + (r.scriptId || r.syncTaskId || '') + '</td>'
+        + '<td style="' + sc + ';font-weight:600;">' + r.status + '</td>'
+        + '<td>' + (r.duration > 0 ? r.duration + 's' : '-') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  });
+}
+
+// ===== 数据集成统计 =====
+function loadOpsIntegration() {
+  var date = document.getElementById('opsIntgDate').value;
+  var container = document.getElementById('opsIntegrationContent');
+  var summary = document.getElementById('opsIntgSummary');
+  container.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  var params = date ? '?date=' + date : '';
+  api('/api/task-execution/integration' + params).then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无同步任务记录</div>';
+      summary.textContent = '';
+      return;
+    }
+    var total = res.data.length;
+    var success = res.data.filter(function(r) { return r.status === 'SUCCESS'; }).length;
+    var failed = total - success;
+    summary.textContent = '共 ' + total + ' 条（成功 ' + success + ' / 失败 ' + failed + '）';
+
+    var html = '<table class="datamap-table"><thead><tr>'
+      + '<th>任务</th><th>模式</th><th>状态</th><th>启动时间</th><th>完成时间</th><th>耗时</th>'
+      + '</tr></thead><tbody>';
+    // 按耗时排序
+    res.data.sort(function(a, b) { return (b.duration || 0) - (a.duration || 0); });
+    res.data.forEach(function(r) {
+      var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : 'color:#e74c3c';
+      html += '<tr>'
+        + '<td>' + escapeHtml('syncTask:' + (r.syncTaskId || '')) + '</td>'
+        + '<td>' + (r.triggerType || '') + '</td>'
+        + '<td style="' + sc + ';font-weight:600;">' + r.status + '</td>'
+        + '<td>' + (r.startTime || '').replace('T', ' ').substring(11, 19) + '</td>'
+        + '<td>' + (r.endTime || '').replace('T', ' ').substring(11, 19) + '</td>'
+        + '<td>' + (r.duration > 0 ? r.duration + 's' : '-') + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  });
+}
+
+// ===== 血缘管理 =====
+function loadOpsLineage() {
+  var kw = document.getElementById('opsLineageSearch').value.trim();
+  if (!kw) { msgBox('请输入任务名'); return; }
+  var container = document.getElementById('opsLineageContent');
+  container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">加载中...</div>';
+
+  // 复用数据开发里的依赖图渲染逻辑
+  // 先加载所有脚本用于查找依赖
+  api('/api/script/tree').then(function(treeRes) {
+    if (treeRes.code !== 0) return;
+    var allScripts = [];
+    function walk(nodes) {
+      (nodes || []).forEach(function(n) {
+        if (n.type === 'script' || n.type === 'syncTask') {
+          allScripts.push({ name: n.name, content: n.content || '', scheduleStatus: n.scheduleStatus || '' });
+        }
+        walk(n.children);
+      });
+    }
+    walk(treeRes.data);
+    depAllScripts = allScripts;
+
+    // 查找匹配的任务
+    var found = allScripts.filter(function(s) { return s.name.indexOf(kw) >= 0; });
+    if (found.length === 0) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">未找到匹配任务: ' + escapeHtml(kw) + '</div>';
+      return;
+    }
+
+    // 用第一个匹配的任务渲染依赖图
+    var task = found[0];
+    depCurrentName = task.name;
+    var upstream = findDepChildren(task.name, 'up');
+    var downstream = findDepChildren(task.name, 'down');
+    depUpstream1 = upstream;
+    depDownstream1 = downstream;
+    depShowUp = true;
+    depShowDown = true;
+    depExpandedUp = {};
+    depExpandedDown = {};
+
+    // 临时替换 container 为 opsLineageContent
+    var origContainer = document.getElementById('depMindmapContainer');
+    var tmpDiv = document.createElement('div');
+    tmpDiv.id = 'depMindmapContainer';
+    container.innerHTML = '';
+    container.appendChild(tmpDiv);
+    depRedraw();
+  });
+}
+
+function opsLineageRefresh() {
+  fetch('/api/lineage/refresh-deps', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(res) {
+    if (res.code === 0) msgBox('依赖已刷新（' + (res.data && res.data.dependencyCount || 0) + ' 条）');
+  });
+}
 
 // ===== 部署数据（补数据）=====
 function previewBackfill() {
