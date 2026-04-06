@@ -3438,50 +3438,11 @@ html, body {
             </div>
           </div>
 
-          <!-- 补数据 -->
+          <!-- 补数据历史 -->
           <div class="ops-dashboard" id="opsBackfillPanel" style="display:none;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">补数据</h2>
-            <div class="ops-chart-card" style="margin-bottom:16px;">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div>
-                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">选择任务</label>
-                  <select id="bfTaskSelect" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);">
-                    <option value="">请选择任务...</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">调度粒度</label>
-                  <select id="bfGranularity" onchange="bfGranularityChanged()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);">
-                    <option value="day">按天</option>
-                    <option value="week">按周</option>
-                    <option value="month">按月</option>
-                    <option value="year">按年</option>
-                  </select>
-                </div>
-                <div id="bfSubOptionWrap" style="display:none;">
-                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;" id="bfSubOptionLabel">具体选项</label>
-                  <select id="bfSubOption" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);"></select>
-                </div>
-                <div>
-                  <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">日期范围</label>
-                  <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="date" id="bfDateFrom" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);">
-                    <span style="color:var(--text-muted);">~</span>
-                    <input type="date" id="bfDateTo" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);">
-                  </div>
-                </div>
-              </div>
-              <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
-                <button class="btn btn-primary btn-sm" onclick="bfPreview()">预览补数日期</button>
-                <button class="btn btn-primary btn-sm" onclick="bfExecute()" style="background:#52c41a;border-color:#52c41a;">开始补数</button>
-                <span id="bfPreviewInfo" style="font-size:12px;color:var(--text-muted);"></span>
-              </div>
-            </div>
-            <div class="ops-chart-card">
-              <div class="ops-chart-title">补数据执行记录</div>
-              <div id="bfHistoryContent">
-                <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">暂无补数据记录</div>
-              </div>
+            <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;">补数据历史</h2>
+            <div id="opsBackfillContent">
+              <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px;">加载中...</div>
             </div>
           </div>
 
@@ -4071,7 +4032,7 @@ html, body {
     </div>
   </div>
 
-      <!-- 部署数据 -->
+      <!-- 补数据 -->
       <div class="right-content" id="rightContent5" style="display:none">
         <div class="prop-group">
           <div class="prop-group-title">补数据配置</div>
@@ -4107,7 +4068,7 @@ html, body {
     <button class="toggle-btn" onclick="toggleRightTab(2)" data-tab="2">依赖关系</button>
     <button class="toggle-btn" onclick="toggleRightTab(3)" data-tab="3">运行日志</button>
     <button class="toggle-btn" onclick="toggleRightTab(4)" data-tab="4">历史版本</button>
-    <button class="toggle-btn" onclick="toggleRightTab(5)" data-tab="5">部署数据</button>
+    <button class="toggle-btn" onclick="toggleRightTab(5)" data-tab="5">补数据</button>
   </div>
 
 </div>
@@ -5387,7 +5348,7 @@ function refreshRightPanelIfOpen() {
     // 历史版本
     if (scriptId) loadScriptVersions(scriptId);
   } else if (currentRightTab === 5) {
-    // 部署数据
+    // 补数据
     loadBackfillList();
   }
 }
@@ -5788,7 +5749,7 @@ function intgSaveTask() {
 
 // ===== Right panel =====
 var currentRightTab = -1;
-var rightTabNames = ['基本信息', '调度配置', '依赖关系', '运行日志', '历史版本', '部署数据'];
+var rightTabNames = ['基本信息', '调度配置', '依赖关系', '运行日志', '历史版本', '补数据'];
 
 function toggleRightTab(idx) {
   var panel = document.getElementById('rightPanel');
@@ -10259,8 +10220,7 @@ function switchOpsTab(el, tab) {
     schedRefreshStatus();
   } else if (tab === 'backfill') {
     document.getElementById('opsBackfillPanel').style.display = '';
-    loadBackfillTaskList();
-    loadBackfillHistory();
+    loadOpsBackfillHistory();
   } else if (tab === 'manual') {
     document.getElementById('opsManualPanel').style.display = '';
     initOpsManualTaskList();
@@ -11569,6 +11529,46 @@ function createNewScript() {
   };
 })();
 
+// ===== 补数据历史（数据运维页）=====
+function loadOpsBackfillHistory() {
+  var container = document.getElementById('opsBackfillContent');
+  container.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/backfill/list').then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无补数据记录。在数据研发侧边栏"补数据"中发起。</div>';
+      return;
+    }
+    var html = '';
+    res.data.forEach(function(t) {
+      var sc = t.status === 'COMPLETED' ? 'ok' : t.status === 'RUNNING' ? 'running' : t.status === 'STOPPED' || t.status === 'FAILED' ? 'fail' : '';
+      html += '<div class="run-log-entry" style="border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<div>'
+        + '<span class="run-log-status ' + sc + '">' + t.status + '</span> '
+        + '<span style="font-weight:600;font-size:13px;">' + escapeHtml(t.taskName || '') + '</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:4px;">';
+      if (t.status === 'RUNNING') {
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:2px 8px;" onclick="backfillAction(\'pause\',' + t.id + ')">暂停</button>';
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:2px 8px;color:var(--error);" onclick="backfillAction(\'stop\',' + t.id + ')">停止</button>';
+      } else if (t.status === 'PAUSED' || t.status === 'STOPPED') {
+        html += '<button class="btn btn-sm" style="font-size:11px;padding:2px 8px;" onclick="backfillAction(\'resume\',' + t.id + ')">重启</button>';
+      }
+      html += '</div></div>'
+        + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">'
+        + '日期范围：' + t.startDate + ' ~ ' + t.endDate
+        + ' | 总天数：' + t.totalDays
+        + ' | 已完成：' + (t.completed || 0) + '/' + t.totalDays
+        + ' | 启动：' + (t.startedAt || '').replace('T', ' ').substring(0, 19)
+        + '</div>'
+        + '<span class="run-log-toggle" onclick="toggleBackfillDetail(this,' + t.id + ')" style="margin-top:4px;display:inline-block;">展开每日详情</span>'
+        + '<div id="backfillDetail_' + t.id + '" style="display:none;margin-top:6px;"></div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  });
+}
+
 // ===== 手动任务统计 =====
 function initOpsManualTaskList() {
   var sel = document.getElementById('opsManualTask');
@@ -11712,7 +11712,7 @@ function opsLineageRefresh() {
   });
 }
 
-// ===== 部署数据（补数据）=====
+// ===== 补数据（补数据）=====
 function previewBackfill() {
   var start = document.getElementById('backfillStart').value;
   var end = document.getElementById('backfillEnd').value;
