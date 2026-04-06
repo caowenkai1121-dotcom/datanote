@@ -9355,22 +9355,73 @@ function dmSaveField(idx) {
   var typeInput = document.getElementById('dmEditType_' + idx);
   if (!nameInput) return;
 
+  var col = dmFieldsData[idx];
   var newName = nameInput.value.trim();
   var newCn = cnInput ? cnInput.value.trim() : '';
   var newType = typeInput ? typeInput.value.trim() : '';
 
-  // 恢复显示模式
-  document.getElementById('dmFieldName_' + idx).textContent = newName;
-  document.getElementById('dmFieldCn_' + idx).textContent = newCn;
-  document.getElementById('dmFieldType_' + idx).textContent = newType;
-  document.getElementById('dmSaveBtn_' + idx).style.display = 'none';
+  if (!newName || !newType) { msgBox('字段名和类型不能为空'); return; }
 
-  // 更新内存数据
-  dmFieldsData[idx].name = newName;
-  dmFieldsData[idx].comment = newCn;
-  dmFieldsData[idx].type = newType;
+  // 判断是否有变更
+  var nameChanged = newName !== col.name;
+  var typeChanged = newType !== col.type;
+  var commentChanged = newCn !== (col.comment || '');
 
-  msgBox('字段信息已更新（本地）');
+  if (!nameChanged && !typeChanged && !commentChanged) {
+    // 无变更，恢复显示
+    document.getElementById('dmFieldName_' + idx).textContent = col.name;
+    document.getElementById('dmFieldCn_' + idx).textContent = col.comment || '';
+    document.getElementById('dmFieldType_' + idx).textContent = col.type;
+    document.getElementById('dmSaveBtn_' + idx).style.display = 'none';
+    return;
+  }
+
+  // 高风险操作（改字段名或类型）需二次确认
+  if (nameChanged || typeChanged) {
+    var warn = '即将修改 Hive 表结构：\n';
+    if (nameChanged) warn += '  字段名: ' + col.name + ' → ' + newName + '\n';
+    if (typeChanged) warn += '  类型: ' + col.type + ' → ' + newType + '\n';
+    warn += '\n修改后下游 SQL 可能报错，确认执行？';
+    msgConfirm('字段结构变更', warn).then(function(ok) {
+      if (ok) doAlterColumn(idx, col, newName, newType, newCn);
+    });
+  } else {
+    // 只改注释，直接执行
+    doAlterColumn(idx, col, newName, newType, newCn);
+  }
+}
+
+function doAlterColumn(idx, col, newName, newType, newCn) {
+  var saveBtn = document.getElementById('dmSaveBtn_' + idx);
+  if (saveBtn) { saveBtn.textContent = '保存中...'; saveBtn.disabled = true; }
+
+  apiPost('/api/hive/alter-column', {
+    db: dmCurrentDb,
+    table: dmCurrentTable,
+    oldName: col.name,
+    newName: newName,
+    newType: newType,
+    newComment: newCn
+  }).then(function(res) {
+    if (res.code === 0) {
+      // 更新内存数据
+      dmFieldsData[idx].name = newName;
+      dmFieldsData[idx].type = newType;
+      dmFieldsData[idx].comment = newCn;
+      // 恢复显示模式
+      document.getElementById('dmFieldName_' + idx).textContent = newName;
+      document.getElementById('dmFieldCn_' + idx).textContent = newCn;
+      document.getElementById('dmFieldType_' + idx).textContent = newType;
+      if (saveBtn) { saveBtn.style.display = 'none'; saveBtn.textContent = '保存'; saveBtn.disabled = false; }
+      msgBox('Hive 表结构已更新');
+    } else {
+      if (saveBtn) { saveBtn.textContent = '保存'; saveBtn.disabled = false; }
+      msgBox('修改失败: ' + (res.msg || ''));
+    }
+  }).catch(function(err) {
+    if (saveBtn) { saveBtn.textContent = '保存'; saveBtn.disabled = false; }
+    msgBox('请求失败: ' + err.message);
+  });
 }
 
 function dmSaveFieldMeta() {

@@ -38,6 +38,46 @@ public class HiveDdlController {
     private final DnTaskExecutionMapper taskExecutionMapper;
 
     /**
+     * 修改 Hive 表字段（ALTER TABLE CHANGE COLUMN）
+     */
+    @Operation(summary = "修改 Hive 表字段")
+    @PostMapping("/alter-column")
+    public R<Void> alterColumn(@RequestBody Map<String, String> body) {
+        String db = body.get("db");
+        String table = body.get("table");
+        String oldName = body.get("oldName");
+        String newName = body.get("newName");
+        String newType = body.get("newType");
+        String newComment = body.get("newComment");
+
+        if (db == null || table == null || oldName == null) {
+            return R.fail("缺少必要参数");
+        }
+        if (newName == null || newName.isEmpty()) newName = oldName;
+        if (newType == null || newType.isEmpty()) return R.fail("类型不能为空");
+
+        try {
+            // 构建 ALTER TABLE 语句
+            // Hive 语法：ALTER TABLE db.table CHANGE COLUMN old_col new_col type COMMENT 'xxx'
+            StringBuilder ddl = new StringBuilder();
+            ddl.append("ALTER TABLE ").append(db).append(".").append(table);
+            ddl.append(" CHANGE COLUMN ").append(oldName);
+            ddl.append(" ").append(newName);
+            ddl.append(" ").append(newType);
+            if (newComment != null && !newComment.isEmpty()) {
+                ddl.append(" COMMENT '").append(newComment.replace("'", "\\'")).append("'");
+            }
+
+            log.info("执行字段修改: {}", ddl);
+            hiveService.executeDDL(ddl.toString());
+            return R.ok();
+        } catch (Exception e) {
+            log.error("字段修改失败", e);
+            return R.fail("字段修改失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 预览 Hive DDL（不执行）
      */
     @Operation(summary = "预览建表 DDL")
