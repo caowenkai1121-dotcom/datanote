@@ -10654,20 +10654,22 @@ function loadBaselineList() {
         ? '<span style="color:var(--success);font-weight:500;">启用</span>'
         : '<span style="color:var(--text-muted);">禁用</span>';
       var priorityLabel = b.priority === 1 ? 'P1' : b.priority === 2 ? 'P2' : 'P3';
+      var typeLabel = b.baselineType === 'dashboard' ? '<span style="color:#1890ff;">看板</span>' : '<span style="color:#e74c3c;">核心</span>';
       return '<tr>' +
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + escapeHtml(b.baselineName) + '</td>' +
-        '<td>' + escapeHtml(b.description || '—') + '</td>' +
+        '<td>' + typeLabel + '</td>' +
         '<td>' + (b.commitTime || '—') + '</td>' +
         '<td><span class="ops-rank-num">' + priorityLabel + '</span></td>' +
         '<td>' + statusBadge + '</td>' +
         '<td>' + (b.taskCount || 0) + '</td>' +
         '<td>' +
           '<button class="btn btn-sm" onclick="toggleBaseline(' + b.id + ')" style="font-size:11px;padding:2px 8px;">' + (b.status === 'enabled' ? '禁用' : '启用') + '</button> ' +
+          '<button class="btn btn-sm" onclick="viewBaselineTasks(' + b.id + ')" style="font-size:11px;padding:2px 8px;">查看任务</button> ' +
           '<button class="btn btn-sm" onclick="deleteBaseline(' + b.id + ',\'' + escapeHtml(b.baselineName) + '\')" style="font-size:11px;padding:2px 8px;color:var(--error);">删除</button>' +
         '</td></tr>';
     }).join('');
-    container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>描述</th><th>承诺时间</th><th>优先级</th><th>状态</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>类型</th><th>承诺时间</th><th>优先级</th><th>状态</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
   });
 }
 
@@ -10702,6 +10704,9 @@ function showCreateBaselineDialog() {
         '<input type="text" id="blName" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);"></div>' +
         '<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">描述</label>' +
         '<input type="text" id="blDesc" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);"></div>' +
+        '<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">基线类型</label>' +
+        '<select id="blType" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);">' +
+        '<option value="core">核心基线（底层模型）</option><option value="dashboard">看板基线（上层报表）</option></select></div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">' +
           '<div><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">承诺完成时间</label>' +
           '<input type="time" id="blCommitTime" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-card);"></div>' +
@@ -10727,6 +10732,7 @@ function submitCreateBaseline() {
   var body = {
     baselineName: name,
     description: document.getElementById('blDesc').value.trim(),
+    baselineType: document.getElementById('blType').value || 'core',
     commitTime: document.getElementById('blCommitTime').value || null,
     priority: parseInt(document.getElementById('blPriority').value),
     taskIds: taskIds
@@ -10761,6 +10767,21 @@ function deleteBaseline(id, name) {
       if (res.code === 0) { msgAlert('基线', '已删除', 'ok'); loadBaselineList(); }
       else msgAlert('基线', '删除失败: ' + res.msg, 'error');
     });
+}
+
+function viewBaselineTasks(baselineId) {
+  fetch('/api/baseline/' + baselineId + '/tasks').then(function(r) { return r.json(); }).then(function(res) {
+    if (res.code !== 0 || !res.data || !res.data.length) {
+      msgBox('该基线暂无关联任务');
+      return;
+    }
+    var html = '<table class="datamap-table"><thead><tr><th>任务名</th><th>类型</th></tr></thead><tbody>';
+    res.data.forEach(function(t) {
+      html += '<tr><td>' + escapeHtml(t.taskName || '') + '</td><td>' + escapeHtml(t.taskType || '') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    showModal('基线关联任务', html, '<button class="btn btn-sm" onclick="closeModal()">关闭</button>');
+  });
 }
 
 /* ===== DAG 视图 ===== */
