@@ -4029,9 +4029,6 @@ html, body {
         </div>
       </div>
 
-    </div>
-  </div>
-
       <!-- 补数据 -->
       <div class="right-content" id="rightContent5" style="display:none">
         <div class="prop-group">
@@ -4048,18 +4045,21 @@ html, body {
             <span class="prop-label"></span>
             <div class="prop-value" style="display:flex;gap:6px;">
               <button class="btn btn-sm" onclick="previewBackfill()">预览日期</button>
-              <button class="btn btn-primary btn-sm" onclick="startBackfill()">开始部署</button>
+              <button class="btn btn-primary btn-sm" onclick="startBackfill()">开始补数据</button>
             </div>
           </div>
           <div id="backfillPreview" style="display:none;padding:8px 12px;font-size:12px;color:var(--text-muted);line-height:1.8;"></div>
         </div>
         <div class="prop-group">
-          <div class="prop-group-title">部署记录</div>
+          <div class="prop-group-title">补数据记录</div>
           <div id="backfillList" style="font-size:12px;">
-            <div style="color:var(--text-muted);">暂无部署记录</div>
+            <div style="color:var(--text-muted);">暂无记录</div>
           </div>
         </div>
       </div>
+
+    </div>
+  </div>
 
   <!-- ===== Right Toggle Bar ===== -->
   <div class="right-toggle-bar">
