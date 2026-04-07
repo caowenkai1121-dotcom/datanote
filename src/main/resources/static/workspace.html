@@ -3779,13 +3779,46 @@ html, body {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">数据源管理</h2>
             </div>
-            <div style="padding:24px;color:var(--text-muted);">配置 MySQL、Hive、HDFS 等数据源连接信息</div>
+            <!-- Hive 连接状态 -->
+            <div id="hiveStatusBar" style="padding:8px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;display:none;"></div>
+            <!-- Hive 连接配置 -->
+            <div style="max-width:520px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">Hive 连接</div>
+              <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="127.0.0.1" value="127.0.0.1"></div>
+              <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="10000" value="10000" type="number"></div>
+              <div class="ds-form-row"><label>认证方式</label>
+                <select id="cfgHiveAuth" style="flex:1;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+                  <option value="noSasl">NOSASL（无认证）</option>
+                  <option value="plain">用户名密码</option>
+                  <option value="kerberos">Kerberos</option>
+                </select>
+              </div>
+              <div class="ds-form-row"><label>用户名</label><input id="cfgHiveUser" placeholder="可选"></div>
+              <div class="ds-form-row"><label>密码</label><input id="cfgHivePass" type="password" placeholder="可选"></div>
+              <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="default" value="default"></div>
+              <div style="font-size:14px;font-weight:600;margin:20px 0 12px;color:var(--text-regular);">HDFS 配置</div>
+              <div class="ds-form-row"><label>NameNode</label><input id="cfgHdfsFs" placeholder="hdfs://localhost:9000" value="hdfs://localhost:9000"></div>
+              <div class="ds-form-row"><label>仓库路径</label><input id="cfgHdfsWarehouse" placeholder="/user/hive/warehouse" value="/user/hive/warehouse"></div>
+              <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn-sm" onclick="testHiveConnection()">测试 Hive 连接</button>
+                <button class="btn btn-sm" onclick="testHdfsConnection()">测试 HDFS 连接</button>
+                <button class="btn btn-primary btn-sm" onclick="saveDatasourceConfig()">保存配置</button>
+              </div>
+              <div id="hiveTestResult" style="margin-top:10px;font-size:13px;display:none;"></div>
+            </div>
           </div>
           <div class="ops-dashboard" id="settingsEnvPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">环境配置</h2>
             </div>
-            <div style="padding:24px;color:var(--text-muted);">管理 Hadoop、Hive、DataX 等组件路径和参数</div>
+            <div style="max-width:520px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">DataX 数据同步</div>
+              <div class="ds-form-row"><label>安装路径</label><input id="cfgDataxHome" placeholder="/opt/datax" value="/opt/datax"></div>
+              <div class="ds-form-row"><label>JVM 参数</label><input id="cfgDataxJvm" placeholder="-Xms1g -Xmx1g" value="-Xms1g -Xmx1g"></div>
+              <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn-primary btn-sm" onclick="saveEnvConfig()">保存配置</button>
+              </div>
+            </div>
           </div>
           <div class="ops-dashboard" id="settingsSecurityPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -11147,6 +11180,17 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function showToast(msg, type) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:8px 20px;border-radius:6px;font-size:13px;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:opacity .3s;';
+  t.style.background = type === 'error' ? '#fff1f0' : type === 'success' ? '#f6ffed' : '#e6f7ff';
+  t.style.color = type === 'error' ? '#cf1322' : type === 'success' ? '#389e0d' : '#096dd9';
+  t.style.border = '1px solid ' + (type === 'error' ? '#ffa39e' : type === 'success' ? '#b7eb8f' : '#91d5ff');
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2500);
+}
+
 function schedBackfill(taskId, taskType, taskName) {
   // 获取下游依赖树
   fetch('/api/lineage/downstream-tree?taskId=' + taskId + '&taskType=' + taskType)
@@ -11535,6 +11579,181 @@ function switchSettingsTab(el, tab) {
     .forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
   var panelMap = { user: 'settingsUserPanel', datasource: 'settingsDatasourcePanel', env: 'settingsEnvPanel', security: 'settingsSecurityPanel', ai: 'settingsAiPanel', monitor: 'settingsMonitorPanel' };
   if (panelMap[tab]) document.getElementById(panelMap[tab]).style.display = '';
+  // 切到数据源管理时自动加载配置
+  if (tab === 'datasource') loadDatasourceConfig();
+  if (tab === 'env') loadEnvConfig();
+}
+
+// ===== 系统配置：数据源管理 =====
+function loadDatasourceConfig() {
+  // 加载 Hive 配置
+  api('/api/system/config/hive').then(function(res) {
+    if (res.code === 0 && res.data) {
+      var d = res.data;
+      // 从 URL 解析 host/port/db/auth
+      var url = d['hive.url'] || '';
+      if (url) {
+        var m = url.match(/jdbc:hive2:\/\/([^:\/]+):(\d+)\/([^;]*)/);
+        if (m) {
+          document.getElementById('cfgHiveHost').value = m[1];
+          document.getElementById('cfgHivePort').value = m[2];
+          document.getElementById('cfgHiveDb').value = m[3] || 'default';
+        }
+        document.getElementById('cfgHiveAuth').value = url.indexOf('auth=noSasl') >= 0 ? 'noSasl' : 'plain';
+      }
+      if (d['hive.username']) document.getElementById('cfgHiveUser').value = d['hive.username'];
+      if (d['hive.password']) document.getElementById('cfgHivePass').value = d['hive.password'];
+    }
+  });
+  // 加载 HDFS 配置
+  api('/api/system/config/hdfs').then(function(res) {
+    if (res.code === 0 && res.data) {
+      if (res.data['hdfs.default-fs']) document.getElementById('cfgHdfsFs').value = res.data['hdfs.default-fs'];
+      if (res.data['hdfs.warehouse']) document.getElementById('cfgHdfsWarehouse').value = res.data['hdfs.warehouse'];
+    }
+  });
+  // 加载连接状态
+  api('/api/system/config/hive-status').then(function(res) {
+    var bar = document.getElementById('hiveStatusBar');
+    if (res.code === 0 && res.data) {
+      bar.style.display = '';
+      if (res.data.available) {
+        bar.style.background = 'rgba(82,196,26,.08)';
+        bar.style.color = '#52c41a';
+        bar.innerHTML = '● Hive 已连接';
+      } else if (res.data.url) {
+        bar.style.background = 'rgba(250,173,20,.08)';
+        bar.style.color = '#faad14';
+        bar.innerHTML = '⚠ Hive 配置已保存，但连接不可用';
+      } else {
+        bar.style.background = 'rgba(0,0,0,.03)';
+        bar.style.color = 'var(--text-muted)';
+        bar.innerHTML = '○ Hive 未配置 — 请填写以下信息后保存';
+      }
+    }
+  });
+}
+
+function testHiveConnection() {
+  var result = document.getElementById('hiveTestResult');
+  result.style.display = '';
+  result.style.color = 'var(--text-muted)';
+  result.textContent = '连接中...';
+
+  var body = {
+    host: document.getElementById('cfgHiveHost').value || '127.0.0.1',
+    port: document.getElementById('cfgHivePort').value || '10000',
+    authMode: document.getElementById('cfgHiveAuth').value,
+    database: document.getElementById('cfgHiveDb').value || 'default',
+    username: document.getElementById('cfgHiveUser').value,
+    password: document.getElementById('cfgHivePass').value
+  };
+  // 密码是占位符时不传
+  if (body.password === '******') body.password = '';
+
+  fetch('/api/system/config/test-hive', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    result.style.display = '';
+    if (res.code === 0) {
+      result.style.color = '#52c41a';
+      result.textContent = '✓ ' + res.data;
+    } else {
+      result.style.color = 'var(--error)';
+      result.textContent = '✗ ' + res.msg;
+    }
+  }).catch(function(e) {
+    result.style.display = '';
+    result.style.color = 'var(--error)';
+    result.textContent = '✗ 请求失败: ' + e.message;
+  });
+}
+
+function testHdfsConnection() {
+  var result = document.getElementById('hiveTestResult');
+  result.style.display = '';
+  result.style.color = 'var(--text-muted)';
+  result.textContent = 'HDFS 连接中...';
+
+  var body = { defaultFs: document.getElementById('cfgHdfsFs').value || 'hdfs://localhost:9000' };
+
+  fetch('/api/system/config/test-hdfs', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    result.style.display = '';
+    if (res.code === 0) {
+      result.style.color = '#52c41a';
+      result.textContent = '✓ ' + res.data;
+    } else {
+      result.style.color = 'var(--error)';
+      result.textContent = '✗ ' + res.msg;
+    }
+  }).catch(function(e) {
+    result.style.display = '';
+    result.style.color = 'var(--error)';
+    result.textContent = '✗ 请求失败: ' + e.message;
+  });
+}
+
+function saveDatasourceConfig() {
+  var host = document.getElementById('cfgHiveHost').value;
+  var port = document.getElementById('cfgHivePort').value || '10000';
+  var auth = document.getElementById('cfgHiveAuth').value;
+  var db = document.getElementById('cfgHiveDb').value || 'default';
+  var user = document.getElementById('cfgHiveUser').value;
+  var pass = document.getElementById('cfgHivePass').value;
+
+  var url = '';
+  if (host) {
+    url = 'jdbc:hive2://' + host + ':' + port + '/' + db;
+    if (auth === 'noSasl') url += ';auth=noSasl';
+  }
+
+  var configs = {
+    'hive.url': url,
+    'hive.username': user,
+    'hive.password': pass,
+    'hdfs.default-fs': document.getElementById('cfgHdfsFs').value,
+    'hdfs.warehouse': document.getElementById('cfgHdfsWarehouse').value
+  };
+
+  fetch('/api/system/config', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(configs)
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    if (res.code === 0) {
+      showToast('配置已保存，Hive 连接已刷新', 'success');
+      loadDatasourceConfig(); // 刷新状态
+    } else {
+      showToast('保存失败: ' + res.msg, 'error');
+    }
+  });
+}
+
+// ===== 系统配置：环境配置 =====
+function loadEnvConfig() {
+  api('/api/system/config/datax').then(function(res) {
+    if (res.code === 0 && res.data) {
+      if (res.data['datax.home']) document.getElementById('cfgDataxHome').value = res.data['datax.home'];
+      if (res.data['datax.jvm']) document.getElementById('cfgDataxJvm').value = res.data['datax.jvm'];
+    }
+  });
+}
+
+function saveEnvConfig() {
+  var configs = {
+    'datax.home': document.getElementById('cfgDataxHome').value,
+    'datax.jvm': document.getElementById('cfgDataxJvm').value
+  };
+  fetch('/api/system/config', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(configs)
+  }).then(function(r) { return r.json(); }).then(function(res) {
+    if (res.code === 0) showToast('环境配置已保存', 'success');
+    else showToast('保存失败: ' + res.msg, 'error');
+  });
 }
 
 // ===== 补数据历史（数据运维页）=====
