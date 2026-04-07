@@ -11,12 +11,24 @@
 
 set -e
 
-# ---------- 配置区（可按需修改）----------
-NETWORK="datanote-net"
-MYSQL_PASSWORD="root"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_FILE="$SCRIPT_DIR/datanote.conf"
+
+# ---------- 加载配置 ----------
+if [ ! -f "$CONF_FILE" ]; then
+  echo "配置文件不存在，正在生成默认配置: $CONF_FILE"
+  cat > "$CONF_FILE" <<'CONF'
+# DataNote 部署配置（两个脚本共享）
 MYSQL_PORT=3306
+MYSQL_PASSWORD=root
 HIVE_PORT=10000
 HDFS_WEB_PORT=9870
+DATANOTE_PORT=8099
+NETWORK=datanote-net
+CONF
+fi
+
+source "$CONF_FILE"
 
 # ---------- 颜色输出 ----------
 GREEN='\033[0;32m'
@@ -81,8 +93,43 @@ if ! docker info &>/dev/null; then
   exit 1
 fi
 
+# ---------- 端口冲突检测 ----------
+check_port() {
+  local port=$1 name=$2 conf_key=$3
+  if lsof -i:${port} &>/dev/null; then
+    warn "端口 ${port} 已被占用（${name}）！"
+    echo ""
+    echo "  请选择："
+    echo "  1) 自动换用 $((port+1)) 端口"
+    echo "  2) 使用本地已有的 ${name}（不启动 Docker ${name}）"
+    echo "  3) 退出，我自己处理"
+    echo ""
+    read -p "  请输入 [1/2/3]（默认 1）: " choice
+    choice=${choice:-1}
+
+    if [ "$choice" = "1" ]; then
+      local new_port=$((port+1))
+      # 更新配置文件
+      sed -i '' "s/^${conf_key}=.*/${conf_key}=${new_port}/" "$CONF_FILE" 2>/dev/null || \
+      sed -i "s/^${conf_key}=.*/${conf_key}=${new_port}/" "$CONF_FILE"
+      info "已将 ${name} 端口改为 ${new_port}（已写入 datanote.conf）"
+      eval "${conf_key}=${new_port}"
+      return 0  # 继续启动
+    elif [ "$choice" = "2" ]; then
+      info "跳过 Docker ${name}，使用本地已有服务"
+      return 1  # 跳过启动
+    else
+      error "退出部署"
+      exit 1
+    fi
+  fi
+  return 0
+}
+
+SKIP_MYSQL=false
+check_port $MYSQL_PORT "MySQL" "MYSQL_PORT" || SKIP_MYSQL=true
+
 # ---------- MySQL JDBC 驱动 ----------
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 JDBC_JAR="$SCRIPT_DIR/docker/mysql-connector-j-8.0.33.jar"
 if [ ! -f "$JDBC_JAR" ]; then
   info "下载 MySQL JDBC 驱动..."
@@ -117,23 +164,12 @@ wait_for() {
 }
 
 # ==================== 1. MySQL ====================
-# 检查端口占用
-if lsof -i:${MYSQL_PORT} &>/dev/null; then
-  warn "端口 ${MYSQL_PORT} 已被占用！"
-  warn "可能你本地已经安装了 MySQL。请先停止本地 MySQL 或修改脚本顶部的 MYSQL_PORT 变量。"
-  echo ""
-  echo "  查看占用：lsof -i:${MYSQL_PORT}"
-  echo "  Mac 停止 MySQL：brew services stop mysql"
-  echo "  或修改本脚本第 16 行：MYSQL_PORT=3307"
-  echo ""
-  error "退出部署"
-  exit 1
-fi
-
-if docker ps -a --format '{{.Names}}' | grep -q datanote-mysql; then
+if [ "$SKIP_MYSQL" = "true" ]; then
+  info "使用本地 MySQL（端口 ${MYSQL_PORT}）"
+elif docker ps -a --format '{{.Names}}' | grep -q datanote-mysql; then
   info "MySQL 已存在，跳过"
 else
-  info "启动 MySQL..."
+  info "启动 MySQL（端口 ${MYSQL_PORT}）..."
   docker run -d \
     --name datanote-mysql \
     --network $NETWORK \
@@ -206,6 +242,13 @@ docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp 2>/dev/null || true
 if docker ps -a --format '{{.Names}}' | grep -q datanote-metastore; then
   info "Hive Metastore 已存在，跳过"
 else
+  # Metastore 连接的 MySQL 地址：Docker 内用 mysql，本地用 host.docker.internal
+  if [ "$SKIP_MYSQL" = "true" ]; then
+    METASTORE_MYSQL_HOST="host.docker.internal"
+  else
+    METASTORE_MYSQL_HOST="mysql"
+  fi
+
   info "启动 Hive Metastore..."
   docker run -d \
     --name datanote-metastore \
@@ -214,7 +257,7 @@ else
     -e SERVICE_NAME=metastore \
     -e DB_DRIVER=mysql \
     -e SERVICE_OPTS="\
--Djavax.jdo.option.ConnectionURL=jdbc:mysql://mysql:3306/hive_metastore?createDatabaseIfNotExist=true&useSSL=false \
+-Djavax.jdo.option.ConnectionURL=jdbc:mysql://${METASTORE_MYSQL_HOST}:3306/hive_metastore?createDatabaseIfNotExist=true&useSSL=false \
 -Djavax.jdo.option.ConnectionDriverName=com.mysql.cj.jdbc.Driver \
 -Djavax.jdo.option.ConnectionUserName=root \
 -Djavax.jdo.option.ConnectionPassword=$MYSQL_PASSWORD" \
@@ -271,6 +314,7 @@ echo "  HDFS Web UI:  http://localhost:${HDFS_WEB_PORT}"
 echo "  HiveServer2:  localhost:${HIVE_PORT}"
 echo "  MySQL:        localhost:${MYSQL_PORT} (root / ${MYSQL_PASSWORD})"
 echo ""
+echo "  配置文件：$CONF_FILE"
 echo "  验证：./setup-hive.sh test"
 echo "  下一步：./setup-datanote.sh"
 echo "============================================"

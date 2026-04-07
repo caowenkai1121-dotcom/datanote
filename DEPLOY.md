@@ -3,11 +3,13 @@
 ## 部署流程
 
 ```
-第一步                          第二步
-setup-hive.sh                  setup-datanote.sh
-安装 Hadoop + Hive 环境  →     安装 DataNote  →  打开页面配置 Hive 连接
-（如果已有环境可跳过）
+datanote.conf                  ← 共享配置文件（端口、密码等）
+     ↓                    ↓
+setup-hive.sh            setup-datanote.sh
+第一步：安装集群环境  →   第二步：安装 DataNote  →  页面配置 Hive 连接
 ```
+
+两个脚本共享 `datanote.conf` 配置文件。端口冲突时脚本会自动修改配置，第二个脚本自动读取，无需手动同步。
 
 ---
 

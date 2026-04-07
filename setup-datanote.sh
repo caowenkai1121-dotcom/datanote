@@ -9,14 +9,24 @@
 
 set -e
 
-# ---------- 配置区 ----------
-DATANOTE_PORT=8099
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONF_FILE="$SCRIPT_DIR/datanote.conf"
+JAR_FILE="$SCRIPT_DIR/target/datanote-1.0.0.jar"
 
-# MySQL 配置（与 setup-hive.sh 保持一致）
+# ---------- 加载配置 ----------
+if [ ! -f "$CONF_FILE" ]; then
+  error "配置文件不存在: $CONF_FILE"
+  echo "  请先运行 ./setup-hive.sh 或手动创建配置文件"
+  exit 1
+fi
+
+source "$CONF_FILE"
+
+# 从配置文件派生连接信息
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=${MYSQL_PORT}
 DB_USER=root
-DB_PASS=root
+DB_PASS=${MYSQL_PASSWORD}
 
 # ---------- 颜色输出 ----------
 GREEN='\033[0;32m'
@@ -27,55 +37,34 @@ info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-JAR_FILE="$SCRIPT_DIR/target/datanote-1.0.0.jar"
-PID_FILE="/tmp/datanote.pid"
-
 # ---------- 停止 ----------
 if [ "$1" = "stop" ]; then
-  if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if kill -0 $PID 2>/dev/null; then
-      kill $PID
-      info "DataNote 已停止 (PID: $PID)"
-    else
-      warn "进程 $PID 不存在"
-    fi
-    rm -f "$PID_FILE"
+  PID=$(lsof -ti:$DATANOTE_PORT 2>/dev/null | head -1)
+  if [ -n "$PID" ]; then
+    kill $PID
+    info "DataNote 已停止 (PID: $PID)"
   else
-    # 按端口查找
-    PID=$(lsof -ti:$DATANOTE_PORT 2>/dev/null | head -1)
-    if [ -n "$PID" ]; then
-      kill $PID
-      info "DataNote 已停止 (PID: $PID)"
-    else
-      warn "DataNote 未在运行"
-    fi
+    warn "DataNote 未在运行"
   fi
   exit 0
 fi
 
 # ---------- 前置检查 ----------
-# 检查 Java
 if ! command -v java &>/dev/null; then
   error "请先安装 Java 8+：https://adoptium.net/"
   exit 1
 fi
 
-JAVA_VER=$(java -version 2>&1 | head -1 | awk -F '"' '{print $2}' | cut -d. -f1)
-if [ "$JAVA_VER" = "1" ]; then
-  JAVA_VER=$(java -version 2>&1 | head -1 | awk -F '"' '{print $2}' | cut -d. -f2)
-fi
-info "Java 版本: $JAVA_VER"
+info "Java: $(java -version 2>&1 | head -1)"
+info "配置文件: $CONF_FILE"
+info "MySQL: ${DB_HOST}:${DB_PORT}"
 
 # 检查 MySQL 连通性
-info "检查 MySQL 连接..."
 if command -v mysql &>/dev/null; then
-  mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -e "SELECT 1;" &>/dev/null
-  if [ $? -eq 0 ]; then
+  if mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -e "SELECT 1;" &>/dev/null; then
     info "MySQL 连接正常"
   else
-    error "MySQL 连接失败（$DB_HOST:$DB_PORT），请检查配置"
+    error "MySQL 连接失败（${DB_HOST}:${DB_PORT}），请检查 MySQL 是否启动"
     exit 1
   fi
 else
@@ -101,7 +90,7 @@ fi
 if [ ! -f "$JAR_FILE" ]; then
   info "JAR 包不存在，开始编译..."
   if ! command -v mvn &>/dev/null; then
-    error "JAR 包不存在且 Maven 未安装，请先编译或下载 JAR 包"
+    error "JAR 包不存在且 Maven 未安装"
     echo "  编译：mvn package -DskipTests"
     echo "  或从 GitHub Release 下载 JAR 放到 $SCRIPT_DIR/target/ 目录"
     exit 1
@@ -135,8 +124,7 @@ nohup java \
   --spring.datasource.password=$DB_PASS \
   > /tmp/datanote.log 2>&1 &
 
-echo $! > "$PID_FILE"
-info "DataNote 启动中... (PID: $(cat $PID_FILE))"
+info "DataNote 启动中... (PID: $!)"
 
 # 等待启动
 echo -n "等待服务就绪"
@@ -156,6 +144,7 @@ info "DataNote 启动成功！"
 echo ""
 echo "  访问地址：http://localhost:${DATANOTE_PORT}"
 echo "  日志文件：/tmp/datanote.log"
+echo "  配置文件：$CONF_FILE"
 echo ""
 echo "  下一步：打开浏览器 → 系统管理 → 数据源管理"
 echo "  配置 Hive 连接信息，测试通过后保存即可。"
