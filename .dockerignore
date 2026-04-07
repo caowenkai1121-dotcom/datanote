@@ -1,8 +1,0 @@
-target/
-.git/
-.claude/
-.idea/
-*.iml
-node_modules/
-/tmp/
-*.log
