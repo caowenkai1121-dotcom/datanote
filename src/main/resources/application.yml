@@ -25,7 +25,7 @@ mybatis-plus:
 
 # -------------------- Hive JDBC --------------------
 hive:
-  url: ${HIVE_URL:jdbc:hive2://127.0.0.1:10010/default;auth=noSasl}
+  url: ${HIVE_URL:jdbc:hive2://127.0.0.1:10000/default;auth=noSasl}
   username: ${HIVE_USERNAME:}
   password: ${HIVE_PASSWORD:}
   default-fs: ${HIVE_DEFAULT_FS:hdfs://localhost:9000}
