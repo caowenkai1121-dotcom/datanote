@@ -150,11 +150,11 @@ else
     --network $NETWORK \
     --hostname namenode \
     -p ${HDFS_WEB_PORT}:9870 \
-    -e ENSURE_NAMENODE_DIR="/tmp/hadoop-root/dfs/name" \
+    -e ENSURE_NAMENODE_DIR="/tmp/hadoop-hadoop/dfs/name/current" \
     -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
     -e HDFS-SITE.XML_dfs.replication=1 \
     -e HDFS-SITE.XML_dfs.permissions.enabled=false \
-    -v datanote-namenode-data:/tmp/hadoop-root/dfs/name \
+    -v datanote-namenode-data:/tmp/hadoop-hadoop/dfs/name \
     --restart unless-stopped \
     apache/hadoop:3 \
     hdfs namenode
@@ -173,7 +173,7 @@ else
     --hostname datanode \
     -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
     -e HDFS-SITE.XML_dfs.replication=1 \
-    -v datanote-datanode-data:/tmp/hadoop-root/dfs/data \
+    -v datanote-datanode-data:/tmp/hadoop-hadoop/dfs/data \
     --restart unless-stopped \
     apache/hadoop:3 \
     hdfs datanode
