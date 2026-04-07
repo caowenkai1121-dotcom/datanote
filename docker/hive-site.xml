@@ -16,4 +16,16 @@
     <name>hive.security.authorization.enabled</name>
     <value>false</value>
   </property>
+  <property>
+    <name>hive.execution.engine</name>
+    <value>tez</value>
+  </property>
+  <property>
+    <name>tez.lib.uris</name>
+    <value>/opt/tez,/opt/tez/lib</value>
+  </property>
+  <property>
+    <name>tez.use.cluster.hadoop-libs</name>
+    <value>true</value>
+  </property>
 </configuration>
