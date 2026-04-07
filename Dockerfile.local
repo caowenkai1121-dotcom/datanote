@@ -11,7 +11,7 @@ ENV DB_HOST=127.0.0.1 \
     DB_PORT=3306 \
     DB_USERNAME=root \
     DB_PASSWORD= \
-    HIVE_URL="jdbc:hive2://127.0.0.1:10000/default;auth=noSasl" \
+    HIVE_URL="jdbc:hive2://127.0.0.1:10800/default;auth=noSasl" \
     HADOOP_HOME=/opt/hadoop \
     DATAX_HOME=/opt/datax \
     JAVA_OPTS="-Xms512m -Xmx1g"

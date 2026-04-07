@@ -94,7 +94,7 @@ public class DashboardController {
         List<Map<String, Object>> list = new ArrayList<>();
         list.add(checkService("Hadoop HDFS", "127.0.0.1", 9870, "分布式文件存储"));
         list.add(checkService("YARN", "127.0.0.1", 8088, "资源调度管理"));
-        list.add(checkService("HiveServer2", "127.0.0.1", 10000, "Hive 查询服务"));
+        list.add(checkService("HiveServer2", "127.0.0.1", 10800, "Hive 查询服务"));
         list.add(checkService("Hive Metastore", "127.0.0.1", 9083, "Hive 元数据服务"));
         list.add(checkService("DolphinScheduler", "127.0.0.1", 12345, "任务调度平台"));
         list.add(checkService("MySQL", "127.0.0.1", 3306, "关系型数据库"));

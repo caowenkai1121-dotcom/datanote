@@ -55,7 +55,7 @@ cd datanote
 | HDFS NameNode | datanote-namenode | 9870（Web UI） |
 | HDFS DataNode | datanote-datanode | - |
 | Hive Metastore | datanote-metastore | - |
-| HiveServer2 | datanote-hiveserver2 | 10000 |
+| HiveServer2 | datanote-hiveserver2 | 10800 |
 
 ---
 
@@ -83,7 +83,7 @@ cd datanote
 | 配置项 | 值 |
 |--------|-----|
 | 主机地址 | 127.0.0.1 |
-| 端口 | 10000 |
+| 端口 | 10800 |
 | 认证方式 | NOSASL |
 | NameNode | hdfs://localhost:8020 |
 | 仓库路径 | /user/hive/warehouse |

@@ -22,7 +22,7 @@ if [ ! -f "$CONF_FILE" ]; then
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_PASSWORD=root
-HIVE_PORT=10000
+HIVE_PORT=10800
 HDFS_WEB_PORT=9870
 DATANOTE_PORT=8099
 NETWORK=datanote-net
@@ -311,6 +311,7 @@ else
 -Xms512m -Xmx2g \
 -Dhive.metastore.uris=thrift://metastore:9083 \
 -Dhive.server2.authentication=NOSASL \
+-Dhive.server2.enable.doAs=false \
 -Dhive.server2.thrift.bind.host=0.0.0.0 \
 -Dhive.execution.engine=tez \
 -Dtez.lib.uris=/opt/tez \

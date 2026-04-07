@@ -28,7 +28,7 @@ mybatis-plus:
 # 连接 HiveServer2，用于执行 HiveSQL 脚本
 # auth=noSasl 表示无认证模式，根据实际 Hive 配置调整
 hive:
-  url: jdbc:hive2://127.0.0.1:10000/default;auth=noSasl
+  url: jdbc:hive2://127.0.0.1:10800/default;auth=noSasl
   username: ""
   password: ""
   default-fs: hdfs://localhost:9000
