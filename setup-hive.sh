@@ -253,8 +253,10 @@ fi
 info "初始化 HDFS 目录..."
 docker exec datanote-namenode hdfs dfs -mkdir -p /user/hive/warehouse 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -mkdir -p /tmp 2>/dev/null || true
+docker exec datanote-namenode hdfs dfs -mkdir -p /tmp/hive 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /user/hive/warehouse 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp 2>/dev/null || true
+docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp/hive 2>/dev/null || true
 
 # ==================== 4. YARN ResourceManager ====================
 if docker ps -a --format '{{.Names}}' | grep -q datanote-resourcemanager; then
