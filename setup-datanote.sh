@@ -61,7 +61,7 @@ info "MySQL: ${DB_HOST}:${DB_PORT}"
 
 # 检查 MySQL 连通性
 if command -v mysql &>/dev/null; then
-  if mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -e "SELECT 1;" &>/dev/null; then
+  if mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS --ssl-mode=DISABLED -e "SELECT 1;" &>/dev/null; then
     info "MySQL 连接正常"
   else
     warn "MySQL 连接失败（${DB_HOST}:${DB_PORT}），请确认 MySQL 已启动"
@@ -102,11 +102,11 @@ fi
 
 # ---------- 初始化数据库（首次运行）----------
 if command -v mysql &>/dev/null; then
-  DB_EXISTS=$(mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='datanote';" 2>/dev/null)
+  DB_EXISTS=$(mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS --ssl-mode=DISABLED -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='datanote';" 2>/dev/null)
   if [ "$DB_EXISTS" = "0" ] || [ -z "$DB_EXISTS" ]; then
     info "首次运行，初始化数据库..."
-    mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -e "CREATE DATABASE IF NOT EXISTS datanote DEFAULT CHARACTER SET utf8mb4;" 2>/dev/null
-    mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS datanote < "$SCRIPT_DIR/sql/init-all.sql" 2>/dev/null
+    mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS --ssl-mode=DISABLED -e "CREATE DATABASE IF NOT EXISTS datanote DEFAULT CHARACTER SET utf8mb4;" 2>/dev/null
+    mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS --ssl-mode=DISABLED datanote < "$SCRIPT_DIR/sql/init-all.sql" 2>/dev/null
     info "数据库初始化完成"
   else
     info "数据库已存在（${DB_EXISTS} 张表），跳过初始化"
