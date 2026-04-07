@@ -143,7 +143,9 @@ services:
         -Dhive.server2.authentication=NOSASL
         -Dhive.server2.thrift.bind.host=0.0.0.0
         -Dfs.defaultFS=hdfs://namenode:9000
-        -Dhive.execution.engine=mr
+        -Dhive.execution.engine=tez
+        -Dtez.lib.uris=/opt/tez
+        -Dtez.use.cluster.hadoop-libs=true
         -Dmapreduce.framework.name=yarn
         -Dyarn.resourcemanager.hostname=resourcemanager
     ports:
