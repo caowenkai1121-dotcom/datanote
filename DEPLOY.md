@@ -3,13 +3,14 @@
 ## 部署流程
 
 ```
-datanote.conf                  ← 共享配置文件（端口、密码等）
-     ↓                    ↓
-setup-hive.sh            setup-datanote.sh
-第一步：安装集群环境  →   第二步：安装 DataNote  →  页面配置 Hive 连接
+datanote.conf                      ← 共享配置文件（端口、密码、模式等）
+     ↓              ↓                    ↓
+setup-hive.sh    setup-datax.sh     setup-datanote.sh
+第一步：集群环境  第二步：DataX(可选)  第三步：DataNote
+（必装）          （按需开关）         （必装）
 ```
 
-两个脚本共享 `datanote.conf` 配置文件。端口冲突时脚本会自动修改配置，第二个脚本自动读取，无需手动同步。
+三个脚本共享 `datanote.conf` 配置文件。端口冲突、DataX 模式切换等会自动写入配置，下游脚本自动读取。
 
 ---
 

@@ -36,6 +36,7 @@ datax:
   home: ${DATAX_HOME:/opt/datax}
   jvm: ${DATAX_JVM:-Xms1g -Xmx1g}
   job-dir: ${DATAX_JOB_DIR:/tmp/datax_jobs}
+  mode: ${DATAX_MODE:local}
 
 # -------------------- DolphinScheduler 调度 --------------------
 dolphin:

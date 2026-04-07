@@ -123,6 +123,7 @@ nohup java \
   --spring.datasource.username=$DB_USER \
   --spring.datasource.password=$DB_PASS \
   --datanote.crypto.key=${CRYPTO_KEY:-DataNote_AES_Key} \
+  --datax.mode=${DATAX_MODE:-local} \
   > /tmp/datanote.log 2>&1 &
 
 info "DataNote 启动中... (PID: $!)"

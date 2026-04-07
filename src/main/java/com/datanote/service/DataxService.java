@@ -33,11 +33,27 @@ public class DataxService {
     @Value("${datax.job-dir}")
     private String jobDir;
 
+    @Value("${datax.mode:local}")
+    private String dataxMode;
+
     @Value("${hive.default-fs}")
     private String hiveDefaultFs;
 
     @Value("${hive.warehouse}")
     private String hiveWarehouse;
+
+    /**
+     * Docker 模式下，将 127.0.0.1/localhost 替换为 host.docker.internal
+     * 使容器内的 DataX 能访问宿主机上的数据源
+     */
+    private String translateHost(String host) {
+        if ("docker".equals(dataxMode)) {
+            if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
+                return "host.docker.internal";
+            }
+        }
+        return host;
+    }
 
     /**
      * 生成 DataX JSON 配置文件（mysqlreader → hdfswriter）
@@ -47,6 +63,9 @@ public class DataxService {
                                   String odsTable, List<ColumnInfo> columns) throws IOException {
         // 确保目录存在
         new File(jobDir).mkdirs();
+
+        // Docker 模式下翻译地址
+        String actualHost = translateHost(mysqlHost);
 
         JSONObject job = new JSONObject(true);
         JSONObject jobContent = new JSONObject(true);
@@ -68,7 +87,7 @@ public class DataxService {
         JSONArray connArr = new JSONArray();
         JSONObject conn = new JSONObject(true);
         conn.put("jdbcUrl", new JSONArray() {{
-            add("jdbc:mysql://" + mysqlHost + ":" + mysqlPort + "/" + sourceDb
+            add("jdbc:mysql://" + actualHost + ":" + mysqlPort + "/" + sourceDb
                     + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false");
         }});
         conn.put("table", new JSONArray() {{ add(sourceTable); }});
@@ -146,9 +165,18 @@ public class DataxService {
     }
 
     /**
-     * 执行 DataX 同步任务（纯 Java 调用，不依赖 Python）
+     * 执行 DataX 同步任务
+     * local 模式：本地 Java 调用
+     * docker 模式：docker exec 容器内执行
      */
     public ProcessUtil.ExecResult runJob(String jobFilePath) throws Exception {
+        if ("docker".equals(dataxMode)) {
+            return runJobDocker(jobFilePath);
+        }
+        return runJobLocal(jobFilePath);
+    }
+
+    private ProcessUtil.ExecResult runJobLocal(String jobFilePath) throws Exception {
         String classpath = dataxHome + "/lib/*";
         String[] cmd = {
                 "java", "-server",
@@ -160,8 +188,25 @@ public class DataxService {
                 "-jobid", "-1",
                 "-job", jobFilePath
         };
+        log.info("执行 DataX (local): {}", jobFilePath);
+        return ProcessUtil.exec(cmd, 600);
+    }
 
-        log.info("执行 DataX: java -cp {}/lib/* com.alibaba.datax.core.Engine -job {}", dataxHome, jobFilePath);
+    private ProcessUtil.ExecResult runJobDocker(String jobFilePath) throws Exception {
+        // Docker 模式：先把 job 文件复制到容器，再在容器内执行
+        String containerName = "datanote-datax";
+        String containerJobPath = "/tmp/datax_jobs/" + new File(jobFilePath).getName();
+
+        // 复制 job 文件到容器
+        String[] cpCmd = {"docker", "cp", jobFilePath, containerName + ":" + containerJobPath};
+        ProcessUtil.exec(cpCmd, 30);
+
+        // 在容器内执行 DataX
+        String[] cmd = {
+                "docker", "exec", containerName,
+                "python", "/opt/datax/bin/datax.py", containerJobPath
+        };
+        log.info("执行 DataX (docker): {} -> {}", jobFilePath, containerJobPath);
         return ProcessUtil.exec(cmd, 600);
     }
 
@@ -169,6 +214,13 @@ public class DataxService {
      * 从数据库存储的 JSON 字符串执行 DataX：写临时文件 → 执行 → 删临时文件
      */
     public ProcessUtil.ExecResult runJobFromJson(String dataxJsonContent, String taskName) throws Exception {
+        // Docker 模式下翻译 JSON 中的地址
+        if ("docker".equals(dataxMode)) {
+            dataxJsonContent = dataxJsonContent
+                    .replace("127.0.0.1", "host.docker.internal")
+                    .replace("localhost", "host.docker.internal");
+        }
+
         new File(jobDir).mkdirs();
         String tmpFile = jobDir + "/" + taskName + "_" + System.currentTimeMillis() + ".json";
         try {
