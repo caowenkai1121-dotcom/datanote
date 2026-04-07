@@ -128,7 +128,10 @@ check_port() {
 }
 
 SKIP_MYSQL=false
-check_port $MYSQL_PORT "MySQL" "MYSQL_PORT" || SKIP_MYSQL=true
+# 只在首次创建 MySQL 容器时检测端口，重跑时 Docker 自己占着端口不算冲突
+if ! docker ps -a --format '{{.Names}}' | grep -q datanote-mysql; then
+  check_port $MYSQL_PORT "MySQL" "MYSQL_PORT" || SKIP_MYSQL=true
+fi
 
 # ---------- MySQL JDBC 驱动 ----------
 JDBC_JAR="$SCRIPT_DIR/docker/mysql-connector-j-8.0.33.jar"
@@ -194,6 +197,13 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q datanote-namenode; then
   info "NameNode 已存在，跳过"
 else
+  # 初始化卷权限（hadoop 用户 uid=1000，新 volume 默认 root 拥有会导致启动失败）
+  info "初始化 HDFS 数据卷权限..."
+  docker run --rm \
+    -v datanote-namenode-data:/tmp/hadoop-hadoop/dfs/name \
+    apache/hadoop:3 \
+    bash -c "chown -R hadoop:hadoop /tmp/hadoop-hadoop/dfs/name" 2>/dev/null || true
+
   info "启动 HDFS NameNode..."
   docker run -d \
     --name datanote-namenode \
@@ -216,6 +226,12 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q datanote-datanode; then
   info "DataNode 已存在，跳过"
 else
+  # 初始化卷权限
+  docker run --rm \
+    -v datanote-datanode-data:/tmp/hadoop-hadoop/dfs/data \
+    apache/hadoop:3 \
+    bash -c "chown -R hadoop:hadoop /tmp/hadoop-hadoop/dfs/data" 2>/dev/null || true
+
   info "启动 HDFS DataNode..."
   docker run -d \
     --name datanote-datanode \
