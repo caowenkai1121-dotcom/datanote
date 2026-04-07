@@ -285,6 +285,7 @@ else
 -Djavax.jdo.option.ConnectionPassword=$MYSQL_PASSWORD" \
     --mount type=bind,source="$JDBC_JAR",target=/opt/hive/lib/mysql-connector-j-8.0.33.jar \
     --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
+    --mount type=bind,source="$SCRIPT_DIR/docker/core-site.xml",target=/opt/custom-conf/core-site.xml \
     --restart unless-stopped \
     apache/hive:3.1.3
 
@@ -315,6 +316,7 @@ else
 -Dtez.lib.uris=/opt/tez \
 -Dtez.use.cluster.hadoop-libs=true" \
     --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
+    --mount type=bind,source="$SCRIPT_DIR/docker/core-site.xml",target=/opt/custom-conf/core-site.xml \
     --restart unless-stopped \
     apache/hive:3.1.3
 

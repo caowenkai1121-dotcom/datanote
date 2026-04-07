@@ -122,6 +122,7 @@ nohup java \
   --spring.datasource.url="jdbc:mysql://${DB_HOST}:${DB_PORT}/datanote?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true" \
   --spring.datasource.username=$DB_USER \
   --spring.datasource.password=$DB_PASS \
+  --datanote.crypto.key=${CRYPTO_KEY:-DataNote_AES_Key} \
   > /tmp/datanote.log 2>&1 &
 
 info "DataNote 启动中... (PID: $!)"
