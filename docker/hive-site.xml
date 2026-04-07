@@ -8,4 +8,12 @@
     <name>hive.metastore.warehouse.dir</name>
     <value>/user/hive/warehouse</value>
   </property>
+  <property>
+    <name>hive.server2.enable.doAs</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>hive.security.authorization.enabled</name>
+    <value>false</value>
+  </property>
 </configuration>
