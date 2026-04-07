@@ -124,15 +124,18 @@ nohup java \
   --spring.datasource.password=$DB_PASS \
   --datanote.crypto.key=${CRYPTO_KEY:-DataNote_AES_Key} \
   --datax.mode=${DATAX_MODE:-local} \
+  --server.port=${DATANOTE_PORT:-8099} \
   > /tmp/datanote.log 2>&1 &
 
 info "DataNote 启动中... (PID: $!)"
 
 # 等待启动
+STARTED=false
 echo -n "等待服务就绪"
 for i in $(seq 1 20); do
   if curl -sf http://localhost:${DATANOTE_PORT}/ &>/dev/null; then
     echo ""
+    STARTED=true
     break
   fi
   sleep 2
@@ -141,6 +144,7 @@ done
 
 # ==================== 完成 ====================
 echo ""
+if [ "$STARTED" = "true" ]; then
 echo "============================================"
 info "DataNote 启动成功！"
 echo ""
@@ -153,3 +157,11 @@ echo "  配置 Hive 连接信息，测试通过后保存即可。"
 echo ""
 echo "  停止：./setup-datanote.sh stop"
 echo "============================================"
+else
+echo "============================================"
+error "DataNote 启动超时！"
+echo ""
+echo "  查看日志：tail -50 /tmp/datanote.log"
+echo "============================================"
+exit 1
+fi

@@ -3785,7 +3785,7 @@ html, body {
             <div style="max-width:520px;">
               <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">Hive 连接</div>
               <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="127.0.0.1" value="127.0.0.1"></div>
-              <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="10000" value="10000" type="number"></div>
+              <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="10800" value="10800" type="number"></div>
               <div class="ds-form-row"><label>认证方式</label>
                 <select id="cfgHiveAuth" style="flex:1;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
                   <option value="noSasl">NOSASL（无认证）</option>
@@ -3797,7 +3797,7 @@ html, body {
               <div class="ds-form-row"><label>密码</label><input id="cfgHivePass" type="password" placeholder="可选"></div>
               <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="default" value="default"></div>
               <div style="font-size:14px;font-weight:600;margin:20px 0 12px;color:var(--text-regular);">HDFS 配置</div>
-              <div class="ds-form-row"><label>NameNode</label><input id="cfgHdfsFs" placeholder="hdfs://localhost:9000" value="hdfs://localhost:9000"></div>
+              <div class="ds-form-row"><label>NameNode</label><input id="cfgHdfsFs" placeholder="hdfs://localhost:8020" value="hdfs://localhost:8020"></div>
               <div class="ds-form-row"><label>仓库路径</label><input id="cfgHdfsWarehouse" placeholder="/user/hive/warehouse" value="/user/hive/warehouse"></div>
               <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-sm" onclick="testHiveConnection()">测试 Hive 连接</button>
@@ -11642,7 +11642,7 @@ function testHiveConnection() {
 
   var body = {
     host: document.getElementById('cfgHiveHost').value || '127.0.0.1',
-    port: document.getElementById('cfgHivePort').value || '10000',
+    port: document.getElementById('cfgHivePort').value || '10800',
     authMode: document.getElementById('cfgHiveAuth').value,
     database: document.getElementById('cfgHiveDb').value || 'default',
     username: document.getElementById('cfgHiveUser').value,
@@ -11676,7 +11676,7 @@ function testHdfsConnection() {
   result.style.color = 'var(--text-muted)';
   result.textContent = 'HDFS 连接中...';
 
-  var body = { defaultFs: document.getElementById('cfgHdfsFs').value || 'hdfs://localhost:9000' };
+  var body = { defaultFs: document.getElementById('cfgHdfsFs').value || 'hdfs://localhost:8020' };
 
   fetch('/api/system/config/test-hdfs', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -11699,7 +11699,7 @@ function testHdfsConnection() {
 
 function saveDatasourceConfig() {
   var host = document.getElementById('cfgHiveHost').value;
-  var port = document.getElementById('cfgHivePort').value || '10000';
+  var port = document.getElementById('cfgHivePort').value || '10800';
   var auth = document.getElementById('cfgHiveAuth').value;
   var db = document.getElementById('cfgHiveDb').value || 'default';
   var user = document.getElementById('cfgHiveUser').value;

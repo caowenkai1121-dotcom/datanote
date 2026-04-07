@@ -53,11 +53,9 @@ cd datanote
 | 服务 | 容器名 | 宿主机端口 |
 |------|--------|-----------|
 | MySQL | datanote-mysql | 3306 |
-| HDFS NameNode | datanote-namenode | 9870（Web UI） |
+| HDFS NameNode | datanote-namenode | 9870（Web UI）/ 8020（RPC） |
 | HDFS DataNode | datanote-datanode | - |
-| YARN ResourceManager | datanote-resourcemanager | 8088（Web UI） |
-| YARN NodeManager | datanote-nodemanager | - |
-| Hive Metastore | datanote-metastore | - |
+| Hive Metastore | datanote-metastore | 9083 |
 | HiveServer2 | datanote-hiveserver2 | 10800 |
 
 ---

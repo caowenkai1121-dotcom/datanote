@@ -43,7 +43,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ---------- 停止 ----------
 if [ "$1" = "stop" ]; then
   info "停止 Hive 环境..."
-  for c in datanote-hiveserver2 datanote-metastore datanote-nodemanager datanote-resourcemanager datanote-datanode datanote-namenode datanote-mysql; do
+  for c in datanote-hiveserver2 datanote-metastore datanote-datanode datanote-namenode datanote-mysql; do
     docker stop $c 2>/dev/null && docker rm $c 2>/dev/null && info "已停止 $c" || true
   done
   info "全部停止"
@@ -53,7 +53,7 @@ fi
 # ---------- 清理 ----------
 if [ "$1" = "clean" ]; then
   info "停止并清理所有容器和数据..."
-  for c in datanote-hiveserver2 datanote-metastore datanote-nodemanager datanote-resourcemanager datanote-datanode datanote-namenode datanote-mysql; do
+  for c in datanote-hiveserver2 datanote-metastore datanote-datanode datanote-namenode datanote-mysql; do
     docker stop $c 2>/dev/null && docker rm $c 2>/dev/null || true
   done
   docker volume rm datanote-mysql-data datanote-namenode-data datanote-datanode-data 2>/dev/null || true
@@ -210,6 +210,7 @@ else
     --network $NETWORK \
     --hostname namenode \
     -p ${HDFS_WEB_PORT}:9870 \
+    -p 8020:8020 \
     -e ENSURE_NAMENODE_DIR="/tmp/hadoop-hadoop/dfs/name/current" \
     -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
     -e HDFS-SITE.XML_dfs.replication=1 \
@@ -258,50 +259,7 @@ docker exec datanote-namenode hdfs dfs -chmod -R 777 /user/hive/warehouse 2>/dev
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp/hive 2>/dev/null || true
 
-# ==================== 4. YARN ResourceManager ====================
-if docker ps -a --format '{{.Names}}' | grep -q datanote-resourcemanager; then
-  info "ResourceManager 已存在，跳过"
-else
-  info "启动 YARN ResourceManager..."
-  docker run -d \
-    --name datanote-resourcemanager \
-    --network $NETWORK \
-    --hostname resourcemanager \
-    -p 8088:8088 \
-    -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
-    -e YARN-SITE.XML_yarn.resourcemanager.hostname="resourcemanager" \
-    -e YARN-SITE.XML_yarn.nodemanager.aux-services="mapreduce_shuffle" \
-    -e YARN-SITE.XML_yarn.scheduler.minimum-allocation-mb=128 \
-    -e YARN-SITE.XML_yarn.scheduler.maximum-allocation-mb=2048 \
-    -e YARN-SITE.XML_yarn.nodemanager.resource.memory-mb=2048 \
-    --restart unless-stopped \
-    apache/hadoop:3 \
-    yarn resourcemanager
-
-  sleep 3
-fi
-
-# ==================== 5. YARN NodeManager ====================
-if docker ps -a --format '{{.Names}}' | grep -q datanote-nodemanager; then
-  info "NodeManager 已存在，跳过"
-else
-  info "启动 YARN NodeManager..."
-  docker run -d \
-    --name datanote-nodemanager \
-    --network $NETWORK \
-    --hostname nodemanager \
-    -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
-    -e YARN-SITE.XML_yarn.resourcemanager.hostname="resourcemanager" \
-    -e YARN-SITE.XML_yarn.nodemanager.aux-services="mapreduce_shuffle" \
-    -e YARN-SITE.XML_yarn.nodemanager.resource.memory-mb=2048 \
-    -e YARN-SITE.XML_yarn.nodemanager.resource.cpu-vcores=2 \
-    --restart unless-stopped \
-    apache/hadoop:3 \
-    yarn nodemanager
-
-  echo -n "等待 YARN 就绪"
-  wait_for "YARN" "docker exec datanote-resourcemanager yarn node -list 2>&1 | grep -q RUNNING" 20
-fi
+# YARN 不启动（Tez local mode 不需要，省资源）
 
 # ==================== 6. Hive Metastore ====================
 if docker ps -a --format '{{.Names}}' | grep -q datanote-metastore; then
@@ -321,6 +279,7 @@ else
     --name datanote-metastore \
     --network $NETWORK \
     --hostname metastore \
+    -p 9083:9083 \
     -e SERVICE_NAME=metastore \
     -e DB_DRIVER=mysql \
     -e IS_RESUME=true \
