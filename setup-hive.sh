@@ -197,12 +197,12 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q datanote-namenode; then
   info "NameNode 已存在，跳过"
 else
-  # 初始化卷权限和目录结构（以 root 身份创建目录，再交给 hadoop 用户）
+  # 初始化卷权限（只 chown，不创建 current 子目录，否则镜像会跳过格式化）
   info "初始化 HDFS NameNode 数据卷..."
   docker run --rm --user root \
     -v datanote-namenode-data:/data \
     apache/hadoop:3 \
-    bash -c "mkdir -p /data/current && chown -R hadoop:hadoop /data" 2>/dev/null || true
+    bash -c "chown -R hadoop:hadoop /data" 2>/dev/null || true
 
   info "启动 HDFS NameNode..."
   docker run -d \
