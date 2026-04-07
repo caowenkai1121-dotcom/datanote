@@ -14,7 +14,7 @@ set -e
 # ---------- 配置区（可按需修改）----------
 NETWORK="datanote-net"
 MYSQL_PASSWORD="datanote123"
-MYSQL_PORT=3307
+MYSQL_PORT=3306
 HIVE_PORT=10000
 HDFS_WEB_PORT=9870
 

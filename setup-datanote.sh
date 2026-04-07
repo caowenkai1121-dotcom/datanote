@@ -14,7 +14,7 @@ DATANOTE_PORT=8099
 
 # MySQL 配置（与 setup-hive.sh 保持一致）
 DB_HOST=127.0.0.1
-DB_PORT=3307
+DB_PORT=3306
 DB_USER=root
 DB_PASS=datanote123
 

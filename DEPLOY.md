@@ -49,7 +49,7 @@ cd datanote
 
 | 服务 | 容器名 | 宿主机端口 |
 |------|--------|-----------|
-| MySQL | datanote-mysql | 3307 |
+| MySQL | datanote-mysql | 3306 |
 | HDFS NameNode | datanote-namenode | 9870（Web UI） |
 | HDFS DataNode | datanote-datanode | - |
 | Hive Metastore | datanote-metastore | - |
