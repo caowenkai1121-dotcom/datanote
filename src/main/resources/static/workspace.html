@@ -3726,6 +3726,89 @@ html, body {
       </div>
     </div>
 
+    <!-- === Project View === -->
+    <div class="view-quality" id="viewProject" style="display:none;">
+      <div class="ops-layout">
+        <div class="ops-sidebar">
+          <div class="ops-sidebar-item active" onclick="switchProjectTab(this,'space')">项目空间</div>
+          <div class="ops-sidebar-item" onclick="switchProjectTab(this,'member')">成员权限</div>
+          <div class="ops-sidebar-item" onclick="switchProjectTab(this,'release')">发布管理</div>
+        </div>
+        <div class="ops-main">
+          <div class="ops-dashboard" id="projectSpacePanel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">项目空间</h2>
+            </div>
+            <div style="padding:32px;text-align:center;color:var(--text-muted);">项目创建、成员管理、资源配额和环境隔离<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+          </div>
+          <div class="ops-dashboard" id="projectMemberPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">成员权限</h2>
+            </div>
+            <div style="padding:32px;text-align:center;color:var(--text-muted);">团队成员管理、角色分配和数据权限控制<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+          </div>
+          <div class="ops-dashboard" id="projectReleasePanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">发布管理</h2>
+            </div>
+            <div style="padding:32px;text-align:center;color:var(--text-muted);">版本发布流程、变更审批和上线记录<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === Settings View === -->
+    <div class="view-quality" id="viewSettings" style="display:none;">
+      <div class="ops-layout">
+        <div class="ops-sidebar">
+          <div class="ops-sidebar-item active" onclick="switchSettingsTab(this,'user')">用户管理</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'datasource')">数据源管理</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'env')">环境配置</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'security')">安全设置</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'ai')">AI 配置</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'monitor')">系统监控</div>
+        </div>
+        <div class="ops-main">
+          <div class="ops-dashboard" id="settingsUserPanel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">用户管理</h2>
+            </div>
+            <div style="padding:24px;color:var(--text-muted);">管理平台用户、角色分配和操作权限</div>
+          </div>
+          <div class="ops-dashboard" id="settingsDatasourcePanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">数据源管理</h2>
+            </div>
+            <div style="padding:24px;color:var(--text-muted);">配置 MySQL、Hive、HDFS 等数据源连接信息</div>
+          </div>
+          <div class="ops-dashboard" id="settingsEnvPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">环境配置</h2>
+            </div>
+            <div style="padding:24px;color:var(--text-muted);">管理 Hadoop、Hive、DataX 等组件路径和参数</div>
+          </div>
+          <div class="ops-dashboard" id="settingsSecurityPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">安全设置</h2>
+            </div>
+            <div style="padding:24px;color:var(--text-muted);">登录策略、密码规则、操作日志和审计</div>
+          </div>
+          <div class="ops-dashboard" id="settingsAiPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">AI 配置</h2>
+            </div>
+            <div style="padding:24px;"><button class="btn btn-primary btn-sm" onclick="openAiConfig()">打开 AI 配置</button></div>
+          </div>
+          <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">系统监控</h2>
+            </div>
+            <div style="padding:24px;color:var(--text-muted);">CPU、内存、磁盘使用率监控和服务健康检查</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Shared Result Panel (visible for both SQL and Sync views) -->
     <div class="result-panel" id="sharedResultPanel">
       <div class="result-resize-handle" id="resultResizeHandle"></div>
@@ -4268,69 +4351,6 @@ html, body {
 </div>
 
 <!-- Project Management Page -->
-<div id="viewProject" class="page-view" style="display:none">
-  <div class="ops-layout" style="height:calc(100vh - 48px);">
-    <div class="ops-sidebar">
-      <div class="ops-sidebar-item active" onclick="switchProjectTab(this,'space')">项目空间</div>
-      <div class="ops-sidebar-item" onclick="switchProjectTab(this,'member')">成员权限</div>
-      <div class="ops-sidebar-item" onclick="switchProjectTab(this,'release')">发布管理</div>
-    </div>
-    <div class="ops-main">
-      <div class="ops-dashboard" id="projectSpacePanel">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">项目空间</h2>
-        <div style="padding:32px;text-align:center;color:var(--text-muted);">项目创建、成员管理、资源配额和环境隔离<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
-      </div>
-      <div class="ops-dashboard" id="projectMemberPanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">成员权限</h2>
-        <div style="padding:32px;text-align:center;color:var(--text-muted);">团队成员管理、角色分配和数据权限控制<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
-      </div>
-      <div class="ops-dashboard" id="projectReleasePanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">发布管理</h2>
-        <div style="padding:32px;text-align:center;color:var(--text-muted);">版本发布流程、变更审批和上线记录<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Settings Page -->
-<div id="viewSettings" class="page-view" style="display:none">
-  <div class="ops-layout" style="height:calc(100vh - 48px);">
-    <div class="ops-sidebar">
-      <div class="ops-sidebar-item active" onclick="switchSettingsTab(this,'user')">用户管理</div>
-      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'datasource')">数据源管理</div>
-      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'env')">环境配置</div>
-      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'security')">安全设置</div>
-      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'ai')">AI 配置</div>
-      <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'monitor')">系统监控</div>
-    </div>
-    <div class="ops-main">
-      <div class="ops-dashboard" id="settingsUserPanel">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">用户管理</h2>
-        <div style="padding:24px;color:var(--text-muted);">管理平台用户、角色分配和操作权限</div>
-      </div>
-      <div class="ops-dashboard" id="settingsDatasourcePanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">数据源管理</h2>
-        <div style="padding:24px;color:var(--text-muted);">配置 MySQL、Hive、HDFS 等数据源连接信息</div>
-      </div>
-      <div class="ops-dashboard" id="settingsEnvPanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">环境配置</h2>
-        <div style="padding:24px;color:var(--text-muted);">管理 Hadoop、Hive、DataX 等组件路径和参数</div>
-      </div>
-      <div class="ops-dashboard" id="settingsSecurityPanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">安全设置</h2>
-        <div style="padding:24px;color:var(--text-muted);">登录策略、密码规则、操作日志和审计</div>
-      </div>
-      <div class="ops-dashboard" id="settingsAiPanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">AI 配置</h2>
-        <div style="padding:24px;"><button class="btn btn-primary btn-sm" onclick="openAiConfig()">打开 AI 配置</button></div>
-      </div>
-      <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
-        <h2 style="font-size:16px;font-weight:600;margin:0 0 16px;">系统监控</h2>
-        <div style="padding:24px;color:var(--text-muted);">CPU、内存、磁盘使用率监控和服务健康检查</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Integration Wizard Page -->
 <div id="viewIntegrationWizard" class="page-view" style="display:none">
@@ -6362,9 +6382,13 @@ function autoSaveDatabaseName() {
 // Monaco Editor 初始化（用代理对象保持 codeArea.value 兼容性）
 var monacoEditor = null;
 var monacoReady = false;
+var _pendingEditorValue = null; // Monaco 未就绪时暂存待写入内容
 var codeArea = {
-  get value() { return monacoEditor ? monacoEditor.getValue() : ''; },
-  set value(v) { if (monacoEditor) monacoEditor.setValue(v || ''); },
+  get value() { return monacoEditor ? monacoEditor.getValue() : (_pendingEditorValue || ''); },
+  set value(v) {
+    if (monacoEditor) { monacoEditor.setValue(v || ''); }
+    else { _pendingEditorValue = v || ''; }
+  },
   get selectionStart() {
     if (!monacoEditor) return 0;
     var sel = monacoEditor.getSelection();
@@ -6436,6 +6460,12 @@ function _initMonacoAfterLoader() {
         horizontalScrollbarSize: 8
       }
     });
+
+    // Monaco 就绪后回填暂存内容
+    if (_pendingEditorValue != null) {
+      monacoEditor.setValue(_pendingEditorValue);
+      _pendingEditorValue = null;
+    }
 
     // SQL 关键词自动补全
     var sqlKeywords = [
@@ -8844,8 +8874,8 @@ var ROUTES = {
   'governance':  { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
-  'project':     { view: 'viewProject',             layout: 'page',   init: null },
-  'settings':    { view: 'viewSettings',            layout: 'page',   init: null }
+  'project':     { view: 'viewProject',             layout: 'editor', init: null },
+  'settings':    { view: 'viewSettings',            layout: 'editor', init: null }
 };
 
 var currentRoute = null;
@@ -8878,7 +8908,7 @@ function navigateTo(route) {
 
   // Hide all editor-internal views
   ['viewSql', 'viewIntegration', 'viewDatasource', 'viewWelcome',
-   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics'].forEach(function(id) {
+   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics', 'viewProject', 'viewSettings'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
   });
