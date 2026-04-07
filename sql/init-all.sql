@@ -1186,7 +1186,7 @@ USE datanote;
 
 -- 默认数据源：本地 MySQL（Docker 环境指向容器内 MySQL）
 INSERT INTO dn_datasource (name, type, host, port, username, password, database_name, status, created_by)
-VALUES ('本地 MySQL', 'MySQL', 'mysql', 3306, 'root', 'datanote123', '', 1, 'admin');
+VALUES ('本地 MySQL', 'MySQL', 'mysql', 3306, 'root', 'root', '', 1, 'admin');
 
 -- 默认文件夹结构（parent_id=0 表示顶级）
 INSERT INTO dn_script_folder (folder_name, parent_id, layer, sort_order) VALUES

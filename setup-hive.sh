@@ -13,7 +13,7 @@ set -e
 
 # ---------- 配置区（可按需修改）----------
 NETWORK="datanote-net"
-MYSQL_PASSWORD="datanote123"
+MYSQL_PASSWORD="root"
 MYSQL_PORT=3306
 HIVE_PORT=10000
 HDFS_WEB_PORT=9870
@@ -117,6 +117,19 @@ wait_for() {
 }
 
 # ==================== 1. MySQL ====================
+# 检查端口占用
+if lsof -i:${MYSQL_PORT} &>/dev/null; then
+  warn "端口 ${MYSQL_PORT} 已被占用！"
+  warn "可能你本地已经安装了 MySQL。请先停止本地 MySQL 或修改脚本顶部的 MYSQL_PORT 变量。"
+  echo ""
+  echo "  查看占用：lsof -i:${MYSQL_PORT}"
+  echo "  Mac 停止 MySQL：brew services stop mysql"
+  echo "  或修改本脚本第 16 行：MYSQL_PORT=3307"
+  echo ""
+  error "退出部署"
+  exit 1
+fi
+
 if docker ps -a --format '{{.Names}}' | grep -q datanote-mysql; then
   info "MySQL 已存在，跳过"
 else
