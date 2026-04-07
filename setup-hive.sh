@@ -276,12 +276,15 @@ else
     --hostname metastore \
     -e SERVICE_NAME=metastore \
     -e DB_DRIVER=mysql \
+    -e IS_RESUME=true \
+    -e HIVE_CUSTOM_CONF_DIR=/opt/custom-conf \
     -e SERVICE_OPTS="\
 -Djavax.jdo.option.ConnectionURL=jdbc:mysql://${METASTORE_MYSQL_HOST}:${METASTORE_MYSQL_PORT}/hive_metastore?createDatabaseIfNotExist=true&useSSL=false \
 -Djavax.jdo.option.ConnectionDriverName=com.mysql.cj.jdbc.Driver \
 -Djavax.jdo.option.ConnectionUserName=root \
 -Djavax.jdo.option.ConnectionPassword=$MYSQL_PASSWORD" \
     --mount type=bind,source="$JDBC_JAR",target=/opt/hive/lib/mysql-connector-j-8.0.33.jar \
+    --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
     --restart unless-stopped \
     apache/hive:3.1.3
 
@@ -302,15 +305,16 @@ else
     -p ${HIVE_PORT}:10000 \
     -e SERVICE_NAME=hiveserver2 \
     -e IS_RESUME=true \
+    -e HIVE_CUSTOM_CONF_DIR=/opt/custom-conf \
     -e SERVICE_OPTS="\
 -Xms512m -Xmx2g \
 -Dhive.metastore.uris=thrift://metastore:9083 \
 -Dhive.server2.authentication=NOSASL \
 -Dhive.server2.thrift.bind.host=0.0.0.0 \
--Dfs.defaultFS=hdfs://namenode:8020 \
 -Dhive.execution.engine=tez \
 -Dtez.lib.uris=/opt/tez \
 -Dtez.use.cluster.hadoop-libs=true" \
+    --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
     --restart unless-stopped \
     apache/hive:3.1.3
 
