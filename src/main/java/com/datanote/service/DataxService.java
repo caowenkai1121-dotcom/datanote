@@ -56,6 +56,20 @@ public class DataxService {
     }
 
     /**
+     * Docker 模式下翻译 HDFS 地址
+     * hdfs://localhost:9000 → hdfs://namenode:8020（Docker 网络内 NameNode 的地址）
+     * hdfs://127.0.0.1:9000 → hdfs://namenode:8020
+     */
+    private String translateHdfsUrl(String url) {
+        if ("docker".equals(dataxMode) && url != null) {
+            return url.replace("localhost", "namenode")
+                      .replace("127.0.0.1", "namenode")
+                      .replace(":9000", ":8020");
+        }
+        return url;
+    }
+
+    /**
      * 生成 DataX JSON 配置文件（mysqlreader → hdfswriter）
      */
     public String generateJobJson(String mysqlHost, int mysqlPort, String mysqlUser, String mysqlPassword,
@@ -102,7 +116,7 @@ public class DataxService {
         JSONObject writerParam = new JSONObject(true);
 
         String today = java.time.LocalDate.now().minusDays(1).toString();
-        writerParam.put("defaultFS", hiveDefaultFs);
+        writerParam.put("defaultFS", translateHdfsUrl(hiveDefaultFs));
         writerParam.put("fileType", "orc");
         writerParam.put("path", hiveWarehouse + "/ods.db/" + odsTable + "/dt=" + today);
         writerParam.put("fileName", odsTable);
@@ -216,9 +230,15 @@ public class DataxService {
     public ProcessUtil.ExecResult runJobFromJson(String dataxJsonContent, String taskName) throws Exception {
         // Docker 模式下翻译 JSON 中的地址
         if ("docker".equals(dataxMode)) {
+            // MySQL 等数据源地址 → host.docker.internal
             dataxJsonContent = dataxJsonContent
-                    .replace("127.0.0.1", "host.docker.internal")
-                    .replace("localhost", "host.docker.internal");
+                    .replace("jdbc:mysql://127.0.0.1", "jdbc:mysql://host.docker.internal")
+                    .replace("jdbc:mysql://localhost", "jdbc:mysql://host.docker.internal");
+            // HDFS 地址 → namenode（Docker 网络内）
+            dataxJsonContent = dataxJsonContent
+                    .replace("hdfs://127.0.0.1", "hdfs://namenode")
+                    .replace("hdfs://localhost", "hdfs://namenode")
+                    .replace("hdfs://namenode:9000", "hdfs://namenode:8020");
         }
 
         new File(jobDir).mkdirs();
