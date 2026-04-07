@@ -43,7 +43,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ---------- 停止 ----------
 if [ "$1" = "stop" ]; then
   info "停止 Hive 环境..."
-  for c in datanote-hiveserver2 datanote-metastore datanote-datanode datanote-namenode datanote-mysql; do
+  for c in datanote-hiveserver2 datanote-metastore datanote-nodemanager datanote-resourcemanager datanote-datanode datanote-namenode datanote-mysql; do
     docker stop $c 2>/dev/null && docker rm $c 2>/dev/null && info "已停止 $c" || true
   done
   info "全部停止"
@@ -53,7 +53,7 @@ fi
 # ---------- 清理 ----------
 if [ "$1" = "clean" ]; then
   info "停止并清理所有容器和数据..."
-  for c in datanote-hiveserver2 datanote-metastore datanote-datanode datanote-namenode datanote-mysql; do
+  for c in datanote-hiveserver2 datanote-metastore datanote-nodemanager datanote-resourcemanager datanote-datanode datanote-namenode datanote-mysql; do
     docker stop $c 2>/dev/null && docker rm $c 2>/dev/null || true
   done
   docker volume rm datanote-mysql-data datanote-namenode-data datanote-datanode-data 2>/dev/null || true
@@ -256,7 +256,52 @@ docker exec datanote-namenode hdfs dfs -mkdir -p /tmp 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /user/hive/warehouse 2>/dev/null || true
 docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp 2>/dev/null || true
 
-# ==================== 4. Hive Metastore ====================
+# ==================== 4. YARN ResourceManager ====================
+if docker ps -a --format '{{.Names}}' | grep -q datanote-resourcemanager; then
+  info "ResourceManager 已存在，跳过"
+else
+  info "启动 YARN ResourceManager..."
+  docker run -d \
+    --name datanote-resourcemanager \
+    --network $NETWORK \
+    --hostname resourcemanager \
+    -p 8088:8088 \
+    -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
+    -e YARN-SITE.XML_yarn.resourcemanager.hostname="resourcemanager" \
+    -e YARN-SITE.XML_yarn.nodemanager.aux-services="mapreduce_shuffle" \
+    -e YARN-SITE.XML_yarn.scheduler.minimum-allocation-mb=128 \
+    -e YARN-SITE.XML_yarn.scheduler.maximum-allocation-mb=2048 \
+    -e YARN-SITE.XML_yarn.nodemanager.resource.memory-mb=2048 \
+    --restart unless-stopped \
+    apache/hadoop:3 \
+    yarn resourcemanager
+
+  sleep 3
+fi
+
+# ==================== 5. YARN NodeManager ====================
+if docker ps -a --format '{{.Names}}' | grep -q datanote-nodemanager; then
+  info "NodeManager 已存在，跳过"
+else
+  info "启动 YARN NodeManager..."
+  docker run -d \
+    --name datanote-nodemanager \
+    --network $NETWORK \
+    --hostname nodemanager \
+    -e CORE-SITE.XML_fs.defaultFS="hdfs://namenode:8020" \
+    -e YARN-SITE.XML_yarn.resourcemanager.hostname="resourcemanager" \
+    -e YARN-SITE.XML_yarn.nodemanager.aux-services="mapreduce_shuffle" \
+    -e YARN-SITE.XML_yarn.nodemanager.resource.memory-mb=2048 \
+    -e YARN-SITE.XML_yarn.nodemanager.resource.cpu-vcores=2 \
+    --restart unless-stopped \
+    apache/hadoop:3 \
+    yarn nodemanager
+
+  echo -n "等待 YARN 就绪"
+  wait_for "YARN" "docker exec datanote-resourcemanager yarn node -list 2>&1 | grep -q RUNNING" 20
+fi
+
+# ==================== 6. Hive Metastore ====================
 if docker ps -a --format '{{.Names}}' | grep -q datanote-metastore; then
   info "Hive Metastore 已存在，跳过"
 else
@@ -315,7 +360,9 @@ else
 -Dhive.server2.thrift.bind.host=0.0.0.0 \
 -Dhive.execution.engine=tez \
 -Dtez.lib.uris=/opt/tez \
--Dtez.use.cluster.hadoop-libs=true" \
+-Dtez.use.cluster.hadoop-libs=true \
+-Dyarn.resourcemanager.hostname=resourcemanager \
+-Dmapreduce.framework.name=yarn" \
     --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
     --mount type=bind,source="$SCRIPT_DIR/docker/core-site.xml",target=/opt/custom-conf/core-site.xml \
     --restart unless-stopped \

@@ -55,6 +55,8 @@ cd datanote
 | MySQL | datanote-mysql | 3306 |
 | HDFS NameNode | datanote-namenode | 9870（Web UI） |
 | HDFS DataNode | datanote-datanode | - |
+| YARN ResourceManager | datanote-resourcemanager | 8088（Web UI） |
+| YARN NodeManager | datanote-nodemanager | - |
 | Hive Metastore | datanote-metastore | - |
 | HiveServer2 | datanote-hiveserver2 | 10800 |
 
