@@ -361,10 +361,8 @@ else
 -Dhive.server2.enable.doAs=false \
 -Dhive.server2.thrift.bind.host=0.0.0.0 \
 -Dhive.execution.engine=tez \
--Dtez.lib.uris=/opt/tez \
--Dtez.use.cluster.hadoop-libs=true \
--Dyarn.resourcemanager.hostname=resourcemanager \
--Dmapreduce.framework.name=yarn" \
+-Dtez.local.mode=true \
+-Dtez.local.mode.without.network=true" \
     --mount type=bind,source="$SCRIPT_DIR/docker/hive-site.xml",target=/opt/custom-conf/hive-site.xml \
     --mount type=bind,source="$SCRIPT_DIR/docker/core-site.xml",target=/opt/custom-conf/core-site.xml \
     --restart unless-stopped \

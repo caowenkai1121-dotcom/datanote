@@ -6,7 +6,7 @@
   </property>
   <property>
     <name>hive.metastore.warehouse.dir</name>
-    <value>/user/hive/warehouse</value>
+    <value>hdfs://namenode:8020/user/hive/warehouse</value>
   </property>
   <property>
     <name>hive.server2.enable.doAs</name>
@@ -21,11 +21,15 @@
     <value>tez</value>
   </property>
   <property>
-    <name>tez.lib.uris</name>
-    <value>/opt/tez,/opt/tez/lib</value>
+    <name>tez.local.mode</name>
+    <value>true</value>
   </property>
   <property>
-    <name>tez.use.cluster.hadoop-libs</name>
+    <name>tez.local.mode.without.network</name>
     <value>true</value>
+  </property>
+  <property>
+    <name>hive.exec.scratchdir</name>
+    <value>file:///tmp/hive-scratch</value>
   </property>
 </configuration>
