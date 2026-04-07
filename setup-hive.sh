@@ -19,6 +19,7 @@ if [ ! -f "$CONF_FILE" ]; then
   echo "配置文件不存在，正在生成默认配置: $CONF_FILE"
   cat > "$CONF_FILE" <<'CONF'
 # DataNote 部署配置（两个脚本共享）
+MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_PASSWORD=root
 HIVE_PORT=10000

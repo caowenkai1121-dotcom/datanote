@@ -13,6 +13,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONF_FILE="$SCRIPT_DIR/datanote.conf"
 JAR_FILE="$SCRIPT_DIR/target/datanote-1.0.0.jar"
 
+# ---------- 颜色输出 ----------
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
 # ---------- 加载配置 ----------
 if [ ! -f "$CONF_FILE" ]; then
   error "配置文件不存在: $CONF_FILE"
@@ -23,19 +32,10 @@ fi
 source "$CONF_FILE"
 
 # 从配置文件派生连接信息
-DB_HOST=127.0.0.1
+DB_HOST=${MYSQL_HOST:-127.0.0.1}
 DB_PORT=${MYSQL_PORT}
 DB_USER=root
 DB_PASS=${MYSQL_PASSWORD}
-
-# ---------- 颜色输出 ----------
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ---------- 停止 ----------
 if [ "$1" = "stop" ]; then
@@ -64,8 +64,8 @@ if command -v mysql &>/dev/null; then
   if mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS -e "SELECT 1;" &>/dev/null; then
     info "MySQL 连接正常"
   else
-    error "MySQL 连接失败（${DB_HOST}:${DB_PORT}），请检查 MySQL 是否启动"
-    exit 1
+    warn "MySQL 连接失败（${DB_HOST}:${DB_PORT}），请确认 MySQL 已启动"
+    warn "继续执行，DataNote 启动时会重试连接..."
   fi
 else
   warn "mysql 客户端未安装，跳过连接检查"
