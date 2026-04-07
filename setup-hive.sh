@@ -197,12 +197,12 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q datanote-namenode; then
   info "NameNode 已存在，跳过"
 else
-  # 初始化卷权限（hadoop 用户 uid=1000，新 volume 默认 root 拥有会导致启动失败）
-  info "初始化 HDFS 数据卷权限..."
-  docker run --rm \
-    -v datanote-namenode-data:/tmp/hadoop-hadoop/dfs/name \
+  # 初始化卷权限和目录结构（以 root 身份创建目录，再交给 hadoop 用户）
+  info "初始化 HDFS NameNode 数据卷..."
+  docker run --rm --user root \
+    -v datanote-namenode-data:/data \
     apache/hadoop:3 \
-    bash -c "chown -R hadoop:hadoop /tmp/hadoop-hadoop/dfs/name" 2>/dev/null || true
+    bash -c "mkdir -p /data/current && chown -R hadoop:hadoop /data" 2>/dev/null || true
 
   info "启动 HDFS NameNode..."
   docker run -d \
@@ -226,11 +226,12 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q datanote-datanode; then
   info "DataNode 已存在，跳过"
 else
-  # 初始化卷权限
-  docker run --rm \
-    -v datanote-datanode-data:/tmp/hadoop-hadoop/dfs/data \
+  # 初始化卷权限和目录结构
+  info "初始化 HDFS DataNode 数据卷..."
+  docker run --rm --user root \
+    -v datanote-datanode-data:/data \
     apache/hadoop:3 \
-    bash -c "chown -R hadoop:hadoop /tmp/hadoop-hadoop/dfs/data" 2>/dev/null || true
+    bash -c "mkdir -p /data && chown -R hadoop:hadoop /data" 2>/dev/null || true
 
   info "启动 HDFS DataNode..."
   docker run -d \
@@ -259,11 +260,13 @@ docker exec datanote-namenode hdfs dfs -chmod -R 777 /tmp 2>/dev/null || true
 if docker ps -a --format '{{.Names}}' | grep -q datanote-metastore; then
   info "Hive Metastore 已存在，跳过"
 else
-  # Metastore 连接的 MySQL 地址：Docker 内用 mysql，本地用 host.docker.internal
+  # Metastore 连接的 MySQL：Docker 内走容器网络（mysql:3306），本地走 host.docker.internal:实际端口
   if [ "$SKIP_MYSQL" = "true" ]; then
     METASTORE_MYSQL_HOST="host.docker.internal"
+    METASTORE_MYSQL_PORT="${MYSQL_PORT}"
   else
     METASTORE_MYSQL_HOST="mysql"
+    METASTORE_MYSQL_PORT="3306"  # 容器内部端口固定 3306
   fi
 
   info "启动 Hive Metastore..."
@@ -274,7 +277,7 @@ else
     -e SERVICE_NAME=metastore \
     -e DB_DRIVER=mysql \
     -e SERVICE_OPTS="\
--Djavax.jdo.option.ConnectionURL=jdbc:mysql://${METASTORE_MYSQL_HOST}:3306/hive_metastore?createDatabaseIfNotExist=true&useSSL=false \
+-Djavax.jdo.option.ConnectionURL=jdbc:mysql://${METASTORE_MYSQL_HOST}:${METASTORE_MYSQL_PORT}/hive_metastore?createDatabaseIfNotExist=true&useSSL=false \
 -Djavax.jdo.option.ConnectionDriverName=com.mysql.cj.jdbc.Driver \
 -Djavax.jdo.option.ConnectionUserName=root \
 -Djavax.jdo.option.ConnectionPassword=$MYSQL_PASSWORD" \
