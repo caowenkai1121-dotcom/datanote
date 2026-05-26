@@ -20,4 +20,7 @@ public interface DbConnector {
 
     /** 获取库下所有表。 */
     List<String> listTables(String db) throws SQLException;
+
+    /** 获取表的完整列定义（用于自动建表）。 */
+    List<ColumnDef> getColumnDefs(String db, String table) throws SQLException;
 }

@@ -76,6 +76,31 @@ public class MysqlConnector implements DbConnector {
         }
     }
 
+    @Override
+    public List<ColumnDef> getColumnDefs(String db, String table) throws SQLException {
+        List<ColumnDef> list = new java.util.ArrayList<>();
+        String sql = "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_COMMENT "
+                + "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? "
+                + "ORDER BY ORDINAL_POSITION";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, db);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ColumnDef col = new ColumnDef();
+                    col.setName(rs.getString("COLUMN_NAME"));
+                    col.setColumnType(rs.getString("COLUMN_TYPE"));
+                    col.setNullable("YES".equalsIgnoreCase(rs.getString("IS_NULLABLE")));
+                    col.setPrimaryKey("PRI".equalsIgnoreCase(rs.getString("COLUMN_KEY")));
+                    col.setComment(rs.getString("COLUMN_COMMENT"));
+                    list.add(col);
+                }
+            }
+        }
+        return list;
+    }
+
     // ===== 纯逻辑：可单测的 SQL 构建 =====
 
     /** keyset 分页查询 SQL。hasCursor=true 时带 WHERE 游标。 */
