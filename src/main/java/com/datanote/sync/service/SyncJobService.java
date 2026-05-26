@@ -54,6 +54,17 @@ public class SyncJobService {
         syncJobMapper.deleteById(id);
     }
 
+    /** 把内存中的表配置（含更新后的增量断点）序列化写回 dn_sync_job.tableConfig。 */
+    public void updateTableConfig(Long jobId, List<TableSyncConfig> tables) {
+        DnSyncJob job = syncJobMapper.selectById(jobId);
+        if (job == null) {
+            return;
+        }
+        job.setTableConfig(JSON.toJSONString(tables));
+        job.setUpdatedAt(LocalDateTime.now());
+        syncJobMapper.updateById(job);
+    }
+
     /** 解析 table_config JSON。 */
     public List<TableSyncConfig> parseTables(DnSyncJob job) {
         if (job.getTableConfig() == null || job.getTableConfig().trim().isEmpty()) {

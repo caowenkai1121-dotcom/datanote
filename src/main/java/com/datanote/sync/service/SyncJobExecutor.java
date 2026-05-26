@@ -4,9 +4,13 @@ import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
 import com.datanote.service.LogBroadcastService;
+import com.datanote.sync.connector.ColumnDef;
+import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.dto.SyncContext;
 import com.datanote.sync.dto.TableSyncConfig;
-import com.datanote.sync.engine.FullSyncEngine;
+import com.datanote.sync.engine.SyncEngine;
+import com.datanote.sync.engine.SyncEngineFactory;
+import com.datanote.sync.schema.TableSchemaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 全量同步执行入口：被手动触发或调度调用。
+ * 同步执行入口：被手动触发或调度调用。支持 FULL/INCREMENTAL，自动建表，增量断点回写。
  */
 @Slf4j
 @Service
@@ -26,11 +30,12 @@ public class SyncJobExecutor {
     private final SyncJobService syncJobService;
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final LogBroadcastService logBroadcastService;
+    private final TableSchemaService tableSchemaService;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
 
-    /** 执行一个同步任务（当前仅 FULL）。返回执行记录 id。 */
+    /** 执行一个同步任务。返回执行记录 id。 */
     public Long run(Long jobId, String triggerType) {
         DnSyncJob job = syncJobService.getById(jobId);
         if (job == null) {
@@ -56,6 +61,8 @@ public class SyncJobExecutor {
         taskExecutionMapper.insert(exec);
 
         StringBuilder logBuf = new StringBuilder();
+        String syncMode = job.getSyncMode() == null ? "FULL" : job.getSyncMode().toUpperCase();
+
         SyncContext ctx = new SyncContext();
         ctx.setJobId(jobId);
         ctx.setExecutionId(exec.getId());
@@ -65,8 +72,10 @@ public class SyncJobExecutor {
         ctx.setBatchSize(job.getBatchSize() == null ? 1000 : job.getBatchSize());
         List<TableSyncConfig> tables = syncJobService.parseTables(job);
         ctx.setTables(tables);
-        ctx.setSource(syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb()));
-        ctx.setTarget(syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb()));
+        DbConnector source = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
+        DbConnector target = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
+        ctx.setSource(source);
+        ctx.setTarget(target);
         ctx.setLogCallback((level, msg) -> {
             logBuf.append("[").append(level).append("] ").append(msg).append("\n");
             logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, level, msg);
@@ -74,8 +83,21 @@ public class SyncJobExecutor {
 
         String finalStatus;
         try {
-            new FullSyncEngine().sync(ctx);
+            for (TableSyncConfig tc : tables) {
+                if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
+                    List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
+                    tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
+                    ctx.log("INFO", "目标表就绪: " + tc.getTargetTable());
+                }
+            }
+
+            SyncEngine engine = SyncEngineFactory.get(syncMode);
+            engine.sync(ctx);
             finalStatus = ctx.getErrorCount().get() > 0 ? "FAILED" : "SUCCESS";
+
+            if ("INCREMENTAL".equals(syncMode) && ctx.getErrorCount().get() == 0) {
+                syncJobService.updateTableConfig(jobId, tables);
+            }
         } catch (Exception e) {
             log.error("同步任务执行失败: jobId={}", jobId, e);
             ctx.log("ERROR", "执行失败: " + e.getMessage());
