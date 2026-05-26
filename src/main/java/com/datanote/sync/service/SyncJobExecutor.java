@@ -28,12 +28,19 @@ public class SyncJobExecutor {
     private final LogBroadcastService logBroadcastService;
 
     private static final String TASK_TYPE = "DbSync";
+    private static final int MAX_LOG = 1_000_000;
 
     /** 执行一个同步任务（当前仅 FULL）。返回执行记录 id。 */
     public Long run(Long jobId, String triggerType) {
         DnSyncJob job = syncJobService.getById(jobId);
         if (job == null) {
             throw new IllegalArgumentException("同步任务不存在: " + jobId);
+        }
+        if (job.getSourceDsId() == null || job.getTargetDsId() == null) {
+            throw new IllegalArgumentException("sourceDsId 和 targetDsId 不能为空");
+        }
+        if (isBlank(job.getSourceDb()) || isBlank(job.getTargetDb())) {
+            throw new IllegalArgumentException("sourceDb 和 targetDb 不能为空");
         }
 
         DnTaskExecution exec = new DnTaskExecution();
@@ -83,12 +90,19 @@ public class SyncJobExecutor {
         exec.setWriteCount(ctx.getWriteCount().get());
         exec.setErrorCount(ctx.getErrorCount().get());
         String logStr = logBuf.toString();
-        exec.setLog(logStr.length() > 1_000_000 ? logStr.substring(logStr.length() - 1_000_000) : logStr);
+        if (logStr.length() > MAX_LOG) {
+            logStr = "[...日志过长，已截断前段...]\n" + logStr.substring(logStr.length() - MAX_LOG);
+        }
+        exec.setLog(logStr);
         taskExecutionMapper.updateById(exec);
 
         logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, "INFO",
                 "任务结束: " + finalStatus + "，读 " + ctx.getReadCount().get()
                 + " 写 " + ctx.getWriteCount().get());
         return exec.getId();
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 }

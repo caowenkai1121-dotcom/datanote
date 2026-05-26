@@ -99,8 +99,13 @@ public class FullSyncEngine {
                             rowsThisPage++;
                         }
                         if (rowsThisPage > 0) {
-                            writePs.executeBatch();
-                            tgtConn.commit();
+                            try {
+                                writePs.executeBatch();
+                                tgtConn.commit();
+                            } catch (Exception batchEx) {
+                                tgtConn.rollback();
+                                throw batchEx;
+                            }
                             // 逐行计数：避免 ON DUPLICATE KEY UPDATE 下 affected rows 语义导致偏大
                             ctx.getWriteCount().addAndGet(rowsThisPage);
                         }
