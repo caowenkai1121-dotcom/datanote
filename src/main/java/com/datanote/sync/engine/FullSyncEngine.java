@@ -15,14 +15,15 @@ import java.util.List;
 
 /**
  * 全量同步引擎：按单列主键 keyset 游标分页读源表，批量 upsert 写目标表。
+ * 读写 SQL 均带库全限定前缀，不依赖连接默认库。单表失败不中断其他表。
  */
 @Slf4j
 public class FullSyncEngine {
 
     /**
-     * 执行全量同步（遍历 ctx.tables）。
+     * 执行全量同步（遍历 ctx.tables）。单表失败仅计数并记录，不中断后续表。
      */
-    public void sync(SyncContext ctx) throws Exception {
+    public void sync(SyncContext ctx) {
         for (TableSyncConfig tc : ctx.getTables()) {
             if (ctx.getStopped().get()) {
                 ctx.log("WARN", "任务被停止，中断");
@@ -34,7 +35,7 @@ public class FullSyncEngine {
                 ctx.getErrorCount().incrementAndGet();
                 ctx.log("ERROR", "表同步失败 " + tc.getSourceTable() + ": " + e.getMessage());
                 log.error("表同步失败: {}", tc.getSourceTable(), e);
-                throw e;
+                // 单表失败不中断其他表：错误已计数，执行层据 errorCount 判定整体状态
             }
         }
     }
@@ -57,8 +58,11 @@ public class FullSyncEngine {
         List<String> columns = meta.getColumns();
         String pkColumn = meta.getPrimaryKeys().get(0);
         int pkIndex = columns.indexOf(pkColumn);
+        if (pkIndex < 0) {
+            throw new IllegalStateException("主键列不在列集合中: " + pkColumn);
+        }
 
-        String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tc.getTargetTable(),
+        String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
                 columns, meta.getPrimaryKeys());
 
         ctx.log("INFO", "开始全量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
@@ -95,13 +99,10 @@ public class FullSyncEngine {
                             rowsThisPage++;
                         }
                         if (rowsThisPage > 0) {
-                            int[] res = writePs.executeBatch();
+                            writePs.executeBatch();
                             tgtConn.commit();
-                            long written = 0;
-                            for (int r : res) {
-                                written += (r >= 0 ? r : 1);
-                            }
-                            ctx.getWriteCount().addAndGet(written);
+                            // 逐行计数：避免 ON DUPLICATE KEY UPDATE 下 affected rows 语义导致偏大
+                            ctx.getWriteCount().addAndGet(rowsThisPage);
                         }
                     }
                 }

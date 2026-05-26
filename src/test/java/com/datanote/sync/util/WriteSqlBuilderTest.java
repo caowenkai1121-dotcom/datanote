@@ -13,31 +13,31 @@ class WriteSqlBuilderTest {
 
     @Test
     void upsert_mysql_buildsOnDuplicateKeyUpdate() {
-        String sql = WriteSqlBuilder.build("UPSERT", "t_user", cols, pk);
+        String sql = WriteSqlBuilder.build("UPSERT", "dst_db", "t_user", cols, pk);
         assertEquals(
-            "INSERT INTO `t_user` (`id`, `name`, `age`) VALUES (?, ?, ?) "
+            "INSERT INTO `dst_db`.`t_user` (`id`, `name`, `age`) VALUES (?, ?, ?) "
             + "ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `age` = VALUES(`age`)",
             sql);
     }
 
     @Test
     void insert_buildsPlainInsert() {
-        String sql = WriteSqlBuilder.build("INSERT", "t_user", cols, pk);
+        String sql = WriteSqlBuilder.build("INSERT", "dst_db", "t_user", cols, pk);
         assertEquals(
-            "INSERT INTO `t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
+            "INSERT INTO `dst_db`.`t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
     }
 
     @Test
     void insertIgnore_buildsInsertIgnore() {
-        String sql = WriteSqlBuilder.build("INSERT_IGNORE", "t_user", cols, pk);
+        String sql = WriteSqlBuilder.build("INSERT_IGNORE", "dst_db", "t_user", cols, pk);
         assertEquals(
-            "INSERT IGNORE INTO `t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
+            "INSERT IGNORE INTO `dst_db`.`t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
     }
 
     @Test
     void upsert_withNoNonPkColumns_fallsBackToInsertIgnore() {
-        String sql = WriteSqlBuilder.build("UPSERT", "t_kv", Collections.singletonList("id"),
+        String sql = WriteSqlBuilder.build("UPSERT", "dst_db", "t_kv", Collections.singletonList("id"),
             Collections.singletonList("id"));
-        assertEquals("INSERT IGNORE INTO `t_kv` (`id`) VALUES (?)", sql);
+        assertEquals("INSERT IGNORE INTO `dst_db`.`t_kv` (`id`) VALUES (?)", sql);
     }
 }
