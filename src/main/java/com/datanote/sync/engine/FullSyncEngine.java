@@ -18,11 +18,12 @@ import java.util.List;
  * 读写 SQL 均带库全限定前缀，不依赖连接默认库。单表失败不中断其他表。
  */
 @Slf4j
-public class FullSyncEngine {
+public class FullSyncEngine implements SyncEngine {
 
     /**
      * 执行全量同步（遍历 ctx.tables）。单表失败仅计数并记录，不中断后续表。
      */
+    @Override
     public void sync(SyncContext ctx) {
         for (TableSyncConfig tc : ctx.getTables()) {
             if (ctx.getStopped().get()) {
