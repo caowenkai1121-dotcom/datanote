@@ -60,7 +60,7 @@ public class SyncJobService {
         if (job == null) {
             return;
         }
-        job.setTableConfig(JSON.toJSONString(tables));
+        job.setTableConfig(JSON.toJSONString(tables, com.alibaba.fastjson.serializer.SerializerFeature.WriteMapNullValue));
         job.setUpdatedAt(LocalDateTime.now());
         syncJobMapper.updateById(job);
     }

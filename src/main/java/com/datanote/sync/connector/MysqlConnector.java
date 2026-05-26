@@ -122,12 +122,20 @@ public class MysqlConnector implements DbConnector {
         return "SELECT COUNT(*) FROM " + SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
     }
 
-    /** 增量分页查询 SQL：WHERE incField > ? ORDER BY incField ASC LIMIT ?（游标即 incField 值）。 */
-    public static String buildIncrementalPageSql(String db, String table, List<String> columns, String incField) {
+    /** 增量分页查询 SQL（(incField, pk) 复合游标，避免同值跨页丢数据/死循环）。
+     *  firstPage=true：incField >= ?（含起始断点，配合 UPSERT 幂等）；
+     *  firstPage=false：incField > ? OR (incField = ? AND pk > ?)。 */
+    public static String buildIncrementalPageSql(String db, String table, List<String> columns,
+                                                 String incField, String pkColumn, boolean firstPage) {
         String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
         String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
         String inc = SqlIdentifiers.quote(incField);
+        String pk = SqlIdentifiers.quote(pkColumn);
+        String where = firstPage
+                ? inc + " >= ?"
+                : "(" + inc + " > ? OR (" + inc + " = ? AND " + pk + " > ?))";
         return "SELECT " + cols + " FROM " + fullTable
-                + " WHERE " + inc + " > ? ORDER BY " + inc + " ASC LIMIT ?";
+                + " WHERE " + where
+                + " ORDER BY " + inc + " ASC, " + pk + " ASC LIMIT ?";
     }
 }
