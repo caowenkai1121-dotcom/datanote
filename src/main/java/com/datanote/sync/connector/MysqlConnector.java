@@ -121,4 +121,13 @@ public class MysqlConnector implements DbConnector {
     public static String buildCountSql(String db, String table) {
         return "SELECT COUNT(*) FROM " + SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
     }
+
+    /** 增量分页查询 SQL：WHERE incField > ? ORDER BY incField ASC LIMIT ?（游标即 incField 值）。 */
+    public static String buildIncrementalPageSql(String db, String table, List<String> columns, String incField) {
+        String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        String inc = SqlIdentifiers.quote(incField);
+        return "SELECT " + cols + " FROM " + fullTable
+                + " WHERE " + inc + " > ? ORDER BY " + inc + " ASC LIMIT ?";
+    }
 }
