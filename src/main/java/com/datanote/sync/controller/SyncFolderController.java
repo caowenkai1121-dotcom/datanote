@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -52,6 +53,7 @@ public class SyncFolderController {
 
     @Operation(summary = "删除文件夹（其下任务 folder_id 回置 0）")
     @DeleteMapping("/{id}")
+    @Transactional
     public R<String> delete(@PathVariable Long id) {
         // 先把该文件夹下的任务移回根，再删文件夹，避免任务悬挂到不存在的文件夹
         syncJobMapper.update(null, new LambdaUpdateWrapper<DnSyncJob>()

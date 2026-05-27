@@ -1,6 +1,7 @@
 package com.datanote.sync.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncFolderMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnSyncJob;
@@ -30,6 +31,7 @@ public class SyncJobController {
     private final SyncJobExecutor syncJobExecutor;
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnSyncJobMapper syncJobMapper;
+    private final DnSyncFolderMapper folderMapper;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -74,6 +76,12 @@ public class SyncJobController {
         DnSyncJob job = syncJobMapper.selectById(id);
         if (job == null) {
             return R.fail("任务不存在: " + id);
+        }
+        // folderId==0 表示根目录，直接放行；否则校验文件夹是否存在
+        if (folderId != null && folderId != 0) {
+            if (folderMapper.selectById(folderId) == null) {
+                return R.fail("目标文件夹不存在");
+            }
         }
         job.setFolderId(folderId);
         job.setUpdatedAt(java.time.LocalDateTime.now());
