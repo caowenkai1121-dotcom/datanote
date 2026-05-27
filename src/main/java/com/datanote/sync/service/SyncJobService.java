@@ -10,6 +10,7 @@ import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.connector.MysqlConnector;
 import com.datanote.sync.dto.TableSyncConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ import java.util.List;
 /**
  * 关系库同步任务管理：CRUD + 连接器构建。
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SyncJobService {
@@ -27,8 +29,19 @@ public class SyncJobService {
     private final DnDatasourceMapper datasourceMapper;
     private final ConnectionManager connectionManager;
 
+    /**
+     * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
+     * 传输与前端解析开销（完整内容由 getById 详情接口返回）。
+     */
     public List<DnSyncJob> list() {
-        return syncJobMapper.selectList(null);
+        long start = System.currentTimeMillis();
+        List<DnSyncJob> jobs = syncJobMapper.selectList(null);
+        for (DnSyncJob job : jobs) {
+            job.setTableConfig(null);
+            job.setFieldMapping(null);
+        }
+        log.info("sync-job list 返回 {} 条，耗时 {}ms", jobs.size(), System.currentTimeMillis() - start);
+        return jobs;
     }
 
     public DnSyncJob getById(Long id) {
