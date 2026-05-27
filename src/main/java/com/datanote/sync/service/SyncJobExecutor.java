@@ -113,6 +113,9 @@ public class SyncJobExecutor {
         ctx.setTargetDb(job.getTargetDb());
         ctx.setWriteMode(job.getWriteMode() == null ? "UPSERT" : job.getWriteMode());
         ctx.setBatchSize(job.getBatchSize() == null ? 1000 : job.getBatchSize());
+        // 迭代V3：同步时间戳标记透传给引擎
+        ctx.setMarkSyncTs(job.getMarkSyncTs());
+        ctx.setSyncTsField(job.getSyncTsField());
         List<TableSyncConfig> tables = syncJobService.parseTables(job);
         ctx.setTables(tables);
         DbConnector source = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
@@ -131,6 +134,8 @@ public class SyncJobExecutor {
                     List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
                     // 配置了字段映射时只用选中字段建表（列名取 target、保留源类型/主键标记）
                     cols = filterColumnsByFields(cols, tc);
+                    // 迭代V3：标记同步时间戳时，自动建表追加一列 syncTsField（DATETIME，可空，非主键）
+                    cols = appendSyncTsColumn(cols, job);
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                     ctx.log("INFO", "目标表就绪: " + tc.getTargetTable());
                 }
@@ -198,6 +203,32 @@ public class SyncJobExecutor {
             nc.setComment(c.getComment());
             result.add(nc);
         }
+        return result;
+    }
+
+    /**
+     * 迭代V3：若 job.markSyncTs==1 且 syncTsField 非空且不在现有列中，则在建表列末尾追加一列
+     * 同步时间戳（DATETIME，可空，非主键），与引擎写入的附加列一致。返回新列表，不改入参。
+     */
+    private static List<ColumnDef> appendSyncTsColumn(List<ColumnDef> cols, DnSyncJob job) {
+        Integer mark = job.getMarkSyncTs();
+        String field = job.getSyncTsField();
+        if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
+            return cols;
+        }
+        for (ColumnDef c : cols) {
+            if (field.equals(c.getName())) {
+                return cols; // 已有同名列，不重复追加
+            }
+        }
+        List<ColumnDef> result = new java.util.ArrayList<>(cols);
+        ColumnDef ts = new ColumnDef();
+        ts.setName(field);
+        ts.setColumnType("DATETIME");
+        ts.setNullable(true);
+        ts.setPrimaryKey(false);
+        ts.setComment("同步时间戳");
+        result.add(ts);
         return result;
     }
 

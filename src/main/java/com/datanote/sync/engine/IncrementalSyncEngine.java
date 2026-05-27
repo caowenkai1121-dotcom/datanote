@@ -85,8 +85,12 @@ public class IncrementalSyncEngine implements SyncEngine {
             startValue = "AUTO_INCREMENT".equalsIgnoreCase(tc.getIncrementalType()) ? "0" : "1970-01-01 00:00:00";
         }
 
+        // 迭代V3：标记同步时间戳 —— 写列末尾追加 syncTsField（读列不变，绑定时最后一列绑当前时间）
+        boolean markTs = SyncTsSupport.shouldAppend(ctx, tgtColumns);
+        List<String> writeColumns = SyncTsSupport.appendTsColumn(tgtColumns, ctx, markTs);
+
         String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
-                tgtColumns, java.util.Collections.singletonList(fm.pkTarget));
+                writeColumns, java.util.Collections.singletonList(fm.pkTarget));
         String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, true);
         String nextSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, false);
 
@@ -126,6 +130,11 @@ public class IncrementalSyncEngine implements SyncEngine {
                             // 读列与写列一一对应：按读列顺序取、按写列顺序写
                             for (int i = 0; i < srcColumns.size(); i++) {
                                 writePs.setObject(i + 1, rs.getObject(i + 1));
+                            }
+                            // 追加同步时间戳列（写列末尾，绑当前时间）
+                            if (markTs) {
+                                writePs.setObject(srcColumns.size() + 1,
+                                        new java.sql.Timestamp(System.currentTimeMillis()));
                             }
                             writePs.addBatch();
                             lastInc = rs.getObject(incIndex + 1);

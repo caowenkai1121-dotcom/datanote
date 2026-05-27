@@ -67,11 +67,16 @@ public class FullSyncEngine implements SyncEngine {
             throw new IllegalStateException("主键列不在列集合中: " + pkColumn);
         }
 
+        // 迭代V3：标记同步时间戳 —— 写列在 tgtColumns 末尾追加 syncTsField（读列不变，绑定时最后一列绑当前时间）
+        boolean markTs = SyncTsSupport.shouldAppend(ctx, tgtColumns);
+        List<String> writeColumns = SyncTsSupport.appendTsColumn(tgtColumns, ctx, markTs);
+
         String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
-                tgtColumns, java.util.Collections.singletonList(fm.pkTarget));
+                writeColumns, java.util.Collections.singletonList(fm.pkTarget));
 
         ctx.log("INFO", "开始全量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
-                + "，列数=" + srcColumns.size() + "，主键=" + pkColumn);
+                + "，列数=" + srcColumns.size() + "，主键=" + pkColumn
+                + (markTs ? "，标记同步时间戳=" + ctx.getSyncTsField() : ""));
 
         Object cursor = null;
         boolean hasCursor = false;
@@ -99,6 +104,11 @@ public class FullSyncEngine implements SyncEngine {
                             // 读列与写列一一对应：按读列顺序取、按写列顺序写
                             for (int i = 0; i < srcColumns.size(); i++) {
                                 writePs.setObject(i + 1, rs.getObject(i + 1));
+                            }
+                            // 追加同步时间戳列（写列末尾，绑当前时间）
+                            if (markTs) {
+                                writePs.setObject(srcColumns.size() + 1,
+                                        new java.sql.Timestamp(System.currentTimeMillis()));
                             }
                             writePs.addBatch();
                             cursor = rs.getObject(pkIndex + 1);

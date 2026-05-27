@@ -23,6 +23,11 @@ public class SyncContext {
     private String writeMode;
     private int batchSize = 1000;
 
+    /** 迭代V3：是否在目标表每行额外写入同步时间戳列（来自 job.markSyncTs，1=是）。 */
+    private Integer markSyncTs;
+    /** 迭代V3：同步时间戳列名（markSyncTs 生效时使用）。 */
+    private String syncTsField;
+
     private final AtomicLong readCount = new AtomicLong(0);
     private final AtomicLong writeCount = new AtomicLong(0);
     private final AtomicLong errorCount = new AtomicLong(0);

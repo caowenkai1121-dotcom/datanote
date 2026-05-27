@@ -245,23 +245,45 @@ public class CdcSyncEngine {
         return projected;
     }
 
-    /** c/r/u：按 after 全列 UPSERT（幂等，主键冲突则更新非主键列）。 */
+    /**
+     * c/r/u：按 after 全列 UPSERT（幂等，主键冲突则更新非主键列）。
+     * 迭代V3：若 job.markSyncTs==1 且 syncTsField 非空且不在 after 列中，则写列末尾追加该列并绑当前时间。
+     */
     private void writeUpsert(String db, String table, Map<String, Object> after) throws Exception {
         if (after == null || after.isEmpty()) {
             log.warn("CDC UPSERT 数据为空，跳过 表={}", table);
             return;
         }
         List<String> pkColumns = primaryKeysOf(db, table);
-        List<String> columns = new ArrayList<>(after.keySet());
+        List<String> dataColumns = new ArrayList<>(after.keySet());
+        boolean appendTs = shouldAppendSyncTs(dataColumns);
+        List<String> columns = new ArrayList<>(dataColumns);
+        if (appendTs) {
+            columns.add(job.getSyncTsField());
+        }
         String sql = WriteSqlBuilder.build(targetConnector.getDatabaseType(), "UPSERT", db, table, columns, pkColumns);
         try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (int i = 0; i < columns.size(); i++) {
-                ps.setObject(i + 1, after.get(columns.get(i)));
+            for (int i = 0; i < dataColumns.size(); i++) {
+                ps.setObject(i + 1, after.get(dataColumns.get(i)));
+            }
+            // 追加同步时间戳列绑当前时间
+            if (appendTs) {
+                ps.setObject(dataColumns.size() + 1, new java.sql.Timestamp(System.currentTimeMillis()));
             }
             ps.executeUpdate();
         }
         broadcast("INFO", "CDC 写入 UPSERT " + table + "（" + columns.size() + " 列）");
+    }
+
+    /** 迭代V3：是否在写列末尾追加同步时间戳列（job.markSyncTs==1 且 syncTsField 非空且不在已有列中）。 */
+    private boolean shouldAppendSyncTs(List<String> dataColumns) {
+        Integer mark = job.getMarkSyncTs();
+        String field = job.getSyncTsField();
+        if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
+            return false;
+        }
+        return !dataColumns.contains(field);
     }
 
     /**
