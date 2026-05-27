@@ -9612,7 +9612,7 @@ var ROUTES = {
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadFolders().then(function() { dbsyncLoadJobs(); }); dbsyncRefreshLogFilter(); } }
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
 };
 
 var currentRoute = null;
@@ -13796,7 +13796,7 @@ var _dbsyncFolders = [];        // 所有文件夹列表
 var _dbsyncSelectedFolderId = 0; // 0 = 全部
 
 /* ---------- 加载文件夹列表 ---------- */
-function dbsyncLoadFolders() {
+window.dbsyncLoadFolders = function() {
   return api('/api/sync-folder/list').then(function(res) {
     _dbsyncFolders = (res.code === 0 && res.data) ? res.data : [];
     dbsyncRenderFolderTabs();
@@ -13806,7 +13806,7 @@ function dbsyncLoadFolders() {
     dbsyncRenderFolderTabs();
     dbsyncFillFolderSelect();
   });
-}
+};
 
 function dbsyncRenderFolderTabs() {
   var wrap = document.getElementById('dbsyncFolderTabs');

@@ -47,6 +47,16 @@ class WorkspaceDbSyncUiTest {
         assertTrue(html.contains("dbsyncOpenRenameFolder"), "folders should support rename action");
     }
 
+    @Test
+    void routeInitializerUsesWindowScopedDbSyncFunctions() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("window.dbsyncLoadFolders = function"),
+                "dbsync folder loader should be available to the route initializer");
+        assertTrue(html.contains("window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter();"),
+                "dbsync route init should call window-scoped functions after refresh navigation");
+    }
+
     private static String readWorkspaceHtml() throws Exception {
         byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/workspace.html"));
         return new String(bytes, StandardCharsets.UTF_8);
