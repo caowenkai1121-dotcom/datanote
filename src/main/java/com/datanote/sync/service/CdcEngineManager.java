@@ -9,9 +9,12 @@ import com.datanote.model.DnDatasource;
 import com.datanote.model.DnSyncJob;
 import com.datanote.service.LogBroadcastService;
 import com.datanote.sync.cdc.CdcStoreHolder;
+import com.datanote.sync.connector.ColumnDef;
 import com.datanote.sync.connector.ConnectionManager;
+import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.engine.cdc.CdcSyncEngine;
+import com.datanote.sync.schema.TableSchemaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -40,6 +43,7 @@ public class CdcEngineManager {
     private final ConnectionManager connectionManager;
     private final LogBroadcastService logBroadcastService;
     private final SyncJobService syncJobService;
+    private final TableSchemaService tableSchemaService;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -57,7 +61,8 @@ public class CdcEngineManager {
                             DnDatasourceMapper datasourceMapper,
                             ConnectionManager connectionManager,
                             LogBroadcastService logBroadcastService,
-                            SyncJobService syncJobService) {
+                            SyncJobService syncJobService,
+                            TableSchemaService tableSchemaService) {
         this.offsetMapper = offsetMapper;
         this.historyMapper = historyMapper;
         this.syncJobMapper = syncJobMapper;
@@ -65,6 +70,7 @@ public class CdcEngineManager {
         this.connectionManager = connectionManager;
         this.logBroadcastService = logBroadcastService;
         this.syncJobService = syncJobService;
+        this.tableSchemaService = tableSchemaService;
     }
 
     /**
@@ -109,16 +115,37 @@ public class CdcEngineManager {
         if (sourceDs == null) {
             throw new IllegalArgumentException("源数据源不存在: " + job.getSourceDsId());
         }
+        DnDatasource targetDs = datasourceMapper.selectById(job.getTargetDsId());
+        if (targetDs == null) {
+            throw new IllegalArgumentException("目标数据源不存在: " + job.getTargetDsId());
+        }
         List<TableSyncConfig> tables = syncJobService.parseTables(job);
         if (tables.isEmpty()) {
             throw new IllegalStateException("CDC 任务未配置任何表 jobId=" + jobId);
         }
+        ensureTargetTables(job, tables);
+        String targetType = targetDs.getType() == null ? "MYSQL" : targetDs.getType().toUpperCase();
         CdcSyncEngine engine = new CdcSyncEngine(job, sourceDs, tables,
-                connectionManager, logBroadcastService, cryptoKey, serverIdBase);
+                connectionManager, logBroadcastService, cryptoKey, targetType, serverIdBase);
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");
         log.info("CDC 任务已启动 jobId={}", jobId);
+    }
+
+    private void ensureTargetTables(DnSyncJob job, List<TableSyncConfig> tables) {
+        try {
+            DbConnector source = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
+            DbConnector target = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
+            for (TableSyncConfig tc : tables) {
+                if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
+                    List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
+                    tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("CDC 目标表自动建表失败 jobId=" + job.getId() + ": " + e.getMessage(), e);
+        }
     }
 
     /** 停止指定 CDC 任务（未运行则仅更新状态）。 */

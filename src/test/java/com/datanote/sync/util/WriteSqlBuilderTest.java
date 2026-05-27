@@ -21,6 +21,20 @@ class WriteSqlBuilderTest {
     }
 
     @Test
+    void upsert_doris_buildsPlainInsert() {
+        String sql = WriteSqlBuilder.build("DORIS", "UPSERT", "dst_db", "t_user", cols, pk);
+        assertEquals(
+            "INSERT INTO `dst_db`.`t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
+    }
+
+    @Test
+    void insertIgnore_doris_buildsPlainInsert() {
+        String sql = WriteSqlBuilder.build("DORIS", "INSERT_IGNORE", "dst_db", "t_user", cols, pk);
+        assertEquals(
+            "INSERT INTO `dst_db`.`t_user` (`id`, `name`, `age`) VALUES (?, ?, ?)", sql);
+    }
+
+    @Test
     void insert_buildsPlainInsert() {
         String sql = WriteSqlBuilder.build("INSERT", "dst_db", "t_user", cols, pk);
         assertEquals(

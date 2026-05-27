@@ -63,7 +63,7 @@ public class FullSyncEngine implements SyncEngine {
             throw new IllegalStateException("主键列不在列集合中: " + pkColumn);
         }
 
-        String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
+        String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
                 columns, meta.getPrimaryKeys());
 
         ctx.log("INFO", "开始全量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()

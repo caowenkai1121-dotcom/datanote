@@ -53,6 +53,9 @@ public class JdbcSchemaHistory extends AbstractDatabaseHistory {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         String raw = config.getString(JOB_ID_CONFIG);
         if (raw == null || raw.isEmpty()) {
+            raw = config.getString("database.history." + JOB_ID_CONFIG);
+        }
+        if (raw == null || raw.isEmpty()) {
             throw new IllegalStateException("CDC schema 历史缺少配置项 " + JOB_ID_CONFIG);
         }
         this.jobId = Long.valueOf(raw.trim());

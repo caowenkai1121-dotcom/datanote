@@ -57,6 +57,7 @@ public class CdcSyncEngine {
     private final ConnectionManager connectionManager;
     private final com.datanote.service.LogBroadcastService logBroadcastService;
     private final String cryptoKey;
+    private final String targetDatabaseType;
     /** database.server.id 基准值（可配置，避免与生产 slave 撞号）。 */
     private final long serverIdBase;
 
@@ -78,6 +79,7 @@ public class CdcSyncEngine {
                          ConnectionManager connectionManager,
                          com.datanote.service.LogBroadcastService logBroadcastService,
                          String cryptoKey,
+                         String targetDatabaseType,
                          long serverIdBase) {
         this.job = job;
         this.sourceDs = sourceDs;
@@ -85,6 +87,7 @@ public class CdcSyncEngine {
         this.connectionManager = connectionManager;
         this.logBroadcastService = logBroadcastService;
         this.cryptoKey = cryptoKey;
+        this.targetDatabaseType = targetDatabaseType == null ? "MYSQL" : targetDatabaseType;
         this.serverIdBase = serverIdBase;
         for (TableSyncConfig tc : tables) {
             if (tc.getSourceTable() != null) {
@@ -102,7 +105,7 @@ public class CdcSyncEngine {
         // fat-jar 下 Debezium 用 Class.forName 加载连接器/存储类，需把上下文类加载器设为本类加载器
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
-        this.targetConnector = new MysqlConnector(connectionManager, job.getTargetDsId(), job.getTargetDb(), "MYSQL");
+        this.targetConnector = new MysqlConnector(connectionManager, job.getTargetDsId(), job.getTargetDb(), targetDatabaseType);
 
         Properties props = buildProps();
         Long jobId = job.getId();
@@ -160,6 +163,7 @@ public class CdcSyncEngine {
         props.setProperty("database.history", "com.datanote.sync.cdc.JdbcSchemaHistory");
         // 透传 jobId 给两个存储类（按任务隔离）
         props.setProperty(JOB_ID_CONFIG, String.valueOf(jobId));
+        props.setProperty("database.history." + JOB_ID_CONFIG, String.valueOf(jobId));
         // 删除事件保留有效记录（不产生 tombstone null 记录，简化下游处理）
         props.setProperty("tombstones.on.delete", "false");
         return props;
@@ -226,7 +230,7 @@ public class CdcSyncEngine {
         }
         List<String> pkColumns = primaryKeysOf(db, table);
         List<String> columns = new ArrayList<>(after.keySet());
-        String sql = WriteSqlBuilder.build("UPSERT", db, table, columns, pkColumns);
+        String sql = WriteSqlBuilder.build(targetConnector.getDatabaseType(), "UPSERT", db, table, columns, pkColumns);
         try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < columns.size(); i++) {

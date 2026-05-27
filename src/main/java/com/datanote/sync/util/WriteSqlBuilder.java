@@ -21,11 +21,21 @@ public final class WriteSqlBuilder {
      * @param pkColumns 主键列
      */
     public static String build(String writeMode, String db, String table, List<String> columns, List<String> pkColumns) {
+        return build("MYSQL", writeMode, db, table, columns, pkColumns);
+    }
+
+    public static String build(String targetType, String writeMode, String db, String table,
+                               List<String> columns, List<String> pkColumns) {
         String quotedTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
         String colList = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
         String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
         String base = "INSERT INTO " + quotedTable + " (" + colList + ") VALUES (" + placeholders + ")";
         String insertIgnore = "INSERT IGNORE INTO " + quotedTable + " (" + colList + ") VALUES (" + placeholders + ")";
+        boolean dorisFamily = "DORIS".equalsIgnoreCase(targetType) || "STARROCKS".equalsIgnoreCase(targetType);
+
+        if (dorisFamily) {
+            return base;
+        }
 
         if ("INSERT_IGNORE".equals(writeMode)) {
             return insertIgnore;
