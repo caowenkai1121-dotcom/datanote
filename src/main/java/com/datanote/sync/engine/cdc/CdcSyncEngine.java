@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -67,6 +68,15 @@ public class CdcSyncEngine {
     private final Map<String, List<String>> pkCache = new ConcurrentHashMap<>();
 
     private final AtomicBoolean running = new AtomicBoolean(false);
+
+    /** 累计计数（供 {@link com.datanote.sync.service.CdcEngineManager} 定期落库到执行记录）。 */
+    private final AtomicLong readCount = new AtomicLong();
+    private final AtomicLong writeCount = new AtomicLong();
+    private final AtomicLong errorCount = new AtomicLong();
+    /** 持久化日志缓冲（带上限，供执行历史回放；与实时 WebSocket 广播并行维护）。 */
+    private final StringBuilder logBuffer = new StringBuilder();
+    private final Object logLock = new Object();
+    private static final int MAX_LOG_BUFFER = 200_000;
 
     private volatile DebeziumEngine<ChangeEvent<String, String>> engine;
     private volatile ExecutorService executor;
@@ -195,8 +205,10 @@ public class CdcSyncEngine {
                 log.debug("CDC 事件命中未配置的源表，跳过: {}", change.sourceTable);
                 return;
             }
+            readCount.incrementAndGet();
             applyChange(tc, change);
         } catch (Exception e) {
+            errorCount.incrementAndGet();
             log.error("CDC 事件处理失败 jobId={} value={}", job.getId(), abbreviate(value), e);
             broadcast("ERROR", "CDC 事件处理失败: " + e.getMessage());
         }
@@ -273,6 +285,7 @@ public class CdcSyncEngine {
             }
             ps.executeUpdate();
         }
+        writeCount.incrementAndGet();
         broadcast("INFO", "CDC 写入 UPSERT " + table + "（" + columns.size() + " 列）");
     }
 
@@ -323,6 +336,7 @@ public class CdcSyncEngine {
                 }
                 ps.executeUpdate();
             }
+            writeCount.incrementAndGet();
             broadcast("INFO", "CDC 逻辑删除 " + table + "（" + logicalField + "=" + logicalValue + "）");
         } else {
             String sql = buildDeleteSql(db, table, pkColumns);
@@ -333,6 +347,7 @@ public class CdcSyncEngine {
                 }
                 ps.executeUpdate();
             }
+            writeCount.incrementAndGet();
             broadcast("INFO", "CDC 写入 DELETE " + table);
         }
     }
@@ -384,10 +399,43 @@ public class CdcSyncEngine {
     }
 
     private void broadcast(String level, String msg) {
+        appendLog(level, msg);
         try {
             logBroadcastService.broadcastTaskLog(job.getId(), "DbSync", level, msg);
         } catch (Exception ignore) {
             // 广播失败不影响主流程
+        }
+    }
+
+    /** 追加到持久化日志缓冲（带上限，超出从头部裁剪）。 */
+    private void appendLog(String level, String msg) {
+        synchronized (logLock) {
+            logBuffer.append('[').append(level).append("] ").append(msg).append('\n');
+            if (logBuffer.length() > MAX_LOG_BUFFER) {
+                logBuffer.delete(0, logBuffer.length() - MAX_LOG_BUFFER);
+            }
+        }
+    }
+
+    /** 累计读取（已应用的变更事件数）。 */
+    public long getReadCount() {
+        return readCount.get();
+    }
+
+    /** 累计写入（成功的目标库写/删次数）。 */
+    public long getWriteCount() {
+        return writeCount.get();
+    }
+
+    /** 累计错误（处理失败的事件数）。 */
+    public long getErrorCount() {
+        return errorCount.get();
+    }
+
+    /** 当前日志缓冲快照（供执行记录落库回放）。 */
+    public String getLogSnapshot() {
+        synchronized (logLock) {
+            return logBuffer.toString();
         }
     }
 
