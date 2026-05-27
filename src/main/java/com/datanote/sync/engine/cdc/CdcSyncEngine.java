@@ -57,10 +57,12 @@ public class CdcSyncEngine {
     private final ConnectionManager connectionManager;
     private final com.datanote.service.LogBroadcastService logBroadcastService;
     private final String cryptoKey;
+    /** database.server.id 基准值（可配置，避免与生产 slave 撞号）。 */
+    private final long serverIdBase;
 
     /** 源表名 -> 该表同步配置（含目标表名）。 */
     private final Map<String, TableSyncConfig> tableMap = new ConcurrentHashMap<>();
-    /** 目标表名 -> 主键列（缓存，避免每条事件查 information_schema）。 */
+    /** "目标库.目标表" -> 主键列（缓存，避免每条事件查 information_schema；带库名前缀防多库同名表取错）。 */
     private final Map<String, List<String>> pkCache = new ConcurrentHashMap<>();
 
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -75,13 +77,15 @@ public class CdcSyncEngine {
                          List<TableSyncConfig> tables,
                          ConnectionManager connectionManager,
                          com.datanote.service.LogBroadcastService logBroadcastService,
-                         String cryptoKey) {
+                         String cryptoKey,
+                         long serverIdBase) {
         this.job = job;
         this.sourceDs = sourceDs;
         this.tables = tables;
         this.connectionManager = connectionManager;
         this.logBroadcastService = logBroadcastService;
         this.cryptoKey = cryptoKey;
+        this.serverIdBase = serverIdBase;
         for (TableSyncConfig tc : tables) {
             if (tc.getSourceTable() != null) {
                 tableMap.put(tc.getSourceTable(), tc);
@@ -101,10 +105,21 @@ public class CdcSyncEngine {
         this.targetConnector = new MysqlConnector(connectionManager, job.getTargetDsId(), job.getTargetDb(), "MYSQL");
 
         Properties props = buildProps();
+        Long jobId = job.getId();
         this.engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .using(getClass().getClassLoader())
                 .notifying(this::handleEvent)
+                // 引擎线程内启动失败/正常结束时回置 running，避免状态假象且无法重启
+                .using((success, message, error) -> {
+                    running.set(false);
+                    if (!success) {
+                        log.error("CDC引擎退出: jobId={}, msg={}", jobId, message, error);
+                        broadcast("ERROR", "CDC 引擎退出: " + message);
+                    } else {
+                        log.info("CDC引擎正常停止: jobId={}", jobId);
+                    }
+                })
                 .build();
         this.executor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "datanote-cdc-" + job.getId());
@@ -129,8 +144,9 @@ public class CdcSyncEngine {
         props.setProperty("database.port", String.valueOf(sourceDs.getPort()));
         props.setProperty("database.user", sourceDs.getUsername());
         props.setProperty("database.password", CryptoUtil.decryptSafe(sourceDs.getPassword(), cryptoKey));
-        // server.id 需在源库唯一（同一源库多任务避免撞号）
-        props.setProperty("database.server.id", String.valueOf(6000 + jobId));
+        // server.id 需在源库唯一（同一源库多任务避免撞号）；base 可配置 + 取模避免溢出/撞生产 slave
+        long serverId = serverIdBase + (jobId % 100000L);
+        props.setProperty("database.server.id", String.valueOf(serverId));
         // 1.9.7：逻辑名/topic 前缀键为 database.server.name（2.0+ 才是 topic.prefix）
         props.setProperty("database.server.name", "datanote_cdc_" + jobId);
         // 捕获范围
@@ -243,9 +259,10 @@ public class CdcSyncEngine {
         broadcast("INFO", "CDC 写入 DELETE " + table);
     }
 
-    /** 取目标表主键（缓存）。 */
+    /** 取目标表主键（缓存）。key 用 db.table，避免多库同名表取错主键。 */
     private List<String> primaryKeysOf(String db, String table) throws Exception {
-        List<String> cached = pkCache.get(table);
+        String cacheKey = db + "." + table;
+        List<String> cached = pkCache.get(cacheKey);
         if (cached != null) {
             return cached;
         }
@@ -254,7 +271,7 @@ public class CdcSyncEngine {
         if (pks.isEmpty()) {
             log.warn("CDC 目标表无主键（UPSERT 退化为 INSERT IGNORE）: {}.{}", db, table);
         }
-        pkCache.put(table, pks);
+        pkCache.put(cacheKey, pks);
         return pks;
     }
 
