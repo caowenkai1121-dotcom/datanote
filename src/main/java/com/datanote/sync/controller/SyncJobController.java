@@ -68,6 +68,19 @@ public class SyncJobController {
         }
     }
 
+    @Operation(summary = "移动任务到文件夹")
+    @PostMapping("/{id}/move")
+    public R<String> move(@PathVariable Long id, @RequestParam Long folderId) {
+        DnSyncJob job = syncJobMapper.selectById(id);
+        if (job == null) {
+            return R.fail("任务不存在: " + id);
+        }
+        job.setFolderId(folderId);
+        job.setUpdatedAt(java.time.LocalDateTime.now());
+        syncJobMapper.updateById(job);
+        return R.ok("已移动");
+    }
+
     @Operation(summary = "执行历史")
     @GetMapping("/{id}/executions")
     public R<List<DnTaskExecution>> executions(@PathVariable Long id) {
