@@ -12975,6 +12975,16 @@ window.dbsyncOnModeChange = function() {
   dbsyncRebuildTableRows();
 };
 
+/* ---------- 源表选择后自动带出目标表名 ---------- */
+window.dbsyncOnSrcTableChange = function(selectEl) {
+  var row = selectEl.closest('.dbsync-table-row');
+  if (!row) return;
+  var tgtInput = row.querySelector('.dfs-tgt-table');
+  if (tgtInput && !tgtInput.value) {
+    tgtInput.value = selectEl.value;
+  }
+};
+
 /* ---------- 多表配置行 ---------- */
 function dbsyncMakeTableRowHtml(idx, data) {
   data = data || {};
@@ -12992,7 +13002,7 @@ function dbsyncMakeTableRowHtml(idx, data) {
   ].join('');
 
   var html = '<div class="dbsync-table-row ' + rowClass + '" data-row-idx="' + idx + '">';
-  html += '<select class="dbsync-form-select dfs-src-table" style="font-size:12px;">' + tableOpts + '</select>';
+  html += '<select class="dbsync-form-select dfs-src-table" style="font-size:12px;" onchange="dbsyncOnSrcTableChange(this)">' + tableOpts + '</select>';
   html += '<input class="dbsync-form-input dfs-tgt-table" style="font-size:12px;" placeholder="目标表名" value="' + escapeHtml(data.targetTable || '') + '">';
   if (isIncr) {
     html += '<input class="dbsync-form-input dfs-incr-field" style="font-size:12px;" placeholder="增量字段名" value="' + escapeHtml(data.incrementalField || '') + '">';
