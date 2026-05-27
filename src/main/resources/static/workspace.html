@@ -3050,13 +3050,114 @@ html, body {
 }
 .dbsync-table tr:last-child td { border-bottom: none; }
 .dbsync-table tr:hover td { background: var(--primary-light); }
-/* 表格操作按钮区 */
-.dbsync-action-btns { display: flex; gap: 4px; flex-wrap: wrap; max-width: 220px; align-items: center; }
+/* 表格操作按钮区（单行紧凑：主按钮 + 详情 + ⋯更多） */
+.dbsync-action-btns { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
 .dbsync-action-btns .btn {
-  height: 28px; min-width: 0; padding: 0 8px; border-radius: 4px;
+  height: 28px; min-width: 0; padding: 0 10px; border-radius: var(--radius-lg);
   font-size: 12px; line-height: 1; white-space: nowrap;
 }
 .dbsync-action-btns .btn svg { width: 10px; height: 10px; flex-shrink: 0; }
+.dbsync-action-btns .dbsync-more-trigger {
+  width: 28px; padding: 0; font-size: 16px; letter-spacing: 1px; color: var(--text-muted);
+}
+.dbsync-action-btns .dbsync-more-trigger:hover { color: var(--primary); border-color: var(--primary); }
+/* 行操作下拉菜单：fixed 定位，避免被表格 overflow-x 裁剪 */
+.dbsync-row-menu {
+  position: fixed; z-index: 2300; min-width: 140px; padding: 4px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.14); display: none;
+}
+.dbsync-row-menu.show { display: block; animation: gModalIn .14s ease; }
+.dbsync-row-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px;
+  border: none; background: none; cursor: pointer; font-size: 13px;
+  color: var(--text-regular); border-radius: var(--radius-lg); text-align: left;
+}
+.dbsync-row-menu button svg { width: 13px; height: 13px; color: var(--text-muted); flex-shrink: 0; }
+.dbsync-row-menu button:hover { background: var(--bg-hover); color: var(--primary); }
+.dbsync-row-menu button:hover svg { color: var(--primary); }
+.dbsync-row-menu button.danger { color: var(--error); }
+.dbsync-row-menu button.danger svg { color: var(--error); }
+.dbsync-row-menu button.danger:hover { background: rgba(255,77,79,.08); }
+.dbsync-row-menu .dbsync-row-menu-sep { height: 1px; background: var(--divider); margin: 4px 6px; }
+
+/* ===== 任务明细抽屉 ===== */
+.dbsync-drawer-mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.36); z-index: 2200;
+  opacity: 0; visibility: hidden; transition: opacity .2s ease;
+}
+.dbsync-drawer-mask.show { opacity: 1; visibility: visible; }
+.dbsync-drawer {
+  position: fixed; top: 0; right: 0; height: 100%; width: 740px; max-width: 94vw;
+  background: var(--bg-body); z-index: 2210; display: flex; flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0,0,0,.16);
+  transform: translateX(100%); transition: transform .26s cubic-bezier(.4,0,.2,1);
+}
+.dbsync-drawer.show { transform: translateX(0); }
+.dbsync-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 15px 20px; background: var(--bg-card); border-bottom: 1px solid var(--divider);
+}
+.dbsync-drawer-title-wrap { min-width: 0; }
+.dbsync-drawer-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dbsync-drawer-title .name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.dbsync-drawer-sub { margin-top: 5px; font-size: 12px; color: var(--text-muted); word-break: break-all; }
+.dbsync-drawer-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dbsync-drawer-close {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border: none; background: none; color: var(--text-muted); cursor: pointer;
+  border-radius: var(--radius-lg); font-size: 20px; line-height: 1;
+}
+.dbsync-drawer-close:hover { background: var(--bg-hover); color: var(--text-regular); }
+.dbsync-drawer-tabs {
+  display: flex; gap: 2px; padding: 0 16px; background: var(--bg-card);
+  border-bottom: 1px solid var(--divider); flex-shrink: 0;
+}
+.dbsync-drawer-tabs button {
+  position: relative; padding: 11px 14px; border: none; background: none; cursor: pointer;
+  font-size: 13px; color: var(--text-muted); font-weight: 500;
+}
+.dbsync-drawer-tabs button:hover { color: var(--text-regular); }
+.dbsync-drawer-tabs button.active { color: var(--primary); }
+.dbsync-drawer-tabs button.active::after {
+  content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px;
+  background: var(--primary); border-radius: 2px;
+}
+.dbsync-drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
+.dbsync-detail-pane { animation: gModalIn .18s ease; }
+/* 概览指标卡 */
+.dbsync-metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.dbsync-metric-card {
+  background: var(--bg-card); border: 1px solid var(--divider); border-radius: var(--radius-lg); padding: 12px 14px;
+}
+.dbsync-metric-card .v { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.dbsync-metric-card .v.ok { color: #52c41a; }
+.dbsync-metric-card .v.err { color: #ff4d4f; }
+.dbsync-metric-card .l { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+/* 信息卡（键值表） */
+.dbsync-detail-card {
+  background: var(--bg-card); border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: 2px 16px 6px; margin-bottom: 16px;
+}
+.dbsync-detail-card-title {
+  font-size: 13px; font-weight: 600; color: var(--text-regular);
+  padding: 12px 0 4px; display: flex; align-items: center; gap: 6px;
+}
+.dbsync-detail-card-title svg { width: 14px; height: 14px; color: var(--primary); }
+.dbsync-kv { display: grid; grid-template-columns: 120px 1fr; }
+.dbsync-kv > dt { padding: 9px 0; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--divider); }
+.dbsync-kv > dd { padding: 9px 0; font-size: 13px; color: var(--text-regular); border-top: 1px solid var(--divider); margin: 0; word-break: break-all; }
+.dbsync-kv > dt.nb, .dbsync-kv > dd.nb { border-top: none; }
+/* 抽屉内日志面板撑高 + 工具条 */
+.dbsync-drawer-log-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.dbsync-drawer-log { min-height: 300px; height: calc(100vh - 250px); max-height: none; }
+/* 配置：表映射小标签 */
+.dbsync-cfg-tag {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 8px;
+  font-size: 11px; font-weight: 500; background: var(--primary-light); color: var(--primary);
+}
+.dbsync-cfg-tag.muted { background: rgba(118,124,130,.12); color: var(--text-muted); }
+.dbsync-cfg-arrow { color: var(--text-muted); margin: 0 6px; }
 /* 弹窗 */
 .dbsync-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.4);
@@ -4336,6 +4437,48 @@ html, body {
         </div>
       </div>
     </div>
+
+    <!-- ===== 任务明细抽屉（概览/实时日志/执行历史/同步配置） ===== -->
+    <div class="dbsync-drawer-mask" id="dbsyncDetailMask" onclick="dbsyncCloseDetail()"></div>
+    <aside class="dbsync-drawer" id="dbsyncDetailDrawer" aria-hidden="true">
+      <div class="dbsync-drawer-head">
+        <div class="dbsync-drawer-title-wrap">
+          <div class="dbsync-drawer-title">
+            <span class="name" id="dbsyncDetailName">任务明细</span>
+            <span class="dbsync-mode-badge" id="dbsyncDetailMode"></span>
+            <span class="dbsync-status-badge" id="dbsyncDetailStatus"></span>
+          </div>
+          <div class="dbsync-drawer-sub" id="dbsyncDetailSub"></div>
+        </div>
+        <div class="dbsync-drawer-head-actions">
+          <span id="dbsyncDetailPrimaryBtn"></span>
+          <button class="dbsync-drawer-close" onclick="dbsyncCloseDetail()" title="关闭">&times;</button>
+        </div>
+      </div>
+      <div class="dbsync-drawer-tabs" id="dbsyncDetailTabs">
+        <button class="active" data-tab="overview" onclick="dbsyncDetailTab(this,'overview')">概览</button>
+        <button data-tab="log" onclick="dbsyncDetailTab(this,'log')">实时日志</button>
+        <button data-tab="history" onclick="dbsyncDetailTab(this,'history')">执行历史</button>
+        <button data-tab="config" onclick="dbsyncDetailTab(this,'config')">同步配置</button>
+      </div>
+      <div class="dbsync-drawer-body">
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_overview"></div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_log" style="display:none;">
+          <div class="dbsync-drawer-log-toolbar">
+            <span style="font-size:12px;color:var(--text-muted);">实时输出本任务运行日志（运行中自动刷新）</span>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="dbsyncDetailLogAutoscroll" checked> 自动滚动</label>
+              <button class="btn btn-sm" onclick="dbsyncClearDetailLog()">清空</button>
+            </div>
+          </div>
+          <div class="dbsync-log-panel dbsync-drawer-log" id="dbsyncDetailLogPanel"><span style="color:var(--text-muted);">暂无日志，运行任务后将在此实时显示。</span></div>
+        </div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_history" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_config" style="display:none;"></div>
+      </div>
+    </aside>
+    <!-- 行操作下拉菜单（全局单例，fixed 定位） -->
+    <div class="dbsync-row-menu" id="dbsyncRowMenu"></div>
 
     <!-- ===== 文件夹新建/重命名弹窗 ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncFolderModal">
@@ -13901,6 +14044,8 @@ window.dbsyncLoadJobs = function() {
     if (res.code !== 0) { container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
     _dbsyncAllJobs = res.data || [];
     dbsyncApplyFolderFilter();
+    // 明细抽屉打开时，状态变更后同步刷新其头部与概览（保持当前页签）
+    if (_dbsyncDetailJobId != null) dbsyncRefreshDetailHeaderFromList();
   }).catch(function() {
     container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
   });
@@ -13928,7 +14073,7 @@ function dbsyncRenderJobs(list) {
     + '<th>源端（数据源.库）</th>'
     + '<th>目标端（数据源.库）</th>'
     + '<th style="width:80px;">状态</th>'
-    + '<th style="width:240px;">操作</th>'
+    + '<th style="width:158px;">操作</th>'
     + '</tr></thead><tbody>';
   list.forEach(function(job) {
     var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
@@ -13945,32 +14090,24 @@ function dbsyncRenderJobs(list) {
     html += '<td><span class="dbsync-status-badge ' + statusClass + '">' + statusLabel + '</span></td>';
     html += '<td><div class="dbsync-action-btns">';
 
-    // 运行按钮（全量/增量）
-    if (job.syncMode !== 'CDC') {
-      html += '<button class="btn btn-sm" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
-        + '<svg viewBox="0 0 12 12" fill="currentColor" width="10" height="10"><path d="M2 1l9 5-9 5z"/></svg>'
-        + ' 运行</button>';
-    }
-    // CDC 启停按钮
+    // 主操作按钮：全量/增量=运行；CDC=启动/停止
     if (job.syncMode === 'CDC') {
       if (job.status === 'RUNNING') {
-        html += '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')" title="停止 CDC">停止</button>';
+        html += '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')" title="停止 CDC">'
+          + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><rect x="2" y="2" width="8" height="8" rx="1"/></svg> 停止</button>';
       } else {
-        html += '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">启动</button>';
+        html += '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">'
+          + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 启动</button>';
       }
+    } else {
+      html += '<button class="btn btn-sm" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
+        + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 运行</button>';
     }
-    html += '<button class="btn btn-sm" onclick="dbsyncOpenEditModal(' + job.id + ')" title="编辑">编辑</button>';
-    html += '<button class="btn btn-sm" onclick="dbsyncShowHistory(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="执行历史">历史</button>';
-    html += '<button class="btn btn-sm" onclick="dbsyncToggleInlineHistory(this,' + job.id + ')" title="展开执行历史" data-job-id="' + job.id + '" style="white-space:nowrap;">'
-      + '<span class="dbsync-expand-icon">▶</span> 展开</button>';
-    html += '<button class="btn btn-sm" onclick="dbsyncOpenMoveJobDialog(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="移动到其他文件夹">移动</button>';
-    html += '<button class="btn btn-sm btn-danger" onclick="dbsyncDeleteJob(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="删除">删除</button>';
-    html += '</div></td></tr>';
-    // 内嵌历史行（初始隐藏）
-    html += '<tr class="dbsync-inline-history-row" id="dbsyncInlineHistoryRow_' + job.id + '" style="display:none;">';
-    html += '<td colspan="6" style="padding:0;background:var(--bg-hover);">';
-    html += '<div class="dbsync-inline-history" id="dbsyncInlineHistory_' + job.id + '" style="padding:12px 16px;">';
-    html += '<span style="color:var(--text-muted);font-size:12px;">加载中...</span>';
+    // 详情（打开右侧明细抽屉，合并了原“历史/展开”）
+    html += '<button class="btn btn-sm" onclick="dbsyncOpenDetail(' + job.id + ')" title="查看明细">'
+      + '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" width="11" height="11"><path d="M1 7s2.4-4.3 6-4.3S13 7 13 7s-2.4 4.3-6 4.3S1 7 1 7z"/><circle cx="7" cy="7" r="1.7"/></svg> 详情</button>';
+    // 更多（编辑/移动/删除收进下拉）
+    html += '<button class="btn btn-sm dbsync-more-trigger" onclick="dbsyncOpenRowMenu(event,' + job.id + ')" title="更多操作">⋯</button>';
     html += '</div></td></tr>';
   });
   html += '</tbody></table></div>';
@@ -14187,6 +14324,8 @@ window.dbsyncShowHistory = function(id, name) {
 
 /* ---------- 实时日志 ---------- */
 window.dbsyncAppendLog = function(data) {
+  // 同步到明细抽屉的实时日志（不受顶部全局过滤影响）
+  dbsyncDetailAppendLog(data);
   var filterJobId = document.getElementById('dbsyncLogFilter') ? document.getElementById('dbsyncLogFilter').value : '';
   if (filterJobId && String(data.taskId) !== String(filterJobId)) return;
   var panel = document.getElementById('dbsyncLogPanel');
@@ -14221,6 +14360,350 @@ window.dbsyncRefreshLogFilter = function() {
     sel.innerHTML += '<option value="' + j.id + '"' + (String(j.id) === cur ? ' selected' : '') + '>' + escapeHtml(j.jobName || '') + '</option>';
   });
 };
+
+/* ============================================================
+ * 行操作下拉菜单（编辑/移动/删除）
+ * ============================================================ */
+window.dbsyncOpenRowMenu = function(evt, id) {
+  evt.stopPropagation();
+  var menu = document.getElementById('dbsyncRowMenu');
+  if (!menu) return;
+  // 同一按钮再次点击则收起
+  if (menu.classList.contains('show') && menu.getAttribute('data-job') === String(id)) { dbsyncCloseRowMenu(); return; }
+  var icEdit = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2.5l2.5 2.5M2 12l1-3.5 6-6 2.5 2.5-6 6L2 12z"/></svg>';
+  var icMove = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 4a1 1 0 011-1h3l1.2 1.2H11.5a1 1 0 011 1v5a1 1 0 01-1 1h-9a1 1 0 01-1-1V4z"/></svg>';
+  var icDel  = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h9M5.5 4V2.7h3V4M3.7 4l.4 7.3h5.8l.4-7.3"/></svg>';
+  menu.innerHTML =
+      '<button onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
+    + '<div class="dbsync-row-menu-sep"></div>'
+    + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
+  menu.setAttribute('data-job', String(id));
+  // fixed 定位：与触发按钮右对齐、下方弹出（放不下则上翻）
+  var r = evt.currentTarget.getBoundingClientRect();
+  menu.style.visibility = 'hidden';
+  menu.classList.add('show');
+  var mw = menu.offsetWidth, mh = menu.offsetHeight;
+  var left = r.right - mw; if (left < 8) left = 8;
+  var top = r.bottom + 4; if (top + mh > window.innerHeight - 8) top = r.top - mh - 4;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.visibility = '';
+};
+window.dbsyncRowMenuAct = function(act, id) {
+  dbsyncCloseRowMenu();
+  var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; });
+  var nm = job ? (job.jobName || '') : '';
+  if (act === 'edit') dbsyncOpenEditModal(id);
+  else if (act === 'move') dbsyncOpenMoveJobDialog(id, nm);
+  else if (act === 'del') dbsyncDeleteJob(id, nm);
+};
+function dbsyncCloseRowMenu() {
+  var menu = document.getElementById('dbsyncRowMenu');
+  if (menu) { menu.classList.remove('show'); menu.removeAttribute('data-job'); }
+}
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('dbsyncRowMenu');
+  if (menu && menu.classList.contains('show') && !menu.contains(e.target)) dbsyncCloseRowMenu();
+});
+window.addEventListener('resize', dbsyncCloseRowMenu);
+
+/* ============================================================
+ * 任务明细抽屉
+ * ============================================================ */
+var _dbsyncDetailJobId = null;   // 当前抽屉对应任务（null=未打开）
+var _dbsyncDetailData = null;    // 当前任务详情数据缓存
+
+window.dbsyncOpenDetail = function(id) {
+  dbsyncCloseRowMenu();
+  _dbsyncDetailJobId = id;
+  var drawer = document.getElementById('dbsyncDetailDrawer');
+  var mask = document.getElementById('dbsyncDetailMask');
+  if (!drawer || !mask) return;
+  // 用列表数据立即渲染头部（含数据源名）
+  var listJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; }) || { id: id };
+  dbsyncRenderDetailHead(listJob);
+  dbsyncDetailResetTab();
+  var lp = document.getElementById('dbsyncDetailLogPanel');
+  if (lp) lp.innerHTML = '<span style="color:var(--text-muted);">暂无日志，运行任务后将在此实时显示。</span>';
+  document.getElementById('dbsyncDetailPane_overview').innerHTML = dbsyncDetailLoading();
+  document.getElementById('dbsyncDetailPane_history').innerHTML = dbsyncDetailLoading();
+  document.getElementById('dbsyncDetailPane_config').innerHTML = dbsyncDetailLoading();
+  mask.classList.add('show');
+  drawer.classList.add('show');
+  drawer.setAttribute('aria-hidden', 'false');
+  dbsyncLoadDetailData(id);
+};
+window.dbsyncCloseDetail = function() {
+  _dbsyncDetailJobId = null;
+  var drawer = document.getElementById('dbsyncDetailDrawer');
+  var mask = document.getElementById('dbsyncDetailMask');
+  if (drawer) { drawer.classList.remove('show'); drawer.setAttribute('aria-hidden', 'true'); }
+  if (mask) mask.classList.remove('show');
+};
+function dbsyncDetailLoading() {
+  return '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">加载中...</div>';
+}
+function dbsyncDetailResetTab() {
+  document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-tab') === 'overview');
+  });
+  ['overview', 'log', 'history', 'config'].forEach(function(t) {
+    var pane = document.getElementById('dbsyncDetailPane_' + t);
+    if (pane) pane.style.display = (t === 'overview') ? '' : 'none';
+  });
+}
+window.dbsyncDetailTab = function(btn, tab) {
+  document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  ['overview', 'log', 'history', 'config'].forEach(function(t) {
+    var pane = document.getElementById('dbsyncDetailPane_' + t);
+    if (pane) pane.style.display = (t === tab) ? '' : 'none';
+  });
+};
+function dbsyncRenderDetailHead(job) {
+  var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
+  var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' }[job.syncMode] || (job.syncMode || '');
+  var statusClass = job.status || 'CREATED';
+  var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }[job.status] || (job.status || '');
+  document.getElementById('dbsyncDetailName').textContent = job.jobName || ('任务#' + (job.id || ''));
+  var modeEl = document.getElementById('dbsyncDetailMode');
+  modeEl.className = 'dbsync-mode-badge ' + modeClass; modeEl.textContent = modeLabel;
+  var stEl = document.getElementById('dbsyncDetailStatus');
+  stEl.className = 'dbsync-status-badge ' + statusClass; stEl.textContent = statusLabel;
+  var src = (job.sourceDsName || ('ds#' + (job.sourceDsId || ''))) + '.' + (job.sourceDb || '');
+  var tgt = (job.targetDsName || ('ds#' + (job.targetDsId || ''))) + '.' + (job.targetDb || '');
+  document.getElementById('dbsyncDetailSub').textContent = src + '  →  ' + tgt;
+  var pbtn = document.getElementById('dbsyncDetailPrimaryBtn');
+  if (job.syncMode === 'CDC') {
+    pbtn.innerHTML = (job.status === 'RUNNING')
+      ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
+      : '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
+  } else {
+    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>';
+  }
+}
+// 状态变更后（列表刷新触发）同步刷新抽屉头部 + 概览/历史
+function dbsyncRefreshDetailHeaderFromList() {
+  var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === _dbsyncDetailJobId; });
+  if (job) dbsyncRenderDetailHead(job);
+  if (_dbsyncDetailJobId != null) dbsyncLoadDetailData(_dbsyncDetailJobId);
+}
+// 抽屉内运行：切到“实时日志”页签并启动（不影响背景列表视图）
+window.dbsyncDetailRunJob = function(id) {
+  var logTabBtn = document.querySelector('#dbsyncDetailTabs button[data-tab="log"]');
+  if (logTabBtn) dbsyncDetailTab(logTabBtn, 'log');
+  var lp = document.getElementById('dbsyncDetailLogPanel');
+  if (lp) lp.innerHTML = '<span style="color:var(--text-muted);">任务启动中...</span>';
+  apiPost('/api/sync-job/' + id + '/run', {}).then(function(res) {
+    if (res.code === 0) { showToast('任务已启动，正在实时输出日志', 'success'); setTimeout(dbsyncLoadJobs, 1500); }
+    else { showToast('运行失败: ' + (res.msg || ''), 'error'); }
+  }).catch(function() { showToast('运行请求失败', 'error'); });
+};
+window.dbsyncLoadDetailData = function(id) {
+  Promise.all([
+    api('/api/sync-job/' + id),
+    api('/api/sync-job/' + id + '/executions')
+  ]).then(function(r) {
+    if (_dbsyncDetailJobId !== id) return; // 已切换/关闭
+    var job = (r[0] && r[0].code === 0) ? (r[0].data || {}) : {};
+    var execs = (r[1] && r[1].code === 0) ? (r[1].data || []) : [];
+    _dbsyncDetailData = job;
+    dbsyncRenderOverview(job, execs);
+    dbsyncRenderConfig(job);
+    dbsyncRenderHistory(execs);
+  }).catch(function() {
+    if (_dbsyncDetailJobId !== id) return;
+    document.getElementById('dbsyncDetailPane_overview').innerHTML = '<div style="padding:24px;color:var(--error);font-size:13px;">明细加载失败，请重试</div>';
+  });
+};
+// 执行状态归一化
+function dbsyncExecKind(st) {
+  st = String(st);
+  if (st === '1' || st === '2' || st === 'SUCCESS' || st === 'FINISHED') return 'ok';
+  if (st === '-1' || st === 'FAILED') return 'err';
+  if (st === '0' || st === 'RUNNING') return 'run';
+  return 'other';
+}
+function dbsyncExecLabel(st) {
+  var k = dbsyncExecKind(st);
+  return k === 'ok' ? '成功' : k === 'err' ? '失败' : k === 'run' ? '运行中' : String(st);
+}
+// LocalDateTime 兼容：字符串 / 数组两种序列化形式
+function dbsyncFmtTime(v) {
+  if (v == null || v === '') return '-';
+  if (Array.isArray(v)) {
+    var p = function(n) { return (n < 10 ? '0' : '') + n; };
+    return v[0] + '-' + p(v[1] || 1) + '-' + p(v[2] || 1) + ' ' + p(v[3] || 0) + ':' + p(v[4] || 0) + ':' + p(v[5] || 0);
+  }
+  return String(v).replace('T', ' ').replace(/\.\d+$/, '');
+}
+function dbsyncRenderOverview(job, execs) {
+  var pane = document.getElementById('dbsyncDetailPane_overview');
+  if (!pane) return;
+  var listJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === job.id; }) || {};
+  var ok = 0, err = 0;
+  (execs || []).forEach(function(ex) { var k = dbsyncExecKind(ex.status); if (k === 'ok') ok++; else if (k === 'err') err++; });
+  var total = (execs || []).length;
+  var rate = (ok + err) > 0 ? Math.round(ok * 100 / (ok + err)) : null;
+  var sorted = (execs || []).slice().sort(function(a, b) {
+    var ta = (a.startTime || a.createTime || ''), tb = (b.startTime || b.createTime || '');
+    return tb < ta ? -1 : tb > ta ? 1 : 0;
+  });
+  var latest = sorted[0] || null;
+  var card = function(v, l, cls) { return '<div class="dbsync-metric-card"><div class="v ' + (cls || '') + '">' + v + '</div><div class="l">' + l + '</div></div>'; };
+  var html = '<div class="dbsync-metric-grid">'
+    + card(latest ? (latest.readCount || 0) : '-', '最近读取行数')
+    + card(latest ? (latest.writeCount || 0) : '-', '最近写入行数')
+    + card(latest ? (latest.errorCount || 0) : '-', '最近错误行数', (latest && latest.errorCount > 0) ? 'err' : '')
+    + card(latest && latest.duration != null ? latest.duration + 's' : '-', '最近耗时')
+    + card(total, '累计执行次数')
+    + card(rate != null ? rate + '%' : '-', '成功率', rate != null ? 'ok' : '')
+    + '</div>';
+  var src = (listJob.sourceDsName || ('ds#' + (job.sourceDsId || ''))) + '.' + (job.sourceDb || '');
+  var tgt = (listJob.targetDsName || ('ds#' + (job.targetDsId || ''))) + '.' + (job.targetDb || '');
+  var folderName = '根目录';
+  if (job.folderId) {
+    var fs = (typeof _dbsyncFolders !== 'undefined' ? _dbsyncFolders : []) || [];
+    var f = fs.find(function(x) { return x.id === job.folderId; });
+    if (f) folderName = f.folderName || ('#' + job.folderId);
+  }
+  var writeModeLabel = { UPSERT: 'UPSERT（更新插入）', INSERT: 'INSERT（仅插入）', INSERT_IGNORE: 'INSERT IGNORE（忽略重复）' }[job.writeMode] || (job.writeMode || '-');
+  var lastRun = latest ? (dbsyncFmtTime(latest.startTime || latest.createTime) + '（' + dbsyncExecLabel(latest.status) + '）') : '从未运行';
+  var kv = function(k, v) { return '<dt>' + k + '</dt><dd>' + v + '</dd>'; };
+  html += '<div class="dbsync-detail-card">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4"/></svg> 基本信息</div>'
+    + '<dl class="dbsync-kv">'
+    + '<dt class="nb">任务 ID</dt><dd class="nb">' + (job.id || '-') + '</dd>'
+    + kv('源端', escapeHtml(src))
+    + kv('目标端', escapeHtml(tgt))
+    + kv('所属目录', escapeHtml(folderName))
+    + kv('写入模式', escapeHtml(writeModeLabel))
+    + kv('批大小', (job.batchSize != null ? job.batchSize : '-'))
+    + kv('调度周期', job.scheduleCron ? escapeHtml(job.scheduleCron) : '手动触发')
+    + kv('最近运行', escapeHtml(lastRun))
+    + kv('创建时间', escapeHtml(dbsyncFmtTime(job.createdAt)))
+    + kv('更新时间', escapeHtml(dbsyncFmtTime(job.updatedAt)))
+    + '</dl></div>';
+  pane.innerHTML = html;
+}
+function dbsyncRenderConfig(job) {
+  var pane = document.getElementById('dbsyncDetailPane_config');
+  if (!pane) return;
+  var modeLabel = { FULL: '全量同步', INCREMENTAL: '增量同步', CDC: 'CDC 实时同步' }[job.syncMode] || (job.syncMode || '-');
+  var writeModeLabel = { UPSERT: 'UPSERT（更新插入）', INSERT: 'INSERT（仅插入）', INSERT_IGNORE: 'INSERT IGNORE（忽略重复）' }[job.writeMode] || (job.writeMode || '-');
+  var kv = function(k, v) { return '<dt>' + k + '</dt><dd>' + v + '</dd>'; };
+  var html = '<div class="dbsync-detail-card">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7h10M9 4l3 3-3 3"/></svg> 同步策略</div>'
+    + '<dl class="dbsync-kv">'
+    + '<dt class="nb">同步模式</dt><dd class="nb">' + modeLabel + '</dd>'
+    + kv('写入模式', escapeHtml(writeModeLabel))
+    + kv('批大小', (job.batchSize != null ? job.batchSize : '-'))
+    + kv('调度周期', job.scheduleCron ? escapeHtml(job.scheduleCron) : '手动触发');
+  var delLabel = (job.deleteMode === 'LOGICAL')
+    ? ('逻辑删除（标记列 ' + escapeHtml(job.logicalDeleteField || '-') + ' = ' + escapeHtml(String(job.logicalDeleteValue != null ? job.logicalDeleteValue : '1')) + '）')
+    : '物理删除（源端删除时同步删除目标行）';
+  html += kv('源端删除策略', delLabel);
+  html += kv('同步时间戳', job.markSyncTs ? ('已开启，标记列 ' + escapeHtml(job.syncTsField || '_sync_ts')) : '未开启');
+  html += '</dl></div>';
+  var tables = [];
+  try { tables = JSON.parse(job.tableConfig || '[]'); } catch (e) { tables = []; }
+  html += '<div class="dbsync-detail-card">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5.5h10M6 5.5V12"/></svg> 表与字段映射（' + tables.length + ' 张表）</div>';
+  if (tables.length === 0) {
+    html += '<div style="padding:10px 0;color:var(--text-muted);font-size:12px;">未配置同步表</div>';
+  } else {
+    tables.forEach(function(t) {
+      var createTag = t.createTargetTable ? '<span class="dbsync-cfg-tag">自动建表</span>' : '<span class="dbsync-cfg-tag muted">写入已有表</span>';
+      var incr = (job.syncMode === 'INCREMENTAL' && t.incrementalField)
+        ? ' <span class="dbsync-cfg-tag muted">增量字段 ' + escapeHtml(t.incrementalField) + (t.incrementalType ? ('/' + escapeHtml(t.incrementalType)) : '') + '</span>' : '';
+      html += '<div style="padding:11px 0;border-top:1px solid var(--divider);">'
+        + '<div style="font-size:13px;color:var(--text-regular);font-weight:500;">'
+        + escapeHtml(t.sourceTable || '-') + '<span class="dbsync-cfg-arrow">→</span>' + escapeHtml(t.targetTable || '-')
+        + ' ' + createTag + incr + '</div>';
+      var fields = t.fields || [];
+      if (fields.length === 0) {
+        html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">字段映射：全部字段（按同名自动映射）</div>';
+      } else {
+        html += '<table class="dfs-field-map-table" style="margin-top:8px;"><thead><tr><th>源字段</th><th>目标字段</th><th style="width:70px;">同步</th></tr></thead><tbody>';
+        fields.forEach(function(fm) {
+          html += '<tr><td>' + escapeHtml(fm.source || '') + '</td><td>' + escapeHtml(fm.target || fm.source || '') + '</td><td>'
+            + (fm.sync === false ? '<span style="color:var(--text-muted);">不同步</span>' : '<span style="color:#52c41a;">同步</span>') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  pane.innerHTML = html;
+}
+window.dbsyncToggleEl = function(elId) {
+  var el = document.getElementById(elId);
+  if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+};
+function dbsyncRenderHistory(execs) {
+  var pane = document.getElementById('dbsyncDetailPane_history');
+  if (!pane) return;
+  if (!execs || execs.length === 0) {
+    pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无执行记录</div>';
+    return;
+  }
+  var html = '<table class="dbsync-exec-table"><thead><tr>'
+    + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th style="width:60px;">日志</th>'
+    + '</tr></thead><tbody>';
+  execs.forEach(function(ex, i) {
+    var kind = dbsyncExecKind(ex.status);
+    var label = dbsyncExecLabel(ex.status);
+    var color = kind === 'ok' ? '#52c41a' : kind === 'err' ? '#ff4d4f' : 'var(--primary)';
+    var logFull = ex.log ? String(ex.log) : '';
+    var logId = 'dbsyncDetailExecLog_' + i;
+    var logCell = logFull
+      ? '<a href="#" onclick="dbsyncToggleEl(\'' + logId + '\');return false;" style="font-size:11px;color:var(--primary);">查看</a>'
+        + '<pre id="' + logId + '" style="display:none;margin:6px 0 0;padding:8px;background:var(--bg-hover);border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto;color:var(--text-regular);">' + escapeHtml(logFull) + '</pre>'
+      : '-';
+    html += '<tr>'
+      + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(ex.startTime || ex.createTime)) + '</td>'
+      + '<td><span style="color:' + color + ';font-weight:500;">' + escapeHtml(label) + '</span></td>'
+      + '<td>' + (ex.readCount || 0) + '</td>'
+      + '<td>' + (ex.writeCount || 0) + '</td>'
+      + '<td>' + (ex.errorCount || 0) + '</td>'
+      + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+      + '<td style="max-width:200px;">' + logCell + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  pane.innerHTML = html;
+}
+// 抽屉实时日志分发（由 dbsyncAppendLog 调用，不受顶部全局过滤影响）
+function dbsyncDetailAppendLog(data) {
+  if (_dbsyncDetailJobId == null) return;
+  if (String(data.taskId) !== String(_dbsyncDetailJobId)) return;
+  var panel = document.getElementById('dbsyncDetailLogPanel');
+  if (!panel) return;
+  if (panel.querySelector('span[style]')) panel.innerHTML = '';
+  var level = data.level || 'INFO';
+  var line = document.createElement('span');
+  line.className = 'dbsync-log-line ' + level;
+  line.textContent = '[' + (data.time || '') + '][' + level + '] ' + (data.message || '');
+  panel.appendChild(line);
+  panel.appendChild(document.createTextNode('\n'));
+  var auto = document.getElementById('dbsyncDetailLogAutoscroll');
+  if (!auto || auto.checked) panel.scrollTop = panel.scrollHeight;
+  var lines = panel.querySelectorAll('.dbsync-log-line');
+  if (lines.length > 800) { for (var i = 0; i < 80; i++) { if (lines[i]) lines[i].remove(); } }
+}
+window.dbsyncClearDetailLog = function() {
+  var panel = document.getElementById('dbsyncDetailLogPanel');
+  if (panel) panel.innerHTML = '<span style="color:var(--text-muted);">日志已清空。</span>';
+};
+// Esc 关闭：优先收行菜单，否则关抽屉
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var menu = document.getElementById('dbsyncRowMenu');
+  if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
+  if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
+});
 
 })(); // end IIFE
 </script>
