@@ -13561,12 +13561,85 @@ function dbsyncRenderJobs(list) {
     }
     html += '<button class="btn btn-sm" onclick="dbsyncOpenEditModal(' + job.id + ')" title="编辑">编辑</button>';
     html += '<button class="btn btn-sm" onclick="dbsyncShowHistory(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="执行历史">历史</button>';
+    html += '<button class="btn btn-sm" onclick="dbsyncToggleInlineHistory(this,' + job.id + ')" title="展开执行历史" data-job-id="' + job.id + '" style="white-space:nowrap;">'
+      + '<span class="dbsync-expand-icon">▶</span> 展开</button>';
     html += '<button class="btn btn-sm btn-danger" onclick="dbsyncDeleteJob(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="删除">删除</button>';
+    html += '</div></td></tr>';
+    // 内嵌历史行（初始隐藏）
+    html += '<tr class="dbsync-inline-history-row" id="dbsyncInlineHistoryRow_' + job.id + '" style="display:none;">';
+    html += '<td colspan="6" style="padding:0;background:var(--bg-hover);">';
+    html += '<div class="dbsync-inline-history" id="dbsyncInlineHistory_' + job.id + '" style="padding:12px 16px;">';
+    html += '<span style="color:var(--text-muted);font-size:12px;">加载中...</span>';
     html += '</div></td></tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
 }
+
+/* ---------- 行内嵌历史展开/折叠 ---------- */
+window.dbsyncToggleInlineHistory = function(btn, id) {
+  var row = document.getElementById('dbsyncInlineHistoryRow_' + id);
+  if (!row) return;
+  var isHidden = row.style.display === 'none';
+  var icon = btn.querySelector('.dbsync-expand-icon');
+  if (isHidden) {
+    row.style.display = '';
+    if (icon) icon.textContent = '▼';
+    btn.title = '折叠执行历史';
+    dbsyncLoadInlineHistory(id);
+  } else {
+    row.style.display = 'none';
+    if (icon) icon.textContent = '▶';
+    btn.title = '展开执行历史';
+  }
+};
+
+window.dbsyncLoadInlineHistory = function(id) {
+  var container = document.getElementById('dbsyncInlineHistory_' + id);
+  if (!container) return;
+  container.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">加载中...</span>';
+  api('/api/sync-job/' + id + '/executions').then(function(res) {
+    if (res.code !== 0) {
+      container.innerHTML = '<span style="color:var(--error);font-size:12px;">加载失败: ' + escapeHtml(res.msg || '') + '</span>';
+      return;
+    }
+    var list = res.data || [];
+    if (list.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">暂无执行记录</span>';
+      return;
+    }
+    var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
+    var html = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr>'
+      + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th>日志摘要</th>'
+      + '</tr></thead><tbody>';
+    list.forEach(function(ex, exIndex) {
+      var st = ex.status !== undefined && ex.status !== null ? String(ex.status) : '';
+      var stLabel = statusLabel[st] || st;
+      var stColor = (stLabel === '成功') ? 'var(--success)' : (stLabel === '失败') ? 'var(--error)' : 'var(--primary)';
+      var logFull = ex.log ? String(ex.log) : '';
+      var logSnippet = logFull ? escapeHtml(logFull.slice(0, 80)) + (logFull.length > 80 ? '...' : '') : '-';
+      var logIdx = 'dbsyncILLog_' + id + '_' + exIndex;
+      var logCell = logFull
+        ? '<span style="color:var(--text-muted);font-size:11px;">' + logSnippet + '</span>'
+          + ' <a href="#" onclick="var el=document.getElementById(\'' + logIdx + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';return false;" style="font-size:11px;color:var(--primary);">查看</a>'
+          + '<pre id="' + logIdx + '" style="display:none;margin:4px 0 0;padding:6px;background:var(--bg-card);border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:160px;overflow-y:auto;">' + escapeHtml(logFull) + '</pre>'
+        : '-';
+      html += '<tr>'
+        + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
+        + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
+        + '<td>' + (ex.readCount || 0) + '</td>'
+        + '<td>' + (ex.writeCount || 0) + '</td>'
+        + '<td>' + (ex.errorCount || 0) + '</td>'
+        + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+        + '<td style="max-width:220px;word-break:break-all;">' + logCell + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function() {
+    container.innerHTML = '<span style="color:var(--error);font-size:12px;">请求失败</span>';
+  });
+};
 
 /* ---------- 运行（全量/增量） ---------- */
 window.dbsyncRunJob = function(id) {
