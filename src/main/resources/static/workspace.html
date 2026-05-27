@@ -3217,14 +3217,20 @@ html, body {
   align-items: center;
 }
 .dbsync-table-row:last-child { border-bottom: none; }
-.dbsync-table-row.no-incr { grid-template-columns: 1fr 1fr 60px auto 28px; }
-.dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 60px auto 28px; }
+.dbsync-table-row.no-incr { grid-template-columns: 1fr 1fr 104px auto 28px; }
+.dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 104px auto 28px; }
 .dbsync-del-row-btn {
   width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
   border: none; background: none; color: #ff4d4f; cursor: pointer;
   border-radius: var(--radius); font-size: 16px; line-height: 1;
 }
 .dbsync-del-row-btn:hover { background: rgba(255,77,79,.08); }
+/* 字段映射：删除单行按钮 */
+.dfs-fm-del {
+  border: none; background: none; color: #ff4d4f; cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 0 4px; border-radius: var(--radius);
+}
+.dfs-fm-del:hover { background: rgba(255,77,79,.08); }
 /* 执行历史 */
 .dbsync-exec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .dbsync-exec-table th {
@@ -13315,17 +13321,38 @@ window.dbsyncOnModeChange = function() {
 };
 
 /* ---------- 字段映射：渲染字段行 HTML ---------- */
-function dbsyncRenderFieldMapHtml(fields) {
+function dbsyncRenderFieldMapHtml(fields, targetColumns) {
+  var hasTgtCols = targetColumns && targetColumns.length > 0;
   var html = '<table class="dfs-field-map-table"><thead><tr>'
-    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th>'
+    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th><th style="width:28px;"></th>'
     + '</tr></thead><tbody>';
   fields.forEach(function(f) {
+    var src = f.source || f.name || '';
+    var tgt = f.target || '';
+    if (!hasTgtCols && !tgt) tgt = src; // 自动建表默认同名
     var syncChecked = (f.sync !== false) ? ' checked' : '';
+    var tgtCell;
+    if (hasTgtCols) {
+      // 已存在表：目标字段下拉选目标表真实列
+      var inList = targetColumns.indexOf(tgt) >= 0;
+      var opts = '<option value="">（请选择目标列）</option>';
+      if (tgt && !inList) {
+        opts += '<option value="' + escapeHtml(tgt) + '" selected>' + escapeHtml(tgt) + '（表中不存在）</option>';
+      }
+      targetColumns.forEach(function(c) {
+        opts += '<option value="' + escapeHtml(c) + '"' + ((inList && c === tgt) ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+      });
+      tgtCell = '<select class="dbsync-form-select dfs-fm-tgt" style="font-size:12px;padding:2px 6px;height:28px;">' + opts + '</select>';
+    } else {
+      // 自动建表：目标字段可编辑文本
+      tgtCell = '<input class="dbsync-form-input dfs-fm-tgt" style="font-size:12px;padding:2px 6px;" value="' + escapeHtml(tgt) + '">';
+    }
     html += '<tr class="dfs-field-map-row">'
       + '<td style="text-align:center;"><input type="checkbox" class="dfs-fm-sync"' + syncChecked + '></td>'
-      + '<td><input type="hidden" class="dfs-fm-src" value="' + escapeHtml(f.source || f.name || '') + '"><span style="color:var(--text-regular);">' + escapeHtml(f.source || f.name || '') + '</span></td>'
+      + '<td><input type="hidden" class="dfs-fm-src" value="' + escapeHtml(src) + '"><span style="color:var(--text-regular);">' + escapeHtml(src) + '</span></td>'
       + '<td style="text-align:center;color:var(--text-muted);">→</td>'
-      + '<td><input class="dbsync-form-input dfs-fm-tgt" style="font-size:12px;padding:2px 6px;" value="' + escapeHtml(f.target || f.source || f.name || '') + '"></td>'
+      + '<td>' + tgtCell + '</td>'
+      + '<td style="text-align:center;"><button type="button" class="dfs-fm-del" onclick="dbsyncDelFieldMapRow(this)" title="删除此字段映射">&times;</button></td>'
       + '</tr>';
   });
   html += '</tbody></table>';
@@ -13360,21 +13387,55 @@ window.dbsyncToggleFieldMap = function(btn) {
     content.innerHTML = '<div style="color:#faad14;font-size:12px;padding:8px 0;">请先选择源数据源、源库和源表</div>';
     return;
   }
+  var createSel = row.querySelector('.dfs-auto-create-sel');
+  var isExisting = createSel && createSel.value === 'false';
   content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">字段加载中...</div>';
-  api('/api/datasource/' + encodeURIComponent(srcDsId) + '/columns?db=' + encodeURIComponent(srcDb) + '&table=' + encodeURIComponent(srcTable))
-    .then(function(res) {
+  var srcUrl = '/api/datasource/' + encodeURIComponent(srcDsId) + '/columns?db=' + encodeURIComponent(srcDb) + '&table=' + encodeURIComponent(srcTable);
+
+  if (!isExisting) {
+    // 自动建表：仅拉源列，目标=源（可编辑文本）
+    api(srcUrl).then(function(res) {
       if (res.code !== 0 || !res.data || res.data.length === 0) {
         content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">暂无字段数据（' + escapeHtml(res.msg || '空') + '）</div>';
         return;
       }
-      var fields = res.data.map(function(col) {
-        return { source: col.name, target: col.name, sync: true };
-      });
+      var fields = res.data.map(function(col) { return { source: col.name, target: col.name, sync: true }; });
       content.innerHTML = dbsyncRenderFieldMapHtml(fields);
-    })
-    .catch(function() {
+    }).catch(function() {
       content.innerHTML = '<div style="color:#ff4d4f;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
     });
+    return;
+  }
+
+  // 已存在表：同时拉源列 + 目标表已有列，按同名自动匹配，目标字段用下拉
+  var tgtDsId  = (document.getElementById('dfsTgtDsId') || {}).value;
+  var tgtDb    = (document.getElementById('dfsTgtDb')   || {}).value;
+  var tgtTable = row ? (row.querySelector('.dfs-tgt-table') || {}).value : '';
+  if (!tgtDsId || !tgtDb || !tgtTable) {
+    content.innerHTML = '<div style="color:#faad14;font-size:12px;padding:8px 0;">请先选择目标数据源、目标库，并在上方选择已存在的目标表</div>';
+    return;
+  }
+  var tgtUrl = '/api/datasource/' + encodeURIComponent(tgtDsId) + '/columns?db=' + encodeURIComponent(tgtDb) + '&table=' + encodeURIComponent(tgtTable);
+  Promise.all([api(srcUrl), api(tgtUrl)]).then(function(r) {
+    var srcCols = (r[0] && r[0].code === 0 && r[0].data) ? r[0].data : [];
+    var tgtCols = (r[1] && r[1].code === 0 && r[1].data) ? r[1].data : [];
+    if (srcCols.length === 0) {
+      content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">源表无字段数据</div>';
+      return;
+    }
+    var tgtNames = tgtCols.map(function(c) { return c.name; });
+    var tgtLower = {};
+    tgtNames.forEach(function(n) { tgtLower[(n || '').toLowerCase()] = n; });
+    var fields = srcCols.map(function(col) {
+      var match = tgtLower[(col.name || '').toLowerCase()];
+      return { source: col.name, target: match || '', sync: !!match }; // 同名才默认勾选同步
+    });
+    var warn = (tgtNames.length === 0)
+      ? '<div style="color:#faad14;font-size:12px;padding:4px 0;">未拉到目标表字段，请确认已选择存在的目标表</div>' : '';
+    content.innerHTML = warn + dbsyncRenderFieldMapHtml(fields, tgtNames);
+  }).catch(function() {
+    content.innerHTML = '<div style="color:#ff4d4f;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
+  });
 };
 
 /* ---------- 源表选择后自动带出目标表名 ---------- */
@@ -13385,6 +13446,82 @@ window.dbsyncOnSrcTableChange = function(selectEl) {
   if (tgtInput && !tgtInput.value) {
     tgtInput.value = selectEl.value;
   }
+};
+
+/* ---------- 已存在表：拉取目标表 / 模式切换 / 字段行删除 ---------- */
+var _dbsyncTgtTablesCache = { key: '', list: [] };
+
+// 拉取目标库的表清单（带缓存，按 数据源|库 作 key），供“已存在表”可搜索下拉
+window.dbsyncFetchTgtTables = function(cb) {
+  var dsId = (document.getElementById('dfsTgtDsId') || {}).value;
+  var db   = (document.getElementById('dfsTgtDb')   || {}).value;
+  if (!dsId || !db) { cb([]); return; }
+  var key = dsId + '|' + db;
+  if (_dbsyncTgtTablesCache.key === key) { cb(_dbsyncTgtTablesCache.list); return; }
+  api('/api/datasource/' + encodeURIComponent(dsId) + '/tables?db=' + encodeURIComponent(db)).then(function(res) {
+    var list = (res.code === 0 && res.data) ? res.data : [];
+    _dbsyncTgtTablesCache = { key: key, list: list };
+    cb(list);
+  }).catch(function() { cb([]); });
+};
+
+// 把某行的目标表 datalist 填上目标库的表清单（仅“已存在表”模式）
+function dbsyncPopulateRowDatalist(wrapper) {
+  if (!wrapper) return;
+  var sel = wrapper.querySelector('.dfs-auto-create-sel');
+  if (!sel || sel.value !== 'false') return;
+  var dl = wrapper.querySelector('datalist');
+  var tgtInput = wrapper.querySelector('.dfs-tgt-table');
+  if (tgtInput) tgtInput.placeholder = '选择已存在表(可搜索)';
+  dbsyncFetchTgtTables(function(tables) {
+    if (dl) dl.innerHTML = tables.map(function(t) { return '<option value="' + escapeHtml(t) + '"></option>'; }).join('');
+  });
+}
+
+// 重置某行字段映射区为占位（模式/目标表变更后需按新条件重新拉取）
+function dbsyncResetFieldMapArea(wrapper) {
+  if (!wrapper) return;
+  var area = wrapper.querySelector('.dfs-field-map-area');
+  if (area) {
+    area.classList.remove('open');
+    var content = area.querySelector('.dfs-field-map-content');
+    if (content) content.innerHTML = '<div class="dfs-field-map-placeholder" style="color:var(--text-muted);font-size:12px;padding:8px 0;">点击“配置字段”后展开加载字段列表</div>';
+  }
+  var btn = wrapper.querySelector('.dfs-fieldmap-btn');
+  if (btn) btn.textContent = '配置字段';
+}
+
+// 用户切换“自动建表/已存在表”：切换目标表提示与 datalist，并重置字段映射
+window.dbsyncOnCreateModeChange = function(sel) {
+  var wrapper = sel.closest('.dfs-row-wrapper');
+  var row = sel.closest('.dbsync-table-row');
+  var tgtInput = row ? row.querySelector('.dfs-tgt-table') : null;
+  var dl = wrapper ? wrapper.querySelector('datalist') : null;
+  if (sel.value === 'false') {
+    if (tgtInput) tgtInput.placeholder = '选择已存在表(可搜索)';
+    dbsyncFetchTgtTables(function(tables) {
+      if (dl) dl.innerHTML = tables.map(function(t) { return '<option value="' + escapeHtml(t) + '"></option>'; }).join('');
+    });
+  } else {
+    if (tgtInput) tgtInput.placeholder = '目标表名';
+    if (dl) dl.innerHTML = '';
+  }
+  dbsyncResetFieldMapArea(wrapper);
+};
+
+// 已存在表模式下换了目标表 → 字段需按新目标表重新拉取
+window.dbsyncOnTgtTableChange = function(input) {
+  var row = input.closest('.dbsync-table-row');
+  var sel = row ? row.querySelector('.dfs-auto-create-sel') : null;
+  if (sel && sel.value === 'false') {
+    dbsyncResetFieldMapArea(input.closest('.dfs-row-wrapper'));
+  }
+};
+
+// 删除一行字段映射
+window.dbsyncDelFieldMapRow = function(btn) {
+  var tr = btn.closest('.dfs-field-map-row');
+  if (tr) tr.remove();
 };
 
 /* ---------- 多表配置行 ---------- */
@@ -13404,20 +13541,23 @@ function dbsyncMakeTableRowHtml(idx, data) {
 
   var html = '<div class="dfs-row-wrapper" data-row-idx="' + idx + '">';
   html += '<div class="dbsync-table-row ' + rowClass + '">';
+  var existingMode = data.createTargetTable === false;
   html += '<select class="dbsync-form-select dfs-src-table" style="font-size:12px;" onchange="dbsyncOnSrcTableChange(this)">' + tableOpts + '</select>';
-  html += '<input class="dbsync-form-input dfs-tgt-table" style="font-size:12px;" placeholder="目标表名" value="' + escapeHtml(data.targetTable || '') + '">';
+  html += '<input class="dbsync-form-input dfs-tgt-table" list="dfsTgtList_' + idx + '" onchange="dbsyncOnTgtTableChange(this)" style="font-size:12px;" placeholder="' + (existingMode ? '选择已存在表(可搜索)' : '目标表名') + '" value="' + escapeHtml(data.targetTable || '') + '">';
   if (isIncr) {
     html += '<input class="dbsync-form-input dfs-incr-field" style="font-size:12px;" placeholder="增量字段名" value="' + escapeHtml(data.incrementalField || '') + '">';
     html += '<select class="dbsync-form-select dfs-incr-type" style="font-size:12px;">' + incrTypeOpts + '</select>';
   }
   var createSelVal = data.createTargetTable !== false ? 'true' : 'false';
-  html += '<select class="dbsync-form-select dfs-auto-create-sel" style="font-size:12px;padding:3px 6px;">'
+  html += '<select class="dbsync-form-select dfs-auto-create-sel" style="font-size:12px;padding:3px 6px;" onchange="dbsyncOnCreateModeChange(this)">'
     + '<option value="true"' + (createSelVal === 'true' ? ' selected' : '') + '>自动建表</option>'
     + '<option value="false"' + (createSelVal === 'false' ? ' selected' : '') + '>已存在表</option>'
     + '</select>';
-  html += '<button class="btn btn-sm" onclick="dbsyncToggleFieldMap(this)" style="font-size:11px;white-space:nowrap;" title="配置字段映射">配置字段</button>';
+  html += '<button class="btn btn-sm dfs-fieldmap-btn" onclick="dbsyncToggleFieldMap(this)" style="font-size:11px;white-space:nowrap;" title="配置字段映射">配置字段</button>';
   html += '<button class="dbsync-del-row-btn" onclick="dbsyncDelTableRow(this)" title="删除此行">&times;</button>';
   html += '</div>';
+  // 目标表可搜索下拉数据源（datalist 自带 display:none，不占网格列）
+  html += '<datalist id="dfsTgtList_' + idx + '"></datalist>';
   // 字段映射展开区
   var hasFields = data.fields && data.fields.length > 0;
   html += '<div class="dfs-field-map-area' + (hasFields ? ' open' : '') + '">';
@@ -13467,6 +13607,7 @@ function dbsyncRebuildTableRows() {
   container.innerHTML = '';
   if (datas.length === 0) datas.push({});
   datas.forEach(function(d, i) { container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(i, d)); });
+  container.querySelectorAll('.dfs-row-wrapper').forEach(dbsyncPopulateRowDatalist);
 }
 
 function dbsyncRefreshTableRowSelects() {
@@ -13495,11 +13636,11 @@ function dbsyncReadTableRowData(row, wrapper) {
           var srcEl = fr.querySelector('.dfs-fm-src');
           var tgtEl = fr.querySelector('.dfs-fm-tgt');
           if (srcEl) {
-            fields.push({
-              source: srcEl.value || srcEl.textContent || '',
-              target: (tgtEl && tgtEl.value) || (srcEl.value || srcEl.textContent || ''),
-              sync:   cb ? cb.checked : true
-            });
+            var srcName = srcEl.value || srcEl.textContent || '';
+            var tgtVal = (tgtEl && tgtEl.value) ? tgtEl.value : '';
+            var syncVal = cb ? cb.checked : true;
+            if (!tgtVal) { syncVal = false; tgtVal = srcName; } // 未选目标列 → 不同步（占位用源名，sync=false 时被忽略）
+            fields.push({ source: srcName, target: tgtVal, sync: syncVal });
           }
         });
       }
@@ -13714,6 +13855,7 @@ window.dbsyncOpenEditModal = function(id) {
       container.innerHTML = '';
       if (tableConfigs.length === 0) tableConfigs.push({});
       tableConfigs.forEach(function(cfg, i) { container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(i, cfg)); });
+      container.querySelectorAll('.dfs-row-wrapper').forEach(dbsyncPopulateRowDatalist);
     });
   }).catch(function(e) {
     showToast('加载任务出错', 'error');
