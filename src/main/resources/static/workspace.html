@@ -4119,7 +4119,7 @@ html, body {
           </div>
           <div class="dbsync-tables-area">
             <div class="dbsync-tables-head">
-              <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 自动建表</div>
+              <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 建表模式</div>
               <button class="btn btn-sm" onclick="dbsyncAddTableRow()">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
                 添加表
@@ -13075,7 +13075,6 @@ function dbsyncMakeTableRowHtml(idx, data) {
     var sel = (t === (data.sourceTable || '')) ? ' selected' : '';
     tableOpts += '<option value="' + escapeHtml(t) + '"' + sel + '>' + escapeHtml(t) + '</option>';
   });
-  var autoChecked = data.createTargetTable !== false ? ' checked' : '';
   var rowClass = isIncr ? 'with-incr' : 'no-incr';
   var incrTypeOpts = [
     '<option value="TIMESTAMP"' + (data.incrementalType === 'TIMESTAMP' ? ' selected' : '') + '>时间戳</option>',
@@ -13090,9 +13089,11 @@ function dbsyncMakeTableRowHtml(idx, data) {
     html += '<input class="dbsync-form-input dfs-incr-field" style="font-size:12px;" placeholder="增量字段名" value="' + escapeHtml(data.incrementalField || '') + '">';
     html += '<select class="dbsync-form-select dfs-incr-type" style="font-size:12px;">' + incrTypeOpts + '</select>';
   }
-  html += '<label style="display:flex;align-items:center;gap:4px;justify-content:center;font-size:12px;cursor:pointer;white-space:nowrap;">';
-  html += '<input type="checkbox" class="dfs-auto-create"' + autoChecked + '> 建表';
-  html += '</label>';
+  var createSelVal = data.createTargetTable !== false ? 'true' : 'false';
+  html += '<select class="dbsync-form-select dfs-auto-create-sel" style="font-size:12px;padding:3px 6px;">'
+    + '<option value="true"' + (createSelVal === 'true' ? ' selected' : '') + '>自动建表</option>'
+    + '<option value="false"' + (createSelVal === 'false' ? ' selected' : '') + '>已存在表</option>'
+    + '</select>';
   html += '<button class="btn btn-sm" onclick="dbsyncToggleFieldMap(this)" style="font-size:11px;white-space:nowrap;" title="配置字段映射">配置字段</button>';
   html += '<button class="dbsync-del-row-btn" onclick="dbsyncDelTableRow(this)" title="删除此行">&times;</button>';
   html += '</div>';
@@ -13188,7 +13189,7 @@ function dbsyncReadTableRowData(row, wrapper) {
     targetTable:      (row.querySelector('.dfs-tgt-table')  || {}).value || '',
     incrementalField: (row.querySelector('.dfs-incr-field') || {}).value || '',
     incrementalType:  (row.querySelector('.dfs-incr-type')  || {}).value || 'TIMESTAMP',
-    createTargetTable: row.querySelector('.dfs-auto-create') ? row.querySelector('.dfs-auto-create').checked : true
+    createTargetTable: row.querySelector('.dfs-auto-create-sel') ? row.querySelector('.dfs-auto-create-sel').value !== 'false' : true
   };
   if (fields && fields.length > 0) result.fields = fields;
   return result;
