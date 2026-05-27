@@ -3048,8 +3048,8 @@ html, body {
   align-items: center;
 }
 .dbsync-table-row:last-child { border-bottom: none; }
-.dbsync-table-row.no-incr { grid-template-columns: 1fr 1fr 60px 28px; }
-.dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 60px 28px; }
+.dbsync-table-row.no-incr { grid-template-columns: 1fr 1fr 60px auto 28px; }
+.dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 60px auto 28px; }
 .dbsync-del-row-btn {
   width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
   border: none; background: none; color: #ff4d4f; cursor: pointer;
@@ -3065,6 +3065,24 @@ html, body {
 }
 .dbsync-exec-table td { padding: 7px 10px; border-bottom: 1px solid var(--divider); color: var(--text-regular); }
 .dbsync-exec-table tr:last-child td { border-bottom: none; }
+/* 字段映射区 */
+.dfs-row-wrapper { border-bottom: 1px solid var(--divider); }
+.dfs-row-wrapper:last-child { border-bottom: none; }
+.dfs-row-wrapper > .dbsync-table-row { border-bottom: none; }
+.dfs-field-map-area {
+  padding: 8px 12px 12px 12px;
+  background: var(--bg-hover);
+  border-top: 1px dashed var(--divider);
+  display: none;
+}
+.dfs-field-map-area.open { display: block; }
+.dfs-field-map-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.dfs-field-map-table th {
+  text-align: left; padding: 4px 8px; font-weight: 600; color: var(--text-muted);
+  border-bottom: 1px solid var(--divider); font-size: 11px;
+}
+.dfs-field-map-table td { padding: 3px 8px; border-bottom: 1px solid var(--divider); vertical-align: middle; }
+.dfs-field-map-table tr:last-child td { border-bottom: none; }
 /* 日志面板 */
 .dbsync-log-panel {
   background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
@@ -12975,6 +12993,69 @@ window.dbsyncOnModeChange = function() {
   dbsyncRebuildTableRows();
 };
 
+/* ---------- 字段映射：渲染字段行 HTML ---------- */
+function dbsyncRenderFieldMapHtml(fields) {
+  var html = '<table class="dfs-field-map-table"><thead><tr>'
+    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th>'
+    + '</tr></thead><tbody>';
+  fields.forEach(function(f) {
+    var syncChecked = (f.sync !== false) ? ' checked' : '';
+    html += '<tr class="dfs-field-map-row">'
+      + '<td style="text-align:center;"><input type="checkbox" class="dfs-fm-sync"' + syncChecked + '></td>'
+      + '<td><input type="hidden" class="dfs-fm-src" value="' + escapeHtml(f.source || f.name || '') + '"><span style="color:var(--text-regular);">' + escapeHtml(f.source || f.name || '') + '</span></td>'
+      + '<td style="text-align:center;color:var(--text-muted);">→</td>'
+      + '<td><input class="dbsync-form-input dfs-fm-tgt" style="font-size:12px;padding:2px 6px;" value="' + escapeHtml(f.target || f.source || f.name || '') + '"></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+/* ---------- 字段映射：展开/折叠切换 ---------- */
+window.dbsyncToggleFieldMap = function(btn) {
+  var wrapper = btn.closest('.dfs-row-wrapper');
+  if (!wrapper) return;
+  var mapArea = wrapper.querySelector('.dfs-field-map-area');
+  if (!mapArea) return;
+  var isOpen = mapArea.classList.contains('open');
+  if (isOpen) {
+    mapArea.classList.remove('open');
+    btn.textContent = '配置字段';
+    return;
+  }
+  // 展开：检查是否已有字段行（回显时已渲染），若无则加载
+  mapArea.classList.add('open');
+  btn.textContent = '收起字段';
+  var content = mapArea.querySelector('.dfs-field-map-content');
+  if (!content) return;
+  var hasRows = content.querySelectorAll('.dfs-field-map-row').length > 0;
+  if (hasRows) return; // 已回显，无需重新加载
+  // 从表单获取 srcDsId、srcDb、srcTable
+  var row = wrapper.querySelector('.dbsync-table-row');
+  var srcTable = row ? (row.querySelector('.dfs-src-table') || {}).value : '';
+  var srcDsId  = (document.getElementById('dfsSrcDsId') || {}).value;
+  var srcDb    = (document.getElementById('dfsSrcDb')   || {}).value;
+  if (!srcDsId || !srcDb || !srcTable) {
+    content.innerHTML = '<div style="color:#faad14;font-size:12px;padding:8px 0;">请先选择源数据源、源库和源表</div>';
+    return;
+  }
+  content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">字段加载中...</div>';
+  api('/api/datasource/' + encodeURIComponent(srcDsId) + '/columns?db=' + encodeURIComponent(srcDb) + '&table=' + encodeURIComponent(srcTable))
+    .then(function(res) {
+      if (res.code !== 0 || !res.data || res.data.length === 0) {
+        content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">暂无字段数据（' + escapeHtml(res.msg || '空') + '）</div>';
+        return;
+      }
+      var fields = res.data.map(function(col) {
+        return { source: col.name, target: col.name, sync: true };
+      });
+      content.innerHTML = dbsyncRenderFieldMapHtml(fields);
+    })
+    .catch(function() {
+      content.innerHTML = '<div style="color:#ff4d4f;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
+    });
+};
+
 /* ---------- 源表选择后自动带出目标表名 ---------- */
 window.dbsyncOnSrcTableChange = function(selectEl) {
   var row = selectEl.closest('.dbsync-table-row');
@@ -13001,7 +13082,8 @@ function dbsyncMakeTableRowHtml(idx, data) {
     '<option value="AUTO_INCREMENT"' + (data.incrementalType === 'AUTO_INCREMENT' ? ' selected' : '') + '>自增ID</option>'
   ].join('');
 
-  var html = '<div class="dbsync-table-row ' + rowClass + '" data-row-idx="' + idx + '">';
+  var html = '<div class="dfs-row-wrapper" data-row-idx="' + idx + '">';
+  html += '<div class="dbsync-table-row ' + rowClass + '">';
   html += '<select class="dbsync-form-select dfs-src-table" style="font-size:12px;" onchange="dbsyncOnSrcTableChange(this)">' + tableOpts + '</select>';
   html += '<input class="dbsync-form-input dfs-tgt-table" style="font-size:12px;" placeholder="目标表名" value="' + escapeHtml(data.targetTable || '') + '">';
   if (isIncr) {
@@ -13011,7 +13093,21 @@ function dbsyncMakeTableRowHtml(idx, data) {
   html += '<label style="display:flex;align-items:center;gap:4px;justify-content:center;font-size:12px;cursor:pointer;white-space:nowrap;">';
   html += '<input type="checkbox" class="dfs-auto-create"' + autoChecked + '> 建表';
   html += '</label>';
+  html += '<button class="btn btn-sm" onclick="dbsyncToggleFieldMap(this)" style="font-size:11px;white-space:nowrap;" title="配置字段映射">配置字段</button>';
   html += '<button class="dbsync-del-row-btn" onclick="dbsyncDelTableRow(this)" title="删除此行">&times;</button>';
+  html += '</div>';
+  // 字段映射展开区
+  var hasFields = data.fields && data.fields.length > 0;
+  html += '<div class="dfs-field-map-area' + (hasFields ? ' open' : '') + '">';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">字段映射（不配置则同步全部字段）</div>';
+  html += '<div class="dfs-field-map-content">';
+  if (hasFields) {
+    html += dbsyncRenderFieldMapHtml(data.fields);
+  } else {
+    html += '<div class="dfs-field-map-placeholder" style="color:var(--text-muted);font-size:12px;padding:8px 0;">点击"配置字段"后展开加载字段列表</div>';
+  }
+  html += '</div>';
+  html += '</div>';
   html += '</div>';
   return html;
 }
@@ -13024,6 +13120,8 @@ window.dbsyncAddTableRow = function() {
 };
 
 window.dbsyncDelTableRow = function(btn) {
+  var wrapper = btn.closest('.dfs-row-wrapper');
+  if (wrapper) { wrapper.remove(); return; }
   var row = btn.closest('.dbsync-table-row');
   if (row) row.remove();
 };
@@ -13031,12 +13129,19 @@ window.dbsyncDelTableRow = function(btn) {
 function dbsyncRebuildTableRows() {
   var container = document.getElementById('dfsTableRows');
   if (!container) return;
-  var existing = container.querySelectorAll('.dbsync-table-row');
-  // 收集现有数据
+  var existing = container.querySelectorAll('.dfs-row-wrapper');
+  // 收集现有数据（含字段映射）
   var datas = [];
-  existing.forEach(function(row) {
-    datas.push(dbsyncReadTableRowData(row));
+  existing.forEach(function(wrapper) {
+    var row = wrapper.querySelector('.dbsync-table-row');
+    if (row) datas.push(dbsyncReadTableRowData(row, wrapper));
   });
+  if (datas.length === 0) {
+    // 兼容旧格式（无 wrapper）
+    container.querySelectorAll('.dbsync-table-row').forEach(function(row) {
+      datas.push(dbsyncReadTableRowData(row, null));
+    });
+  }
   container.innerHTML = '';
   if (datas.length === 0) datas.push({});
   datas.forEach(function(d, i) { container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(i, d)); });
@@ -13054,23 +13159,60 @@ function dbsyncRefreshTableRowSelects() {
   });
 }
 
-function dbsyncReadTableRowData(row) {
-  return {
+function dbsyncReadTableRowData(row, wrapper) {
+  var fields = null;
+  if (wrapper) {
+    var mapArea = wrapper.querySelector('.dfs-field-map-area');
+    if (mapArea && mapArea.classList.contains('open')) {
+      // 只有展开过（已加载）才收集
+      var fieldRows = mapArea.querySelectorAll('.dfs-field-map-row');
+      if (fieldRows.length > 0) {
+        fields = [];
+        fieldRows.forEach(function(fr) {
+          var cb = fr.querySelector('.dfs-fm-sync');
+          var srcEl = fr.querySelector('.dfs-fm-src');
+          var tgtEl = fr.querySelector('.dfs-fm-tgt');
+          if (srcEl) {
+            fields.push({
+              source: srcEl.value || srcEl.textContent || '',
+              target: (tgtEl && tgtEl.value) || (srcEl.value || srcEl.textContent || ''),
+              sync:   cb ? cb.checked : true
+            });
+          }
+        });
+      }
+    }
+  }
+  var result = {
     sourceTable:      (row.querySelector('.dfs-src-table')  || {}).value || '',
     targetTable:      (row.querySelector('.dfs-tgt-table')  || {}).value || '',
     incrementalField: (row.querySelector('.dfs-incr-field') || {}).value || '',
     incrementalType:  (row.querySelector('.dfs-incr-type')  || {}).value || 'TIMESTAMP',
     createTargetTable: row.querySelector('.dfs-auto-create') ? row.querySelector('.dfs-auto-create').checked : true
   };
+  if (fields && fields.length > 0) result.fields = fields;
+  return result;
 }
 
 function dbsyncCollectTableConfigs() {
-  var rows = document.querySelectorAll('#dfsTableRows .dbsync-table-row');
+  var container = document.getElementById('dfsTableRows');
   var arr = [];
-  rows.forEach(function(row) {
-    var d = dbsyncReadTableRowData(row);
-    if (d.sourceTable) arr.push(d);
-  });
+  // 优先从 wrapper 收集
+  var wrappers = container.querySelectorAll('.dfs-row-wrapper');
+  if (wrappers.length > 0) {
+    wrappers.forEach(function(wrapper) {
+      var row = wrapper.querySelector('.dbsync-table-row');
+      if (!row) return;
+      var d = dbsyncReadTableRowData(row, wrapper);
+      if (d.sourceTable) arr.push(d);
+    });
+  } else {
+    // 兼容旧格式
+    container.querySelectorAll('.dbsync-table-row').forEach(function(row) {
+      var d = dbsyncReadTableRowData(row, null);
+      if (d.sourceTable) arr.push(d);
+    });
+  }
   return arr;
 }
 
