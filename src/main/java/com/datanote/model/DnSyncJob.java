@@ -30,4 +30,12 @@ public class DnSyncJob {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // 迭代V3 新增
+    private Long folderId;              // 所属文件夹，0=根
+    private String deleteMode;          // PHYSICAL/LOGICAL（CDC 源端删除策略）
+    private String logicalDeleteField;  // 逻辑删除标记列
+    private String logicalDeleteValue;  // 逻辑删除写入值，默认 '1'
+    private Integer markSyncTs;         // 是否标记同步时间戳（1=是）
+    private String syncTsField;         // 同步时间戳列名
 }
