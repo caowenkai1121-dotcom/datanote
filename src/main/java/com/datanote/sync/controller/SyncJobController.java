@@ -1,6 +1,7 @@
 package com.datanote.sync.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
@@ -28,6 +29,7 @@ public class SyncJobController {
     private final SyncJobService syncJobService;
     private final SyncJobExecutor syncJobExecutor;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final DnSyncJobMapper syncJobMapper;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -75,5 +77,29 @@ public class SyncJobController {
                 .orderByDesc(DnTaskExecution::getId)
                 .last("LIMIT 50");
         return R.ok(taskExecutionMapper.selectList(wrapper));
+    }
+
+    @Operation(summary = "启用定时调度")
+    @PostMapping("/{id}/online")
+    public R<String> online(@PathVariable Long id) {
+        DnSyncJob job = syncJobMapper.selectById(id);
+        if (job == null) {
+            return R.fail("任务不存在: " + id);
+        }
+        job.setScheduleStatus("online");
+        syncJobMapper.updateById(job);
+        return R.ok("已启用定时调度");
+    }
+
+    @Operation(summary = "停用定时调度")
+    @PostMapping("/{id}/offline")
+    public R<String> offline(@PathVariable Long id) {
+        DnSyncJob job = syncJobMapper.selectById(id);
+        if (job == null) {
+            return R.fail("任务不存在: " + id);
+        }
+        job.setScheduleStatus("offline");
+        syncJobMapper.updateById(job);
+        return R.ok("已停用定时调度");
     }
 }
