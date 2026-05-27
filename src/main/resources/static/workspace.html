@@ -13541,7 +13541,7 @@ window.dbsyncShowHistory = function(id, name) {
         + '<td>' + (ex.readCount || 0) + '</td>'
         + '<td>' + (ex.writeCount || 0) + '</td>'
         + '<td>' + (ex.errorCount || 0) + '</td>'
-        + '<td>' + (ex.duration != null ? Math.round(ex.duration / 1000) : '-') + '</td>'
+        + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
         + '<td style="max-width:260px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
     });
