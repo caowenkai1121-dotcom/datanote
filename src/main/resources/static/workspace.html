@@ -9367,7 +9367,7 @@ var ROUTES = {
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadFolders(); dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadFolders().then(function() { dbsyncLoadJobs(); }); dbsyncRefreshLogFilter(); } }
 };
 
 var currentRoute = null;
@@ -13529,9 +13529,8 @@ window.dbsyncSaveJob = function() {
     body.logicalDeleteField = logicalDeleteField;
     body.logicalDeleteValue = logicalDeleteValue;
   }
-  if (markSyncTs) {
-    body.syncTsField = syncTsField;
-  }
+  // markSyncTs 开启时发实际字段名，关闭时发空串让后端清掉残留字段名
+  body.syncTsField = markSyncTs ? syncTsField : '';
   if (_dbsyncEditId) body.id = _dbsyncEditId;
 
   apiPost('/api/sync-job/save', body).then(function(res) {
