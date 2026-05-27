@@ -264,7 +264,14 @@ public class CdcSyncEngine {
         broadcast("INFO", "CDC 写入 UPSERT " + table + "（" + columns.size() + " 列）");
     }
 
-    /** d：按主键 DELETE（主键值取自 before）。 */
+    /**
+     * d：按主键删除（主键值取自 before）。按 job.deleteMode 选择物理/逻辑删除：
+     * <ul>
+     *   <li>PHYSICAL（默认）：DELETE FROM target WHERE pk...</li>
+     *   <li>LOGICAL：UPDATE target SET {logicalDeleteField}=? WHERE pk...，值为 logicalDeleteValue（默认 '1'）；
+     *       logicalDeleteField 为空时记 WARN 并回退物理删除。</li>
+     * </ul>
+     */
     private void writeDelete(String db, String table, Map<String, Object> before) throws Exception {
         if (before == null || before.isEmpty()) {
             log.warn("CDC DELETE 缺少 before 数据，跳过 表={}", table);
@@ -275,15 +282,37 @@ public class CdcSyncEngine {
             log.warn("CDC DELETE 目标表无主键，跳过 表={}", table);
             return;
         }
-        String sql = buildDeleteSql(db, table, pkColumns);
-        try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (int i = 0; i < pkColumns.size(); i++) {
-                ps.setObject(i + 1, before.get(pkColumns.get(i)));
-            }
-            ps.executeUpdate();
+        boolean logical = "LOGICAL".equalsIgnoreCase(job.getDeleteMode());
+        String logicalField = job.getLogicalDeleteField();
+        if (logical && (logicalField == null || logicalField.trim().isEmpty())) {
+            log.warn("CDC 逻辑删除未配置 logicalDeleteField，回退物理删除 表={}", table);
+            logical = false;
         }
-        broadcast("INFO", "CDC 写入 DELETE " + table);
+
+        if (logical) {
+            String logicalValue = job.getLogicalDeleteValue() == null ? "1" : job.getLogicalDeleteValue();
+            String sql = buildLogicalDeleteSql(db, table, logicalField, pkColumns);
+            try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                // SET {field}=? 在前，WHERE pk=? 在后
+                ps.setObject(1, logicalValue);
+                for (int i = 0; i < pkColumns.size(); i++) {
+                    ps.setObject(i + 2, before.get(pkColumns.get(i)));
+                }
+                ps.executeUpdate();
+            }
+            broadcast("INFO", "CDC 逻辑删除 " + table + "（" + logicalField + "=" + logicalValue + "）");
+        } else {
+            String sql = buildDeleteSql(db, table, pkColumns);
+            try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                for (int i = 0; i < pkColumns.size(); i++) {
+                    ps.setObject(i + 1, before.get(pkColumns.get(i)));
+                }
+                ps.executeUpdate();
+            }
+            broadcast("INFO", "CDC 写入 DELETE " + table);
+        }
     }
 
     /** 取目标表主键（缓存）。key 用 db.table，避免多库同名表取错主键。 */
@@ -439,5 +468,20 @@ public class CdcSyncEngine {
                 .map(c -> com.datanote.sync.util.SqlIdentifiers.quote(c) + " = ?")
                 .collect(Collectors.joining(" AND "));
         return "DELETE FROM " + fullTable + " WHERE " + where;
+    }
+
+    /**
+     * 按主键构建逻辑删除 UPDATE SQL：{@code UPDATE db.table SET `field` = ? WHERE pk = ? [AND ...]}。
+     * 库表/列名经 SqlIdentifiers 校验+反引号；标记值与主键值均为 PreparedStatement 参数（占位 ?）。
+     * 参数顺序：第 1 个为标记值，其后依次为各主键值。
+     */
+    static String buildLogicalDeleteSql(String db, String table, String logicalField, List<String> pkColumns) {
+        String fullTable = com.datanote.sync.util.SqlIdentifiers.quote(db)
+                + "." + com.datanote.sync.util.SqlIdentifiers.quote(table);
+        String set = com.datanote.sync.util.SqlIdentifiers.quote(logicalField) + " = ?";
+        String where = pkColumns.stream()
+                .map(c -> com.datanote.sync.util.SqlIdentifiers.quote(c) + " = ?")
+                .collect(Collectors.joining(" AND "));
+        return "UPDATE " + fullTable + " SET " + set + " WHERE " + where;
     }
 }
