@@ -5,8 +5,10 @@ import com.datanote.mapper.DnCdcOffsetMapper;
 import com.datanote.mapper.DnCdcSchemaHistoryMapper;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnSyncJobMapper;
+import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnDatasource;
 import com.datanote.model.DnSyncJob;
+import com.datanote.model.DnTaskExecution;
 import com.datanote.service.LogBroadcastService;
 import com.datanote.sync.cdc.CdcStoreHolder;
 import com.datanote.sync.connector.ColumnDef;
@@ -22,11 +24,15 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * CDC 同步引擎生命周期管理：按 jobId 登记运行中的 {@link CdcSyncEngine}，提供 start/stop/status。
@@ -46,6 +52,7 @@ public class CdcEngineManager {
     private final LogBroadcastService logBroadcastService;
     private final SyncJobService syncJobService;
     private final TableSchemaService tableSchemaService;
+    private final DnTaskExecutionMapper taskExecutionMapper;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -56,6 +63,11 @@ public class CdcEngineManager {
 
     /** jobId -> 运行中的引擎实例。 */
     private final Map<Long, CdcSyncEngine> engines = new ConcurrentHashMap<>();
+    /** jobId -> 当前运行对应的执行记录 id（dn_task_execution）。 */
+    private final Map<Long, Long> jobExecId = new ConcurrentHashMap<>();
+    /** 定期把运行中 CDC 引擎的计数/日志落库到执行记录。 */
+    private ScheduledExecutorService flushScheduler;
+    private static final long FLUSH_INTERVAL_SEC = 5L;
 
     public CdcEngineManager(DnCdcOffsetMapper offsetMapper,
                             DnCdcSchemaHistoryMapper historyMapper,
@@ -64,7 +76,8 @@ public class CdcEngineManager {
                             ConnectionManager connectionManager,
                             LogBroadcastService logBroadcastService,
                             SyncJobService syncJobService,
-                            TableSchemaService tableSchemaService) {
+                            TableSchemaService tableSchemaService,
+                            DnTaskExecutionMapper taskExecutionMapper) {
         this.offsetMapper = offsetMapper;
         this.historyMapper = historyMapper;
         this.syncJobMapper = syncJobMapper;
@@ -73,6 +86,7 @@ public class CdcEngineManager {
         this.logBroadcastService = logBroadcastService;
         this.syncJobService = syncJobService;
         this.tableSchemaService = tableSchemaService;
+        this.taskExecutionMapper = taskExecutionMapper;
     }
 
     /**
@@ -84,6 +98,7 @@ public class CdcEngineManager {
     @PostConstruct
     public void init() {
         CdcStoreHolder.init(offsetMapper, historyMapper);
+        startFlushScheduler();
         List<DnSyncJob> jobs = syncJobMapper.selectList(
                 new LambdaQueryWrapper<DnSyncJob>()
                         .eq(DnSyncJob::getSyncMode, "CDC")
@@ -132,6 +147,7 @@ public class CdcEngineManager {
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");
+        createExecution(jobId);
         log.info("CDC 任务已启动 jobId={}", jobId);
     }
 
@@ -206,6 +222,7 @@ public class CdcEngineManager {
         if (engine != null) {
             engine.stop();
         }
+        finalizeExecution(jobId, "STOPPED", engine);
         updateStatus(jobId, "STOPPED");
         log.info("CDC 任务已停止 jobId={}", jobId);
     }
@@ -224,15 +241,117 @@ public class CdcEngineManager {
         syncJobMapper.updateById(update);
     }
 
+    /** 启动定期刷新调度：把运行中引擎的计数/日志落库；探测自行退出的引擎并收尾为 FAILED。 */
+    private void startFlushScheduler() {
+        if (flushScheduler != null) {
+            return;
+        }
+        flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "datanote-cdc-flush");
+            t.setDaemon(true);
+            return t;
+        });
+        flushScheduler.scheduleWithFixedDelay(this::flushAll,
+                FLUSH_INTERVAL_SEC, FLUSH_INTERVAL_SEC, TimeUnit.SECONDS);
+    }
+
+    /** 遍历运行中引擎落库；对已自行退出（如 binlog 错误）的引擎收尾为 FAILED 并清理。 */
+    private void flushAll() {
+        for (Map.Entry<Long, CdcSyncEngine> entry : engines.entrySet()) {
+            Long jobId = entry.getKey();
+            CdcSyncEngine engine = entry.getValue();
+            try {
+                if (engine.isRunning()) {
+                    updateExecutionRunning(jobId, engine);
+                } else {
+                    engines.remove(jobId, engine);
+                    finalizeExecution(jobId, "FAILED", engine);
+                    updateStatus(jobId, "FAILED");
+                }
+            } catch (Exception e) {
+                log.warn("CDC 执行记录刷新失败 jobId={}", jobId, e);
+            }
+        }
+    }
+
+    /** 创建一条 RUNNING 执行记录并登记 jobId->execId（失败仅告警，不影响同步运行）。 */
+    private void createExecution(Long jobId) {
+        try {
+            DnTaskExecution exec = new DnTaskExecution();
+            exec.setSyncTaskId(jobId);
+            exec.setTaskType("DbSync");
+            exec.setTriggerType("cdc");
+            exec.setStatus("RUNNING");
+            exec.setStartTime(LocalDateTime.now());
+            exec.setReadCount(0L);
+            exec.setWriteCount(0L);
+            exec.setErrorCount(0L);
+            exec.setCreatedAt(LocalDateTime.now());
+            taskExecutionMapper.insert(exec);
+            jobExecId.put(jobId, exec.getId());
+        } catch (Exception e) {
+            log.warn("CDC 创建执行记录失败 jobId={}（不影响同步运行）", jobId, e);
+        }
+    }
+
+    /** 运行中：仅更新计数与日志快照（状态保持 RUNNING）。 */
+    private void updateExecutionRunning(Long jobId, CdcSyncEngine engine) {
+        Long execId = jobExecId.get(jobId);
+        if (execId == null) {
+            return;
+        }
+        DnTaskExecution upd = new DnTaskExecution();
+        upd.setId(execId);
+        upd.setReadCount(engine.getReadCount());
+        upd.setWriteCount(engine.getWriteCount());
+        upd.setErrorCount(engine.getErrorCount());
+        upd.setLog(engine.getLogSnapshot());
+        taskExecutionMapper.updateById(upd);
+    }
+
+    /** 收尾：写终态、结束时间、耗时与最终计数/日志。jobExecId 原子摘除避免重复收尾。 */
+    private void finalizeExecution(Long jobId, String status, CdcSyncEngine engine) {
+        Long execId = jobExecId.remove(jobId);
+        if (execId == null) {
+            return;
+        }
+        try {
+            DnTaskExecution exec = taskExecutionMapper.selectById(execId);
+            if (exec == null) {
+                return;
+            }
+            LocalDateTime end = LocalDateTime.now();
+            exec.setStatus(status);
+            exec.setEndTime(end);
+            if (exec.getStartTime() != null) {
+                exec.setDuration((int) Duration.between(exec.getStartTime(), end).getSeconds());
+            }
+            if (engine != null) {
+                exec.setReadCount(engine.getReadCount());
+                exec.setWriteCount(engine.getWriteCount());
+                exec.setErrorCount(engine.getErrorCount());
+                exec.setLog(engine.getLogSnapshot());
+            }
+            taskExecutionMapper.updateById(exec);
+        } catch (Exception e) {
+            log.warn("CDC 执行记录收尾失败 jobId={}", jobId, e);
+        }
+    }
+
     /** 应用关闭时停掉所有引擎。 */
     @PreDestroy
     public void destroy() {
         log.info("CDC 关闭：停止全部引擎，数量={}", engines.size());
+        if (flushScheduler != null) {
+            flushScheduler.shutdownNow();
+        }
         for (Map.Entry<Long, CdcSyncEngine> entry : engines.entrySet()) {
+            Long jobId = entry.getKey();
             try {
                 entry.getValue().stop();
+                finalizeExecution(jobId, "STOPPED", entry.getValue());
             } catch (Exception e) {
-                log.error("关闭 CDC 引擎失败 jobId={}", entry.getKey(), e);
+                log.error("关闭 CDC 引擎失败 jobId={}", jobId, e);
             }
         }
         engines.clear();
