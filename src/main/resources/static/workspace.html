@@ -4013,6 +4013,17 @@ html, body {
                 </button>
               </div>
             </div>
+            <!-- 文件夹区域 -->
+            <div id="dbsyncFolderBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg-hover);border-radius:6px;border:1px solid var(--border);">
+              <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">目录：</span>
+              <div id="dbsyncFolderTabs" style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button class="dbsync-folder-tab active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;background:var(--primary);color:#fff;">全部</button>
+              </div>
+              <button class="btn btn-sm" onclick="dbsyncOpenCreateFolder()" style="margin-left:4px;font-size:11px;white-space:nowrap;" title="新建文件夹">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 2v10M2 7h10"/></svg>
+                新建文件夹
+              </button>
+            </div>
             <div id="dbsyncJobsContent">
               <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
             </div>
@@ -4055,6 +4066,12 @@ html, body {
             <div class="dbsync-form-row" style="grid-column:1/-1;">
               <label class="dbsync-form-label">任务名称 <span style="color:#ff4d4f">*</span></label>
               <input class="dbsync-form-input" id="dfsJobName" placeholder="请输入任务名称">
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">所属目录</label>
+              <select class="dbsync-form-select" id="dfsFolderId">
+                <option value="0">根目录（不归类）</option>
+              </select>
             </div>
             <div class="dbsync-form-row" style="grid-column:1/-1;">
               <label class="dbsync-form-label">同步模式 <span style="color:#ff4d4f">*</span></label>
@@ -9330,7 +9347,7 @@ var ROUTES = {
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadFolders(); dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
 };
 
 var currentRoute = null;
@@ -13343,6 +13360,10 @@ window.dbsyncOpenCreateModal = function() {
   document.getElementById('dfsScheduleCron').value = '';
   document.getElementById('dfsStatus').value      = 'CREATED';
   document.getElementById('dfsTableRows').innerHTML = '';
+  dbsyncFillFolderSelect();
+  // 默认归到当前选中文件夹
+  var folderSel = document.getElementById('dfsFolderId');
+  if (folderSel) folderSel.value = String(_dbsyncSelectedFolderId || 0);
   dbsyncResetAdvanced();
   dbsyncOnModeChange();
   // 预加载数据源
@@ -13383,6 +13404,10 @@ window.dbsyncOpenEditModal = function(id) {
     document.getElementById('dfsStatus').value   = job.status || 'CREATED';
     dbsyncOnModeChange();
     dbsyncFillAdvanced(job);
+    // 文件夹回显
+    dbsyncFillFolderSelect();
+    var folderSel = document.getElementById('dfsFolderId');
+    if (folderSel) folderSel.value = String(job.folderId || 0);
     // 加载源库目标库
     var p1 = Promise.resolve();
     if (job.sourceDsId) {
@@ -13445,6 +13470,9 @@ window.dbsyncSaveJob = function() {
   var schedCron  = document.getElementById('dfsScheduleCron').value;
   var status     = document.getElementById('dfsStatus').value;
   var tableConfigs = dbsyncCollectTableConfigs();
+  // 文件夹
+  var folderIdEl = document.getElementById('dfsFolderId');
+  var folderId = folderIdEl ? parseInt(folderIdEl.value || '0') : 0;
   // 高级设置
   var deleteModeEl = document.querySelector('input[name="dfsDeleteMode"]:checked');
   var deleteMode = deleteModeEl ? deleteModeEl.value : 'PHYSICAL';
@@ -13473,6 +13501,7 @@ window.dbsyncSaveJob = function() {
     scheduleCron: schedCron,
     status:       status,
     tableConfig:  JSON.stringify(tableConfigs),
+    folderId:     folderId,
     deleteMode:   deleteMode,
     markSyncTs:   markSyncTs
   };
@@ -13496,6 +13525,92 @@ window.dbsyncSaveJob = function() {
   }).catch(function() { showToast('保存请求失败', 'error'); });
 };
 
+/* ---------- 文件夹状态 ---------- */
+var _dbsyncFolders = [];        // 所有文件夹列表
+var _dbsyncSelectedFolderId = 0; // 0 = 全部
+
+/* ---------- 加载文件夹列表 ---------- */
+function dbsyncLoadFolders() {
+  return api('/api/sync-folder/list').then(function(res) {
+    _dbsyncFolders = (res.code === 0 && res.data) ? res.data : [];
+    dbsyncRenderFolderTabs();
+    dbsyncFillFolderSelect();
+  }).catch(function() { _dbsyncFolders = []; });
+}
+
+function dbsyncRenderFolderTabs() {
+  var wrap = document.getElementById('dbsyncFolderTabs');
+  if (!wrap) return;
+  var html = '<button class="dbsync-folder-tab' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (_dbsyncSelectedFolderId === 0 ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">全部</button>';
+  // 只渲染根文件夹（parentId=0 或 null）的一级
+  _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+    var isActive = _dbsyncSelectedFolderId === f.id;
+    html += '<span style="display:inline-flex;align-items:center;gap:2px;">'
+      + '<button class="dbsync-folder-tab' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (isActive ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">'
+      + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10" style="margin-right:2px;"><path d="M1 3a1 1 0 011-1h2.586a1 1 0 01.707.293L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
+      + escapeHtml(f.folderName || '') + '</button>'
+      + '<button onclick="dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹" style="padding:1px 4px;font-size:11px;border:none;background:transparent;cursor:pointer;color:var(--text-muted);" onmouseover="this.style.color=\'var(--error)\'" onmouseout="this.style.color=\'var(--text-muted)\'">×</button>'
+      + '</span>';
+  });
+  wrap.innerHTML = html;
+}
+
+function dbsyncFillFolderSelect() {
+  var sel = document.getElementById('dfsFolderId');
+  if (!sel) return;
+  var cur = sel.value || '0';
+  sel.innerHTML = '<option value="0">根目录（不归类）</option>';
+  _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+    sel.innerHTML += '<option value="' + f.id + '"' + (String(f.id) === String(cur) ? ' selected' : '') + '>' + escapeHtml(f.folderName || '') + '</option>';
+  });
+}
+
+window.dbsyncSelectFolder = function(btn, folderId) {
+  _dbsyncSelectedFolderId = folderId;
+  dbsyncRenderFolderTabs();
+  dbsyncApplyFolderFilter();
+};
+
+function dbsyncApplyFolderFilter() {
+  if (_dbsyncSelectedFolderId === 0) {
+    dbsyncRenderJobs(_dbsyncAllJobs);
+  } else {
+    dbsyncRenderJobs((_dbsyncAllJobs || []).filter(function(j) {
+      return String(j.folderId || 0) === String(_dbsyncSelectedFolderId);
+    }));
+  }
+}
+
+/* ---------- 新建文件夹 ---------- */
+window.dbsyncOpenCreateFolder = function() {
+  var name = window.prompt('请输入文件夹名称：');
+  if (!name || !name.trim()) return;
+  apiPost('/api/sync-folder/save', { folderName: name.trim(), parentId: 0 }).then(function(res) {
+    if (res.code === 0) {
+      showToast('文件夹创建成功', 'success');
+      dbsyncLoadFolders();
+    } else {
+      showToast('创建失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('请求失败', 'error'); });
+};
+
+/* ---------- 删除文件夹 ---------- */
+window.dbsyncDeleteFolder = function(id, name) {
+  confirmBox('确定删除文件夹"' + escapeHtml(name) + '"？其下任务将移回根目录。', function() {
+    fetch('/api/sync-folder/' + id, { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+      if (res.code === 0) {
+        showToast('文件夹已删除', 'success');
+        if (_dbsyncSelectedFolderId === id) _dbsyncSelectedFolderId = 0;
+        dbsyncLoadFolders();
+        dbsyncLoadJobs();
+      } else {
+        showToast('删除失败: ' + (res.msg || ''), 'error');
+      }
+    }).catch(function() { showToast('删除请求失败', 'error'); });
+  });
+};
+
 /* ---------- 任务列表 ---------- */
 window.dbsyncLoadJobs = function() {
   var container = document.getElementById('dbsyncJobsContent');
@@ -13503,7 +13618,7 @@ window.dbsyncLoadJobs = function() {
   api('/api/sync-job/list').then(function(res) {
     if (res.code !== 0) { container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
     _dbsyncAllJobs = res.data || [];
-    dbsyncRenderJobs(_dbsyncAllJobs);
+    dbsyncApplyFolderFilter();
   }).catch(function() {
     container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
   });
@@ -13511,8 +13626,11 @@ window.dbsyncLoadJobs = function() {
 
 window.dbsyncFilterJobs = function() {
   var kw = (document.getElementById('dbsyncSearchInput').value || '').toLowerCase();
-  if (!kw) { dbsyncRenderJobs(_dbsyncAllJobs); return; }
-  dbsyncRenderJobs(_dbsyncAllJobs.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
+  var base = (_dbsyncSelectedFolderId === 0) ? _dbsyncAllJobs : (_dbsyncAllJobs || []).filter(function(j) {
+    return String(j.folderId || 0) === String(_dbsyncSelectedFolderId);
+  });
+  if (!kw) { dbsyncRenderJobs(base); return; }
+  dbsyncRenderJobs(base.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
 };
 
 function dbsyncRenderJobs(list) {
