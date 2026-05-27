@@ -50,6 +50,51 @@
             <version>2.0.43</version>
         </dependency>
 
+        <!-- ============================================================ -->
+        <!-- Debezium 嵌入式 CDC（计划3）：进程内读 MySQL binlog，零 Kafka broker、零外部服务 -->
+        <!-- Java 8 锁定 1.9.7.Final（对应 kafka-connect 3.2.0）                              -->
+        <!-- ============================================================ -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <version>1.9.7.Final</version>
+            <exclusions>
+                <!-- 与 Hadoop/Hive 传递依赖冲突的库，统一由现有 classpath 提供，避免版本打架 -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <version>1.9.7.Final</version>
+            <exclusions>
+                <!-- 复用项目已有的 mysql-connector-j 8.0.33，排除 debezium 自带的 mysql 驱动版本 -->
+                <exclusion>
+                    <groupId>mysql</groupId>
+                    <artifactId>mysql-connector-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.mysql</groupId>
+                    <artifactId>mysql-connector-j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
