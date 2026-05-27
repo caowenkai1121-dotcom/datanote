@@ -58,6 +58,22 @@ public class LogBroadcastService {
     }
 
     /**
+     * 广播同步任务状态变更（字符串状态，区别于 broadcastStatusChange 的 int 调度状态）。
+     * 推到 /topic/task-status，前端据 taskId+taskType 实时刷新任务状态。
+     *
+     * @param jobId  同步任务ID
+     * @param status 新状态（RUNNING/SUCCESS/FAILED 等）
+     */
+    public void broadcastSyncStatus(Long jobId, String status) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("taskId", jobId);
+        payload.put("taskType", "DbSync");
+        payload.put("status", status);
+        payload.put("time", LocalDateTime.now().format(FMT));
+        messagingTemplate.convertAndSend("/topic/task-status", payload);
+    }
+
+    /**
      * 广播系统通知
      *
      * @param level   通知级别

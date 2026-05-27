@@ -54,6 +54,15 @@ public class SyncJobService {
         syncJobMapper.deleteById(id);
     }
 
+    /** 仅更新任务状态（RUNNING/SUCCESS/FAILED 等），不动其他字段。 */
+    public void updateStatus(Long jobId, String status) {
+        DnSyncJob update = new DnSyncJob();
+        update.setId(jobId);
+        update.setStatus(status);
+        update.setUpdatedAt(LocalDateTime.now());
+        syncJobMapper.updateById(update);
+    }
+
     /** 把内存中的表配置（含更新后的增量断点）序列化写回 dn_sync_job.tableConfig。 */
     public void updateTableConfig(Long jobId, List<TableSyncConfig> tables) {
         DnSyncJob job = syncJobMapper.selectById(jobId);
