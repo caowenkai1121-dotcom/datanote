@@ -208,7 +208,7 @@ public class AiAssistController {
     @Operation(summary = "AI生成标准化表名")
     @PostMapping("/generate-table-name")
     public R<Map<String, Object>> generateTableName(@RequestBody GenerateTableNameRequest req) {
-        String prompt = "你是一个数据仓库命名规范专家。请根据以下信息生成一个标准化的Hive表名：\n"
+        String prompt = "你是一个数据仓库命名规范专家。请根据以下信息生成一个标准化的Doris表名：\n"
                 + "- 数仓分层：" + req.getLayer() + "\n"
                 + "- 表类型：" + req.getTableType() + "\n"
                 + "- 主题域：" + req.getSubject() + "\n"

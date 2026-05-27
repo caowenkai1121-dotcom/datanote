@@ -35,6 +35,21 @@ public class DolphinService {
     @Value("${dolphin.tenant-code:default}")
     private String tenantCode;
 
+    @Value("${doris.host:38.76.183.50}")
+    private String dorisHost;
+
+    @Value("${doris.query-port:9030}")
+    private int dorisQueryPort;
+
+    @Value("${doris.database:ods}")
+    private String dorisDatabase;
+
+    @Value("${doris.username:root}")
+    private String dorisUsername;
+
+    @Value("${doris.password:123456}")
+    private String dorisPassword;
+
     // ======================== 通用 HTTP 方法 ========================
 
     private JSONObject doGet(String path) throws Exception {
@@ -470,13 +485,15 @@ public class DolphinService {
             case "hive":
             case "sql":
             default:
-                // HiveSQL 统一用 SHELL 类型，通过 hive -e 执行，避免依赖 DS 数据源配置
+                // DorisSQL 统一用 SHELL 类型，通过 mysql 客户端执行，避免依赖 DS 数据源配置
                 taskType = "SHELL";
                 String shellScript = "#!/bin/bash\n"
-                        + "# DataNote HiveSQL: " + name + "\n"
-                        + "hive -e \"$(cat <<'HIVESQL'\n"
+                        + "# DataNote Doris SQL: " + name + "\n"
+                        + "mysql -h " + dorisHost + " -P " + dorisQueryPort
+                        + " -u" + dorisUsername + " -p'" + dorisPassword.replace("'", "'\\''") + "' "
+                        + dorisDatabase + " -e \"$(cat <<'DORISSQL'\n"
                         + scriptContent + "\n"
-                        + "HIVESQL\n"
+                        + "DORISSQL\n"
                         + ")\"";
                 taskParams.put("rawScript", shellScript);
                 taskParams.put("localParams", new JSONArray());

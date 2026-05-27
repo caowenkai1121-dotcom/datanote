@@ -3124,7 +3124,7 @@ html, body {
               <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#1890ff" stroke-width="1.5"><rect x="3" y="2" width="14" height="16" rx="2"/><path d="M7 10h6M10 7v6"/></svg>
             </div>
             <div style="font-size:14px;font-weight:600;margin-bottom:4px;">新建 SQL 脚本</div>
-            <div style="font-size:12px;color:var(--text-muted);">在文件树中创建 HiveSQL 脚本</div>
+            <div style="font-size:12px;color:var(--text-muted);">在文件树中创建 DorisSQL 脚本</div>
           </div>
           <div onclick="navigateTo('operations')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;cursor:pointer;transition:box-shadow .2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
             <div style="width:36px;height:36px;border-radius:8px;background:rgba(82,196,26,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
@@ -3229,7 +3229,7 @@ html, body {
               <div class="intg-panel-icon" style="background:rgba(82,196,26,.08);">
                 <svg viewBox="0 0 16 16" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
               </div>
-              <h3>目标端（Hive ODS）</h3>
+              <h3>目标端（Doris ODS）</h3>
               <span class="intg-panel-tag intg-tag-target">Writer</span>
             </div>
             <div class="intg-panel-body">
@@ -3283,8 +3283,8 @@ html, body {
                 <th>MySQL 字段</th>
                 <th>MySQL 类型</th>
                 <th style="width:40px;text-align:center;">→</th>
-                <th>Hive 字段</th>
-                <th>Hive 类型</th>
+                <th>Doris 字段</th>
+                <th>Doris 类型</th>
                 <th>注释</th>
               </tr>
             </thead>
@@ -3295,7 +3295,7 @@ html, body {
         <!-- DDL preview -->
         <div class="intg-ddl" id="intgDdl" style="display:none;">
           <div class="intg-ddl-header">
-            <h4>Hive 建表语句预览</h4>
+            <h4>Doris 建表语句预览</h4>
             <button class="intg-copy-btn" onclick="intgCopyDDL()">
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="9" height="9" rx="1"/><path d="M4 10H2.5A1.5 1.5 0 011 8.5v-7A1.5 1.5 0 012.5 0h7A1.5 1.5 0 0111 1.5V4"/></svg>
               复制
@@ -3779,13 +3779,13 @@ html, body {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">数据源管理</h2>
             </div>
-            <!-- Hive 连接状态 -->
+            <!-- Doris 连接状态 -->
             <div id="hiveStatusBar" style="padding:8px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;display:none;"></div>
-            <!-- Hive 连接配置 -->
+            <!-- Doris 连接配置 -->
             <div style="max-width:520px;">
-              <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">Hive 连接</div>
-              <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="127.0.0.1" value="127.0.0.1"></div>
-              <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="10800" value="10800" type="number"></div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">Doris 连接</div>
+              <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="38.76.183.50" value="38.76.183.50"></div>
+              <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="9030" value="9030" type="number"></div>
               <div class="ds-form-row"><label>认证方式</label>
                 <select id="cfgHiveAuth" style="flex:1;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
                   <option value="noSasl">NOSASL（无认证）</option>
@@ -3795,13 +3795,9 @@ html, body {
               </div>
               <div class="ds-form-row"><label>用户名</label><input id="cfgHiveUser" placeholder="可选"></div>
               <div class="ds-form-row"><label>密码</label><input id="cfgHivePass" type="password" placeholder="可选"></div>
-              <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="default" value="default"></div>
-              <div style="font-size:14px;font-weight:600;margin:20px 0 12px;color:var(--text-regular);">HDFS 配置</div>
-              <div class="ds-form-row"><label>NameNode</label><input id="cfgHdfsFs" placeholder="hdfs://localhost:8020" value="hdfs://localhost:8020"></div>
-              <div class="ds-form-row"><label>仓库路径</label><input id="cfgHdfsWarehouse" placeholder="/user/hive/warehouse" value="/user/hive/warehouse"></div>
+              <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="ods" value="ods"></div>
               <div style="display:flex;gap:8px;margin-top:16px;">
-                <button class="btn btn-sm" onclick="testHiveConnection()">测试 Hive 连接</button>
-                <button class="btn btn-sm" onclick="testHdfsConnection()">测试 HDFS 连接</button>
+                <button class="btn btn-sm" onclick="testHiveConnection()">测试 Doris 连接</button>
                 <button class="btn btn-primary btn-sm" onclick="saveDatasourceConfig()">保存配置</button>
               </div>
               <div id="hiveTestResult" style="margin-top:10px;font-size:13px;display:none;"></div>
@@ -3896,7 +3892,7 @@ html, body {
             <div class="prop-value">
               <select class="prop-select" id="propNodeType">
                 <option selected>数据同步</option>
-                <option>HiveSQL</option>
+                <option>DorisSQL</option>
                 <option>Shell</option>
                 <option>Python</option>
               </select>
@@ -4466,7 +4462,7 @@ html, body {
         <div class="iw-panel-icon" style="background:rgba(82,196,26,.08);">
           <svg viewBox="0 0 16 16" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
         </div>
-        <h3>目标端（Hive ODS）</h3>
+        <h3>目标端（Doris ODS）</h3>
         <span class="iw-panel-tag iw-tag-target">Writer</span>
       </div>
       <div class="iw-panel-body">
@@ -4520,8 +4516,8 @@ html, body {
           <th>MySQL 字段</th>
           <th>MySQL 类型</th>
           <th style="width:50px;text-align:center;">→</th>
-          <th>Hive 字段</th>
-          <th>Hive 类型</th>
+          <th>Doris 字段</th>
+          <th>Doris 类型</th>
           <th>注释</th>
         </tr>
       </thead>
@@ -4533,7 +4529,7 @@ html, body {
   <!-- DDL Preview -->
   <div class="iw-ddl-section" id="iwDdlSection" style="display:none;">
     <div class="iw-ddl-header">
-      <h4>Hive 建表语句预览</h4>
+      <h4>Doris 建表语句预览</h4>
       <button class="iw-copy-btn" onclick="iwCopyDDL()">
         <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="9" height="9" rx="1"/><path d="M4 10H2.5A1.5 1.5 0 011 8.5v-7A1.5 1.5 0 012.5 0h7A1.5 1.5 0 0111 1.5V4"/></svg>
         复制
@@ -4656,6 +4652,16 @@ html, body {
 </div>
 
 <script>
+// Monaco's AMD loader can emit this harmless duplicate-module warning while
+// resolving editor.main and editor.main.nls on the same page.
+(function() {
+  var originalWarn = console.warn;
+  console.warn = function() {
+    var text = Array.prototype.join.call(arguments, ' ');
+    if (text.indexOf("Duplicate definition of module 'vs/editor/editor.main'") >= 0) return;
+    return originalWarn.apply(console, arguments);
+  };
+})();
 // ===== 通用弹窗（替代 alert/confirm/prompt）=====
 var _msgBoxResolve = null;
 var _msgInfoIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(24,144,255,.1)" stroke="#1890ff" stroke-width="2"/><path d="M24 16v2M24 22v10" stroke="#1890ff" stroke-width="3" stroke-linecap="round"/></svg>';
@@ -5101,10 +5107,18 @@ function ctxNewSqlScript() {
     showAiScriptNameModal(ctxFolderTarget.id, folderLayer);
     return;
   }
+  createSqlScriptInFolder(ctxFolderTarget.id);
+}
+
+function createSqlScriptInFolder(folderId) {
+  if (!folderId) {
+    msgBox('未找到可创建 SQL 脚本的目录，请先在文件树中创建目录');
+    return;
+  }
   promptBox('请输入 SQL 脚本名称：', '', function(name) {
     if (!name) return;
     apiPost('/api/script/save', {
-      scriptName: name, scriptType: 'hive', folderId: ctxFolderTarget.id, content: '-- ' + name + '\n'
+      scriptName: name, scriptType: 'hive', folderId: folderId, content: '-- ' + name + '\n'
     }).then(function(res) {
       if (res.code === 0) {
         loadFileTree();
@@ -5406,7 +5420,7 @@ function openSyncTask(el, id, name, db, table, mode, dsId) {
 
   document.getElementById('propNodeName').value = name;
   document.getElementById('propNodeType').value = '数据同步';
-  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Hive ODS 层';
+  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Doris ODS 层';
 
   // 加载同步任务调度状态，更新上线按钮
   loadSyncSchedConfig(id);
@@ -5433,7 +5447,7 @@ function openSync(el, name, db, table) {
   document.getElementById('propNodeName').value = name;
   document.getElementById('propNodeType').value = '数据同步';
   var mode = name.endsWith('_di') ? 'di' : 'df';
-  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Hive ODS 层';
+  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Doris ODS 层';
 }
 
 // ===== Open SQL file =====
@@ -5446,7 +5460,7 @@ function openFile(el, type, name) {
 
   // Update right panel
   document.getElementById('propNodeName').value = name;
-  document.getElementById('propNodeType').value = 'HiveSQL';
+  document.getElementById('propNodeType').value = 'DorisSQL';
   document.getElementById('propDesc').value = name + ' 处理脚本';
 }
 
@@ -5565,12 +5579,16 @@ function renderColumns(columns, odsName, db, table) {
   document.getElementById('intgEmpty').style.display = 'none';
 
   // Load DDL from backend
-  api('/api/hive/preview-ddl?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).then(function(res) {
+  var ddlUrl = '/api/doris/preview-ddl?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+  var dsId = document.getElementById('srcConn') ? document.getElementById('srcConn').value : '';
+  if (dsId) ddlUrl += '&datasourceId=' + encodeURIComponent(dsId);
+  if (currentSyncTaskId) ddlUrl += '&syncTaskId=' + encodeURIComponent(currentSyncTaskId);
+  api(ddlUrl).then(function(res) {
     if (res.code === 0 && res.data) {
       var rawDdl = res.data.ddl || '';
       // Syntax highlight
       var ddl = rawDdl
-        .replace(/\b(CREATE EXTERNAL TABLE IF NOT EXISTS|COMMENT|PARTITIONED BY|ROW FORMAT DELIMITED FIELDS TERMINATED BY|STORED AS ORC|LOCATION|TBLPROPERTIES|STRING)\b/g, '<span class="kw">$1</span>')
+        .replace(/\b(CREATE TABLE IF NOT EXISTS|ENGINE=OLAP|DUPLICATE KEY|COMMENT|DISTRIBUTED BY RANDOM BUCKETS|PROPERTIES|STRING|DATE)\b/g, '<span class="kw">$1</span>')
         .replace(/(--[^\n]*)/g, '<span class="cm">$1</span>')
         .replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
       document.getElementById('intgDdlContent').innerHTML = ddl;
@@ -5623,6 +5641,7 @@ function intgCreateTable() {
   var db = document.getElementById('srcDb').value;
   var table = document.getElementById('srcTable').value;
   var syncMode = document.getElementById('syncMode').value || 'df';
+  var dsId = document.getElementById('srcConn') ? document.getElementById('srcConn').value : '';
   if (!db || !table) { msgBox('请先选择源表'); return; }
 
   var odsName = 'ods_' + db + '_' + table.toLowerCase() + '_' + syncMode;
@@ -5633,9 +5652,11 @@ function intgCreateTable() {
   log.innerHTML = '';
   appendLog('<span class="log-info">INFO</span> 一键建表: ods.' + odsName);
 
-  var logId = addRunLog('create', 'Hive 建表: ods.' + odsName, 'running', '正在创建 Hive 表...');
+  var logId = addRunLog('create', 'Doris 建表: ods.' + odsName, 'running', '正在创建 Doris 表...');
 
-  apiPost('/api/hive/create-table', { db: db, table: table, syncMode: syncMode }).then(function(res) {
+  var createParams = { db: db, table: table, syncMode: syncMode, datasourceId: dsId };
+  if (currentSyncTaskId) createParams.syncTaskId = currentSyncTaskId;
+  apiPost('/api/doris/create-table', createParams).then(function(res) {
     if (res.code === 0) {
       updateRunLog(logId, 'ok', '表 ods.' + res.data.odsTable + ' 创建成功', res.data.ddl);
       appendLog('<span class="log-ok">SUCCESS</span> 表 ods.' + res.data.odsTable + ' 创建成功');
@@ -5654,6 +5675,7 @@ function intgRunSync() {
   var db = document.getElementById('srcDb').value;
   var table = document.getElementById('srcTable').value;
   var syncMode = document.getElementById('syncMode').value || 'df';
+  var dsId = document.getElementById('srcConn') ? document.getElementById('srcConn').value : '';
   if (!db || !table) { msgBox('请先选择源表'); return; }
 
   var odsName = 'ods_' + db + '_' + table.toLowerCase() + '_' + syncMode;
@@ -5678,7 +5700,7 @@ function intgRunSync() {
   }
 
   // 传 syncTaskId 让后端持久化
-  var syncParams = { db: db, table: table, syncMode: syncMode };
+  var syncParams = { db: db, table: table, syncMode: syncMode, datasourceId: dsId };
   if (currentSyncTaskId) syncParams.syncTaskId = currentSyncTaskId;
 
   apiPost('/api/datax/create-and-sync', syncParams).then(function(res) {
@@ -6286,7 +6308,7 @@ function runTask() {
     appendLog('<span class="log-info">INFO</span> 传参 bizdate=' + t1Date + '（T-1）');
   }
 
-  // SSE 流式执行：实时接收 Hive 日志
+  // SSE 流式执行：实时接收 Doris 日志
   var logId = 'run_' + Date.now();
 
   // 立刻在右侧运行日志插入一条"执行中"记录
@@ -6311,7 +6333,7 @@ function runTask() {
     var data = JSON.parse(e.data);
     var cls = data.level === 'ERROR' ? 'log-err' : data.level === 'OK' ? 'log-ok' : data.level === 'HIVE' ? '' : 'log-info';
     var prefix = data.level === 'HIVE'
-      ? '<span style="color:var(--text-muted);">[Hive]</span> '
+      ? '<span style="color:var(--text-muted);">[Doris]</span> '
       : '<span class="' + cls + '">[' + (data.time || '') + '] ' + data.level + '</span> ';
     appendLog(prefix + (data.message || '').replace(/</g, '&lt;'));
     if (panel) panel.scrollTop = panel.scrollHeight;
@@ -6365,9 +6387,9 @@ function runTask() {
     var submitBody = { sql: replaced };
     if (currentScriptId) submitBody.scriptId = currentScriptId;
     if (currentSyncTaskId) submitBody.syncTaskId = currentSyncTaskId;
-    apiPost('/api/hive/submit-execute', submitBody).then(function(res) {
+    apiPost('/api/doris/submit-execute', submitBody).then(function(res) {
       if (res.code === 0 && res.data && res.data.executionId) {
-        startSSE('/api/hive/stream-execute?executionId=' + res.data.executionId);
+        startSSE('/api/doris/stream-execute?executionId=' + res.data.executionId);
       } else {
         var tmpE = document.getElementById(logId);
         if (tmpE) { tmpE.querySelector('.run-log-status').className = 'run-log-status fail'; tmpE.querySelector('.run-log-status').textContent = 'FAILED'; }
@@ -6379,7 +6401,7 @@ function runTask() {
     var execParams = 'sql=' + encodedSql;
     if (currentScriptId) execParams += '&scriptId=' + currentScriptId;
     if (currentSyncTaskId) execParams += '&syncTaskId=' + currentSyncTaskId;
-    startSSE('/api/hive/stream-execute?' + execParams);
+    startSSE('/api/doris/stream-execute?' + execParams);
   }
 }
 
@@ -6415,6 +6437,7 @@ function autoSaveDatabaseName() {
 // Monaco Editor 初始化（用代理对象保持 codeArea.value 兼容性）
 var monacoEditor = null;
 var monacoReady = false;
+var monacoLoading = false;
 var _pendingEditorValue = null; // Monaco 未就绪时暂存待写入内容
 var codeArea = {
   get value() { return monacoEditor ? monacoEditor.getValue() : (_pendingEditorValue || ''); },
@@ -6440,6 +6463,8 @@ var codeArea = {
 function updateLines() {}
 
 function initMonacoEditor() {
+  if (monacoEditor || monacoReady || monacoLoading) return;
+  monacoLoading = true;
   // 动态加载 loader.js，避免重复定义
   if (typeof require !== 'undefined' && require.config) {
     _initMonacoAfterLoader();
@@ -6448,14 +6473,17 @@ function initMonacoEditor() {
   var s = document.createElement('script');
   s.src = 'https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js';
   s.onload = function() { _initMonacoAfterLoader(); };
-  s.onerror = function() { console.warn('Monaco loader 加载失败，编辑器不可用'); };
+  s.onerror = function() { monacoLoading = false; console.warn('Monaco loader 加载失败，编辑器不可用'); };
   document.head.appendChild(s);
 }
 
 function _initMonacoAfterLoader() {
+  if (monacoEditor || monacoReady) {
+    monacoLoading = false;
+    return;
+  }
   require.config({
-    paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' },
-    'vs/nls': { availableLanguages: { '*': 'zh-cn' } }
+    paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' }
   });
   require(['vs/editor/editor.main'], function() {
     // 定义暗色主题
@@ -6564,6 +6592,10 @@ function _initMonacoAfterLoader() {
     });
 
     monacoReady = true;
+    monacoLoading = false;
+  }, function(err) {
+    monacoLoading = false;
+    console.warn('Monaco editor 加载失败', err);
   });
 }
 
@@ -7063,6 +7095,7 @@ function testDatasource() {
 }
 
 // ===== File tree loading =====
+var cachedScriptTree = [];
 var FILE_TREE_OPEN_STATE_KEY = 'datanote:fileTreeOpenFolders';
 
 function getOpenFolderState() {
@@ -7112,6 +7145,8 @@ function loadFileTree() {
       tree.innerHTML = '<div style="padding:16px;color:var(--error);font-size:12px;">加载失败</div>';
       return;
     }
+
+    cachedScriptTree = res.data || [];
 
     // Cache datasources from the tree
     res.data.forEach(function(node) {
@@ -7231,7 +7266,7 @@ function openScriptFromTree(el, scriptId, name) {
   currentScriptName = name;
   selectedHistoryVersionId = null;
   document.getElementById('propNodeName').value = name;
-  document.getElementById('propNodeType').value = 'HiveSQL';
+  document.getElementById('propNodeType').value = 'DorisSQL';
 
   // Store scriptId/name in tab dataset and cache
   var tabEl = document.querySelector('[data-id="' + tabId + '"]');
@@ -8655,13 +8690,13 @@ function doParamRun() {
   appendLog('<span class="log-info">原始SQL</span> <pre style="margin:4px 0;white-space:pre-wrap;color:var(--text-muted);">' + sql.replace(/</g,'&lt;') + '</pre>');
   appendLog('<span style="background:#e6a23c;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">替换后SQL</span> <pre style="margin:4px 0;white-space:pre-wrap;color:var(--text-regular);border-left:3px solid #e6a23c;padding-left:8px;">' + replaced.replace(/</g,'&lt;') + '</pre>');
 
-  fetch('/api/hive/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: replaced }) })
+  fetch('/api/doris/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: replaced }) })
   .then(function(r) { return r.json(); })
   .then(function(res) {
     if (res.code === 0 && res.data) {
       var d = res.data;
       if (d.hiveLogs && d.hiveLogs.length > 0) {
-        d.hiveLogs.forEach(function(line) { appendLog('<span style="color:var(--text-muted);">[Hive]</span> ' + line.replace(/</g,'&lt;')); });
+        d.hiveLogs.forEach(function(line) { appendLog('<span style="color:var(--text-muted);">[Doris]</span> ' + line.replace(/</g,'&lt;')); });
       }
       appendLog('<span class="log-ok">SUCCESS</span> 执行完成，耗时 ' + d.duration + ' ms');
       if (d.type === 'query') {
@@ -9413,7 +9448,7 @@ function dmSaveField(idx) {
 
   // 高风险操作（改字段名或类型）需二次确认
   if (nameChanged || typeChanged) {
-    var warn = '即将修改 Hive 表结构：\n';
+    var warn = '即将修改 Doris 表结构：\n';
     if (nameChanged) warn += '  字段名: ' + col.name + ' → ' + newName + '\n';
     if (typeChanged) warn += '  类型: ' + col.type + ' → ' + newType + '\n';
     warn += '\n修改后下游 SQL 可能报错，确认执行？';
@@ -9430,7 +9465,7 @@ function doAlterColumn(idx, col, newName, newType, newCn) {
   var saveBtn = document.getElementById('dmSaveBtn_' + idx);
   if (saveBtn) { saveBtn.textContent = '保存中...'; saveBtn.disabled = true; }
 
-  apiPost('/api/hive/alter-column', {
+  apiPost('/api/doris/alter-column', {
     db: dmCurrentDb,
     table: dmCurrentTable,
     oldName: col.name,
@@ -9448,7 +9483,7 @@ function doAlterColumn(idx, col, newName, newType, newCn) {
       document.getElementById('dmFieldCn_' + idx).textContent = newCn;
       document.getElementById('dmFieldType_' + idx).textContent = newType;
       if (saveBtn) { saveBtn.style.display = 'none'; saveBtn.textContent = '保存'; saveBtn.disabled = false; }
-      msgBox('Hive 表结构已更新');
+      msgBox('Doris 表结构已更新');
     } else {
       if (saveBtn) { saveBtn.textContent = '保存'; saveBtn.disabled = false; }
       msgBox('修改失败: ' + (res.msg || ''));
@@ -11473,9 +11508,50 @@ function openScriptById(scriptId) {
 }
 
 function createNewScript() {
-  // Trigger the new SQL script creation - try to find a DWD folder or use first available
-  ctxFolderTarget = null;
-  showNewMenu({ getBoundingClientRect: function() { return { left: 200, bottom: 200 }; } });
+  navigateTo('develop');
+  resolveDefaultSqlFolder(function(folder) {
+    if (!folder) {
+      msgBox('未找到 DWD/DWS/ADS/DIM 目录，请先在文件树中创建目录');
+      return;
+    }
+    createSqlScriptInFolder(folder.id);
+  });
+}
+
+function resolveDefaultSqlFolder(cb) {
+  var folder = findDefaultSqlFolder(cachedScriptTree);
+  if (folder) {
+    cb(folder);
+    return;
+  }
+  api('/api/script/tree').then(function(res) {
+    cachedScriptTree = (res && res.code === 0 && res.data) ? res.data : [];
+    cb(findDefaultSqlFolder(cachedScriptTree));
+  }).catch(function() {
+    cb(null);
+  });
+}
+
+function findDefaultSqlFolder(nodes) {
+  var folders = [];
+  function walk(list) {
+    (list || []).forEach(function(node) {
+      if (node.type === 'folder') {
+        folders.push(node);
+        walk(node.children || []);
+      }
+    });
+  }
+  walk(nodes || []);
+
+  var preferredLayers = ['DWD', 'DWS', 'ADS', 'DIM'];
+  for (var i = 0; i < preferredLayers.length; i++) {
+    var found = folders.find(function(folder) { return folder.layer === preferredLayers[i]; });
+    if (found) return found;
+  }
+  return folders.find(function(folder) {
+    return folder.layer !== 'ODS' && folder.layer !== '数据源' && folder.layer !== '脚本';
+  }) || null;
 }
 
 // ===== Panel Resize =====
@@ -11586,49 +11662,42 @@ function switchSettingsTab(el, tab) {
 
 // ===== 系统配置：数据源管理 =====
 function loadDatasourceConfig() {
-  // 加载 Hive 配置
-  api('/api/system/config/hive').then(function(res) {
+  // 加载 Doris 配置
+  api('/api/system/config/doris').then(function(res) {
     if (res.code === 0 && res.data) {
       var d = res.data;
       // 从 URL 解析 host/port/db/auth
-      var url = d['hive.url'] || '';
+      var url = d['doris.url'] || '';
       if (url) {
-        var m = url.match(/jdbc:hive2:\/\/([^:\/]+):(\d+)\/([^;]*)/);
+        var m = url.match(/jdbc:mysql:\/\/([^:\/]+):(\d+)\/([^?;]*)/);
         if (m) {
           document.getElementById('cfgHiveHost').value = m[1];
           document.getElementById('cfgHivePort').value = m[2];
-          document.getElementById('cfgHiveDb').value = m[3] || 'default';
+          document.getElementById('cfgHiveDb').value = m[3] || 'ods';
         }
         document.getElementById('cfgHiveAuth').value = url.indexOf('auth=noSasl') >= 0 ? 'noSasl' : 'plain';
       }
-      if (d['hive.username']) document.getElementById('cfgHiveUser').value = d['hive.username'];
-      if (d['hive.password']) document.getElementById('cfgHivePass').value = d['hive.password'];
-    }
-  });
-  // 加载 HDFS 配置
-  api('/api/system/config/hdfs').then(function(res) {
-    if (res.code === 0 && res.data) {
-      if (res.data['hdfs.default-fs']) document.getElementById('cfgHdfsFs').value = res.data['hdfs.default-fs'];
-      if (res.data['hdfs.warehouse']) document.getElementById('cfgHdfsWarehouse').value = res.data['hdfs.warehouse'];
+      if (d['doris.username']) document.getElementById('cfgHiveUser').value = d['doris.username'];
+      if (d['doris.password']) document.getElementById('cfgHivePass').value = d['doris.password'];
     }
   });
   // 加载连接状态
-  api('/api/system/config/hive-status').then(function(res) {
+  api('/api/system/config/doris-status').then(function(res) {
     var bar = document.getElementById('hiveStatusBar');
     if (res.code === 0 && res.data) {
       bar.style.display = '';
       if (res.data.available) {
         bar.style.background = 'rgba(82,196,26,.08)';
         bar.style.color = '#52c41a';
-        bar.innerHTML = '● Hive 已连接';
+        bar.innerHTML = '● Doris 已连接';
       } else if (res.data.url) {
         bar.style.background = 'rgba(250,173,20,.08)';
         bar.style.color = '#faad14';
-        bar.innerHTML = '⚠ Hive 配置已保存，但连接不可用';
+        bar.innerHTML = '⚠ Doris 配置已保存，但连接不可用';
       } else {
         bar.style.background = 'rgba(0,0,0,.03)';
         bar.style.color = 'var(--text-muted)';
-        bar.innerHTML = '○ Hive 未配置 — 请填写以下信息后保存';
+        bar.innerHTML = '○ Doris 未配置 — 请填写以下信息后保存';
       }
     }
   });
@@ -11641,44 +11710,17 @@ function testHiveConnection() {
   result.textContent = '连接中...';
 
   var body = {
-    host: document.getElementById('cfgHiveHost').value || '127.0.0.1',
-    port: document.getElementById('cfgHivePort').value || '10800',
+    host: document.getElementById('cfgHiveHost').value || '38.76.183.50',
+    port: document.getElementById('cfgHivePort').value || '9030',
     authMode: document.getElementById('cfgHiveAuth').value,
-    database: document.getElementById('cfgHiveDb').value || 'default',
+    database: document.getElementById('cfgHiveDb').value || 'ods',
     username: document.getElementById('cfgHiveUser').value,
     password: document.getElementById('cfgHivePass').value
   };
   // 密码是占位符时不传
   if (body.password === '******') body.password = '';
 
-  fetch('/api/system/config/test-hive', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body)
-  }).then(function(r) { return r.json(); }).then(function(res) {
-    result.style.display = '';
-    if (res.code === 0) {
-      result.style.color = '#52c41a';
-      result.textContent = '✓ ' + res.data;
-    } else {
-      result.style.color = 'var(--error)';
-      result.textContent = '✗ ' + res.msg;
-    }
-  }).catch(function(e) {
-    result.style.display = '';
-    result.style.color = 'var(--error)';
-    result.textContent = '✗ 请求失败: ' + e.message;
-  });
-}
-
-function testHdfsConnection() {
-  var result = document.getElementById('hiveTestResult');
-  result.style.display = '';
-  result.style.color = 'var(--text-muted)';
-  result.textContent = 'HDFS 连接中...';
-
-  var body = { defaultFs: document.getElementById('cfgHdfsFs').value || 'hdfs://localhost:8020' };
-
-  fetch('/api/system/config/test-hdfs', {
+  fetch('/api/system/config/test-doris', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(body)
   }).then(function(r) { return r.json(); }).then(function(res) {
@@ -11699,24 +11741,22 @@ function testHdfsConnection() {
 
 function saveDatasourceConfig() {
   var host = document.getElementById('cfgHiveHost').value;
-  var port = document.getElementById('cfgHivePort').value || '10800';
+  var port = document.getElementById('cfgHivePort').value || '9030';
   var auth = document.getElementById('cfgHiveAuth').value;
-  var db = document.getElementById('cfgHiveDb').value || 'default';
+  var db = document.getElementById('cfgHiveDb').value || 'ods';
   var user = document.getElementById('cfgHiveUser').value;
   var pass = document.getElementById('cfgHivePass').value;
 
   var url = '';
   if (host) {
-    url = 'jdbc:hive2://' + host + ':' + port + '/' + db;
-    if (auth === 'noSasl') url += ';auth=noSasl';
+    url = 'jdbc:mysql://' + host + ':' + port + '/' + db;
+    url += '?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true';
   }
 
   var configs = {
-    'hive.url': url,
-    'hive.username': user,
-    'hive.password': pass,
-    'hdfs.default-fs': document.getElementById('cfgHdfsFs').value,
-    'hdfs.warehouse': document.getElementById('cfgHdfsWarehouse').value
+    'doris.url': url,
+    'doris.username': user,
+    'doris.password': pass
   };
 
   fetch('/api/system/config', {
@@ -11724,7 +11764,7 @@ function saveDatasourceConfig() {
     body: JSON.stringify(configs)
   }).then(function(r) { return r.json(); }).then(function(res) {
     if (res.code === 0) {
-      showToast('配置已保存，Hive 连接已刷新', 'success');
+      showToast('配置已保存，Doris 连接已刷新', 'success');
       loadDatasourceConfig(); // 刷新状态
     } else {
       showToast('保存失败: ' + res.msg, 'error');
@@ -12328,20 +12368,20 @@ function iwLoadColumns() {
   document.getElementById('iwEmptyState').style.display = 'none';
 
   // Generate DDL
-  var ddl = '<span class="cm">-- 自动生成的 Hive ODS 建表语句</span>\n';
-  ddl += '<span class="kw">CREATE EXTERNAL TABLE IF NOT EXISTS</span> ods.' + odsName + ' (\n';
+  var ddl = '<span class="cm">-- 自动生成的 Doris ODS 建表语句</span>\n';
+  ddl += '<span class="kw">CREATE TABLE IF NOT EXISTS</span> ods.' + odsName + ' (\n';
+  ddl += '  dt  <span class="kw">DATE</span> <span class="cm">COMMENT \'sync date\'</span>' + (columns.length ? ',' : '') + '\n';
   columns.forEach(function(col, i) {
     var hiveType = iwMysqlToHive(col.type);
     var comma = i < columns.length - 1 ? ',' : '';
     ddl += '  ' + col.name.toLowerCase() + '  <span class="kw">' + hiveType + '</span> <span class="cm">COMMENT \'' + (col.comment || '') + '\'</span>' + comma + '\n';
   });
   ddl += ')\n';
-  ddl += '<span class="kw">COMMENT</span> <span class="str">\'ODS层 ' + db + '.' + table + ' 全量同步\'</span>\n';
-  ddl += '<span class="kw">PARTITIONED BY</span> (dt <span class="kw">STRING</span> <span class="cm">COMMENT \'同步日期\'</span>)\n';
-  ddl += '<span class="kw">ROW FORMAT DELIMITED FIELDS TERMINATED BY</span> <span class="str">\'\\t\'</span>\n';
-  ddl += '<span class="kw">STORED AS ORC</span>\n';
-  ddl += '<span class="kw">LOCATION</span> <span class="str">\'/user/hive/warehouse/ods.db/' + odsName + '\'</span>\n';
-  ddl += '<span class="kw">TBLPROPERTIES</span> (<span class="str">\'orc.compress\'</span>=<span class="str">\'SNAPPY\'</span>);';
+  ddl += '<span class="kw">ENGINE=OLAP</span>\n';
+  ddl += '<span class="kw">DUPLICATE KEY</span>(dt)\n';
+  ddl += '<span class="kw">COMMENT</span> <span class="str">\'ODS ' + db + '.' + table + ' sync\'</span>\n';
+  ddl += '<span class="kw">DISTRIBUTED BY RANDOM BUCKETS 10</span>\n';
+  ddl += '<span class="kw">PROPERTIES</span> (<span class="str">\"replication_num\"</span>=<span class="str">\"1\"</span>);';
 
   document.getElementById('iwDdlContent').innerHTML = ddl;
   document.getElementById('iwDdlSection').style.display = 'block';
@@ -12380,14 +12420,14 @@ function iwCreateTable() {
   var tgt = document.getElementById('iwTgtTable').value;
   if (!tgt) { msgAlert('提示', '请先选择源表'); return; }
   iwShowModal('success', '建表成功',
-    'Hive 表 <b>ods.' + escapeHtml(tgt) + '</b> 已创建完成。<br>可在 DolphinScheduler 中配置调度任务。');
+    'Doris 表 <b>ods.' + escapeHtml(tgt) + '</b> 已创建完成。<br>可在 DolphinScheduler 中配置调度任务。');
 }
 
 function iwRunSync() {
   var tgt = document.getElementById('iwTgtTable').value;
   if (!tgt) { msgAlert('提示', '请先选择源表'); return; }
   iwShowModal('success', '建表并同步成功',
-    'Hive 表 <b>ods.' + escapeHtml(tgt) + '</b> 已创建。<br>DataX 同步任务已提交，请在运维中心查看执行状态。');
+    'Doris 表 <b>ods.' + escapeHtml(tgt) + '</b> 已创建。<br>DataX 同步任务已提交，请在运维中心查看执行状态。');
 }
 
 // ===== AI Script Name Modal (DWD/DIM) =====
@@ -12525,7 +12565,7 @@ function closeAiScriptNameModal() {
 
   function connectWebSocket() {
     if (wsConnected) return;
-    if (typeof SockJS === 'undefined') { console.warn('[WS] SockJS 未加载，WebSocket 功能不可用'); return; }
+    if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') return;
     try {
       var socket = new SockJS('/ws');
       stompClient = Stomp.over(socket);
@@ -12602,8 +12642,10 @@ function closeAiScriptNameModal() {
     }
   }
 
-  // 页面加载后连接
-  connectWebSocket();
+  window.initWebSocket = connectWebSocket;
+  if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+    connectWebSocket();
+  }
 })();
 </script>
 </body>

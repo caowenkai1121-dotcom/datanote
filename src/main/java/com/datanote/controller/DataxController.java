@@ -1,9 +1,11 @@
 package com.datanote.controller;
 
 import com.datanote.mapper.DnDatasourceMapper;
+import com.datanote.mapper.DnSyncTaskMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.ColumnInfo;
 import com.datanote.model.DnDatasource;
+import com.datanote.model.DnSyncTask;
 import com.datanote.model.DnTaskExecution;
 import com.datanote.model.R;
 import com.datanote.model.dto.DataxCreateAndSyncRequest;
@@ -12,6 +14,7 @@ import com.datanote.model.dto.DataxRunRequest;
 import com.datanote.service.DataxService;
 import com.datanote.service.HiveService;
 import com.datanote.service.MetadataService;
+import com.datanote.util.CryptoUtil;
 import com.datanote.util.ProcessUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +32,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@Tag(name = "DataX 数据同步", description = "MySQL 到 Hive 的数据同步管理")
+@Tag(name = "DataX 数据同步", description = "MySQL 到 Doris 的数据同步管理")
 @RequestMapping("/api/datax")
 @RequiredArgsConstructor
 public class DataxController {
@@ -39,6 +42,7 @@ public class DataxController {
     private final HiveService hiveService;
     private final DnDatasourceMapper datasourceMapper;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final DnSyncTaskMapper syncTaskMapper;
 
     @Value("${spring.datasource.url:}")
     private String defaultDbUrl;
@@ -48,6 +52,9 @@ public class DataxController {
 
     @Value("${spring.datasource.password:}")
     private String defaultDbPass;
+
+    @Value("${datanote.crypto.key:}")
+    private String cryptoKey;
 
     /**
      * 生成 DataX JSON 配置
@@ -59,9 +66,9 @@ public class DataxController {
             String db = body.getDb();
             String table = body.getTable();
             String syncMode = body.getSyncMode() != null ? body.getSyncMode() : "df";
-            DnDatasource ds = resolveDatasource(body.getDatasourceId());
+            DnDatasource ds = resolveDatasource(body.getDatasourceId(), null);
 
-            List<ColumnInfo> columns = metadataService.getColumns(db, table);
+            List<ColumnInfo> columns = resolveColumns(body.getDatasourceId(), null, ds, db, table);
             String odsTable = hiveService.getOdsTableName(db, table, syncMode);
             String jobPath = dataxService.generateJobJson(
                     ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
@@ -121,22 +128,19 @@ public class DataxController {
             String db = body.getDb();
             String table = body.getTable();
             String syncMode = body.getSyncMode() != null ? body.getSyncMode() : "df";
-            DnDatasource ds = resolveDatasource(body.getDatasourceId());
+            DnDatasource ds = resolveDatasource(body.getDatasourceId(), body.getSyncTaskId());
 
-            List<ColumnInfo> columns = metadataService.getColumns(db, table);
+            List<ColumnInfo> columns = resolveColumns(body.getDatasourceId(), body.getSyncTaskId(), ds, db, table);
             String odsTable = hiveService.getOdsTableName(db, table, syncMode);
 
             String ddl = hiveService.generateDDL(db, table, columns, syncMode);
             hiveService.executeDDL(ddl);
 
             String today = java.time.LocalDate.now().minusDays(1).toString();
-            String addPartitionSql = "ALTER TABLE ods." + odsTable
-                    + " ADD IF NOT EXISTS PARTITION (dt='" + today + "')";
-            hiveService.executeDDL(addPartitionSql);
 
             String jobPath = dataxService.generateJobJson(
                     ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
-                    db, table, odsTable, columns);
+                    db, table, odsTable, columns, today);
 
             ProcessUtil.ExecResult execResult = dataxService.runJob(jobPath);
 
@@ -176,14 +180,35 @@ public class DataxController {
         }
     }
 
-    private DnDatasource resolveDatasource(String dsIdStr) {
+    private DnDatasource resolveDatasource(String dsIdStr, Long syncTaskId) {
+        if ((dsIdStr == null || dsIdStr.isEmpty()) && syncTaskId != null) {
+            DnSyncTask task = syncTaskMapper.selectById(syncTaskId);
+            if (task != null && task.getSourceDsId() != null) {
+                dsIdStr = String.valueOf(task.getSourceDsId());
+            }
+        }
         if (dsIdStr != null && !dsIdStr.isEmpty()) {
             try {
                 DnDatasource ds = datasourceMapper.selectById(Long.valueOf(dsIdStr));
-                if (ds != null) return ds;
+                if (ds != null) {
+                    ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
+                    return ds;
+                }
             } catch (NumberFormatException ignored) {}
         }
         return getDefaultDatasource();
+    }
+
+    private DnDatasource resolveDatasource(String dsIdStr) {
+        return resolveDatasource(dsIdStr, null);
+    }
+
+    private List<ColumnInfo> resolveColumns(String dsIdStr, Long syncTaskId, DnDatasource ds, String db, String table) throws Exception {
+        if ((dsIdStr != null && !dsIdStr.isEmpty()) || syncTaskId != null) {
+            return metadataService.getColumnsByConnection(
+                    ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), db, table);
+        }
+        return metadataService.getColumns(db, table);
     }
 
     private DnDatasource getDefaultDatasource() {

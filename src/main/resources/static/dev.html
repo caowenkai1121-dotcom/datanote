@@ -1969,14 +1969,14 @@ html, body {
             <svg viewBox="0 0 20 20" fill="none" stroke="#1890ff" stroke-width="1.5"><rect x="2" y="2" width="16" height="16" rx="3"/><path d="M6 7h8M6 10h5"/></svg>
           </div>
           <h4>SQL 脚本开发</h4>
-          <p>在左侧文件树中新建 HiveSQL 脚本，编写、运行、保存一体化</p>
+          <p>在左侧文件树中新建 DorisSQL 脚本，编写、运行、保存一体化</p>
         </div>
         <div class="welcome-card">
           <div class="welcome-card-icon" style="background:rgba(82,196,26,.08);">
             <svg viewBox="0 0 20 20" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 10h5l2-4 2 8 2-4h5"/></svg>
           </div>
           <h4>数据同步</h4>
-          <p>在数据源文件夹下创建同步任务，一键从 MySQL 同步到 Hive ODS 层</p>
+          <p>在数据源文件夹下创建同步任务，一键从 MySQL 同步到 Doris ODS 层</p>
         </div>
         <div class="welcome-card">
           <div class="welcome-card-icon" style="background:rgba(250,173,20,.08);">
@@ -2074,7 +2074,7 @@ html, body {
               <div class="intg-panel-icon" style="background:rgba(82,196,26,.08);">
                 <svg viewBox="0 0 16 16" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
               </div>
-              <h3>目标端（Hive ODS）</h3>
+              <h3>目标端（Doris ODS）</h3>
               <span class="intg-panel-tag intg-tag-target">Writer</span>
             </div>
             <div class="intg-panel-body">
@@ -2128,8 +2128,8 @@ html, body {
                 <th>MySQL 字段</th>
                 <th>MySQL 类型</th>
                 <th style="width:40px;text-align:center;">→</th>
-                <th>Hive 字段</th>
-                <th>Hive 类型</th>
+                <th>Doris 字段</th>
+                <th>Doris 类型</th>
                 <th>注释</th>
               </tr>
             </thead>
@@ -2140,7 +2140,7 @@ html, body {
         <!-- DDL preview -->
         <div class="intg-ddl" id="intgDdl" style="display:none;">
           <div class="intg-ddl-header">
-            <h4>Hive 建表语句预览</h4>
+            <h4>Doris 建表语句预览</h4>
             <button class="intg-copy-btn" onclick="intgCopyDDL()">
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="9" height="9" rx="1"/><path d="M4 10H2.5A1.5 1.5 0 011 8.5v-7A1.5 1.5 0 012.5 0h7A1.5 1.5 0 0111 1.5V4"/></svg>
               复制
@@ -2551,14 +2551,14 @@ html, body {
           <div class="prop-group-title">节点信息</div>
           <div class="prop-row">
             <span class="prop-label">节点名称</span>
-            <div class="prop-value"><input class="prop-input" id="propNodeName" value="MySQL → Hive 订单表"></div>
+            <div class="prop-value"><input class="prop-input" id="propNodeName" value="MySQL → Doris 订单表"></div>
           </div>
           <div class="prop-row">
             <span class="prop-label">节点类型</span>
             <div class="prop-value">
               <select class="prop-select" id="propNodeType">
                 <option selected>数据同步</option>
-                <option>HiveSQL</option>
+                <option>DorisSQL</option>
                 <option>Shell</option>
                 <option>Python</option>
               </select>
@@ -2570,7 +2570,7 @@ html, body {
           </div>
           <div class="prop-row">
             <span class="prop-label">描述</span>
-            <div class="prop-value"><textarea class="prop-textarea" id="propDesc" placeholder="节点描述...">全量同步 MySQL orders 表到 Hive ODS 层</textarea></div>
+            <div class="prop-value"><textarea class="prop-textarea" id="propDesc" placeholder="节点描述...">全量同步 MySQL orders 表到 Doris ODS 层</textarea></div>
           </div>
         </div>
       </div>
@@ -3331,7 +3331,7 @@ function openSyncTask(el, id, name, db, table, mode, dsId) {
 
   document.getElementById('propNodeName').value = name;
   document.getElementById('propNodeType').value = '数据同步';
-  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Hive ODS 层';
+  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Doris ODS 层';
 
   // 加载同步任务调度状态，更新上线按钮
   loadSyncSchedConfig(id);
@@ -3357,7 +3357,7 @@ function openSync(el, name, db, table) {
   document.getElementById('propNodeName').value = name;
   document.getElementById('propNodeType').value = '数据同步';
   const mode = name.endsWith('_di') ? 'di' : 'df';
-  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Hive ODS 层';
+  document.getElementById('propDesc').value = (mode === 'di' ? '增量' : '全量') + '同步 MySQL ' + db + '.' + table + ' 到 Doris ODS 层';
 }
 
 // ===== Open SQL file =====
@@ -3370,7 +3370,7 @@ function openFile(el, type, name) {
 
   // Update right panel
   document.getElementById('propNodeName').value = name;
-  document.getElementById('propNodeType').value = 'HiveSQL';
+  document.getElementById('propNodeType').value = 'DorisSQL';
   document.getElementById('propDesc').value = name + ' 处理脚本';
 }
 
@@ -3477,12 +3477,12 @@ function renderColumns(columns, odsName, db, table) {
   document.getElementById('intgEmpty').style.display = 'none';
 
   // Load DDL from backend
-  api('/api/hive/preview-ddl?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).then(res => {
+  api('/api/doris/preview-ddl?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).then(res => {
     if (res.code === 0 && res.data) {
       const rawDdl = res.data.ddl || '';
       // Syntax highlight
       let ddl = rawDdl
-        .replace(/\b(CREATE EXTERNAL TABLE IF NOT EXISTS|COMMENT|PARTITIONED BY|ROW FORMAT DELIMITED FIELDS TERMINATED BY|STORED AS ORC|LOCATION|TBLPROPERTIES|STRING)\b/g, '<span class="kw">$1</span>')
+        .replace(/\b(CREATE TABLE IF NOT EXISTS|ENGINE=OLAP|DUPLICATE KEY|COMMENT|DISTRIBUTED BY RANDOM BUCKETS|PROPERTIES|STRING|DATE)\b/g, '<span class="kw">$1</span>')
         .replace(/(--[^\n]*)/g, '<span class="cm">$1</span>')
         .replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
       document.getElementById('intgDdlContent').innerHTML = ddl;
@@ -3570,9 +3570,9 @@ function intgCreateTable() {
   log.innerHTML = '';
   appendLog('<span class="log-info">INFO</span> 一键建表: ods.' + odsName);
 
-  var logId = addRunLog('create', 'Hive 建表: ods.' + odsName, 'running', '正在创建 Hive 表...');
+  var logId = addRunLog('create', 'Doris 建表: ods.' + odsName, 'running', '正在创建 Doris 表...');
 
-  apiPost('/api/hive/create-table', { db: db, table: table, syncMode: syncMode }).then(res => {
+  apiPost('/api/doris/create-table', { db: db, table: table, syncMode: syncMode }).then(res => {
     if (res.code === 0) {
       updateRunLog(logId, 'ok', '表 ods.' + res.data.odsTable + ' 创建成功', res.data.ddl);
       appendLog('<span class="log-ok">SUCCESS</span> 表 ods.' + res.data.odsTable + ' 创建成功');
@@ -3826,9 +3826,9 @@ function runTask() {
   }
 
   // 在右侧运行日志记录
-  var logId = addRunLog('sql', 'HiveSQL 执行', 'running', replaced.substring(0, 100).replace(/</g,'&lt;') + (replaced.length > 100 ? '...' : ''));
+  var logId = addRunLog('sql', 'DorisSQL 执行', 'running', replaced.substring(0, 100).replace(/</g,'&lt;') + (replaced.length > 100 ? '...' : ''));
 
-  fetch('/api/hive/execute', {
+  fetch('/api/doris/execute', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sql: replaced })
@@ -3840,12 +3840,12 @@ function runTask() {
       // 打印 Hive 执行日志
       if (d.hiveLogs && d.hiveLogs.length > 0) {
         d.hiveLogs.forEach(function(line) {
-          appendLog('<span style="color:var(--text-muted);">[Hive]</span> ' + line.replace(/</g,'&lt;'));
+          appendLog('<span style="color:var(--text-muted);">[Doris]</span> ' + line.replace(/</g,'&lt;'));
         });
       }
       appendLog('<span class="log-ok">SUCCESS</span> 执行完成，耗时 ' + d.duration + ' ms');
 
-      var hiveLogText = (d.hiveLogs && d.hiveLogs.length > 0) ? '\n\nHive 日志:\n' + d.hiveLogs.join('\n') : '';
+      var hiveLogText = (d.hiveLogs && d.hiveLogs.length > 0) ? '\n\nDoris 日志:\n' + d.hiveLogs.join('\n') : '';
 
       if (d.type === 'query') {
         var info = '返回 ' + d.rowCount + ' 行' + (d.truncated ? '（已截断，最多显示500行）' : '') + '，耗时 ' + d.duration + 'ms';
@@ -4251,7 +4251,7 @@ function openScriptFromTree(el, scriptId, name) {
   currentScriptName = name;
   selectedHistoryVersionId = null;
   document.getElementById('propNodeName').value = name;
-  document.getElementById('propNodeType').value = 'HiveSQL';
+  document.getElementById('propNodeType').value = 'DorisSQL';
 
   // Load script content from backend
   api('/api/script/' + scriptId).then(res => {
@@ -4829,13 +4829,13 @@ function doParamRun() {
   appendLog('<span class="log-info">原始SQL</span> <pre style="margin:4px 0;white-space:pre-wrap;color:var(--text-muted);">' + sql.replace(/</g,'&lt;') + '</pre>');
   appendLog('<span style="background:#e6a23c;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;">替换后SQL</span> <pre style="margin:4px 0;white-space:pre-wrap;color:var(--text-regular);border-left:3px solid #e6a23c;padding-left:8px;">' + replaced.replace(/</g,'&lt;') + '</pre>');
 
-  fetch('/api/hive/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: replaced }) })
+  fetch('/api/doris/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: replaced }) })
   .then(function(r) { return r.json(); })
   .then(function(res) {
     if (res.code === 0 && res.data) {
       var d = res.data;
       if (d.hiveLogs && d.hiveLogs.length > 0) {
-        d.hiveLogs.forEach(function(line) { appendLog('<span style="color:var(--text-muted);">[Hive]</span> ' + line.replace(/</g,'&lt;')); });
+        d.hiveLogs.forEach(function(line) { appendLog('<span style="color:var(--text-muted);">[Doris]</span> ' + line.replace(/</g,'&lt;')); });
       }
       appendLog('<span class="log-ok">SUCCESS</span> 执行完成，耗时 ' + d.duration + ' ms');
       if (d.type === 'query') {

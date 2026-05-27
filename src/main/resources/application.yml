@@ -23,13 +23,14 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
-# -------------------- Hive JDBC --------------------
-hive:
-  url: ${HIVE_URL:jdbc:hive2://127.0.0.1:10800/default;auth=noSasl}
-  username: ${HIVE_USERNAME:}
-  password: ${HIVE_PASSWORD:}
-  default-fs: ${HIVE_DEFAULT_FS:hdfs://localhost:8020}
-  warehouse: ${HIVE_WAREHOUSE:/user/hive/warehouse}
+# -------------------- Doris JDBC --------------------
+doris:
+  host: ${DORIS_HOST:38.76.183.50}
+  query-port: ${DORIS_QUERY_PORT:9030}
+  database: ${DORIS_DATABASE:ods}
+  url: ${DORIS_URL:jdbc:mysql://38.76.183.50:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
+  username: ${DORIS_USERNAME:root}
+  password: ${DORIS_PASSWORD:123456}
 
 # -------------------- DataX 数据同步 --------------------
 datax:

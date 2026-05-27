@@ -89,7 +89,7 @@ public class AiAssistService {
             "3. 优化 SQL 性能\n" +
             "4. 回答数据工程相关问题\n\n" +
             "规则：\n" +
-            "- 默认使用 HiveSQL 语法（支持分区表、ORC 格式等）\n" +
+            "- 默认使用 DorisSQL 语法（支持 Doris OLAP 表、Duplicate Key 等）\n" +
             "- SQL 语句用 ```sql 代码块包裹\n" +
             "- 回答简洁专业，中文回复";
 

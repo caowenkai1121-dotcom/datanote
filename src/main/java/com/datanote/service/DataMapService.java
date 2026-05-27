@@ -33,7 +33,7 @@ public class DataMapService {
     private final DnSearchHistoryMapper searchHistoryMapper;
     private final DnTableMetaMapper tableMetaMapper;
 
-    @Value("${hive.warehouse}")
+    @Value("${doris.database:ods}")
     private String hiveWarehouse;
 
     /** 排除的 Hive 系统库 */
@@ -77,13 +77,50 @@ public class DataMapService {
     }
 
     /**
-     * 获取 Hive 指定表的字段信息
+     * 获取 Doris 指定表的字段信息。
      */
     public List<ColumnInfo> getHiveColumns(String db, String table) throws SQLException {
+        try {
+            return getDorisColumns(db, table);
+        } catch (SQLException e) {
+            log.warn("通过 information_schema 获取字段失败，降级 DESCRIBE: {}.{}, {}", db, table, e.getMessage());
+            return getColumnsByDescribe(db, table);
+        }
+    }
+
+    private List<ColumnInfo> getDorisColumns(String db, String table) throws SQLException {
+        List<ColumnInfo> columns = new ArrayList<ColumnInfo>();
+        try (Connection conn = hiveConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, EXTRA, COLUMN_COMMENT "
+                             + "FROM information_schema.COLUMNS "
+                             + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? "
+                             + "ORDER BY ORDINAL_POSITION")) {
+            stmt.setString(1, db);
+            stmt.setString(2, table);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    ColumnInfo col = new ColumnInfo();
+                    col.setName(rs.getString("COLUMN_NAME"));
+                    col.setType(nullToDefault(rs.getString("COLUMN_TYPE"), "string"));
+                    col.setComment(nullToDefault(rs.getString("COLUMN_COMMENT"), ""));
+                    col.setHiveType(col.getType());
+                    col.setKey(nullToDefault(rs.getString("COLUMN_KEY"), ""));
+                    col.setNullable(nullToDefault(rs.getString("IS_NULLABLE"), "YES"));
+                    col.setExtra(nullToDefault(rs.getString("EXTRA"), ""));
+                    columns.add(col);
+                }
+            }
+        }
+        return columns;
+    }
+
+    private List<ColumnInfo> getColumnsByDescribe(String db, String table) throws SQLException {
         List<ColumnInfo> columns = new ArrayList<ColumnInfo>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("DESCRIBE " + db + "." + table)) {
+            int columnCount = rs.getMetaData().getColumnCount();
             while (rs.next()) {
                 String colName = rs.getString(1);
                 if (colName == null || colName.trim().isEmpty()) break;
@@ -92,11 +129,11 @@ public class DataMapService {
                 ColumnInfo col = new ColumnInfo();
                 col.setName(colName.trim());
                 col.setType(rs.getString(2) != null ? rs.getString(2).trim() : "string");
-                col.setComment(rs.getString(3) != null ? rs.getString(3).trim() : "");
+                col.setComment(columnCount >= 7 && rs.getString(7) != null ? rs.getString(7).trim() : "");
                 col.setHiveType(col.getType());
-                col.setKey("");
-                col.setNullable("YES");
-                col.setExtra("");
+                col.setKey(columnCount >= 4 && rs.getString(4) != null ? rs.getString(4).trim() : "");
+                col.setNullable(columnCount >= 3 && rs.getString(3) != null ? rs.getString(3).trim() : "YES");
+                col.setExtra(columnCount >= 6 && rs.getString(6) != null ? rs.getString(6).trim() : "");
                 columns.add(col);
             }
         }
@@ -423,48 +460,7 @@ public class DataMapService {
     public Map<String, Object> getTableDetail(String db, String table) throws Exception {
         Map<String, Object> result = new HashMap<String, Object>();
 
-        // 用 DESCRIBE FORMATTED 获取表详情
-        Map<String, Object> info = new HashMap<String, Object>();
-        info.put("db", db);
-        info.put("table", table);
-        info.put("comment", "");
-        info.put("engine", "Hive");
-
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("DESCRIBE FORMATTED " + db + "." + table)) {
-            while (rs.next()) {
-                String col1 = rs.getString(1);
-                String col2 = rs.getString(2);
-                String col3 = rs.getMetaData().getColumnCount() >= 3 ? rs.getString(3) : null;
-                String key1 = col1 != null ? col1.trim() : "";
-                String val2 = col2 != null ? col2.trim() : "";
-                String val3 = col3 != null ? col3.trim() : "";
-
-                // 格式1: col1=key, col2=value
-                if (key1.startsWith("Table:") || key1.equals("Table")) {
-                    info.put("table", val2);
-                } else if (key1.startsWith("CreateTime")) {
-                    info.put("createTime", val2);
-                } else if (key1.startsWith("LastAccessTime")) {
-                    info.put("updateTime", val2);
-                } else if (key1.startsWith("Comment:") || key1.equals("comment")) {
-                    info.put("comment", val2);
-                } else if (key1.startsWith("Location:") || key1.equals("Location")) {
-                    info.put("location", val2);
-                } else if (key1.startsWith("InputFormat:") || key1.equals("InputFormat")) {
-                    info.put("inputFormat", val2);
-                }
-                // 格式2: col1="", col2=key, col3=value (统计信息)
-                if (key1.isEmpty() && !val2.isEmpty()) {
-                    if ("numRows".equals(val2)) {
-                        try { info.put("rowCount", Long.parseLong(val3)); } catch (NumberFormatException e) { /* ignore */ }
-                    } else if ("totalSize".equals(val2) || "rawDataSize".equals(val2)) {
-                        try { info.put("dataLength", Long.parseLong(val3)); } catch (NumberFormatException e) { /* ignore */ }
-                    }
-                }
-            }
-        }
+        Map<String, Object> info = getDorisTableInfo(db, table);
 
         result.put("tableInfo", info);
         result.put("columns", getHiveColumns(db, table));
@@ -480,7 +476,72 @@ public class DataMapService {
         return result;
     }
 
+    private Map<String, Object> getDorisTableInfo(String db, String table) throws SQLException {
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.put("db", db);
+        info.put("table", table);
+        info.put("comment", "");
+        info.put("engine", "Doris");
+
+        try (Connection conn = hiveConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_ROWS, ENGINE, CREATE_TIME, UPDATE_TIME, DATA_LENGTH "
+                             + "FROM information_schema.TABLES "
+                             + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?")) {
+            stmt.setString(1, db);
+            stmt.setString(2, table);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) {
+                    return info;
+                }
+                putIfNotBlank(info, "table", rs.getString("TABLE_NAME"));
+                putIfNotBlank(info, "comment", rs.getString("TABLE_COMMENT"));
+                putIfNotBlank(info, "engine", rs.getString("ENGINE"));
+                putObjectString(info, "createTime", rs.getObject("CREATE_TIME"));
+                putObjectString(info, "updateTime", rs.getObject("UPDATE_TIME"));
+                putLong(info, "rowCount", rs.getObject("TABLE_ROWS"));
+                putLong(info, "dataLength", rs.getObject("DATA_LENGTH"));
+            }
+        }
+        return info;
+    }
+
     // ========== 内部方法 ==========
+
+    private String nullToDefault(String value, String defaultValue) {
+        return value != null ? value.trim() : defaultValue;
+    }
+
+    private void putIfNotBlank(Map<String, Object> info, String key, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            info.put(key, value.trim());
+        }
+    }
+
+    private void putObjectString(Map<String, Object> info, String key, Object value) {
+        if (value != null && !value.toString().trim().isEmpty()) {
+            info.put(key, value.toString());
+        }
+    }
+
+    private void putLong(Map<String, Object> info, String key, Object value) {
+        Long parsed = toLong(value);
+        if (parsed != null) {
+            info.put(key, parsed);
+        }
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     private Long findTableMetaId(String db, String table) {
         QueryWrapper<DnTableMeta> qw = new QueryWrapper<DnTableMeta>();
@@ -515,6 +576,10 @@ public class DataMapService {
      */
     public List<Map<String, Object>> getPartitions(String db, String table) throws SQLException {
         List<Map<String, Object>> partitions = new ArrayList<Map<String, Object>>();
+        // DataNote-created Doris ODS tables store dt as a normal column, not a Hive/HDFS partition.
+        if (System.currentTimeMillis() >= 0) {
+            return partitions;
+        }
 
         // 1. 获取所有分区
         List<String> partitionSpecs = new ArrayList<String>();

@@ -24,15 +24,15 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# -------------------- Hive JDBC --------------------
-# 连接 HiveServer2，用于执行 HiveSQL 脚本
-# auth=noSasl 表示无认证模式，根据实际 Hive 配置调整
-hive:
-  url: jdbc:hive2://127.0.0.1:10800/default;auth=noSasl
-  username: ""
-  password: ""
-  default-fs: hdfs://localhost:8020
-  warehouse: /user/hive/warehouse
+# -------------------- Doris JDBC --------------------
+# 连接 Doris FE MySQL 协议端口，用于执行 Doris SQL 脚本
+doris:
+  host: 38.76.183.50
+  query-port: 9030
+  database: ods
+  url: jdbc:mysql://38.76.183.50:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+  username: root
+  password: "123456"
 
 # -------------------- DataX 数据同步 --------------------
 # home: DataX 安装目录（需包含 bin/datax.py）

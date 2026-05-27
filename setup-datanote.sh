@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # 第二步：安装 DataNote
-# 前提：已运行 setup-hive.sh 或已有 Hadoop + Hive 环境
+# 前提：已有可用 Doris 环境
 #
 # 使用：chmod +x setup-datanote.sh && ./setup-datanote.sh
 # 停止：./setup-datanote.sh stop
@@ -25,7 +25,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ---------- 加载配置 ----------
 if [ ! -f "$CONF_FILE" ]; then
   error "配置文件不存在: $CONF_FILE"
-  echo "  请先运行 ./setup-hive.sh 或手动创建配置文件"
+  echo "  请先创建 datanote.conf 或手动配置数据库连接"
   exit 1
 fi
 
@@ -123,6 +123,12 @@ nohup java \
   --spring.datasource.username=$DB_USER \
   --spring.datasource.password=$DB_PASS \
   --datanote.crypto.key=${CRYPTO_KEY:-DataNote_AES_Key} \
+  --doris.host=${DORIS_HOST:-38.76.183.50} \
+  --doris.query-port=${DORIS_QUERY_PORT:-9030} \
+  --doris.database=${DORIS_DATABASE:-ods} \
+  --doris.url="jdbc:mysql://${DORIS_HOST:-38.76.183.50}:${DORIS_QUERY_PORT:-9030}/${DORIS_DATABASE:-ods}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true" \
+  --doris.username=${DORIS_USERNAME:-root} \
+  --doris.password=${DORIS_PASSWORD:-123456} \
   --datax.mode=${DATAX_MODE:-local} \
   --server.port=${DATANOTE_PORT:-8099} \
   > /tmp/datanote.log 2>&1 &
@@ -153,7 +159,7 @@ echo "  日志文件：/tmp/datanote.log"
 echo "  配置文件：$CONF_FILE"
 echo ""
 echo "  下一步：打开浏览器 → 系统管理 → 数据源管理"
-echo "  配置 Hive 连接信息，测试通过后保存即可。"
+echo "  配置 Doris 连接信息，测试通过后保存即可。"
 echo ""
 echo "  停止：./setup-datanote.sh stop"
 echo "============================================"

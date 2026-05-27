@@ -1,8 +1,12 @@
 package com.datanote.controller;
 
 import com.datanote.exception.BusinessException;
+import com.datanote.mapper.DnDatasourceMapper;
+import com.datanote.mapper.DnSyncTaskMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.ColumnInfo;
+import com.datanote.model.DnDatasource;
+import com.datanote.model.DnSyncTask;
 import com.datanote.model.DnTaskExecution;
 import com.datanote.model.R;
 import com.datanote.model.dto.HiveCreateTableRequest;
@@ -10,10 +14,12 @@ import com.datanote.model.dto.HiveExecuteRequest;
 import com.datanote.service.HiveService;
 import com.datanote.service.LogBroadcastService;
 import com.datanote.service.MetadataService;
+import com.datanote.util.CryptoUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -27,15 +33,20 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/hive")
+@RequestMapping({"/api/doris", "/api/hive"})
 @RequiredArgsConstructor
-@Tag(name = "Hive DDL", description = "Hive 建表语句预览与执行")
+@Tag(name = "Doris DDL", description = "Doris 建表语句预览与执行")
 public class HiveDdlController {
 
     private final HiveService hiveService;
     private final MetadataService metadataService;
     private final SimpMessagingTemplate messagingTemplate;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final DnDatasourceMapper datasourceMapper;
+    private final DnSyncTaskMapper syncTaskMapper;
+
+    @Value("${datanote.crypto.key:}")
+    private String cryptoKey;
 
     /**
      * 修改 Hive 表字段（ALTER TABLE CHANGE COLUMN）
@@ -83,9 +94,11 @@ public class HiveDdlController {
     @Operation(summary = "预览建表 DDL")
     @GetMapping("/preview-ddl")
     public R<Map<String, String>> previewDDL(@RequestParam String db, @RequestParam String table,
-                                              @RequestParam(required = false, defaultValue = "df") String syncMode) {
+                                              @RequestParam(required = false, defaultValue = "df") String syncMode,
+                                              @RequestParam(required = false) String datasourceId,
+                                              @RequestParam(required = false) Long syncTaskId) {
         try {
-            List<ColumnInfo> columns = metadataService.getColumns(db, table);
+            List<ColumnInfo> columns = resolveColumns(datasourceId, syncTaskId, db, table);
             String ddl = hiveService.generateDDL(db, table, columns, syncMode);
             String odsTable = hiveService.getOdsTableName(db, table, syncMode);
 
@@ -141,7 +154,7 @@ public class HiveDdlController {
                 @SuppressWarnings("unchecked")
                 List<String> logs = (List<String>) result.get("hiveLogs");
                 if (logs != null) {
-                    for (String line : logs) pushSqlLog("HIVE", line);
+                    for (String line : logs) pushSqlLog("DORIS", line);
                     allLogs.addAll(logs);
                 }
 
@@ -316,6 +329,33 @@ public class HiveDdlController {
         messagingTemplate.convertAndSend("/topic/sql-log", payload);
     }
 
+    private List<ColumnInfo> resolveColumns(String datasourceId, Long syncTaskId, String db, String table) throws Exception {
+        DnDatasource ds = resolveDatasource(datasourceId, syncTaskId);
+        if (ds == null) {
+            return metadataService.getColumns(db, table);
+        }
+        return metadataService.getColumnsByConnection(
+                ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), db, table);
+    }
+
+    private DnDatasource resolveDatasource(String datasourceId, Long syncTaskId) {
+        String dsId = datasourceId;
+        if ((dsId == null || dsId.isEmpty()) && syncTaskId != null) {
+            DnSyncTask task = syncTaskMapper.selectById(syncTaskId);
+            if (task != null && task.getSourceDsId() != null) {
+                dsId = String.valueOf(task.getSourceDsId());
+            }
+        }
+        if (dsId == null || dsId.isEmpty()) {
+            return null;
+        }
+        DnDatasource ds = datasourceMapper.selectById(Long.valueOf(dsId));
+        if (ds != null) {
+            ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
+        }
+        return ds;
+    }
+
     /**
      * 执行 Hive 建表
      */
@@ -327,7 +367,7 @@ public class HiveDdlController {
             String table = body.getTable();
             String syncMode = body.getSyncMode() != null ? body.getSyncMode() : "df";
 
-            List<ColumnInfo> columns = metadataService.getColumns(db, table);
+            List<ColumnInfo> columns = resolveColumns(body.getDatasourceId(), body.getSyncTaskId(), db, table);
             String ddl = hiveService.generateDDL(db, table, columns, syncMode);
             hiveService.executeDDL(ddl);
 

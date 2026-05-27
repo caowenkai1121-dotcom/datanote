@@ -3,6 +3,7 @@ package com.datanote.service;
 import com.datanote.common.Constants;
 import com.datanote.mapper.*;
 import com.datanote.model.*;
+import com.datanote.util.CryptoUtil;
 import com.datanote.util.ProcessUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -39,6 +40,9 @@ public class TaskExecutionService {
 
     @Value("${datax.job-dir}")
     private String jobDir;
+
+    @Value("${datanote.crypto.key:}")
+    private String cryptoKey;
 
     // 指数退避参数
     private static final long RETRY_BASE_MS = 5000;    // 5 秒
@@ -196,43 +200,44 @@ public class TaskExecutionService {
         logBuilder.append("目标表: ods.").append(task.getTargetTable()).append("\n");
         logBuilder.append("数据日期: ").append(bizdate).append("\n\n");
 
-        DnDatasource ds = datasourceMapper.selectById(task.getSourceDsId());
+        DnDatasource ds = resolveDatasource(task);
         if (ds == null) throw new RuntimeException("数据源不存在: " + task.getSourceDsId());
         String syncMode = task.getSyncMode() != null ? task.getSyncMode() : "df";
         String targetTable = "ods." + task.getTargetTable();
+        List<ColumnInfo> columns;
 
         // ========== 第一步：预检（任一失败直接中止） ==========
 
         // 1.1 检查 MySQL 源库连通性
         logBuilder.append("[预检] MySQL 源库连接...");
         try {
-            metadataService.getColumns(task.getSourceDb(), task.getSourceTable());
+            columns = getSourceColumns(ds, task);
+            if (columns == null || columns.isEmpty()) {
+                throw new RuntimeException("source table columns not found");
+            }
             logBuilder.append(" 正常\n");
         } catch (Exception e) {
             logBuilder.append(" 失败: ").append(e.getMessage()).append("\n");
             throw new RuntimeException("MySQL 源库连接失败: " + e.getMessage());
         }
 
-        // 1.2 确保 Hive 表和分区存在
-        logBuilder.append("[预检] Hive 表和分区...");
+        // 1.2 确保 Doris 表存在
+        logBuilder.append("[预检] Doris 表...");
         try {
-            List<com.datanote.model.ColumnInfo> cols = metadataService.getColumns(task.getSourceDb(), task.getSourceTable());
-            String ddl = hiveService.generateDDL(task.getSourceDb(), task.getSourceTable(), cols, syncMode);
+            String ddl = hiveService.generateDDL(task.getSourceDb(), task.getSourceTable(), columns, syncMode);
             hiveService.executeDDL(ddl);
-            hiveService.executeDDL("ALTER TABLE " + targetTable + " ADD IF NOT EXISTS PARTITION (dt='" + bizdate + "')");
             logBuilder.append(" 就绪\n");
         } catch (Exception e) {
             logBuilder.append(" 失败: ").append(e.getMessage()).append("\n");
-            throw new RuntimeException("Hive 表/分区创建失败: " + e.getMessage());
+            throw new RuntimeException("Doris 表创建失败: " + e.getMessage());
         }
 
         // ========== 第二步：生成 DataX 配置（每次动态生成，确保日期和列是最新的） ==========
 
         logBuilder.append("[DataX] 生成配置...\n");
-        List<com.datanote.model.ColumnInfo> columns = metadataService.getColumns(task.getSourceDb(), task.getSourceTable());
         String jobFile = dataxService.generateJobJson(
                 ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
-                task.getSourceDb(), task.getSourceTable(), task.getTargetTable(), columns);
+                task.getSourceDb(), task.getSourceTable(), task.getTargetTable(), columns, bizdate);
         logBuilder.append("[DataX] 配置生成完成: ").append(jobFile).append("\n");
 
         // ========== 第三步：执行 DataX ==========
@@ -250,25 +255,31 @@ public class TaskExecutionService {
 
         // ========== 第四步：后处理（失败不影响整体结果） ==========
 
-        // 4.1 修复分区
-        logBuilder.append("\n[后处理] MSCK REPAIR TABLE...");
+        // 4.1 更新统计
+        logBuilder.append("\n[后处理] ANALYZE TABLE...");
         try {
-            hiveService.executeDDL("MSCK REPAIR TABLE " + targetTable);
-            logBuilder.append(" 成功\n");
-        } catch (Exception e) {
-            logBuilder.append(" 跳过(").append(e.getMessage()).append(")\n");
-        }
-
-        // 4.2 更新统计
-        logBuilder.append("[后处理] ANALYZE TABLE...");
-        try {
-            hiveService.executeDDL("ANALYZE TABLE " + targetTable + " PARTITION (dt) COMPUTE STATISTICS");
+            hiveService.executeDDL("ANALYZE TABLE " + targetTable);
             logBuilder.append(" 成功\n");
         } catch (Exception e) {
             logBuilder.append(" 跳过(").append(e.getMessage()).append(")\n");
         }
 
         logBuilder.append("\n[完成] 耗时: ").append(result.getDurationMs() / 1000).append("秒\n");
+    }
+
+    private DnDatasource resolveDatasource(DnSyncTask task) {
+        DnDatasource ds = datasourceMapper.selectById(task.getSourceDsId());
+        if (ds == null) {
+            throw new RuntimeException("鏁版嵁婧愪笉瀛樺湪: " + task.getSourceDsId());
+        }
+        ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
+        return ds;
+    }
+
+    private List<ColumnInfo> getSourceColumns(DnDatasource ds, DnSyncTask task) throws Exception {
+        return metadataService.getColumnsByConnection(
+                ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
+                task.getSourceDb(), task.getSourceTable());
     }
 
     private void executeScript(Long scriptId, String bizdate, StringBuilder logBuilder) throws Exception {
@@ -307,7 +318,7 @@ public class TaskExecutionService {
                 Map<String, Object> result = hiveService.executeSQL(stmt);
                 Boolean success = (Boolean) result.get("success");
                 if (success == null || !success) {
-                    throw new RuntimeException("HiveSQL 执行失败: " + result.get("error"));
+                    throw new RuntimeException("DorisSQL 执行失败: " + result.get("error"));
                 }
 
                 @SuppressWarnings("unchecked")

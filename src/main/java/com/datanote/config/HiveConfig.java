@@ -1,38 +1,41 @@
 package com.datanote.config;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSystemConfigMapper;
 import com.datanote.model.DnSystemConfig;
 import com.datanote.util.CryptoUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
-import lombok.extern.slf4j.Slf4j;
-
 import javax.annotation.PostConstruct;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * Hive 连接配置 — 使用 HikariCP 连接池管理 Hive JDBC 连接
- * 支持 Hive 不可用时优雅降级（应用正常启动，Hive 功能不可用）
- * 支持从数据库热加载配置（页面配置后无需重启）
- */
 @Slf4j
 @Configuration
 public class HiveConfig {
 
+    @Value("${doris.url:jdbc:mysql://38.76.183.50:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}")
+    private String envDorisUrl;
+
+    @Value("${doris.username:root}")
+    private String envDorisUsername;
+
+    @Value("${doris.password:123456}")
+    private String envDorisPassword;
+
     @Value("${hive.url:}")
-    private String envHiveUrl;
+    private String legacyHiveUrl;
 
     @Value("${hive.username:}")
-    private String envHiveUsername;
+    private String legacyHiveUsername;
 
     @Value("${hive.password:}")
-    private String envHivePassword;
+    private String legacyHivePassword;
 
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
@@ -40,68 +43,52 @@ public class HiveConfig {
     @Autowired(required = false)
     private DnSystemConfigMapper systemConfigMapper;
 
-    private HikariDataSource hiveDataSource;
-    private boolean hiveAvailable = false;
+    private HikariDataSource dorisDataSource;
+    private boolean dorisAvailable = false;
     private String currentUrl = "";
 
     @PostConstruct
     public void init() {
-        // 先尝试从 DB 加载，失败则用环境变量
-        String url = getDbConfig("hive.url");
-        String username = getDbConfig("hive.username");
-        String password = getDbConfigDecrypt("hive.password");
+        reloadFromDb();
+    }
 
-        if (url == null || url.isEmpty()) {
-            url = envHiveUrl;
-            username = envHiveUsername;
-            password = envHivePassword;
-        }
+    public void reloadFromDb() {
+        closeDataSource();
+
+        String url = firstNonBlank(getDbConfig("doris.url"), getDbConfig("hive.url"), envDorisUrl, legacyHiveUrl);
+        String username = firstNonBlank(getDbConfig("doris.username"), getDbConfig("hive.username"),
+                envDorisUsername, legacyHiveUsername);
+        String password = firstNonBlank(getDbConfigDecrypt("doris.password"), getDbConfigDecrypt("hive.password"),
+                envDorisPassword, legacyHivePassword);
 
         initDataSource(url, username, password);
     }
 
-    /**
-     * 从数据库重新加载配置（页面保存后调用）
-     */
-    public void reloadFromDb() {
-        String url = getDbConfig("hive.url");
-        String username = getDbConfig("hive.username");
-        String password = getDbConfigDecrypt("hive.password");
-
-        // DB 没配置则用环境变量
-        if (url == null || url.isEmpty()) {
-            url = envHiveUrl;
-            username = envHiveUsername;
-            password = envHivePassword;
-        }
-
-        // 关闭旧连接池
-        if (hiveDataSource != null) {
+    private void closeDataSource() {
+        if (dorisDataSource != null) {
             try {
-                hiveDataSource.close();
-                log.info("旧 Hive 连接池已关闭");
+                dorisDataSource.close();
+                log.info("Doris connection pool closed");
             } catch (Exception e) {
-                log.warn("关闭旧连接池失败: {}", e.getMessage());
+                log.warn("Failed to close Doris connection pool: {}", e.getMessage());
             }
-            hiveDataSource = null;
-            hiveAvailable = false;
+            dorisDataSource = null;
+            dorisAvailable = false;
         }
-
-        initDataSource(url, username, password);
     }
 
     private void initDataSource(String url, String username, String password) {
         currentUrl = url != null ? url : "";
 
         if (url == null || url.isEmpty()) {
-            log.warn("Hive URL 未配置，Hive 功能不可用");
+            log.warn("Doris URL is not configured");
             return;
         }
 
         try {
-            Class.forName("org.apache.hive.jdbc.HiveDriver");
+            Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
-            log.warn("Hive JDBC Driver 未找到，Hive 功能不可用");
+            log.warn("MySQL JDBC Driver not found; Doris features are unavailable");
             return;
         }
 
@@ -109,26 +96,30 @@ public class HiveConfig {
         config.setJdbcUrl(url);
         config.setUsername(username != null ? username : "");
         config.setPassword(password != null ? password : "");
-        config.setDriverClassName("org.apache.hive.jdbc.HiveDriver");
+        config.setDriverClassName("com.mysql.cj.jdbc.Driver");
         config.setMaximumPoolSize(5);
         config.setMinimumIdle(0);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
-        config.setPoolName("HiveHikariPool");
+        config.setPoolName("DorisHikariPool");
         config.setConnectionTestQuery("SELECT 1");
         config.setInitializationFailTimeout(-1);
 
         try {
-            hiveDataSource = new HikariDataSource(config);
-            hiveAvailable = true;
-            log.info("Hive 连接池初始化成功: {}", url);
+            dorisDataSource = new HikariDataSource(config);
+            dorisAvailable = true;
+            log.info("Doris connection pool initialized: {}", url);
         } catch (Exception e) {
-            log.warn("Hive 连接池初始化失败: {}", e.getMessage());
+            log.warn("Doris connection pool initialization failed: {}", e.getMessage());
         }
     }
 
     public boolean isHiveAvailable() {
-        return hiveAvailable && hiveDataSource != null;
+        return isDorisAvailable();
+    }
+
+    public boolean isDorisAvailable() {
+        return dorisAvailable && dorisDataSource != null;
     }
 
     public String getCurrentUrl() {
@@ -136,21 +127,21 @@ public class HiveConfig {
     }
 
     public Connection getConnection() throws SQLException {
-        if (hiveDataSource == null) {
-            throw new SQLException("Hive 未连接。请在系统管理中配置 Hive 连接。");
+        if (dorisDataSource == null) {
+            throw new SQLException("Doris is not connected. Configure the Doris connection in System Settings.");
         }
-        return hiveDataSource.getConnection();
+        return dorisDataSource.getConnection();
     }
 
     public Connection getRawConnection() throws SQLException {
         if (currentUrl == null || currentUrl.isEmpty()) {
-            throw new SQLException("Hive 未配置。");
+            throw new SQLException("Doris is not configured.");
         }
-        String username = getDbConfig("hive.username");
-        String password = getDbConfigDecrypt("hive.password");
-        if (username == null) username = envHiveUsername;
-        if (password == null) password = envHivePassword;
-        return java.sql.DriverManager.getConnection(currentUrl, username, password);
+        String username = firstNonBlank(getDbConfig("doris.username"), getDbConfig("hive.username"),
+                envDorisUsername, legacyHiveUsername);
+        String password = firstNonBlank(getDbConfigDecrypt("doris.password"), getDbConfigDecrypt("hive.password"),
+                envDorisPassword, legacyHivePassword);
+        return DriverManager.getConnection(currentUrl, username, password);
     }
 
     private String getDbConfig(String key) {
@@ -166,9 +157,19 @@ public class HiveConfig {
     private String getDbConfigDecrypt(String key) {
         String val = getDbConfig(key);
         if (val != null && !val.isEmpty() && cryptoKey != null && !cryptoKey.isEmpty()) {
-            String decrypted = CryptoUtil.decrypt(val, cryptoKey);
+            String decrypted = CryptoUtil.decryptSafe(val, cryptoKey);
             return decrypted != null ? decrypted : val;
         }
         return val;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) return "";
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value;
+            }
+        }
+        return "";
     }
 }

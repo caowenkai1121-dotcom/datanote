@@ -19,7 +19,7 @@
 - **Lombok**：使用 `@Data`、`@RequiredArgsConstructor`，不手写 getter/setter
 - **分层架构**：Controller 只做参数校验和调用 Service，业务逻辑在 Service 层
 - **SQL 安全**：使用 MyBatis-Plus QueryWrapper 或 `#{}` 参数绑定，禁止字符串拼接 SQL
-- **Hive 数据源**：不注册为 Spring Bean，通过 `HiveConfig.getConnection()` 获取
+- **Doris 数据源**：通过 `HiveConfig.getConnection()` 获取（类名保留用于兼容旧代码）
 
 ### 前端
 - **vanilla JS**：不使用任何框架

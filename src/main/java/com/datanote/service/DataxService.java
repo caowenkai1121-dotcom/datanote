@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.datanote.model.ColumnInfo;
+import com.datanote.util.DorisSqlUtil;
 import com.datanote.util.ProcessUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,11 +15,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * DataX 同步服务 — 生成 DataX JSON 配置并执行同步任务
- */
 @Service
 public class DataxService {
 
@@ -36,16 +33,21 @@ public class DataxService {
     @Value("${datax.mode:local}")
     private String dataxMode;
 
-    @Value("${hive.default-fs}")
-    private String hiveDefaultFs;
+    @Value("${doris.host:38.76.183.50}")
+    private String dorisHost;
 
-    @Value("${hive.warehouse}")
-    private String hiveWarehouse;
+    @Value("${doris.query-port:9030}")
+    private int dorisQueryPort;
 
-    /**
-     * Docker 模式下，将 127.0.0.1/localhost 替换为 host.docker.internal
-     * 使容器内的 DataX 能访问宿主机上的数据源
-     */
+    @Value("${doris.database:ods}")
+    private String dorisDatabase;
+
+    @Value("${doris.username:root}")
+    private String dorisUsername;
+
+    @Value("${doris.password:123456}")
+    private String dorisPassword;
+
     private String translateHost(String host) {
         if ("docker".equals(dataxMode)) {
             if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
@@ -55,86 +57,74 @@ public class DataxService {
         return host;
     }
 
-    /**
-     * Docker 模式下翻译 HDFS 地址
-     * hdfs://localhost:9000 → hdfs://namenode:8020（Docker 网络内 NameNode 的地址）
-     * hdfs://127.0.0.1:9000 → hdfs://namenode:8020
-     */
-    private String translateHdfsUrl(String url) {
-        if ("docker".equals(dataxMode) && url != null) {
-            return url.replace("localhost", "namenode")
-                      .replace("127.0.0.1", "namenode")
-                      .replace(":9000", ":8020");
-        }
-        return url;
-    }
-
-    /**
-     * 生成 DataX JSON 配置文件（mysqlreader → hdfswriter）
-     */
     public String generateJobJson(String mysqlHost, int mysqlPort, String mysqlUser, String mysqlPassword,
                                   String sourceDb, String sourceTable,
                                   String odsTable, List<ColumnInfo> columns) throws IOException {
-        // 确保目录存在
+        String bizdate = java.time.LocalDate.now().minusDays(1).toString();
+        return generateJobJson(mysqlHost, mysqlPort, mysqlUser, mysqlPassword,
+                sourceDb, sourceTable, odsTable, columns, bizdate);
+    }
+
+    public String generateJobJson(String mysqlHost, int mysqlPort, String mysqlUser, String mysqlPassword,
+                                  String sourceDb, String sourceTable,
+                                  String odsTable, List<ColumnInfo> columns,
+                                  String bizdate) throws IOException {
         new File(jobDir).mkdirs();
 
-        // Docker 模式下翻译地址
         String actualHost = translateHost(mysqlHost);
+        List<String> dorisColumns = DorisSqlUtil.toDorisColumnNames(columns);
 
         JSONObject job = new JSONObject(true);
         JSONObject jobContent = new JSONObject(true);
 
-        // === Reader: mysqlreader ===
         JSONObject reader = new JSONObject(true);
         reader.put("name", "mysqlreader");
         JSONObject readerParam = new JSONObject(true);
-
         readerParam.put("username", mysqlUser);
         readerParam.put("password", mysqlPassword);
 
-        JSONArray columnArr = new JSONArray();
-        for (ColumnInfo col : columns) {
-            columnArr.add(col.getName());
-        }
-        readerParam.put("column", columnArr);
-
-        JSONArray connArr = new JSONArray();
-        JSONObject conn = new JSONObject(true);
-        conn.put("jdbcUrl", new JSONArray() {{
+        JSONArray readerConnections = new JSONArray();
+        JSONObject readerConnection = new JSONObject(true);
+        readerConnection.put("jdbcUrl", new JSONArray() {{
             add("jdbc:mysql://" + actualHost + ":" + mysqlPort + "/" + sourceDb
-                    + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false");
+                    + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true");
         }});
-        conn.put("table", new JSONArray() {{ add(sourceTable); }});
-        connArr.add(conn);
-        readerParam.put("connection", connArr);
-
+        readerConnection.put("querySql", new JSONArray() {{
+            add(buildSourceQuery(sourceDb, sourceTable, columns, dorisColumns, bizdate));
+        }});
+        readerConnections.add(readerConnection);
+        readerParam.put("connection", readerConnections);
         reader.put("parameter", readerParam);
 
-        // === Writer: hdfswriter ===
         JSONObject writer = new JSONObject(true);
-        writer.put("name", "hdfswriter");
+        writer.put("name", "mysqlwriter");
         JSONObject writerParam = new JSONObject(true);
-
-        String today = java.time.LocalDate.now().minusDays(1).toString();
-        writerParam.put("defaultFS", translateHdfsUrl(hiveDefaultFs));
-        writerParam.put("fileType", "orc");
-        writerParam.put("path", hiveWarehouse + "/ods.db/" + odsTable + "/dt=" + today);
-        writerParam.put("fileName", odsTable);
-        writerParam.put("writeMode", "truncate");
-        writerParam.put("fieldDelimiter", "\t");
-        writerParam.put("compress", "SNAPPY");
+        writerParam.put("username", dorisUsername);
+        writerParam.put("password", dorisPassword);
+        writerParam.put("writeMode", "insert");
+        writerParam.put("batchSize", 2048);
 
         JSONArray writerColumns = new JSONArray();
-        for (ColumnInfo col : columns) {
-            JSONObject wc = new JSONObject(true);
-            wc.put("name", col.getName().toLowerCase());
-            wc.put("type", "string");
-            writerColumns.add(wc);
+        writerColumns.add("dt");
+        for (String columnName : dorisColumns) {
+            writerColumns.add(columnName);
         }
         writerParam.put("column", writerColumns);
+
+        writerParam.put("preSql", new JSONArray() {{
+            add("DELETE FROM " + DorisSqlUtil.quoteQualified(dorisDatabase, odsTable)
+                    + " WHERE `dt` = '" + DorisSqlUtil.escapeSqlLiteral(bizdate) + "'");
+        }});
+
+        JSONArray writerConnections = new JSONArray();
+        JSONObject writerConnection = new JSONObject(true);
+        writerConnection.put("jdbcUrl", "jdbc:mysql://" + dorisHost + ":" + dorisQueryPort + "/" + dorisDatabase
+                + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true");
+        writerConnection.put("table", new JSONArray() {{ add(odsTable); }});
+        writerConnections.add(writerConnection);
+        writerParam.put("connection", writerConnections);
         writer.put("parameter", writerParam);
 
-        // === Assemble ===
         JSONArray contentArr = new JSONArray();
         JSONObject contentItem = new JSONObject(true);
         contentItem.put("reader", reader);
@@ -151,20 +141,28 @@ public class DataxService {
         job.put("job", jobContent);
 
         String jsonStr = JSON.toJSONString(job, true);
-
-        // 写入临时文件供 DataX 执行
-        new File(jobDir).mkdirs();
         String filePath = jobDir + "/" + odsTable + ".json";
         try (FileWriter fw = new FileWriter(filePath)) {
             fw.write(jsonStr);
         }
-        log.info("DataX JSON 已生成: {}", filePath);
+        log.info("DataX JSON generated: {}", filePath);
         return filePath;
     }
 
-    /**
-     * 返回 DataX JSON 字符串（用于存入数据库）
-     */
+    private String buildSourceQuery(String sourceDb, String sourceTable, List<ColumnInfo> columns,
+                                    List<String> dorisColumns, String bizdate) {
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT '").append(DorisSqlUtil.escapeSqlLiteral(bizdate)).append("' AS `dt`");
+        for (int i = 0; i < columns.size(); i++) {
+            sql.append(", ")
+                    .append(DorisSqlUtil.quoteIdentifier(columns.get(i).getName()))
+                    .append(" AS ")
+                    .append(DorisSqlUtil.quoteIdentifier(dorisColumns.get(i)));
+        }
+        sql.append(" FROM ").append(DorisSqlUtil.quoteQualified(sourceDb, sourceTable));
+        return sql.toString();
+    }
+
     public String generateJobJsonString(String mysqlHost, int mysqlPort, String mysqlUser, String mysqlPassword,
                                         String sourceDb, String sourceTable,
                                         String odsTable, List<ColumnInfo> columns) {
@@ -173,16 +171,11 @@ public class DataxService {
                     sourceDb, sourceTable, odsTable, columns);
             return new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(filePath)));
         } catch (Exception e) {
-            log.error("生成 DataX JSON 失败", e);
+            log.error("Generate DataX JSON failed", e);
             return null;
         }
     }
 
-    /**
-     * 执行 DataX 同步任务
-     * local 模式：本地 Java 调用
-     * docker 模式：docker exec 容器内执行
-     */
     public ProcessUtil.ExecResult runJob(String jobFilePath) throws Exception {
         if ("docker".equals(dataxMode)) {
             return runJobDocker(jobFilePath);
@@ -202,43 +195,30 @@ public class DataxService {
                 "-jobid", "-1",
                 "-job", jobFilePath
         };
-        log.info("执行 DataX (local): {}", jobFilePath);
+        log.info("Run DataX (local): {}", jobFilePath);
         return ProcessUtil.exec(cmd, 600);
     }
 
     private ProcessUtil.ExecResult runJobDocker(String jobFilePath) throws Exception {
-        // Docker 模式：先把 job 文件复制到容器，再在容器内执行
         String containerName = "datanote-datax";
         String containerJobPath = "/tmp/datax_jobs/" + new File(jobFilePath).getName();
 
-        // 复制 job 文件到容器
         String[] cpCmd = {"docker", "cp", jobFilePath, containerName + ":" + containerJobPath};
         ProcessUtil.exec(cpCmd, 30);
 
-        // 在容器内执行 DataX
         String[] cmd = {
                 "docker", "exec", containerName,
                 "python", "/opt/datax/bin/datax.py", containerJobPath
         };
-        log.info("执行 DataX (docker): {} -> {}", jobFilePath, containerJobPath);
+        log.info("Run DataX (docker): {} -> {}", jobFilePath, containerJobPath);
         return ProcessUtil.exec(cmd, 600);
     }
 
-    /**
-     * 从数据库存储的 JSON 字符串执行 DataX：写临时文件 → 执行 → 删临时文件
-     */
     public ProcessUtil.ExecResult runJobFromJson(String dataxJsonContent, String taskName) throws Exception {
-        // Docker 模式下翻译 JSON 中的地址
         if ("docker".equals(dataxMode)) {
-            // MySQL 等数据源地址 → host.docker.internal
             dataxJsonContent = dataxJsonContent
                     .replace("jdbc:mysql://127.0.0.1", "jdbc:mysql://host.docker.internal")
                     .replace("jdbc:mysql://localhost", "jdbc:mysql://host.docker.internal");
-            // HDFS 地址 → namenode（Docker 网络内）
-            dataxJsonContent = dataxJsonContent
-                    .replace("hdfs://127.0.0.1", "hdfs://namenode")
-                    .replace("hdfs://localhost", "hdfs://namenode")
-                    .replace("hdfs://namenode:9000", "hdfs://namenode:8020");
         }
 
         new File(jobDir).mkdirs();
@@ -249,7 +229,10 @@ public class DataxService {
             }
             return runJob(tmpFile);
         } finally {
-            try { new File(tmpFile).delete(); } catch (Exception ignored) {}
+            try {
+                new java.io.File(tmpFile).delete();
+            } catch (Exception ignored) {
+            }
         }
     }
 }

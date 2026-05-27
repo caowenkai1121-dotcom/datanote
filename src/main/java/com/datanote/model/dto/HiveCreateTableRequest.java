@@ -10,4 +10,6 @@ public class HiveCreateTableRequest {
     private String db;
     private String table;
     private String syncMode;
+    private String datasourceId;
+    private Long syncTaskId;
 }

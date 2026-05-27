@@ -651,7 +651,7 @@ USE datanote;
 CREATE TABLE IF NOT EXISTS dn_datasource (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     name          VARCHAR(100) NOT NULL COMMENT '数据源名称',
-    type          VARCHAR(20)  NOT NULL COMMENT 'MySQL/Hive/PostgreSQL/Oracle',
+    type          VARCHAR(20)  NOT NULL COMMENT 'MySQL/Doris/PostgreSQL/Oracle',
     host          VARCHAR(200) NOT NULL,
     port          INT          NOT NULL,
     database_name VARCHAR(100) DEFAULT '' COMMENT '数据库名',
@@ -681,7 +681,7 @@ CREATE TABLE IF NOT EXISTS dn_script (
     id                BIGINT       NOT NULL AUTO_INCREMENT,
     folder_id         BIGINT       NOT NULL COMMENT '所属目录ID',
     script_name       VARCHAR(200) NOT NULL COMMENT '脚本名称',
-    script_type       VARCHAR(20)  NOT NULL COMMENT 'HiveSQL/Shell/Python/DataSync',
+    script_type       VARCHAR(20)  NOT NULL COMMENT 'DorisSQL/Shell/Python/DataSync',
     database_name     VARCHAR(100) DEFAULT NULL COMMENT '所属数据库名',
     content           LONGTEXT     COMMENT '脚本内容',
     description       VARCHAR(500) DEFAULT '' COMMENT '描述',
@@ -764,7 +764,7 @@ CREATE TABLE IF NOT EXISTS dn_task_execution (
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     script_id       BIGINT       DEFAULT NULL COMMENT '关联 dn_script.id（SQL任务）',
     sync_task_id    BIGINT       DEFAULT NULL COMMENT '关联 dn_sync_task.id（同步任务）',
-    task_type       VARCHAR(20)  NOT NULL COMMENT 'HiveSQL/Shell/DataSync',
+    task_type       VARCHAR(20)  NOT NULL COMMENT 'DorisSQL/Shell/DataSync',
     trigger_type    VARCHAR(20)  NOT NULL COMMENT 'manual手动 / schedule调度',
     ds_instance_id  BIGINT       DEFAULT NULL COMMENT 'DolphinScheduler 实例ID（调度触发时）',
     status          VARCHAR(20)  NOT NULL DEFAULT 'WAITING' COMMENT 'WAITING/RUNNING/SUCCESS/FAILED',
@@ -1208,7 +1208,7 @@ INSERT INTO dn_sync_task (task_name, source_ds_id, source_db, source_table, targ
 
 -- DWD 示例脚本（folder_id=3 对应 DWD 层）
 INSERT INTO dn_script (folder_id, script_name, script_type, database_name, content, task_type, model_desc, subject, schedule_cron, schedule_status, warning_type, retry_times, retry_interval, timeout_seconds) VALUES
-(3, 'dwd_trad_order_detail_df', 'hive', 'dwd',
+(3, 'dwd_trad_order_detail_df', 'doris', 'dwd',
 '-- DWD 交易订单明细宽表\n-- 粒度: 一行 = 一个订单明细（SKU 级别）\n\nINSERT OVERWRITE TABLE dwd.dwd_trad_order_detail_df PARTITION (dt = ''${bizdate}'')\nSELECT\n     t1.id AS order_id\n    ,t1.order_no\n    ,t1.user_id\n    ,t2.id AS detail_id\n    ,t2.sku_id\n    ,t2.sku_name\n    ,t2.sku_num\n    ,t2.unit_price\n    ,t2.split_total_amount\n    ,t1.total_amount\n    ,t1.pay_amount\n    ,t1.pay_type\n    ,t1.order_status\n    ,t1.create_time\nFROM ods.ods_order_center_order_info_df t1\nLEFT JOIN ods.ods_order_center_order_detail_df t2\nON t1.id = t2.order_id\nWHERE t1.dt = ''${bizdate}''\nAND t2.dt = ''${bizdate}''\n;',
 '核心模型', 'DWD交易订单明细宽表，关联主订单和订单明细，SKU粒度', '交易',
 '0 0 2 * * ?', 'online', 'FAILURE', 1, 60, 3600);
