@@ -15,6 +15,7 @@ import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.engine.cdc.CdcSyncEngine;
 import com.datanote.sync.schema.TableSchemaService;
+import com.datanote.sync.util.FieldMappingResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,6 +142,7 @@ public class CdcEngineManager {
             for (TableSyncConfig tc : tables) {
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
                     List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
+                    cols = prepareCreateColumns(cols, tc, job);
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                 }
             }
@@ -149,6 +152,55 @@ public class CdcEngineManager {
     }
 
     /** 停止指定 CDC 任务（未运行则仅更新状态）。 */
+    private List<ColumnDef> prepareCreateColumns(List<ColumnDef> cols, TableSyncConfig tc, DnSyncJob job) {
+        List<ColumnDef> mapped = applyFieldMapping(cols, tc);
+        return appendSyncTsColumn(mapped, job);
+    }
+
+    private List<ColumnDef> applyFieldMapping(List<ColumnDef> cols, TableSyncConfig tc) {
+        if (tc.getFields() == null || tc.getFields().isEmpty()) {
+            return cols;
+        }
+        Map<String, String> srcToTgt = FieldMappingResolver.buildSrcToTgt(tc.getFields());
+        List<ColumnDef> result = new ArrayList<>();
+        for (ColumnDef c : cols) {
+            String targetName = srcToTgt.get(c.getName());
+            if (targetName == null) {
+                continue;
+            }
+            ColumnDef mapped = new ColumnDef();
+            mapped.setName(targetName);
+            mapped.setColumnType(c.getColumnType());
+            mapped.setNullable(c.isNullable());
+            mapped.setPrimaryKey(c.isPrimaryKey());
+            mapped.setComment(c.getComment());
+            result.add(mapped);
+        }
+        return result;
+    }
+
+    private List<ColumnDef> appendSyncTsColumn(List<ColumnDef> cols, DnSyncJob job) {
+        Integer mark = job.getMarkSyncTs();
+        String field = job.getSyncTsField();
+        if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
+            return cols;
+        }
+        for (ColumnDef c : cols) {
+            if (field.equals(c.getName())) {
+                return cols;
+            }
+        }
+        List<ColumnDef> result = new ArrayList<>(cols);
+        ColumnDef ts = new ColumnDef();
+        ts.setName(field);
+        ts.setColumnType("DATETIME");
+        ts.setNullable(true);
+        ts.setPrimaryKey(false);
+        ts.setComment("sync timestamp");
+        result.add(ts);
+        return result;
+    }
+
     public synchronized void stop(Long jobId) {
         CdcSyncEngine engine = engines.remove(jobId);
         if (engine != null) {

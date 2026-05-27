@@ -1,6 +1,6 @@
 package com.datanote.sync.controller;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.mapper.DnSyncFolderMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.model.DnSyncFolder;
@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 关系库同步任务文件夹 Controller。
@@ -55,12 +57,33 @@ public class SyncFolderController {
     @DeleteMapping("/{id}")
     @Transactional
     public R<String> delete(@PathVariable Long id) {
-        // 先把该文件夹下的任务移回根，再删文件夹，避免任务悬挂到不存在的文件夹
-        syncJobMapper.update(null, new LambdaUpdateWrapper<DnSyncJob>()
-                .eq(DnSyncJob::getFolderId, id)
-                .set(DnSyncJob::getFolderId, 0L)
-                .set(DnSyncJob::getUpdatedAt, LocalDateTime.now()));
-        folderMapper.deleteById(id);
+        List<DnSyncFolder> allFolders = folderMapper.selectList(null);
+        Set<Long> deleteIds = new LinkedHashSet<>();
+        collectDescendantIds(id, allFolders, deleteIds);
+        if (deleteIds.isEmpty()) {
+            deleteIds.add(id);
+        }
+        // 删除父文件夹时，子孙文件夹下的任务也移回根目录，避免任务悬挂到已删除目录。
+        syncJobMapper.update(null, new UpdateWrapper<DnSyncJob>()
+                .in("folder_id", deleteIds)
+                .set("folder_id", 0L)
+                .set("updated_at", LocalDateTime.now()));
+        folderMapper.deleteBatchIds(deleteIds);
         return R.ok("删除成功");
+    }
+
+    private void collectDescendantIds(Long id, List<DnSyncFolder> allFolders, Set<Long> result) {
+        if (id == null || result.contains(id)) {
+            return;
+        }
+        result.add(id);
+        if (allFolders == null) {
+            return;
+        }
+        for (DnSyncFolder folder : allFolders) {
+            if (folder != null && id.equals(folder.getParentId())) {
+                collectDescendantIds(folder.getId(), allFolders, result);
+            }
+        }
     }
 }

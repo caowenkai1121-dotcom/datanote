@@ -2126,6 +2126,69 @@ html, body {
 }
 .ops-sidebar-item:hover { background: rgba(0,0,0,.03); color: var(--primary); }
 .ops-sidebar-item.active { background: rgba(24,144,255,.06); color: var(--primary); border-left-color: var(--primary); font-weight: 500; }
+.ops-sidebar-item.dbsync-jobs-nav { justify-content: space-between; padding-right: 8px; }
+.dbsync-nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbsync-folder-toggle {
+  width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.dbsync-folder-toggle:hover { background: rgba(24,144,255,.08); color: var(--primary); }
+.dbsync-folder-toggle svg { width: 12px; height: 12px; transition: transform .15s ease; }
+.dbsync-folder-toggle.collapsed svg { transform: rotate(-90deg); }
+.dbsync-folder-nav {
+  padding: 2px 8px 10px 18px; border-left: 3px solid transparent;
+}
+.dbsync-folder-nav.collapsed { display: none; }
+.dbsync-folder-nav-list { display: flex; flex-direction: column; gap: 2px; }
+.dbsync-folder-node { display: flex; align-items: center; gap: 2px; }
+.dbsync-folder-nav-item {
+  min-width: 0; flex: 1; height: 28px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--text-regular); display: flex; align-items: center; gap: 6px; padding: 0 8px;
+  font-size: 12px; text-align: left; cursor: pointer;
+}
+.dbsync-folder-nav-item:hover { background: rgba(0,0,0,.03); color: var(--primary); }
+.dbsync-folder-nav-item.active { background: rgba(24,144,255,.08); color: var(--primary); font-weight: 500; }
+.dbsync-folder-nav-item svg { width: 12px; height: 12px; flex-shrink: 0; }
+.dbsync-folder-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbsync-folder-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s ease; }
+.dbsync-folder-node:hover .dbsync-folder-actions,
+.dbsync-folder-node:focus-within .dbsync-folder-actions { opacity: 1; }
+.dbsync-folder-action,
+.dbsync-folder-delete {
+  width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--text-muted); cursor: pointer; opacity: 0; flex-shrink: 0;
+}
+.dbsync-folder-node:hover .dbsync-folder-delete,
+.dbsync-folder-node:hover .dbsync-folder-action,
+.dbsync-folder-node:focus-within .dbsync-folder-delete,
+.dbsync-folder-node:focus-within .dbsync-folder-action { opacity: 1; }
+.dbsync-folder-action:hover { background: rgba(24,144,255,.08); color: var(--primary); }
+.dbsync-folder-delete:hover { background: rgba(255,77,79,.08); color: var(--error); }
+.dbsync-folder-action svg,
+.dbsync-folder-delete svg { width: 12px; height: 12px; }
+.dbsync-folder-create {
+  width: 100%; height: 28px; margin-top: 6px; border: 1px dashed var(--border);
+  border-radius: 4px; background: transparent; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: 12px; cursor: pointer;
+}
+.dbsync-folder-create:hover { border-color: var(--primary); color: var(--primary); background: rgba(24,144,255,.04); }
+.dbsync-folder-modal .dbsync-modal-body { padding: 18px 22px 20px; }
+.dbsync-folder-modal-note {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 14px;
+  border: 1px solid rgba(24,144,255,.14); border-radius: 6px;
+  background: rgba(24,144,255,.04); color: var(--text-muted); font-size: 12px;
+}
+.dbsync-folder-modal-note svg { width: 14px; height: 14px; color: var(--primary); flex-shrink: 0; }
+.dbsync-folder-field label {
+  display: block; margin-bottom: 7px; font-size: 12px; font-weight: 600; color: var(--text-regular);
+}
+.dbsync-folder-input {
+  width: 100%; height: 36px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 0 11px; outline: none; font-size: 13px; color: var(--text-regular); background: var(--bg-card);
+}
+.dbsync-folder-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(24,144,255,.10); }
 .ops-main {
   flex: 1;
   overflow-y: auto;
@@ -2988,7 +3051,12 @@ html, body {
 .dbsync-table tr:last-child td { border-bottom: none; }
 .dbsync-table tr:hover td { background: var(--primary-light); }
 /* 表格操作按钮区 */
-.dbsync-action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.dbsync-action-btns { display: flex; gap: 4px; flex-wrap: wrap; max-width: 220px; align-items: center; }
+.dbsync-action-btns .btn {
+  height: 28px; min-width: 0; padding: 0 8px; border-radius: 4px;
+  font-size: 12px; line-height: 1; white-space: nowrap;
+}
+.dbsync-action-btns .btn svg { width: 10px; height: 10px; flex-shrink: 0; }
 /* 弹窗 */
 .dbsync-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.4);
@@ -3990,8 +4058,27 @@ html, body {
       <div class="ops-layout" style="height:100%;overflow:hidden;">
         <!-- 左侧导航 -->
         <div class="ops-sidebar">
-          <div class="ops-sidebar-item active" onclick="switchDbSyncTab(this,'jobs')">任务列表</div>
-          <div class="ops-sidebar-item" onclick="switchDbSyncTab(this,'logs')">实时日志</div>
+          <div id="dbsyncJobsNav" class="ops-sidebar-item active dbsync-jobs-nav" onclick="switchDbSyncTab(this,'jobs')">
+            <span class="dbsync-nav-label">任务列表</span>
+            <button type="button" id="dbsyncFolderToggle" class="dbsync-folder-toggle" onclick="event.stopPropagation(); dbsyncToggleFolderNav();" title="展开/收起文件夹">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5l3 3 3-3"/></svg>
+            </button>
+          </div>
+          <div id="dbsyncFolderNav" class="dbsync-folder-nav">
+            <div id="dbsyncFolderTabs" class="dbsync-folder-nav-list">
+              <div class="dbsync-folder-node">
+                <button class="dbsync-folder-nav-item active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>
+                  <span class="dbsync-folder-name">全部</span>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="dbsync-folder-create" onclick="dbsyncOpenCreateFolder()" title="新建文件夹">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+              新建文件夹
+            </button>
+          </div>
+          <div id="dbsyncLogsNav" class="ops-sidebar-item" onclick="switchDbSyncTab(this,'logs')">实时日志</div>
         </div>
         <!-- 右侧内容区 -->
         <div class="ops-main">
@@ -4012,17 +4099,6 @@ html, body {
                   刷新
                 </button>
               </div>
-            </div>
-            <!-- 文件夹区域 -->
-            <div id="dbsyncFolderBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg-hover);border-radius:6px;border:1px solid var(--border);">
-              <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">目录：</span>
-              <div id="dbsyncFolderTabs" style="display:flex;gap:4px;flex-wrap:wrap;">
-                <button class="dbsync-folder-tab active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;background:var(--primary);color:#fff;">全部</button>
-              </div>
-              <button class="btn btn-sm" onclick="dbsyncOpenCreateFolder()" style="margin-left:4px;font-size:11px;white-space:nowrap;" title="新建文件夹">
-                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 2v10M2 7h10"/></svg>
-                新建文件夹
-              </button>
             </div>
             <div id="dbsyncJobsContent">
               <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
@@ -4257,6 +4333,32 @@ html, body {
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">取消</button>
           <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob()">确定移动</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 文件夹新建/重命名弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncFolderModal">
+      <div class="dbsync-modal dbsync-folder-modal" style="width:420px;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncFolderModalTitle">新建文件夹</span>
+          <button class="g-modal-close" onclick="dbsyncCloseFolderModal()">&times;</button>
+        </div>
+        <div class="dbsync-modal-body">
+          <input type="hidden" id="dbsyncFolderId">
+          <input type="hidden" id="dbsyncFolderParentId" value="0">
+          <div class="dbsync-folder-modal-note">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4a1 1 0 011-1h3l1.2 1.2H11.5a1 1 0 011 1v5a1 1 0 01-1 1h-9a1 1 0 01-1-1V4z"/></svg>
+            <span id="dbsyncFolderParentName">位置：全部</span>
+          </div>
+          <div class="dbsync-folder-field">
+            <label for="dbsyncFolderNameInput">文件夹名称</label>
+            <input class="dbsync-folder-input" id="dbsyncFolderNameInput" maxlength="80" placeholder="输入文件夹名称" onkeydown="if(event.key==='Enter') dbsyncSubmitFolder()">
+          </div>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncCloseFolderModal()">取消</button>
+          <button class="btn btn-primary" onclick="dbsyncSubmitFolder()">保存</button>
         </div>
       </div>
     </div>
@@ -12974,11 +13076,13 @@ var _dbsyncAllJobs = [];    // 缓存完整任务列表，用于前端过滤
 var _dbsyncEditId  = null;  // 当前编辑任务 ID（null=新建）
 var _dbsyncSyncMode = 'FULL'; // 当前表单同步模式
 var _dbsyncSrcTables = [];  // 源表列表缓存
+var _dbsyncFolderNavExpanded = true;
 
 /* ---------- Tab 切换 ---------- */
 window.switchDbSyncTab = function(el, tab) {
-  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
+  var sidebar = document.querySelector('#viewDbSync .ops-sidebar');
+  if (sidebar) sidebar.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
   document.getElementById('dbsyncJobsPanel').style.display  = (tab === 'jobs')  ? '' : 'none';
   document.getElementById('dbsyncLogsPanel').style.display  = (tab === 'logs')  ? '' : 'none';
 };
@@ -13554,7 +13658,11 @@ function dbsyncLoadFolders() {
     _dbsyncFolders = (res.code === 0 && res.data) ? res.data : [];
     dbsyncRenderFolderTabs();
     dbsyncFillFolderSelect();
-  }).catch(function() { _dbsyncFolders = []; });
+  }).catch(function() {
+    _dbsyncFolders = [];
+    dbsyncRenderFolderTabs();
+    dbsyncFillFolderSelect();
+  });
 }
 
 function dbsyncRenderFolderTabs() {
@@ -13600,18 +13708,173 @@ function dbsyncApplyFolderFilter() {
   }
 }
 
+function dbsyncRenderFolderTabs() {
+  var wrap = document.getElementById('dbsyncFolderTabs');
+  if (!wrap) return;
+  var html = '<div class="dbsync-folder-node">'
+    + '<button class="dbsync-folder-nav-item' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">'
+    + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>'
+    + '<span class="dbsync-folder-name">全部</span></button></div>';
+  html += dbsyncRenderFolderNodes(0, 0);
+  wrap.innerHTML = html;
+}
+
+function dbsyncRenderFolderNodes(parentId, depth) {
+  return _dbsyncFolders.filter(function(f) {
+    return String(f.parentId || 0) === String(parentId || 0);
+  }).map(function(f) {
+    var isActive = String(_dbsyncSelectedFolderId) === String(f.id);
+    var pad = 8 + depth * 12;
+    return '<div class="dbsync-folder-node">'
+      + '<button class="dbsync-folder-nav-item' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding-left:' + pad + 'px;">'
+      + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3a1 1 0 011-1h2.6a1 1 0 01.7.3L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
+      + '<span class="dbsync-folder-name">' + escapeHtml(f.folderName || '') + '</span></button>'
+      + '<div class="dbsync-folder-actions">'
+      + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenCreateChildFolder(' + f.id + ')" title="新建子文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v8M2 6h8"/></svg></button>'
+      + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenRenameFolder(' + f.id + ')" title="重命名"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 2.5l2 2L4.2 9.8H2.2V7.8z"/><path d="M6.8 3.2l2 2"/></svg></button>'
+      + '<button class="dbsync-folder-delete" onclick="event.stopPropagation(); dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6M5 3V2h2v1M4 5v4M8 5v4M3.5 3.8l.4 6.2h4.2l.4-6.2"/></svg></button>'
+      + '</div>'
+      + '</div>'
+      + dbsyncRenderFolderNodes(f.id, depth + 1);
+  }).join('');
+}
+
+function dbsyncFillFolderSelect() {
+  var sel = document.getElementById('dfsFolderId');
+  if (!sel) return;
+  var cur = sel.value || '0';
+  sel.innerHTML = dbsyncBuildFolderOptions(cur);
+}
+
+window.dbsyncSelectFolder = function(btn, folderId) {
+  _dbsyncSelectedFolderId = folderId;
+  var jobsNav = document.getElementById('dbsyncJobsNav');
+  if (jobsNav) switchDbSyncTab(jobsNav, 'jobs');
+  dbsyncRenderFolderTabs();
+  dbsyncApplyFolderFilter();
+};
+
+window.dbsyncToggleFolderNav = function() {
+  _dbsyncFolderNavExpanded = !_dbsyncFolderNavExpanded;
+  var nav = document.getElementById('dbsyncFolderNav');
+  var toggle = document.getElementById('dbsyncFolderToggle');
+  if (nav) nav.classList.toggle('collapsed', !_dbsyncFolderNavExpanded);
+  if (toggle) toggle.classList.toggle('collapsed', !_dbsyncFolderNavExpanded);
+};
+
+function dbsyncBuildFolderOptions(currentValue) {
+  var html = '<option value="0"' + (String(currentValue || '0') === '0' ? ' selected' : '') + '>根目录（不归类）</option>';
+  function append(parentId, depth) {
+    _dbsyncFolders.filter(function(f) {
+      return String(f.parentId || 0) === String(parentId || 0);
+    }).forEach(function(f) {
+      var prefix = new Array(depth + 1).join('　');
+      html += '<option value="' + f.id + '"' + (String(f.id) === String(currentValue) ? ' selected' : '') + '>' + prefix + escapeHtml(f.folderName || '') + '</option>';
+      append(f.id, depth + 1);
+    });
+  }
+  append(0, 0);
+  return html;
+}
+
+function dbsyncFolderScopeIds(folderId) {
+  var ids = [String(folderId || 0)];
+  for (var changed = true; changed;) {
+    changed = false;
+    _dbsyncFolders.forEach(function(f) {
+      var id = String(f.id);
+      if (ids.indexOf(id) < 0 && ids.indexOf(String(f.parentId || 0)) >= 0) {
+        ids.push(id);
+        changed = true;
+      }
+    });
+  }
+  return ids;
+}
+
+function dbsyncApplyFolderFilter() {
+  if (_dbsyncSelectedFolderId === 0) {
+    dbsyncRenderJobs(_dbsyncAllJobs);
+  } else {
+    var scopeIds = dbsyncFolderScopeIds(_dbsyncSelectedFolderId);
+    dbsyncRenderJobs((_dbsyncAllJobs || []).filter(function(j) {
+      return scopeIds.indexOf(String(j.folderId || 0)) >= 0;
+    }));
+  }
+}
+
 /* ---------- 新建文件夹 ---------- */
+function dbsyncFindFolder(id) {
+  return (_dbsyncFolders || []).find(function(f) { return String(f.id) === String(id); });
+}
+
+function dbsyncFolderPathName(id) {
+  if (!id || String(id) === '0') return '全部';
+  var names = [];
+  var cur = dbsyncFindFolder(id);
+  var guard = 0;
+  while (cur && guard++ < 20) {
+    names.unshift(cur.folderName || '');
+    cur = cur.parentId ? dbsyncFindFolder(cur.parentId) : null;
+  }
+  return names.length ? names.join(' / ') : '全部';
+}
+
+function dbsyncOpenFolderModal(mode, folderId, parentId) {
+  var modal = document.getElementById('dbsyncFolderModal');
+  var title = document.getElementById('dbsyncFolderModalTitle');
+  var idEl = document.getElementById('dbsyncFolderId');
+  var parentEl = document.getElementById('dbsyncFolderParentId');
+  var parentName = document.getElementById('dbsyncFolderParentName');
+  var input = document.getElementById('dbsyncFolderNameInput');
+  var folder = folderId ? dbsyncFindFolder(folderId) : null;
+  var resolvedParentId = folder ? (folder.parentId || 0) : (parentId || 0);
+  if (title) title.textContent = mode === 'rename' ? '重命名文件夹' : (resolvedParentId ? '新建子文件夹' : '新建文件夹');
+  if (idEl) idEl.value = folder ? folder.id : '';
+  if (parentEl) parentEl.value = resolvedParentId || 0;
+  if (parentName) parentName.textContent = '位置：' + dbsyncFolderPathName(resolvedParentId);
+  if (input) {
+    input.value = folder ? (folder.folderName || '') : '';
+    setTimeout(function() { input.focus(); input.select(); }, 30);
+  }
+  if (modal) modal.classList.add('show');
+}
+
 window.dbsyncOpenCreateFolder = function() {
-  var name = window.prompt('请输入文件夹名称：');
-  if (!name || !name.trim()) return;
-  apiPost('/api/sync-folder/save', { folderName: name.trim(), parentId: 0 }).then(function(res) {
+  dbsyncOpenFolderModal('create', null, 0);
+};
+
+window.dbsyncOpenCreateChildFolder = function(parentId) {
+  dbsyncOpenFolderModal('create', null, parentId || 0);
+};
+
+window.dbsyncOpenRenameFolder = function(id) {
+  dbsyncOpenFolderModal('rename', id, 0);
+};
+
+window.dbsyncCloseFolderModal = function() {
+  var modal = document.getElementById('dbsyncFolderModal');
+  if (modal) modal.classList.remove('show');
+};
+
+window.dbsyncSubmitFolder = function() {
+  var id = (document.getElementById('dbsyncFolderId') || {}).value || '';
+  var parentId = parseInt((document.getElementById('dbsyncFolderParentId') || {}).value || '0', 10);
+  var input = document.getElementById('dbsyncFolderNameInput');
+  var name = input ? input.value.trim() : '';
+  if (!name) { showToast('请输入文件夹名称', 'error'); if (input) input.focus(); return; }
+  var payload = { folderName: name, parentId: parentId || 0 };
+  if (id) payload.id = parseInt(id, 10);
+  apiPost('/api/sync-folder/save', payload).then(function(res) {
     if (res.code === 0) {
-      showToast('文件夹创建成功', 'success');
+      showToast(id ? '文件夹已重命名' : '文件夹创建成功', 'success');
+      dbsyncCloseFolderModal();
       dbsyncLoadFolders();
+      dbsyncLoadJobs();
     } else {
-      showToast('创建失败: ' + (res.msg || ''), 'error');
+      showToast('保存失败: ' + (res.msg || ''), 'error');
     }
-  }).catch(function() { showToast('请求失败', 'error'); });
+  }).catch(function() { showToast('保存请求失败', 'error'); });
 };
 
 /* ---------- 删除文件夹 ---------- */
@@ -13723,13 +13986,9 @@ window.dbsyncOpenMoveJobDialog = function(id, name) {
   // 填充文件夹选项
   var sel = document.getElementById('dbsyncMoveJobFolderSel');
   if (sel) {
-    sel.innerHTML = '<option value="0">根目录（不归类）</option>';
-    _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
-      sel.innerHTML += '<option value="' + f.id + '">' + escapeHtml(f.folderName || '') + '</option>';
-    });
     // 回显当前文件夹
     var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; });
-    if (job) sel.value = String(job.folderId || 0);
+    sel.innerHTML = dbsyncBuildFolderOptions(job ? String(job.folderId || 0) : '0');
   }
   document.getElementById('dbsyncMoveJobModal').classList.add('show');
 };
