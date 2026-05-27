@@ -85,7 +85,7 @@ public class IncrementalSyncEngine implements SyncEngine {
             startValue = "AUTO_INCREMENT".equalsIgnoreCase(tc.getIncrementalType()) ? "0" : "1970-01-01 00:00:00";
         }
 
-        String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
+        String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
                 tgtColumns, java.util.Collections.singletonList(fm.pkTarget));
         String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, true);
         String nextSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, false);
