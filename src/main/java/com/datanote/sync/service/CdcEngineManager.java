@@ -44,6 +44,10 @@ public class CdcEngineManager {
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
 
+    /** database.server.id 基准值，避免与生产 slave 撞号；按需在配置中覆盖。 */
+    @Value("${datanote.sync.cdc.server-id-base:5400}")
+    private long serverIdBase;
+
     /** jobId -> 运行中的引擎实例。 */
     private final Map<Long, CdcSyncEngine> engines = new ConcurrentHashMap<>();
 
@@ -63,7 +67,12 @@ public class CdcEngineManager {
         this.syncJobService = syncJobService;
     }
 
-    /** 注入存储桥接 + 恢复运行中的 CDC 任务。单任务失败不影响整体启动。 */
+    /**
+     * 注入存储桥接 + 恢复运行中的 CDC 任务。单任务失败不影响整体启动。
+     *
+     * <p>{@link CdcStoreHolder#init} 必须在所有 start 之前调用（供 Debezium 反射创建的存储类静态获取 mapper）。
+     * 恢复时复用已 {@code synchronized} 的 {@link #start(Long)}，与外部并发 start 互斥，避免同一 jobId 双启动。
+     */
     @PostConstruct
     public void init() {
         CdcStoreHolder.init(offsetMapper, historyMapper);
@@ -74,7 +83,7 @@ public class CdcEngineManager {
         log.info("CDC 启动恢复：待恢复任务数={}", jobs.size());
         for (DnSyncJob job : jobs) {
             try {
-                doStart(job);
+                start(job.getId());
             } catch (Exception e) {
                 log.error("CDC 任务恢复失败 jobId={}", job.getId(), e);
             }
@@ -105,7 +114,7 @@ public class CdcEngineManager {
             throw new IllegalStateException("CDC 任务未配置任何表 jobId=" + jobId);
         }
         CdcSyncEngine engine = new CdcSyncEngine(job, sourceDs, tables,
-                connectionManager, logBroadcastService, cryptoKey);
+                connectionManager, logBroadcastService, cryptoKey, serverIdBase);
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");
