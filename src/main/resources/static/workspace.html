@@ -2965,6 +2965,7 @@ html, body {
 .dbsync-status-badge.STOPPED  { background: rgba(118,124,130,.12); color: #767c82; }
 .dbsync-status-badge.FAILED   { background: rgba(255,77,79,.08);  color: #ff4d4f; }
 .dbsync-status-badge.PAUSED   { background: rgba(250,173,20,.08); color: #faad14; }
+.dbsync-status-badge.SUCCESS  { background: rgba(82,196,26,.08);  color: #52c41a; }
 .dbsync-mode-badge {
   display: inline-flex; align-items: center; padding: 2px 8px;
   border-radius: 10px; font-size: 11px; font-weight: 500;
@@ -13254,7 +13255,7 @@ function dbsyncRenderJobs(list) {
     var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
     var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' }[job.syncMode] || job.syncMode;
     var statusClass = job.status || 'CREATED';
-    var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停' }[job.status] || job.status;
+    var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }[job.status] || job.status;
     var srcLabel = escapeHtml((job.sourceDsName || ('ds#' + job.sourceDsId)) + '.' + (job.sourceDb || ''));
     var tgtLabel = escapeHtml((job.targetDsName || ('ds#' + job.targetDsId)) + '.' + (job.targetDb || ''));
     html += '<tr>';
