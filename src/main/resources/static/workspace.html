@@ -2952,6 +2952,130 @@ html, body {
   .module-grid { grid-template-columns: 1fr; }
   .setting-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== view-dbsync 关系库同步 ===== */
+.view-dbsync { display: none; }
+.view-dbsync.active { display: flex; flex-direction: column; }
+.dbsync-status-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; font-weight: 500;
+}
+.dbsync-status-badge.CREATED  { background: rgba(24,144,255,.08); color: #1890ff; }
+.dbsync-status-badge.RUNNING  { background: rgba(82,196,26,.08);  color: #52c41a; }
+.dbsync-status-badge.STOPPED  { background: rgba(118,124,130,.12); color: #767c82; }
+.dbsync-status-badge.FAILED   { background: rgba(255,77,79,.08);  color: #ff4d4f; }
+.dbsync-status-badge.PAUSED   { background: rgba(250,173,20,.08); color: #faad14; }
+.dbsync-mode-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; font-weight: 500;
+}
+.dbsync-mode-badge.FULL        { background: rgba(24,144,255,.06); color: #1890ff; }
+.dbsync-mode-badge.INCREMENTAL { background: rgba(82,196,26,.06);  color: #52c41a; }
+.dbsync-mode-badge.CDC         { background: rgba(114,46,209,.06); color: #722ed1; }
+/* 任务表格 */
+.dbsync-table { width: 100%; border-collapse: collapse; }
+.dbsync-table th {
+  background: var(--bg-hover); padding: 9px 12px;
+  text-align: left; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); border-bottom: 1px solid var(--divider);
+  white-space: nowrap;
+}
+.dbsync-table td {
+  padding: 9px 12px; font-size: 12px; color: var(--text-regular);
+  border-bottom: 1px solid var(--divider); vertical-align: middle;
+}
+.dbsync-table tr:last-child td { border-bottom: none; }
+.dbsync-table tr:hover td { background: var(--primary-light); }
+/* 表格操作按钮区 */
+.dbsync-action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+/* 弹窗 */
+.dbsync-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 2100; display: none; align-items: flex-start;
+  justify-content: center; padding-top: 48px; overflow-y: auto;
+}
+.dbsync-modal-overlay.show { display: flex; }
+.dbsync-modal {
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+  width: 860px; max-width: 95vw;
+  animation: gModalIn .2s ease;
+  margin-bottom: 48px;
+}
+.dbsync-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px 12px; border-bottom: 1px solid var(--divider);
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+}
+.dbsync-modal-body { padding: 20px 24px; overflow-y: auto; max-height: 70vh; }
+.dbsync-modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 24px; border-top: 1px solid var(--divider);
+}
+/* 表单行 */
+.dbsync-form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px;
+  margin-bottom: 16px;
+}
+.dbsync-form-row { display: flex; flex-direction: column; gap: 4px; }
+.dbsync-form-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.dbsync-form-input {
+  height: 32px; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 10px; font-size: 13px; color: var(--text-regular); outline: none;
+  background: var(--bg-card); width: 100%;
+}
+.dbsync-form-input:focus { border-color: var(--primary); }
+.dbsync-form-select {
+  height: 32px; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 8px; font-size: 13px; color: var(--text-regular); outline: none;
+  background: var(--bg-card); cursor: pointer; width: 100%;
+}
+.dbsync-form-select:focus { border-color: var(--primary); }
+.dbsync-section-title {
+  font-size: 13px; font-weight: 600; color: var(--text-regular);
+  margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--divider);
+  display: flex; align-items: center; gap: 6px;
+}
+/* 多表配置区域 */
+.dbsync-tables-area { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.dbsync-tables-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; background: var(--bg-hover); border-bottom: 1px solid var(--divider);
+}
+.dbsync-table-row {
+  display: grid; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--divider);
+  align-items: center;
+}
+.dbsync-table-row:last-child { border-bottom: none; }
+.dbsync-table-row.no-incr { grid-template-columns: 1fr 1fr 60px 28px; }
+.dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 60px 28px; }
+.dbsync-del-row-btn {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: none; background: none; color: #ff4d4f; cursor: pointer;
+  border-radius: var(--radius); font-size: 16px; line-height: 1;
+}
+.dbsync-del-row-btn:hover { background: rgba(255,77,79,.08); }
+/* 执行历史 */
+.dbsync-exec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dbsync-exec-table th {
+  background: var(--bg-hover); padding: 7px 10px;
+  text-align: left; font-weight: 600; color: var(--text-muted);
+  border-bottom: 1px solid var(--divider);
+}
+.dbsync-exec-table td { padding: 7px 10px; border-bottom: 1px solid var(--divider); color: var(--text-regular); }
+.dbsync-exec-table tr:last-child td { border-bottom: none; }
+/* 日志面板 */
+.dbsync-log-panel {
+  background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 12px; min-height: 120px; max-height: 260px; overflow-y: auto;
+  font-family: 'SF Mono','Consolas',monospace; font-size: 11px;
+  line-height: 1.7; color: var(--text-regular); white-space: pre-wrap; word-break: break-all;
+}
+.dbsync-log-line { display: block; }
+.dbsync-log-line.INFO  { color: var(--text-regular); }
+.dbsync-log-line.WARN  { color: #faad14; }
+.dbsync-log-line.ERROR { color: #ff4d4f; }
+.dbsync-log-line.OK    { color: #52c41a; }
 </style>
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
@@ -2983,6 +3107,10 @@ html, body {
     <a class="header-tab" href="#/governance" data-route="governance">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l7 4v5c0 3.5-3 6.5-7 7-4-.5-7-3.5-7-7V6l7-4z"/><path d="M6 8.5l1.5 1.5 3-3"/></svg>
       数据治理
+    </a>
+    <a class="header-tab" href="#/dbsync" data-route="dbsync">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="5" cy="5" rx="3" ry="1.5"/><path d="M2 5v6c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5V5"/><path d="M2 8c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5"/><path d="M10 7h4M12 5l2 2-2 2"/></svg>
+      关系库同步
     </a>
     <a class="header-tab" href="#/metrics" data-route="metrics">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V7h3v6H2zM7 13V4h3v9H7zM12 13V1h3v12h-3z"/></svg>
@@ -3838,6 +3966,208 @@ html, body {
             </div>
             <div style="padding:24px;color:var(--text-muted);">CPU、内存、磁盘使用率监控和服务健康检查</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== view-dbsync 关系库同步 ===== -->
+    <div class="view-dbsync" id="viewDbSync" style="flex:1;overflow:hidden;">
+      <div class="ops-layout" style="height:100%;overflow:hidden;">
+        <!-- 左侧导航 -->
+        <div class="ops-sidebar">
+          <div class="ops-sidebar-item active" onclick="switchDbSyncTab(this,'jobs')">任务列表</div>
+          <div class="ops-sidebar-item" onclick="switchDbSyncTab(this,'logs')">实时日志</div>
+        </div>
+        <!-- 右侧内容区 -->
+        <div class="ops-main">
+
+          <!-- ===== 任务列表面板 ===== -->
+          <div class="ops-dashboard" id="dbsyncJobsPanel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">关系库同步任务</h2>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名..." oninput="dbsyncFilterJobs()"
+                  style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;width:180px;background:var(--bg-card);">
+                <button class="btn btn-primary btn-sm" onclick="dbsyncOpenCreateModal()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+                  新建任务
+                </button>
+                <button class="btn btn-sm" onclick="dbsyncLoadJobs()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M2 7a5 5 0 105-.5"/><path d="M10.5 2.5v4h-4"/></svg>
+                  刷新
+                </button>
+              </div>
+            </div>
+            <div id="dbsyncJobsContent">
+              <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
+            </div>
+          </div>
+
+          <!-- ===== 实时日志面板 ===== -->
+          <div class="ops-dashboard" id="dbsyncLogsPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">同步任务实时日志</h2>
+              <div style="display:flex;gap:8px;">
+                <select id="dbsyncLogFilter" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg-card);">
+                  <option value="">全部任务</option>
+                </select>
+                <button class="btn btn-sm" onclick="dbsyncClearLogs()">清空</button>
+              </div>
+            </div>
+            <div class="dbsync-log-panel" id="dbsyncLogPanel">
+              <span style="color:var(--text-muted);">等待实时日志...</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== view-dbsync 新建/编辑任务弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncFormModal">
+      <div class="dbsync-modal">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncFormTitle">新建同步任务</span>
+          <button class="g-modal-close" onclick="dbsyncCloseFormModal()">&times;</button>
+        </div>
+        <div class="dbsync-modal-body" id="dbsyncFormBody">
+          <!-- 基本信息 -->
+          <div class="dbsync-section-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4"/></svg>
+            基本信息
+          </div>
+          <div class="dbsync-form-grid">
+            <div class="dbsync-form-row" style="grid-column:1/-1;">
+              <label class="dbsync-form-label">任务名称 <span style="color:#ff4d4f">*</span></label>
+              <input class="dbsync-form-input" id="dfsJobName" placeholder="请输入任务名称">
+            </div>
+            <div class="dbsync-form-row" style="grid-column:1/-1;">
+              <label class="dbsync-form-label">同步模式 <span style="color:#ff4d4f">*</span></label>
+              <div style="display:flex;gap:16px;padding:8px 0;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                  <input type="radio" name="dfsSyncMode" value="FULL" checked onchange="dbsyncOnModeChange()"> 全量同步 FULL
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                  <input type="radio" name="dfsSyncMode" value="INCREMENTAL" onchange="dbsyncOnModeChange()"> 增量同步 INCREMENTAL
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                  <input type="radio" name="dfsSyncMode" value="CDC" onchange="dbsyncOnModeChange()"> 实时同步 CDC
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 源端 -->
+          <div class="dbsync-section-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="#1890ff" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
+            源端配置
+          </div>
+          <div class="dbsync-form-grid">
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">源数据源 <span style="color:#ff4d4f">*</span></label>
+              <select class="dbsync-form-select" id="dfsSrcDsId" onchange="dbsyncLoadSrcDbs()">
+                <option value="">请选择数据源</option>
+              </select>
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">源数据库 <span style="color:#ff4d4f">*</span></label>
+              <select class="dbsync-form-select" id="dfsSrcDb" onchange="dbsyncLoadSrcTables()">
+                <option value="">请选择数据库</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 目标端 -->
+          <div class="dbsync-section-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="#52c41a" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
+            目标端配置
+          </div>
+          <div class="dbsync-form-grid">
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">目标数据源 <span style="color:#ff4d4f">*</span></label>
+              <select class="dbsync-form-select" id="dfsTgtDsId" onchange="dbsyncLoadTgtDbs()">
+                <option value="">请选择数据源</option>
+              </select>
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">目标数据库 <span style="color:#ff4d4f">*</span></label>
+              <select class="dbsync-form-select" id="dfsTgtDb">
+                <option value="">请选择数据库</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 多表配置 -->
+          <div class="dbsync-section-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><rect x="1" y="1" width="12" height="12" rx="1"/><path d="M1 5h12M5 5v8"/></svg>
+            表配置 <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:4px;">（可配置多张表）</span>
+          </div>
+          <div class="dbsync-tables-area">
+            <div class="dbsync-tables-head">
+              <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 自动建表</div>
+              <button class="btn btn-sm" onclick="dbsyncAddTableRow()">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+                添加表
+              </button>
+            </div>
+            <div id="dfsTableRows">
+              <!-- 动态生成行 -->
+            </div>
+          </div>
+
+          <!-- 同步参数 -->
+          <div class="dbsync-section-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><circle cx="7" cy="7" r="5.5"/><path d="M5 7h4M7 5v4"/></svg>
+            同步参数
+          </div>
+          <div class="dbsync-form-grid">
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">写入模式</label>
+              <select class="dbsync-form-select" id="dfsWriteMode">
+                <option value="UPSERT">UPSERT（更新或插入）</option>
+                <option value="INSERT">INSERT（普通插入）</option>
+                <option value="INSERT_IGNORE">INSERT_IGNORE（忽略重复）</option>
+              </select>
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">批量大小</label>
+              <input class="dbsync-form-input" id="dfsBatchSize" type="number" value="1000" min="1" max="100000">
+            </div>
+            <div class="dbsync-form-row" id="dfsSchedRow">
+              <label class="dbsync-form-label">调度 Cron <span style="font-size:11px;color:var(--text-muted);font-weight:400;">（全量/增量用）</span></label>
+              <input class="dbsync-form-input" id="dfsScheduleCron" placeholder="如: 0 0 2 * * ? 每天凌晨2点">
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">任务状态</label>
+              <select class="dbsync-form-select" id="dfsStatus">
+                <option value="CREATED">CREATED</option>
+                <option value="RUNNING">RUNNING</option>
+                <option value="STOPPED">STOPPED</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncCloseFormModal()">取消</button>
+          <button class="btn btn-primary" onclick="dbsyncSaveJob()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== view-dbsync 执行历史弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncHistoryModal">
+      <div class="dbsync-modal" style="width:780px;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncHistoryTitle">执行历史</span>
+          <button class="g-modal-close" onclick="document.getElementById('dbsyncHistoryModal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="dbsync-modal-body">
+          <div id="dbsyncHistoryContent">
+            <div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div>
+          </div>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="document.getElementById('dbsyncHistoryModal').classList.remove('show')">关闭</button>
         </div>
       </div>
     </div>
@@ -8908,7 +9238,8 @@ var ROUTES = {
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
-  'settings':    { view: 'viewSettings',            layout: 'editor', init: null }
+  'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
 };
 
 var currentRoute = null;
@@ -8941,7 +9272,7 @@ function navigateTo(route) {
 
   // Hide all editor-internal views
   ['viewSql', 'viewIntegration', 'viewDatasource', 'viewWelcome',
-   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics', 'viewProject', 'viewSettings'].forEach(function(id) {
+   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics', 'viewProject', 'viewSettings', 'viewDbSync'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
   });
@@ -12499,6 +12830,554 @@ function closeAiScriptNameModal() {
   navigateTo(parseRoute());
 })();
 </script>
+<script>
+/* ================================================================
+   关系库同步视图 (view-dbsync) JS 逻辑
+   ================================================================ */
+(function() {
+
+/* ---------- 内部状态 ---------- */
+var _dbsyncAllJobs = [];    // 缓存完整任务列表，用于前端过滤
+var _dbsyncEditId  = null;  // 当前编辑任务 ID（null=新建）
+var _dbsyncSyncMode = 'FULL'; // 当前表单同步模式
+var _dbsyncSrcTables = [];  // 源表列表缓存
+
+/* ---------- Tab 切换 ---------- */
+window.switchDbSyncTab = function(el, tab) {
+  el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('dbsyncJobsPanel').style.display  = (tab === 'jobs')  ? '' : 'none';
+  document.getElementById('dbsyncLogsPanel').style.display  = (tab === 'logs')  ? '' : 'none';
+};
+
+/* ---------- 加载数据源下拉 ---------- */
+function dbsyncLoadDsList(selId) {
+  return api('/api/datasource/list').then(function(res) {
+    var sel = document.getElementById(selId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">请选择数据源</option>';
+    if (res.code === 0 && res.data) {
+      res.data.forEach(function(ds) {
+        sel.innerHTML += '<option value="' + ds.id + '">' + escapeHtml(ds.name) + '</option>';
+      });
+    }
+  }).catch(function() {});
+}
+
+/* ---------- 源/目标库下拉 ---------- */
+window.dbsyncLoadSrcDbs = function() {
+  var dsId = document.getElementById('dfsSrcDsId').value;
+  var sel  = document.getElementById('dfsSrcDb');
+  sel.innerHTML = '<option value="">请选择数据库</option>';
+  _dbsyncSrcTables = [];
+  dbsyncRebuildTableRows();
+  if (!dsId) return;
+  sel.innerHTML = '<option value="">加载中...</option>';
+  api('/api/datasource/' + dsId + '/databases').then(function(res) {
+    sel.innerHTML = '<option value="">请选择数据库</option>';
+    if (res.code === 0 && res.data) {
+      res.data.forEach(function(db) {
+        sel.innerHTML += '<option value="' + escapeHtml(db) + '">' + escapeHtml(db) + '</option>';
+      });
+    }
+  }).catch(function() { sel.innerHTML = '<option value="">加载失败</option>'; });
+};
+
+window.dbsyncLoadSrcTables = function() {
+  var dsId = document.getElementById('dfsSrcDsId').value;
+  var db   = document.getElementById('dfsSrcDb').value;
+  _dbsyncSrcTables = [];
+  if (!dsId || !db) return;
+  api('/api/datasource/' + dsId + '/tables?db=' + encodeURIComponent(db)).then(function(res) {
+    if (res.code === 0 && res.data) {
+      _dbsyncSrcTables = res.data;
+      // 刷新已有行的源表下拉
+      dbsyncRefreshTableRowSelects();
+    }
+  }).catch(function() {});
+};
+
+window.dbsyncLoadTgtDbs = function() {
+  var dsId = document.getElementById('dfsTgtDsId').value;
+  var sel  = document.getElementById('dfsTgtDb');
+  sel.innerHTML = '<option value="">请选择数据库</option>';
+  if (!dsId) return;
+  sel.innerHTML = '<option value="">加载中...</option>';
+  api('/api/datasource/' + dsId + '/databases').then(function(res) {
+    sel.innerHTML = '<option value="">请选择数据库</option>';
+    if (res.code === 0 && res.data) {
+      res.data.forEach(function(db) {
+        sel.innerHTML += '<option value="' + escapeHtml(db) + '">' + escapeHtml(db) + '</option>';
+      });
+    }
+  }).catch(function() { sel.innerHTML = '<option value="">加载失败</option>'; });
+};
+
+/* ---------- 同步模式切换 ---------- */
+window.dbsyncOnModeChange = function() {
+  var mode = document.querySelector('input[name="dfsSyncMode"]:checked');
+  _dbsyncSyncMode = mode ? mode.value : 'FULL';
+  // 全量/增量显示 Cron，CDC 隐藏
+  var schedRow = document.getElementById('dfsSchedRow');
+  if (schedRow) schedRow.style.display = (_dbsyncSyncMode === 'CDC') ? 'none' : '';
+  // 更新表头提示
+  var header = document.getElementById('dfsTableHeader');
+  if (header) {
+    if (_dbsyncSyncMode === 'FULL') {
+      header.textContent = '源表 → 目标表 → 自动建表';
+    } else if (_dbsyncSyncMode === 'INCREMENTAL') {
+      header.textContent = '源表 → 目标表 → 增量字段 → 增量类型 → 自动建表';
+    } else {
+      header.textContent = '源表 → 目标表 → 自动建表（CDC 实时捕获）';
+    }
+  }
+  dbsyncRebuildTableRows();
+};
+
+/* ---------- 多表配置行 ---------- */
+function dbsyncMakeTableRowHtml(idx, data) {
+  data = data || {};
+  var isIncr = (_dbsyncSyncMode === 'INCREMENTAL');
+  var tableOpts = '<option value="">请选择</option>';
+  _dbsyncSrcTables.forEach(function(t) {
+    var sel = (t === (data.sourceTable || '')) ? ' selected' : '';
+    tableOpts += '<option value="' + escapeHtml(t) + '"' + sel + '>' + escapeHtml(t) + '</option>';
+  });
+  var autoChecked = data.createTargetTable !== false ? ' checked' : '';
+  var rowClass = isIncr ? 'with-incr' : 'no-incr';
+  var incrTypeOpts = [
+    '<option value="TIMESTAMP"' + (data.incrementalType === 'TIMESTAMP' ? ' selected' : '') + '>时间戳</option>',
+    '<option value="AUTO_INCREMENT"' + (data.incrementalType === 'AUTO_INCREMENT' ? ' selected' : '') + '>自增ID</option>'
+  ].join('');
+
+  var html = '<div class="dbsync-table-row ' + rowClass + '" data-row-idx="' + idx + '">';
+  html += '<select class="dbsync-form-select dfs-src-table" style="font-size:12px;">' + tableOpts + '</select>';
+  html += '<input class="dbsync-form-input dfs-tgt-table" style="font-size:12px;" placeholder="目标表名" value="' + escapeHtml(data.targetTable || '') + '">';
+  if (isIncr) {
+    html += '<input class="dbsync-form-input dfs-incr-field" style="font-size:12px;" placeholder="增量字段名" value="' + escapeHtml(data.incrementalField || '') + '">';
+    html += '<select class="dbsync-form-select dfs-incr-type" style="font-size:12px;">' + incrTypeOpts + '</select>';
+  }
+  html += '<label style="display:flex;align-items:center;gap:4px;justify-content:center;font-size:12px;cursor:pointer;white-space:nowrap;">';
+  html += '<input type="checkbox" class="dfs-auto-create"' + autoChecked + '> 建表';
+  html += '</label>';
+  html += '<button class="dbsync-del-row-btn" onclick="dbsyncDelTableRow(this)" title="删除此行">&times;</button>';
+  html += '</div>';
+  return html;
+}
+
+window.dbsyncAddTableRow = function() {
+  var container = document.getElementById('dfsTableRows');
+  if (!container) return;
+  var idx = container.children.length;
+  container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx));
+};
+
+window.dbsyncDelTableRow = function(btn) {
+  var row = btn.closest('.dbsync-table-row');
+  if (row) row.remove();
+};
+
+function dbsyncRebuildTableRows() {
+  var container = document.getElementById('dfsTableRows');
+  if (!container) return;
+  var existing = container.querySelectorAll('.dbsync-table-row');
+  // 收集现有数据
+  var datas = [];
+  existing.forEach(function(row) {
+    datas.push(dbsyncReadTableRowData(row));
+  });
+  container.innerHTML = '';
+  if (datas.length === 0) datas.push({});
+  datas.forEach(function(d, i) { container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(i, d)); });
+}
+
+function dbsyncRefreshTableRowSelects() {
+  var container = document.getElementById('dfsTableRows');
+  if (!container) return;
+  container.querySelectorAll('.dfs-src-table').forEach(function(sel) {
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">请选择</option>';
+    _dbsyncSrcTables.forEach(function(t) {
+      sel.innerHTML += '<option value="' + escapeHtml(t) + '"' + (t === cur ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
+    });
+  });
+}
+
+function dbsyncReadTableRowData(row) {
+  return {
+    sourceTable:      (row.querySelector('.dfs-src-table')  || {}).value || '',
+    targetTable:      (row.querySelector('.dfs-tgt-table')  || {}).value || '',
+    incrementalField: (row.querySelector('.dfs-incr-field') || {}).value || '',
+    incrementalType:  (row.querySelector('.dfs-incr-type')  || {}).value || 'TIMESTAMP',
+    createTargetTable: row.querySelector('.dfs-auto-create') ? row.querySelector('.dfs-auto-create').checked : true
+  };
+}
+
+function dbsyncCollectTableConfigs() {
+  var rows = document.querySelectorAll('#dfsTableRows .dbsync-table-row');
+  var arr = [];
+  rows.forEach(function(row) {
+    var d = dbsyncReadTableRowData(row);
+    if (d.sourceTable) arr.push(d);
+  });
+  return arr;
+}
+
+/* ---------- 打开新建弹窗 ---------- */
+window.dbsyncOpenCreateModal = function() {
+  _dbsyncEditId = null;
+  _dbsyncSyncMode = 'FULL';
+  _dbsyncSrcTables = [];
+  document.getElementById('dbsyncFormTitle').textContent = '新建同步任务';
+  document.getElementById('dfsJobName').value = '';
+  document.querySelectorAll('input[name="dfsSyncMode"]').forEach(function(r) {
+    r.checked = (r.value === 'FULL');
+  });
+  document.getElementById('dfsSrcDsId').innerHTML = '<option value="">请选择数据源</option>';
+  document.getElementById('dfsSrcDb').innerHTML   = '<option value="">请选择数据库</option>';
+  document.getElementById('dfsTgtDsId').innerHTML = '<option value="">请选择数据源</option>';
+  document.getElementById('dfsTgtDb').innerHTML   = '<option value="">请选择数据库</option>';
+  document.getElementById('dfsWriteMode').value   = 'UPSERT';
+  document.getElementById('dfsBatchSize').value   = '1000';
+  document.getElementById('dfsScheduleCron').value = '';
+  document.getElementById('dfsStatus').value      = 'CREATED';
+  document.getElementById('dfsTableRows').innerHTML = '';
+  dbsyncOnModeChange();
+  // 预加载数据源
+  Promise.all([
+    dbsyncLoadDsList('dfsSrcDsId'),
+    dbsyncLoadDsList('dfsTgtDsId')
+  ]).then(function() {
+    dbsyncAddTableRow();
+  });
+  document.getElementById('dbsyncFormModal').classList.add('show');
+};
+
+/* ---------- 打开编辑弹窗 ---------- */
+window.dbsyncOpenEditModal = function(id) {
+  _dbsyncEditId = id;
+  _dbsyncSrcTables = [];
+  document.getElementById('dbsyncFormTitle').textContent = '编辑同步任务';
+  document.getElementById('dfsTableRows').innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:12px;">加载中...</div>';
+  document.getElementById('dbsyncFormModal').classList.add('show');
+  Promise.all([
+    dbsyncLoadDsList('dfsSrcDsId'),
+    dbsyncLoadDsList('dfsTgtDsId'),
+    api('/api/sync-job/' + id)
+  ]).then(function(results) {
+    var res = results[2];
+    if (res.code !== 0 || !res.data) { showToast('加载任务失败: ' + (res.msg || ''), 'error'); return; }
+    var job = res.data;
+    document.getElementById('dfsJobName').value    = job.jobName || '';
+    _dbsyncSyncMode = job.syncMode || 'FULL';
+    document.querySelectorAll('input[name="dfsSyncMode"]').forEach(function(r) {
+      r.checked = (r.value === _dbsyncSyncMode);
+    });
+    document.getElementById('dfsSrcDsId').value  = job.sourceDsId || '';
+    document.getElementById('dfsTgtDsId').value  = job.targetDsId || '';
+    document.getElementById('dfsWriteMode').value = job.writeMode || 'UPSERT';
+    document.getElementById('dfsBatchSize').value = job.batchSize || 1000;
+    document.getElementById('dfsScheduleCron').value = job.scheduleCron || '';
+    document.getElementById('dfsStatus').value   = job.status || 'CREATED';
+    dbsyncOnModeChange();
+    // 加载源库目标库
+    var p1 = Promise.resolve();
+    if (job.sourceDsId) {
+      p1 = api('/api/datasource/' + job.sourceDsId + '/databases').then(function(r) {
+        var sel = document.getElementById('dfsSrcDb');
+        sel.innerHTML = '<option value="">请选择数据库</option>';
+        if (r.code === 0 && r.data) {
+          r.data.forEach(function(db) {
+            sel.innerHTML += '<option value="' + escapeHtml(db) + '"' + (db === job.sourceDb ? ' selected' : '') + '>' + escapeHtml(db) + '</option>';
+          });
+        }
+      });
+    }
+    var p2 = Promise.resolve();
+    if (job.targetDsId) {
+      p2 = api('/api/datasource/' + job.targetDsId + '/databases').then(function(r) {
+        var sel = document.getElementById('dfsTgtDb');
+        sel.innerHTML = '<option value="">请选择数据库</option>';
+        if (r.code === 0 && r.data) {
+          r.data.forEach(function(db) {
+            sel.innerHTML += '<option value="' + escapeHtml(db) + '"' + (db === job.targetDb ? ' selected' : '') + '>' + escapeHtml(db) + '</option>';
+          });
+        }
+      });
+    }
+    // 加载源表列表，然后重建行
+    var p3 = Promise.resolve();
+    if (job.sourceDsId && job.sourceDb) {
+      p3 = api('/api/datasource/' + job.sourceDsId + '/tables?db=' + encodeURIComponent(job.sourceDb)).then(function(r) {
+        if (r.code === 0 && r.data) _dbsyncSrcTables = r.data;
+      });
+    }
+    Promise.all([p1, p2, p3]).then(function() {
+      var tableConfigs = [];
+      try { tableConfigs = JSON.parse(job.tableConfig || '[]'); } catch(e) {}
+      var container = document.getElementById('dfsTableRows');
+      container.innerHTML = '';
+      if (tableConfigs.length === 0) tableConfigs.push({});
+      tableConfigs.forEach(function(cfg, i) { container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(i, cfg)); });
+    });
+  }).catch(function(e) {
+    showToast('加载任务出错', 'error');
+  });
+};
+
+window.dbsyncCloseFormModal = function() {
+  document.getElementById('dbsyncFormModal').classList.remove('show');
+};
+
+/* ---------- 保存任务 ---------- */
+window.dbsyncSaveJob = function() {
+  var jobName    = (document.getElementById('dfsJobName').value || '').trim();
+  var syncMode   = _dbsyncSyncMode;
+  var srcDsId    = document.getElementById('dfsSrcDsId').value;
+  var srcDb      = document.getElementById('dfsSrcDb').value;
+  var tgtDsId    = document.getElementById('dfsTgtDsId').value;
+  var tgtDb      = document.getElementById('dfsTgtDb').value;
+  var writeMode  = document.getElementById('dfsWriteMode').value;
+  var batchSize  = parseInt(document.getElementById('dfsBatchSize').value) || 1000;
+  var schedCron  = document.getElementById('dfsScheduleCron').value;
+  var status     = document.getElementById('dfsStatus').value;
+  var tableConfigs = dbsyncCollectTableConfigs();
+
+  if (!jobName)  { showToast('请填写任务名称', 'error'); return; }
+  if (!srcDsId)  { showToast('请选择源数据源', 'error'); return; }
+  if (!srcDb)    { showToast('请选择源数据库', 'error'); return; }
+  if (!tgtDsId)  { showToast('请选择目标数据源', 'error'); return; }
+  if (!tgtDb)    { showToast('请选择目标数据库', 'error'); return; }
+  if (tableConfigs.length === 0) { showToast('请至少配置一张表', 'error'); return; }
+
+  var body = {
+    jobName:      jobName,
+    syncMode:     syncMode,
+    sourceDsId:   parseInt(srcDsId),
+    sourceDb:     srcDb,
+    targetDsId:   parseInt(tgtDsId),
+    targetDb:     tgtDb,
+    writeMode:    writeMode,
+    batchSize:    batchSize,
+    scheduleCron: schedCron,
+    status:       status,
+    tableConfig:  JSON.stringify(tableConfigs)
+  };
+  if (_dbsyncEditId) body.id = _dbsyncEditId;
+
+  apiPost('/api/sync-job/save', body).then(function(res) {
+    if (res.code === 0) {
+      showToast('保存成功', 'success');
+      dbsyncCloseFormModal();
+      dbsyncLoadJobs();
+    } else {
+      showToast('保存失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('保存请求失败', 'error'); });
+};
+
+/* ---------- 任务列表 ---------- */
+window.dbsyncLoadJobs = function() {
+  var container = document.getElementById('dbsyncJobsContent');
+  if (!container) return;
+  api('/api/sync-job/list').then(function(res) {
+    if (res.code !== 0) { container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
+    _dbsyncAllJobs = res.data || [];
+    dbsyncRenderJobs(_dbsyncAllJobs);
+  }).catch(function() {
+    container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
+  });
+};
+
+window.dbsyncFilterJobs = function() {
+  var kw = (document.getElementById('dbsyncSearchInput').value || '').toLowerCase();
+  if (!kw) { dbsyncRenderJobs(_dbsyncAllJobs); return; }
+  dbsyncRenderJobs(_dbsyncAllJobs.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
+};
+
+function dbsyncRenderJobs(list) {
+  var container = document.getElementById('dbsyncJobsContent');
+  if (!container) return;
+  if (!list || list.length === 0) {
+    container.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text-muted);"><svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 12px;color:var(--divider);"><rect x="6" y="6" width="36" height="36" rx="4"/><path d="M16 16h16M16 24h10"/></svg><div style="font-size:13px;">暂无同步任务，点击"新建任务"开始</div></div>';
+    return;
+  }
+  var html = '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
+    + '<th style="width:160px;">任务名称</th>'
+    + '<th style="width:90px;">同步模式</th>'
+    + '<th>源端（数据源.库）</th>'
+    + '<th>目标端（数据源.库）</th>'
+    + '<th style="width:80px;">状态</th>'
+    + '<th style="width:240px;">操作</th>'
+    + '</tr></thead><tbody>';
+  list.forEach(function(job) {
+    var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
+    var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' }[job.syncMode] || job.syncMode;
+    var statusClass = job.status || 'CREATED';
+    var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停' }[job.status] || job.status;
+    var srcLabel = escapeHtml((job.sourceDsName || ('ds#' + job.sourceDsId)) + '.' + (job.sourceDb || ''));
+    var tgtLabel = escapeHtml((job.targetDsName || ('ds#' + job.targetDsId)) + '.' + (job.targetDb || ''));
+    html += '<tr>';
+    html += '<td style="font-weight:500;">' + escapeHtml(job.jobName || '') + '</td>';
+    html += '<td><span class="dbsync-mode-badge ' + modeClass + '">' + modeLabel + '</span></td>';
+    html += '<td>' + srcLabel + '</td>';
+    html += '<td>' + tgtLabel + '</td>';
+    html += '<td><span class="dbsync-status-badge ' + statusClass + '">' + statusLabel + '</span></td>';
+    html += '<td><div class="dbsync-action-btns">';
+
+    // 运行按钮（全量/增量）
+    if (job.syncMode !== 'CDC') {
+      html += '<button class="btn btn-sm" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
+        + '<svg viewBox="0 0 12 12" fill="currentColor" width="10" height="10"><path d="M2 1l9 5-9 5z"/></svg>'
+        + ' 运行</button>';
+    }
+    // CDC 启停按钮
+    if (job.syncMode === 'CDC') {
+      if (job.status === 'RUNNING') {
+        html += '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')" title="停止 CDC">停止</button>';
+      } else {
+        html += '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">启动</button>';
+      }
+    }
+    html += '<button class="btn btn-sm" onclick="dbsyncOpenEditModal(' + job.id + ')" title="编辑">编辑</button>';
+    html += '<button class="btn btn-sm" onclick="dbsyncShowHistory(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="执行历史">历史</button>';
+    html += '<button class="btn btn-sm btn-danger" onclick="dbsyncDeleteJob(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="删除">删除</button>';
+    html += '</div></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+/* ---------- 运行（全量/增量） ---------- */
+window.dbsyncRunJob = function(id) {
+  if (!id) return;
+  apiPost('/api/sync-job/' + id + '/run', {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('任务已提交运行', 'success');
+      setTimeout(dbsyncLoadJobs, 1500);
+    } else {
+      showToast('运行失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('运行请求失败', 'error'); });
+};
+
+/* ---------- CDC 启停 ---------- */
+window.dbsyncCdcStart = function(id) {
+  apiPost('/api/cdc/' + id + '/start', {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('CDC 已启动', 'success');
+      setTimeout(dbsyncLoadJobs, 1000);
+    } else {
+      showToast('启动失败: ' + (res.msg || '（CDC 接口可能尚未就绪，属正常）'), 'error');
+    }
+  }).catch(function() { showToast('CDC 接口暂未就绪（404），后端开发完成后生效', 'error'); });
+};
+
+window.dbsyncCdcStop = function(id) {
+  apiPost('/api/cdc/' + id + '/stop', {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('CDC 已停止', 'success');
+      setTimeout(dbsyncLoadJobs, 1000);
+    } else {
+      showToast('停止失败: ' + (res.msg || '（CDC 接口可能尚未就绪，属正常）'), 'error');
+    }
+  }).catch(function() { showToast('CDC 接口暂未就绪（404），后端开发完成后生效', 'error'); });
+};
+
+/* ---------- 删除任务 ---------- */
+window.dbsyncDeleteJob = function(id, name) {
+  confirmBox('确定删除同步任务"' + escapeHtml(name) + '"？', function() {
+    fetch('/api/sync-job/' + id, { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+      if (res.code === 0) {
+        showToast('删除成功', 'success');
+        dbsyncLoadJobs();
+      } else {
+        showToast('删除失败: ' + (res.msg || ''), 'error');
+      }
+    }).catch(function() { showToast('删除请求失败', 'error'); });
+  });
+};
+
+/* ---------- 执行历史 ---------- */
+window.dbsyncShowHistory = function(id, name) {
+  document.getElementById('dbsyncHistoryTitle').textContent = '执行历史 - ' + name;
+  document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div>';
+  document.getElementById('dbsyncHistoryModal').classList.add('show');
+  api('/api/sync-job/' + id + '/executions').then(function(res) {
+    if (res.code !== 0) {
+      document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>';
+      return;
+    }
+    var list = res.data || [];
+    if (list.length === 0) {
+      document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无执行记录</div>';
+      return;
+    }
+    var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
+    var html = '<table class="dbsync-exec-table"><thead><tr>'
+      + '<th>执行时间</th><th>状态</th><th>读取行数</th><th>写入行数</th><th>错误行数</th><th>耗时(秒)</th><th>日志摘要</th>'
+      + '</tr></thead><tbody>';
+    list.forEach(function(ex) {
+      var st = ex.status !== undefined && ex.status !== null ? String(ex.status) : '';
+      var stLabel = statusLabel[st] || st;
+      var stColor = (stLabel === '成功' || stLabel === 'SUCCESS') ? 'var(--success)' : (stLabel === '失败' || stLabel === 'FAILED') ? 'var(--error)' : 'var(--primary)';
+      var logSnippet = ex.log ? escapeHtml(String(ex.log).slice(0, 120)) + (ex.log.length > 120 ? '...' : '') : '-';
+      html += '<tr>'
+        + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
+        + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
+        + '<td>' + (ex.readCount || 0) + '</td>'
+        + '<td>' + (ex.writeCount || 0) + '</td>'
+        + '<td>' + (ex.errorCount || 0) + '</td>'
+        + '<td>' + (ex.duration != null ? Math.round(ex.duration / 1000) : '-') + '</td>'
+        + '<td style="max-width:260px;word-break:break-all;color:var(--text-muted);font-size:11px;">' + logSnippet + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('dbsyncHistoryContent').innerHTML = html;
+  }).catch(function() {
+    document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败</div>';
+  });
+};
+
+/* ---------- 实时日志 ---------- */
+window.dbsyncAppendLog = function(data) {
+  var filterJobId = document.getElementById('dbsyncLogFilter') ? document.getElementById('dbsyncLogFilter').value : '';
+  if (filterJobId && String(data.taskId) !== String(filterJobId)) return;
+  var panel = document.getElementById('dbsyncLogPanel');
+  if (!panel) return;
+  // 清除初始占位文字
+  if (panel.querySelector('span[style]')) panel.innerHTML = '';
+  var level = data.level || 'INFO';
+  var line = document.createElement('span');
+  line.className = 'dbsync-log-line ' + level;
+  line.textContent = '[' + (data.time || '') + '][' + level + '][任务#' + (data.taskId || '') + '] ' + (data.message || '');
+  panel.appendChild(line);
+  panel.appendChild(document.createTextNode('\n'));
+  panel.scrollTop = panel.scrollHeight;
+  // 超过 500 行时裁剪
+  var lines = panel.querySelectorAll('.dbsync-log-line');
+  if (lines.length > 500) {
+    for (var i = 0; i < 50; i++) { if (lines[i]) lines[i].remove(); }
+  }
+};
+
+window.dbsyncClearLogs = function() {
+  var panel = document.getElementById('dbsyncLogPanel');
+  if (panel) panel.innerHTML = '<span style="color:var(--text-muted);">日志已清空</span>';
+};
+
+window.dbsyncRefreshLogFilter = function() {
+  var sel = document.getElementById('dbsyncLogFilter');
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">全部任务</option>';
+  (_dbsyncAllJobs || []).forEach(function(j) {
+    sel.innerHTML += '<option value="' + j.id + '"' + (String(j.id) === cur ? ' selected' : '') + '>' + escapeHtml(j.jobName || '') + '</option>';
+  });
+};
+
+})(); // end IIFE
+</script>
 <script>initMonacoEditor();</script>
 <script>
 // 动态加载 SockJS + Stomp
@@ -12586,6 +13465,11 @@ function closeAiScriptNameModal() {
       data.message + '</div>';
     logArea.insertAdjacentHTML('beforeend', line);
     logArea.scrollTop = logArea.scrollHeight;
+
+    // DbSync 日志同步到关系库同步实时日志面板
+    if (data.taskType === 'DbSync' && typeof dbsyncAppendLog === 'function') {
+      dbsyncAppendLog(data);
+    }
   }
 
   function onTaskStatusChange(data) {
@@ -12593,6 +13477,12 @@ function closeAiScriptNameModal() {
     if (typeof loadOpsOverview === 'function' && document.getElementById('viewScheduler') &&
         document.getElementById('viewScheduler').style.display !== 'none') {
       loadOpsOverview();
+    }
+    // 刷新关系库同步任务列表（如果正在查看）
+    if (data.taskType === 'DbSync' && typeof dbsyncLoadJobs === 'function' &&
+        document.getElementById('viewDbSync') &&
+        document.getElementById('viewDbSync').style.display !== 'none') {
+      dbsyncLoadJobs();
     }
   }
 
