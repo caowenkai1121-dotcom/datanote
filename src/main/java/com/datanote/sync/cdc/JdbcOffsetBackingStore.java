@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,7 @@ import java.util.Map;
  *
  * <p>实现方式：继承 {@link MemoryOffsetBackingStore}（其 {@code data} 内存 map 与 {@code save()}
  * 均为 protected）。get/set 走父类内存逻辑；{@code start()} 时把库里该 jobId 的位点装载进内存，
- * {@code save()} 时把内存位点回写库（先按 jobId 删旧再插新）。
+ * {@code save()} 时把内存位点逐条原子 upsert 回写库（依赖唯一键 uk_job_key）。
  *
  * <p>ByteBuffer 与库里 varchar 之间用 Base64 编解码（位点是二进制序列化串，不可直接当字符串存）。
  * 按 {@code datanote.cdc.job.id} 隔离不同同步任务。
@@ -65,8 +64,9 @@ public class JdbcOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     /**
-     * 父类 set() 在更新内存 data 后调用本方法，这里把内存全量回写库。
-     * 先按 jobId 删除旧位点再批量插入当前位点，保证库与内存一致。
+     * 父类 set() 在更新内存 data 后调用本方法，这里把内存位点回写库。
+     * 逐条按 (job_id, offset_key) 原子 upsert（依赖唯一键 uk_job_key），每条独立原子，
+     * 避免"先删全量再批量插入"两步无事务中途崩溃丢该 job 全部 offset。
      */
     @Override
     protected void save() {
@@ -74,15 +74,8 @@ public class JdbcOffsetBackingStore extends MemoryOffsetBackingStore {
         if (mapper == null) {
             throw new IllegalStateException("CdcStoreHolder.offsetMapper 未初始化");
         }
-        mapper.delete(new LambdaQueryWrapper<DnCdcOffset>().eq(DnCdcOffset::getJobId, jobId));
-        LocalDateTime now = LocalDateTime.now();
         for (Map.Entry<ByteBuffer, ByteBuffer> entry : data.entrySet()) {
-            DnCdcOffset row = new DnCdcOffset();
-            row.setJobId(jobId);
-            row.setOffsetKey(encode(entry.getKey()));
-            row.setOffsetValue(encode(entry.getValue()));
-            row.setUpdatedAt(now);
-            mapper.insert(row);
+            mapper.upsert(jobId, encode(entry.getKey()), encode(entry.getValue()));
         }
         log.debug("CDC offset 回写完成 jobId={} 条数={}", jobId, data.size());
     }
