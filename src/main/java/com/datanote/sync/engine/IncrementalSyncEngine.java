@@ -7,6 +7,7 @@ import com.datanote.sync.dto.SyncContext;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.engine.incremental.IncrementalStrategy;
 import com.datanote.sync.engine.incremental.IncrementalStrategyFactory;
+import com.datanote.sync.util.FieldMappingResolver;
 import com.datanote.sync.util.WriteSqlBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,10 +64,18 @@ public class IncrementalSyncEngine implements SyncEngine {
                 "增量同步当前仅支持单列主键（用作复合游标），表: " + tc.getSourceTable()
                 + "，主键数=" + meta.getPrimaryKeys().size());
         }
-        List<String> columns = meta.getColumns();
         String pkColumn = meta.getPrimaryKeys().get(0);
-        int incIndex = columns.indexOf(incField);
-        int pkIndex = columns.indexOf(pkColumn);
+        // 解析字段映射：fields 为空则读写全列、主键 target=source；非空则裁剪+重命名并校验主键在选中列中
+        FieldMappingResolver.Resolved fm = FieldMappingResolver.resolve(tc, meta.getColumns(), pkColumn);
+        List<String> srcColumns = fm.srcColumns;   // 读列（源名）
+        List<String> tgtColumns = fm.tgtColumns;   // 写列（目标名），与 srcColumns 一一对应
+        // 增量字段用于源端 WHERE/ORDER 与断点推进，必须在选中读列中（否则取不到值）
+        int incIndex = srcColumns.indexOf(incField);
+        if (incIndex < 0) {
+            throw new IllegalStateException("增量字段未在选中同步字段中: " + incField
+                    + "（表: " + tc.getSourceTable() + "）");
+        }
+        int pkIndex = srcColumns.indexOf(pkColumn);
 
         IncrementalStrategy strategy = IncrementalStrategyFactory.get(tc.getIncrementalType());
 
@@ -77,9 +86,9 @@ public class IncrementalSyncEngine implements SyncEngine {
         }
 
         String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
-                columns, meta.getPrimaryKeys());
-        String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), columns, incField, pkColumn, true);
-        String nextSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), columns, incField, pkColumn, false);
+                tgtColumns, java.util.Collections.singletonList(fm.pkTarget));
+        String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, true);
+        String nextSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, false);
 
         ctx.log("INFO", "开始增量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
                 + "，增量字段=" + incField + "，主键=" + pkColumn + "，起始断点=" + startValue);
@@ -114,7 +123,8 @@ public class IncrementalSyncEngine implements SyncEngine {
                     try (ResultSet rs = readPs.executeQuery();
                          PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
                         while (rs.next()) {
-                            for (int i = 0; i < columns.size(); i++) {
+                            // 读列与写列一一对应：按读列顺序取、按写列顺序写
+                            for (int i = 0; i < srcColumns.size(); i++) {
                                 writePs.setObject(i + 1, rs.getObject(i + 1));
                             }
                             writePs.addBatch();

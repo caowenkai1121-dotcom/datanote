@@ -129,6 +129,8 @@ public class SyncJobExecutor {
             for (TableSyncConfig tc : tables) {
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
                     List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
+                    // 配置了字段映射时只用选中字段建表（列名取 target、保留源类型/主键标记）
+                    cols = filterColumnsByFields(cols, tc);
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                     ctx.log("INFO", "目标表就绪: " + tc.getTargetTable());
                 }
@@ -169,6 +171,34 @@ public class SyncJobExecutor {
         logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, "INFO",
                 "任务结束: " + finalStatus + "，读 " + ctx.getReadCount().get()
                 + " 写 " + ctx.getWriteCount().get());
+    }
+
+    /**
+     * 自动建表时按字段映射裁剪列：tc.fields 为空则返回原列（全列建表）；非空则只保留 sync==true
+     * 的列、列名改为 target（建表用目标列名 + 源类型/主键标记），与引擎写入列保持一致。
+     */
+    private static List<ColumnDef> filterColumnsByFields(List<ColumnDef> cols,
+                                                         com.datanote.sync.dto.TableSyncConfig tc) {
+        if (tc.getFields() == null || tc.getFields().isEmpty()) {
+            return cols;
+        }
+        java.util.Map<String, String> srcToTgt =
+                com.datanote.sync.util.FieldMappingResolver.buildSrcToTgt(tc.getFields());
+        List<ColumnDef> result = new java.util.ArrayList<>();
+        for (ColumnDef c : cols) {
+            String tgt = srcToTgt.get(c.getName());
+            if (tgt == null) {
+                continue; // 未选中该列，建表时跳过
+            }
+            ColumnDef nc = new ColumnDef();
+            nc.setName(tgt);
+            nc.setColumnType(c.getColumnType());
+            nc.setNullable(c.isNullable());
+            nc.setPrimaryKey(c.isPrimaryKey());
+            nc.setComment(c.getComment());
+            result.add(nc);
+        }
+        return result;
     }
 
     private static boolean isBlank(String s) {

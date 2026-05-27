@@ -5,6 +5,7 @@ import com.datanote.sync.connector.MysqlConnector;
 import com.datanote.sync.connector.TableMeta;
 import com.datanote.sync.dto.SyncContext;
 import com.datanote.sync.dto.TableSyncConfig;
+import com.datanote.sync.util.FieldMappingResolver;
 import com.datanote.sync.util.WriteSqlBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,18 +57,21 @@ public class FullSyncEngine implements SyncEngine {
                 "全量同步当前仅支持单列主键（计划1限制），表: " + tc.getSourceTable()
                 + "，主键数=" + meta.getPrimaryKeys().size());
         }
-        List<String> columns = meta.getColumns();
         String pkColumn = meta.getPrimaryKeys().get(0);
-        int pkIndex = columns.indexOf(pkColumn);
+        // 解析字段映射：fields 为空则读写均为全列、主键 target=source；非空则裁剪+重命名并校验主键在选中列中
+        FieldMappingResolver.Resolved fm = FieldMappingResolver.resolve(tc, meta.getColumns(), pkColumn);
+        List<String> srcColumns = fm.srcColumns;   // 读列（源名）
+        List<String> tgtColumns = fm.tgtColumns;   // 写列（目标名），与 srcColumns 一一对应
+        int pkIndex = srcColumns.indexOf(pkColumn); // 主键在读列中的位置（keyset 游标用）
         if (pkIndex < 0) {
             throw new IllegalStateException("主键列不在列集合中: " + pkColumn);
         }
 
         String writeSql = WriteSqlBuilder.build(ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
-                columns, meta.getPrimaryKeys());
+                tgtColumns, java.util.Collections.singletonList(fm.pkTarget));
 
         ctx.log("INFO", "开始全量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
-                + "，列数=" + columns.size() + "，主键=" + pkColumn);
+                + "，列数=" + srcColumns.size() + "，主键=" + pkColumn);
 
         Object cursor = null;
         boolean hasCursor = false;
@@ -79,7 +83,7 @@ public class FullSyncEngine implements SyncEngine {
 
             while (!ctx.getStopped().get()) {
                 String pageSql = MysqlConnector.buildKeysetPageSql(
-                        srcDb, tc.getSourceTable(), columns, pkColumn, hasCursor);
+                        srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor);
 
                 int rowsThisPage = 0;
                 try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
@@ -92,7 +96,8 @@ public class FullSyncEngine implements SyncEngine {
                     try (ResultSet rs = readPs.executeQuery();
                          PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
                         while (rs.next()) {
-                            for (int i = 0; i < columns.size(); i++) {
+                            // 读列与写列一一对应：按读列顺序取、按写列顺序写
+                            for (int i = 0; i < srcColumns.size(); i++) {
                                 writePs.setObject(i + 1, rs.getObject(i + 1));
                             }
                             writePs.addBatch();

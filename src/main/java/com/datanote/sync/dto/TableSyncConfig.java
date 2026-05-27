@@ -13,4 +13,6 @@ public class TableSyncConfig {
     private String incrementalField;   // 计划2用
     private String incrementalType;    // 计划2用：TIMESTAMP/AUTO_INCREMENT
     private String incrementalValue;   // 计划2用：断点
+    /** 字段映射：null/空=同步全部列（向后兼容）；非空=只同步 sync==true 的字段，源列名 source、目标列名 target。 */
+    private java.util.List<FieldMapping> fields;
 }

@@ -198,24 +198,47 @@ public class CdcSyncEngine {
         }
     }
 
-    /** 把一条变更写入目标库。 */
+    /** 把一条变更写入目标库。若该表配置了字段映射，先按 source->target 投影 after/before。 */
     private void applyChange(TableSyncConfig tc, ChangeOp change) throws Exception {
         String targetTable = tc.getTargetTable();
         String targetDb = job.getTargetDb();
         switch (change.opType) {
             case INSERT:
-                writeUpsert(targetDb, targetTable, change.after);
+                writeUpsert(targetDb, targetTable, projectByFields(change.after, tc));
                 break;
             case UPDATE:
                 // 用 after 全量 UPSERT 即可覆盖更新（幂等）
-                writeUpsert(targetDb, targetTable, change.after);
+                writeUpsert(targetDb, targetTable, projectByFields(change.after, tc));
                 break;
             case DELETE:
-                writeDelete(targetDb, targetTable, change.before);
+                writeDelete(targetDb, targetTable, projectByFields(change.before, tc));
                 break;
             default:
                 break;
         }
+    }
+
+    /**
+     * 按字段映射投影一行数据：tc.fields 为空 → 原样返回（全列）；
+     * 非空 → 只保留 sync==true 的源列，并把 key 由 source 改为 target（与全量/增量一致）。
+     * 投影后 key 即目标列名，与 primaryKeysOf 返回的目标主键名一致，写入/删除均按目标列名处理。
+     */
+    private static Map<String, Object> projectByFields(Map<String, Object> row, TableSyncConfig tc) {
+        if (row == null) {
+            return null;
+        }
+        if (tc == null || tc.getFields() == null || tc.getFields().isEmpty()) {
+            return row;
+        }
+        Map<String, String> srcToTgt =
+                com.datanote.sync.util.FieldMappingResolver.buildSrcToTgt(tc.getFields());
+        Map<String, Object> projected = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> e : srcToTgt.entrySet()) {
+            if (row.containsKey(e.getKey())) {
+                projected.put(e.getValue(), row.get(e.getKey()));
+            }
+        }
+        return projected;
     }
 
     /** c/r/u：按 after 全列 UPSERT（幂等，主键冲突则更新非主键列）。 */
