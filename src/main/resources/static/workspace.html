@@ -4013,6 +4013,17 @@ html, body {
                 </button>
               </div>
             </div>
+            <!-- 文件夹区域 -->
+            <div id="dbsyncFolderBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg-hover);border-radius:6px;border:1px solid var(--border);">
+              <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">目录：</span>
+              <div id="dbsyncFolderTabs" style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button class="dbsync-folder-tab active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;background:var(--primary);color:#fff;">全部</button>
+              </div>
+              <button class="btn btn-sm" onclick="dbsyncOpenCreateFolder()" style="margin-left:4px;font-size:11px;white-space:nowrap;" title="新建文件夹">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 2v10M2 7h10"/></svg>
+                新建文件夹
+              </button>
+            </div>
             <div id="dbsyncJobsContent">
               <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
             </div>
@@ -4055,6 +4066,12 @@ html, body {
             <div class="dbsync-form-row" style="grid-column:1/-1;">
               <label class="dbsync-form-label">任务名称 <span style="color:#ff4d4f">*</span></label>
               <input class="dbsync-form-input" id="dfsJobName" placeholder="请输入任务名称">
+            </div>
+            <div class="dbsync-form-row">
+              <label class="dbsync-form-label">所属目录</label>
+              <select class="dbsync-form-select" id="dfsFolderId">
+                <option value="0">根目录（不归类）</option>
+              </select>
             </div>
             <div class="dbsync-form-row" style="grid-column:1/-1;">
               <label class="dbsync-form-label">同步模式 <span style="color:#ff4d4f">*</span></label>
@@ -4119,7 +4136,7 @@ html, body {
           </div>
           <div class="dbsync-tables-area">
             <div class="dbsync-tables-head">
-              <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 自动建表</div>
+              <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 建表模式</div>
               <button class="btn btn-sm" onclick="dbsyncAddTableRow()">
                 <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
                 添加表
@@ -4161,6 +4178,43 @@ html, body {
               </select>
             </div>
           </div>
+
+          <!-- 高级设置 -->
+          <div class="dbsync-section-title" style="cursor:pointer;user-select:none;" onclick="dbsyncToggleAdvanced()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><circle cx="7" cy="7" r="5.5"/><path d="M5 7h4M7 9V5"/></svg>
+            高级设置
+            <span id="dfsAdvancedToggleIcon" style="margin-left:4px;font-size:11px;color:var(--text-muted);">▶ 展开</span>
+          </div>
+          <div id="dfsAdvancedSection" style="display:none;">
+            <div class="dbsync-form-grid">
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">源端删除数据</label>
+                <div style="display:flex;gap:16px;padding:8px 0;align-items:center;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="radio" name="dfsDeleteMode" value="PHYSICAL" checked onchange="dbsyncOnDeleteModeChange()"> 目标端物理删除
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="radio" name="dfsDeleteMode" value="LOGICAL" onchange="dbsyncOnDeleteModeChange()"> 目标端逻辑删除
+                  </label>
+                  <div id="dfsLogicalDeleteFields" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input class="dbsync-form-input" id="dfsLogicalDeleteField" placeholder="逻辑删除字段名" style="width:160px;">
+                    <input class="dbsync-form-input" id="dfsLogicalDeleteValue" placeholder="标记值（默认1）" style="width:140px;">
+                  </div>
+                </div>
+              </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">同步时标记时间戳</label>
+                <div style="display:flex;gap:16px;padding:8px 0;align-items:center;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="dfsMarkSyncTs" onchange="dbsyncOnMarkSyncTsChange()"> 启用时间戳字段
+                  </label>
+                  <div id="dfsSyncTsFieldWrap" style="display:none;">
+                    <input class="dbsync-form-input" id="dfsSyncTsField" placeholder="时间戳字段名（如 _sync_ts）" style="width:200px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFormModal()">取消</button>
@@ -4183,6 +4237,26 @@ html, body {
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="document.getElementById('dbsyncHistoryModal').classList.remove('show')">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 移动任务到文件夹弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncMoveJobModal">
+      <div class="dbsync-modal" style="width:360px;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncMoveJobTitle">移动任务到文件夹</span>
+          <button class="g-modal-close" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="dbsync-modal-body">
+          <div style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">选择目标文件夹：</div>
+          <select class="dbsync-form-select" id="dbsyncMoveJobFolderSel" style="width:100%;">
+            <option value="0">根目录（不归类）</option>
+          </select>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">取消</button>
+          <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob()">确定移动</button>
         </div>
       </div>
     </div>
@@ -9293,7 +9367,7 @@ var ROUTES = {
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { dbsyncLoadFolders(); dbsyncLoadJobs(); dbsyncRefreshLogFilter(); } }
 };
 
 var currentRoute = null;
@@ -13075,7 +13149,6 @@ function dbsyncMakeTableRowHtml(idx, data) {
     var sel = (t === (data.sourceTable || '')) ? ' selected' : '';
     tableOpts += '<option value="' + escapeHtml(t) + '"' + sel + '>' + escapeHtml(t) + '</option>';
   });
-  var autoChecked = data.createTargetTable !== false ? ' checked' : '';
   var rowClass = isIncr ? 'with-incr' : 'no-incr';
   var incrTypeOpts = [
     '<option value="TIMESTAMP"' + (data.incrementalType === 'TIMESTAMP' ? ' selected' : '') + '>时间戳</option>',
@@ -13090,9 +13163,11 @@ function dbsyncMakeTableRowHtml(idx, data) {
     html += '<input class="dbsync-form-input dfs-incr-field" style="font-size:12px;" placeholder="增量字段名" value="' + escapeHtml(data.incrementalField || '') + '">';
     html += '<select class="dbsync-form-select dfs-incr-type" style="font-size:12px;">' + incrTypeOpts + '</select>';
   }
-  html += '<label style="display:flex;align-items:center;gap:4px;justify-content:center;font-size:12px;cursor:pointer;white-space:nowrap;">';
-  html += '<input type="checkbox" class="dfs-auto-create"' + autoChecked + '> 建表';
-  html += '</label>';
+  var createSelVal = data.createTargetTable !== false ? 'true' : 'false';
+  html += '<select class="dbsync-form-select dfs-auto-create-sel" style="font-size:12px;padding:3px 6px;">'
+    + '<option value="true"' + (createSelVal === 'true' ? ' selected' : '') + '>自动建表</option>'
+    + '<option value="false"' + (createSelVal === 'false' ? ' selected' : '') + '>已存在表</option>'
+    + '</select>';
   html += '<button class="btn btn-sm" onclick="dbsyncToggleFieldMap(this)" style="font-size:11px;white-space:nowrap;" title="配置字段映射">配置字段</button>';
   html += '<button class="dbsync-del-row-btn" onclick="dbsyncDelTableRow(this)" title="删除此行">&times;</button>';
   html += '</div>';
@@ -13188,7 +13263,7 @@ function dbsyncReadTableRowData(row, wrapper) {
     targetTable:      (row.querySelector('.dfs-tgt-table')  || {}).value || '',
     incrementalField: (row.querySelector('.dfs-incr-field') || {}).value || '',
     incrementalType:  (row.querySelector('.dfs-incr-type')  || {}).value || 'TIMESTAMP',
-    createTargetTable: row.querySelector('.dfs-auto-create') ? row.querySelector('.dfs-auto-create').checked : true
+    createTargetTable: row.querySelector('.dfs-auto-create-sel') ? row.querySelector('.dfs-auto-create-sel').value !== 'false' : true
   };
   if (fields && fields.length > 0) result.fields = fields;
   return result;
@@ -13216,6 +13291,76 @@ function dbsyncCollectTableConfigs() {
   return arr;
 }
 
+/* ---------- 高级设置交互 ---------- */
+window.dbsyncToggleAdvanced = function() {
+  var sec = document.getElementById('dfsAdvancedSection');
+  var icon = document.getElementById('dfsAdvancedToggleIcon');
+  if (!sec) return;
+  var isHidden = sec.style.display === 'none';
+  sec.style.display = isHidden ? '' : 'none';
+  if (icon) icon.textContent = isHidden ? '▼ 收起' : '▶ 展开';
+};
+
+window.dbsyncOnDeleteModeChange = function() {
+  var mode = document.querySelector('input[name="dfsDeleteMode"]:checked');
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) fields.style.display = (mode && mode.value === 'LOGICAL') ? 'flex' : 'none';
+};
+
+window.dbsyncOnMarkSyncTsChange = function() {
+  var cb = document.getElementById('dfsMarkSyncTs');
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = (cb && cb.checked) ? '' : 'none';
+};
+
+function dbsyncResetAdvanced() {
+  // 重置高级设置到默认
+  document.querySelectorAll('input[name="dfsDeleteMode"]').forEach(function(r) { r.checked = (r.value === 'PHYSICAL'); });
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) { fields.style.display = 'none'; }
+  var ldf = document.getElementById('dfsLogicalDeleteField');
+  if (ldf) ldf.value = '';
+  var ldv = document.getElementById('dfsLogicalDeleteValue');
+  if (ldv) ldv.value = '';
+  var cb = document.getElementById('dfsMarkSyncTs');
+  if (cb) cb.checked = false;
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = 'none';
+  var tsf = document.getElementById('dfsSyncTsField');
+  if (tsf) tsf.value = '';
+  // 收起高级设置面板
+  var sec = document.getElementById('dfsAdvancedSection');
+  if (sec) sec.style.display = 'none';
+  var icon = document.getElementById('dfsAdvancedToggleIcon');
+  if (icon) icon.textContent = '▶ 展开';
+}
+
+function dbsyncFillAdvanced(job) {
+  // 回显高级设置字段
+  var dm = job.deleteMode || 'PHYSICAL';
+  document.querySelectorAll('input[name="dfsDeleteMode"]').forEach(function(r) { r.checked = (r.value === dm); });
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) fields.style.display = (dm === 'LOGICAL') ? 'flex' : 'none';
+  var ldf = document.getElementById('dfsLogicalDeleteField');
+  if (ldf) ldf.value = job.logicalDeleteField || '';
+  var ldv = document.getElementById('dfsLogicalDeleteValue');
+  if (ldv) ldv.value = job.logicalDeleteValue != null ? job.logicalDeleteValue : '1';
+  var markTs = !!job.markSyncTs;
+  var cb = document.getElementById('dfsMarkSyncTs');
+  if (cb) cb.checked = markTs;
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = markTs ? '' : 'none';
+  var tsf = document.getElementById('dfsSyncTsField');
+  if (tsf) tsf.value = job.syncTsField || '_sync_ts';
+  // 如有非默认值则自动展开
+  if (dm === 'LOGICAL' || markTs) {
+    var sec = document.getElementById('dfsAdvancedSection');
+    if (sec) sec.style.display = '';
+    var icon = document.getElementById('dfsAdvancedToggleIcon');
+    if (icon) icon.textContent = '▼ 收起';
+  }
+}
+
 /* ---------- 打开新建弹窗 ---------- */
 window.dbsyncOpenCreateModal = function() {
   _dbsyncEditId = null;
@@ -13235,6 +13380,11 @@ window.dbsyncOpenCreateModal = function() {
   document.getElementById('dfsScheduleCron').value = '';
   document.getElementById('dfsStatus').value      = 'CREATED';
   document.getElementById('dfsTableRows').innerHTML = '';
+  dbsyncFillFolderSelect();
+  // 默认归到当前选中文件夹
+  var folderSel = document.getElementById('dfsFolderId');
+  if (folderSel) folderSel.value = String(_dbsyncSelectedFolderId || 0);
+  dbsyncResetAdvanced();
   dbsyncOnModeChange();
   // 预加载数据源
   Promise.all([
@@ -13273,6 +13423,11 @@ window.dbsyncOpenEditModal = function(id) {
     document.getElementById('dfsScheduleCron').value = job.scheduleCron || '';
     document.getElementById('dfsStatus').value   = job.status || 'CREATED';
     dbsyncOnModeChange();
+    dbsyncFillAdvanced(job);
+    // 文件夹回显
+    dbsyncFillFolderSelect();
+    var folderSel = document.getElementById('dfsFolderId');
+    if (folderSel) folderSel.value = String(job.folderId || 0);
     // 加载源库目标库
     var p1 = Promise.resolve();
     if (job.sourceDsId) {
@@ -13335,6 +13490,17 @@ window.dbsyncSaveJob = function() {
   var schedCron  = document.getElementById('dfsScheduleCron').value;
   var status     = document.getElementById('dfsStatus').value;
   var tableConfigs = dbsyncCollectTableConfigs();
+  // 文件夹
+  var folderIdEl = document.getElementById('dfsFolderId');
+  var folderId = folderIdEl ? parseInt(folderIdEl.value || '0') : 0;
+  // 高级设置
+  var deleteModeEl = document.querySelector('input[name="dfsDeleteMode"]:checked');
+  var deleteMode = deleteModeEl ? deleteModeEl.value : 'PHYSICAL';
+  var logicalDeleteField = (document.getElementById('dfsLogicalDeleteField') || {}).value || '';
+  var logicalDeleteValue = (document.getElementById('dfsLogicalDeleteValue') || {}).value || '1';
+  var markSyncTsCb = document.getElementById('dfsMarkSyncTs');
+  var markSyncTs = markSyncTsCb && markSyncTsCb.checked ? 1 : 0;
+  var syncTsField = (document.getElementById('dfsSyncTsField') || {}).value || '_sync_ts';
 
   if (!jobName)  { showToast('请填写任务名称', 'error'); return; }
   if (!srcDsId)  { showToast('请选择源数据源', 'error'); return; }
@@ -13354,8 +13520,18 @@ window.dbsyncSaveJob = function() {
     batchSize:    batchSize,
     scheduleCron: schedCron,
     status:       status,
-    tableConfig:  JSON.stringify(tableConfigs)
+    tableConfig:  JSON.stringify(tableConfigs),
+    folderId:     folderId,
+    deleteMode:   deleteMode,
+    markSyncTs:   markSyncTs
   };
+  if (deleteMode === 'LOGICAL') {
+    body.logicalDeleteField = logicalDeleteField;
+    body.logicalDeleteValue = logicalDeleteValue;
+  }
+  if (markSyncTs) {
+    body.syncTsField = syncTsField;
+  }
   if (_dbsyncEditId) body.id = _dbsyncEditId;
 
   apiPost('/api/sync-job/save', body).then(function(res) {
@@ -13369,6 +13545,92 @@ window.dbsyncSaveJob = function() {
   }).catch(function() { showToast('保存请求失败', 'error'); });
 };
 
+/* ---------- 文件夹状态 ---------- */
+var _dbsyncFolders = [];        // 所有文件夹列表
+var _dbsyncSelectedFolderId = 0; // 0 = 全部
+
+/* ---------- 加载文件夹列表 ---------- */
+function dbsyncLoadFolders() {
+  return api('/api/sync-folder/list').then(function(res) {
+    _dbsyncFolders = (res.code === 0 && res.data) ? res.data : [];
+    dbsyncRenderFolderTabs();
+    dbsyncFillFolderSelect();
+  }).catch(function() { _dbsyncFolders = []; });
+}
+
+function dbsyncRenderFolderTabs() {
+  var wrap = document.getElementById('dbsyncFolderTabs');
+  if (!wrap) return;
+  var html = '<button class="dbsync-folder-tab' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (_dbsyncSelectedFolderId === 0 ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">全部</button>';
+  // 只渲染根文件夹（parentId=0 或 null）的一级
+  _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+    var isActive = _dbsyncSelectedFolderId === f.id;
+    html += '<span style="display:inline-flex;align-items:center;gap:2px;">'
+      + '<button class="dbsync-folder-tab' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (isActive ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">'
+      + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10" style="margin-right:2px;"><path d="M1 3a1 1 0 011-1h2.586a1 1 0 01.707.293L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
+      + escapeHtml(f.folderName || '') + '</button>'
+      + '<button onclick="dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹" style="padding:1px 4px;font-size:11px;border:none;background:transparent;cursor:pointer;color:var(--text-muted);" onmouseover="this.style.color=\'var(--error)\'" onmouseout="this.style.color=\'var(--text-muted)\'">×</button>'
+      + '</span>';
+  });
+  wrap.innerHTML = html;
+}
+
+function dbsyncFillFolderSelect() {
+  var sel = document.getElementById('dfsFolderId');
+  if (!sel) return;
+  var cur = sel.value || '0';
+  sel.innerHTML = '<option value="0">根目录（不归类）</option>';
+  _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+    sel.innerHTML += '<option value="' + f.id + '"' + (String(f.id) === String(cur) ? ' selected' : '') + '>' + escapeHtml(f.folderName || '') + '</option>';
+  });
+}
+
+window.dbsyncSelectFolder = function(btn, folderId) {
+  _dbsyncSelectedFolderId = folderId;
+  dbsyncRenderFolderTabs();
+  dbsyncApplyFolderFilter();
+};
+
+function dbsyncApplyFolderFilter() {
+  if (_dbsyncSelectedFolderId === 0) {
+    dbsyncRenderJobs(_dbsyncAllJobs);
+  } else {
+    dbsyncRenderJobs((_dbsyncAllJobs || []).filter(function(j) {
+      return String(j.folderId || 0) === String(_dbsyncSelectedFolderId);
+    }));
+  }
+}
+
+/* ---------- 新建文件夹 ---------- */
+window.dbsyncOpenCreateFolder = function() {
+  var name = window.prompt('请输入文件夹名称：');
+  if (!name || !name.trim()) return;
+  apiPost('/api/sync-folder/save', { folderName: name.trim(), parentId: 0 }).then(function(res) {
+    if (res.code === 0) {
+      showToast('文件夹创建成功', 'success');
+      dbsyncLoadFolders();
+    } else {
+      showToast('创建失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('请求失败', 'error'); });
+};
+
+/* ---------- 删除文件夹 ---------- */
+window.dbsyncDeleteFolder = function(id, name) {
+  confirmBox('确定删除文件夹"' + escapeHtml(name) + '"？其下任务将移回根目录。', function() {
+    fetch('/api/sync-folder/' + id, { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+      if (res.code === 0) {
+        showToast('文件夹已删除', 'success');
+        if (_dbsyncSelectedFolderId === id) _dbsyncSelectedFolderId = 0;
+        dbsyncLoadFolders();
+        dbsyncLoadJobs();
+      } else {
+        showToast('删除失败: ' + (res.msg || ''), 'error');
+      }
+    }).catch(function() { showToast('删除请求失败', 'error'); });
+  });
+};
+
 /* ---------- 任务列表 ---------- */
 window.dbsyncLoadJobs = function() {
   var container = document.getElementById('dbsyncJobsContent');
@@ -13376,7 +13638,7 @@ window.dbsyncLoadJobs = function() {
   api('/api/sync-job/list').then(function(res) {
     if (res.code !== 0) { container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
     _dbsyncAllJobs = res.data || [];
-    dbsyncRenderJobs(_dbsyncAllJobs);
+    dbsyncApplyFolderFilter();
   }).catch(function() {
     container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
   });
@@ -13384,8 +13646,11 @@ window.dbsyncLoadJobs = function() {
 
 window.dbsyncFilterJobs = function() {
   var kw = (document.getElementById('dbsyncSearchInput').value || '').toLowerCase();
-  if (!kw) { dbsyncRenderJobs(_dbsyncAllJobs); return; }
-  dbsyncRenderJobs(_dbsyncAllJobs.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
+  var base = (_dbsyncSelectedFolderId === 0) ? _dbsyncAllJobs : (_dbsyncAllJobs || []).filter(function(j) {
+    return String(j.folderId || 0) === String(_dbsyncSelectedFolderId);
+  });
+  if (!kw) { dbsyncRenderJobs(base); return; }
+  dbsyncRenderJobs(base.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
 };
 
 function dbsyncRenderJobs(list) {
@@ -13434,12 +13699,122 @@ function dbsyncRenderJobs(list) {
     }
     html += '<button class="btn btn-sm" onclick="dbsyncOpenEditModal(' + job.id + ')" title="编辑">编辑</button>';
     html += '<button class="btn btn-sm" onclick="dbsyncShowHistory(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="执行历史">历史</button>';
+    html += '<button class="btn btn-sm" onclick="dbsyncToggleInlineHistory(this,' + job.id + ')" title="展开执行历史" data-job-id="' + job.id + '" style="white-space:nowrap;">'
+      + '<span class="dbsync-expand-icon">▶</span> 展开</button>';
+    html += '<button class="btn btn-sm" onclick="dbsyncOpenMoveJobDialog(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="移动到其他文件夹">移动</button>';
     html += '<button class="btn btn-sm btn-danger" onclick="dbsyncDeleteJob(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="删除">删除</button>';
+    html += '</div></td></tr>';
+    // 内嵌历史行（初始隐藏）
+    html += '<tr class="dbsync-inline-history-row" id="dbsyncInlineHistoryRow_' + job.id + '" style="display:none;">';
+    html += '<td colspan="6" style="padding:0;background:var(--bg-hover);">';
+    html += '<div class="dbsync-inline-history" id="dbsyncInlineHistory_' + job.id + '" style="padding:12px 16px;">';
+    html += '<span style="color:var(--text-muted);font-size:12px;">加载中...</span>';
     html += '</div></td></tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
 }
+
+/* ---------- 移动任务到文件夹 ---------- */
+var _dbsyncMoveJobId = null;
+
+window.dbsyncOpenMoveJobDialog = function(id, name) {
+  _dbsyncMoveJobId = id;
+  document.getElementById('dbsyncMoveJobTitle').textContent = '移动"' + name + '"到文件夹';
+  // 填充文件夹选项
+  var sel = document.getElementById('dbsyncMoveJobFolderSel');
+  if (sel) {
+    sel.innerHTML = '<option value="0">根目录（不归类）</option>';
+    _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+      sel.innerHTML += '<option value="' + f.id + '">' + escapeHtml(f.folderName || '') + '</option>';
+    });
+    // 回显当前文件夹
+    var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; });
+    if (job) sel.value = String(job.folderId || 0);
+  }
+  document.getElementById('dbsyncMoveJobModal').classList.add('show');
+};
+
+window.dbsyncConfirmMoveJob = function() {
+  var id = _dbsyncMoveJobId;
+  if (!id) return;
+  var sel = document.getElementById('dbsyncMoveJobFolderSel');
+  var folderId = sel ? parseInt(sel.value || '0') : 0;
+  apiPost('/api/sync-job/' + id + '/move?folderId=' + folderId, {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('移动成功', 'success');
+      document.getElementById('dbsyncMoveJobModal').classList.remove('show');
+      dbsyncLoadJobs();
+    } else {
+      showToast('移动失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('移动请求失败', 'error'); });
+};
+
+/* ---------- 行内嵌历史展开/折叠 ---------- */
+window.dbsyncToggleInlineHistory = function(btn, id) {
+  var row = document.getElementById('dbsyncInlineHistoryRow_' + id);
+  if (!row) return;
+  var isHidden = row.style.display === 'none';
+  var icon = btn.querySelector('.dbsync-expand-icon');
+  if (isHidden) {
+    row.style.display = '';
+    if (icon) icon.textContent = '▼';
+    btn.title = '折叠执行历史';
+    dbsyncLoadInlineHistory(id);
+  } else {
+    row.style.display = 'none';
+    if (icon) icon.textContent = '▶';
+    btn.title = '展开执行历史';
+  }
+};
+
+window.dbsyncLoadInlineHistory = function(id) {
+  var container = document.getElementById('dbsyncInlineHistory_' + id);
+  if (!container) return;
+  container.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">加载中...</span>';
+  api('/api/sync-job/' + id + '/executions').then(function(res) {
+    if (res.code !== 0) {
+      container.innerHTML = '<span style="color:var(--error);font-size:12px;">加载失败: ' + escapeHtml(res.msg || '') + '</span>';
+      return;
+    }
+    var list = res.data || [];
+    if (list.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">暂无执行记录</span>';
+      return;
+    }
+    var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
+    var html = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr>'
+      + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th>日志摘要</th>'
+      + '</tr></thead><tbody>';
+    list.forEach(function(ex, exIndex) {
+      var st = ex.status !== undefined && ex.status !== null ? String(ex.status) : '';
+      var stLabel = statusLabel[st] || st;
+      var stColor = (stLabel === '成功') ? 'var(--success)' : (stLabel === '失败') ? 'var(--error)' : 'var(--primary)';
+      var logFull = ex.log ? String(ex.log) : '';
+      var logSnippet = logFull ? escapeHtml(logFull.slice(0, 80)) + (logFull.length > 80 ? '...' : '') : '-';
+      var logIdx = 'dbsyncILLog_' + id + '_' + exIndex;
+      var logCell = logFull
+        ? '<span style="color:var(--text-muted);font-size:11px;">' + logSnippet + '</span>'
+          + ' <a href="#" onclick="var el=document.getElementById(\'' + logIdx + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';return false;" style="font-size:11px;color:var(--primary);">查看</a>'
+          + '<pre id="' + logIdx + '" style="display:none;margin:4px 0 0;padding:6px;background:var(--bg-card);border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:160px;overflow-y:auto;">' + escapeHtml(logFull) + '</pre>'
+        : '-';
+      html += '<tr>'
+        + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
+        + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
+        + '<td>' + (ex.readCount || 0) + '</td>'
+        + '<td>' + (ex.writeCount || 0) + '</td>'
+        + '<td>' + (ex.errorCount || 0) + '</td>'
+        + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+        + '<td style="max-width:220px;word-break:break-all;">' + logCell + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }).catch(function() {
+    container.innerHTML = '<span style="color:var(--error);font-size:12px;">请求失败</span>';
+  });
+};
 
 /* ---------- 运行（全量/增量） ---------- */
 window.dbsyncRunJob = function(id) {
