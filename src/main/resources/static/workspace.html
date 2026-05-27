@@ -4161,6 +4161,43 @@ html, body {
               </select>
             </div>
           </div>
+
+          <!-- 高级设置 -->
+          <div class="dbsync-section-title" style="cursor:pointer;user-select:none;" onclick="dbsyncToggleAdvanced()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><circle cx="7" cy="7" r="5.5"/><path d="M5 7h4M7 9V5"/></svg>
+            高级设置
+            <span id="dfsAdvancedToggleIcon" style="margin-left:4px;font-size:11px;color:var(--text-muted);">▶ 展开</span>
+          </div>
+          <div id="dfsAdvancedSection" style="display:none;">
+            <div class="dbsync-form-grid">
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">源端删除数据</label>
+                <div style="display:flex;gap:16px;padding:8px 0;align-items:center;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="radio" name="dfsDeleteMode" value="PHYSICAL" checked onchange="dbsyncOnDeleteModeChange()"> 目标端物理删除
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="radio" name="dfsDeleteMode" value="LOGICAL" onchange="dbsyncOnDeleteModeChange()"> 目标端逻辑删除
+                  </label>
+                  <div id="dfsLogicalDeleteFields" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input class="dbsync-form-input" id="dfsLogicalDeleteField" placeholder="逻辑删除字段名" style="width:160px;">
+                    <input class="dbsync-form-input" id="dfsLogicalDeleteValue" placeholder="标记值（默认1）" style="width:140px;">
+                  </div>
+                </div>
+              </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">同步时标记时间戳</label>
+                <div style="display:flex;gap:16px;padding:8px 0;align-items:center;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="dfsMarkSyncTs" onchange="dbsyncOnMarkSyncTsChange()"> 启用时间戳字段
+                  </label>
+                  <div id="dfsSyncTsFieldWrap" style="display:none;">
+                    <input class="dbsync-form-input" id="dfsSyncTsField" placeholder="时间戳字段名（如 _sync_ts）" style="width:200px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFormModal()">取消</button>
@@ -13217,6 +13254,76 @@ function dbsyncCollectTableConfigs() {
   return arr;
 }
 
+/* ---------- 高级设置交互 ---------- */
+window.dbsyncToggleAdvanced = function() {
+  var sec = document.getElementById('dfsAdvancedSection');
+  var icon = document.getElementById('dfsAdvancedToggleIcon');
+  if (!sec) return;
+  var isHidden = sec.style.display === 'none';
+  sec.style.display = isHidden ? '' : 'none';
+  if (icon) icon.textContent = isHidden ? '▼ 收起' : '▶ 展开';
+};
+
+window.dbsyncOnDeleteModeChange = function() {
+  var mode = document.querySelector('input[name="dfsDeleteMode"]:checked');
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) fields.style.display = (mode && mode.value === 'LOGICAL') ? 'flex' : 'none';
+};
+
+window.dbsyncOnMarkSyncTsChange = function() {
+  var cb = document.getElementById('dfsMarkSyncTs');
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = (cb && cb.checked) ? '' : 'none';
+};
+
+function dbsyncResetAdvanced() {
+  // 重置高级设置到默认
+  document.querySelectorAll('input[name="dfsDeleteMode"]').forEach(function(r) { r.checked = (r.value === 'PHYSICAL'); });
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) { fields.style.display = 'none'; }
+  var ldf = document.getElementById('dfsLogicalDeleteField');
+  if (ldf) ldf.value = '';
+  var ldv = document.getElementById('dfsLogicalDeleteValue');
+  if (ldv) ldv.value = '';
+  var cb = document.getElementById('dfsMarkSyncTs');
+  if (cb) cb.checked = false;
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = 'none';
+  var tsf = document.getElementById('dfsSyncTsField');
+  if (tsf) tsf.value = '';
+  // 收起高级设置面板
+  var sec = document.getElementById('dfsAdvancedSection');
+  if (sec) sec.style.display = 'none';
+  var icon = document.getElementById('dfsAdvancedToggleIcon');
+  if (icon) icon.textContent = '▶ 展开';
+}
+
+function dbsyncFillAdvanced(job) {
+  // 回显高级设置字段
+  var dm = job.deleteMode || 'PHYSICAL';
+  document.querySelectorAll('input[name="dfsDeleteMode"]').forEach(function(r) { r.checked = (r.value === dm); });
+  var fields = document.getElementById('dfsLogicalDeleteFields');
+  if (fields) fields.style.display = (dm === 'LOGICAL') ? 'flex' : 'none';
+  var ldf = document.getElementById('dfsLogicalDeleteField');
+  if (ldf) ldf.value = job.logicalDeleteField || '';
+  var ldv = document.getElementById('dfsLogicalDeleteValue');
+  if (ldv) ldv.value = job.logicalDeleteValue != null ? job.logicalDeleteValue : '1';
+  var markTs = !!job.markSyncTs;
+  var cb = document.getElementById('dfsMarkSyncTs');
+  if (cb) cb.checked = markTs;
+  var wrap = document.getElementById('dfsSyncTsFieldWrap');
+  if (wrap) wrap.style.display = markTs ? '' : 'none';
+  var tsf = document.getElementById('dfsSyncTsField');
+  if (tsf) tsf.value = job.syncTsField || '_sync_ts';
+  // 如有非默认值则自动展开
+  if (dm === 'LOGICAL' || markTs) {
+    var sec = document.getElementById('dfsAdvancedSection');
+    if (sec) sec.style.display = '';
+    var icon = document.getElementById('dfsAdvancedToggleIcon');
+    if (icon) icon.textContent = '▼ 收起';
+  }
+}
+
 /* ---------- 打开新建弹窗 ---------- */
 window.dbsyncOpenCreateModal = function() {
   _dbsyncEditId = null;
@@ -13236,6 +13343,7 @@ window.dbsyncOpenCreateModal = function() {
   document.getElementById('dfsScheduleCron').value = '';
   document.getElementById('dfsStatus').value      = 'CREATED';
   document.getElementById('dfsTableRows').innerHTML = '';
+  dbsyncResetAdvanced();
   dbsyncOnModeChange();
   // 预加载数据源
   Promise.all([
@@ -13274,6 +13382,7 @@ window.dbsyncOpenEditModal = function(id) {
     document.getElementById('dfsScheduleCron').value = job.scheduleCron || '';
     document.getElementById('dfsStatus').value   = job.status || 'CREATED';
     dbsyncOnModeChange();
+    dbsyncFillAdvanced(job);
     // 加载源库目标库
     var p1 = Promise.resolve();
     if (job.sourceDsId) {
@@ -13336,6 +13445,14 @@ window.dbsyncSaveJob = function() {
   var schedCron  = document.getElementById('dfsScheduleCron').value;
   var status     = document.getElementById('dfsStatus').value;
   var tableConfigs = dbsyncCollectTableConfigs();
+  // 高级设置
+  var deleteModeEl = document.querySelector('input[name="dfsDeleteMode"]:checked');
+  var deleteMode = deleteModeEl ? deleteModeEl.value : 'PHYSICAL';
+  var logicalDeleteField = (document.getElementById('dfsLogicalDeleteField') || {}).value || '';
+  var logicalDeleteValue = (document.getElementById('dfsLogicalDeleteValue') || {}).value || '1';
+  var markSyncTsCb = document.getElementById('dfsMarkSyncTs');
+  var markSyncTs = markSyncTsCb && markSyncTsCb.checked ? 1 : 0;
+  var syncTsField = (document.getElementById('dfsSyncTsField') || {}).value || '_sync_ts';
 
   if (!jobName)  { showToast('请填写任务名称', 'error'); return; }
   if (!srcDsId)  { showToast('请选择源数据源', 'error'); return; }
@@ -13355,8 +13472,17 @@ window.dbsyncSaveJob = function() {
     batchSize:    batchSize,
     scheduleCron: schedCron,
     status:       status,
-    tableConfig:  JSON.stringify(tableConfigs)
+    tableConfig:  JSON.stringify(tableConfigs),
+    deleteMode:   deleteMode,
+    markSyncTs:   markSyncTs
   };
+  if (deleteMode === 'LOGICAL') {
+    body.logicalDeleteField = logicalDeleteField;
+    body.logicalDeleteValue = logicalDeleteValue;
+  }
+  if (markSyncTs) {
+    body.syncTsField = syncTsField;
+  }
   if (_dbsyncEditId) body.id = _dbsyncEditId;
 
   apiPost('/api/sync-job/save', body).then(function(res) {
