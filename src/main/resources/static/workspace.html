@@ -4241,6 +4241,26 @@ html, body {
       </div>
     </div>
 
+    <!-- ===== 移动任务到文件夹弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncMoveJobModal">
+      <div class="dbsync-modal" style="width:360px;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncMoveJobTitle">移动任务到文件夹</span>
+          <button class="g-modal-close" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="dbsync-modal-body">
+          <div style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">选择目标文件夹：</div>
+          <select class="dbsync-form-select" id="dbsyncMoveJobFolderSel" style="width:100%;">
+            <option value="0">根目录（不归类）</option>
+          </select>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">取消</button>
+          <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob()">确定移动</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Shared Result Panel (visible for both SQL and Sync views) -->
     <div class="result-panel" id="sharedResultPanel">
       <div class="result-resize-handle" id="resultResizeHandle"></div>
@@ -13681,6 +13701,7 @@ function dbsyncRenderJobs(list) {
     html += '<button class="btn btn-sm" onclick="dbsyncShowHistory(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="执行历史">历史</button>';
     html += '<button class="btn btn-sm" onclick="dbsyncToggleInlineHistory(this,' + job.id + ')" title="展开执行历史" data-job-id="' + job.id + '" style="white-space:nowrap;">'
       + '<span class="dbsync-expand-icon">▶</span> 展开</button>';
+    html += '<button class="btn btn-sm" onclick="dbsyncOpenMoveJobDialog(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="移动到其他文件夹">移动</button>';
     html += '<button class="btn btn-sm btn-danger" onclick="dbsyncDeleteJob(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="删除">删除</button>';
     html += '</div></td></tr>';
     // 内嵌历史行（初始隐藏）
@@ -13693,6 +13714,42 @@ function dbsyncRenderJobs(list) {
   html += '</tbody></table></div>';
   container.innerHTML = html;
 }
+
+/* ---------- 移动任务到文件夹 ---------- */
+var _dbsyncMoveJobId = null;
+
+window.dbsyncOpenMoveJobDialog = function(id, name) {
+  _dbsyncMoveJobId = id;
+  document.getElementById('dbsyncMoveJobTitle').textContent = '移动"' + name + '"到文件夹';
+  // 填充文件夹选项
+  var sel = document.getElementById('dbsyncMoveJobFolderSel');
+  if (sel) {
+    sel.innerHTML = '<option value="0">根目录（不归类）</option>';
+    _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
+      sel.innerHTML += '<option value="' + f.id + '">' + escapeHtml(f.folderName || '') + '</option>';
+    });
+    // 回显当前文件夹
+    var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; });
+    if (job) sel.value = String(job.folderId || 0);
+  }
+  document.getElementById('dbsyncMoveJobModal').classList.add('show');
+};
+
+window.dbsyncConfirmMoveJob = function() {
+  var id = _dbsyncMoveJobId;
+  if (!id) return;
+  var sel = document.getElementById('dbsyncMoveJobFolderSel');
+  var folderId = sel ? parseInt(sel.value || '0') : 0;
+  apiPost('/api/sync-job/' + id + '/move?folderId=' + folderId, {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('移动成功', 'success');
+      document.getElementById('dbsyncMoveJobModal').classList.remove('show');
+      dbsyncLoadJobs();
+    } else {
+      showToast('移动失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('移动请求失败', 'error'); });
+};
 
 /* ---------- 行内嵌历史展开/折叠 ---------- */
 window.dbsyncToggleInlineHistory = function(btn, id) {
