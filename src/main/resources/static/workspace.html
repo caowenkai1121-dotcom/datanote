@@ -13294,7 +13294,17 @@ window.dbsyncRunJob = function(id) {
   if (!id) return;
   apiPost('/api/sync-job/' + id + '/run', {}).then(function(res) {
     if (res.code === 0) {
-      showToast('任务已提交运行', 'success');
+      showToast('任务已启动，正在实时输出日志', 'success');
+      // 自动切换到"实时日志"页签，并设置过滤到当前任务
+      var sidebar = document.querySelector('#viewDbSync .ops-sidebar');
+      if (sidebar) {
+        var logsItem = sidebar.querySelectorAll('.ops-sidebar-item')[1];
+        if (logsItem) switchDbSyncTab(logsItem, 'logs');
+      }
+      var logFilter = document.getElementById('dbsyncLogFilter');
+      if (logFilter) {
+        logFilter.value = String(id);
+      }
       setTimeout(dbsyncLoadJobs, 1500);
     } else {
       showToast('运行失败: ' + (res.msg || ''), 'error');
@@ -13358,11 +13368,21 @@ window.dbsyncShowHistory = function(id, name) {
     var html = '<table class="dbsync-exec-table"><thead><tr>'
       + '<th>执行时间</th><th>状态</th><th>读取行数</th><th>写入行数</th><th>错误行数</th><th>耗时(秒)</th><th>日志摘要</th>'
       + '</tr></thead><tbody>';
+    var exIndex = 0;
     list.forEach(function(ex) {
       var st = ex.status !== undefined && ex.status !== null ? String(ex.status) : '';
       var stLabel = statusLabel[st] || st;
       var stColor = (stLabel === '成功' || stLabel === 'SUCCESS') ? 'var(--success)' : (stLabel === '失败' || stLabel === 'FAILED') ? 'var(--error)' : 'var(--primary)';
-      var logSnippet = ex.log ? escapeHtml(String(ex.log).slice(0, 120)) + (ex.log.length > 120 ? '...' : '') : '-';
+      var logFull = ex.log ? String(ex.log) : '';
+      var logSnippet = logFull ? escapeHtml(logFull.slice(0, 120)) + (logFull.length > 120 ? '...' : '') : '-';
+      var logIdx = 'dbsyncLogDetail_' + exIndex;
+      var logCell = logFull
+        ? '<span style="color:var(--text-muted);font-size:11px;">' + logSnippet + '</span>'
+          + (logFull.length > 0 ? ' <a href="#" onclick="var el=document.getElementById(\'' + logIdx + '\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';return false;" style="font-size:11px;color:var(--primary);white-space:nowrap;">查看</a>'
+            + '<pre id="' + logIdx + '" style="display:none;margin:6px 0 0;padding:8px;background:var(--bg-hover);border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;color:var(--text-regular);">' + escapeHtml(logFull) + '</pre>'
+            : '')
+        : '-';
+      exIndex++;
       html += '<tr>'
         + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
         + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
@@ -13370,7 +13390,7 @@ window.dbsyncShowHistory = function(id, name) {
         + '<td>' + (ex.writeCount || 0) + '</td>'
         + '<td>' + (ex.errorCount || 0) + '</td>'
         + '<td>' + (ex.duration != null ? Math.round(ex.duration / 1000) : '-') + '</td>'
-        + '<td style="max-width:260px;word-break:break-all;color:var(--text-muted);font-size:11px;">' + logSnippet + '</td>'
+        + '<td style="max-width:260px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
     });
     html += '</tbody></table>';
