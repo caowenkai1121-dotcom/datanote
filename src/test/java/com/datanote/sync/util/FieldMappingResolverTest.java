@@ -86,4 +86,19 @@ class FieldMappingResolverTest {
         assertThrows(IllegalStateException.class,
                 () -> FieldMappingResolver.resolve(tc, allColumns, "id"));
     }
+
+    @Test
+    void throwsWhenDuplicateTarget() {
+        TableSyncConfig tc = new TableSyncConfig();
+        tc.setSourceTable("t");
+        // 两个源列映射到同一目标列 dup -> 解析期应拒绝
+        tc.setFields(Arrays.asList(
+                fm("id", "id", true),
+                fm("name", "dup", true),
+                fm("addr", "dup", true)
+        ));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> FieldMappingResolver.resolve(tc, allColumns, "id"));
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("重复的目标列"));
+    }
 }

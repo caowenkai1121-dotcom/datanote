@@ -23,35 +23,58 @@ public class TypeMappingService {
             return "STRING";
         }
         String t = mysqlColumnType.trim().toLowerCase();
+        // unsigned 整型上界更大，需升一档类型避免目标列溢出
+        boolean unsigned = t.contains("unsigned");
 
-        if (t.startsWith("tinyint")) return "TINYINT";
-        if (t.startsWith("smallint")) return "SMALLINT";
+        if (t.startsWith("tinyint")) return unsigned ? "SMALLINT" : "TINYINT";
+        if (t.startsWith("smallint")) return unsigned ? "INT" : "SMALLINT";
         if (t.startsWith("mediumint")) return "INT";
-        if (t.startsWith("bigint")) return "BIGINT";
-        if (t.startsWith("int") || t.startsWith("integer")) return "INT";
+        if (t.startsWith("bigint")) return unsigned ? "LARGEINT" : "BIGINT";
+        if (t.startsWith("int") || t.startsWith("integer")) return unsigned ? "BIGINT" : "INT";
         if (t.startsWith("float")) return "FLOAT";
-        if (t.startsWith("double")) return "DOUBLE";
+        if (t.startsWith("double") || t.startsWith("real")) return "DOUBLE";
         if (t.startsWith("decimal") || t.startsWith("numeric")) {
             Matcher m = DECIMAL.matcher(t);
             if (m.find()) {
-                return "DECIMAL(" + m.group(1) + "," + m.group(2) + ")";
+                int p = Integer.parseInt(m.group(1));
+                int s = Integer.parseInt(m.group(2));
+                // Doris DECIMAL 精度上限 38
+                if (p > 38) { p = 38; }
+                if (s > p) { s = p; }
+                return "DECIMAL(" + p + "," + s + ")";
             }
             return "DECIMAL(10,0)";
         }
-        if (t.startsWith("datetime") || t.startsWith("timestamp")) return "DATETIME";
+        if (t.startsWith("datetime") || t.startsWith("timestamp")) {
+            int p = precisionOrDefault(t, 0);   // 保留毫秒/微秒精度，避免截断
+            return p > 0 ? "DATETIME(" + Math.min(p, 6) + ")" : "DATETIME";
+        }
         if (t.startsWith("date")) return "DATE";
         if (t.startsWith("char")) {
-            return "CHAR(" + lenOrDefault(t, 1) + ")";
+            // Doris CHAR 上限 255 字节；超出退化 VARCHAR/STRING
+            int bytes = lenOrDefault(t, 1) * 3;
+            if (bytes <= 255) return "CHAR(" + bytes + ")";
+            return bytes > 65533 ? "STRING" : "VARCHAR(" + bytes + ")";
         }
         if (t.startsWith("varchar")) {
-            // Doris VARCHAR 按字节，中文需预留，长度 *3
-            return "VARCHAR(" + (lenOrDefault(t, 255) * 3) + ")";
+            // Doris VARCHAR 按字节，中文需预留 *3；上限 65533，超出退化 STRING
+            int bytes = lenOrDefault(t, 255) * 3;
+            return bytes > 65533 ? "STRING" : "VARCHAR(" + bytes + ")";
         }
         // text/longtext/mediumtext/tinytext/blob/json/枚举/几何等统一 STRING
         return "STRING";
     }
 
     private int lenOrDefault(String type, int def) {
+        Matcher m = LEN.matcher(type);
+        if (m.find()) {
+            return Integer.parseInt(m.group(1));
+        }
+        return def;
+    }
+
+    /** 取时间类型精度 datetime(3)/timestamp(6) 的括号内数字，缺省返回 def。 */
+    private int precisionOrDefault(String type, int def) {
         Matcher m = LEN.matcher(type);
         if (m.find()) {
             return Integer.parseInt(m.group(1));

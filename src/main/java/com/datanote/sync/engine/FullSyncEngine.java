@@ -86,57 +86,62 @@ public class FullSyncEngine implements SyncEngine {
              Connection tgtConn = target.getConnection()) {
             tgtConn.setAutoCommit(false);
 
-            while (!ctx.getStopped().get()) {
-                String pageSql = MysqlConnector.buildKeysetPageSql(
-                        srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor);
+            // writeSql 是循环不变量，writePs 提到分页循环外复用，保留 prepStmt 缓存与批处理重写收益
+            try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
+                while (!ctx.getStopped().get()) {
+                    String pageSql = MysqlConnector.buildKeysetPageSql(
+                            srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor);
 
-                int rowsThisPage = 0;
-                try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
-                    int paramIdx = 1;
-                    if (hasCursor) {
-                        readPs.setObject(paramIdx++, cursor);
-                    }
-                    readPs.setInt(paramIdx, ctx.getBatchSize());
-
-                    try (ResultSet rs = readPs.executeQuery();
-                         PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
-                        while (rs.next()) {
-                            // 读列与写列一一对应：按读列顺序取、按写列顺序写
-                            for (int i = 0; i < srcColumns.size(); i++) {
-                                writePs.setObject(i + 1, rs.getObject(i + 1));
-                            }
-                            // 追加同步时间戳列（写列末尾，绑当前时间）
-                            if (markTs) {
-                                writePs.setObject(srcColumns.size() + 1,
-                                        new java.sql.Timestamp(System.currentTimeMillis()));
-                            }
-                            writePs.addBatch();
-                            cursor = rs.getObject(pkIndex + 1);
-                            rowsThisPage++;
+                    int rowsThisPage = 0;
+                    try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
+                        int paramIdx = 1;
+                        if (hasCursor) {
+                            readPs.setObject(paramIdx++, cursor);
                         }
-                        if (rowsThisPage > 0) {
-                            try {
-                                writePs.executeBatch();
-                                tgtConn.commit();
-                            } catch (Exception batchEx) {
-                                tgtConn.rollback();
-                                throw batchEx;
+                        readPs.setInt(paramIdx, ctx.getBatchSize());
+                        readPs.setFetchSize(ctx.getBatchSize()); // 流式读取，控制客户端内存峰值
+
+                        try (ResultSet rs = readPs.executeQuery()) {
+                            while (rs.next()) {
+                                // 读列与写列一一对应：按读列顺序取、按写列顺序写
+                                for (int i = 0; i < srcColumns.size(); i++) {
+                                    writePs.setObject(i + 1, rs.getObject(i + 1));
+                                }
+                                // 追加同步时间戳列（写列末尾，绑当前时间）
+                                if (markTs) {
+                                    writePs.setObject(srcColumns.size() + 1,
+                                            new java.sql.Timestamp(System.currentTimeMillis()));
+                                }
+                                writePs.addBatch();
+                                cursor = rs.getObject(pkIndex + 1);
+                                rowsThisPage++;
                             }
-                            // 逐行计数：避免 ON DUPLICATE KEY UPDATE 下 affected rows 语义导致偏大
-                            ctx.getWriteCount().addAndGet(rowsThisPage);
+                            if (rowsThisPage > 0) {
+                                try {
+                                    writePs.executeBatch();
+                                    tgtConn.commit();
+                                } catch (Exception batchEx) {
+                                    tgtConn.rollback();
+                                    throw batchEx;
+                                } finally {
+                                    writePs.clearBatch(); // 复用同一 PreparedStatement，每页清批
+                                }
+                                // 逐行计数：避免 ON DUPLICATE KEY UPDATE 下 affected rows 语义导致偏大
+                                ctx.getWriteCount().addAndGet(rowsThisPage);
+                            }
                         }
                     }
-                }
 
-                tableRead += rowsThisPage;
-                ctx.getReadCount().addAndGet(rowsThisPage);
-                hasCursor = true;
+                    tableRead += rowsThisPage;
+                    ctx.getReadCount().addAndGet(rowsThisPage);
+                    hasCursor = true;
 
-                if (rowsThisPage > 0) {
-                    ctx.log("INFO", tc.getSourceTable() + " 已读 " + tableRead + " 行");
-                }
-                if (rowsThisPage < ctx.getBatchSize()) {
-                    break; // 最后一页
+                    if (rowsThisPage > 0) {
+                        ctx.log("INFO", tc.getSourceTable() + " 已读 " + tableRead + " 行");
+                    }
+                    if (rowsThisPage < ctx.getBatchSize()) {
+                        break; // 最后一页
+                    }
                 }
             }
         }

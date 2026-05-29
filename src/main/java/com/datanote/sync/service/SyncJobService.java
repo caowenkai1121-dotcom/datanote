@@ -8,14 +8,22 @@ import com.datanote.model.DnSyncJob;
 import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.connector.MysqlConnector;
+import com.datanote.sync.connector.TableMeta;
 import com.datanote.sync.dto.TableSyncConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 关系库同步任务管理：CRUD + 连接器构建。
@@ -48,7 +56,54 @@ public class SyncJobService {
         return syncJobMapper.selectById(id);
     }
 
+    private static final Set<String> SYNC_MODES = new HashSet<>(Arrays.asList("FULL", "INCREMENTAL", "CDC"));
+    private static final Set<String> WRITE_MODES = new HashSet<>(Arrays.asList("UPSERT", "INSERT", "INSERT_IGNORE"));
+
+    /** 保存前服务端校验：必填项 / 同步模式 / 写入模式 / cron / tableConfig JSON / 增量字段。非法抛 IllegalArgumentException。 */
+    void validate(DnSyncJob job) {
+        if (isBlank(job.getJobName())) {
+            throw new IllegalArgumentException("任务名称不能为空");
+        }
+        if (job.getSourceDsId() == null || job.getTargetDsId() == null) {
+            throw new IllegalArgumentException("源/目标数据源不能为空");
+        }
+        String mode = job.getSyncMode() == null ? "" : job.getSyncMode().toUpperCase();
+        if (!SYNC_MODES.contains(mode)) {
+            throw new IllegalArgumentException("非法同步模式: " + job.getSyncMode());
+        }
+        if (job.getWriteMode() != null && !job.getWriteMode().trim().isEmpty()
+                && !WRITE_MODES.contains(job.getWriteMode().toUpperCase())) {
+            throw new IllegalArgumentException("非法写入模式: " + job.getWriteMode());
+        }
+        if (!isBlank(job.getScheduleCron())) {
+            try {
+                CronExpression.parse(job.getScheduleCron().trim());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("非法 cron 表达式: " + job.getScheduleCron());
+            }
+        }
+        List<TableSyncConfig> tables;
+        if (!isBlank(job.getTableConfig())) {
+            try {
+                tables = JSON.parseArray(job.getTableConfig(), TableSyncConfig.class);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("table_config 不是合法 JSON 数组");
+            }
+        } else {
+            tables = new ArrayList<>();
+        }
+        for (TableSyncConfig t : tables) {
+            if (isBlank(t.getSourceTable()) || isBlank(t.getTargetTable())) {
+                throw new IllegalArgumentException("表配置缺少 sourceTable/targetTable");
+            }
+            if ("INCREMENTAL".equals(mode) && isBlank(t.getIncrementalField())) {
+                throw new IllegalArgumentException("增量模式下表 " + t.getSourceTable() + " 缺少 incrementalField");
+            }
+        }
+    }
+
     public DnSyncJob save(DnSyncJob job) {
+        validate(job);
         if (job.getId() != null) {
             job.setUpdatedAt(LocalDateTime.now());
             syncJobMapper.updateById(job);
@@ -85,6 +140,110 @@ public class SyncJobService {
         job.setTableConfig(JSON.toJSONString(tables, com.alibaba.fastjson.serializer.SerializerFeature.WriteMapNullValue));
         job.setUpdatedAt(LocalDateTime.now());
         syncJobMapper.updateById(job);
+    }
+
+    /** 按表回写单张表的增量断点（读现有 JSON，仅改对应表，避免整段覆盖丢其他表）。 */
+    public void updateTableCheckpoint(Long jobId, TableSyncConfig updated) {
+        DnSyncJob job = syncJobMapper.selectById(jobId);
+        if (job == null) {
+            return;
+        }
+        List<TableSyncConfig> tables = parseTables(job);
+        boolean changed = false;
+        for (TableSyncConfig t : tables) {
+            if (eq(t.getSourceTable(), updated.getSourceTable()) && eq(t.getTargetTable(), updated.getTargetTable())) {
+                t.setIncrementalValue(updated.getIncrementalValue());
+                changed = true;
+                break;
+            }
+        }
+        if (!changed) {
+            return;
+        }
+        job.setTableConfig(JSON.toJSONString(tables, com.alibaba.fastjson.serializer.SerializerFeature.WriteMapNullValue));
+        job.setUpdatedAt(LocalDateTime.now());
+        syncJobMapper.updateById(job);
+    }
+
+    /**
+     * 同步前预检：源/目标库连通性、源表主键(是否单列、能否自动建表)、目标库可达、cron 合法性。
+     * 返回 {ok, checks:[{name, ok, message}]}，逐项捕获异常不抛出。
+     */
+    public Map<String, Object> precheck(DnSyncJob job) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> checks = new ArrayList<>();
+        boolean allOk = true;
+
+        if (!isBlank(job.getScheduleCron())) {
+            boolean ok = true;
+            String msg = "cron 合法";
+            try {
+                CronExpression.parse(job.getScheduleCron().trim());
+            } catch (Exception e) {
+                ok = false;
+                msg = "非法 cron: " + e.getMessage();
+            }
+            checks.add(check("cron", ok, msg));
+            allOk &= ok;
+        }
+
+        try {
+            DbConnector src = buildConnector(job.getSourceDsId(), job.getSourceDb());
+            try (Connection c = src.getConnection()) {
+                checks.add(check("source", true, "源库连接成功"));
+            }
+            for (TableSyncConfig t : parseTables(job)) {
+                try {
+                    TableMeta meta = src.getTableMeta(job.getSourceDb(), t.getSourceTable());
+                    if (meta.getColumns().isEmpty()) {
+                        checks.add(check("table:" + t.getSourceTable(), false, "源表不存在或无列"));
+                        allOk = false;
+                    } else {
+                        int pk = meta.getPrimaryKeys().size();
+                        boolean single = pk == 1;
+                        String m = single ? "主键单列，支持 keyset 分页与自动建表"
+                                : (pk == 0 ? "无主键(无法 keyset 分页/自动建表)" : "复合主键(当前仅支持单列)");
+                        checks.add(check("table:" + t.getSourceTable(), single, m));
+                        allOk &= single;
+                    }
+                } catch (Exception e) {
+                    checks.add(check("table:" + t.getSourceTable(), false, "读取失败: " + e.getMessage()));
+                    allOk = false;
+                }
+            }
+        } catch (Exception e) {
+            checks.add(check("source", false, "源库连接失败: " + e.getMessage()));
+            allOk = false;
+        }
+
+        try {
+            DbConnector tgt = buildConnector(job.getTargetDsId(), job.getTargetDb());
+            tgt.listTables(job.getTargetDb());
+            checks.add(check("target", true, "目标库连接成功"));
+        } catch (Exception e) {
+            checks.add(check("target", false, "目标库连接失败: " + e.getMessage()));
+            allOk = false;
+        }
+
+        result.put("ok", allOk);
+        result.put("checks", checks);
+        return result;
+    }
+
+    private static Map<String, Object> check(String name, boolean ok, String msg) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", name);
+        m.put("ok", ok);
+        m.put("message", msg);
+        return m;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private static boolean eq(String a, String b) {
+        return a == null ? b == null : a.equals(b);
     }
 
     /** 解析 table_config JSON。 */

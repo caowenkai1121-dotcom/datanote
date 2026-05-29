@@ -7,6 +7,7 @@ import com.datanote.model.DnDatasource;
 import com.datanote.model.R;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.service.MetadataService;
+import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.util.CryptoUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +34,7 @@ public class DatasourceController {
 
     private final DnDatasourceMapper datasourceMapper;
     private final MetadataService metadataService;
+    private final ConnectionManager connectionManager;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -90,6 +92,8 @@ public class DatasourceController {
                 ds.setPassword(CryptoUtil.encrypt(ds.getPassword(), cryptoKey));
             }
             datasourceMapper.updateById(ds);
+            // 配置变更后失效旧连接池，使新 host/端口/账号/口令立即生效
+            connectionManager.evict(ds.getId());
         } else {
             ds.setCreatedAt(LocalDateTime.now());
             ds.setUpdatedAt(LocalDateTime.now());
@@ -111,6 +115,8 @@ public class DatasourceController {
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Long id) {
         datasourceMapper.deleteById(id);
+        // 删除后关闭并移除该数据源的所有连接池，避免池泄漏
+        connectionManager.evict(id);
         return R.ok("删除成功");
     }
 

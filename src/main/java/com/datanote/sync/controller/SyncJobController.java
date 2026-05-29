@@ -48,7 +48,17 @@ public class SyncJobController {
     @Operation(summary = "保存任务")
     @PostMapping("/save")
     public R<DnSyncJob> save(@RequestBody DnSyncJob job) {
-        return R.ok(syncJobService.save(job));
+        try {
+            return R.ok(syncJobService.save(job));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "同步前预检（连通性/源表主键/目标库/cron）")
+    @PostMapping("/precheck")
+    public R<java.util.Map<String, Object>> precheck(@RequestBody DnSyncJob job) {
+        return R.ok(syncJobService.precheck(job));
     }
 
     @Operation(summary = "删除任务")
@@ -68,6 +78,13 @@ public class SyncJobController {
             log.error("运行同步任务失败: id={}", id, e);
             return R.fail("运行失败: " + e.getMessage());
         }
+    }
+
+    @Operation(summary = "停止运行中的任务（全量/增量）")
+    @PostMapping("/{id}/stop")
+    public R<String> stop(@PathVariable Long id) {
+        boolean hit = syncJobExecutor.stop(id);
+        return hit ? R.ok("已请求停止") : R.fail("任务当前不在运行中");
     }
 
     @Operation(summary = "移动任务到文件夹")

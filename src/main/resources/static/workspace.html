@@ -14241,6 +14241,9 @@ function dbsyncRenderJobs(list) {
         html += '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">'
           + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 启动</button>';
       }
+    } else if (job.status === 'RUNNING') {
+      html += '<button class="btn btn-sm btn-danger" onclick="dbsyncStopJob(' + job.id + ')" title="停止运行">'
+        + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><rect x="2" y="2" width="8" height="8" rx="1"/></svg> 停止</button>';
     } else {
       html += '<button class="btn btn-sm" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
         + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 运行</button>';
@@ -14374,6 +14377,19 @@ window.dbsyncRunJob = function(id) {
       showToast('运行失败: ' + (res.msg || ''), 'error');
     }
   }).catch(function() { showToast('运行请求失败', 'error'); });
+};
+
+/* ---------- 停止运行中的全量/增量任务 ---------- */
+window.dbsyncStopJob = function(id) {
+  if (!id) return;
+  apiPost('/api/sync-job/' + id + '/stop', {}).then(function(res) {
+    if (res.code === 0) {
+      showToast('已请求停止，任务将在当前批次后中断', 'success');
+      setTimeout(dbsyncLoadJobs, 1000);
+    } else {
+      showToast('停止失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('停止请求失败', 'error'); });
 };
 
 /* ---------- CDC 启停 ---------- */

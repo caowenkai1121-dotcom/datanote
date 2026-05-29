@@ -44,6 +44,9 @@ public class ConnectionManager {
             url.append(db);
         }
         url.append("?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true");
+        // 批量重写：让 addBatch/executeBatch 真正合并为单次往返（否则驱动逐条发送，批处理形同虚设）。
+        // 放在固定串内、extraParams 之前，用户仍可在 extraParams 覆盖（MySQL 取后者）。
+        url.append("&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048");
         if (extraParams != null && !extraParams.isEmpty()) {
             url.append("&").append(extraParams);
         }
@@ -75,8 +78,13 @@ public class ConnectionManager {
         cfg.setPassword(pwd);
         cfg.setDriverClassName("com.mysql.cj.jdbc.Driver");
         cfg.setMaximumPoolSize(poolMaxSize);
-        cfg.setMinimumIdle(0);
+        cfg.setMinimumIdle(Math.min(2, poolMaxSize));
         cfg.setConnectionTimeout(10000);
+        // 空闲连接保活与回收：避免被 DB 端 wait_timeout 静默断开后，下次取连接才暴露失败。
+        cfg.setMaxLifetime(25 * 60 * 1000L);   // < 典型 wait_timeout，留余量主动重建
+        cfg.setKeepaliveTime(5 * 60 * 1000L);  // 周期性保活探测
+        cfg.setIdleTimeout(10 * 60 * 1000L);
+        cfg.setValidationTimeout(5000);
         cfg.setPoolName("sync-ds-" + datasourceId + (db == null ? "" : "-" + db));
         log.info("创建同步连接池: dsId={}, db={}, url={}", datasourceId, db, url);
         return new HikariDataSource(cfg);

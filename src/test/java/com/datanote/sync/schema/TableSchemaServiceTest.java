@@ -45,6 +45,18 @@ class TableSchemaServiceTest {
     }
 
     @Test
+    void comment_escapesControlChars() {
+        ColumnDef id = new ColumnDef();
+        id.setName("id"); id.setColumnType("bigint"); id.setNullable(false); id.setPrimaryKey(true);
+        // 注释含换行/单引号/反斜杠，必须转义否则破坏 DDL
+        id.setComment("第一行\n第二行 it's \\x");
+        String ddl = svc.buildDdl("MYSQL", "dst", "t", Collections.singletonList(id));
+        assertTrue(ddl.contains("COMMENT '第一行\\n第二行 it\\'s \\\\x'"), ddl);
+        // 生成的 DDL 不应包含裸换行符（除结构换行外，comment 内换行已被转义为 \\n）
+        assertTrue(!ddl.contains("第一行\n第二行"), ddl);
+    }
+
+    @Test
     void noPrimaryKey_throws() {
         ColumnDef c = new ColumnDef();
         c.setName("v"); c.setColumnType("int"); c.setNullable(true); c.setPrimaryKey(false);

@@ -4,9 +4,11 @@ import com.datanote.sync.dto.FieldMapping;
 import com.datanote.sync.dto.TableSyncConfig;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 字段映射解析：把 TableSyncConfig.fields 解析为读列(source)/写列(target)序列及主键映射。
@@ -57,6 +59,14 @@ public final class FieldMappingResolver {
         if (!srcToTgt.containsKey(pkSource)) {
             throw new IllegalStateException("字段映射必须包含主键列 " + pkSource
                     + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
+        }
+        // 不允许多个源列映射到同一目标列（否则到写入期 INSERT 列重复才报错），解析期提前校验
+        Set<String> seenTgt = new HashSet<>();
+        for (String t : srcToTgt.values()) {
+            if (!seenTgt.add(t.toLowerCase())) {
+                throw new IllegalStateException("字段映射存在重复的目标列 " + t
+                        + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
+            }
         }
         List<String> srcColumns = new ArrayList<>(srcToTgt.keySet());
         List<String> tgtColumns = new ArrayList<>();

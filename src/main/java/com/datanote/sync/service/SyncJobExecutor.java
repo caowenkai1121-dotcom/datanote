@@ -1,5 +1,7 @@
 package com.datanote.sync.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
@@ -10,19 +12,25 @@ import com.datanote.sync.dto.SyncContext;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.engine.SyncEngine;
 import com.datanote.sync.engine.SyncEngineFactory;
+import com.datanote.sync.schema.CreateColumnSupport;
 import com.datanote.sync.schema.TableSchemaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -39,14 +47,68 @@ public class SyncJobExecutor {
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final LogBroadcastService logBroadcastService;
     private final TableSchemaService tableSchemaService;
+    private final DnSyncJobMapper syncJobMapper;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
 
     /** 后台执行线程池（FULL/INCREMENTAL 一次性任务）。 */
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
+    /** 超时调度器：到点请求停止运行中的任务。 */
+    private final ScheduledExecutorService timeoutScheduler = Executors.newSingleThreadScheduledExecutor();
     /** 正在运行的 jobId 集合，防同一任务重复运行。 */
     private final Set<Long> runningJobs = ConcurrentHashMap.newKeySet();
+    /** 运行中的 jobId -> SyncContext，供停止/超时设置停止标志。 */
+    private final Map<Long, SyncContext> runningContexts = new ConcurrentHashMap<>();
+
+    /**
+     * 启动补偿：进程上次异常退出会把非 CDC 的 RUNNING 任务及其执行记录永久卡在 RUNNING。
+     * 启动时把它们置 FAILED（CDC 任务由 CdcEngineManager 续跑，按 syncMode 排除，不受运行态影响）。
+     */
+    @PostConstruct
+    public void recoverOrphans() {
+        try {
+            List<DnSyncJob> running = syncJobMapper.selectList(
+                    new LambdaQueryWrapper<DnSyncJob>().eq(DnSyncJob::getStatus, "RUNNING"));
+            Set<Long> orphanJobIds = new HashSet<>();
+            for (DnSyncJob j : running) {
+                String mode = j.getSyncMode() == null ? "" : j.getSyncMode().toUpperCase();
+                if (!"CDC".equals(mode)) {
+                    orphanJobIds.add(j.getId());
+                    syncJobService.updateStatus(j.getId(), "FAILED");
+                }
+            }
+            if (!orphanJobIds.isEmpty()) {
+                List<DnTaskExecution> execs = taskExecutionMapper.selectList(
+                        new LambdaQueryWrapper<DnTaskExecution>()
+                                .eq(DnTaskExecution::getTaskType, TASK_TYPE)
+                                .eq(DnTaskExecution::getStatus, "RUNNING")
+                                .in(DnTaskExecution::getSyncTaskId, orphanJobIds));
+                LocalDateTime now = LocalDateTime.now();
+                for (DnTaskExecution e : execs) {
+                    e.setStatus("FAILED");
+                    e.setEndTime(now);
+                    String note = "[进程重启，执行被中断]";
+                    e.setLog(e.getLog() == null ? note : e.getLog() + "\n" + note);
+                    taskExecutionMapper.updateById(e);
+                }
+                log.warn("[SyncJobExecutor] 启动补偿 {} 个孤儿 RUNNING 任务为 FAILED", orphanJobIds.size());
+            }
+        } catch (Exception ex) {
+            log.warn("[SyncJobExecutor] 孤儿 RUNNING 补偿失败", ex);
+        }
+    }
+
+    /** 请求停止运行中的 FULL/INCREMENTAL 任务（手动）。返回是否命中运行中的任务。 */
+    public boolean stop(Long jobId) {
+        SyncContext ctx = runningContexts.get(jobId);
+        if (ctx == null) {
+            return false;
+        }
+        ctx.requestStop("manual");
+        ctx.log("WARN", "收到停止请求");
+        return true;
+    }
 
     /**
      * 异步执行一个同步任务：校验入参、创建 RUNNING 执行记录、置任务 RUNNING 并推状态，
@@ -88,20 +150,34 @@ public class SyncJobExecutor {
         }
 
         final Long execId = exec.getId();
-        pool.submit(() -> {
+        final int timeoutSec = job.getTimeoutSeconds() == null ? 0 : job.getTimeoutSeconds();
+        Future<?> future = pool.submit(() -> {
             try {
-                doRun(job, triggerType, execId);
+                doRun(job, triggerType, exec);
             } finally {
                 runningJobs.remove(jobId);
+                runningContexts.remove(jobId);
             }
         });
+        // 超时终止：到点若仍在跑，请求停止（引擎在分页边界检查后中断，置 FAILED）
+        if (timeoutSec > 0) {
+            timeoutScheduler.schedule(() -> {
+                if (!future.isDone()) {
+                    SyncContext ctx = runningContexts.get(jobId);
+                    if (ctx != null) {
+                        ctx.requestStop("timeout");
+                        ctx.log("WARN", "任务超时(" + timeoutSec + "s)，请求停止");
+                    }
+                }
+            }, timeoutSec, TimeUnit.SECONDS);
+        }
         return execId;
     }
 
     /** 真正的同步执行体（后台线程），结束时回写执行记录与任务状态、推状态变更。 */
-    private void doRun(DnSyncJob job, String triggerType, Long execId) {
+    private void doRun(DnSyncJob job, String triggerType, DnTaskExecution exec) {
         Long jobId = job.getId();
-        DnTaskExecution exec = taskExecutionMapper.selectById(execId);
+        Long execId = exec.getId();
 
         StringBuilder logBuf = new StringBuilder();
         String syncMode = job.getSyncMode() == null ? "FULL" : job.getSyncMode().toUpperCase();
@@ -126,6 +202,10 @@ public class SyncJobExecutor {
             logBuf.append("[").append(level).append("] ").append(msg).append("\n");
             logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, level, msg);
         });
+        // 增量断点按表持久化（某表成功即回写，避免后续表失败丢已成功表断点）
+        ctx.setCheckpointCallback(tc -> syncJobService.updateTableCheckpoint(jobId, tc));
+        // 注册运行上下文，供停止/超时设置停止标志
+        runningContexts.put(jobId, ctx);
 
         String finalStatus;
         try {
@@ -133,9 +213,9 @@ public class SyncJobExecutor {
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
                     List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
                     // 配置了字段映射时只用选中字段建表（列名取 target、保留源类型/主键标记）
-                    cols = filterColumnsByFields(cols, tc);
+                    cols = CreateColumnSupport.applyFieldMapping(cols, tc);
                     // 迭代V3：标记同步时间戳时，自动建表追加一列 syncTsField（DATETIME，可空，非主键）
-                    cols = appendSyncTsColumn(cols, job);
+                    cols = CreateColumnSupport.appendSyncTsColumn(cols, job.getMarkSyncTs(), job.getSyncTsField());
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                     ctx.log("INFO", "目标表就绪: " + tc.getTargetTable());
                 }
@@ -143,9 +223,15 @@ public class SyncJobExecutor {
 
             SyncEngine engine = SyncEngineFactory.get(syncMode);
             engine.sync(ctx);
-            finalStatus = ctx.getErrorCount().get() > 0 ? "FAILED" : "SUCCESS";
+            if (ctx.getStopped().get()) {
+                // 手动停止 -> STOPPED；超时停止 -> FAILED
+                finalStatus = "timeout".equals(ctx.getStopReason()) ? "FAILED" : "STOPPED";
+            } else {
+                finalStatus = ctx.getErrorCount().get() > 0 ? "FAILED" : "SUCCESS";
+            }
 
-            if ("INCREMENTAL".equals(syncMode) && ctx.getErrorCount().get() == 0) {
+            // 成功表的断点已在引擎内按表回写；无错误且未中断时再整体回写一次兜底
+            if ("INCREMENTAL".equals(syncMode) && ctx.getErrorCount().get() == 0 && !ctx.getStopped().get()) {
                 syncJobService.updateTableConfig(jobId, tables);
             }
         } catch (Exception e) {
@@ -178,60 +264,6 @@ public class SyncJobExecutor {
                 + " 写 " + ctx.getWriteCount().get());
     }
 
-    /**
-     * 自动建表时按字段映射裁剪列：tc.fields 为空则返回原列（全列建表）；非空则只保留 sync==true
-     * 的列、列名改为 target（建表用目标列名 + 源类型/主键标记），与引擎写入列保持一致。
-     */
-    private static List<ColumnDef> filterColumnsByFields(List<ColumnDef> cols,
-                                                         com.datanote.sync.dto.TableSyncConfig tc) {
-        if (tc.getFields() == null || tc.getFields().isEmpty()) {
-            return cols;
-        }
-        java.util.Map<String, String> srcToTgt =
-                com.datanote.sync.util.FieldMappingResolver.buildSrcToTgt(tc.getFields());
-        List<ColumnDef> result = new java.util.ArrayList<>();
-        for (ColumnDef c : cols) {
-            String tgt = srcToTgt.get(c.getName());
-            if (tgt == null) {
-                continue; // 未选中该列，建表时跳过
-            }
-            ColumnDef nc = new ColumnDef();
-            nc.setName(tgt);
-            nc.setColumnType(c.getColumnType());
-            nc.setNullable(c.isNullable());
-            nc.setPrimaryKey(c.isPrimaryKey());
-            nc.setComment(c.getComment());
-            result.add(nc);
-        }
-        return result;
-    }
-
-    /**
-     * 迭代V3：若 job.markSyncTs==1 且 syncTsField 非空且不在现有列中，则在建表列末尾追加一列
-     * 同步时间戳（DATETIME，可空，非主键），与引擎写入的附加列一致。返回新列表，不改入参。
-     */
-    private static List<ColumnDef> appendSyncTsColumn(List<ColumnDef> cols, DnSyncJob job) {
-        Integer mark = job.getMarkSyncTs();
-        String field = job.getSyncTsField();
-        if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
-            return cols;
-        }
-        for (ColumnDef c : cols) {
-            if (field.equals(c.getName())) {
-                return cols; // 已有同名列，不重复追加
-            }
-        }
-        List<ColumnDef> result = new java.util.ArrayList<>(cols);
-        ColumnDef ts = new ColumnDef();
-        ts.setName(field);
-        ts.setColumnType("DATETIME");
-        ts.setNullable(true);
-        ts.setPrimaryKey(false);
-        ts.setComment("同步时间戳");
-        result.add(ts);
-        return result;
-    }
-
     private static boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
@@ -239,6 +271,7 @@ public class SyncJobExecutor {
     /** 应用关闭时优雅停线程池。 */
     @PreDestroy
     public void destroy() {
+        timeoutScheduler.shutdownNow();
         pool.shutdown();
         try {
             if (!pool.awaitTermination(10, TimeUnit.SECONDS)) {
