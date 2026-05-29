@@ -76,6 +76,9 @@ public class IncrementalSyncEngine implements SyncEngine {
                     + "（表: " + tc.getSourceTable() + "）");
         }
         int pkIndex = srcColumns.indexOf(pkColumn);
+        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression());
+        com.datanote.sync.util.RowValueProcessor rowProc =
+                new com.datanote.sync.util.RowValueProcessor(fm.srcToFieldMapping);
 
         IncrementalStrategy strategy = IncrementalStrategyFactory.get(tc.getIncrementalType());
 
@@ -91,8 +94,8 @@ public class IncrementalSyncEngine implements SyncEngine {
 
         String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
                 writeColumns, java.util.Collections.singletonList(fm.pkTarget));
-        String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, true);
-        String nextSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, false);
+        String firstSql = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, true, extraWhere);
+        String nextSql  = MysqlConnector.buildIncrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, pkColumn, false, extraWhere);
 
         ctx.log("INFO", "开始增量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
                 + "，增量字段=" + incField + "，主键=" + pkColumn + "，起始断点=" + startValue);
@@ -106,6 +109,12 @@ public class IncrementalSyncEngine implements SyncEngine {
         try (Connection srcConn = source.getConnection();
              Connection tgtConn = target.getConnection()) {
             tgtConn.setAutoCommit(false);
+            String preSql = ctx.getPreSql(tc);
+            if (preSql != null) {
+                ctx.log("INFO", "执行前置SQL: " + tc.getSourceTable());
+                com.datanote.sync.util.SqlExecutor.execute(tgtConn, preSql);
+                tgtConn.commit();
+            }
 
             // writeSql 是循环不变量，writePs 提到分页循环外复用，保留 prepStmt 缓存与批处理重写收益
             try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
@@ -128,25 +137,25 @@ public class IncrementalSyncEngine implements SyncEngine {
                         readPs.setFetchSize(ctx.getBatchSize()); // 流式读取，控制客户端内存峰值
 
                         try (ResultSet rs = readPs.executeQuery()) {
+                            int rowsWritten = 0;
                             while (rs.next()) {
-                                // 读列与写列一一对应：按读列顺序取、按写列顺序写
-                                for (int i = 0; i < srcColumns.size(); i++) {
-                                    writePs.setObject(i + 1, rs.getObject(i + 1));
-                                }
-                                // 追加同步时间戳列（写列末尾，绑当前时间）
+                                Object[] raw = new Object[srcColumns.size()];
+                                for (int i = 0; i < srcColumns.size(); i++) raw[i] = rs.getObject(i + 1);
+                                lastInc = raw[incIndex];
+                                lastPk = raw[pkIndex];
+                                if (lastInc != null && strategy.compare(lastInc, maxValue) > 0) maxValue = lastInc;
+                                rowsThisPage++;
+                                Object[] row = rowProc.process(srcColumns, raw);
+                                if (row == null) continue;  // SKIP_ROW：计读不计写，游标/断点已按原始值推进
+                                for (int i = 0; i < srcColumns.size(); i++) writePs.setObject(i + 1, row[i]);
                                 if (markTs) {
                                     writePs.setObject(srcColumns.size() + 1,
                                             new java.sql.Timestamp(System.currentTimeMillis()));
                                 }
                                 writePs.addBatch();
-                                lastInc = rs.getObject(incIndex + 1);
-                                lastPk = rs.getObject(pkIndex + 1);
-                                if (lastInc != null && strategy.compare(lastInc, maxValue) > 0) {
-                                    maxValue = lastInc;
-                                }
-                                rowsThisPage++;
+                                rowsWritten++;
                             }
-                            if (rowsThisPage > 0) {
+                            if (rowsWritten > 0) {
                                 try {
                                     writePs.executeBatch();
                                     tgtConn.commit();
@@ -154,12 +163,11 @@ public class IncrementalSyncEngine implements SyncEngine {
                                     tgtConn.rollback();
                                     throw batchEx;
                                 } finally {
-                                    writePs.clearBatch(); // 复用同一 PreparedStatement，每页清批
+                                    writePs.clearBatch();
                                 }
-                                ctx.getWriteCount().addAndGet(rowsThisPage);
-                                cursorInc = lastInc;
-                                cursorPk = lastPk;
+                                ctx.getWriteCount().addAndGet(rowsWritten);
                             }
+                            if (rowsThisPage > 0) { cursorInc = lastInc; cursorPk = lastPk; }
                         }
                     }
 
@@ -171,6 +179,13 @@ public class IncrementalSyncEngine implements SyncEngine {
                         break;
                     }
                 }
+            }
+
+            String postSql = ctx.getPostSql(tc);
+            if (postSql != null) {
+                ctx.log("INFO", "执行后置SQL: " + tc.getSourceTable());
+                com.datanote.sync.util.SqlExecutor.execute(tgtConn, postSql);
+                tgtConn.commit();
             }
         }
 
