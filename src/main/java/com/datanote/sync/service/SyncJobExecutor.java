@@ -192,6 +192,8 @@ public class SyncJobExecutor {
         // 迭代V3：同步时间戳标记透传给引擎
         ctx.setMarkSyncTs(job.getMarkSyncTs());
         ctx.setSyncTsField(job.getSyncTsField());
+        ctx.setGlobalPreSql(job.getPreSql());
+        ctx.setGlobalPostSql(job.getPostSql());
         List<TableSyncConfig> tables = syncJobService.parseTables(job);
         ctx.setTables(tables);
         DbConnector source = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
