@@ -139,6 +139,7 @@ public class SyncJobExecutor {
         exec.setWriteCount(0L);
         exec.setErrorCount(0L);
         exec.setCreatedAt(LocalDateTime.now());
+        exec.setAttempt(1);
         try {
             taskExecutionMapper.insert(exec);
             syncJobService.updateStatus(jobId, "RUNNING");
@@ -153,7 +154,7 @@ public class SyncJobExecutor {
         final int timeoutSec = job.getTimeoutSeconds() == null ? 0 : job.getTimeoutSeconds();
         Future<?> future = pool.submit(() -> {
             try {
-                doRun(job, triggerType, exec);
+                doRunWithRetry(job, triggerType, exec);
             } finally {
                 runningJobs.remove(jobId);
                 runningContexts.remove(jobId);
@@ -174,10 +175,14 @@ public class SyncJobExecutor {
         return execId;
     }
 
-    /** 真正的同步执行体（后台线程），结束时回写执行记录与任务状态、推状态变更。 */
-    private void doRun(DnSyncJob job, String triggerType, DnTaskExecution exec) {
+    /**
+     * 真正的同步执行体（后台线程）：完成本次执行并 finalize 执行记录。
+     * 返回 {@link FailureInfo}（最终状态 + 是否可重试）；终态的 dn_sync_job.status 由 {@link #doRunWithRetry} 在不再重试时回写。
+     */
+    private FailureInfo doRun(DnSyncJob job, String triggerType, DnTaskExecution exec, int attempt) {
         Long jobId = job.getId();
         Long execId = exec.getId();
+        exec.setAttempt(attempt);
 
         StringBuilder logBuf = new StringBuilder();
         String syncMode = job.getSyncMode() == null ? "FULL" : job.getSyncMode().toUpperCase();
@@ -194,6 +199,13 @@ public class SyncJobExecutor {
         ctx.setSyncTsField(job.getSyncTsField());
         ctx.setGlobalPreSql(job.getPreSql());
         ctx.setGlobalPostSql(job.getPostSql());
+        ctx.setErrorLimitRows(job.getErrorLimitRows());
+        ctx.setErrorLimitRatio(job.getErrorLimitRatio() == null ? null : job.getErrorLimitRatio().doubleValue());
+        String rlMode = job.getRateLimitMode();
+        if (("ROWS".equalsIgnoreCase(rlMode) || "BATCHES".equalsIgnoreCase(rlMode))
+                && job.getRateLimitValue() != null && job.getRateLimitValue() > 0) {
+            ctx.setRateLimiter(new com.datanote.sync.util.RateLimiter(job.getRateLimitValue(), System.nanoTime()));
+        }
         List<TableSyncConfig> tables = syncJobService.parseTables(job);
         ctx.setTables(tables);
         DbConnector source = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
@@ -210,6 +222,7 @@ public class SyncJobExecutor {
         runningContexts.put(jobId, ctx);
 
         String finalStatus;
+        Exception caught = null;
         try {
             for (TableSyncConfig tc : tables) {
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
@@ -240,6 +253,7 @@ public class SyncJobExecutor {
             log.error("同步任务执行失败: jobId={}", jobId, e);
             ctx.log("ERROR", "执行失败: " + e.getMessage());
             finalStatus = "FAILED";
+            caught = e;
         }
 
         LocalDateTime end = LocalDateTime.now();
@@ -258,12 +272,63 @@ public class SyncJobExecutor {
             taskExecutionMapper.updateById(exec);
         }
 
-        // 回写任务状态并推送，前端列表据此实时刷新
-        syncJobService.updateStatus(jobId, finalStatus);
-        logBroadcastService.broadcastSyncStatus(jobId, finalStatus);
         logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, "INFO",
                 "任务结束: " + finalStatus + "，读 " + ctx.getReadCount().get()
                 + " 写 " + ctx.getWriteCount().get());
+
+        // 终态的 dn_sync_job.status 由 doRunWithRetry 决定（可能还要重试）；这里仅返回结果。
+        // 仅瞬时异常可重试；errorCount>0 导致的 FAILED（caught==null）/手动停止/超时 不重试。
+        boolean retryable = caught != null && com.datanote.sync.util.ErrorClassifier.isTransient(caught);
+        return new FailureInfo(finalStatus, retryable);
+    }
+
+    /** 单次执行结果：最终状态 + 是否可（瞬时错误）重试。 */
+    private static final class FailureInfo {
+        final String finalStatus;
+        final boolean retryable;
+        FailureInfo(String s, boolean r) { finalStatus = s; retryable = r; }
+    }
+
+    /** 带退避重试的执行：失败且可重试时按退避策略重试，终态时回写 dn_sync_job.status 并推送。 */
+    private void doRunWithRetry(DnSyncJob job, String triggerType, DnTaskExecution firstExec) {
+        int maxRetries = job.getRetryTimes() == null ? 0 : Math.max(0, job.getRetryTimes());
+        String btype = job.getRetryBackoffType();
+        int base = job.getRetryBackoffDelay() == null ? 5 : job.getRetryBackoffDelay();
+        int attempt = 1;
+        DnTaskExecution exec = firstExec;
+        while (true) {
+            FailureInfo fi = doRun(job, triggerType, exec, attempt);
+            if (!fi.retryable || attempt > maxRetries) {
+                syncJobService.updateStatus(job.getId(), fi.finalStatus);
+                logBroadcastService.broadcastSyncStatus(job.getId(), fi.finalStatus);
+                return;
+            }
+            int delay = com.datanote.sync.util.BackoffCalculator.delaySeconds(attempt, btype, base, 300);
+            logBroadcastService.broadcastTaskLog(job.getId(), TASK_TYPE, "WARN",
+                "瞬时错误,第" + attempt + "次失败,等待" + delay + "s后重试");
+            try { Thread.sleep(delay * 1000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+            attempt++;
+            exec = newExecution(job.getId(), triggerType, attempt);
+        }
+    }
+
+    /** 为重试创建一条新的 RUNNING 执行记录并置任务 RUNNING、推状态。 */
+    private DnTaskExecution newExecution(Long jobId, String triggerType, int attempt) {
+        DnTaskExecution exec = new DnTaskExecution();
+        exec.setSyncTaskId(jobId);
+        exec.setTaskType(TASK_TYPE);
+        exec.setTriggerType(triggerType);
+        exec.setStatus("RUNNING");
+        exec.setStartTime(LocalDateTime.now());
+        exec.setReadCount(0L);
+        exec.setWriteCount(0L);
+        exec.setErrorCount(0L);
+        exec.setCreatedAt(LocalDateTime.now());
+        exec.setAttempt(attempt);
+        taskExecutionMapper.insert(exec);
+        syncJobService.updateStatus(jobId, "RUNNING");
+        logBroadcastService.broadcastSyncStatus(jobId, "RUNNING");
+        return exec;
     }
 
     private static boolean isBlank(String s) {
