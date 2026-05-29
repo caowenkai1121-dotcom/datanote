@@ -4404,6 +4404,42 @@ html, body {
                 <label class="dbsync-form-label">后置 SQL</label>
                 <textarea class="dbsync-form-input" id="dbsyncPostSql" rows="2" style="width:100%;font-size:12px;font-family:monospace;resize:vertical;" placeholder="写入后执行，多语句分号分隔（如 UPDATE 统计表）"></textarea>
               </div>
+              <!-- 健壮性配置 -->
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">脏数据条数上限</label>
+                <input class="dbsync-form-input" type="number" id="dbsyncErrorLimitRows" placeholder="脏数据条数上限,空=不限" style="width:100%;">
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">脏数据比率上限</label>
+                <input class="dbsync-form-input" type="number" step="0.01" id="dbsyncErrorLimitRatio" placeholder="0-1,空=不限" style="width:100%;">
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">重试次数</label>
+                <input class="dbsync-form-input" type="number" id="dbsyncRetryTimes" placeholder="0=不重试" style="width:100%;">
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">退避类型</label>
+                <select class="dbsync-form-input" id="dbsyncRetryBackoffType" style="width:100%;">
+                  <option value="FIXED_DELAY">FIXED_DELAY</option>
+                  <option value="EXPONENTIAL">EXPONENTIAL</option>
+                </select>
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">退避基数(秒)</label>
+                <input class="dbsync-form-input" type="number" id="dbsyncRetryBackoffDelay" placeholder="默认5" style="width:100%;">
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">限速模式</label>
+                <select class="dbsync-form-input" id="dbsyncRateLimitMode" style="width:100%;">
+                  <option value="NONE">NONE</option>
+                  <option value="ROWS">ROWS</option>
+                  <option value="BATCHES">BATCHES</option>
+                </select>
+              </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">限速值</label>
+                <input class="dbsync-form-input" type="number" id="dbsyncRateLimitValue" placeholder="令牌/秒" style="width:100%;">
+              </div>
             </div>
           </div>
         </div>
@@ -13775,6 +13811,20 @@ function dbsyncResetAdvanced() {
   if (preSql) preSql.value = '';
   var postSql = document.getElementById('dbsyncPostSql');
   if (postSql) postSql.value = '';
+  var elr = document.getElementById('dbsyncErrorLimitRows');
+  if (elr) elr.value = '';
+  var elrat = document.getElementById('dbsyncErrorLimitRatio');
+  if (elrat) elrat.value = '';
+  var rt = document.getElementById('dbsyncRetryTimes');
+  if (rt) rt.value = '';
+  var rbt = document.getElementById('dbsyncRetryBackoffType');
+  if (rbt) rbt.value = 'FIXED_DELAY';
+  var rbd = document.getElementById('dbsyncRetryBackoffDelay');
+  if (rbd) rbd.value = '';
+  var rlm = document.getElementById('dbsyncRateLimitMode');
+  if (rlm) rlm.value = 'NONE';
+  var rlv = document.getElementById('dbsyncRateLimitValue');
+  if (rlv) rlv.value = '';
   // 收起高级设置面板
   var sec = document.getElementById('dfsAdvancedSection');
   if (sec) sec.style.display = 'none';
@@ -13803,6 +13853,20 @@ function dbsyncFillAdvanced(job) {
   if (preSql) preSql.value = job.preSql || '';
   var postSql = document.getElementById('dbsyncPostSql');
   if (postSql) postSql.value = job.postSql || '';
+  var elr = document.getElementById('dbsyncErrorLimitRows');
+  if (elr) elr.value = (job.errorLimitRows != null) ? job.errorLimitRows : '';
+  var elrat = document.getElementById('dbsyncErrorLimitRatio');
+  if (elrat) elrat.value = (job.errorLimitRatio != null) ? job.errorLimitRatio : '';
+  var rt = document.getElementById('dbsyncRetryTimes');
+  if (rt) rt.value = (job.retryTimes != null) ? job.retryTimes : '';
+  var rbt = document.getElementById('dbsyncRetryBackoffType');
+  if (rbt) rbt.value = job.retryBackoffType || 'FIXED_DELAY';
+  var rbd = document.getElementById('dbsyncRetryBackoffDelay');
+  if (rbd) rbd.value = (job.retryBackoffDelay != null) ? job.retryBackoffDelay : '';
+  var rlm = document.getElementById('dbsyncRateLimitMode');
+  if (rlm) rlm.value = job.rateLimitMode || 'NONE';
+  var rlv = document.getElementById('dbsyncRateLimitValue');
+  if (rlv) rlv.value = (job.rateLimitValue != null) ? job.rateLimitValue : '';
   // 如有非默认值则自动展开
   if (dm === 'LOGICAL' || markTs || job.preSql || job.postSql) {
     var sec = document.getElementById('dfsAdvancedSection');
@@ -13963,23 +14027,37 @@ window.dbsyncSaveJob = function() {
 
   var preSqlVal  = ((document.getElementById('dbsyncPreSql')  || {}).value || '').trim();
   var postSqlVal = ((document.getElementById('dbsyncPostSql') || {}).value || '').trim();
+  var errorLimitRowsStr = ((document.getElementById('dbsyncErrorLimitRows') || {}).value || '').trim();
+  var errorLimitRatioStr = ((document.getElementById('dbsyncErrorLimitRatio') || {}).value || '').trim();
+  var retryTimesStr = ((document.getElementById('dbsyncRetryTimes') || {}).value || '').trim();
+  var retryBackoffType = ((document.getElementById('dbsyncRetryBackoffType') || {}).value || 'FIXED_DELAY');
+  var retryBackoffDelayStr = ((document.getElementById('dbsyncRetryBackoffDelay') || {}).value || '').trim();
+  var rateLimitMode = ((document.getElementById('dbsyncRateLimitMode') || {}).value || 'NONE');
+  var rateLimitValueStr = ((document.getElementById('dbsyncRateLimitValue') || {}).value || '').trim();
   var body = {
-    jobName:      jobName,
-    syncMode:     syncMode,
-    sourceDsId:   parseInt(srcDsId),
-    sourceDb:     srcDb,
-    targetDsId:   parseInt(tgtDsId),
-    targetDb:     tgtDb,
-    writeMode:    writeMode,
-    batchSize:    batchSize,
-    scheduleCron: schedCron,
-    status:       status,
-    tableConfig:  JSON.stringify(tableConfigs),
-    folderId:     folderId,
-    deleteMode:   deleteMode,
-    markSyncTs:   markSyncTs,
-    preSql:       preSqlVal,
-    postSql:      postSqlVal
+    jobName:            jobName,
+    syncMode:           syncMode,
+    sourceDsId:         parseInt(srcDsId),
+    sourceDb:           srcDb,
+    targetDsId:         parseInt(tgtDsId),
+    targetDb:           tgtDb,
+    writeMode:          writeMode,
+    batchSize:          batchSize,
+    scheduleCron:       schedCron,
+    status:             status,
+    tableConfig:        JSON.stringify(tableConfigs),
+    folderId:           folderId,
+    deleteMode:         deleteMode,
+    markSyncTs:         markSyncTs,
+    preSql:             preSqlVal,
+    postSql:            postSqlVal,
+    errorLimitRows:     errorLimitRowsStr !== '' ? parseInt(errorLimitRowsStr) : null,
+    errorLimitRatio:    errorLimitRatioStr !== '' ? parseFloat(errorLimitRatioStr) : null,
+    retryTimes:         retryTimesStr !== '' ? parseInt(retryTimesStr) : null,
+    retryBackoffType:   retryBackoffType,
+    retryBackoffDelay:  retryBackoffDelayStr !== '' ? parseInt(retryBackoffDelayStr) : null,
+    rateLimitMode:      rateLimitMode,
+    rateLimitValue:     rateLimitValueStr !== '' ? parseInt(rateLimitValueStr) : null
   };
   if (deleteMode === 'LOGICAL') {
     body.logicalDeleteField = logicalDeleteField;
