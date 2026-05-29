@@ -16,6 +16,7 @@ public final class ValueTransformer {
         String type = o.getString("type");
         if (type == null) return value;
         JSONObject a = o.getJSONObject("args");
+        if (a == null) a = new JSONObject();
         String s = String.valueOf(value);
         switch (type.toLowerCase()) {
             case "upper": return s.toUpperCase();
@@ -29,28 +30,41 @@ public final class ValueTransformer {
                 int end = Math.min(s.length(), start + Math.max(0, len));
                 return s.substring(start, end);
             }
-            case "replace": return s.replace(a.getString("from"), a.getString("to"));
+            case "replace": {
+                String from = a.getString("from");
+                if (from == null || from.isEmpty()) return value;
+                String to = a.getString("to");
+                if (to == null) to = "";
+                return s.replace(from, to);
+            }
             case "lpad": {
-                int len = a.containsKey("len") ? a.getIntValue("len") : s.length();
+                int len = a.getIntValue("len", s.length());
                 String pad = a.getString("pad");
                 if (pad == null || pad.isEmpty()) pad = " ";
+                if (s.length() >= len) return s;
                 StringBuilder b = new StringBuilder();
-                while (b.length() + s.length() < len) b.append(pad);
-                return b.append(s).toString();
+                while (b.length() < len - s.length()) b.append(pad);
+                return b.substring(0, len - s.length()) + s;
             }
             case "rpad": {
-                int len = a.containsKey("len") ? a.getIntValue("len") : s.length();
+                int len = a.getIntValue("len", s.length());
                 String pad = a.getString("pad");
                 if (pad == null || pad.isEmpty()) pad = " ";
+                if (s.length() >= len) return s;
                 StringBuilder b = new StringBuilder(s);
                 while (b.length() < len) b.append(pad);
-                return b.toString();
+                return b.substring(0, len);
             }
             case "dateformat": {
                 String fmt = a.getString("format");
-                java.util.Date d = (value instanceof java.util.Date)
-                        ? (java.util.Date) value
-                        : new java.util.Date(Long.parseLong(s));
+                if (fmt == null || fmt.isEmpty()) return value;
+                java.util.Date d;
+                if (value instanceof java.util.Date) {
+                    d = (java.util.Date) value;
+                } else {
+                    try { d = new java.util.Date(Long.parseLong(s)); }
+                    catch (NumberFormatException e) { return value; }
+                }
                 return new java.text.SimpleDateFormat(fmt).format(d);
             }
             default: return value;

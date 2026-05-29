@@ -19,11 +19,11 @@ public final class PiiMasker {
                 return s.length() < 7 ? "****" : s.substring(0, 3) + "****" + s.substring(s.length() - 4);
             case "EMAIL": {
                 int at = s.indexOf('@');
-                if (at <= 1) return s.length() <= 1 ? "***" : s.charAt(0) + "***" + s.substring(at < 0 ? s.length() : at);
+                if (at < 1) return "***";
                 return s.charAt(0) + "***" + s.substring(at);
             }
             case "IDCARD":
-                return s.length() < 7 ? "***" : s.substring(0, 3) + repeat("*", s.length() - 7) + s.substring(s.length() - 4);
+                return s.length() < 8 ? "***" : s.substring(0, 3) + repeat("*", s.length() - 7) + s.substring(s.length() - 4);
             case "REDACT":
                 return "***";
             case "HASH_SHA256":

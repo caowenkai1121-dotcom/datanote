@@ -43,4 +43,21 @@ class PiiMaskerTest {
         assertNotEquals("secret", r1);
         assertEquals(64, r1.toString().length());
     }
+
+    // === 防御性 bug 修复用例（Group B）===
+
+    @Test
+    void emailAtStartRedacted() {
+        assertEquals("***", PiiMasker.mask("@b.com", "EMAIL", null));
+    }
+
+    @Test
+    void emailNoAtRedacted() {
+        assertEquals("***", PiiMasker.mask("noemail", "EMAIL", null));
+    }
+
+    @Test
+    void idcardLen7Redacted() {
+        assertEquals("***", PiiMasker.mask("1234567", "IDCARD", null));
+    }
 }

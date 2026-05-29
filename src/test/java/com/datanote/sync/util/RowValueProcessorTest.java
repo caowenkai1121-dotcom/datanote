@@ -61,4 +61,13 @@ class RowValueProcessorTest {
         RowValueProcessor p = new RowValueProcessor(map);
         assertNull(p.process(cols, raw));
     }
+
+    // === 防御性 bug 修复用例（Group B）===
+
+    @Test
+    void emptyMapReturnsSameReference() {
+        RowValueProcessor p = new RowValueProcessor(Collections.emptyMap());
+        Object[] raw = {"a", "b"};
+        assertSame(raw, p.process(Arrays.asList("c1", "c2"), raw));
+    }
 }
