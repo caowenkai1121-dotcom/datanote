@@ -62,6 +62,10 @@ datanote:
       # Debezium database.server.id 基准值，最终 server.id = base + (jobId % 100000)
       # 须与源库现有 server-id/生产 slave 错开，避免撞号
       server-id-base: ${DATANOTE_CDC_SERVER_ID_BASE:5400}
+      # Debezium 背压配置
+      max-batch-size: ${SYNC_CDC_MAX_BATCH:2048}
+      max-queue-size: ${SYNC_CDC_MAX_QUEUE:8192}
+      poll-interval-ms: ${SYNC_CDC_POLL_MS:500}
 
 # -------------------- SpringDoc API 文档 --------------------
 springdoc:

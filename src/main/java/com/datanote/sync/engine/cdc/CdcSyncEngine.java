@@ -61,6 +61,10 @@ public class CdcSyncEngine {
     private final String targetDatabaseType;
     /** database.server.id 基准值（可配置，避免与生产 slave 撞号）。 */
     private final long serverIdBase;
+    /** Debezium 背压配置。 */
+    private final int maxBatchSize;
+    private final int maxQueueSize;
+    private final int pollIntervalMs;
 
     /** 源表名 -> 该表同步配置（含目标表名）。 */
     private final Map<String, TableSyncConfig> tableMap = new ConcurrentHashMap<>();
@@ -90,7 +94,10 @@ public class CdcSyncEngine {
                          com.datanote.service.LogBroadcastService logBroadcastService,
                          String cryptoKey,
                          String targetDatabaseType,
-                         long serverIdBase) {
+                         long serverIdBase,
+                         int maxBatchSize,
+                         int maxQueueSize,
+                         int pollIntervalMs) {
         this.job = job;
         this.sourceDs = sourceDs;
         this.tables = tables;
@@ -99,6 +106,9 @@ public class CdcSyncEngine {
         this.cryptoKey = cryptoKey;
         this.targetDatabaseType = targetDatabaseType == null ? "MYSQL" : targetDatabaseType;
         this.serverIdBase = serverIdBase;
+        this.maxBatchSize = maxBatchSize;
+        this.maxQueueSize = maxQueueSize;
+        this.pollIntervalMs = pollIntervalMs;
         for (TableSyncConfig tc : tables) {
             if (tc.getSourceTable() != null) {
                 tableMap.put(tc.getSourceTable(), tc);
@@ -185,6 +195,10 @@ public class CdcSyncEngine {
         props.setProperty("database.history." + JOB_ID_CONFIG, String.valueOf(jobId));
         // 删除事件保留有效记录（不产生 tombstone null 记录，简化下游处理）
         props.setProperty("tombstones.on.delete", "false");
+        // 背压配置
+        props.setProperty("max.batch.size", String.valueOf(maxBatchSize));
+        props.setProperty("max.queue.size", String.valueOf(maxQueueSize));
+        props.setProperty("poll.interval.ms", String.valueOf(pollIntervalMs));
         return props;
     }
 
