@@ -97,6 +97,7 @@ public class FullSyncEngine implements SyncEngine {
 
             // writeSql 是循环不变量，writePs 提到分页循环外复用，保留 prepStmt 缓存与批处理重写收益
             try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
+                BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns.size());
                 while (!ctx.getStopped().get()) {
                     String pageSql = MysqlConnector.buildKeysetPageSql(
                             srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor, extraWhere);
@@ -119,26 +120,14 @@ public class FullSyncEngine implements SyncEngine {
                                 rowsThisPage++;
                                 Object[] row = rowProc.process(srcColumns, raw);
                                 if (row == null) continue;  // SKIP_ROW：计读不计写
-                                for (int i = 0; i < srcColumns.size(); i++) writePs.setObject(i + 1, row[i]);
-                                if (markTs) {
-                                    writePs.setObject(srcColumns.size() + 1,
-                                            new java.sql.Timestamp(System.currentTimeMillis()));
-                                }
-                                writePs.addBatch();
+                                Object[] writeRow = new Object[writeColumns.size()];
+                                System.arraycopy(row, 0, writeRow, 0, srcColumns.size());
+                                if (markTs) writeRow[srcColumns.size()] = new java.sql.Timestamp(System.currentTimeMillis());
+                                bw.add(writeRow);
                                 rowsWritten++;
                             }
-                            if (rowsWritten > 0) {
-                                try {
-                                    writePs.executeBatch();
-                                    tgtConn.commit();
-                                } catch (Exception batchEx) {
-                                    tgtConn.rollback();
-                                    throw batchEx;
-                                } finally {
-                                    writePs.clearBatch();
-                                }
-                                ctx.getWriteCount().addAndGet(rowsWritten);
-                            }
+                            bw.flush(); // 内部：批成功commit+writeCount；批失败回退逐行+阈值容错（超阈值抛 DirtyDataExceededException）
+                            if (ctx.getRateLimiter() != null && rowsWritten > 0) ctx.getRateLimiter().acquire(rowsWritten);
                         }
                     }
 

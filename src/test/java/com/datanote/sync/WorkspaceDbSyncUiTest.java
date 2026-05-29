@@ -62,6 +62,26 @@ class WorkspaceDbSyncUiTest {
     }
 
     @Test
+    void robustnessControlsArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncErrorLimitRows\""),
+                "advanced section should have errorLimitRows input");
+        assertTrue(html.contains("id=\"dbsyncErrorLimitRatio\""),
+                "advanced section should have errorLimitRatio input");
+        assertTrue(html.contains("id=\"dbsyncRetryTimes\""),
+                "advanced section should have retryTimes input");
+        assertTrue(html.contains("id=\"dbsyncRetryBackoffType\""),
+                "advanced section should have retryBackoffType select");
+        assertTrue(html.contains("id=\"dbsyncRetryBackoffDelay\""),
+                "advanced section should have retryBackoffDelay input");
+        assertTrue(html.contains("id=\"dbsyncRateLimitMode\""),
+                "advanced section should have rateLimitMode select");
+        assertTrue(html.contains("id=\"dbsyncRateLimitValue\""),
+                "advanced section should have rateLimitValue input");
+    }
+
+    @Test
     void routeInitializerUsesWindowScopedDbSyncFunctions() throws Exception {
         String html = readWorkspaceHtml();
 

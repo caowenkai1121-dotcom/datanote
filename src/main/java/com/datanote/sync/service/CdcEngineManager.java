@@ -62,6 +62,15 @@ public class CdcEngineManager {
     @Value("${datanote.sync.cdc.server-id-base:5400}")
     private long serverIdBase;
 
+    @Value("${datanote.sync.cdc.max-batch-size:2048}")
+    private int cdcMaxBatchSize;
+
+    @Value("${datanote.sync.cdc.max-queue-size:8192}")
+    private int cdcMaxQueueSize;
+
+    @Value("${datanote.sync.cdc.poll-interval-ms:500}")
+    private int cdcPollIntervalMs;
+
     /** jobId -> 运行中的引擎实例。 */
     private final Map<Long, CdcSyncEngine> engines = new ConcurrentHashMap<>();
     /** jobId -> 当前运行对应的执行记录 id（dn_task_execution）。 */
@@ -144,7 +153,8 @@ public class CdcEngineManager {
         ensureTargetTables(job, tables);
         String targetType = targetDs.getType() == null ? "MYSQL" : targetDs.getType().toUpperCase();
         CdcSyncEngine engine = new CdcSyncEngine(job, sourceDs, tables,
-                connectionManager, logBroadcastService, cryptoKey, targetType, serverIdBase);
+                connectionManager, logBroadcastService, cryptoKey, targetType, serverIdBase,
+                cdcMaxBatchSize, cdcMaxQueueSize, cdcPollIntervalMs);
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");

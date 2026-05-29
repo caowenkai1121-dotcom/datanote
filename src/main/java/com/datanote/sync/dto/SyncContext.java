@@ -36,6 +36,14 @@ public class SyncContext {
     private final AtomicLong readCount = new AtomicLong(0);
     private final AtomicLong writeCount = new AtomicLong(0);
     private final AtomicLong errorCount = new AtomicLong(0);
+
+    /** M2a：脏数据阈值(null=不限)。 */
+    private Integer errorLimitRows;
+    private Double errorLimitRatio;
+    /** M2a：坏行累计。 */
+    private final java.util.concurrent.atomic.AtomicLong dirtyCount = new java.util.concurrent.atomic.AtomicLong(0);
+    /** M2a：限速器(null=不限速)。 */
+    private com.datanote.sync.util.RateLimiter rateLimiter;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     /** 停止原因：null=未停止 / "manual"=手动停止 / "timeout"=超时。决定最终状态(STOPPED vs FAILED)。 */
     private volatile String stopReason;
