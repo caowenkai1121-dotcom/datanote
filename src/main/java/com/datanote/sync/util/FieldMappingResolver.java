@@ -4,6 +4,7 @@ import com.datanote.sync.dto.FieldMapping;
 import com.datanote.sync.dto.TableSyncConfig;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,11 +30,20 @@ public final class FieldMappingResolver {
         public final List<String> srcColumns;
         public final List<String> tgtColumns;
         public final String pkTarget;
+        /** M1：源列名 -> FieldMapping，仅含 sync==true 且 source 非空的字段；fields 为空时为空 Map。 */
+        public final Map<String, FieldMapping> srcToFieldMapping;
 
+        /** 向后兼容的 3 参构造器（srcToFieldMapping 默认为空 Map）。 */
         public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget) {
+            this(srcColumns, tgtColumns, pkTarget, Collections.emptyMap());
+        }
+
+        public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget,
+                        Map<String, FieldMapping> srcToFieldMapping) {
             this.srcColumns = srcColumns;
             this.tgtColumns = tgtColumns;
             this.pkTarget = pkTarget;
+            this.srcToFieldMapping = srcToFieldMapping;
         }
     }
 
@@ -49,7 +59,8 @@ public final class FieldMappingResolver {
     public static Resolved resolve(TableSyncConfig tc, List<String> allColumns, String pkSource) {
         List<FieldMapping> fields = tc == null ? null : tc.getFields();
         if (fields == null || fields.isEmpty()) {
-            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkSource);
+            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkSource,
+                    Collections.emptyMap());
         }
         Map<String, String> srcToTgt = buildSrcToTgt(fields);
         if (srcToTgt.isEmpty()) {
@@ -73,7 +84,15 @@ public final class FieldMappingResolver {
         for (String src : srcColumns) {
             tgtColumns.add(srcToTgt.get(src));
         }
-        return new Resolved(srcColumns, tgtColumns, srcToTgt.get(pkSource));
+        // 构建 source -> FieldMapping 映射（仅 sync==true 且 source 非空）
+        Map<String, FieldMapping> src2fm = new LinkedHashMap<>();
+        for (FieldMapping fm : fields) {
+            if (fm == null || !Boolean.TRUE.equals(fm.getSync())) continue;
+            String src = fm.getSource();
+            if (src == null || src.trim().isEmpty()) continue;
+            src2fm.put(src, fm);
+        }
+        return new Resolved(srcColumns, tgtColumns, srcToTgt.get(pkSource), src2fm);
     }
 
     /**
