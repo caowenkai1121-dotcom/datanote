@@ -53,4 +53,10 @@ public class CdcController {
     public R<Boolean> status(@PathVariable Long jobId) {
         return R.ok(cdcEngineManager.status(jobId));
     }
+
+    @Operation(summary = "查询 CDC 任务实时指标（计数/binlog 延迟）")
+    @GetMapping("/{jobId}/metrics")
+    public R<java.util.Map<String, Object>> metrics(@PathVariable Long jobId) {
+        return R.ok(cdcEngineManager.metrics(jobId));
+    }
 }

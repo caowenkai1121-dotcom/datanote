@@ -112,6 +112,11 @@ public class CdcSyncEngine {
             log.warn("CDC 引擎已在运行 jobId={}", job.getId());
             return;
         }
+        // 逻辑删除模式必须配置标记列，否则启动即失败（拒绝静默回退物理删除误删生产数据）
+        if ("LOGICAL".equalsIgnoreCase(job.getDeleteMode())
+                && (job.getLogicalDeleteField() == null || job.getLogicalDeleteField().trim().isEmpty())) {
+            throw new IllegalStateException("CDC 逻辑删除模式必须配置 logicalDeleteField，jobId=" + job.getId());
+        }
         // fat-jar 下 Debezium 用 Class.forName 加载连接器/存储类，需把上下文类加载器设为本类加载器
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
@@ -122,7 +127,7 @@ public class CdcSyncEngine {
         this.engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .using(getClass().getClassLoader())
-                .notifying(this::handleEvent)
+                .notifying(this::handleBatch)
                 // 引擎线程内启动失败/正常结束时回置 running，避免状态假象且无法重启
                 .using((success, message, error) -> {
                     running.set(false);
@@ -157,8 +162,12 @@ public class CdcSyncEngine {
         props.setProperty("database.port", String.valueOf(sourceDs.getPort()));
         props.setProperty("database.user", sourceDs.getUsername());
         props.setProperty("database.password", CryptoUtil.decryptSafe(sourceDs.getPassword(), cryptoKey));
-        // server.id 需在源库唯一（同一源库多任务避免撞号）；base 可配置 + 取模避免溢出/撞生产 slave
-        long serverId = serverIdBase + (jobId % 100000L);
+        // server.id 需在源库唯一（同一源库多任务避免撞号）。直接 base+jobId（不取模，否则
+        // jobId 与 jobId+100000 取模后相同会撞号互踢）；server_id 为无符号 32 位，溢出则回绕到合法区间
+        long serverId = serverIdBase + jobId;
+        if (serverId > 4294967295L || serverId < 1L) {
+            serverId = serverIdBase + (jobId % (4294967295L - serverIdBase));
+        }
         props.setProperty("database.server.id", String.valueOf(serverId));
         // 1.9.7：逻辑名/topic 前缀键为 database.server.name（2.0+ 才是 topic.prefix）
         props.setProperty("database.server.name", "datanote_cdc_" + jobId);
@@ -186,52 +195,128 @@ public class CdcSyncEngine {
                 .collect(Collectors.joining(","));
     }
 
-    /**
-     * 处理单条 Debezium 变更事件。record.value() 是 Debezium JSON 字符串。
-     * 解析失败/无关表只记日志跳过，不抛异常（避免引擎反复重试卡死）。
-     */
-    private void handleEvent(ChangeEvent<String, String> record) {
-        String value = record.value();
-        if (value == null || value.isEmpty()) {
-            return; // tombstone 等空记录
-        }
-        try {
-            ChangeOp change = parseChange(value);
-            if (change == null) {
-                return;
-            }
-            TableSyncConfig tc = tableMap.get(change.sourceTable);
-            if (tc == null) {
-                log.debug("CDC 事件命中未配置的源表，跳过: {}", change.sourceTable);
-                return;
-            }
-            readCount.incrementAndGet();
-            applyChange(tc, change);
-        } catch (Exception e) {
-            errorCount.incrementAndGet();
-            log.error("CDC 事件处理失败 jobId={} value={}", job.getId(), abbreviate(value), e);
-            broadcast("ERROR", "CDC 事件处理失败: " + e.getMessage());
+    /** 一条已解析并路由到目标表的待应用变更。 */
+    private static final class Apply {
+        final TableSyncConfig tc;
+        final ChangeOp change;
+        Apply(TableSyncConfig tc, ChangeOp change) {
+            this.tc = tc;
+            this.change = change;
         }
     }
 
-    /** 把一条变更写入目标库。若该表配置了字段映射，先按 source->target 投影 after/before。 */
-    private void applyChange(TableSyncConfig tc, ChangeOp change) throws Exception {
+    /**
+     * 批量处理 Debezium 变更事件（ChangeConsumer 语义）。
+     *
+     * <p>关键正确性：解析失败/未配置表等<b>不可重试的脏数据</b>跳过；可应用的变更在<b>单连接单事务</b>内按序写入，
+     * 整批 commit 成功后才 {@code markProcessed + markBatchFinished} 推进 offset；写库失败则 rollback 并抛出，
+     * <b>不推进 offset</b>，Debezium 重投整批 —— 配合幂等 UPSERT/DELETE 实现 at-least-once，杜绝目标库瞬时
+     * 故障窗口的变更被静默丢失（旧实现 .notifying(Consumer) 吞写库异常但 offset 照常 flush，会永久丢数）。
+     */
+    private void handleBatch(List<ChangeEvent<String, String>> records,
+                             DebeziumEngine.RecordCommitter<ChangeEvent<String, String>> committer)
+            throws InterruptedException {
+        // 1) 解析路由，保序收集可应用变更；脏数据/未配置表跳过（不可重试，不影响 offset 推进）
+        List<Apply> applies = new ArrayList<>();
+        for (ChangeEvent<String, String> rec : records) {
+            String value = rec.value();
+            if (value == null || value.isEmpty()) {
+                continue; // tombstone 等空记录
+            }
+            ChangeOp change;
+            try {
+                change = parseChange(value);
+            } catch (Exception e) {
+                errorCount.incrementAndGet();
+                log.error("CDC 解析失败 jobId={} value={}", job.getId(), abbreviate(value), e);
+                continue;
+            }
+            if (change == null) {
+                continue;
+            }
+            TableSyncConfig tc = tableMap.get(change.sourceTable);
+            if (tc == null) {
+                continue; // 未配置的源表
+            }
+            applies.add(new Apply(tc, change));
+        }
+
+        // 2) 单连接单事务按序写入；失败回滚并抛出（触发整批重试，offset 不推进）
+        if (!applies.isEmpty()) {
+            try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), job.getTargetDb())) {
+                boolean prevAuto = conn.getAutoCommit();
+                conn.setAutoCommit(false);
+                try {
+                    for (Apply a : applies) {
+                        applyChange(conn, a.tc, a.change);
+                    }
+                    conn.commit();
+                    readCount.addAndGet(applies.size());
+                } catch (Exception e) {
+                    conn.rollback();
+                    errorCount.incrementAndGet();
+                    broadcast("ERROR", "CDC 批写入失败，将重试整批: " + e.getMessage());
+                    throw new RuntimeException("CDC batch apply failed, will retry", e);
+                } finally {
+                    conn.setAutoCommit(prevAuto);
+                }
+            } catch (RuntimeException re) {
+                throw re; // 上抛触发 Debezium 重投本批
+            } catch (Exception e) {
+                // 取连接失败等：同样需重试，不推进 offset
+                throw new RuntimeException("CDC batch connection failed, will retry", e);
+            }
+        }
+
+        // 3) 整批成功（或无可应用变更）：推进 offset
+        for (ChangeEvent<String, String> rec : records) {
+            committer.markProcessed(rec);
+        }
+        committer.markBatchFinished();
+    }
+
+    /** 把一条变更写入目标库（复用调用方事务连接）。若该表配置了字段映射，先按 source-&gt;target 投影 after/before。 */
+    private void applyChange(Connection conn, TableSyncConfig tc, ChangeOp change) throws Exception {
         String targetTable = tc.getTargetTable();
         String targetDb = job.getTargetDb();
         switch (change.opType) {
             case INSERT:
-                writeUpsert(targetDb, targetTable, projectByFields(change.after, tc));
+                writeUpsert(conn, targetDb, targetTable, projectByFields(change.after, tc));
                 break;
             case UPDATE:
-                // 用 after 全量 UPSERT 即可覆盖更新（幂等）
-                writeUpsert(targetDb, targetTable, projectByFields(change.after, tc));
+                Map<String, Object> beforeProj = projectByFields(change.before, tc);
+                Map<String, Object> afterProj = projectByFields(change.after, tc);
+                // 主键变更：先按旧主键删旧行，再 UPSERT 新行，避免旧主键行残留为孤儿/重复数据
+                if (isPkChanged(targetDb, targetTable, beforeProj, afterProj)) {
+                    writeDelete(conn, targetDb, targetTable, beforeProj);
+                }
+                writeUpsert(conn, targetDb, targetTable, afterProj);
                 break;
             case DELETE:
-                writeDelete(targetDb, targetTable, projectByFields(change.before, tc));
+                writeDelete(conn, targetDb, targetTable, projectByFields(change.before, tc));
                 break;
             default:
                 break;
         }
+    }
+
+    /** UPDATE 事件中目标主键值是否发生变更（投影后按目标列名比较）。 */
+    private boolean isPkChanged(String db, String table, Map<String, Object> before, Map<String, Object> after) throws Exception {
+        if (before == null || after == null) {
+            return false;
+        }
+        List<String> pks = primaryKeysOf(db, table);
+        if (pks.isEmpty()) {
+            return false;
+        }
+        for (String pk : pks) {
+            Object b = before.get(pk);
+            Object a = after.get(pk);
+            if (b == null ? a != null : !b.equals(a)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -261,7 +346,7 @@ public class CdcSyncEngine {
      * c/r/u：按 after 全列 UPSERT（幂等，主键冲突则更新非主键列）。
      * 迭代V3：若 job.markSyncTs==1 且 syncTsField 非空且不在 after 列中，则写列末尾追加该列并绑当前时间。
      */
-    private void writeUpsert(String db, String table, Map<String, Object> after) throws Exception {
+    private void writeUpsert(Connection conn, String db, String table, Map<String, Object> after) throws Exception {
         if (after == null || after.isEmpty()) {
             log.warn("CDC UPSERT 数据为空，跳过 表={}", table);
             return;
@@ -274,8 +359,7 @@ public class CdcSyncEngine {
             columns.add(job.getSyncTsField());
         }
         String sql = WriteSqlBuilder.build(targetConnector.getDatabaseType(), "UPSERT", db, table, columns, pkColumns);
-        try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < dataColumns.size(); i++) {
                 ps.setObject(i + 1, after.get(dataColumns.get(i)));
             }
@@ -307,28 +391,29 @@ public class CdcSyncEngine {
      *       logicalDeleteField 为空时记 WARN 并回退物理删除。</li>
      * </ul>
      */
-    private void writeDelete(String db, String table, Map<String, Object> before) throws Exception {
+    private void writeDelete(Connection conn, String db, String table, Map<String, Object> before) throws Exception {
         if (before == null || before.isEmpty()) {
             log.warn("CDC DELETE 缺少 before 数据，跳过 表={}", table);
             return;
         }
         List<String> pkColumns = primaryKeysOf(db, table);
         if (pkColumns.isEmpty()) {
-            log.warn("CDC DELETE 目标表无主键，跳过 表={}", table);
-            return;
+            // 无主键无法定位待删行：抛出而非静默跳过，由 handleBatch 回滚并阻止 offset 推进，
+            // 避免“源已删、目标仍存”的脏数据（静默跳过会让该删除事件随 offset 永久丢失）
+            log.error("CDC DELETE 目标表无主键，拒绝删除以防脏数据 表={}", table);
+            throw new IllegalStateException("CDC DELETE 目标表缺少主键，无法定位删除行，表=" + table);
         }
         boolean logical = "LOGICAL".equalsIgnoreCase(job.getDeleteMode());
         String logicalField = job.getLogicalDeleteField();
+        // 逻辑删除却漏配标记列：快速失败而非静默物理删除，避免与用户意图相反误删数据
         if (logical && (logicalField == null || logicalField.trim().isEmpty())) {
-            log.warn("CDC 逻辑删除未配置 logicalDeleteField，回退物理删除 表={}", table);
-            logical = false;
+            throw new IllegalStateException("CDC 逻辑删除未配置 logicalDeleteField，拒绝回退物理删除，表=" + table);
         }
 
         if (logical) {
             String logicalValue = job.getLogicalDeleteValue() == null ? "1" : job.getLogicalDeleteValue();
             String sql = buildLogicalDeleteSql(db, table, logicalField, pkColumns);
-            try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 // SET {field}=? 在前，WHERE pk=? 在后
                 ps.setObject(1, logicalValue);
                 for (int i = 0; i < pkColumns.size(); i++) {
@@ -340,8 +425,7 @@ public class CdcSyncEngine {
             broadcast("INFO", "CDC 逻辑删除 " + table + "（" + logicalField + "=" + logicalValue + "）");
         } else {
             String sql = buildDeleteSql(db, table, pkColumns);
-            try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), db);
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 for (int i = 0; i < pkColumns.size(); i++) {
                     ps.setObject(i + 1, before.get(pkColumns.get(i)));
                 }
@@ -430,6 +514,22 @@ public class CdcSyncEngine {
     /** 累计错误（处理失败的事件数）。 */
     public long getErrorCount() {
         return errorCount.get();
+    }
+
+    /**
+     * 读取 Debezium 流式阶段落后源库的毫秒数（真实 CDC 延迟），来自引擎注册到 JVM 平台 MBeanServer 的指标。
+     * 1.9.x 的 ObjectName 用 database.server.name（即 datanote_cdc_&lt;jobId&gt;）。读不到返回 null（降级不展示）。
+     */
+    public Long getStreamingLagMs() {
+        try {
+            javax.management.MBeanServer mbs = java.lang.management.ManagementFactory.getPlatformMBeanServer();
+            javax.management.ObjectName on = new javax.management.ObjectName(
+                    "debezium.mysql:type=connector-metrics,context=streaming,server=datanote_cdc_" + job.getId());
+            Object v = mbs.getAttribute(on, "MilliSecondsBehindSource");
+            return v == null ? null : ((Number) v).longValue();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** 当前日志缓冲快照（供执行记录落库回放）。 */

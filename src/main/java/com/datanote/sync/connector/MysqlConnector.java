@@ -106,13 +106,22 @@ public class MysqlConnector implements DbConnector {
     /** keyset 分页查询 SQL。hasCursor=true 时带 WHERE 游标。 */
     public static String buildKeysetPageSql(String db, String table, List<String> columns,
                                             String pkColumn, boolean hasCursor) {
+        return buildKeysetPageSql(db, table, columns, pkColumn, hasCursor, null);
+    }
+
+    public static String buildKeysetPageSql(String db, String table, List<String> columns,
+                                            String pkColumn, boolean hasCursor, String extraWhere) {
         String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
         String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
         String pk = SqlIdentifiers.quote(pkColumn);
-        StringBuilder sql = new StringBuilder("SELECT ").append(cols)
-                .append(" FROM ").append(fullTable);
-        if (hasCursor) {
+        boolean hasFilter = extraWhere != null && !extraWhere.trim().isEmpty();
+        StringBuilder sql = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(fullTable);
+        if (hasCursor && hasFilter) {
+            sql.append(" WHERE ").append(pk).append(" > ? AND ").append(extraWhere);
+        } else if (hasCursor) {
             sql.append(" WHERE ").append(pk).append(" > ?");
+        } else if (hasFilter) {
+            sql.append(" WHERE ").append(extraWhere);
         }
         sql.append(" ORDER BY ").append(pk).append(" ASC LIMIT ?");
         return sql.toString();
@@ -127,15 +136,19 @@ public class MysqlConnector implements DbConnector {
      *  firstPage=false：incField > ? OR (incField = ? AND pk > ?)。 */
     public static String buildIncrementalPageSql(String db, String table, List<String> columns,
                                                  String incField, String pkColumn, boolean firstPage) {
+        return buildIncrementalPageSql(db, table, columns, incField, pkColumn, firstPage, null);
+    }
+
+    public static String buildIncrementalPageSql(String db, String table, List<String> columns,
+                                                 String incField, String pkColumn, boolean firstPage, String extraWhere) {
         String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
         String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
         String inc = SqlIdentifiers.quote(incField);
         String pk = SqlIdentifiers.quote(pkColumn);
-        String where = firstPage
-                ? inc + " >= ?"
+        String where = firstPage ? inc + " >= ?"
                 : "(" + inc + " > ? OR (" + inc + " = ? AND " + pk + " > ?))";
-        return "SELECT " + cols + " FROM " + fullTable
-                + " WHERE " + where
+        if (extraWhere != null && !extraWhere.trim().isEmpty()) where = where + " AND " + extraWhere;
+        return "SELECT " + cols + " FROM " + fullTable + " WHERE " + where
                 + " ORDER BY " + inc + " ASC, " + pk + " ASC LIMIT ?";
     }
 }

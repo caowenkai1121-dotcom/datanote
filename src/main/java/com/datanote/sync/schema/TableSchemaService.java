@@ -73,7 +73,25 @@ public class TableSchemaService {
         if (c == null || c.isEmpty()) {
             return "";
         }
-        return " COMMENT '" + c.replace("\\", "\\\\").replace("'", "\\'") + "'";
+        return " COMMENT '" + escapeSqlLiteral(c) + "'";
+    }
+
+    /** 转义 SQL 字符串字面量中的反斜杠、单引号与会破坏 DDL 的控制符。 */
+    private String escapeSqlLiteral(String c) {
+        StringBuilder sb = new StringBuilder(c.length() + 8);
+        for (int i = 0; i < c.length(); i++) {
+            char ch = c.charAt(i);
+            switch (ch) {
+                case '\\': sb.append("\\\\"); break;
+                case '\'': sb.append("\\'"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                case '\0': break;
+                default: sb.append(ch);
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -82,7 +100,8 @@ public class TableSchemaService {
     public void ensureTargetTable(DbConnector target, String targetDb, String targetTable,
                                   List<ColumnDef> sourceColumns) throws SQLException {
         List<String> existing = target.listTables(targetDb);
-        if (existing.contains(targetTable)) {
+        // 表名按 lower_case_table_names 可能大小写不敏感，忽略大小写判断避免重复建表报错
+        if (existing.stream().anyMatch(t -> t.equalsIgnoreCase(targetTable))) {
             log.info("目标表已存在，跳过建表: {}.{}", targetDb, targetTable);
             return;
         }

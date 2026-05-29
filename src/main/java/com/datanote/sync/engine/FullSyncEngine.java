@@ -66,6 +66,9 @@ public class FullSyncEngine implements SyncEngine {
         if (pkIndex < 0) {
             throw new IllegalStateException("主键列不在列集合中: " + pkColumn);
         }
+        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression());
+        com.datanote.sync.util.RowValueProcessor rowProc =
+                new com.datanote.sync.util.RowValueProcessor(fm.srcToFieldMapping);
 
         // 迭代V3：标记同步时间戳 —— 写列在 tgtColumns 末尾追加 syncTsField（读列不变，绑定时最后一列绑当前时间）
         boolean markTs = SyncTsSupport.shouldAppend(ctx, tgtColumns);
@@ -85,59 +88,78 @@ public class FullSyncEngine implements SyncEngine {
         try (Connection srcConn = source.getConnection();
              Connection tgtConn = target.getConnection()) {
             tgtConn.setAutoCommit(false);
+            String preSql = ctx.getPreSql(tc);
+            if (preSql != null) {
+                ctx.log("INFO", "执行前置SQL: " + tc.getSourceTable());
+                com.datanote.sync.util.SqlExecutor.execute(tgtConn, preSql);
+                tgtConn.commit();
+            }
 
-            while (!ctx.getStopped().get()) {
-                String pageSql = MysqlConnector.buildKeysetPageSql(
-                        srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor);
+            // writeSql 是循环不变量，writePs 提到分页循环外复用，保留 prepStmt 缓存与批处理重写收益
+            try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
+                while (!ctx.getStopped().get()) {
+                    String pageSql = MysqlConnector.buildKeysetPageSql(
+                            srcDb, tc.getSourceTable(), srcColumns, pkColumn, hasCursor, extraWhere);
 
-                int rowsThisPage = 0;
-                try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
-                    int paramIdx = 1;
-                    if (hasCursor) {
-                        readPs.setObject(paramIdx++, cursor);
-                    }
-                    readPs.setInt(paramIdx, ctx.getBatchSize());
-
-                    try (ResultSet rs = readPs.executeQuery();
-                         PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
-                        while (rs.next()) {
-                            // 读列与写列一一对应：按读列顺序取、按写列顺序写
-                            for (int i = 0; i < srcColumns.size(); i++) {
-                                writePs.setObject(i + 1, rs.getObject(i + 1));
-                            }
-                            // 追加同步时间戳列（写列末尾，绑当前时间）
-                            if (markTs) {
-                                writePs.setObject(srcColumns.size() + 1,
-                                        new java.sql.Timestamp(System.currentTimeMillis()));
-                            }
-                            writePs.addBatch();
-                            cursor = rs.getObject(pkIndex + 1);
-                            rowsThisPage++;
+                    int rowsThisPage = 0;
+                    try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
+                        int paramIdx = 1;
+                        if (hasCursor) {
+                            readPs.setObject(paramIdx++, cursor);
                         }
-                        if (rowsThisPage > 0) {
-                            try {
-                                writePs.executeBatch();
-                                tgtConn.commit();
-                            } catch (Exception batchEx) {
-                                tgtConn.rollback();
-                                throw batchEx;
+                        readPs.setInt(paramIdx, ctx.getBatchSize());
+                        readPs.setFetchSize(ctx.getBatchSize()); // 流式读取，控制客户端内存峰值
+
+                        try (ResultSet rs = readPs.executeQuery()) {
+                            int rowsWritten = 0;
+                            while (rs.next()) {
+                                Object[] raw = new Object[srcColumns.size()];
+                                for (int i = 0; i < srcColumns.size(); i++) raw[i] = rs.getObject(i + 1);
+                                cursor = raw[pkIndex];      // 游标按原始主键推进（即使跳行也推进）
+                                rowsThisPage++;
+                                Object[] row = rowProc.process(srcColumns, raw);
+                                if (row == null) continue;  // SKIP_ROW：计读不计写
+                                for (int i = 0; i < srcColumns.size(); i++) writePs.setObject(i + 1, row[i]);
+                                if (markTs) {
+                                    writePs.setObject(srcColumns.size() + 1,
+                                            new java.sql.Timestamp(System.currentTimeMillis()));
+                                }
+                                writePs.addBatch();
+                                rowsWritten++;
                             }
-                            // 逐行计数：避免 ON DUPLICATE KEY UPDATE 下 affected rows 语义导致偏大
-                            ctx.getWriteCount().addAndGet(rowsThisPage);
+                            if (rowsWritten > 0) {
+                                try {
+                                    writePs.executeBatch();
+                                    tgtConn.commit();
+                                } catch (Exception batchEx) {
+                                    tgtConn.rollback();
+                                    throw batchEx;
+                                } finally {
+                                    writePs.clearBatch();
+                                }
+                                ctx.getWriteCount().addAndGet(rowsWritten);
+                            }
                         }
                     }
-                }
 
-                tableRead += rowsThisPage;
-                ctx.getReadCount().addAndGet(rowsThisPage);
-                hasCursor = true;
+                    tableRead += rowsThisPage;
+                    ctx.getReadCount().addAndGet(rowsThisPage);
+                    hasCursor = true;
 
-                if (rowsThisPage > 0) {
-                    ctx.log("INFO", tc.getSourceTable() + " 已读 " + tableRead + " 行");
+                    if (rowsThisPage > 0) {
+                        ctx.log("INFO", tc.getSourceTable() + " 已读 " + tableRead + " 行");
+                    }
+                    if (rowsThisPage < ctx.getBatchSize()) {
+                        break; // 最后一页
+                    }
                 }
-                if (rowsThisPage < ctx.getBatchSize()) {
-                    break; // 最后一页
-                }
+            }
+
+            String postSql = ctx.getPostSql(tc);
+            if (postSql != null) {
+                ctx.log("INFO", "执行后置SQL: " + tc.getSourceTable());
+                com.datanote.sync.util.SqlExecutor.execute(tgtConn, postSql);
+                tgtConn.commit();
             }
         }
 

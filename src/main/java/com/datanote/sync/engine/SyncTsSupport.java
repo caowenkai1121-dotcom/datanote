@@ -1,6 +1,7 @@
 package com.datanote.sync.engine;
 
 import com.datanote.sync.dto.SyncContext;
+import com.datanote.sync.util.SqlIdentifiers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,10 @@ public final class SyncTsSupport {
         String field = ctx.getSyncTsField();
         if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
             return false;
+        }
+        // 配置期即校验列名合法性，避免拖到写入期 SqlIdentifiers.quote 才报错
+        if (!SqlIdentifiers.isValid(field)) {
+            throw new IllegalStateException("非法的同步时间戳列名: " + field);
         }
         return tgtColumns == null || !tgtColumns.contains(field);
     }

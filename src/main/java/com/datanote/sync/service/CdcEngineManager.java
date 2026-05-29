@@ -16,8 +16,8 @@ import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.engine.cdc.CdcSyncEngine;
+import com.datanote.sync.schema.CreateColumnSupport;
 import com.datanote.sync.schema.TableSchemaService;
-import com.datanote.sync.util.FieldMappingResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -27,6 +27,7 @@ import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -158,63 +159,14 @@ public class CdcEngineManager {
             for (TableSyncConfig tc : tables) {
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
                     List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
-                    cols = prepareCreateColumns(cols, tc, job);
+                    cols = CreateColumnSupport.applyFieldMapping(cols, tc);
+                    cols = CreateColumnSupport.appendSyncTsColumn(cols, job.getMarkSyncTs(), job.getSyncTsField());
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                 }
             }
         } catch (Exception e) {
             throw new IllegalStateException("CDC 目标表自动建表失败 jobId=" + job.getId() + ": " + e.getMessage(), e);
         }
-    }
-
-    /** 停止指定 CDC 任务（未运行则仅更新状态）。 */
-    private List<ColumnDef> prepareCreateColumns(List<ColumnDef> cols, TableSyncConfig tc, DnSyncJob job) {
-        List<ColumnDef> mapped = applyFieldMapping(cols, tc);
-        return appendSyncTsColumn(mapped, job);
-    }
-
-    private List<ColumnDef> applyFieldMapping(List<ColumnDef> cols, TableSyncConfig tc) {
-        if (tc.getFields() == null || tc.getFields().isEmpty()) {
-            return cols;
-        }
-        Map<String, String> srcToTgt = FieldMappingResolver.buildSrcToTgt(tc.getFields());
-        List<ColumnDef> result = new ArrayList<>();
-        for (ColumnDef c : cols) {
-            String targetName = srcToTgt.get(c.getName());
-            if (targetName == null) {
-                continue;
-            }
-            ColumnDef mapped = new ColumnDef();
-            mapped.setName(targetName);
-            mapped.setColumnType(c.getColumnType());
-            mapped.setNullable(c.isNullable());
-            mapped.setPrimaryKey(c.isPrimaryKey());
-            mapped.setComment(c.getComment());
-            result.add(mapped);
-        }
-        return result;
-    }
-
-    private List<ColumnDef> appendSyncTsColumn(List<ColumnDef> cols, DnSyncJob job) {
-        Integer mark = job.getMarkSyncTs();
-        String field = job.getSyncTsField();
-        if (mark == null || mark != 1 || field == null || field.trim().isEmpty()) {
-            return cols;
-        }
-        for (ColumnDef c : cols) {
-            if (field.equals(c.getName())) {
-                return cols;
-            }
-        }
-        List<ColumnDef> result = new ArrayList<>(cols);
-        ColumnDef ts = new ColumnDef();
-        ts.setName(field);
-        ts.setColumnType("DATETIME");
-        ts.setNullable(true);
-        ts.setPrimaryKey(false);
-        ts.setComment("sync timestamp");
-        result.add(ts);
-        return result;
     }
 
     public synchronized void stop(Long jobId) {
@@ -231,6 +183,20 @@ public class CdcEngineManager {
     public boolean status(Long jobId) {
         CdcSyncEngine engine = engines.get(jobId);
         return engine != null && engine.isRunning();
+    }
+
+    /** 实时指标：运行状态 + 累计计数 + 真实 binlog 延迟(ms，读不到为 null)。 */
+    public Map<String, Object> metrics(Long jobId) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        CdcSyncEngine engine = engines.get(jobId);
+        m.put("running", engine != null && engine.isRunning());
+        if (engine != null) {
+            m.put("readCount", engine.getReadCount());
+            m.put("writeCount", engine.getWriteCount());
+            m.put("errorCount", engine.getErrorCount());
+            m.put("lagMs", engine.getStreamingLagMs());
+        }
+        return m;
     }
 
     private void updateStatus(Long jobId, String status) {

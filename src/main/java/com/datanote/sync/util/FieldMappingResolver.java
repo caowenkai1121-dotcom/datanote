@@ -4,9 +4,12 @@ import com.datanote.sync.dto.FieldMapping;
 import com.datanote.sync.dto.TableSyncConfig;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 字段映射解析：把 TableSyncConfig.fields 解析为读列(source)/写列(target)序列及主键映射。
@@ -27,11 +30,20 @@ public final class FieldMappingResolver {
         public final List<String> srcColumns;
         public final List<String> tgtColumns;
         public final String pkTarget;
+        /** M1：源列名 -> FieldMapping，仅含 sync==true 且 source 非空的字段；fields 为空时为空 Map。 */
+        public final Map<String, FieldMapping> srcToFieldMapping;
 
+        /** 向后兼容的 3 参构造器（srcToFieldMapping 默认为空 Map）。 */
         public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget) {
+            this(srcColumns, tgtColumns, pkTarget, Collections.emptyMap());
+        }
+
+        public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget,
+                        Map<String, FieldMapping> srcToFieldMapping) {
             this.srcColumns = srcColumns;
             this.tgtColumns = tgtColumns;
             this.pkTarget = pkTarget;
+            this.srcToFieldMapping = srcToFieldMapping;
         }
     }
 
@@ -47,7 +59,8 @@ public final class FieldMappingResolver {
     public static Resolved resolve(TableSyncConfig tc, List<String> allColumns, String pkSource) {
         List<FieldMapping> fields = tc == null ? null : tc.getFields();
         if (fields == null || fields.isEmpty()) {
-            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkSource);
+            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkSource,
+                    Collections.emptyMap());
         }
         Map<String, String> srcToTgt = buildSrcToTgt(fields);
         if (srcToTgt.isEmpty()) {
@@ -58,12 +71,28 @@ public final class FieldMappingResolver {
             throw new IllegalStateException("字段映射必须包含主键列 " + pkSource
                     + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
         }
+        // 不允许多个源列映射到同一目标列（否则到写入期 INSERT 列重复才报错），解析期提前校验
+        Set<String> seenTgt = new HashSet<>();
+        for (String t : srcToTgt.values()) {
+            if (!seenTgt.add(t.toLowerCase())) {
+                throw new IllegalStateException("字段映射存在重复的目标列 " + t
+                        + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
+            }
+        }
         List<String> srcColumns = new ArrayList<>(srcToTgt.keySet());
         List<String> tgtColumns = new ArrayList<>();
         for (String src : srcColumns) {
             tgtColumns.add(srcToTgt.get(src));
         }
-        return new Resolved(srcColumns, tgtColumns, srcToTgt.get(pkSource));
+        // 构建 source -> FieldMapping 映射（仅 sync==true 且 source 非空）
+        Map<String, FieldMapping> src2fm = new LinkedHashMap<>();
+        for (FieldMapping fm : fields) {
+            if (fm == null || !Boolean.TRUE.equals(fm.getSync())) continue;
+            String src = fm.getSource();
+            if (src == null || src.trim().isEmpty()) continue;
+            src2fm.put(src, fm);
+        }
+        return new Resolved(srcColumns, tgtColumns, srcToTgt.get(pkSource), src2fm);
     }
 
     /**

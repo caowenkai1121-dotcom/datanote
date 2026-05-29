@@ -38,4 +38,8 @@ public class DnSyncJob {
     private String logicalDeleteValue;  // 逻辑删除写入值，默认 '1'
     private Integer markSyncTs;         // 是否标记同步时间戳（1=是）
     private String syncTsField;         // 同步时间戳列名
+
+    // M1 数据加工管道
+    private String preSql;   // 任务级前置SQL
+    private String postSql;  // 任务级后置SQL
 }
