@@ -24,6 +24,10 @@ public class SyncContext {
     private String writeMode;
     private int batchSize = 1000;
 
+    /** M1：任务级前置/后置 SQL（表级未配置时回退此值）。 */
+    private String globalPreSql;
+    private String globalPostSql;
+
     /** 迭代V3：是否在目标表每行额外写入同步时间戳列（来自 job.markSyncTs，1=是）。 */
     private Integer markSyncTs;
     /** 迭代V3：同步时间戳列名（markSyncTs 生效时使用）。 */
@@ -40,6 +44,20 @@ public class SyncContext {
     private BiConsumer<String, String> logCallback = (level, msg) -> {};
     /** 单表增量断点持久化回调：某表成功后立即回写其断点，避免后续表失败丢已成功表的断点。 */
     private Consumer<TableSyncConfig> checkpointCallback = tc -> {};
+
+    private static boolean blank(String s) { return s == null || s.trim().isEmpty(); }
+
+    /** 取表级 preSql，空则回退任务级；都空返回 null。 */
+    public String getPreSql(TableSyncConfig tc) {
+        String t = tc == null ? null : tc.getPreSql();
+        if (!blank(t)) return t;
+        return blank(globalPreSql) ? null : globalPreSql;
+    }
+    public String getPostSql(TableSyncConfig tc) {
+        String t = tc == null ? null : tc.getPostSql();
+        if (!blank(t)) return t;
+        return blank(globalPostSql) ? null : globalPostSql;
+    }
 
     public void log(String level, String msg) {
         logCallback.accept(level, msg);
