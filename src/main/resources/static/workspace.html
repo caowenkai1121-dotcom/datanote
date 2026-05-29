@@ -4396,6 +4396,14 @@ html, body {
                   </div>
                 </div>
               </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">前置 SQL</label>
+                <textarea class="dbsync-form-input" id="dbsyncPreSql" rows="2" style="width:100%;font-size:12px;font-family:monospace;resize:vertical;" placeholder="写入前执行，多语句分号分隔（如 TRUNCATE 目标表）"></textarea>
+              </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">后置 SQL</label>
+                <textarea class="dbsync-form-input" id="dbsyncPostSql" rows="2" style="width:100%;font-size:12px;font-family:monospace;resize:vertical;" placeholder="写入后执行，多语句分号分隔（如 UPDATE 统计表）"></textarea>
+              </div>
             </div>
           </div>
         </div>
@@ -13324,7 +13332,10 @@ window.dbsyncOnModeChange = function() {
 function dbsyncRenderFieldMapHtml(fields, targetColumns) {
   var hasTgtCols = targetColumns && targetColumns.length > 0;
   var html = '<table class="dfs-field-map-table"><thead><tr>'
-    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th><th style="width:28px;"></th>'
+    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th>'
+    + '<th style="width:90px;font-size:11px;">空值处理</th><th style="width:90px;font-size:11px;">默认值</th>'
+    + '<th style="width:110px;font-size:11px;">转换</th><th style="width:80px;font-size:11px;">脱敏</th>'
+    + '<th style="width:28px;"></th>'
     + '</tr></thead><tbody>';
   fields.forEach(function(f) {
     var src = f.source || f.name || '';
@@ -13347,11 +13358,30 @@ function dbsyncRenderFieldMapHtml(fields, targetColumns) {
       // 自动建表：目标字段可编辑文本
       tgtCell = '<input class="dbsync-form-input dfs-fm-tgt" style="font-size:12px;padding:2px 6px;" value="' + escapeHtml(tgt) + '">';
     }
+    var nullHandling = f.nullHandling || 'PASSTHROUGH';
+    var nullHandlingOpts = [
+      '<option value="PASSTHROUGH"' + (nullHandling === 'PASSTHROUGH' ? ' selected' : '') + '>原样/PASSTHROUGH</option>',
+      '<option value="REPLACE_WITH_DEFAULT"' + (nullHandling === 'REPLACE_WITH_DEFAULT' ? ' selected' : '') + '>替默认值</option>',
+      '<option value="SKIP_ROW"' + (nullHandling === 'SKIP_ROW' ? ' selected' : '') + '>跳行</option>'
+    ].join('');
+    var maskingType = f.maskingType || '';
+    var maskingOpts = [
+      '<option value=""' + (maskingType === '' ? ' selected' : '') + '>无</option>',
+      '<option value="PHONE"' + (maskingType === 'PHONE' ? ' selected' : '') + '>PHONE</option>',
+      '<option value="EMAIL"' + (maskingType === 'EMAIL' ? ' selected' : '') + '>EMAIL</option>',
+      '<option value="IDCARD"' + (maskingType === 'IDCARD' ? ' selected' : '') + '>IDCARD</option>',
+      '<option value="HASH_SHA256"' + (maskingType === 'HASH_SHA256' ? ' selected' : '') + '>HASH_SHA256</option>',
+      '<option value="REDACT"' + (maskingType === 'REDACT' ? ' selected' : '') + '>REDACT</option>'
+    ].join('');
     html += '<tr class="dfs-field-map-row">'
       + '<td style="text-align:center;"><input type="checkbox" class="dfs-fm-sync"' + syncChecked + '></td>'
       + '<td><input type="hidden" class="dfs-fm-src" value="' + escapeHtml(src) + '"><span style="color:var(--text-regular);">' + escapeHtml(src) + '</span></td>'
       + '<td style="text-align:center;color:var(--text-muted);">→</td>'
       + '<td>' + tgtCell + '</td>'
+      + '<td><select class="dbsync-form-select dfs-fm-null-handling" style="font-size:11px;padding:2px 4px;height:26px;width:100%;">' + nullHandlingOpts + '</select></td>'
+      + '<td><input class="dbsync-form-input dfs-fm-default-value" style="font-size:11px;padding:2px 4px;width:100%;" placeholder="空值替代值" value="' + escapeHtml(f.defaultValue || '') + '"></td>'
+      + '<td><input class="dbsync-form-input dfs-fm-transform" style="font-size:11px;padding:2px 4px;width:100%;font-family:monospace;" placeholder=\'{"type":"upper"}\' value="' + escapeHtml(f.transformExpression || '') + '"></td>'
+      + '<td><select class="dbsync-form-select dfs-fm-masking" style="font-size:11px;padding:2px 4px;height:26px;width:100%;">' + maskingOpts + '</select></td>'
       + '<td style="text-align:center;"><button type="button" class="dfs-fm-del" onclick="dbsyncDelFieldMapRow(this)" title="删除此字段映射">&times;</button></td>'
       + '</tr>';
   });
@@ -13558,6 +13588,11 @@ function dbsyncMakeTableRowHtml(idx, data) {
   html += '</div>';
   // 目标表可搜索下拉数据源（datalist 自带 display:none，不占网格列）
   html += '<datalist id="dfsTgtList_' + idx + '"></datalist>';
+  // 表级过滤表达式
+  html += '<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">';
+  html += '<label style="font-size:11px;color:var(--text-muted);white-space:nowrap;">过滤条件</label>';
+  html += '<input class="dbsync-form-input dfs-filter-expr" style="font-size:11px;padding:2px 6px;flex:1;font-family:monospace;" placeholder=\'{"conditions":[{"column":"status","op":"=","value":"active"}]}\' value="' + escapeHtml(data.filterExpression || '') + '">';
+  html += '</div>';
   // 字段映射展开区
   var hasFields = data.fields && data.fields.length > 0;
   html += '<div class="dfs-field-map-area' + (hasFields ? ' open' : '') + '">';
@@ -13640,7 +13675,20 @@ function dbsyncReadTableRowData(row, wrapper) {
             var tgtVal = (tgtEl && tgtEl.value) ? tgtEl.value : '';
             var syncVal = cb ? cb.checked : true;
             if (!tgtVal) { syncVal = false; tgtVal = srcName; } // 未选目标列 → 不同步（占位用源名，sync=false 时被忽略）
-            fields.push({ source: srcName, target: tgtVal, sync: syncVal });
+            var fieldObj = { source: srcName, target: tgtVal, sync: syncVal };
+            var nullHandlingEl = fr.querySelector('.dfs-fm-null-handling');
+            var nullHandlingVal = nullHandlingEl ? nullHandlingEl.value : '';
+            if (nullHandlingVal && nullHandlingVal !== 'PASSTHROUGH') fieldObj.nullHandling = nullHandlingVal;
+            var defaultValueEl = fr.querySelector('.dfs-fm-default-value');
+            var defaultValueVal = defaultValueEl ? defaultValueEl.value.trim() : '';
+            if (defaultValueVal) fieldObj.defaultValue = defaultValueVal;
+            var transformEl = fr.querySelector('.dfs-fm-transform');
+            var transformVal = transformEl ? transformEl.value.trim() : '';
+            if (transformVal) fieldObj.transformExpression = transformVal;
+            var maskingEl = fr.querySelector('.dfs-fm-masking');
+            var maskingVal = maskingEl ? maskingEl.value : '';
+            if (maskingVal) fieldObj.maskingType = maskingVal;
+            fields.push(fieldObj);
           }
         });
       }
@@ -13653,6 +13701,13 @@ function dbsyncReadTableRowData(row, wrapper) {
     incrementalType:  (row.querySelector('.dfs-incr-type')  || {}).value || 'TIMESTAMP',
     createTargetTable: row.querySelector('.dfs-auto-create-sel') ? row.querySelector('.dfs-auto-create-sel').value !== 'false' : true
   };
+  // 表级过滤（从 wrapper 中找，row 的兄弟节点区域）
+  var filterWrapper = wrapper || row.closest('.dfs-row-wrapper');
+  if (filterWrapper) {
+    var filterEl = filterWrapper.querySelector('.dfs-filter-expr');
+    var filterVal = filterEl ? filterEl.value.trim() : '';
+    if (filterVal) result.filterExpression = filterVal;
+  }
   if (fields && fields.length > 0) result.fields = fields;
   return result;
 }
@@ -13716,6 +13771,10 @@ function dbsyncResetAdvanced() {
   if (wrap) wrap.style.display = 'none';
   var tsf = document.getElementById('dfsSyncTsField');
   if (tsf) tsf.value = '';
+  var preSql = document.getElementById('dbsyncPreSql');
+  if (preSql) preSql.value = '';
+  var postSql = document.getElementById('dbsyncPostSql');
+  if (postSql) postSql.value = '';
   // 收起高级设置面板
   var sec = document.getElementById('dfsAdvancedSection');
   if (sec) sec.style.display = 'none';
@@ -13740,8 +13799,12 @@ function dbsyncFillAdvanced(job) {
   if (wrap) wrap.style.display = markTs ? '' : 'none';
   var tsf = document.getElementById('dfsSyncTsField');
   if (tsf) tsf.value = job.syncTsField || '_sync_ts';
+  var preSql = document.getElementById('dbsyncPreSql');
+  if (preSql) preSql.value = job.preSql || '';
+  var postSql = document.getElementById('dbsyncPostSql');
+  if (postSql) postSql.value = job.postSql || '';
   // 如有非默认值则自动展开
-  if (dm === 'LOGICAL' || markTs) {
+  if (dm === 'LOGICAL' || markTs || job.preSql || job.postSql) {
     var sec = document.getElementById('dfsAdvancedSection');
     if (sec) sec.style.display = '';
     var icon = document.getElementById('dfsAdvancedToggleIcon');
@@ -13898,6 +13961,8 @@ window.dbsyncSaveJob = function() {
   if (!tgtDb)    { showToast('请选择目标数据库', 'error'); return; }
   if (tableConfigs.length === 0) { showToast('请至少配置一张表', 'error'); return; }
 
+  var preSqlVal  = ((document.getElementById('dbsyncPreSql')  || {}).value || '').trim();
+  var postSqlVal = ((document.getElementById('dbsyncPostSql') || {}).value || '').trim();
   var body = {
     jobName:      jobName,
     syncMode:     syncMode,
@@ -13912,7 +13977,9 @@ window.dbsyncSaveJob = function() {
     tableConfig:  JSON.stringify(tableConfigs),
     folderId:     folderId,
     deleteMode:   deleteMode,
-    markSyncTs:   markSyncTs
+    markSyncTs:   markSyncTs,
+    preSql:       preSqlVal,
+    postSql:      postSqlVal
   };
   if (deleteMode === 'LOGICAL') {
     body.logicalDeleteField = logicalDeleteField;

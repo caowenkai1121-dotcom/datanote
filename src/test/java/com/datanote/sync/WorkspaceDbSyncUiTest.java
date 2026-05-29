@@ -48,6 +48,20 @@ class WorkspaceDbSyncUiTest {
     }
 
     @Test
+    void pipelineProcessingControlsArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncPreSql\""),
+                "advanced section should have a preSql textarea");
+        assertTrue(html.contains("id=\"dbsyncPostSql\""),
+                "advanced section should have a postSql textarea");
+        assertTrue(html.contains("transformExpression"),
+                "field mapping rows should support transformExpression input");
+        assertTrue(html.contains("dfs-filter-expr"),
+                "table rows should include a filterExpression input");
+    }
+
+    @Test
     void routeInitializerUsesWindowScopedDbSyncFunctions() throws Exception {
         String html = readWorkspaceHtml();
 
