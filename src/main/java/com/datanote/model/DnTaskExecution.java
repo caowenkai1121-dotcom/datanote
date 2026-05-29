@@ -27,4 +27,5 @@ public class DnTaskExecution {
     private String log;
     private String executor;
     private LocalDateTime createdAt;
+    private Integer attempt;
 }

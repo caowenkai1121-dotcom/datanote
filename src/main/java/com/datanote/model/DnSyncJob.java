@@ -42,4 +42,12 @@ public class DnSyncJob {
     // M1 数据加工管道
     private String preSql;   // 任务级前置SQL
     private String postSql;  // 任务级后置SQL
+
+    // M2a 健壮性
+    private Integer errorLimitRows;
+    private java.math.BigDecimal errorLimitRatio;
+    private String retryBackoffType;
+    private Integer retryBackoffDelay;
+    private String rateLimitMode;
+    private Integer rateLimitValue;
 }
