@@ -5,6 +5,7 @@ import com.datanote.exception.ResourceNotFoundException;
 import com.datanote.model.*;
 import com.datanote.service.DolphinService;
 import com.datanote.service.ScriptService;
+import com.datanote.service.LineageEdgeService;
 import com.datanote.service.TaskDependencyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +30,7 @@ public class LineageController {
     private final DolphinService dolphinService;
     private final ScriptService scriptService;
     private final TaskDependencyService taskDependencyService;
+    private final LineageEdgeService lineageEdgeService;
 
     @GetMapping("/{scriptId}")
     @Operation(summary = "查询脚本血缘关系")
@@ -105,5 +107,26 @@ public class LineageController {
     @Operation(summary = "查询任务依赖列表")
     public R<List<DnTaskDependency>> listDeps(@RequestParam Long taskId, @RequestParam String taskType) {
         return R.ok(taskDependencyService.listDependencies(taskId, taskType));
+    }
+
+    @PostMapping("/rebuild-edges")
+    @Operation(summary = "从同步任务重建字段级血缘边")
+    public R<Map<String, Object>> rebuildEdges() {
+        int count = lineageEdgeService.rebuildFromSyncJobs();
+        Map<String, Object> result = new HashMap<>();
+        result.put("edgeCount", count);
+        return R.ok(result);
+    }
+
+    @GetMapping("/table-edges")
+    @Operation(summary = "查询表级上下游血缘")
+    public R<Map<String, List<DnLineageEdge>>> tableEdges(@RequestParam String db, @RequestParam String table) {
+        return R.ok(lineageEdgeService.tableNeighbors(db, table));
+    }
+
+    @GetMapping("/column-edges")
+    @Operation(summary = "查询字段级入边(目标列来源)")
+    public R<List<DnLineageEdge>> columnEdges(@RequestParam String db, @RequestParam String table) {
+        return R.ok(lineageEdgeService.columnEdgesInto(db, table));
     }
 }
