@@ -154,7 +154,7 @@ public class CdcEngineManager {
         String targetType = targetDs.getType() == null ? "MYSQL" : targetDs.getType().toUpperCase();
         CdcSyncEngine engine = new CdcSyncEngine(job, sourceDs, tables,
                 connectionManager, logBroadcastService, cryptoKey, targetType, serverIdBase,
-                cdcMaxBatchSize, cdcMaxQueueSize, cdcPollIntervalMs);
+                cdcMaxBatchSize, cdcMaxQueueSize, cdcPollIntervalMs, 30000, null);
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");
