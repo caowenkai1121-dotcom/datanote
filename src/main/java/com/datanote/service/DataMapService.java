@@ -572,193 +572,55 @@ public class DataMapService {
     // ========== 分区信息 ==========
 
     /**
-     * 获取 Hive 表的分区列表，包含分区值、数据量、创建时间、修改时间
+     * 获取 Doris 表的分区列表。DataNote 建的 ODS 表多为非分区表，
+     * Doris 非分区表执行 SHOW PARTITIONS 会报错，此处捕获并返回空列表。
      */
     public List<Map<String, Object>> getPartitions(String db, String table) throws SQLException {
         List<Map<String, Object>> partitions = new ArrayList<Map<String, Object>>();
-        // DataNote-created Doris ODS tables store dt as a normal column, not a Hive/HDFS partition.
-        if (System.currentTimeMillis() >= 0) {
-            return partitions;
-        }
-
-        // 1. 获取所有分区
-        List<String> partitionSpecs = new ArrayList<String>();
+        String sql = "SHOW PARTITIONS FROM `" + db + "`.`" + table + "`";
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW PARTITIONS " + db + "." + table)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
+            ResultSetMetaData md = rs.getMetaData();
+            int cols = md.getColumnCount();
             while (rs.next()) {
-                partitionSpecs.add(rs.getString(1));
+                Map<String, Object> raw = new LinkedHashMap<String, Object>();
+                for (int i = 1; i <= cols; i++) {
+                    raw.put(md.getColumnLabel(i), rs.getObject(i));
+                }
+                partitions.add(mapDorisPartitionRow(raw));
             }
         } catch (SQLException e) {
-            // 非分区表会抛异常，返回空列表
-            if (e.getMessage() != null && e.getMessage().contains("not a partitioned table")) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            // 非分区表：Doris 提示 "is not a partitioned table" / "unpartitioned table"
+            if (msg.contains("not a partitioned") || msg.contains("not partitioned")
+                    || msg.contains("unpartitioned")) {
                 return partitions;
             }
             throw e;
         }
-
-        // 2. 逐个分区获取元数据
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement()) {
-            for (String spec : partitionSpecs) {
-                Map<String, Object> pInfo = new LinkedHashMap<String, Object>();
-                // spec 格式: dt=2026-03-28 或 dt=2026-03-28/hour=01
-                pInfo.put("partition", spec);
-
-                // 解析分区条件用于 DESCRIBE FORMATTED
-                String partitionCond = spec.replace("/", ", ");
-                // dt=2026-03-28 -> dt='2026-03-28'
-                StringBuilder formattedCond = new StringBuilder();
-                String[] parts = partitionCond.split(", ");
-                for (int i = 0; i < parts.length; i++) {
-                    String[] kv = parts[i].split("=", 2);
-                    if (i > 0) formattedCond.append(", ");
-                    formattedCond.append(kv[0]).append("='").append(kv.length > 1 ? kv[1] : "").append("'");
-                }
-
-                long totalSize = 0;
-                long numRows = 0;
-                String createTime = "";
-                String lastDdlTime = "";
-
-                try {
-                    String sql = "DESCRIBE FORMATTED " + db + "." + table
-                            + " PARTITION (" + formattedCond.toString() + ")";
-                    try (ResultSet rs = stmt.executeQuery(sql)) {
-                        while (rs.next()) {
-                            String col1 = rs.getString(1);
-                            String col2 = rs.getString(2);
-                            String col3 = rs.getMetaData().getColumnCount() >= 3 ? rs.getString(3) : null;
-
-                            // DESCRIBE FORMATTED 有两种格式:
-                            // 格式1: col1=key, col2=value (如 CreateTime:)
-                            // 格式2: col1="", col2=key, col3=value (如 numRows, totalSize, transient_lastDdlTime)
-                            String key1 = col1 != null ? col1.trim() : "";
-                            String val2 = col2 != null ? col2.trim() : "";
-                            String val3 = col3 != null ? col3.trim() : "";
-
-                            if (key1.startsWith("CreateTime")) {
-                                createTime = val2;
-                            } else if (key1.isEmpty() && !val2.isEmpty()) {
-                                // 统计信息行: col1为空, col2=key, col3=value
-                                if ("transient_lastDdlTime".equals(val2)) {
-                                    if (!val3.isEmpty()) {
-                                        try {
-                                            long ts = Long.parseLong(val3);
-                                            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                                            lastDdlTime = sdf.format(new java.util.Date(ts * 1000));
-                                        } catch (NumberFormatException e) {
-                                            lastDdlTime = val3;
-                                        }
-                                    }
-                                } else if ("totalSize".equals(val2)) {
-                                    try { totalSize = Long.parseLong(val3); } catch (Exception e) { /* ignore */ }
-                                } else if ("numRows".equals(val2)) {
-                                    try { numRows = Long.parseLong(val3); } catch (Exception e) { /* ignore */ }
-                                }
-                            }
-                        }
-                    }
-                } catch (SQLException e) {
-                    log.warn("获取分区 {} 元数据失败: {}", spec, e.getMessage());
-                }
-
-                // Hive 统计信息不可靠，直接查真实行数和文件大小
-                // 分区数 <= 30 时逐分区查行数，避免分区过多时太慢
-                if (partitionSpecs.size() <= 30 && numRows == 0) {
-                    try (Connection countConn = hiveConfig.getConnection();
-                         Statement countStmt = countConn.createStatement()) {
-                        String whereCond = formattedCond.toString().replace(",", " AND ");
-                        String countSql = "SELECT COUNT(*) FROM " + db + "." + table
-                                + " WHERE " + whereCond;
-                        try (ResultSet crs = countStmt.executeQuery(countSql)) {
-                            if (crs.next()) numRows = crs.getLong(1);
-                        }
-                    } catch (SQLException e) {
-                        log.warn("查询分区 {} 行数失败: {}", spec, e.getMessage());
-                    }
-                }
-                // 如果 totalSize 为 0，通过 HDFS 命令获取
-                if (totalSize == 0) {
-                    totalSize = getHdfsPartitionSize(db, table, spec);
-                }
-
-                pInfo.put("numRows", numRows);
-                pInfo.put("totalSize", totalSize);
-                pInfo.put("totalSizeDisplay", formatBytes(totalSize));
-                pInfo.put("createTime", createTime);
-                pInfo.put("lastModified", lastDdlTime);
-                partitions.add(pInfo);
-            }
-        }
-
         return partitions;
     }
 
-    @Value("${hadoop.home:#{systemProperties['HADOOP_HOME'] ?: '/opt/hadoop'}}")
-    private String hadoopHome;
-
     /**
-     * 通过 hdfs dfs -du -s 获取分区目录的真实文件大小
+     * 把 Doris SHOW PARTITIONS 的一行（列名→值）映射为前端使用的分区信息。
+     * 抽成静态纯函数便于单元测试。
      */
-    private long getHdfsPartitionSize(String db, String table, String partitionSpec) {
-        try {
-            String path = hiveWarehouse + "/" + db + ".db/" + table + "/" + partitionSpec;
-            String hadoopDir = System.getenv("HADOOP_HOME") != null
-                    ? System.getenv("HADOOP_HOME")
-                    : hadoopHome;
-            String hdfsCmd = hadoopDir + "/bin/hdfs";
-
-            ProcessBuilder pb = new ProcessBuilder(hdfsCmd, "dfs", "-du", "-s", path);
-            pb.redirectErrorStream(true);
-            Map<String, String> env = pb.environment();
-            env.put("HADOOP_HOME", hadoopDir);
-            if (System.getenv("JAVA_HOME") != null) {
-                env.put("JAVA_HOME", System.getenv("JAVA_HOME"));
-            } else {
-                env.put("JAVA_HOME", "/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home");
-            }
-
-            Process proc = pb.start();
-            StringBuilder sb = new StringBuilder();
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(proc.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line).append("\n");
-                }
-            }
-            proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
-
-            if (proc.exitValue() == 0) {
-                String output = sb.toString().trim();
-                // 跳过 WARN 行，找到数据行
-                for (String line : output.split("\n")) {
-                    line = line.trim();
-                    if (!line.isEmpty() && !line.contains("WARN") && Character.isDigit(line.charAt(0))) {
-                        String[] parts = line.split("\\s+");
-                        if (parts.length >= 1) {
-                            return Long.parseLong(parts[0]);
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("获取 HDFS 分区大小失败: {}.{}/{}, 原因: {}", db, table, partitionSpec, e.getMessage());
-        }
-        return 0;
+    static Map<String, Object> mapDorisPartitionRow(Map<String, Object> raw) {
+        Map<String, Object> p = new LinkedHashMap<String, Object>();
+        p.put("partition", str(raw.get("PartitionName")));
+        p.put("partitionKey", str(raw.get("PartitionKey")));
+        p.put("range", str(raw.get("Range")));
+        p.put("buckets", raw.get("Buckets"));
+        p.put("state", str(raw.get("State")));
+        // Doris 的 DataSize 已是可读字符串（如 "1.234 GB"）
+        p.put("totalSizeDisplay", str(raw.get("DataSize")));
+        p.put("lastModified", str(raw.get("VisibleVersionTime")));
+        return p;
     }
 
-    private String formatBytes(long bytes) {
-        if (bytes <= 0) return "0 B";
-        String[] units = {"B", "KB", "MB", "GB", "TB"};
-        int idx = 0;
-        double size = bytes;
-        while (size >= 1024 && idx < units.length - 1) {
-            size /= 1024;
-            idx++;
-        }
-        return String.format("%.1f %s", size, units[idx]);
+    private static String str(Object o) {
+        return o == null ? "" : o.toString().trim();
     }
 
     private String extractJsonArray(String text) {
