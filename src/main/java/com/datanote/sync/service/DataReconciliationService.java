@@ -71,6 +71,98 @@ public class DataReconciliationService {
         }
     }
 
+    /** 分桶 checksum 深度对账:每表两端按主键分桶比对 count+xor,定位差异桶。 */
+    public Map<String, Object> checksum(Long jobId) throws Exception {
+        DnSyncJob job = syncJobService.getById(jobId);
+        if (job == null) throw new IllegalArgumentException("任务不存在: " + jobId);
+        int buckets = 16;
+        DbConnector src = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
+        DbConnector tgt = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
+        List<Map<String, Object>> tableResults = new ArrayList<>();
+        boolean allMatch = true;
+        for (com.datanote.sync.dto.TableSyncConfig tc : syncJobService.parseTables(job)) {
+            Map<String, Object> tr = new LinkedHashMap<>();
+            tr.put("table", tc.getSourceTable() + "->" + tc.getTargetTable());
+            try {
+                com.datanote.sync.connector.TableMeta meta = src.getTableMeta(job.getSourceDb(), tc.getSourceTable());
+                com.datanote.sync.util.FieldMappingResolver.Resolved fm =
+                    com.datanote.sync.util.FieldMappingResolver.resolve(tc, meta.getColumns(), meta.getPrimaryKeys());
+                if (fm.pkSourceColumns.isEmpty()) {
+                    tr.put("match", false);
+                    tr.put("error", "无主键,不支持checksum");
+                    allMatch = false;
+                    tableResults.add(tr);
+                    continue;
+                }
+                Map<Long, long[]> srcMap = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
+                Map<Long, long[]> tgtMap = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
+                List<Map<String, Object>> mism = new ArrayList<>();
+                java.util.Set<Long> allKeys = new java.util.TreeSet<>();
+                allKeys.addAll(srcMap.keySet());
+                allKeys.addAll(tgtMap.keySet());
+                for (Long b : allKeys) {
+                    long[] s = srcMap.getOrDefault(b, new long[]{0, 0});
+                    long[] t = tgtMap.getOrDefault(b, new long[]{0, 0});
+                    if (s[0] != t[0] || s[1] != t[1]) {
+                        Map<String, Object> mb = new LinkedHashMap<>();
+                        mb.put("bucket", b);
+                        mb.put("sourceCnt", s[0]);
+                        mb.put("targetCnt", t[0]);
+                        mb.put("sourceChk", s[1]);
+                        mb.put("targetChk", t[1]);
+                        mism.add(mb);
+                    }
+                }
+                boolean match = mism.isEmpty();
+                allMatch &= match;
+                tr.put("bucketCount", buckets);
+                tr.put("match", match);
+                tr.put("mismatchBuckets", mism);
+            } catch (Exception e) {
+                tr.put("match", false);
+                tr.put("error", e.getMessage());
+                allMatch = false;
+            }
+            tableResults.add(tr);
+        }
+        writeChecksumExec(jobId, allMatch, tableResults);
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("ok", allMatch);
+        r.put("tables", tableResults);
+        return r;
+    }
+
+    private Map<Long, long[]> runChecksum(DbConnector conn, String db, String table,
+                                           List<String> cols, List<String> pks, int buckets) throws Exception {
+        String sql = com.datanote.sync.util.ChecksumSqlBuilder.build(db, table, cols, pks, buckets);
+        Map<Long, long[]> m = new LinkedHashMap<>();
+        try (Connection c = conn.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                m.put(rs.getLong("bk"), new long[]{rs.getLong("cnt"), rs.getLong("chk")});
+            }
+        }
+        return m;
+    }
+
+    private void writeChecksumExec(Long jobId, boolean ok, List<Map<String, Object>> rows) {
+        try {
+            DnTaskExecution e = new DnTaskExecution();
+            e.setSyncTaskId(jobId);
+            e.setTaskType("DataChecksum");
+            e.setTriggerType("manual");
+            e.setStatus(ok ? "SUCCESS" : "FAILED");
+            e.setStartTime(java.time.LocalDateTime.now());
+            e.setEndTime(java.time.LocalDateTime.now());
+            e.setCreatedAt(java.time.LocalDateTime.now());
+            e.setLog(JSON.toJSONString(rows));
+            taskExecutionMapper.insert(e);
+        } catch (Exception ex) {
+            log.warn("checksum执行记录失败 jobId={}", jobId, ex);
+        }
+    }
+
     private void writeExec(Long jobId, boolean ok, List<Map<String, Object>> rows) {
         try {
             DnTaskExecution e = new DnTaskExecution();
