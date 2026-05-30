@@ -169,8 +169,8 @@ public class DataReconciliationService {
     private static long[] md5ToLongs(String hex) {
         if (hex == null || hex.length() < 32) return new long[]{0L, 0L};
         long hi = 0, lo = 0;
-        for (int i = 0; i < 16; i++) hi = (hi << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
-        for (int i = 16; i < 32; i++) lo = (lo << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
+        for (int i = 0; i < 8; i++) hi = (hi << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
+        for (int i = 8; i < 16; i++) lo = (lo << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
         return new long[]{hi, lo};
     }
 
