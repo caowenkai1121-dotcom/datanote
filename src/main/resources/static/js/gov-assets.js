@@ -189,20 +189,174 @@
         return;
       }
       var rows = tables.slice(0, 200).map(function (t) {
-        return '<tr><td>' + DN.esc(t.dbType || '') + '</td><td>' + DN.esc(t.databaseName || '') +
-          '</td><td>' + DN.esc(t.tableName || '') + '</td><td>' + DN.esc(t.tableComment || '') +
+        var db = t.databaseName || '', tb = t.tableName || '';
+        var key = DN.esc(db) + '|' + DN.esc(tb);
+        return '<tr><td>' + DN.esc(t.dbType || '') + '</td><td>' + DN.esc(db) +
+          '</td><td>' + DN.esc(tb) + '</td><td>' + DN.esc(t.tableComment || '') +
           '</td><td style="text-align:right">' + (t.rowCount == null ? '-' : t.rowCount) +
-          '</td><td style="text-align:right">' + DN.fmtBytes(t.sizeBytes) + '</td></tr>';
+          '</td><td style="text-align:right">' + DN.fmtBytes(t.sizeBytes) +
+          '</td><td><a href="javascript:void(0)" data-detail="' + key + '">详情</a></td></tr>' +
+          '<tr class="asset-detail-row" data-detail-row="' + key + '" style="display:none"><td colspan="7" style="padding:0"></td></tr>';
       }).join('');
       box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
         '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
         '<th style="padding:8px">来源</th><th style="padding:8px">库</th><th style="padding:8px">表</th>' +
         '<th style="padding:8px">业务描述</th><th style="padding:8px;text-align:right">行数</th>' +
-        '<th style="padding:8px;text-align:right">体量</th></tr></thead><tbody>' + rows + '</tbody></table>';
-      box.querySelectorAll('td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+        '<th style="padding:8px;text-align:right">体量</th><th style="padding:8px">操作</th></tr></thead><tbody>' +
+        rows + '</tbody></table>';
+      box.querySelectorAll('td').forEach(function (td) {
+        if (td.getAttribute('colspan')) return;
+        td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5';
+      });
+      box.querySelectorAll('[data-detail]').forEach(function (a) {
+        a.onclick = function () { toggleDetail(a.getAttribute('data-detail')); };
+      });
     }).catch(function (e) {
       var box = document.getElementById('assetList');
       if (box) box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
     });
+  }
+
+  // ===== F4：资产详情抽屉（字段元数据 + Profiler + 术语表 + 血缘） =====
+
+  function toggleDetail(key) {
+    var parts = key.split('|'); var db = parts[0], table = parts[1];
+    var row = document.querySelector('[data-detail-row="' + cssEsc(key) + '"]');
+    if (!row) return;
+    if (row.style.display !== 'none') { row.style.display = 'none'; return; }
+    row.style.display = '';
+    var cell = row.firstChild; // <td colspan=7>
+    cell.innerHTML = '';
+    var panel = DN.h('div', { style: 'padding:12px 8px;background:#f7f8fa' });
+    cell.appendChild(panel);
+    renderColumns(panel, db, table);
+    renderProfileSection(panel, db, table);
+    renderGlossarySection(panel);
+    renderLineageSection(panel, db, table);
+  }
+
+  // CSS 选择器转义（库表名可能含特殊字符）
+  function cssEsc(s) {
+    return String(s).replace(/[^a-zA-Z0-9_一-龥|]/g, function (c) { return '\\' + c; });
+  }
+
+  function subTitle(text) {
+    return DN.h('div', { text: text, style: 'font-weight:600;font-size:13px;color:#1d2129;margin:10px 0 6px' });
+  }
+  function tag(text, color, bg) {
+    return '<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:12px;color:' +
+      color + ';background:' + bg + '">' + DN.esc(text) + '</span>';
+  }
+
+  // 字段级元数据表（含密级/敏感标签）
+  function renderColumns(panel, db, table) {
+    panel.appendChild(subTitle('字段级元数据'));
+    var box = DN.h('div', { text: '加载中...' });
+    panel.appendChild(box);
+    var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+    DN.get('/api/gov/asset/detail' + qs).then(function (d) {
+      var cols = (d && d.columns) || [];
+      if (!cols.length) { box.innerHTML = '<div class="gov-placeholder">无字段元数据（请先采集）</div>'; return; }
+      var rows = cols.map(function (col) {
+        var sec = col.securityLevel ? tag(col.securityLevel, '#d4380d', '#fff1f0') : '-';
+        var sen = col.sensitiveType ? tag(col.sensitiveType, '#d46b08', '#fff7e6') : '-';
+        return '<tr><td>' + DN.esc(col.columnName || '') + '</td><td>' + DN.esc(col.dataType || '') +
+          '</td><td>' + DN.esc(col.columnKey || '') + '</td><td>' + DN.esc(col.isNullable || '') +
+          '</td><td>' + DN.esc(col.businessDesc || '') + '</td><td>' + sec + '</td><td>' + sen + '</td></tr>';
+      }).join('');
+      box.innerHTML = tableHtml(
+        [{ label: '列名' }, { label: '类型' }, { label: '键' }, { label: '可空' },
+          { label: '注释' }, { label: '密级' }, { label: '敏感类型' }], rows);
+      styleCells(box);
+    }).catch(function (e) { box.innerHTML = '<div class="gov-placeholder">加载失败: ' + DN.esc(e.message) + '</div>'; });
+  }
+
+  // Profiler 探查（下推数仓）
+  function renderProfileSection(panel, db, table) {
+    panel.appendChild(subTitle('Profiler 探查'));
+    var resultBox = DN.h('div', { class: 'gov-desc' });
+    var btn = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '执行探查（采样数仓）',
+      onclick: function () {
+        resultBox.innerHTML = '探查中（数仓聚合可能较慢）...';
+        var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        DN.get('/api/gov/asset/profile' + qs).then(function (p) {
+          var fields = (p && p.fields) || [];
+          var rows = fields.map(function (f) {
+            return '<tr><td>' + DN.esc(f.name) + '</td><td style="text-align:right">' +
+              (f.nullRate == null ? (f.error ? '错误' : '-') : DN.esc(f.nullRate)) +
+              '</td><td style="text-align:right">' + (f.distinctCount == null ? '-' : f.distinctCount) + '</td></tr>';
+          }).join('');
+          resultBox.innerHTML = '<div class="gov-desc">总行数: <b>' + (p.totalRows == null ? '-' : p.totalRows) +
+            '</b>，字段数: ' + (p.columnCount == null ? '-' : p.columnCount) +
+            '，已探查 ' + (p.profiledCount == null ? '-' : p.profiledCount) + ' 个</div>' +
+            tableHtml([{ label: '字段' }, { label: '空值率', right: true }, { label: 'distinct', right: true }], rows);
+          styleCells(resultBox);
+        }).catch(function (e) { resultBox.innerHTML = '<div class="gov-placeholder">' + DN.esc(e.message) + '</div>'; });
+      } });
+    panel.appendChild(btn);
+    panel.appendChild(resultBox);
+  }
+
+  // 业务术语表（查看 + 维护）
+  function renderGlossarySection(panel) {
+    panel.appendChild(subTitle('业务术语表'));
+    var form = DN.h('div', { class: 'gov-desc' });
+    var term = DN.h('input', { placeholder: '术语', style: 'margin-right:6px' });
+    var cat = DN.h('input', { placeholder: '分类', style: 'margin-right:6px' });
+    var def = DN.h('input', { placeholder: '定义', style: 'width:260px;margin-right:6px' });
+    var addBtn = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '新增术语',
+      onclick: function () {
+        if (!term.value.trim()) { DN.toast('术语名必填', 'error'); return; }
+        DN.post('/api/gov/asset/glossary', { term: term.value.trim(), category: cat.value.trim(), definition: def.value.trim() })
+          .then(function () { DN.toast('已新增'); term.value = ''; cat.value = ''; def.value = ''; loadGlossary(listBox); })
+          .catch(function (e) { DN.toast(e.message, 'error'); });
+      } });
+    form.appendChild(term); form.appendChild(cat); form.appendChild(def); form.appendChild(addBtn);
+    panel.appendChild(form);
+    var listBox = DN.h('div');
+    panel.appendChild(listBox);
+    loadGlossary(listBox);
+  }
+
+  function loadGlossary(box) {
+    DN.get('/api/gov/asset/glossary').then(function (list) {
+      list = list || [];
+      if (!list.length) { box.innerHTML = '<div class="gov-placeholder">暂无术语</div>'; return; }
+      var rows = list.map(function (g) {
+        return '<tr><td>' + DN.esc(g.term) + '</td><td>' + DN.esc(g.category || '') +
+          '</td><td>' + DN.esc(g.definition || '') +
+          '</td><td><a href="javascript:void(0)" data-gdel="' + g.id + '">删</a></td></tr>';
+      }).join('');
+      box.innerHTML = tableHtml(
+        [{ label: '术语' }, { label: '分类' }, { label: '定义' }, { label: '操作' }], rows);
+      styleCells(box);
+      box.querySelectorAll('[data-gdel]').forEach(function (a) {
+        a.onclick = function () {
+          DN.del('/api/gov/asset/glossary/' + a.getAttribute('data-gdel'))
+            .then(function () { DN.toast('已删除'); loadGlossary(box); })
+            .catch(function (e) { DN.toast(e.message, 'error'); });
+        };
+      });
+    }).catch(function () {});
+  }
+
+  // 查看血缘（内联调用血缘端点，不跳转）
+  function renderLineageSection(panel, db, table) {
+    panel.appendChild(subTitle('查看血缘'));
+    var box = DN.h('div', { class: 'gov-desc' });
+    var btn = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '查询上下游表',
+      onclick: function () {
+        box.innerHTML = '加载中...';
+        var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        DN.get('/api/lineage/table-edges' + qs).then(function (nb) {
+          nb = nb || {};
+          var up = (nb.upstream || []).map(function (e) { return e.srcDb + '.' + e.srcTable; });
+          var down = (nb.downstream || []).map(function (e) { return e.dstDb + '.' + e.dstTable; });
+          box.innerHTML = '<div class="gov-desc"><b>上游表:</b> ' + (up.length ? up.map(DN.esc).join(', ') : '无') +
+            '</div><div class="gov-desc"><b>下游表:</b> ' + (down.length ? down.map(DN.esc).join(', ') : '无') + '</div>';
+        }).catch(function (e) { box.innerHTML = '<div class="gov-placeholder">查询失败: ' + DN.esc(e.message) + '</div>'; });
+      } });
+    panel.appendChild(btn);
+    panel.appendChild(box);
   }
 })();
