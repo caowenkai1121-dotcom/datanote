@@ -59,4 +59,19 @@ public class CdcController {
     public R<java.util.Map<String, Object>> metrics(@PathVariable Long jobId) {
         return R.ok(cdcEngineManager.metrics(jobId));
     }
+
+    @Operation(summary = "重置 CDC(清位点+schema历史,可选重新全量快照)")
+    @PostMapping("/{jobId}/reset")
+    public R<String> reset(@PathVariable Long jobId,
+                           @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean confirm,
+                           @org.springframework.web.bind.annotation.RequestParam(defaultValue = "true") boolean restart) {
+        if (!confirm) return R.fail("高危操作,需 confirm=true 确认");
+        try {
+            cdcEngineManager.resetAndRestart(jobId, restart);
+            return R.ok(restart ? "已重置并重新全量快照" : "已重置(未重启)");
+        } catch (Exception e) {
+            log.error("重置 CDC 失败 jobId={}", jobId, e);
+            return R.fail("重置失败: " + e.getMessage());
+        }
+    }
 }
