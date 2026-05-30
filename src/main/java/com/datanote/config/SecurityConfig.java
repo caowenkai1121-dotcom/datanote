@@ -8,12 +8,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.util.Arrays;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -29,21 +34,44 @@ import javax.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
     private final AuthProperties authProperties;
+    private final DbUserDetailsService dbUserDetailsService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * 认证管理器：双数据源 provider。
+     * <p>
+     * 1) DB provider（dn_user 表）优先匹配；hideUserNotFoundExceptions=false 使得
+     *    用户在 dn_user 中找不到 / 表不存在时抛出 UsernameNotFoundException，
+     *    ProviderManager 会继续尝试下一个 provider，从而落到内存兜底 admin；
+     * 2) 内存 provider（配置 admin）兜底，保证即使 dn_user 为空/未建表，
+     *    配置里的 admin 仍能登录、不被锁死。
+     */
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
-        builder.inMemoryAuthentication()
-                .withUser(authProperties.getUsername())
-                .password(passwordEncoder().encode(
-                        authProperties.isEnabled() ? authProperties.getPassword() : "disabled"))
-                .roles("ADMIN");
-        return builder.build();
+    public AuthenticationManager authenticationManager() {
+        PasswordEncoder encoder = passwordEncoder();
+
+        // DB provider（dn_user 表）：优先匹配；找不到用户时不隐藏异常，便于回退到内存兜底
+        DaoAuthenticationProvider dbProvider = new DaoAuthenticationProvider();
+        dbProvider.setUserDetailsService(dbUserDetailsService);
+        dbProvider.setPasswordEncoder(encoder);
+        dbProvider.setHideUserNotFoundExceptions(false);
+
+        // 内存兜底 provider（沿用原配置 admin），保证 dn_user 为空/未建表时仍可登录、不锁死
+        InMemoryUserDetailsManager inMemory = new InMemoryUserDetailsManager(
+                User.withUsername(authProperties.getUsername())
+                        .password(encoder.encode(
+                                authProperties.isEnabled() ? authProperties.getPassword() : "disabled"))
+                        .roles("ADMIN")
+                        .build());
+        DaoAuthenticationProvider memProvider = new DaoAuthenticationProvider();
+        memProvider.setUserDetailsService(inMemory);
+        memProvider.setPasswordEncoder(encoder);
+
+        return new ProviderManager(Arrays.asList(dbProvider, memProvider));
     }
 
     @Bean
@@ -68,6 +96,8 @@ public class SecurityConfig {
                     .antMatchers("/ws/**").permitAll()
                     // 认证接口
                     .antMatchers("/api/auth/login", "/api/auth/status").permitAll()
+                    // 当前用户探测接口（未登录返回匿名信息，便于前端判断登录态）
+                    .antMatchers("/api/rbac/me").permitAll()
                     // 根路径重定向
                     .antMatchers("/").permitAll()
                     // 其他 API 需要认证

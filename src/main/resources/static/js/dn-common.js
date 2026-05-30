@@ -73,5 +73,15 @@
     });
   };
 
+  /** 字节可读化 */
+  DN.fmtBytes = function (n) {
+    if (n == null) return '-';
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0, v = Number(n);
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return v.toFixed(1) + ' ' + u[i];
+  };
+
   global.DN = DN;
+  // 治理模块渲染器注册表：各 js/gov-<key>.js 注册 render 到此，governance.html 据此渲染
+  global.GOV_RENDERERS = global.GOV_RENDERERS || {};
 })(window);

@@ -6,6 +6,7 @@ import com.datanote.model.*;
 import com.datanote.service.DolphinService;
 import com.datanote.service.ScriptService;
 import com.datanote.service.LineageEdgeService;
+import com.datanote.service.SqlLineageService;
 import com.datanote.service.TaskDependencyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +32,7 @@ public class LineageController {
     private final ScriptService scriptService;
     private final TaskDependencyService taskDependencyService;
     private final LineageEdgeService lineageEdgeService;
+    private final SqlLineageService sqlLineageService;
 
     @GetMapping("/{scriptId}")
     @Operation(summary = "查询脚本血缘关系")
@@ -128,5 +130,26 @@ public class LineageController {
     @Operation(summary = "查询字段级入边(目标列来源)")
     public R<List<DnLineageEdge>> columnEdges(@RequestParam String db, @RequestParam String table) {
         return R.ok(lineageEdgeService.columnEdgesInto(db, table));
+    }
+
+    @PostMapping("/parse-scripts")
+    @Operation(summary = "解析脚本SQL重建SQL血缘边")
+    public R<Map<String, Object>> parseScripts() {
+        int count = sqlLineageService.rebuildFromScripts();
+        Map<String, Object> result = new HashMap<>();
+        result.put("edgeCount", count);
+        return R.ok(result);
+    }
+
+    @GetMapping("/impact")
+    @Operation(summary = "下游影响清单(BFS)")
+    public R<List<Map<String, Object>>> impact(@RequestParam String db, @RequestParam String table) {
+        return R.ok(lineageEdgeService.impact(db, table));
+    }
+
+    @GetMapping("/trace")
+    @Operation(summary = "上游溯源清单(BFS)")
+    public R<List<Map<String, Object>>> trace(@RequestParam String db, @RequestParam String table) {
+        return R.ok(lineageEdgeService.trace(db, table));
     }
 }
