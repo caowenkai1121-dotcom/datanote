@@ -144,7 +144,7 @@ public class PostgresConnector implements DbConnector {
             int s = numScale == null ? 0 : numScale;
             return "decimal(" + p + "," + s + ")";
         }
-        if (t.startsWith("character varying") || t.equals("varchar")) {
+        if (t.equals("character varying") || t.equals("varchar")) {
             return charLen == null ? "text" : "varchar(" + charLen + ")";
         }
         if (t.startsWith("character") || t.equals("char") || t.equals("bpchar")) {

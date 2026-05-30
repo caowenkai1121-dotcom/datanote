@@ -7896,6 +7896,7 @@ function saveDatasource() {
 
 function testDatasource() {
   var ds = {
+    type: document.getElementById('dsType').value,
     host: document.getElementById('dsHost').value,
     port: parseInt(document.getElementById('dsPort').value) || 3306,
     username: document.getElementById('dsUser').value,
