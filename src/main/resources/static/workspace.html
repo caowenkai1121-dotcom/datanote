@@ -4594,6 +4594,7 @@ html, body {
           <button class="g-modal-close" onclick="dbsyncCloseDashboard()">&times;</button>
         </div>
         <div class="dbsync-modal-body" style="padding:16px 24px;">
+          <div id="dbsyncDashboardSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;"></div>
           <table class="dbsync-exec-table" style="width:100%;">
             <thead>
               <tr>
@@ -15475,6 +15476,33 @@ function dbsyncFetchDashboard() {
     var body = document.getElementById('dbsyncDashboardBody');
     if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--error);padding:20px;">加载失败，请重试</td></tr>';
   });
+  // DS-M3：run 级汇总（复用 dn_task_execution + dn_sync_error_row）
+  api('/api/sync-job/dashboard/summary').then(function(res) {
+    var s = (res && res.code === 0) ? (res.data || {}) : (res || {});
+    dbsyncRenderDashboardSummary(s);
+  }).catch(function() {});
+}
+
+function dbsyncDashTile(label, value, color) {
+  return '<div style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;">'
+    + '<div style="font-size:20px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>';
+}
+function dbsyncRenderDashboardSummary(s) {
+  var box = document.getElementById('dbsyncDashboardSummary');
+  if (!box) return;
+  var rate = (s.successRate != null) ? (Math.round(s.successRate * 1000) / 10) + '%' : '-';
+  var rateColor = (s.successRate != null && s.successRate < 0.9) ? '#ff4d4f' : '#52c41a';
+  var html = ''
+    + dbsyncDashTile('任务总数', s.jobsTotal != null ? s.jobsTotal : '-')
+    + dbsyncDashTile('运行中', s.running != null ? s.running : '-', '#1677ff')
+    + dbsyncDashTile('失败任务', s.failed != null ? s.failed : '-', (s.failed > 0 ? '#ff4d4f' : ''))
+    + dbsyncDashTile('成功率(近200次)', rate, rateColor)
+    + dbsyncDashTile('今日执行', s.runsToday != null ? s.runsToday : '-')
+    + dbsyncDashTile('今日写入行', s.rowsToday != null ? s.rowsToday : '-')
+    + dbsyncDashTile('坏行(DLQ)', s.dlqTotal != null ? s.dlqTotal : '-', (s.dlqTotal > 0 ? '#fa8c16' : ''))
+    + dbsyncDashTile('CDC最大延迟', (s.maxCdcLagMs != null ? s.maxCdcLagMs + ' ms' : '-'));
+  box.innerHTML = html;
 }
 
 function dbsyncRenderDashboard(list) {

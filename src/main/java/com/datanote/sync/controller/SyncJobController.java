@@ -232,6 +232,69 @@ public class SyncJobController {
         return R.ok(list);
     }
 
+    @Operation(summary = "大盘汇总(run级聚合:成功率/今日行数/DLQ/lag)")
+    @GetMapping("/dashboard/summary")
+    public R<java.util.Map<String, Object>> dashboardSummary() {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        java.util.List<DnSyncJob> jobs = syncJobService.list();
+        long running = 0, paused = 0, failed = 0;
+        for (DnSyncJob j : jobs) {
+            String st = j.getStatus();
+            if ("RUNNING".equalsIgnoreCase(st)) running++;
+            else if ("PAUSED".equalsIgnoreCase(st)) paused++;
+            else if ("FAILED".equalsIgnoreCase(st)) failed++;
+        }
+        m.put("jobsTotal", jobs.size());
+        m.put("running", running);
+        m.put("paused", paused);
+        m.put("failed", failed);
+        // 近200次 DbSync 执行算成功率 + 今日执行聚合
+        java.util.List<DnTaskExecution> recent = taskExecutionMapper.selectList(
+                new LambdaQueryWrapper<DnTaskExecution>()
+                        .eq(DnTaskExecution::getTaskType, "DbSync")
+                        .orderByDesc(DnTaskExecution::getId).last("LIMIT 200"));
+        java.time.LocalDateTime todayStart = java.time.LocalDate.now().atStartOfDay();
+        java.util.List<DnTaskExecution> today = taskExecutionMapper.selectList(
+                new LambdaQueryWrapper<DnTaskExecution>()
+                        .eq(DnTaskExecution::getTaskType, "DbSync")
+                        .ge(DnTaskExecution::getStartTime, todayStart));
+        m.putAll(aggregateRuns(recent, today));
+        long dlq = syncErrorRowMapper.selectCount(new LambdaQueryWrapper<DnSyncErrorRow>());
+        m.put("dlqTotal", dlq);
+        // CDC 最大延迟
+        long maxLag = -1;
+        for (DnSyncJob j : jobs) {
+            if ("CDC".equalsIgnoreCase(j.getSyncMode())) {
+                try {
+                    Object lag = cdcEngineManager.metrics(j.getId()).get("lagMs");
+                    if (lag instanceof Number) maxLag = Math.max(maxLag, ((Number) lag).longValue());
+                } catch (Exception ignore) { /* 单任务指标失败不影响汇总 */ }
+            }
+        }
+        m.put("maxCdcLagMs", maxLag < 0 ? null : maxLag);
+        return R.ok(m);
+    }
+
+    /** 纯函数:近 N 次执行算成功率 + 今日执行聚合(写入行/成功/失败)。 */
+    static java.util.Map<String, Object> aggregateRuns(java.util.List<DnTaskExecution> recent,
+                                                       java.util.List<DnTaskExecution> today) {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        long succ = 0;
+        for (DnTaskExecution e : recent) if ("SUCCESS".equalsIgnoreCase(e.getStatus())) succ++;
+        m.put("successRate", recent.isEmpty() ? null : (double) succ / recent.size());
+        long rowsToday = 0, successToday = 0, failedToday = 0;
+        for (DnTaskExecution e : today) {
+            if (e.getWriteCount() != null) rowsToday += e.getWriteCount();
+            if ("SUCCESS".equalsIgnoreCase(e.getStatus())) successToday++;
+            else if ("FAILED".equalsIgnoreCase(e.getStatus())) failedToday++;
+        }
+        m.put("runsToday", (long) today.size());
+        m.put("rowsToday", rowsToday);
+        m.put("successToday", successToday);
+        m.put("failedToday", failedToday);
+        return m;
+    }
+
     private static java.util.Map<String, Object> prefixCdc(java.util.Map<String, Object> cdc) {
         java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
         if (cdc != null) {
