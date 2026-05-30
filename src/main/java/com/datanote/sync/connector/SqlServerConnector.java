@@ -9,27 +9,28 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * PostgreSQL 源连接器（DS-M8）。
- * <p>「db」语义为 PG schema（连接库取自数据源 databaseName，由 ConnectionManager 处理）；
- * 标识符双引号引用；元数据走 information_schema；列类型归一为 MySQL 词汇，复用既有
- * mysqlToDoris/DorisDialect 自动建表，无需新增类型映射。
- * <p>第一版：支持有主键表的全量/增量 keyset 同步 + COUNT 对账；无主键流式扫描与 CDC 暂不支持。
+ * SQL Server 源连接器（DS-M9）。
+ * <p>「db」语义为 schema（默认 dbo；连接库取数据源 databaseName，由 ConnectionManager 处理）；
+ * 标识符方括号引用；分页用 OFFSET/FETCH（参数末位，绑定顺序同 MySQL LIMIT）；
+ * 列类型归一为 MySQL 词汇复用 mysqlToDoris/DorisDialect 自动建表。
+ * <p>第一版：单主键表全量/增量 keyset + COUNT 对账；复合主键(SQLServer 不支持行值比较)、
+ * 无主键流式、CDC、深度 checksum 为后续。
  */
-public class PostgresConnector implements DbConnector {
+public class SqlServerConnector implements DbConnector {
 
     private final ConnectionManager connectionManager;
     private final Long datasourceId;
     private final String defaultSchema;
 
-    public PostgresConnector(ConnectionManager connectionManager, Long datasourceId, String defaultSchema) {
+    public SqlServerConnector(ConnectionManager connectionManager, Long datasourceId, String defaultSchema) {
         this.connectionManager = connectionManager;
         this.datasourceId = datasourceId;
-        this.defaultSchema = (defaultSchema == null || defaultSchema.trim().isEmpty()) ? "public" : defaultSchema;
+        this.defaultSchema = (defaultSchema == null || defaultSchema.trim().isEmpty()) ? "dbo" : defaultSchema;
     }
 
     @Override
     public String getDatabaseType() {
-        return "POSTGRESQL";
+        return "SQLSERVER";
     }
 
     @Override
@@ -109,7 +110,7 @@ public class PostgresConnector implements DbConnector {
                     ColumnDef col = new ColumnDef();
                     String name = rs.getString("column_name");
                     col.setName(name);
-                    col.setColumnType(pgTypeToMysql(rs.getString("data_type"),
+                    col.setColumnType(sqlServerTypeToMysql(rs.getString("data_type"),
                             toInt(rs.getObject("character_maximum_length")),
                             toInt(rs.getObject("numeric_precision")),
                             toInt(rs.getObject("numeric_scale"))));
@@ -124,56 +125,67 @@ public class PostgresConnector implements DbConnector {
     }
 
     /** information_schema 数值列在不同库返回 Short/Byte/Integer/BigDecimal，统一安全转 Integer。 */
-    static Integer toInt(Object o) {
+    public static Integer toInt(Object o) {
         return o == null ? null : ((Number) o).intValue();
     }
 
-    /** PG data_type → MySQL 列类型词汇（下游 mysqlToDoris/DorisDialect 复用，零额外映射）。 */
-    public static String pgTypeToMysql(String dataType, Integer charLen, Integer numPrec, Integer numScale) {
+    /** SQL Server data_type → MySQL 列类型词汇（复用 mysqlToDoris/DorisDialect）。 */
+    public static String sqlServerTypeToMysql(String dataType, Integer charLen, Integer numPrec, Integer numScale) {
         if (dataType == null) return "text";
         String t = dataType.trim().toLowerCase();
         switch (t) {
-            case "smallint": case "int2": return "smallint";
-            case "integer": case "int": case "int4": case "serial": return "int";
-            case "bigint": case "int8": case "bigserial": return "bigint";
-            case "real": case "float4": return "float";
-            case "double precision": case "float8": return "double";
-            case "boolean": case "bool": return "tinyint(1)";
+            case "tinyint": return "tinyint";
+            case "smallint": return "smallint";
+            case "int": return "int";
+            case "bigint": return "bigint";
+            case "bit": return "tinyint(1)";
+            case "real": return "float";
+            case "float": return "double";
+            case "money": case "smallmoney": return "decimal(19,4)";
             case "date": return "date";
-            case "text": case "json": case "jsonb": case "uuid": case "bytea": case "xml": return "text";
+            case "uniqueidentifier": return "varchar(64)";
+            case "text": case "ntext": case "xml":
+            case "varbinary": case "binary": case "image": return "text";
+            case "datetime": case "datetime2": case "smalldatetime": case "datetimeoffset": return "datetime";
+            case "time": return "varchar(32)";
             default:
                 break;
         }
-        if (t.startsWith("numeric") || t.startsWith("decimal")) {
+        if (t.equals("decimal") || t.equals("numeric")) {
             int p = numPrec == null ? 38 : Math.min(numPrec, 38);
             int s = numScale == null ? 0 : numScale;
             return "decimal(" + p + "," + s + ")";
         }
-        if (t.equals("character varying") || t.equals("varchar")) {
-            return charLen == null ? "text" : "varchar(" + charLen + ")";
+        if (t.equals("varchar") || t.equals("nvarchar")) {
+            // SQLServer max(-1) 或超大 → text
+            return (charLen == null || charLen < 0) ? "text" : "varchar(" + charLen + ")";
         }
-        if (t.startsWith("character") || t.equals("char") || t.equals("bpchar")) {
-            return charLen == null ? "char(1)" : "char(" + charLen + ")";
+        if (t.equals("char") || t.equals("nchar")) {
+            return (charLen == null || charLen < 0) ? "char(1)" : "char(" + charLen + ")";
         }
-        if (t.startsWith("timestamp")) return "datetime";
-        if (t.startsWith("time")) return "varchar(32)";
-        // 其余（数组/几何/网络等）统一 text → Doris STRING
         return "text";
     }
 
-    // ===== DS-M8：PG 方言读取 SQL（双引号引用，LIMIT/行值比较与 MySQL 同） =====
+    // ===== DS-M9：T-SQL 方言读取 SQL（方括号引用 + OFFSET/FETCH 分页） =====
 
     private static String q(String id) {
-        return "\"" + id.replace("\"", "\"\"") + "\"";
+        return "[" + id.replace("]", "]]") + "]";
     }
 
     private String full(String db, String table) {
         return q(schema(db)) + "." + q(table);
     }
 
+    private static void requireSinglePk(List<String> pkColumns) {
+        if (pkColumns == null || pkColumns.size() != 1) {
+            throw new IllegalStateException("SQL Server 源暂仅支持单主键 keyset/增量同步，当前主键数="
+                    + (pkColumns == null ? 0 : pkColumns.size()));
+        }
+    }
+
     @Override
     public String scanSql(String db, String table, List<String> columns, String extraWhere) {
-        String cols = columns.stream().map(PostgresConnector::q).collect(Collectors.joining(", "));
+        String cols = columns.stream().map(SqlServerConnector::q).collect(Collectors.joining(", "));
         StringBuilder sql = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(full(db, table));
         if (extraWhere != null && !extraWhere.trim().isEmpty()) sql.append(" WHERE ").append(extraWhere);
         return sql.toString();
@@ -182,36 +194,34 @@ public class PostgresConnector implements DbConnector {
     @Override
     public String keysetPageSql(String db, String table, List<String> columns,
                                 List<String> pkColumns, boolean hasCursor, String extraWhere) {
-        String cols = columns.stream().map(PostgresConnector::q).collect(Collectors.joining(", "));
-        String pkList = pkColumns.stream().map(PostgresConnector::q).collect(Collectors.joining(", "));
-        String orderBy = pkColumns.stream().map(p -> q(p) + " ASC").collect(Collectors.joining(", "));
-        String ph = pkColumns.stream().map(p -> "?").collect(Collectors.joining(", "));
+        requireSinglePk(pkColumns);
+        String cols = columns.stream().map(SqlServerConnector::q).collect(Collectors.joining(", "));
+        String pk = q(pkColumns.get(0));
         boolean hasFilter = extraWhere != null && !extraWhere.trim().isEmpty();
         StringBuilder sql = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(full(db, table));
         if (hasCursor && hasFilter) {
-            sql.append(" WHERE (").append(pkList).append(") > (").append(ph).append(") AND ").append(extraWhere);
+            sql.append(" WHERE ").append(pk).append(" > ? AND ").append(extraWhere);
         } else if (hasCursor) {
-            sql.append(" WHERE (").append(pkList).append(") > (").append(ph).append(")");
+            sql.append(" WHERE ").append(pk).append(" > ?");
         } else if (hasFilter) {
             sql.append(" WHERE ").append(extraWhere);
         }
-        sql.append(" ORDER BY ").append(orderBy).append(" LIMIT ?");
+        sql.append(" ORDER BY ").append(pk).append(" ASC OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY");
         return sql.toString();
     }
 
     @Override
     public String incrementalPageSql(String db, String table, List<String> columns,
                                      String incField, List<String> pkColumns, boolean firstPage, String extraWhere) {
-        String cols = columns.stream().map(PostgresConnector::q).collect(Collectors.joining(", "));
+        requireSinglePk(pkColumns);
+        String cols = columns.stream().map(SqlServerConnector::q).collect(Collectors.joining(", "));
         String inc = q(incField);
-        String pkList = pkColumns.stream().map(PostgresConnector::q).collect(Collectors.joining(", "));
-        String ph = pkColumns.stream().map(p -> "?").collect(Collectors.joining(", "));
-        String pkOrder = pkColumns.stream().map(p -> q(p) + " ASC").collect(Collectors.joining(", "));
+        String pk = q(pkColumns.get(0));
         String where = firstPage ? inc + " >= ?"
-                : "(" + inc + " > ? OR (" + inc + " = ? AND (" + pkList + ") > (" + ph + ")))";
+                : "(" + inc + " > ? OR (" + inc + " = ? AND " + pk + " > ?))";
         if (extraWhere != null && !extraWhere.trim().isEmpty()) where = where + " AND " + extraWhere;
         return "SELECT " + cols + " FROM " + full(db, table) + " WHERE " + where
-                + " ORDER BY " + inc + " ASC, " + pkOrder + " LIMIT ?";
+                + " ORDER BY " + inc + " ASC, " + pk + " ASC OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY";
     }
 
     @Override

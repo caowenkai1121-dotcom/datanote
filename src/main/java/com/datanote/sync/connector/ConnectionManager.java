@@ -65,6 +65,19 @@ public class ConnectionManager {
         return url.toString();
     }
 
+    /** 构建 SQL Server jdbcUrl（DS-M9，可单测）。db=SQLServer 数据库名（非 schema）。 */
+    public static String buildSqlServerUrl(String host, Integer port, String db, String extraParams) {
+        StringBuilder url = new StringBuilder("jdbc:sqlserver://").append(host).append(":").append(port).append(";");
+        if (db != null && !db.isEmpty()) {
+            url.append("databaseName=").append(db).append(";");
+        }
+        url.append("encrypt=false;trustServerCertificate=true;loginTimeout=10");
+        if (extraParams != null && !extraParams.isEmpty()) {
+            url.append(";").append(extraParams);
+        }
+        return url.toString();
+    }
+
     private static String poolKey(Long datasourceId, String db) {
         return datasourceId + ":" + (db == null ? "" : db);
     }
@@ -107,11 +120,15 @@ public class ConnectionManager {
         // DS-M8：按数据源 type 选驱动/URL（PG 连接库取 databaseName，同步「db」为 schema 不入 URL）
         String type = ds.getType() == null ? "MYSQL" : ds.getType().trim().toUpperCase();
         boolean pg = "POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type);
+        boolean mssql = "SQLSERVER".equals(type) || "MSSQL".equals(type) || "SQL_SERVER".equals(type);
         String url;
         String driver;
         if (pg) {
             url = buildPgUrl(ds.getHost(), ds.getPort(), ds.getDatabaseName(), ds.getExtraParams());
             driver = "org.postgresql.Driver";
+        } else if (mssql) {
+            url = buildSqlServerUrl(ds.getHost(), ds.getPort(), ds.getDatabaseName(), ds.getExtraParams());
+            driver = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
         } else {
             url = buildJdbcUrl(ds.getHost(), ds.getPort(), db != null ? db : ds.getDatabaseName(), ds.getExtraParams());
             driver = "com.mysql.cj.jdbc.Driver";

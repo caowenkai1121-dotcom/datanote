@@ -150,9 +150,21 @@ public class MetadataService {
         return t.startsWith("POSTGRE") || t.equals("PG");
     }
 
+    public static boolean isSqlServer(String type) {
+        if (type == null) return false;
+        String t = type.trim().toUpperCase();
+        return t.equals("SQLSERVER") || t.equals("MSSQL") || t.equals("SQL_SERVER");
+    }
+
     private static final String SQL_PG_SCHEMAS =
             "SELECT schema_name FROM information_schema.schemata "
             + "WHERE schema_name NOT IN ('information_schema','pg_catalog','pg_toast') ORDER BY schema_name";
+
+    private static final String SQL_MSSQL_SCHEMAS =
+            "SELECT schema_name FROM information_schema.schemata "
+            + "WHERE schema_name NOT IN ('sys','INFORMATION_SCHEMA','guest','db_owner','db_accessadmin',"
+            + "'db_securityadmin','db_ddladmin','db_backupoperator','db_datareader','db_datawriter',"
+            + "'db_denydatareader','db_denydatawriter') ORDER BY schema_name";
 
     private Connection getExternalConnection(String type, String host, int port, String username,
                                              String password, String databaseName) throws SQLException {
@@ -160,15 +172,22 @@ public class MetadataService {
             String db = (databaseName == null || databaseName.isEmpty()) ? "postgres" : databaseName;
             return DriverManager.getConnection("jdbc:postgresql://" + host + ":" + port + "/" + db, username, password);
         }
+        if (isSqlServer(type)) {
+            String dbSeg = (databaseName == null || databaseName.isEmpty()) ? "" : "databaseName=" + databaseName + ";";
+            String url = "jdbc:sqlserver://" + host + ":" + port + ";" + dbSeg
+                    + "encrypt=false;trustServerCertificate=true;loginTimeout=8";
+            return DriverManager.getConnection(url, username, password);
+        }
         return getExternalConnection(host, port, username, password);
     }
 
     public List<String> getDatabasesByConnection(String type, String host, int port, String username,
                                                  String password, String databaseName) throws SQLException {
         try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
-            if (isPg(type)) {
+            if (isPg(type) || isSqlServer(type)) {
                 List<String> list = new ArrayList<>();
-                try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(SQL_PG_SCHEMAS)) {
+                try (Statement st = conn.createStatement();
+                     ResultSet rs = st.executeQuery(isPg(type) ? SQL_PG_SCHEMAS : SQL_MSSQL_SCHEMAS)) {
                     while (rs.next()) list.add(rs.getString(1));
                 }
                 return list;
@@ -187,8 +206,53 @@ public class MetadataService {
     public List<ColumnInfo> getColumnsByConnection(String type, String host, int port, String username,
                                                    String password, String databaseName, String db, String table) throws SQLException {
         try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
-            return isPg(type) ? queryPgColumns(conn, db, table) : queryColumns(conn, db, table);
+            if (isPg(type)) return queryPgColumns(conn, db, table);
+            if (isSqlServer(type)) return queryStdColumns(conn, db, table, true);
+            return queryColumns(conn, db, table);
         }
+    }
+
+    /** 标准 information_schema.columns + PK 查询（PG/SQLServer 通用），类型按 source 归一。
+     *  sqlserver=true 用 SqlServerConnector 归一，否则用 PG 归一。 */
+    private List<ColumnInfo> queryStdColumns(Connection conn, String schema, String table, boolean sqlserver) throws SQLException {
+        java.util.Set<String> pks = new java.util.HashSet<>();
+        String pkSql = "SELECT kcu.column_name FROM information_schema.table_constraints tc "
+                + "JOIN information_schema.key_column_usage kcu "
+                + "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema "
+                + "WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = ? AND tc.table_name = ?";
+        try (PreparedStatement ps = conn.prepareStatement(pkSql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) pks.add(rs.getString(1));
+            }
+        }
+        List<ColumnInfo> list = new ArrayList<>();
+        String sql = "SELECT column_name, data_type, character_maximum_length, numeric_precision, numeric_scale, is_nullable "
+                + "FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ColumnInfo col = new ColumnInfo();
+                    String name = rs.getString("column_name");
+                    col.setName(name);
+                    String dt = rs.getString("data_type");
+                    Integer cl = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length"));
+                    Integer np = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision"));
+                    Integer ns = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"));
+                    col.setType(com.datanote.sync.connector.SqlServerConnector.sqlServerTypeToMysql(dt, cl, np, ns));
+                    col.setComment("");
+                    col.setKey(pks.contains(name) ? "PRI" : "");
+                    col.setNullable(rs.getString("is_nullable"));
+                    col.setExtra("");
+                    col.setHiveType("string");
+                    list.add(col);
+                }
+            }
+        }
+        return list;
     }
 
     private List<ColumnInfo> queryPgColumns(Connection conn, String schema, String table) throws SQLException {
@@ -217,9 +281,9 @@ public class MetadataService {
                     col.setName(name);
                     col.setType(com.datanote.sync.connector.PostgresConnector.pgTypeToMysql(
                             rs.getString("data_type"),
-                            (Integer) rs.getObject("character_maximum_length"),
-                            (Integer) rs.getObject("numeric_precision"),
-                            (Integer) rs.getObject("numeric_scale")));
+                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length")),
+                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision")),
+                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"))));
                     col.setComment("");
                     col.setKey(pks.contains(name) ? "PRI" : "");
                     col.setNullable(rs.getString("is_nullable"));

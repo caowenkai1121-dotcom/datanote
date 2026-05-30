@@ -50,6 +50,13 @@
             <version>42.6.0</version>
         </dependency>
 
+        <!-- SQL Server Driver（DS-M9 异构源；jre8 分类器兼容 Java 8） -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>11.2.3.jre8</version>
+        </dependency>
+
         <!-- JSON -->
         <dependency>
             <groupId>com.alibaba</groupId>

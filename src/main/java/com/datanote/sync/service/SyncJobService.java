@@ -430,6 +430,10 @@ public class SyncJobService {
         if ("POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type)) {
             return new com.datanote.sync.connector.PostgresConnector(connectionManager, datasourceId, db);
         }
+        // DS-M9：SQL Server 源走 SqlServerConnector（db 即 schema，默认 dbo）
+        if ("SQLSERVER".equals(type) || "MSSQL".equals(type) || "SQL_SERVER".equals(type)) {
+            return new com.datanote.sync.connector.SqlServerConnector(connectionManager, datasourceId, db);
+        }
         return new MysqlConnector(connectionManager, datasourceId, db, type);
     }
 

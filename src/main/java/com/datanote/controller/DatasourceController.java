@@ -139,6 +139,10 @@ public class DatasourceController {
             if (com.datanote.service.MetadataService.isPg(ds.getType())) {
                 String db = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "postgres" : ds.getDatabaseName();
                 url = "jdbc:postgresql://" + ds.getHost() + ":" + ds.getPort() + "/" + db + "?connectTimeout=3";
+            } else if (com.datanote.service.MetadataService.isSqlServer(ds.getType())) {
+                String dbSeg = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "" : "databaseName=" + ds.getDatabaseName() + ";";
+                url = "jdbc:sqlserver://" + ds.getHost() + ":" + ds.getPort() + ";" + dbSeg
+                        + "encrypt=false;trustServerCertificate=true;loginTimeout=5";
             } else {
                 url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
                         + "/?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000";
