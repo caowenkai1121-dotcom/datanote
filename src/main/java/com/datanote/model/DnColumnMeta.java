@@ -21,6 +21,8 @@ public class DnColumnMeta {
     private String columnKey;
     private String isNullable;
     private Integer ordinal;
+    private String securityLevel;
+    private String sensitiveType;
     private LocalDateTime lastCollectedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
