@@ -196,6 +196,28 @@ class WorkspaceDbSyncUiTest {
     }
 
     @Test
+    void priorityAndDependencyControlsArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncPriority\""),
+                "advanced section should have a priority input");
+        assertTrue(html.contains("priority:"),
+                "save payload should include priority field");
+        assertTrue(html.contains("/dependencies"),
+                "detail drawer should call /dependencies endpoint");
+        assertTrue(html.contains("dbsyncLoadDeps"),
+                "should have a dbsyncLoadDeps function");
+        assertTrue(html.contains("dbsyncAddDep"),
+                "should have a dbsyncAddDep function");
+        assertTrue(html.contains("dbsyncRemoveDep"),
+                "should have a dbsyncRemoveDep function");
+        assertTrue(html.contains("id=\"dbsyncDepsList\""),
+                "dependency list container should have a stable id");
+        assertTrue(html.contains("id=\"dbsyncDepSelect\""),
+                "dependency upstream selector should have a stable id");
+    }
+
+    @Test
     void checkpointTabAndResetActionsArePresent() throws Exception {
         String html = readWorkspaceHtml();
 

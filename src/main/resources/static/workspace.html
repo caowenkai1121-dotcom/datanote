@@ -4461,6 +4461,10 @@ html, body {
                   <option value="1">开启</option>
                 </select>
               </div>
+              <div class="dbsync-form-row">
+                <label class="dbsync-form-label">调度优先级</label>
+                <input class="dbsync-form-input" type="number" id="dbsyncPriority" value="5" min="1" max="100" placeholder="大者先调度" style="width:100%;" title="大者先调度，默认5">
+              </div>
             </div>
           </div>
         </div>
@@ -13928,6 +13932,8 @@ function dbsyncResetAdvanced() {
   if (isnap) isnap.value = '0';
   var ddls = document.getElementById('dbsyncDdlSync');
   if (ddls) ddls.value = '0';
+  var pri = document.getElementById('dbsyncPriority');
+  if (pri) pri.value = '5';
   // 收起高级设置面板
   var sec = document.getElementById('dfsAdvancedSection');
   if (sec) sec.style.display = 'none';
@@ -13974,6 +13980,8 @@ function dbsyncFillAdvanced(job) {
   if (isnap) isnap.value = (job.incrementalSnapshotEnabled != null) ? String(job.incrementalSnapshotEnabled) : '0';
   var ddls = document.getElementById('dbsyncDdlSync');
   if (ddls) ddls.value = (job.ddlSyncEnabled != null) ? String(job.ddlSyncEnabled) : '0';
+  var pri = document.getElementById('dbsyncPriority');
+  if (pri) pri.value = (job.priority != null) ? String(job.priority) : '5';
   // 如有非默认值则自动展开
   if (dm === 'LOGICAL' || markTs || job.preSql || job.postSql) {
     var sec = document.getElementById('dfsAdvancedSection');
@@ -14143,6 +14151,7 @@ window.dbsyncSaveJob = function() {
   var rateLimitValueStr = ((document.getElementById('dbsyncRateLimitValue') || {}).value || '').trim();
   var incrSnapshotEnabled = parseInt(((document.getElementById('dbsyncIncrSnapshot') || {}).value || '0')) || 0;
   var ddlSyncEnabled = parseInt(((document.getElementById('dbsyncDdlSync') || {}).value || '0')) || 0;
+  var priorityStr = ((document.getElementById('dbsyncPriority') || {}).value || '5').trim();
   var body = {
     jobName:            jobName,
     syncMode:           syncMode,
@@ -14168,7 +14177,8 @@ window.dbsyncSaveJob = function() {
     rateLimitMode:      rateLimitMode,
     rateLimitValue:     rateLimitValueStr !== '' ? parseInt(rateLimitValueStr) : null,
     incrementalSnapshotEnabled: incrSnapshotEnabled,
-    ddlSyncEnabled:     ddlSyncEnabled
+    ddlSyncEnabled:     ddlSyncEnabled,
+    priority:           parseInt(priorityStr) || 5
   };
   if (deleteMode === 'LOGICAL') {
     body.logicalDeleteField = logicalDeleteField;
@@ -15079,9 +15089,85 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     + kv('最近运行', escapeHtml(lastRun))
     + kv('创建时间', escapeHtml(dbsyncFmtTime(job.createdAt)))
     + kv('更新时间', escapeHtml(dbsyncFmtTime(job.updatedAt)))
+    + kv('调度优先级', (job.priority != null ? job.priority : 5))
     + '</dl></div>';
+  // 上游依赖区块（id 固定，dbsyncLoadDeps 负责刷新内部内容）
+  html += '<div class="dbsync-detail-card" id="dbsyncDepsCard">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 2v10M3 6l4-4 4 4M3 10h8"/></svg> 上游依赖</div>'
+    + '<div id="dbsyncDepsList" style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">加载中...</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+    + '<select id="dbsyncDepSelect" class="dbsync-form-input" style="flex:1;min-width:160px;"><option value="">-- 选择上游任务 --</option></select>'
+    + '<button class="btn btn-sm btn-primary" onclick="dbsyncAddDep(' + job.id + ')">添加上游</button>'
+    + '</div></div>';
   pane.innerHTML = html;
+  // 填充候选上游下拉 + 加载已配依赖
+  dbsyncFillDepSelect(job.id);
+  dbsyncLoadDeps(job.id);
 }
+/* ---------- 上游依赖：填充候选下拉 ---------- */
+function dbsyncFillDepSelect(jobId) {
+  var sel = document.getElementById('dbsyncDepSelect');
+  if (!sel) return;
+  var all = (_dbsyncAllJobs || []).filter(function(j) { return j.id !== jobId; });
+  var opts = '<option value="">-- 选择上游任务 --</option>';
+  all.forEach(function(j) { opts += '<option value="' + j.id + '">' + escapeHtml(j.jobName || ('任务#' + j.id)) + '</option>'; });
+  sel.innerHTML = opts;
+}
+/* ---------- 上游依赖：加载已配列表 ---------- */
+function dbsyncLoadDeps(jobId) {
+  var list = document.getElementById('dbsyncDepsList');
+  if (!list) return;
+  api('/api/sync-job/' + jobId + '/dependencies').then(function(res) {
+    if (document.getElementById('dbsyncDepsList') !== list) return; // 抽屉已切换
+    var deps = (res && res.code === 0 && res.data) ? res.data : [];
+    if (deps.length === 0) {
+      list.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">暂无上游依赖</span>';
+      return;
+    }
+    var html = '<ul style="margin:0;padding:0;list-style:none;">';
+    deps.forEach(function(d) {
+      var uid = d.upstreamSyncJobId;
+      var upJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === uid; });
+      var label = upJob ? escapeHtml(upJob.jobName || ('任务#' + uid)) : ('任务#' + uid);
+      html += '<li style="display:flex;align-items:center;gap:8px;padding:3px 0;">'
+        + '<span style="font-size:12px;">' + label + ' <span style="color:var(--text-muted);font-size:11px;">(id:' + uid + ')</span></span>'
+        + '<button class="btn btn-sm" style="padding:1px 8px;font-size:11px;color:var(--error);" onclick="dbsyncRemoveDep(' + jobId + ',' + uid + ')">移除</button>'
+        + '</li>';
+    });
+    html += '</ul>';
+    list.innerHTML = html;
+  }).catch(function() {
+    if (document.getElementById('dbsyncDepsList') === list) list.innerHTML = '<span style="color:var(--error);font-size:12px;">加载失败</span>';
+  });
+}
+/* ---------- 上游依赖：添加 ---------- */
+window.dbsyncAddDep = function(jobId) {
+  var sel = document.getElementById('dbsyncDepSelect');
+  if (!sel || !sel.value) { showToast('请先选择上游任务', 'error'); return; }
+  var upId = parseInt(sel.value);
+  apiPost('/api/sync-job/' + jobId + '/dependencies?upstreamId=' + upId, {}).then(function(res) {
+    if (res && res.code === 0) {
+      showToast('已添加上游依赖', 'success');
+      sel.value = '';
+      dbsyncLoadDeps(jobId);
+    } else {
+      showToast('添加失败: ' + (res.msg || ''), 'error');
+    }
+  }).catch(function() { showToast('添加请求失败', 'error'); });
+};
+/* ---------- 上游依赖：移除 ---------- */
+window.dbsyncRemoveDep = function(jobId, upId) {
+  fetch('/api/sync-job/' + jobId + '/dependencies?upstreamId=' + upId, { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.code === 0) {
+        showToast('已移除', 'success');
+        dbsyncLoadDeps(jobId);
+      } else {
+        showToast('移除失败: ' + (res.msg || ''), 'error');
+      }
+    }).catch(function() { showToast('移除请求失败', 'error'); });
+};
 function dbsyncRenderConfig(job) {
   var pane = document.getElementById('dbsyncDetailPane_config');
   if (!pane) return;

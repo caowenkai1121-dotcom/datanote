@@ -1,8 +1,12 @@
 package com.datanote.sync.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncJobDependencyMapper;
 import com.datanote.mapper.DnSyncJobMapper;
+import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnSyncJob;
+import com.datanote.model.DnSyncJobDependency;
+import com.datanote.model.DnTaskExecution;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,8 +14,11 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PreDestroy;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +37,8 @@ public class SyncJobScheduler {
 
     private final DnSyncJobMapper syncJobMapper;
     private final SyncJobExecutor executor;
+    private final DnSyncJobDependencyMapper dependencyMapper;
+    private final DnTaskExecutionMapper taskExecutionMapper;
 
     /** 异步执行同步任务，避免阻塞调度线程 */
     private final ExecutorService executorService = Executors.newFixedThreadPool(4);
@@ -80,6 +89,11 @@ public class SyncJobScheduler {
                 LocalDateTime lastFire = lastFireMap.getOrDefault(jobId, now.minusMinutes(1));
 
                 if (shouldFire(cron, lastFire, now)) {
+                    // DAG 依赖门控：上游今日未全部 SUCCESS 则等待，不更新 lastFireMap，下个 tick 再判
+                    if (!depsReady(jobId)) {
+                        log.info("[SyncJobScheduler] 等待上游就绪，暂不触发 jobId={}", jobId);
+                        continue;
+                    }
                     lastFireMap.put(jobId, now);
                     log.info("[SyncJobScheduler] 触发任务 jobId={}, cron={}, mode={}", jobId, cron, job.getSyncMode());
                     executorService.submit(() -> {
@@ -94,6 +108,37 @@ public class SyncJobScheduler {
                 log.error("[SyncJobScheduler] 处理 job={} 时异常，跳过", job.getId(), e);
             }
         }
+    }
+
+    /**
+     * DAG 依赖门控：查该 job 的上游，对每个上游取今日（>= 当天 00:00）最新 DbSync 执行状态，
+     * 全部 SUCCESS 才就绪。无上游恒就绪。
+     */
+    private boolean depsReady(Long jobId) {
+        List<DnSyncJobDependency> deps = dependencyMapper.selectList(
+                new LambdaQueryWrapper<DnSyncJobDependency>()
+                        .eq(DnSyncJobDependency::getSyncJobId, jobId));
+        if (deps == null || deps.isEmpty()) {
+            return true;
+        }
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        List<Long> upstreamIds = new ArrayList<>();
+        Map<Long, String> latestStatus = new HashMap<>();
+        for (DnSyncJobDependency d : deps) {
+            Long up = d.getUpstreamSyncJobId();
+            upstreamIds.add(up);
+            DnTaskExecution last = taskExecutionMapper.selectOne(
+                    new LambdaQueryWrapper<DnTaskExecution>()
+                            .eq(DnTaskExecution::getSyncTaskId, up)
+                            .eq(DnTaskExecution::getTaskType, "DbSync")
+                            .ge(DnTaskExecution::getStartTime, todayStart)
+                            .orderByDesc(DnTaskExecution::getId)
+                            .last("LIMIT 1"));
+            if (last != null) {
+                latestStatus.put(up, last.getStatus());
+            }
+        }
+        return DepReadyChecker.allReady(upstreamIds, latestStatus);
     }
 
     /**
