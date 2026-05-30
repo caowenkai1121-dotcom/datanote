@@ -4423,6 +4423,11 @@ html, body {
                     <input class="dbsync-form-input" id="dfsLogicalDeleteValue" placeholder="标记值（默认1）" style="width:140px;">
                   </div>
                 </div>
+                <div style="font-size:11px;color:var(--text-muted);line-height:1.6;background:var(--bg-hover,#fafafa);border-radius:6px;padding:8px 10px;">
+                  删除捕获说明：<b>仅 CDC 模式</b>能捕获源端物理删除（按上面物理/逻辑模式落目标）。
+                  <b>全量/增量模式</b>不捕获物理删除；若源用软删标记列（如 is_deleted=1），该列会随 UPSERT 作为数据同步到目标，目标按数据值体现删除。
+                  需将源物理删除实时反映到目标，请使用 CDC 模式。
+                </div>
               </div>
               <div class="dbsync-form-row" style="grid-column:1/-1;">
                 <label class="dbsync-form-label">同步时标记时间戳</label>
