@@ -124,7 +124,7 @@ public class IncrementalSyncEngine implements SyncEngine {
 
             // writeSql 是循环不变量，writePs 提到分页循环外复用，保留 prepStmt 缓存与批处理重写收益
             try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
-                BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns.size(), tc.getSourceTable());
+                BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns, tc.getSourceTable(), tc.getTargetTable());
                 while (!ctx.getStopped().get()) {
                     String pageSql = firstPage ? firstSql : nextSql;
                     int rowsThisPage = 0;

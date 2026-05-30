@@ -51,6 +51,7 @@ public class SyncJobExecutor {
     private final TableSchemaService tableSchemaService;
     private final DnSyncJobMapper syncJobMapper;
     private final DnSyncErrorRowMapper syncErrorRowMapper;
+    private final com.datanote.sync.connector.ConnectionManager connectionManager;
     private final AuditLogService auditLogService;
     private final AlertService alertService;
 
@@ -251,6 +252,26 @@ public class SyncJobExecutor {
                 syncErrorRowMapper.insert(er);
             } catch (Exception ignore) { /* DLQ 落表失败不影响主流程 */ }
         });
+        // DS-M4：写入通道=STREAM_LOAD 且目标为 Doris/StarRocks 时装配 Stream Load 通道（失败回退 JDBC）
+        String wc = job.getWriteChannel();
+        if ("STREAM_LOAD".equalsIgnoreCase(wc)) {
+            String tt = target.getDatabaseType();
+            if ("DORIS".equalsIgnoreCase(tt) || "STARROCKS".equalsIgnoreCase(tt)) {
+                try {
+                    com.datanote.sync.connector.StreamLoadTarget slt = connectionManager.resolveStreamLoadTarget(job.getTargetDsId());
+                    String tdb = job.getTargetDb();
+                    java.util.concurrent.atomic.AtomicLong seq = new java.util.concurrent.atomic.AtomicLong();
+                    ctx.setStreamLoadChannel((tbl, cols, rows) -> com.datanote.sync.engine.StreamLoadWriter.load(
+                            slt, tdb, tbl, cols, rows,
+                            com.datanote.sync.engine.StreamLoadWriter.buildLabel(jobId, execId, tbl, seq.incrementAndGet())));
+                    ctx.log("INFO", "写入通道=STREAM_LOAD(Doris原生导入,失败自动回退JDBC)");
+                } catch (Exception e) {
+                    log.warn("Stream Load 通道初始化失败,回退JDBC jobId={}", jobId, e);
+                }
+            } else {
+                ctx.log("WARN", "写入通道=STREAM_LOAD 但目标非 Doris/StarRocks(" + tt + "),按 JDBC 执行");
+            }
+        }
         // 注册运行上下文，供停止/超时设置停止标志
         runningContexts.put(jobId, ctx);
 

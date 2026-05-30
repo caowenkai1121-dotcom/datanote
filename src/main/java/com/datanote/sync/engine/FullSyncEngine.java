@@ -131,7 +131,7 @@ public class FullSyncEngine implements SyncEngine {
         int batchSize = ctx.getBatchSize();
         boolean binaryWarned = false;
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
-            BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns.size(), tc.getSourceTable());
+            BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns, tc.getSourceTable(), tc.getTargetTable());
             while (!ctx.getStopped().get()) {
                 String pageSql = MysqlConnector.buildKeysetPageSqlMulti(
                         srcDb, tc.getSourceTable(), srcColumns, fm.pkSourceColumns, hasCursor, extraWhere);
@@ -222,7 +222,7 @@ public class FullSyncEngine implements SyncEngine {
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql);
              PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
             readPs.setFetchSize(Integer.MIN_VALUE); // MySQL 流式：逐行游标，避免整表载入内存
-            BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns.size(), tc.getSourceTable());
+            BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns, tc.getSourceTable(), tc.getTargetTable());
             try (ResultSet rs = readPs.executeQuery()) {
                 int inBatch = 0;
                 while (rs.next()) {

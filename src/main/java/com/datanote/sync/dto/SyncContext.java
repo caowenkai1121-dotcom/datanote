@@ -59,6 +59,8 @@ public class SyncContext {
     private java.util.function.Consumer<String> chunkClear = t -> {};
     // DS-M1：坏行落 DLQ 回调（默认空实现，执行器装配）
     private BadRowSink badRowSink = (table, row, err) -> {};
+    // DS-M4：Stream Load 写入通道（null=不启用,默认JDBC；执行器按 writeChannel 装配）
+    private StreamLoadChannel streamLoadChannel = null;
 
     private static boolean blank(String s) { return s == null || s.trim().isEmpty(); }
 

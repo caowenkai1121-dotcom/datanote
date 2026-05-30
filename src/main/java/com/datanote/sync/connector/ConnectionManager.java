@@ -57,6 +57,29 @@ public class ConnectionManager {
         return datasourceId + ":" + (db == null ? "" : db);
     }
 
+    /** DS-M4：解析 Stream Load HTTP 端点（端口默认 8030，extraParams 可含 dorisHttpPort=NNNN 覆盖）。 */
+    public StreamLoadTarget resolveStreamLoadTarget(Long datasourceId) {
+        DnDatasource ds = datasourceMapper.selectById(datasourceId);
+        if (ds == null) {
+            throw new IllegalArgumentException("数据源不存在: " + datasourceId);
+        }
+        String pwd = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
+        int httpPort = parseHttpPort(ds.getExtraParams(), 8030);
+        return new StreamLoadTarget(ds.getHost(), httpPort, ds.getUsername(), pwd);
+    }
+
+    /** 从 extraParams(JDBC 参数串)解析 dorisHttpPort，缺省返回 def。可单测。 */
+    public static int parseHttpPort(String extraParams, int def) {
+        if (extraParams == null) return def;
+        for (String kv : extraParams.split("&")) {
+            int i = kv.indexOf('=');
+            if (i > 0 && kv.substring(0, i).trim().equalsIgnoreCase("dorisHttpPort")) {
+                try { return Integer.parseInt(kv.substring(i + 1).trim()); } catch (NumberFormatException ignore) {}
+            }
+        }
+        return def;
+    }
+
     /** 获取（或懒建）指定数据源+库的连接，调用方负责 close（归还池）。 */
     public Connection getConnection(Long datasourceId, String db) throws SQLException {
         HikariDataSource pool = pools.computeIfAbsent(poolKey(datasourceId, db), k -> createPool(datasourceId, db));

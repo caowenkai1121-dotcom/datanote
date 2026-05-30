@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,7 +30,7 @@ public class BatchWriterSinkTest {
         List<String> capMsg = new ArrayList<>();
         ctx.setBadRowSink((tbl, row, err) -> { capTbl.add(tbl); capRow.add(row); capMsg.add(err); });
 
-        BatchWriter bw = new BatchWriter(ps, conn, ctx, 2, "appdb.users");
+        BatchWriter bw = new BatchWriter(ps, conn, ctx, Arrays.asList("id", "name"), "appdb.users", "ods.users");
         bw.add(new Object[]{1, "ok"});
         bw.add(new Object[]{2, "bad"});
         bw.flush();
@@ -52,7 +53,7 @@ public class BatchWriterSinkTest {
         SyncContext ctx = new SyncContext();
         ctx.setBadRowSink((tbl, row, err) -> { throw new RuntimeException("DLQ down"); });
 
-        BatchWriter bw = new BatchWriter(ps, conn, ctx, 1, "appdb.t");
+        BatchWriter bw = new BatchWriter(ps, conn, ctx, Arrays.asList("id"), "appdb.t", "ods.t");
         bw.add(new Object[]{1});
         // sink 抛错被吞，flush 不应抛出
         assertDoesNotThrow(bw::flush);

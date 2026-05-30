@@ -12,11 +12,16 @@ public final class BatchWriter {
     private final Connection conn;
     private final SyncContext ctx;
     private final int writeColCount;
+    private final List<String> writeColumns;
     private final String sourceTable;
+    private final String targetTable;
     private final List<Object[]> buffer = new ArrayList<>();
 
-    public BatchWriter(PreparedStatement ps, Connection conn, SyncContext ctx, int writeColCount, String sourceTable) {
-        this.ps = ps; this.conn = conn; this.ctx = ctx; this.writeColCount = writeColCount; this.sourceTable = sourceTable;
+    public BatchWriter(PreparedStatement ps, Connection conn, SyncContext ctx,
+                       List<String> writeColumns, String sourceTable, String targetTable) {
+        this.ps = ps; this.conn = conn; this.ctx = ctx;
+        this.writeColumns = writeColumns; this.writeColCount = writeColumns.size();
+        this.sourceTable = sourceTable; this.targetTable = targetTable;
     }
 
     public void add(Object[] writeRow) throws Exception {
@@ -30,6 +35,17 @@ public final class BatchWriter {
     public void flush() throws Exception {
         if (buffer.isEmpty()) return;
         try {
+            // DS-M4：Stream Load 通道优先（失败回退下方 JDBC 批写，保证不阻断）
+            com.datanote.sync.dto.StreamLoadChannel slc = ctx.getStreamLoadChannel();
+            if (slc != null) {
+                try {
+                    long loaded = slc.load(targetTable, writeColumns, buffer);
+                    ctx.getWriteCount().addAndGet(loaded > 0 ? loaded : buffer.size());
+                    return;
+                } catch (Exception slEx) {
+                    ctx.log("WARN", "Stream Load 失败,回退 JDBC: " + slEx.getMessage());
+                }
+            }
             ps.executeBatch();
             conn.commit();
             ctx.getWriteCount().addAndGet(buffer.size());

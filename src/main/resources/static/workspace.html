@@ -4374,6 +4374,13 @@ html, body {
               </select>
             </div>
             <div class="dbsync-form-row">
+              <label class="dbsync-form-label">写入通道 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">（STREAM_LOAD 仅 Doris/StarRocks）</span></label>
+              <select class="dbsync-form-select" id="dfsWriteChannel">
+                <option value="JDBC">JDBC（默认，逐批写入）</option>
+                <option value="STREAM_LOAD">STREAM_LOAD（Doris 原生导入，失败自动回退 JDBC）</option>
+              </select>
+            </div>
+            <div class="dbsync-form-row">
               <label class="dbsync-form-label">批量大小</label>
               <input class="dbsync-form-input" id="dfsBatchSize" type="number" value="1000" min="1" max="100000">
             </div>
@@ -14032,6 +14039,7 @@ window.dbsyncOpenCreateModal = function() {
   _dbsyncSrcTables = [];
   document.getElementById('dbsyncFormTitle').textContent = '新建同步任务';
   document.getElementById('dfsJobName').value = '';
+  document.getElementById('dfsWriteChannel').value = 'JDBC';
   document.querySelectorAll('input[name="dfsSyncMode"]').forEach(function(r) {
     r.checked = (r.value === 'FULL');
   });
@@ -14083,6 +14091,7 @@ window.dbsyncOpenEditModal = function(id) {
     document.getElementById('dfsSrcDsId').value  = job.sourceDsId || '';
     document.getElementById('dfsTgtDsId').value  = job.targetDsId || '';
     document.getElementById('dfsWriteMode').value = job.writeMode || 'UPSERT';
+    document.getElementById('dfsWriteChannel').value = job.writeChannel || 'JDBC';
     document.getElementById('dfsBatchSize').value = job.batchSize || 1000;
     document.getElementById('dfsScheduleCron').value = job.scheduleCron || '';
     document.getElementById('dfsStatus').value   = job.status || 'CREATED';
@@ -14151,6 +14160,7 @@ window.dbsyncSaveJob = function() {
   var tgtDsId    = document.getElementById('dfsTgtDsId').value;
   var tgtDb      = document.getElementById('dfsTgtDb').value;
   var writeMode  = document.getElementById('dfsWriteMode').value;
+  var writeChannel = document.getElementById('dfsWriteChannel').value;
   var batchSize  = parseInt(document.getElementById('dfsBatchSize').value) || 1000;
   var schedCron  = document.getElementById('dfsScheduleCron').value;
   var status     = document.getElementById('dfsStatus').value;
@@ -14194,6 +14204,7 @@ window.dbsyncSaveJob = function() {
     targetDsId:         parseInt(tgtDsId),
     targetDb:           tgtDb,
     writeMode:          writeMode,
+    writeChannel:       writeChannel,
     batchSize:          batchSize,
     scheduleCron:       schedCron,
     status:             status,
@@ -15217,6 +15228,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     + kv('目标端', escapeHtml(tgt))
     + kv('所属目录', escapeHtml(folderName))
     + kv('写入模式', escapeHtml(writeModeLabel))
+    + kv('写入通道', escapeHtml(job.writeChannel === 'STREAM_LOAD' ? 'STREAM_LOAD（Doris原生导入）' : 'JDBC'))
     + kv('批大小', (job.batchSize != null ? job.batchSize : '-'))
     + kv('调度周期', job.scheduleCron ? escapeHtml(job.scheduleCron) : '手动触发')
     + kv('最近运行', escapeHtml(lastRun))
@@ -15312,6 +15324,7 @@ function dbsyncRenderConfig(job) {
     + '<dl class="dbsync-kv">'
     + '<dt class="nb">同步模式</dt><dd class="nb">' + modeLabel + '</dd>'
     + kv('写入模式', escapeHtml(writeModeLabel))
+    + kv('写入通道', escapeHtml(job.writeChannel === 'STREAM_LOAD' ? 'STREAM_LOAD（Doris原生导入）' : 'JDBC'))
     + kv('批大小', (job.batchSize != null ? job.batchSize : '-'))
     + kv('调度周期', job.scheduleCron ? escapeHtml(job.scheduleCron) : '手动触发');
   var delLabel = (job.deleteMode === 'LOGICAL')

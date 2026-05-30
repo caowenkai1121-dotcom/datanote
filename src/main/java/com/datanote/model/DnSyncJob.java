@@ -21,6 +21,7 @@ public class DnSyncJob {
     private String tableConfig;     // JSON
     private String fieldMapping;    // JSON
     private String writeMode;       // UPSERT/INSERT/INSERT_IGNORE
+    private String writeChannel;    // JDBC(默认)/STREAM_LOAD(仅Doris/StarRocks目标)
     private Integer batchSize;
     private String scheduleCron;
     private String scheduleStatus;
