@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS dn_lineage_edge (
   job_id         BIGINT       DEFAULT NULL COMMENT '来源同步任务ID',
   created_at     DATETIME     DEFAULT CURRENT_TIMESTAMP,
   updated_at     DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_edge (level_type, src_db, src_table, src_column, dst_db, dst_table, dst_column, source),
+  -- 前缀索引：8 列全长在 utf8mb4 下超 InnoDB 3072 字节上限，按前缀取唯一(库表列名极少超此长度)
+  UNIQUE KEY uk_edge (level_type, src_db(64), src_table(128), src_column(128), dst_db(64), dst_table(128), dst_column(128), source),
   INDEX idx_src (src_db, src_table),
   INDEX idx_dst (dst_db, dst_table)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据血缘边';
