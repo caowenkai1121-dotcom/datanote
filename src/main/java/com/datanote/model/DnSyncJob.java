@@ -50,4 +50,8 @@ public class DnSyncJob {
     private Integer retryBackoffDelay;
     private String rateLimitMode;
     private Integer rateLimitValue;
+
+    // M4b CDC 深水
+    private Integer incrementalSnapshotEnabled;
+    private Integer ddlSyncEnabled;
 }
