@@ -165,4 +165,50 @@ public class SyncJobController {
         }
     }
 
+    // ===== M3c：监控大盘（放 Controller 避免 SyncJobService 注入 CdcEngineManager 成环） =====
+
+    @Operation(summary = "监控大盘(所有任务状态+最新计数+CDC指标)")
+    @GetMapping("/dashboard")
+    public R<java.util.List<java.util.Map<String, Object>>> dashboard() {
+        java.util.List<java.util.Map<String, Object>> list = new java.util.ArrayList<>();
+        for (DnSyncJob job : syncJobService.list()) {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", job.getId());
+            m.put("jobName", job.getJobName());
+            m.put("syncMode", job.getSyncMode());
+            m.put("status", job.getStatus());
+            m.put("scheduleStatus", job.getScheduleStatus());
+            DnTaskExecution last = taskExecutionMapper.selectOne(new LambdaQueryWrapper<DnTaskExecution>()
+                    .eq(DnTaskExecution::getSyncTaskId, job.getId())
+                    .eq(DnTaskExecution::getTaskType, "DbSync")
+                    .orderByDesc(DnTaskExecution::getId).last("LIMIT 1"));
+            if (last != null) {
+                m.put("lastStatus", last.getStatus());
+                m.put("lastReadCount", last.getReadCount());
+                m.put("lastWriteCount", last.getWriteCount());
+                m.put("lastErrorCount", last.getErrorCount());
+                m.put("lastTime", last.getStartTime());
+            }
+            if ("CDC".equalsIgnoreCase(job.getSyncMode())) {
+                try {
+                    m.putAll(prefixCdc(cdcEngineManager.metrics(job.getId())));
+                } catch (Exception ignore) {
+                    // CDC 指标获取失败忽略，不影响整体大盘
+                }
+            }
+            list.add(m);
+        }
+        return R.ok(list);
+    }
+
+    private static java.util.Map<String, Object> prefixCdc(java.util.Map<String, Object> cdc) {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        if (cdc != null) {
+            m.put("cdcRunning", cdc.get("running"));
+            m.put("cdcLagMs", cdc.get("lagMs"));
+            m.put("cdcEventsSeen", cdc.get("eventsSeen"));
+        }
+        return m;
+    }
+
 }
