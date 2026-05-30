@@ -240,4 +240,30 @@ public class SyncJobController {
         return R.ok("已重置chunk断点");
     }
 
+    // ===== M4c：任务依赖（轻量 DAG） =====
+
+    @Operation(summary = "查看上游依赖")
+    @GetMapping("/{id}/dependencies")
+    public R<List<com.datanote.model.DnSyncJobDependency>> dependencies(@PathVariable Long id) {
+        return R.ok(syncJobService.listDependencies(id));
+    }
+
+    @Operation(summary = "添加上游依赖（自依赖/成环返回 fail）")
+    @PostMapping("/{id}/dependencies")
+    public R<String> addDependency(@PathVariable Long id, @RequestParam Long upstreamId) {
+        try {
+            syncJobService.addDependency(id, upstreamId);
+            return R.ok("已添加上游依赖");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "移除上游依赖")
+    @DeleteMapping("/{id}/dependencies")
+    public R<String> removeDependency(@PathVariable Long id, @RequestParam Long upstreamId) {
+        syncJobService.removeDependency(id, upstreamId);
+        return R.ok("已移除上游依赖");
+    }
+
 }

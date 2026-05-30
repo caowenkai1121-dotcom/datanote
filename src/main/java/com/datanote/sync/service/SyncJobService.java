@@ -3,10 +3,12 @@ package com.datanote.sync.service;
 import com.alibaba.fastjson.JSON;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnSyncChunkCheckpointMapper;
+import com.datanote.mapper.DnSyncJobDependencyMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.model.DnDatasource;
 import com.datanote.model.DnSyncChunkCheckpoint;
 import com.datanote.model.DnSyncJob;
+import com.datanote.model.DnSyncJobDependency;
 import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.connector.MysqlConnector;
@@ -40,6 +42,7 @@ public class SyncJobService {
     private final ConnectionManager connectionManager;
     private final DnSyncChunkCheckpointMapper chunkCheckpointMapper;
     private final AuditLogService auditLogService;
+    private final DnSyncJobDependencyMapper dependencyMapper;
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -424,5 +427,73 @@ public class SyncJobService {
         }
         String type = ds.getType() == null ? "MYSQL" : ds.getType().toUpperCase();
         return new MysqlConnector(connectionManager, datasourceId, db, type);
+    }
+
+    // ===== M4c：任务依赖（轻量 DAG）CRUD + 防环 =====
+
+    /** 列出某任务的上游依赖。 */
+    public List<DnSyncJobDependency> listDependencies(Long jobId) {
+        return dependencyMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncJobDependency>()
+                        .eq(DnSyncJobDependency::getSyncJobId, jobId));
+    }
+
+    /** 查某任务的直接上游 id 列表（用于防环 DFS）。 */
+    private List<Long> upstreamIdsOf(Long jobId) {
+        List<Long> ids = new ArrayList<>();
+        for (DnSyncJobDependency d : listDependencies(jobId)) {
+            ids.add(d.getUpstreamSyncJobId());
+        }
+        return ids;
+    }
+
+    /**
+     * 添加上游依赖：拒绝自依赖；防环——从 upstreamId 沿其上游链 DFS，若可达 jobId 则会成环，拒绝；
+     * 否则插入（唯一键重复忽略）。
+     */
+    public void addDependency(Long jobId, Long upstreamId) {
+        if (jobId == null || upstreamId == null) {
+            throw new IllegalArgumentException("jobId/upstreamId 不能为空");
+        }
+        if (jobId.equals(upstreamId)) {
+            throw new IllegalArgumentException("不能依赖自身");
+        }
+        if (reachable(upstreamId, jobId, new HashSet<>())) {
+            throw new IllegalArgumentException("会形成环依赖");
+        }
+        DnSyncJobDependency dep = new DnSyncJobDependency();
+        dep.setSyncJobId(jobId);
+        dep.setUpstreamSyncJobId(upstreamId);
+        dep.setDependsAll(1);
+        dep.setCreateTime(LocalDateTime.now());
+        try {
+            dependencyMapper.insert(dep);
+        } catch (org.springframework.dao.DuplicateKeyException ignore) {
+            // 唯一键重复忽略
+        }
+    }
+
+    /** 从 from 沿上游链 DFS 是否可达 target。 */
+    private boolean reachable(Long from, Long target, Set<Long> visited) {
+        if (from.equals(target)) {
+            return true;
+        }
+        if (!visited.add(from)) {
+            return false;
+        }
+        for (Long up : upstreamIdsOf(from)) {
+            if (reachable(up, target, visited)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 移除上游依赖。 */
+    public void removeDependency(Long jobId, Long upstreamId) {
+        dependencyMapper.delete(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncJobDependency>()
+                        .eq(DnSyncJobDependency::getSyncJobId, jobId)
+                        .eq(DnSyncJobDependency::getUpstreamSyncJobId, upstreamId));
     }
 }
