@@ -10,6 +10,7 @@ import com.datanote.model.DnRolePerm;
 import com.datanote.model.DnUser;
 import com.datanote.model.DnUserRole;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +35,9 @@ public class RbacService {
     private final DnRoleMapper roleMapper;
     private final DnUserRoleMapper userRoleMapper;
     private final DnRolePermMapper rolePermMapper;
-    private final PasswordEncoder passwordEncoder;
+    /** BCrypt 无状态，自建实例避免注入 SecurityConfig 的 PasswordEncoder Bean 造成循环依赖
+     *  (SecurityConfig→DbUserDetailsService→RbacService→PasswordEncoder)。哈希跨实例兼容。 */
+    private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
      * 纯函数：判断权限集合是否满足某个权限点。
