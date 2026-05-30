@@ -17,6 +17,11 @@ public class DnColumnMeta {
     private String businessName;
     private String businessDesc;
     private String tags;
+    private String dataType;
+    private String columnKey;
+    private String isNullable;
+    private Integer ordinal;
+    private LocalDateTime lastCollectedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
