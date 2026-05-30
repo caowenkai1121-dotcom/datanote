@@ -4502,6 +4502,7 @@ html, body {
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFormModal()">取消</button>
+          <button class="btn" onclick="dbsyncTestConnection()" title="测试源/目标连通性与源表预检">测试连接</button>
           <button class="btn btn-primary" onclick="dbsyncSaveJob()">保存</button>
         </div>
       </div>
@@ -13772,6 +13773,8 @@ function dbsyncMakeTableRowHtml(idx, data) {
   html += '<div style="margin-top:6px;display:flex;align-items:center;gap:6px;">';
   html += '<label style="font-size:11px;color:var(--text-muted);white-space:nowrap;">过滤条件</label>';
   html += '<input class="dbsync-form-input dfs-filter-expr" style="font-size:11px;padding:2px 6px;flex:1;font-family:monospace;" placeholder=\'{"conditions":[{"column":"status","op":"=","value":"active"}]}\' value="' + escapeHtml(data.filterExpression || '') + '">';
+  html += '<button class="btn btn-sm" onclick="dbsyncPreviewSample(this)" style="font-size:11px;white-space:nowrap;" title="预览源表前20行样本">样本</button>';
+  html += '<button class="btn btn-sm" onclick="dbsyncPreviewDdl(this)" style="font-size:11px;white-space:nowrap;" title="预览目标建表DDL">DDL预览</button>';
   html += '</div>';
   // 字段映射展开区
   var hasFields = data.fields && data.fields.length > 0;
@@ -14151,6 +14154,91 @@ window.dbsyncCloseFormModal = function() {
   document.getElementById('dbsyncFormModal').classList.remove('show');
 };
 
+/* ---------- DS-M6：样本/DDL 预览 + 连接测试 + JSON 校验 ---------- */
+function dbsyncShowPreview(title, innerHtml) {
+  var old = document.getElementById('dbsyncPreviewOverlay');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'dbsyncPreviewOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100000;display:flex;align-items:center;justify-content:center;';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;max-width:80vw;max-height:80vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:420px;';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);position:sticky;top:0;background:var(--bg-card,#fff);z-index:1;">'
+    + '<b style="font-size:14px;">' + escapeHtml(title) + '</b>'
+    + '<span style="cursor:pointer;font-size:20px;color:var(--text-muted);" onclick="document.getElementById(\'dbsyncPreviewOverlay\').remove()">&times;</span></div>'
+    + '<div style="padding:14px 16px;">' + innerHtml + '</div>';
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+window.dbsyncPreviewSample = function(btn) {
+  var wrapper = btn.closest('.dfs-row-wrapper');
+  var srcTable = wrapper ? (wrapper.querySelector('.dfs-src-table') || {}).value : '';
+  var dsId = document.getElementById('dfsSrcDsId').value;
+  var db = document.getElementById('dfsSrcDb').value;
+  if (!dsId || !db || !srcTable) { showToast('请先选择源数据源、源库与源表', 'error'); return; }
+  dbsyncShowPreview('样本预览 — ' + srcTable, '<div style="color:var(--text-muted);">加载中...</div>');
+  api('/api/sync-job/preview?dsId=' + encodeURIComponent(dsId) + '&db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(srcTable) + '&limit=20').then(function(res) {
+    var d = (res && res.code === 0) ? res.data : res;
+    if (!d || !d.columns) { dbsyncShowPreview('样本预览 — ' + srcTable, '<div style="color:var(--error);">' + escapeHtml((res && res.msg) || '无数据') + '</div>'); return; }
+    var h = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr>';
+    d.columns.forEach(function(c) { h += '<th>' + escapeHtml(c) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    (d.rows || []).forEach(function(r) { h += '<tr>'; r.forEach(function(v) { h += '<td style="max-width:240px;word-break:break-all;">' + escapeHtml(v == null ? 'NULL' : String(v)) + '</td>'; }); h += '</tr>'; });
+    h += '</tbody></table><div style="margin-top:6px;font-size:11px;color:var(--text-muted);">共 ' + (d.rows || []).length + ' 行（最多 20）</div>';
+    dbsyncShowPreview('样本预览 — ' + srcTable, h);
+  }).catch(function() { dbsyncShowPreview('样本预览 — ' + srcTable, '<div style="color:var(--error);">请求失败</div>'); });
+};
+window.dbsyncPreviewDdl = function(btn) {
+  var wrapper = btn.closest('.dfs-row-wrapper');
+  var srcTable = wrapper ? (wrapper.querySelector('.dfs-src-table') || {}).value : '';
+  var tgtTable = wrapper ? (wrapper.querySelector('.dfs-tgt-table') || {}).value : '';
+  var srcDsId = document.getElementById('dfsSrcDsId').value;
+  var srcDb = document.getElementById('dfsSrcDb').value;
+  var tgtDsId = document.getElementById('dfsTgtDsId').value;
+  var tgtDb = document.getElementById('dfsTgtDb').value;
+  if (!srcDsId || !srcDb || !srcTable || !tgtDsId || !tgtDb) { showToast('请先选择源/目标数据源、库与源表', 'error'); return; }
+  dbsyncShowPreview('目标建表 DDL 预览', '<div style="color:var(--text-muted);">生成中...</div>');
+  apiPost('/api/sync-job/ddl-preview', { srcDsId: parseInt(srcDsId), srcDb: srcDb, srcTable: srcTable, tgtDsId: parseInt(tgtDsId), tgtDb: tgtDb, tgtTable: tgtTable }).then(function(res) {
+    var d = (res && res.code === 0) ? res.data : res;
+    if (!d || !d.ddl) { dbsyncShowPreview('目标建表 DDL 预览', '<div style="color:var(--error);">' + escapeHtml((res && res.msg) || '生成失败') + '</div>'); return; }
+    dbsyncShowPreview('目标建表 DDL 预览 — ' + (tgtTable || srcTable), '<pre style="background:var(--bg-hover,#f7f7f7);padding:12px;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:0;">' + escapeHtml(d.ddl) + '</pre>');
+  }).catch(function() { dbsyncShowPreview('目标建表 DDL 预览', '<div style="color:var(--error);">请求失败</div>'); });
+};
+window.dbsyncTestConnection = function() {
+  var srcDsId = document.getElementById('dfsSrcDsId').value, srcDb = document.getElementById('dfsSrcDb').value;
+  var tgtDsId = document.getElementById('dfsTgtDsId').value, tgtDb = document.getElementById('dfsTgtDb').value;
+  if (!srcDsId || !srcDb || !tgtDsId || !tgtDb) { showToast('请先选择源/目标数据源与库', 'error'); return; }
+  var tableConfigs = dbsyncCollectTableConfigs();
+  var body = { syncMode: _dbsyncSyncMode, sourceDsId: parseInt(srcDsId), sourceDb: srcDb, targetDsId: parseInt(tgtDsId), targetDb: tgtDb, scheduleCron: (document.getElementById('dfsScheduleCron') || {}).value || '', tableConfig: JSON.stringify(tableConfigs) };
+  showToast('连接测试中...', 'info');
+  apiPost('/api/sync-job/precheck', body).then(function(res) {
+    var d = (res && res.code === 0) ? res.data : res;
+    var checks = (d && d.checks) || [];
+    var h = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead><tbody>';
+    checks.forEach(function(c) { h += '<tr><td>' + escapeHtml(c.name || '-') + '</td><td style="color:' + (c.ok ? '#52c41a' : '#ff4d4f') + ';font-weight:500;">' + (c.ok ? '通过' : '失败') + '</td><td style="max-width:360px;word-break:break-all;">' + escapeHtml(c.message || '') + '</td></tr>'; });
+    h += '</tbody></table>';
+    dbsyncShowPreview((d && d.ok) ? '连接测试：全部通过 ✓' : '连接测试：存在失败项', h);
+  }).catch(function() { showToast('连接测试请求失败', 'error'); });
+};
+// JSON 字段（过滤条件 / 字段转换）校验：仅校验看起来是 JSON 的值
+function dbsyncValidateJsonFields() {
+  var bad = null;
+  function chk(v, where) {
+    v = (v || '').trim();
+    if (!bad && v && (v.charAt(0) === '{' || v.charAt(0) === '[')) {
+      try { JSON.parse(v); } catch (e) { bad = where + ' JSON 非法：' + e.message; }
+    }
+  }
+  var rows = document.querySelectorAll('#dfsTableRows .dfs-row-wrapper');
+  rows.forEach(function(w, i) {
+    var fe = w.querySelector('.dfs-filter-expr');
+    if (fe) chk(fe.value, '第' + (i + 1) + '张表 过滤条件');
+    w.querySelectorAll('.dfs-fm-transform').forEach(function(t) { chk(t.value, '第' + (i + 1) + '张表 字段转换'); });
+  });
+  return bad;
+}
+
 /* ---------- 保存任务 ---------- */
 window.dbsyncSaveJob = function() {
   var jobName    = (document.getElementById('dfsJobName').value || '').trim();
@@ -14183,6 +14271,8 @@ window.dbsyncSaveJob = function() {
   if (!tgtDsId)  { showToast('请选择目标数据源', 'error'); return; }
   if (!tgtDb)    { showToast('请选择目标数据库', 'error'); return; }
   if (tableConfigs.length === 0) { showToast('请至少配置一张表', 'error'); return; }
+  var jsonErr = dbsyncValidateJsonFields();
+  if (jsonErr) { showToast(jsonErr, 'error'); return; }
 
   var preSqlVal  = ((document.getElementById('dbsyncPreSql')  || {}).value || '').trim();
   var postSqlVal = ((document.getElementById('dbsyncPostSql') || {}).value || '').trim();

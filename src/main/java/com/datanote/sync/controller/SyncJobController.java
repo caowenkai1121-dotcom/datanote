@@ -38,6 +38,7 @@ public class SyncJobController {
     private final com.datanote.sync.service.DataReconciliationService reconciliationService;
     private final com.datanote.sync.service.CdcEngineManager cdcEngineManager;
     private final DnSyncErrorRowMapper syncErrorRowMapper;
+    private final com.datanote.sync.schema.TableSchemaService tableSchemaService;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -93,6 +94,66 @@ public class SyncJobController {
         int del = syncErrorRowMapper.delete(
                 new LambdaQueryWrapper<DnSyncErrorRow>().eq(DnSyncErrorRow::getJobId, id));
         return R.ok("已清空 " + del + " 条");
+    }
+
+    @Operation(summary = "样本预览(前N行)")
+    @GetMapping("/preview")
+    public R<java.util.Map<String, Object>> preview(@RequestParam Long dsId, @RequestParam String db,
+                                                    @RequestParam String table,
+                                                    @RequestParam(defaultValue = "20") int limit) {
+        int n = Math.min(Math.max(limit, 1), 200);
+        try {
+            com.datanote.sync.connector.DbConnector c = syncJobService.buildConnector(dsId, db);
+            String sql = "SELECT * FROM " + com.datanote.sync.util.SqlIdentifiers.quote(db) + "."
+                    + com.datanote.sync.util.SqlIdentifiers.quote(table) + " LIMIT " + n;
+            java.util.Map<String, Object> r = new java.util.LinkedHashMap<>();
+            try (java.sql.Connection conn = c.getConnection();
+                 java.sql.Statement st = conn.createStatement();
+                 java.sql.ResultSet rs = st.executeQuery(sql)) {
+                java.sql.ResultSetMetaData md = rs.getMetaData();
+                int cc = md.getColumnCount();
+                java.util.List<String> cols = new java.util.ArrayList<>();
+                for (int i = 1; i <= cc; i++) cols.add(md.getColumnLabel(i));
+                java.util.List<java.util.List<Object>> rows = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    java.util.List<Object> row = new java.util.ArrayList<>();
+                    for (int i = 1; i <= cc; i++) {
+                        Object v = rs.getObject(i);
+                        row.add(v == null ? null : String.valueOf(v));
+                    }
+                    rows.add(row);
+                }
+                r.put("columns", cols);
+                r.put("rows", rows);
+            }
+            return R.ok(r);
+        } catch (Exception e) {
+            return R.fail("样本预览失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "目标建表DDL预览")
+    @PostMapping("/ddl-preview")
+    public R<java.util.Map<String, Object>> ddlPreview(@RequestBody java.util.Map<String, Object> req) {
+        try {
+            Long srcDsId = Long.valueOf(String.valueOf(req.get("srcDsId")));
+            String srcDb = String.valueOf(req.get("srcDb"));
+            String srcTable = String.valueOf(req.get("srcTable"));
+            Long tgtDsId = Long.valueOf(String.valueOf(req.get("tgtDsId")));
+            String tgtDb = req.get("tgtDb") == null || String.valueOf(req.get("tgtDb")).isEmpty()
+                    ? srcDb : String.valueOf(req.get("tgtDb"));
+            String tgtTable = req.get("tgtTable") == null || String.valueOf(req.get("tgtTable")).isEmpty()
+                    ? srcTable : String.valueOf(req.get("tgtTable"));
+            com.datanote.sync.connector.DbConnector src = syncJobService.buildConnector(srcDsId, srcDb);
+            com.datanote.sync.connector.DbConnector tgt = syncJobService.buildConnector(tgtDsId, tgtDb);
+            java.util.List<com.datanote.sync.connector.ColumnDef> cols = src.getColumnDefs(srcDb, srcTable);
+            String ddl = tableSchemaService.buildDdl(tgt.getDatabaseType(), tgtDb, tgtTable, cols);
+            java.util.Map<String, Object> r = new java.util.LinkedHashMap<>();
+            r.put("ddl", ddl);
+            return R.ok(r);
+        } catch (Exception e) {
+            return R.fail("DDL预览失败: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "手动运行（全量）")
