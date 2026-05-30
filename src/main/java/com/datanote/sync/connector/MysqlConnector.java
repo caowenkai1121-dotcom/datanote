@@ -127,6 +127,36 @@ public class MysqlConnector implements DbConnector {
         return sql.toString();
     }
 
+    /** 复合主键 keyset 分页。pkColumns 顺序即 ORDER BY 顺序；游标用行值比较 (pk..)>(?..)。 */
+    public static String buildKeysetPageSqlMulti(String db, String table, List<String> columns,
+                                                 List<String> pkColumns, boolean hasCursor, String extraWhere) {
+        String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        String pkList = pkColumns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String orderBy = pkColumns.stream().map(p -> SqlIdentifiers.quote(p) + " ASC").collect(Collectors.joining(", "));
+        boolean hasFilter = extraWhere != null && !extraWhere.trim().isEmpty();
+        StringBuilder sql = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(fullTable);
+        String ph = pkColumns.stream().map(p -> "?").collect(Collectors.joining(", "));
+        if (hasCursor && hasFilter) {
+            sql.append(" WHERE (").append(pkList).append(") > (").append(ph).append(") AND ").append(extraWhere);
+        } else if (hasCursor) {
+            sql.append(" WHERE (").append(pkList).append(") > (").append(ph).append(")");
+        } else if (hasFilter) {
+            sql.append(" WHERE ").append(extraWhere);
+        }
+        sql.append(" ORDER BY ").append(orderBy).append(" LIMIT ?");
+        return sql.toString();
+    }
+
+    /** 无主键全表流式扫描 SQL（无 ORDER/LIMIT，配合 setFetchSize(Integer.MIN_VALUE)）。 */
+    public static String buildFullScanSql(String db, String table, List<String> columns, String extraWhere) {
+        String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        StringBuilder sql = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(fullTable);
+        if (extraWhere != null && !extraWhere.trim().isEmpty()) sql.append(" WHERE ").append(extraWhere);
+        return sql.toString();
+    }
+
     public static String buildCountSql(String db, String table) {
         return "SELECT COUNT(*) FROM " + SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
     }
@@ -150,5 +180,24 @@ public class MysqlConnector implements DbConnector {
         if (extraWhere != null && !extraWhere.trim().isEmpty()) where = where + " AND " + extraWhere;
         return "SELECT " + cols + " FROM " + fullTable + " WHERE " + where
                 + " ORDER BY " + inc + " ASC, " + pk + " ASC LIMIT ?";
+    }
+
+    /** 多列主键增量分页 SQL（(incField, pk1, pk2..) 复合游标）。pkColumns 顺序即 ORDER BY 顺序。
+     *  firstPage=true：incField >= ?（含起始断点，配合 UPSERT 幂等）；
+     *  firstPage=false：incField > ? OR (incField = ? AND (pk1,..) > (?,..))。 */
+    public static String buildIncrementalPageSqlMulti(String db, String table, List<String> columns,
+                                                      String incField, List<String> pkColumns,
+                                                      boolean firstPage, String extraWhere) {
+        String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        String inc = SqlIdentifiers.quote(incField);
+        String pkList = pkColumns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String ph = pkColumns.stream().map(p -> "?").collect(Collectors.joining(", "));
+        String pkOrder = pkColumns.stream().map(p -> SqlIdentifiers.quote(p) + " ASC").collect(Collectors.joining(", "));
+        String where = firstPage ? inc + " >= ?"
+                : "(" + inc + " > ? OR (" + inc + " = ? AND (" + pkList + ") > (" + ph + ")))";
+        if (extraWhere != null && !extraWhere.trim().isEmpty()) where = where + " AND " + extraWhere;
+        return "SELECT " + cols + " FROM " + fullTable + " WHERE " + where
+                + " ORDER BY " + inc + " ASC, " + pkOrder + " LIMIT ?";
     }
 }
