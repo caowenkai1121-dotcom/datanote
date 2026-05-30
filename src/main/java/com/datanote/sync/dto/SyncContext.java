@@ -53,6 +53,11 @@ public class SyncContext {
     /** 单表增量断点持久化回调：某表成功后立即回写其断点，避免后续表失败丢已成功表的断点。 */
     private Consumer<TableSyncConfig> checkpointCallback = tc -> {};
 
+    /** M2b：全量 chunk 续传回调。 */
+    private java.util.function.Function<String,String> chunkLoad = t -> null;
+    private java.util.function.BiConsumer<String,String> chunkSave = (t,v) -> {};
+    private java.util.function.Consumer<String> chunkClear = t -> {};
+
     private static boolean blank(String s) { return s == null || s.trim().isEmpty(); }
 
     /** 取表级 preSql，空则回退任务级；都空返回 null。 */
