@@ -4,7 +4,7 @@
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   var API = '/api/subject';
-  var LAYERS = ['ALL', 'DWD', 'DIM', 'DWS', 'ADS'];
+  var LAYERS = ['DWD', 'DIM', 'DWS', 'ADS', 'ALL'];
 
   window.GOV_RENDERERS.subject = function (c) {
     var form = buildForm(function () { reload(list, form); });
@@ -16,16 +16,16 @@
 
   // ========== 新增表单 ==========
   function buildForm(onSaved) {
-    var box = DN.h('div', { class: 'gov-desc' });
+    var box = DN.h('div', { class: 'gov-desc', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' });
     var name = inp('主题名称');
-    var parent = DN.h('select', { style: selStyle() });
-    var layer = DN.h('select', { style: selStyle() });
+    var parent = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
+    var layer = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
     LAYERS.forEach(function (l) { layer.appendChild(DN.h('option', { value: l, text: l })); });
     var sort = inp('排序');
     sort.style.width = '70px';
 
     var add = DN.h('a', {
-      class: 'gov-btn', href: 'javascript:void(0)', text: '新增主题', onclick: function () {
+      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增主题', onclick: function () {
         var payload = {
           name: name.value.trim(),
           parentId: parent.value ? Number(parent.value) : null,
@@ -99,18 +99,19 @@
       }));
       row.appendChild(DN.h('span', { text: n.layer || 'ALL', style: 'color:#86909c;font-size:12px;margin-right:12px' }));
       row.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '编辑', style: 'color:#165dff;margin-right:10px',
+        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#165dff);margin-right:10px',
         onclick: function () { editNode(n, reloadFn); }
       }));
       row.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '删除', style: 'color:#f53f3f',
+        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)',
         onclick: function () {
           var tip = (n.children && n.children.length)
-            ? '该主题含 ' + n.children.length + ' 个子主题，将一并级联删除，确认？'
-            : '确认删除？';
-          if (!confirm(tip)) return;
-          DN.del(API + '/' + n.id).then(function () { DN.toast('已删除'); reloadFn(); })
-            .catch(function (e) { DN.toast(e.message, 'error'); });
+            ? '主题「' + n.name + '」含 ' + n.children.length + ' 个子主题，将一并级联删除，确认？'
+            : '确认删除主题「' + n.name + '」？';
+          confirmModal(tip, function () {
+            DN.del(API + '/' + n.id).then(function () { DN.toast('已删除'); reloadFn(); })
+              .catch(function (e) { DN.toast(e.message, 'error'); });
+          });
         }
       }));
       container.appendChild(row);
@@ -118,27 +119,52 @@
     });
   }
 
-  // ========== 编辑（行内改名 + 分层） ==========
+  // ========== 编辑（弹窗改名 + 分层下拉） ==========
   function editNode(n, reloadFn) {
-    var newName = prompt('修改主题名称：', n.name);
-    if (newName == null) return;
-    newName = newName.trim();
-    if (!newName) { DN.toast('名称不能为空', 'error'); return; }
-    var newLayer = prompt('适用分层（ALL/DWD/DIM/DWS/ADS）：', n.layer || 'ALL');
-    if (newLayer == null) return;
-    DN.api(API + '/' + n.id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, parentId: n.parentId == null ? null : n.parentId, layer: newLayer.trim() || 'ALL', sortOrder: n.sortOrder })
-    }).then(function () { DN.toast('已更新'); reloadFn(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    var nameInput = DN.h('input', { class: 'iw-form-input', value: n.name || '', placeholder: '主题名称' });
+    var layerSel = DN.h('select', { class: 'iw-form-select' },
+      LAYERS.map(function (l) { return DN.h('option', { value: l, text: l }); }));
+    layerSel.value = n.layer || 'ALL';
+    modal('编辑主题', [formRow('主题名称', nameInput), formRow('适用分层', layerSel)], function (close) {
+      var newName = nameInput.value.trim();
+      if (!newName) { DN.toast('名称不能为空', 'error'); return; }
+      DN.api(API + '/' + n.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, parentId: n.parentId == null ? null : n.parentId, layer: layerSel.value, sortOrder: n.sortOrder })
+      }).then(function () { DN.toast('已更新'); close(); reloadFn(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   // ========== 小工具 ==========
   function inp(ph) {
-    return DN.h('input', { placeholder: ph, style: 'margin:0 6px 6px 0;padding:4px 6px;border:1px solid #ddd;border-radius:4px' });
+    return DN.h('input', { class: 'iw-form-input', placeholder: ph, style: 'width:auto' });
   }
-  function selStyle() {
-    return 'margin:0 6px 6px 0;padding:4px 6px;border:1px solid #ddd;border-radius:4px';
+
+  function formRow(label, control) {
+    return DN.h('div', { class: 'ds-form-row', style: 'align-items:flex-start' }, [
+      DN.h('label', { text: label }), control
+    ]);
+  }
+
+  function confirmModal(text, onOk) {
+    modal('确认操作', [DN.h('div', { style: 'font-size:13px;color:var(--text-regular,#4e5969)', text: text })],
+      function (close) { close(); onOk(); });
+  }
+
+  function modal(title, bodyNodes, onOk) {
+    var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
+    var box = DN.h('div', { style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
+    box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
+    bodyNodes.forEach(function (n) { box.appendChild(n); });
+    function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); }
+    var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
+    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: close }));
+    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(close); } }));
+    box.appendChild(footer);
+    mask.appendChild(box);
+    mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+    document.body.appendChild(mask);
   }
 })();

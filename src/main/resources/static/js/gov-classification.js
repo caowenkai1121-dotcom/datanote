@@ -4,12 +4,12 @@
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   var levelNames = []; // 当前 scheme 下的密级名称(供确认下拉)
+  var clPicker = null; // 对表识别库表选择器
 
   window.GOV_RENDERERS.classification = function (c) {
     // 1. 分级模型
-    var lv = DN.h('div', { class: 'gov-desc' });
-    var sel = DN.h('select', { id: 'clScheme',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
+    var lv = DN.h('div', { class: 'gov-desc', style: 'display:flex;align-items:center;gap:8px' });
+    var sel = DN.h('select', { id: 'clScheme', class: 'iw-form-select', style: 'width:auto;min-width:140px' });
     sel.appendChild(DN.h('option', { value: 'NATIONAL', text: '国家三级' }));
     sel.appendChild(DN.h('option', { value: 'FINANCE', text: '金融五级' }));
     sel.addEventListener('change', loadLevels);
@@ -21,20 +21,19 @@
     // 2. 敏感规则管理
     c.appendChild(DN.h('h3', { text: '敏感识别规则', style: 'margin:16px 0 8px' }));
     var rbar = DN.h('div', { class: 'gov-desc' });
-    rbar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '新增规则',
-      onclick: addRule, style: 'margin-top:0' }));
+    rbar.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则',
+      onclick: toggleRuleForm }));
     c.appendChild(rbar);
+    c.appendChild(DN.h('div', { id: 'clRuleForm' })); // 就近 DOM 表单容器（替代 prompt）
     c.appendChild(DN.h('div', { id: 'clRules' }));
 
     // 3. 对表识别
     c.appendChild(DN.h('h3', { text: '对表采样识别', style: 'margin:16px 0 8px' }));
-    var q = DN.h('div', { class: 'gov-desc' });
-    q.appendChild(DN.h('input', { id: 'clDb', placeholder: '库名(如 ods)',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' }));
-    q.appendChild(DN.h('input', { id: 'clTable', placeholder: '表名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' }));
-    q.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '识别',
-      onclick: scanTable, style: 'margin-top:0' }));
+    var q = DN.h('div', { class: 'gov-desc', style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
+    clPicker = DN.dbTablePicker({});
+    q.appendChild(clPicker.el);
+    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '识别',
+      onclick: scanTable }));
     c.appendChild(q);
     c.appendChild(DN.h('div', { id: 'clScan' }));
 
@@ -88,22 +87,56 @@
     }).catch(function (e) { DN.toast(e.message, 'error'); });
   }
 
-  function addRule() {
-    var name = prompt('规则名'); if (!name) return;
-    var matchType = prompt('匹配方式 COLUMN_NAME / REGEX / VALIDATOR', 'COLUMN_NAME'); if (!matchType) return;
-    var pattern = prompt('模式(关键词逗号分隔 / 正则 / 校验器名 PHONE,EMAIL,ID_CARD,BANKCARD,USCC)'); if (!pattern) return;
-    var sensitiveType = prompt('敏感类型(如 PHONE)'); if (!sensitiveType) return;
-    var suggestLevel = prompt('建议密级(如 重要)') || '';
-    DN.post('/api/gov/classification/rules', {
-      ruleName: name, matchType: matchType.trim().toUpperCase(),
-      pattern: pattern, sensitiveType: sensitiveType, suggestLevel: suggestLevel, enabled: 1
-    }).then(function () { DN.toast('已保存'); loadRules(); }).catch(function (e) { DN.toast(e.message, 'error'); });
+  // 就近 DOM 新增规则表单（替代 window.prompt 链）
+  function toggleRuleForm() {
+    var box = document.getElementById('clRuleForm');
+    if (box.firstChild) { box.innerHTML = ''; return; }
+    box.innerHTML = '';
+
+    function row(labelText, control) {
+      var r = DN.h('div', { class: 'ds-form-row' });
+      r.appendChild(DN.h('label', { text: labelText }));
+      r.appendChild(control);
+      return r;
+    }
+    var name = DN.h('input', { class: 'iw-form-input', placeholder: '规则名' });
+    var matchSel = DN.h('select', { class: 'iw-form-select' });
+    [['COLUMN_NAME', '按列名关键词'], ['REGEX', '按正则'], ['VALIDATOR', '按校验器']].forEach(function (m) {
+      matchSel.appendChild(DN.h('option', { value: m[0], text: m[1] + '(' + m[0] + ')' }));
+    });
+    var pattern = DN.h('input', { class: 'iw-form-input', placeholder: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)' });
+    var sensitiveType = DN.h('input', { class: 'iw-form-input', placeholder: '敏感类型(如 PHONE)' });
+    var suggestLevel = DN.h('input', { class: 'iw-form-input', placeholder: '建议密级(如 重要，可空)' });
+
+    var panel = DN.h('div', { style: 'background:#fff;border:1px solid #e5e6eb;border-radius:8px;padding:16px;max-width:560px;margin-bottom:12px' });
+    panel.appendChild(row('规则名', name));
+    panel.appendChild(row('匹配方式', matchSel));
+    panel.appendChild(row('模式', pattern));
+    panel.appendChild(row('敏感类型', sensitiveType));
+    panel.appendChild(row('建议密级', suggestLevel));
+    var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
+    actions.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存',
+      onclick: function () {
+        if (!name.value.trim()) { DN.toast('规则名必填', 'error'); return; }
+        if (!pattern.value.trim()) { DN.toast('模式必填', 'error'); return; }
+        if (!sensitiveType.value.trim()) { DN.toast('敏感类型必填', 'error'); return; }
+        DN.post('/api/gov/classification/rules', {
+          ruleName: name.value.trim(), matchType: matchSel.value,
+          pattern: pattern.value.trim(), sensitiveType: sensitiveType.value.trim(),
+          suggestLevel: suggestLevel.value.trim(), enabled: 1
+        }).then(function () { DN.toast('已保存'); box.innerHTML = ''; loadRules(); })
+          .catch(function (e) { DN.toast(e.message, 'error'); });
+      } }));
+    actions.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消',
+      onclick: function () { box.innerHTML = ''; } }));
+    panel.appendChild(actions);
+    box.appendChild(panel);
   }
 
   function scanTable() {
-    var db = document.getElementById('clDb').value.trim();
-    var table = document.getElementById('clTable').value.trim();
-    if (!db || !table) { DN.toast('请输入库名与表名', 'error'); return; }
+    var db = clPicker.db();
+    var table = clPicker.table();
+    if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('clScan');
     box.innerHTML = '识别中...';
     DN.get('/api/gov/classification/scan?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table))
@@ -116,20 +149,27 @@
           return '<tr><td><input type="checkbox" data-i="' + i + '"></td>' +
             '<td>' + DN.esc(r.column) + '</td><td>' + DN.esc(r.sensitiveType) + '</td>' +
             '<td>' + (r.confidence || 0) + '%</td><td>' + DN.esc(r.currentLevel || '-') + '</td>' +
-            '<td><select data-level="' + i + '">' + opts + '</select></td></tr>';
+            '<td><select class="iw-form-select" style="width:auto;min-width:110px" data-level="' + i + '">' + opts + '</select></td></tr>';
         }).join('');
         box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
           '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-          '<th style="padding:8px">选</th><th style="padding:8px">列</th><th style="padding:8px">敏感类型</th>' +
+          '<th style="padding:8px"><input type="checkbox" id="clSelAll" title="全选"></th>' +
+          '<th style="padding:8px">列</th><th style="padding:8px">敏感类型</th>' +
           '<th style="padding:8px">置信度</th><th style="padding:8px">当前密级</th><th style="padding:8px">确认密级</th>' +
           '</tr></thead><tbody>' + body + '</tbody></table>' +
-          '<div class="gov-desc"><a class="gov-btn" href="javascript:void(0)" id="clConfirmBtn">确认打标(已勾选)</a></div>';
+          '<div class="gov-desc" style="display:flex;gap:8px;align-items:center">' +
+          '<a class="btn btn-primary" href="javascript:void(0)" id="clConfirmBtn">确认打标(已勾选)</a></div>';
         box.querySelectorAll('td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
         // 预选建议密级
         rows.forEach(function (r, i) {
           var s = box.querySelector('select[data-level="' + i + '"]');
           if (s && r.suggestLevel) s.value = r.suggestLevel;
         });
+        // 全选/反选
+        box.querySelector('#clSelAll').onclick = function () {
+          var checked = this.checked;
+          box.querySelectorAll('input[type=checkbox][data-i]').forEach(function (cb) { cb.checked = checked; });
+        };
         document.getElementById('clConfirmBtn').onclick = function () { confirmLabels(db, table, rows, box); };
       }).catch(function (e) { box.innerHTML = '<div class="gov-placeholder">识别失败: ' + DN.esc(e.message) + '</div>'; });
   }
