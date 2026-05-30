@@ -15603,6 +15603,19 @@ window.dbsyncOpenChecksum = function(id, nm) {
         });
         html += '</tbody></table></td></tr>';
       }
+      // DS-M2：主键级缺失/多余清单（跨方言安全）
+      var miss = t.missingInTargetCount || 0, ext = t.extraInTargetCount || 0;
+      if (t.pkDiffNote) {
+        html += '<tr><td colspan="3" style="padding:2px 0 6px 16px;color:var(--text-muted);font-size:12px;">' + escapeHtml(t.pkDiffNote) + '</td></tr>';
+      } else if (miss > 0 || ext > 0) {
+        var ms = (t.missingSample || []).slice(0, 20).map(function(k){ return escapeHtml(String(k)); }).join(', ');
+        var es = (t.extraSample || []).slice(0, 20).map(function(k){ return escapeHtml(String(k)); }).join(', ');
+        html += '<tr><td colspan="3" style="padding:0 0 8px 16px;font-size:12px;">'
+          + '<div style="color:#ff4d4f;">主键级差异：源有目标无 <b>' + miss + '</b> 行；目标有源无 <b>' + ext + '</b> 行</div>'
+          + (ms ? '<div style="margin-top:3px;color:var(--text-regular);word-break:break-all;">缺失主键样本：<span style="font-family:monospace;">' + ms + '</span></div>' : '')
+          + (es ? '<div style="margin-top:3px;color:var(--text-regular);word-break:break-all;">多余主键样本：<span style="font-family:monospace;">' + es + '</span></div>' : '')
+          + '</td></tr>';
+      }
     });
     html += '</tbody></table>';
     body.innerHTML = html;

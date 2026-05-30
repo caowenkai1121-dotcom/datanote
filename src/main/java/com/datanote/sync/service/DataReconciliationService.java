@@ -32,6 +32,10 @@ public class DataReconciliationService {
     private final SyncJobService syncJobService;
     private final DnTaskExecutionMapper taskExecutionMapper;
 
+    /** DS-M2：主键级 diff 单表主键集合上限，超过则放弃 PK diff（仅保留分桶结果），防 OOM。 */
+    private static final int PK_DIFF_CAP = 2_000_000;
+    private static final int PK_DIFF_SAMPLE = 100;
+
     public Map<String, Object> reconcile(Long jobId) throws Exception {
         DnSyncJob job = syncJobService.getById(jobId);
         if (job == null) {
@@ -94,8 +98,10 @@ public class DataReconciliationService {
                     tableResults.add(tr);
                     continue;
                 }
-                Map<Integer, long[]> srcMap = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
-                Map<Integer, long[]> tgtMap = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
+                ScanResult srcScan = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
+                ScanResult tgtScan = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
+                Map<Integer, long[]> srcMap = srcScan.buckets;
+                Map<Integer, long[]> tgtMap = tgtScan.buckets;
                 List<Map<String, Object>> mism = new ArrayList<>();
                 // 跨方言(如 MySQL→Doris)值序列化不同(datetime精度/decimal末尾零/float表示),
                 // MD5 内容校验不可靠;仅当源目标同方言族才比对内容校验和,否则只比对分桶行数。
@@ -120,6 +126,17 @@ public class DataReconciliationService {
                     }
                 }
                 boolean match = mism.isEmpty();
+                // DS-M2:同遍收集的主键集合做差 -> 缺失/多余清单(主键存在性与方言无关,跨方言安全)
+                if (srcScan.pkCapped || tgtScan.pkCapped) {
+                    tr.put("pkDiffNote", "表过大(>" + PK_DIFF_CAP + "行),跳过主键级diff,仅分桶比对");
+                } else {
+                    PkDiff pd = computePkDiff(srcScan.pks, tgtScan.pks, PK_DIFF_SAMPLE);
+                    tr.put("missingInTargetCount", pd.missingCount);
+                    tr.put("extraInTargetCount", pd.extraCount);
+                    tr.put("missingSample", pd.missingSample);
+                    tr.put("extraSample", pd.extraSample);
+                    match = match && pd.missingCount == 0 && pd.extraCount == 0;
+                }
                 allMatch &= match;
                 tr.put("bucketCount", buckets);
                 tr.put("match", match);
@@ -142,10 +159,10 @@ public class DataReconciliationService {
         return r;
     }
 
-    private Map<Integer, long[]> runChecksum(DbConnector conn, String db, String table,
-                                             List<String> cols, List<String> pks, int buckets) throws Exception {
+    private ScanResult runChecksum(DbConnector conn, String db, String table,
+                                   List<String> cols, List<String> pks, int buckets) throws Exception {
         String sql = com.datanote.sync.util.ChecksumSqlBuilder.buildRowHashSql(db, table, cols, pks);
-        Map<Integer, long[]> m = new LinkedHashMap<>();
+        ScanResult r = new ScanResult();
         try (Connection c = conn.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             // 流式读取:逐行拉取避免大表 OOM(MySQL/Doris 均接受普通 fetchSize)
@@ -159,20 +176,52 @@ public class DataReconciliationService {
                         pkKey.append(v == null ? "\0" : String.valueOf(v));
                         if (i < pkCount) pkKey.append('#');
                     }
-                    int bucket = Math.floorMod(pkKey.toString().hashCode(), buckets);
+                    String key = pkKey.toString();
+                    int bucket = Math.floorMod(key.hashCode(), buckets);
                     long[] hl = md5ToLongs(rs.getString("__h"));
-                    long[] acc = m.get(bucket);
+                    long[] acc = r.buckets.get(bucket);
                     if (acc == null) {
                         acc = new long[]{0L, 0L, 0L};
-                        m.put(bucket, acc);
+                        r.buckets.put(bucket, acc);
                     }
                     acc[0]++;
                     acc[1] ^= hl[0];
                     acc[2] ^= hl[1];
+                    // DS-M2:同遍收集主键集合(供主键级diff),超阈值则放弃收集省内存
+                    if (!r.pkCapped) {
+                        if (r.pks.size() >= PK_DIFF_CAP) { r.pkCapped = true; r.pks.clear(); }
+                        else r.pks.add(key);
+                    }
                 }
             }
         }
-        return m;
+        return r;
+    }
+
+    /** 单表单遍扫描结果:分桶聚合 + 主键集合(供主键级diff)。 */
+    private static final class ScanResult {
+        final Map<Integer, long[]> buckets = new LinkedHashMap<>();
+        final java.util.Set<String> pks = new java.util.HashSet<>();
+        boolean pkCapped = false;
+    }
+
+    /** 主键级差异:缺失(源有目标无)/多余(目标有源无) 计数 + 样本。 */
+    static final class PkDiff {
+        long missingCount = 0, extraCount = 0;
+        final List<String> missingSample = new ArrayList<>();
+        final List<String> extraSample = new ArrayList<>();
+    }
+
+    /** 纯函数:两端主键集合做差,输出缺失/多余计数与样本(各最多 sample 条)。 */
+    static PkDiff computePkDiff(java.util.Set<String> src, java.util.Set<String> tgt, int sample) {
+        PkDiff d = new PkDiff();
+        for (String k : src) {
+            if (!tgt.contains(k)) { d.missingCount++; if (d.missingSample.size() < sample) d.missingSample.add(k); }
+        }
+        for (String k : tgt) {
+            if (!src.contains(k)) { d.extraCount++; if (d.extraSample.size() < sample) d.extraSample.add(k); }
+        }
+        return d;
     }
 
     /** 32位小写 hex 的 MD5 解析为前8字节/后8字节两个 long;null 或长度不足当全 0。 */
