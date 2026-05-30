@@ -13,7 +13,13 @@ public final class FilterExpressionBuilder {
 
     private FilterExpressionBuilder() {}
 
+    /** 默认按 MySQL/Doris 反引号引用列名（向后兼容）。 */
     public static String build(String filterExpression) {
+        return build(filterExpression, col -> "`" + col + "`");
+    }
+
+    /** 按源库方言引用列名（quoter 由各 DbConnector 提供：反引号/双引号/方括号），跨库过滤适配。 */
+    public static String build(String filterExpression, java.util.function.Function<String, String> quoter) {
         if (filterExpression == null || filterExpression.trim().isEmpty()) return "";
         JSONObject o = JSONObject.parseObject(filterExpression);
         JSONArray conds = o.getJSONArray("conditions");
@@ -28,7 +34,7 @@ public final class FilterExpressionBuilder {
             if (!SqlIdentifiers.isValid(col)) throw new IllegalArgumentException("非法过滤列: " + col);
             if (op == null || !OPS.contains(op.toUpperCase())) throw new IllegalArgumentException("非法过滤操作符: " + op);
             if (i > 0) sb.append(logic);
-            sb.append("`").append(col).append("` ").append(op.toUpperCase()).append(" ").append(literal(c.get("value")));
+            sb.append(quoter.apply(col)).append(" ").append(op.toUpperCase()).append(" ").append(literal(c.get("value")));
         }
         return sb.append(")").toString();
     }

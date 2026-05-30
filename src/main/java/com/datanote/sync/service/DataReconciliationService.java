@@ -47,7 +47,7 @@ public class DataReconciliationService {
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean allMatch = true;
         for (TableSyncConfig tc : syncJobService.parseTables(job)) {
-            String ew = FilterExpressionBuilder.build(tc.getFilterExpression());
+            String ew = FilterExpressionBuilder.build(tc.getFilterExpression(), src::quoteIdentifier);
             long sc = count(src, job.getSourceDb(), tc.getSourceTable(), ew);
             // 目标不套源过滤表达式（列名可能不同）
             long tcnt = count(tgt, job.getTargetDb(), tc.getTargetTable(), null);

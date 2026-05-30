@@ -39,4 +39,7 @@ public interface DbConnector {
 
     /** COUNT SQL（extraWhere 非空才接 WHERE）。 */
     String countSql(String db, String table, String extraWhere);
+
+    /** 按本库方言引用标识符（MySQL/Doris 反引号、PG/Oracle 双引号、SQLServer 方括号）。 */
+    String quoteIdentifier(String id);
 }

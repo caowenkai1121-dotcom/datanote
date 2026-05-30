@@ -215,9 +215,10 @@ public class MetadataService {
         try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
             if (isOracle(type)) {
                 List<String> list = new ArrayList<>();
+                String owner = (db == null || db.trim().isEmpty()) ? conn.getMetaData().getUserName().toUpperCase() : db.toUpperCase();
                 try (PreparedStatement ps = conn.prepareStatement(
                         "SELECT table_name FROM all_tables WHERE owner = ? ORDER BY table_name")) {
-                    ps.setString(1, db == null ? "" : db.toUpperCase());
+                    ps.setString(1, owner);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) list.add(rs.getString(1));
                     }
@@ -239,7 +240,8 @@ public class MetadataService {
     }
 
     private List<ColumnInfo> queryOracleColumns(Connection conn, String schema, String table) throws SQLException {
-        String owner = schema == null ? "" : schema.toUpperCase();
+        String owner = (schema == null || schema.trim().isEmpty())
+                ? conn.getMetaData().getUserName().toUpperCase() : schema.toUpperCase();
         String tbl = table == null ? "" : table.toUpperCase();
         java.util.Set<String> pks = new java.util.HashSet<>();
         String pkSql = "SELECT c.column_name FROM all_constraints k "

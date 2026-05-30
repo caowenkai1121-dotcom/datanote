@@ -82,7 +82,7 @@ public class IncrementalSyncEngine implements SyncEngine {
                         + "（表: " + tc.getSourceTable() + "）");
             }
         }
-        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression());
+        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression(), ctx.getSource()::quoteIdentifier);
         com.datanote.sync.util.RowValueProcessor rowProc =
                 new com.datanote.sync.util.RowValueProcessor(fm.srcToFieldMapping);
 

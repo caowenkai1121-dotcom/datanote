@@ -167,6 +167,11 @@ public class PostgresConnector implements DbConnector {
         return "\"" + id.replace("\"", "\"\"") + "\"";
     }
 
+    @Override
+    public String quoteIdentifier(String id) {
+        return q(id);
+    }
+
     private String full(String db, String table) {
         return q(schema(db)) + "." + q(table);
     }

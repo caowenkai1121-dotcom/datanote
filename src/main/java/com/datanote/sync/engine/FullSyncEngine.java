@@ -58,7 +58,7 @@ public class FullSyncEngine implements SyncEngine {
         FieldMappingResolver.Resolved fm = FieldMappingResolver.resolve(tc, meta.getColumns(), pks);
         List<String> tgtColumns = fm.tgtColumns;   // 写列（目标名），与 srcColumns 一一对应
 
-        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression());
+        String extraWhere = com.datanote.sync.util.FilterExpressionBuilder.build(tc.getFilterExpression(), ctx.getSource()::quoteIdentifier);
 
         // 迭代V3：标记同步时间戳 —— 写列在 tgtColumns 末尾追加 syncTsField（读列不变，绑定时最后一列绑当前时间）
         boolean markTs = SyncTsSupport.shouldAppend(ctx, tgtColumns);

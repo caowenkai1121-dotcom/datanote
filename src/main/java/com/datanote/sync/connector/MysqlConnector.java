@@ -124,6 +124,11 @@ public class MysqlConnector implements DbConnector {
         return buildCountSql(db, table, extraWhere);
     }
 
+    @Override
+    public String quoteIdentifier(String id) {
+        return SqlIdentifiers.quote(id);
+    }
+
     // ===== 纯逻辑：可单测的 SQL 构建 =====
 
     /** keyset 分页查询 SQL。hasCursor=true 时带 WHERE 游标。 */

@@ -163,6 +163,11 @@ public class OracleConnector implements DbConnector {
         return "\"" + id.replace("\"", "\"\"") + "\"";
     }
 
+    @Override
+    public String quoteIdentifier(String id) {
+        return q(id);
+    }
+
     private String full(String db, String table) {
         // db(owner) 与 table 取自元数据（已是大写存储名），直接引用
         String o = (db == null || db.trim().isEmpty()) ? (defaultSchema == null ? null : defaultSchema) : db.trim().toUpperCase();
