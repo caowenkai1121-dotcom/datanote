@@ -133,6 +133,22 @@ public class SyncJobController {
         }
     }
 
+    @Operation(summary = "按正则匹配源库表名(整库/批量/分表汇聚配置生成用)")
+    @GetMapping("/match-tables")
+    public R<java.util.List<String>> matchTables(@RequestParam Long dsId, @RequestParam String db,
+                                                 @RequestParam(required = false) String include,
+                                                 @RequestParam(required = false) String exclude) {
+        try {
+            com.datanote.sync.connector.DbConnector c = syncJobService.buildConnector(dsId, db);
+            java.util.List<String> all = c.listTables(db);
+            return R.ok(com.datanote.sync.util.RegexTableMatcher.match(all, include, exclude));
+        } catch (java.util.regex.PatternSyntaxException e) {
+            return R.fail("正则非法: " + e.getMessage());
+        } catch (Exception e) {
+            return R.fail("匹配失败: " + e.getMessage());
+        }
+    }
+
     @Operation(summary = "重置源表schema快照(人工确认危险漂移后恢复同步)")
     @DeleteMapping("/{id}/schema-snapshot")
     public R<String> resetSchemaSnapshot(@PathVariable Long id, @RequestParam String table) {

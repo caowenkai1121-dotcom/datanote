@@ -4349,10 +4349,13 @@ html, body {
           <div class="dbsync-tables-area">
             <div class="dbsync-tables-head">
               <div id="dfsTableHeader" style="font-size:12px;color:var(--text-muted);">源表 → 目标表 → 建表模式</div>
-              <button class="btn btn-sm" onclick="dbsyncAddTableRow()">
-                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
-                添加表
-              </button>
+              <span style="display:flex;gap:6px;">
+                <button class="btn btn-sm" onclick="dbsyncBulkAddByRegex()" title="按表名正则批量添加（整库/分表汇聚）">正则批量</button>
+                <button class="btn btn-sm" onclick="dbsyncAddTableRow()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+                  添加表
+                </button>
+              </span>
             </div>
             <div id="dfsTableRows">
               <!-- 动态生成行 -->
@@ -13797,6 +13800,44 @@ window.dbsyncAddTableRow = function() {
   if (!container) return;
   var idx = container.children.length;
   container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx));
+};
+
+/* DS-M10：按表名正则批量添加（整库/分表汇聚多对一） */
+window.dbsyncBulkAddByRegex = function() {
+  var dsId = document.getElementById('dfsSrcDsId').value;
+  var db = document.getElementById('dfsSrcDb').value;
+  if (!dsId || !db) { showToast('请先选择源数据源与源库', 'error'); return; }
+  dbsyncShowPreview('正则批量添加表',
+    '<div style="display:flex;flex-direction:column;gap:8px;min-width:400px;">'
+    + '<label style="font-size:12px;color:var(--text-regular);">包含正则 include（空=全部，全匹配语义）<input id="dbsyncRegexInc" class="dbsync-form-input" style="margin-top:3px;font-family:monospace;" placeholder="如 user_\\d+"></label>'
+    + '<label style="font-size:12px;color:var(--text-regular);">排除正则 exclude（可空）<input id="dbsyncRegexExc" class="dbsync-form-input" style="margin-top:3px;font-family:monospace;" placeholder="如 tmp_.*"></label>'
+    + '<label style="font-size:12px;color:var(--text-regular);">汇聚目标表（可空：填则所有匹配表→同一目标表=分表汇聚多对一）<input id="dbsyncRegexAgg" class="dbsync-form-input" style="margin-top:3px;" placeholder="留空：目标表名=源表名"></label>'
+    + '<div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="btn btn-sm btn-primary" onclick="dbsyncDoBulkAdd()">匹配并添加</button></div>'
+    + '<div id="dbsyncRegexResult" style="font-size:12px;color:var(--text-muted);"></div></div>');
+};
+window.dbsyncDoBulkAdd = function() {
+  var dsId = document.getElementById('dfsSrcDsId').value;
+  var db = document.getElementById('dfsSrcDb').value;
+  var inc = ((document.getElementById('dbsyncRegexInc') || {}).value || '').trim();
+  var exc = ((document.getElementById('dbsyncRegexExc') || {}).value || '').trim();
+  var agg = ((document.getElementById('dbsyncRegexAgg') || {}).value || '').trim();
+  var rt = document.getElementById('dbsyncRegexResult');
+  if (rt) rt.textContent = '匹配中...';
+  var url = '/api/sync-job/match-tables?dsId=' + encodeURIComponent(dsId) + '&db=' + encodeURIComponent(db)
+    + (inc ? '&include=' + encodeURIComponent(inc) : '') + (exc ? '&exclude=' + encodeURIComponent(exc) : '');
+  api(url).then(function(res) {
+    var matched = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : null);
+    if (!matched) { if (rt) rt.innerHTML = '<span style="color:var(--error);">' + escapeHtml((res && res.msg) || '匹配失败') + '</span>'; return; }
+    if (matched.length === 0) { if (rt) rt.textContent = '无匹配表'; return; }
+    var container = document.getElementById('dfsTableRows');
+    matched.forEach(function(t) {
+      var idx = container.children.length;
+      container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx, { sourceTable: t, targetTable: agg || t, createTargetTable: true }));
+    });
+    showToast('已批量添加 ' + matched.length + ' 张表' + (agg ? '（汇聚到 ' + agg + '）' : ''), 'success');
+    var ov = document.getElementById('dbsyncPreviewOverlay');
+    if (ov) ov.remove();
+  }).catch(function() { if (rt) rt.innerHTML = '<span style="color:var(--error);">请求失败</span>'; });
 };
 
 window.dbsyncDelTableRow = function(btn) {
