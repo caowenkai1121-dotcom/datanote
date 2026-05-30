@@ -23,6 +23,9 @@ public class DnQualityRule {
     private String severity;
     private Integer status;
     private String scheduleCron;
+    private java.math.BigDecimal passThreshold;
+    private Integer blockDownstream;
+    private String dimension;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

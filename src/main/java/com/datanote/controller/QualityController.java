@@ -130,6 +130,53 @@ public class QualityController {
     }
 
     /**
+     * 规则通过率趋势：近 20 次执行（时间正序，便于前端画折线）
+     */
+    @Operation(summary = "规则通过率趋势")
+    @GetMapping("/trend")
+    public R<List<Map<String, Object>>> trend(@RequestParam Long ruleId) {
+        QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
+        qw.eq("rule_id", ruleId).orderByDesc("started_at").last("LIMIT 20");
+        List<DnQualityRun> runs = runMapper.selectList(qw);
+        List<Map<String, Object>> points = new java.util.ArrayList<>();
+        // 倒序查出后反转为时间正序
+        for (int i = runs.size() - 1; i >= 0; i--) {
+            DnQualityRun r = runs.get(i);
+            Map<String, Object> p = new HashMap<>();
+            p.put("startedAt", r.getStartedAt());
+            p.put("passRate", r.getPassRate());
+            p.put("runStatus", r.getRunStatus());
+            points.add(p);
+        }
+        return R.ok(points);
+    }
+
+    /**
+     * 整体质量分：近 7 天 run 的通过率均值（0-100，无数据返回 100）
+     */
+    @Operation(summary = "整体质量分")
+    @GetMapping("/score")
+    public R<Map<String, Object>> score() {
+        QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
+        qw.ge("started_at", LocalDateTime.now().minusDays(7)).isNotNull("pass_rate");
+        List<DnQualityRun> runs = runMapper.selectList(qw);
+
+        Map<String, Object> data = new HashMap<>();
+        double sum = 0;
+        int n = 0;
+        for (DnQualityRun r : runs) {
+            if (r.getPassRate() != null) {
+                sum += r.getPassRate().doubleValue();
+                n++;
+            }
+        }
+        double score = n == 0 ? 100.0 : Math.round(sum / n * 100.0) / 100.0;
+        data.put("score", score);
+        data.put("sampleRuns", n);
+        return R.ok(data);
+    }
+
+    /**
      * 获取质量概览统计
      */
     @Operation(summary = "质量概览统计")

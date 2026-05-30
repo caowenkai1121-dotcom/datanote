@@ -163,7 +163,7 @@ public class QualityService {
         long total = queryCount(conn, totalSql);
         long fail = queryCount(conn, failSql);
 
-        fillRunResult(run, total, total - fail, fail);
+        fillRunResult(run, rule, total, total - fail, fail);
         if (fail > 0) {
             run.setErrorSample(querySampleJson(conn, sampleSql));
         }
@@ -188,7 +188,7 @@ public class QualityService {
         long total = queryCount(conn, totalSql);
         long failGroups = queryCount(conn, failSql);
 
-        fillRunResult(run, total, total - failGroups, failGroups);
+        fillRunResult(run, rule, total, total - failGroups, failGroups);
         if (failGroups > 0) {
             run.setErrorSample(querySampleJson(conn, sampleSql));
         }
@@ -235,7 +235,7 @@ public class QualityService {
         long total = queryCount(conn, totalSql);
         long fail = queryCount(conn, failSql);
 
-        fillRunResult(run, total, total - fail, fail);
+        fillRunResult(run, rule, total, total - fail, fail);
         if (fail > 0) {
             run.setErrorSample(querySampleJson(conn, sampleSql));
         }
@@ -265,7 +265,7 @@ public class QualityService {
         long total = queryCount(conn, totalSql);
         long fail = queryCountWithParam(conn, failSql, regexPattern);
 
-        fillRunResult(run, total, total - fail, fail);
+        fillRunResult(run, rule, total, total - fail, fail);
         if (fail > 0) {
             run.setErrorSample(querySampleJsonWithParam(conn, sampleSql, regexPattern));
         }
@@ -319,9 +319,9 @@ public class QualityService {
                     if (rs.next()) {
                         long total = rs.getLong("total_count");
                         long fail = rs.getLong("fail_count");
-                        fillRunResult(run, total, total - fail, fail);
+                        fillRunResult(run, rule, total, total - fail, fail);
                     } else {
-                        fillRunResult(run, 0, 0, 0);
+                        fillRunResult(run, rule, 0, 0, 0);
                     }
                 }
             }
@@ -331,17 +331,26 @@ public class QualityService {
         }
     }
 
-    private void fillRunResult(DnQualityRun run, long total, long pass, long fail) {
+    private void fillRunResult(DnQualityRun run, DnQualityRule rule, long total, long pass, long fail) {
         run.setTotalCount(total);
         run.setPassCount(pass);
         run.setFailCount(fail);
+        BigDecimal rate;
         if (total > 0) {
-            BigDecimal rate = BigDecimal.valueOf(pass * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
-            run.setPassRate(rate);
+            rate = BigDecimal.valueOf(pass * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
         } else {
-            run.setPassRate(BigDecimal.valueOf(100));
+            rate = BigDecimal.valueOf(100);
         }
-        run.setRunStatus(fail > 0 ? "failed" : "success");
+        run.setPassRate(rate);
+        run.setRunStatus(judgeStatus(rate, rule.getPassThreshold()));
+    }
+
+    /**
+     * 按阈值判定状态：通过率 >= 阈值即 success，否则 failed。阈值为 null 视为 100（须满分才过）。
+     */
+    static String judgeStatus(BigDecimal passRate, BigDecimal threshold) {
+        BigDecimal th = threshold != null ? threshold : BigDecimal.valueOf(100);
+        return passRate.compareTo(th) >= 0 ? "success" : "failed";
     }
 
     private long queryCount(Connection conn, String sql) throws SQLException {
