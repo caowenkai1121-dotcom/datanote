@@ -94,22 +94,28 @@ public class DataReconciliationService {
                     tableResults.add(tr);
                     continue;
                 }
-                Map<Long, long[]> srcMap = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
-                Map<Long, long[]> tgtMap = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
+                Map<Integer, long[]> srcMap = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
+                Map<Integer, long[]> tgtMap = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
                 List<Map<String, Object>> mism = new ArrayList<>();
-                java.util.Set<Long> allKeys = new java.util.TreeSet<>();
+                // 跨方言(如 MySQL→Doris)值序列化不同(datetime精度/decimal末尾零/float表示),
+                // MD5 内容校验不可靠;仅当源目标同方言族才比对内容校验和,否则只比对分桶行数。
+                boolean contentComparable = src.getDatabaseType().equalsIgnoreCase(tgt.getDatabaseType());
+                java.util.Set<Integer> allKeys = new java.util.TreeSet<>();
                 allKeys.addAll(srcMap.keySet());
                 allKeys.addAll(tgtMap.keySet());
-                for (Long b : allKeys) {
-                    long[] s = srcMap.getOrDefault(b, new long[]{0, 0});
-                    long[] t = tgtMap.getOrDefault(b, new long[]{0, 0});
-                    if (s[0] != t[0] || s[1] != t[1]) {
+                for (Integer b : allKeys) {
+                    long[] s = srcMap.getOrDefault(b, new long[]{0, 0, 0});
+                    long[] t = tgtMap.getOrDefault(b, new long[]{0, 0, 0});
+                    boolean diff = contentComparable
+                            ? (s[0] != t[0] || s[1] != t[1] || s[2] != t[2])
+                            : (s[0] != t[0]);
+                    if (diff) {
                         Map<String, Object> mb = new LinkedHashMap<>();
                         mb.put("bucket", b);
                         mb.put("sourceCnt", s[0]);
                         mb.put("targetCnt", t[0]);
-                        mb.put("sourceChk", s[1]);
-                        mb.put("targetChk", t[1]);
+                        mb.put("sourceChk", Long.toHexString(s[1]) + Long.toHexString(s[2]));
+                        mb.put("targetChk", Long.toHexString(t[1]) + Long.toHexString(t[2]));
                         mism.add(mb);
                     }
                 }
@@ -118,6 +124,10 @@ public class DataReconciliationService {
                 tr.put("bucketCount", buckets);
                 tr.put("match", match);
                 tr.put("mismatchBuckets", mism);
+                if (!contentComparable) {
+                    tr.put("note", "跨方言(" + src.getDatabaseType() + "→" + tgt.getDatabaseType()
+                            + "):值序列化差异,仅比对分桶行数,内容校验和不可靠");
+                }
             } catch (Exception e) {
                 tr.put("match", false);
                 tr.put("error", e.getMessage());
@@ -132,18 +142,46 @@ public class DataReconciliationService {
         return r;
     }
 
-    private Map<Long, long[]> runChecksum(DbConnector conn, String db, String table,
-                                           List<String> cols, List<String> pks, int buckets) throws Exception {
-        String sql = com.datanote.sync.util.ChecksumSqlBuilder.build(db, table, cols, pks, buckets);
-        Map<Long, long[]> m = new LinkedHashMap<>();
+    private Map<Integer, long[]> runChecksum(DbConnector conn, String db, String table,
+                                             List<String> cols, List<String> pks, int buckets) throws Exception {
+        String sql = com.datanote.sync.util.ChecksumSqlBuilder.buildRowHashSql(db, table, cols, pks);
+        Map<Integer, long[]> m = new LinkedHashMap<>();
         try (Connection c = conn.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql);
-             java.sql.ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                m.put(rs.getLong("bk"), new long[]{rs.getLong("cnt"), rs.getLong("chk")});
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            // 流式读取:逐行拉取避免大表 OOM(MySQL/Doris 均接受普通 fetchSize)
+            ps.setFetchSize(1000);
+            try (ResultSet rs = ps.executeQuery()) {
+                int pkCount = pks.size();
+                while (rs.next()) {
+                    StringBuilder pkKey = new StringBuilder();
+                    for (int i = 1; i <= pkCount; i++) {
+                        Object v = rs.getObject(i);
+                        pkKey.append(v == null ? "\0" : String.valueOf(v));
+                        if (i < pkCount) pkKey.append('#');
+                    }
+                    int bucket = Math.floorMod(pkKey.toString().hashCode(), buckets);
+                    long[] hl = md5ToLongs(rs.getString("__h"));
+                    long[] acc = m.get(bucket);
+                    if (acc == null) {
+                        acc = new long[]{0L, 0L, 0L};
+                        m.put(bucket, acc);
+                    }
+                    acc[0]++;
+                    acc[1] ^= hl[0];
+                    acc[2] ^= hl[1];
+                }
             }
         }
         return m;
+    }
+
+    /** 32位小写 hex 的 MD5 解析为前8字节/后8字节两个 long;null 或长度不足当全 0。 */
+    private static long[] md5ToLongs(String hex) {
+        if (hex == null || hex.length() < 32) return new long[]{0L, 0L};
+        long hi = 0, lo = 0;
+        for (int i = 0; i < 8; i++) hi = (hi << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
+        for (int i = 8; i < 16; i++) lo = (lo << 8) | (Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16) & 0xFF);
+        return new long[]{hi, lo};
     }
 
     private void writeChecksumExec(Long jobId, boolean ok, List<Map<String, Object>> rows) {
