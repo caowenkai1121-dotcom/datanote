@@ -47,7 +47,7 @@
 <script>
 /* 治理模块注册表：M0 仅搭壳，live 模块链入既有工作台，planned 模块占位标注里程碑 */
 var GOV_MODULES = [
-  { key: 'assets',         label: '资产目录',   status: 'planned', ms: 'M2 / M10', desc: '元数据自动采集、数据目录、资产盘点与生命周期' },
+  { key: 'assets',         label: '资产目录',   status: 'live',    ms: 'M2 / M10', desc: '元数据自动采集、数据目录、资产盘点与生命周期' },
   { key: 'lineage',        label: '数据血缘',   status: 'planned', ms: 'M3 / M4',  desc: '字段级血缘、SQL 解析、影响分析与溯源' },
   { key: 'quality',        label: '数据质量',   status: 'live',    ms: '',          desc: '质量规则、检查执行与历史',
     link: 'workspace.html#/quality' },
@@ -86,6 +86,10 @@ function renderContent() {
   c.innerHTML = '';
   c.appendChild(DN.h('div', { class: 'gov-h1', text: m.label }));
   c.appendChild(DN.h('div', { class: 'gov-desc', text: m.desc }));
+  if (m.status === 'live' && typeof MODULE_RENDERERS[m.key] === 'function') {
+    MODULE_RENDERERS[m.key](c);
+    return;
+  }
   if (m.status === 'live' && m.link) {
     var box = DN.h('div', { class: 'gov-placeholder' }, [
       DN.h('div', { text: '该模块已上线，当前托管于工作台。' }),
@@ -98,6 +102,71 @@ function renderContent() {
       DN.h('span', { class: 'ms', text: '将于里程碑 ' + m.ms + ' 上线' })
     ]));
   }
+}
+
+var MODULE_RENDERERS = {
+  assets: renderAssets
+};
+
+function fmtBytes(n) {
+  if (n == null) return '-';
+  var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0, v = Number(n);
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(1) + ' ' + u[i];
+}
+
+function renderAssets(c) {
+  var bar = DN.h('div', { class: 'gov-desc' });
+  var btnAll = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '采集全部(源库+数仓)',
+    onclick: function () {
+      DN.post('/api/metadata-center/crawl/all').then(function (msg) {
+        DN.toast(msg || '采集已启动'); setTimeout(function () { loadAssets(); }, 1500);
+      }).catch(function (e) { DN.toast(e.message, 'error'); });
+    } });
+  bar.appendChild(btnAll);
+  c.appendChild(bar);
+
+  c.appendChild(DN.h('div', { id: 'assetLogs', class: 'gov-desc' }));
+  c.appendChild(DN.h('div', { id: 'assetList' }));
+
+  loadAssets();
+}
+
+function loadAssets() {
+  DN.get('/api/metadata-center/collect-logs').then(function (logs) {
+    var box = document.getElementById('assetLogs');
+    if (!box) return;
+    if (!logs || !logs.length) { box.textContent = '尚无采集记录'; return; }
+    var last = logs[0];
+    box.textContent = '最近采集: ' + (last.dbType || '') + ' / ' + (last.status || '') +
+      ' / 表' + (last.tableCount || 0) + ' 字段' + (last.columnCount || 0) +
+      ' / ' + (last.startedAt || '');
+  }).catch(function () {});
+
+  DN.get('/api/metadata-center/tables').then(function (tables) {
+    var box = document.getElementById('assetList');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!tables || !tables.length) {
+      box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '暂无资产，点击上方采集' }));
+      return;
+    }
+    var rows = tables.slice(0, 200).map(function (t) {
+      return '<tr><td>' + DN.esc(t.dbType || '') + '</td><td>' + DN.esc(t.databaseName || '') +
+        '</td><td>' + DN.esc(t.tableName || '') + '</td><td>' + DN.esc(t.tableComment || '') +
+        '</td><td style="text-align:right">' + (t.rowCount == null ? '-' : t.rowCount) +
+        '</td><td style="text-align:right">' + fmtBytes(t.sizeBytes) + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
+      '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
+      '<th style="padding:8px">来源</th><th style="padding:8px">库</th><th style="padding:8px">表</th>' +
+      '<th style="padding:8px">业务描述</th><th style="padding:8px;text-align:right">行数</th>' +
+      '<th style="padding:8px;text-align:right">体量</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    box.querySelectorAll('td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+  }).catch(function (e) {
+    var box = document.getElementById('assetList');
+    if (box) box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
+  });
 }
 
 function route() { renderNav(); renderContent(); }
