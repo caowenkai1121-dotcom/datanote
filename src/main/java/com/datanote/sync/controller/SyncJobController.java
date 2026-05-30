@@ -33,6 +33,8 @@ public class SyncJobController {
     private final DnSyncJobMapper syncJobMapper;
     private final DnSyncFolderMapper folderMapper;
     private final com.datanote.mapper.DnSyncJobAuditMapper auditMapper;
+    private final com.datanote.sync.service.DataReconciliationService reconciliationService;
+    private final com.datanote.sync.service.CdcEngineManager cdcEngineManager;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -149,4 +151,18 @@ public class SyncJobController {
         syncJobMapper.updateById(job);
         return R.ok("已停用定时调度");
     }
+
+    // ===== M3c：行数对账 =====
+
+    @Operation(summary = "行数对账(源/目标 count 比对)")
+    @PostMapping("/{id}/reconcile")
+    public R<java.util.Map<String, Object>> reconcile(@PathVariable Long id) {
+        try {
+            return R.ok(reconciliationService.reconcile(id));
+        } catch (Exception e) {
+            log.error("对账失败: id={}", id, e);
+            return R.fail("对账失败: " + e.getMessage());
+        }
+    }
+
 }

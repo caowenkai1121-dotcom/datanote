@@ -158,7 +158,16 @@ public class MysqlConnector implements DbConnector {
     }
 
     public static String buildCountSql(String db, String table) {
-        return "SELECT COUNT(*) FROM " + SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        return buildCountSql(db, table, null);
+    }
+
+    /** COUNT SQL，extraWhere 非空才接 WHERE。 */
+    public static String buildCountSql(String db, String table, String extraWhere) {
+        String base = "SELECT COUNT(*) FROM " + SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        if (extraWhere != null && !extraWhere.trim().isEmpty()) {
+            base += " WHERE " + extraWhere;
+        }
+        return base;
     }
 
     /** 增量分页查询 SQL（(incField, pk) 复合游标，避免同值跨页丢数据/死循环）。
