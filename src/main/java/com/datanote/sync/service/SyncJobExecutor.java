@@ -61,6 +61,9 @@ public class SyncJobExecutor {
     /** 优先级线程池大小（可配置，资源隔离）。 */
     @org.springframework.beans.factory.annotation.Value("${datanote.sync.executor.pool-size:4}")
     private int poolSize;
+    /** DS-M5：单次运行坏行(脏数据)堆积告警阈值，0=关闭。 */
+    @org.springframework.beans.factory.annotation.Value("${datanote.alert.dlq-threshold:0}")
+    private long dlqThreshold;
     /** 后台执行优先级线程池（FULL/INCREMENTAL 一次性任务），高 priority 任务先跑。在 @PostConstruct 初始化。 */
     private ThreadPoolExecutor pool;
     /** 超时调度器：到点请求停止运行中的任务。 */
@@ -329,6 +332,12 @@ public class SyncJobExecutor {
         logBroadcastService.broadcastTaskLog(jobId, TASK_TYPE, "INFO",
                 "任务结束: " + finalStatus + "，读 " + ctx.getReadCount().get()
                 + " 写 " + ctx.getWriteCount().get());
+
+        // DS-M5：坏行(脏数据)堆积超阈告警
+        long dirty = ctx.getDirtyCount().get();
+        if (dlqThreshold > 0 && dirty > dlqThreshold) {
+            alertService.alert(jobId, job.getJobName(), "DLQ_HIGH", "本次坏行数 " + dirty + " 超阈值 " + dlqThreshold);
+        }
 
         // 终态的 dn_sync_job.status 由 doRunWithRetry 决定（可能还要重试）；这里仅返回结果。
         // 仅瞬时异常可重试；errorCount>0 导致的 FAILED（caught==null）/手动停止/超时 不重试。

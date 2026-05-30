@@ -31,6 +31,7 @@ public class DataReconciliationService {
 
     private final SyncJobService syncJobService;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final AlertService alertService;
 
     /** DS-M2：主键级 diff 单表主键集合上限，超过则放弃 PK diff（仅保留分桶结果），防 OOM。 */
     private static final int PK_DIFF_CAP = 2_000_000;
@@ -60,6 +61,7 @@ public class DataReconciliationService {
             rows.add(m);
         }
         writeExec(jobId, allMatch, rows);
+        if (!allMatch) alertService.alert(jobId, job.getJobName(), "对账不一致", "行数对账发现不一致表");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("ok", allMatch);
         result.put("tables", rows);
@@ -153,6 +155,7 @@ public class DataReconciliationService {
             tableResults.add(tr);
         }
         writeChecksumExec(jobId, allMatch, tableResults);
+        if (!allMatch) alertService.alert(jobId, job.getJobName(), "对账不一致", "深度对账(checksum)发现不一致或主键差异");
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("ok", allMatch);
         r.put("tables", tableResults);

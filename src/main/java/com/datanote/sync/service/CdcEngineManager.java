@@ -75,6 +75,10 @@ public class CdcEngineManager {
     @Value("${datanote.sync.cdc.poll-interval-ms:500}")
     private int cdcPollIntervalMs;
 
+    /** DS-M5：CDC 流式延迟告警阈值(ms)，0=关闭。 */
+    @Value("${datanote.alert.cdc-lag-threshold-ms:0}")
+    private long cdcLagThresholdMs;
+
     @Value("${datanote.sync.cdc.heartbeat-interval-ms:30000}")
     private int cdcHeartbeatMs;
 
@@ -311,6 +315,14 @@ public class CdcEngineManager {
             try {
                 if (engine.isRunning()) {
                     updateExecutionRunning(jobId, engine);
+                    // DS-M5：CDC 延迟超阈告警（AlertService 自带节流防刷屏）
+                    if (cdcLagThresholdMs > 0) {
+                        long lag = engine.getStreamingLagMs();
+                        if (lag > cdcLagThresholdMs) {
+                            alertService.alert(jobId, null, "CDC_LAG",
+                                    "CDC 延迟 " + lag + "ms 超阈值 " + cdcLagThresholdMs + "ms");
+                        }
+                    }
                 } else {
                     engines.remove(jobId, engine);
                     finalizeExecution(jobId, "FAILED", engine);
