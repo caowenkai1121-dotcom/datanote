@@ -178,6 +178,24 @@ class WorkspaceDbSyncUiTest {
     }
 
     @Test
+    void incrementalSnapshotAndDdlSyncControlsArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncIncrSnapshot\""),
+                "advanced section should have incrementalSnapshot select");
+        assertTrue(html.contains("id=\"dbsyncDdlSync\""),
+                "advanced section should have ddlSync select");
+        assertTrue(html.contains("incrementalSnapshotEnabled"),
+                "save payload should include incrementalSnapshotEnabled field");
+        assertTrue(html.contains("ddlSyncEnabled"),
+                "save payload should include ddlSyncEnabled field");
+        assertTrue(html.contains("dbsyncTriggerIncrSnapshot"),
+                "CDC action area should contain dbsyncTriggerIncrSnapshot function");
+        assertTrue(html.contains("/api/cdc/' + id + '/incremental-snapshot"),
+                "incremental snapshot should call the /incremental-snapshot endpoint");
+    }
+
+    @Test
     void checkpointTabAndResetActionsArePresent() throws Exception {
         String html = readWorkspaceHtml();
 
