@@ -246,6 +246,7 @@ public class SyncJobService {
             try (Connection c = src.getConnection()) {
                 checks.add(check("source", true, "源库连接成功"));
             }
+            String syncModeUpper = job.getSyncMode() == null ? "FULL" : job.getSyncMode().toUpperCase();
             for (TableSyncConfig t : parseTables(job)) {
                 try {
                     TableMeta meta = src.getTableMeta(job.getSourceDb(), t.getSourceTable());
@@ -254,14 +255,85 @@ public class SyncJobService {
                         allOk = false;
                     } else {
                         int pk = meta.getPrimaryKeys().size();
-                        boolean single = pk == 1;
-                        String m = single ? "主键单列，支持 keyset 分页与自动建表"
-                                : (pk == 0 ? "无主键(无法 keyset 分页/自动建表)" : "复合主键(当前仅支持单列)");
-                        checks.add(check("table:" + t.getSourceTable(), single, m));
-                        allOk &= single;
+                        boolean pkOk;
+                        String m;
+                        if (pk == 1) {
+                            pkOk = true;
+                            m = "单列主键";
+                        } else if (pk > 1) {
+                            pkOk = true;
+                            m = "复合主键(已支持 keyset)";
+                        } else {
+                            // pk == 0
+                            boolean isFull = "FULL".equals(syncModeUpper) || "".equals(syncModeUpper);
+                            if (isFull) {
+                                pkOk = true;
+                                m = "无主键(全量走流式 INSERT,不去重/不续传)";
+                            } else {
+                                pkOk = false;
+                                m = "无主键:增量/CDC 需主键定位,不支持";
+                            }
+                        }
+                        checks.add(check("table:" + t.getSourceTable(), pkOk, m));
+                        allOk &= pkOk;
                     }
                 } catch (Exception e) {
                     checks.add(check("table:" + t.getSourceTable(), false, "读取失败: " + e.getMessage()));
+                    allOk = false;
+                }
+            }
+            // CDC 源库额外检查：binlog 开启状态、格式、账号权限
+            if ("CDC".equals(syncModeUpper)) {
+                try (Connection conn = src.getConnection()) {
+                    // 1. log_bin
+                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW VARIABLES LIKE 'log_bin'")) {
+                        if (rs.next()) {
+                            String val = rs.getString(2);
+                            boolean ok = "ON".equalsIgnoreCase(val);
+                            checks.add(check("binlog", ok, ok ? "binlog 已开启" : "源库未开启 binlog"));
+                            allOk &= ok;
+                        } else {
+                            checks.add(check("binlog", false, "无法读取 log_bin 变量"));
+                            allOk = false;
+                        }
+                    } catch (Exception e) {
+                        checks.add(check("binlog", false, "检查失败: " + e.getMessage()));
+                        allOk = false;
+                    }
+                    // 2. binlog_format
+                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW VARIABLES LIKE 'binlog_format'")) {
+                        if (rs.next()) {
+                            String val = rs.getString(2);
+                            boolean ok = "ROW".equalsIgnoreCase(val);
+                            checks.add(check("binlog_format", ok, ok ? "binlog_format=ROW" : "binlog_format 非 ROW(当前=" + val + ")"));
+                            allOk &= ok;
+                        } else {
+                            checks.add(check("binlog_format", false, "无法读取 binlog_format 变量"));
+                            allOk = false;
+                        }
+                    } catch (Exception e) {
+                        checks.add(check("binlog_format", false, "检查失败: " + e.getMessage()));
+                        allOk = false;
+                    }
+                    // 3. REPLICATION 权限
+                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW GRANTS")) {
+                        StringBuilder grants = new StringBuilder();
+                        while (rs.next()) {
+                            grants.append(rs.getString(1)).append(" ");
+                        }
+                        String g = grants.toString().toUpperCase();
+                        boolean hasAll = g.contains("ALL PRIVILEGES");
+                        boolean hasSlave = g.contains("REPLICATION SLAVE");
+                        boolean hasClient = g.contains("REPLICATION CLIENT");
+                        boolean ok = hasAll || (hasSlave && hasClient);
+                        checks.add(check("cdc_grants", ok, ok ? "账号具备 REPLICATION 权限" : "账号缺少 REPLICATION SLAVE/CLIENT 权限"));
+                        allOk &= ok;
+                    } catch (Exception e) {
+                        checks.add(check("cdc_grants", false, "检查失败: " + e.getMessage()));
+                        allOk = false;
+                    }
+                } catch (Exception e) {
+                    checks.add(check("cdc_check", false, "CDC 检查连接失败: " + e.getMessage()));
                     allOk = false;
                 }
             }
@@ -273,7 +345,7 @@ public class SyncJobService {
         try {
             DbConnector tgt = buildConnector(job.getTargetDsId(), job.getTargetDb());
             tgt.listTables(job.getTargetDb());
-            checks.add(check("target", true, "目标库连接成功"));
+            checks.add(check("target", true, "目标库连接成功(连通)"));
         } catch (Exception e) {
             checks.add(check("target", false, "目标库连接失败: " + e.getMessage()));
             allOk = false;
