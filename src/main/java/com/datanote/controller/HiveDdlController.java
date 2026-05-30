@@ -13,7 +13,10 @@ import com.datanote.model.dto.HiveCreateTableRequest;
 import com.datanote.model.dto.HiveExecuteRequest;
 import com.datanote.service.HiveService;
 import com.datanote.service.LogBroadcastService;
+import com.datanote.service.MaskingService;
 import com.datanote.service.MetadataService;
+import com.datanote.service.RbacService;
+import com.datanote.service.SqlMaskRewriter;
 import com.datanote.util.CryptoUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +24,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -44,6 +50,8 @@ public class HiveDdlController {
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnDatasourceMapper datasourceMapper;
     private final DnSyncTaskMapper syncTaskMapper;
+    private final MaskingService maskingService;
+    private final RbacService rbacService;
 
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
@@ -139,8 +147,19 @@ public class HiveDdlController {
             int executed = 0;
             List<String> allLogs = new java.util.ArrayList<>();
 
+            // M9：按当前用户装配脱敏/行策略（绕过用户不装配，保证原 SQL 行为）
+            boolean bypassMask = isUnmaskedUser();
+            List<SqlMaskRewriter.ColumnMask> masks = bypassMask
+                    ? java.util.Collections.emptyList() : maskingService.resolveColumnMasks();
+            List<SqlMaskRewriter.RowFilter> rowFilters = bypassMask
+                    ? java.util.Collections.emptyList() : maskingService.resolveRowFilters(currentUsername());
+
             for (int i = 0; i < totalStmts; i++) {
                 String stmt = validStmts.get(i);
+                // M9：执行前脱敏改写（绕过用户为原样，受限用户改写失败 fail-closed 抛 BusinessException）
+                if (!bypassMask) {
+                    stmt = applyMasking(stmt, masks, rowFilters);
+                }
                 // 实时推送：开始执行第 N 条
                 String preview = stmt.length() > 80 ? stmt.substring(0, 80) + "..." : stmt;
                 pushSqlLog("INFO", "执行第 " + (i + 1) + "/" + totalStmts + " 条语句: " + preview);
@@ -257,13 +276,33 @@ public class HiveDdlController {
             return emitter;
         }
 
+        // M9：执行前脱敏改写。绕过用户原样；受限用户逐条改写，失败则 fail-closed 拒绝（发送 error 并结束）。
+        final String maskedSql;
+        if (isUnmaskedUser()) {
+            maskedSql = execSql;
+        } else {
+            try {
+                List<SqlMaskRewriter.ColumnMask> masks = maskingService.resolveColumnMasks();
+                List<SqlMaskRewriter.RowFilter> rowFilters = maskingService.resolveRowFilters(currentUsername());
+                maskedSql = rewriteMultiStatement(execSql, masks, rowFilters);
+            } catch (BusinessException e) {
+                updateExecution(execId, "FAILED", "[ERROR] " + e.getMessage() + "\n", System.currentTimeMillis());
+                try {
+                    emitter.send(SseEmitter.event().name("error").data(
+                            java.util.Collections.singletonMap("message", e.getMessage())));
+                    emitter.complete();
+                } catch (Exception ignored) {}
+                return emitter;
+            }
+        }
+
         final StringBuilder logBuffer = new StringBuilder();
         final long startMs = System.currentTimeMillis();
 
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    hiveService.executeSQLWithStream(execSql, new HiveService.LogCallback() {
+                    hiveService.executeSQLWithStream(maskedSql, new HiveService.LogCallback() {
                         public void onLog(String level, String message) {
                             try {
                                 logBuffer.append("[").append(level).append("] ").append(message).append("\n");
@@ -318,6 +357,92 @@ public class HiveDdlController {
         update.setDuration((int)((System.currentTimeMillis() - startMs) / 1000));
         update.setLog(log.length() > 50000 ? log.substring(log.length() - 50000) : log);
         taskExecutionMapper.updateById(update);
+    }
+
+    // ==================== M9 查询期动态脱敏 + 行列权限 ====================
+
+    /**
+     * 当前用户是否完全绕过脱敏（原 SQL 执行）：
+     *  1) 认证未启用（单用户态，anonymous）—— 保证既有工作台行为零变化；
+     *  2) admin（authorities 含 ROLE_ADMIN，或 RBAC 权限集含 '*'）；
+     *  3) RBAC 权限集含 'data:unmask'。
+     * admin / 单用户态据此短路，永不进入改写、永不被 fail-closed 拒绝。
+     */
+    private boolean isUnmaskedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // 未启用认证 / 匿名 → 单用户态，完全绕过
+        if (auth == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
+            return true;
+        }
+        boolean isAdminRole = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));
+        if (isAdminRole) return true;
+        try {
+            java.util.Set<String> perms = rbacService.getUserPermsByUsername(auth.getName());
+            return perms.contains("*") || perms.contains("data:unmask");
+        } catch (Exception e) {
+            // RBAC 不可用：保守不绕过（受限态由下游 no-op / fail-closed 处理）
+            return false;
+        }
+    }
+
+    /** 取当前登录用户名（匿名/未登录返回 null）。 */
+    private String currentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
+            return null;
+        }
+        return auth.getName();
+    }
+
+    /**
+     * 脱敏改写网关：对单条 SQL 应用列脱敏 + 行过滤。
+     *  - 绕过用户（单用户态/admin/data:unmask）→ 原 SQL；
+     *  - 无任何策略命中 → 原 SQL（no-op）；
+     *  - 改写失败（解析失败 / SELECT * 降级）→ 抛 BusinessException（fail-closed，拒绝执行）。
+     * 任何非改写类异常都不应放行明文，故统一在改写阶段 fail-closed。
+     */
+    private String applyMasking(String sql,
+                                List<SqlMaskRewriter.ColumnMask> masks,
+                                List<SqlMaskRewriter.RowFilter> rowFilters) {
+        if ((masks == null || masks.isEmpty()) && (rowFilters == null || rowFilters.isEmpty())) {
+            return sql; // 无策略，no-op
+        }
+        try {
+            return SqlMaskRewriter.rewrite(sql, "", masks, rowFilters);
+        } catch (SqlMaskRewriter.MaskRewriteException e) {
+            throw new BusinessException("查询被安全策略拦截：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 多语句脱敏：按分号拆分逐条改写后拼回。无策略命中的语句保持原样（rewriter 内部 no-op）。
+     * 仅供 streamExecute 使用（executeSQL 自身已逐条改写）。
+     */
+    private String rewriteMultiStatement(String sql,
+                                         List<SqlMaskRewriter.ColumnMask> masks,
+                                         List<SqlMaskRewriter.RowFilter> rowFilters) {
+        if ((masks == null || masks.isEmpty()) && (rowFilters == null || rowFilters.isEmpty())) {
+            return sql; // 无策略，整段原样
+        }
+        String[] parts = sql.split(";");
+        List<String> valid = new java.util.ArrayList<>();
+        for (String s : parts) {
+            if (!s.replaceAll("--[^\\n]*", "").trim().isEmpty()) valid.add(s.trim());
+        }
+        if (valid.size() <= 1) {
+            // 单条：直接改写整段，保留最大原样性
+            return applyMasking(sql.trim(), masks, rowFilters);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < valid.size(); i++) {
+            if (i > 0) sb.append(";\n");
+            sb.append(applyMasking(valid.get(i), masks, rowFilters));
+        }
+        return sb.toString();
     }
 
     /** 通过 WebSocket 实时推送 SQL 执行日志 */
