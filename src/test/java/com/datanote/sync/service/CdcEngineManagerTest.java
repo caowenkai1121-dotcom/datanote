@@ -47,7 +47,8 @@ class CdcEngineManagerTest {
                 tableSchemaService,
                 mock(DnTaskExecutionMapper.class),
                 mock(DnCdcDeadLetterMapper.class),
-                mock(AuditLogService.class));
+                mock(AuditLogService.class),
+                mock(AlertService.class));
 
         DnSyncJob job = new DnSyncJob();
         job.setId(7L);

@@ -57,6 +57,7 @@ public class CdcEngineManager {
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnCdcDeadLetterMapper deadLetterMapper;
     private final AuditLogService auditLogService;
+    private final AlertService alertService;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -95,7 +96,8 @@ public class CdcEngineManager {
                             TableSchemaService tableSchemaService,
                             DnTaskExecutionMapper taskExecutionMapper,
                             DnCdcDeadLetterMapper deadLetterMapper,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService,
+                            AlertService alertService) {
         this.offsetMapper = offsetMapper;
         this.historyMapper = historyMapper;
         this.syncJobMapper = syncJobMapper;
@@ -107,6 +109,7 @@ public class CdcEngineManager {
         this.taskExecutionMapper = taskExecutionMapper;
         this.deadLetterMapper = deadLetterMapper;
         this.auditLogService = auditLogService;
+        this.alertService = alertService;
     }
 
     /**
@@ -274,6 +277,7 @@ public class CdcEngineManager {
                     engines.remove(jobId, engine);
                     finalizeExecution(jobId, "FAILED", engine);
                     updateStatus(jobId, "FAILED");
+                    alertService.alert(jobId, null, "CDC_FAILED", "CDC引擎异常退出");
                 }
             } catch (Exception e) {
                 log.warn("CDC 执行记录刷新失败 jobId={}", jobId, e);
