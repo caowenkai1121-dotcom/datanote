@@ -218,6 +218,10 @@ public class SyncJobExecutor {
         });
         // 增量断点按表持久化（某表成功即回写，避免后续表失败丢已成功表断点）
         ctx.setCheckpointCallback(tc -> syncJobService.updateTableCheckpoint(jobId, tc));
+        // M2b：全量 chunk 游标加载/保存/清除接入 dn_sync_chunk_checkpoint
+        ctx.setChunkLoad(t -> syncJobService.loadChunkCursor(jobId, t));
+        ctx.setChunkSave((t, v) -> syncJobService.saveChunkCursor(jobId, t, v));
+        ctx.setChunkClear(t -> syncJobService.clearChunkCursor(jobId, t));
         // 注册运行上下文，供停止/超时设置停止标志
         runningContexts.put(jobId, ctx);
 

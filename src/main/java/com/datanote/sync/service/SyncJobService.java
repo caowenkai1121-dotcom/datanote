@@ -2,8 +2,10 @@ package com.datanote.sync.service;
 
 import com.alibaba.fastjson.JSON;
 import com.datanote.mapper.DnDatasourceMapper;
+import com.datanote.mapper.DnSyncChunkCheckpointMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.model.DnDatasource;
+import com.datanote.model.DnSyncChunkCheckpoint;
 import com.datanote.model.DnSyncJob;
 import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.sync.connector.DbConnector;
@@ -36,6 +38,7 @@ public class SyncJobService {
     private final DnSyncJobMapper syncJobMapper;
     private final DnDatasourceMapper datasourceMapper;
     private final ConnectionManager connectionManager;
+    private final DnSyncChunkCheckpointMapper chunkCheckpointMapper;
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -163,6 +166,39 @@ public class SyncJobService {
         job.setTableConfig(JSON.toJSONString(tables, com.alibaba.fastjson.serializer.SerializerFeature.WriteMapNullValue));
         job.setUpdatedAt(LocalDateTime.now());
         syncJobMapper.updateById(job);
+    }
+
+    /** M2b：载入某表全量 chunk 游标 JSON(无则 null)。 */
+    public String loadChunkCursor(Long jobId, String sourceTable) {
+        DnSyncChunkCheckpoint cp = chunkCheckpointMapper.selectOne(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncChunkCheckpoint>()
+                .eq(DnSyncChunkCheckpoint::getSyncJobId, jobId)
+                .eq(DnSyncChunkCheckpoint::getSourceTable, sourceTable));
+        return cp == null ? null : cp.getCursorValue();
+    }
+
+    /** M2b：保存/更新 chunk 游标。 */
+    public void saveChunkCursor(Long jobId, String sourceTable, String cursorJson) {
+        DnSyncChunkCheckpoint cp = chunkCheckpointMapper.selectOne(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncChunkCheckpoint>()
+                .eq(DnSyncChunkCheckpoint::getSyncJobId, jobId)
+                .eq(DnSyncChunkCheckpoint::getSourceTable, sourceTable));
+        if (cp == null) {
+            cp = new DnSyncChunkCheckpoint();
+            cp.setSyncJobId(jobId); cp.setSourceTable(sourceTable); cp.setCursorValue(cursorJson);
+            chunkCheckpointMapper.insert(cp);
+        } else {
+            cp.setCursorValue(cursorJson);
+            chunkCheckpointMapper.updateById(cp);
+        }
+    }
+
+    /** M2b：清除某表 chunk 断点。 */
+    public void clearChunkCursor(Long jobId, String sourceTable) {
+        chunkCheckpointMapper.delete(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncChunkCheckpoint>()
+                .eq(DnSyncChunkCheckpoint::getSyncJobId, jobId)
+                .eq(DnSyncChunkCheckpoint::getSourceTable, sourceTable));
     }
 
     /**

@@ -129,6 +129,7 @@ public class FullSyncEngine implements SyncEngine {
 
         long tableRead = 0;
         int batchSize = ctx.getBatchSize();
+        boolean binaryWarned = false;
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
             BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns.size());
             while (!ctx.getStopped().get()) {
@@ -174,8 +175,16 @@ public class FullSyncEngine implements SyncEngine {
                     cursor = lastCur;
                     hasCursor = true;
                     // chunk 保存：游标存为字符串数组（parse 回来 setObject 绑字符串，MySQL 隐式转型）
-                    ctx.getChunkSave().accept(tc.getSourceTable(),
-                            com.alibaba.fastjson2.JSON.toJSONString(toStringArray(cursor)));
+                    // 二进制主键(byte[])经 String.valueOf 会得到对象地址串导致续传错位，检测到则跳过保存(降级为不续传)并 WARN 一次
+                    if (containsBinary(cursor)) {
+                        if (!binaryWarned) {
+                            ctx.log("WARN", "主键含二进制类型,不支持 chunk 续传,本表不保存断点: " + tc.getSourceTable());
+                            binaryWarned = true;
+                        }
+                    } else {
+                        ctx.getChunkSave().accept(tc.getSourceTable(),
+                                com.alibaba.fastjson2.JSON.toJSONString(toStringArray(cursor)));
+                    }
                     ctx.log("INFO", tc.getSourceTable() + " 已读 " + tableRead + " 行");
                 }
                 if (rowsThisPage < batchSize) {
@@ -183,8 +192,7 @@ public class FullSyncEngine implements SyncEngine {
                 }
             }
         }
-        // 整表读完（while 正常退出，含被 stop 提前退出）→ 清除 chunk 断点
-        // 注意：被 stop 提前退出时不应清除，保留断点供续传
+        // 整表正常读完才清除断点；被 stop 中断则保留游标供下次续传
         if (!ctx.getStopped().get()) {
             ctx.getChunkClear().accept(tc.getSourceTable());
         }
@@ -248,5 +256,12 @@ public class FullSyncEngine implements SyncEngine {
         Object[] out = new Object[cursor.length];
         for (int i = 0; i < cursor.length; i++) out[i] = cursor[i] == null ? null : String.valueOf(cursor[i]);
         return out;
+    }
+
+    /** 游标是否含二进制主键值(byte[])：含则不支持 chunk 续传。 */
+    private static boolean containsBinary(Object[] cursor) {
+        if (cursor == null) return false;
+        for (Object o : cursor) if (o instanceof byte[]) return true;
+        return false;
     }
 }
