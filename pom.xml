@@ -51,6 +51,16 @@
         </dependency>
 
         <!-- ============================================================ -->
+        <!-- Druid SQL Parser（数据治理 M4）：脚本 SQL 表级/字段级血缘解析。     -->
+        <!-- Java 8 兼容，单一依赖，仅用其 com.alibaba.druid.sql.* 解析能力。   -->
+        <!-- ============================================================ -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.2.23</version>
+        </dependency>
+
+        <!-- ============================================================ -->
         <!-- Debezium 嵌入式 CDC（计划3）：进程内读 MySQL binlog，零 Kafka broker、零外部服务 -->
         <!-- Java 8 锁定 1.9.7.Final（对应 kafka-connect 3.2.0）                              -->
         <!-- ============================================================ -->
