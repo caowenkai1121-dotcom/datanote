@@ -8,21 +8,21 @@
   var state = { page: 1, size: 20, total: 0 };
 
   window.GOV_RENDERERS.audit = function (c) {
-    var inp = 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px';
+    var ctl = 'width:auto;margin-right:8px';
 
     // 过滤条
-    var bar = DN.h('div', { class: 'gov-desc' });
-    bar.appendChild(DN.h('input', { id: 'auFrom', placeholder: '起 2026-05-01 00:00:00', style: inp }));
-    bar.appendChild(DN.h('input', { id: 'auTo', placeholder: '止 2026-05-31 23:59:59', style: inp }));
-    var sel = DN.h('select', { id: 'auType', style: inp });
+    var bar = DN.h('div', { class: 'gov-desc', style: 'display:flex;gap:0;align-items:center;flex-wrap:wrap' });
+    bar.appendChild(DN.h('input', { id: 'auFrom', type: 'date', title: '起始日期', class: 'iw-form-input', style: ctl }));
+    bar.appendChild(DN.h('input', { id: 'auTo', type: 'date', title: '截止日期', class: 'iw-form-input', style: ctl }));
+    var sel = DN.h('select', { id: 'auType', class: 'iw-form-select', style: ctl });
     TYPES.forEach(function (t) { sel.appendChild(DN.h('option', { value: t, text: t || '全部类型' })); });
     bar.appendChild(sel);
-    bar.appendChild(DN.h('input', { id: 'auUser', placeholder: '操作人', style: inp }));
-    bar.appendChild(DN.h('input', { id: 'auPath', placeholder: '路径含…', style: inp }));
-    bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '检索',
-      onclick: function () { state.page = 1; load(); }, style: 'margin-top:0' }));
-    bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '导出CSV',
-      onclick: exportCsv, style: 'margin-top:0;margin-left:8px' }));
+    bar.appendChild(DN.h('input', { id: 'auUser', placeholder: '操作人', class: 'iw-form-input', style: ctl }));
+    bar.appendChild(DN.h('input', { id: 'auPath', placeholder: '路径含…', class: 'iw-form-input', style: ctl }));
+    bar.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检索',
+      onclick: function () { state.page = 1; load(); } }));
+    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV',
+      onclick: exportCsv, style: 'margin-left:8px' }));
     c.appendChild(bar);
 
     c.appendChild(DN.h('div', { id: 'auTable' }));
@@ -34,8 +34,9 @@
   function qsParams() {
     var g = function (id) { return document.getElementById(id).value.trim(); };
     var p = [];
-    if (g('auFrom')) p.push('from=' + encodeURIComponent(g('auFrom')));
-    if (g('auTo')) p.push('to=' + encodeURIComponent(g('auTo')));
+    // date 输入仅含日期，补足为当日起止时刻，保持后端 datetime 过滤语义
+    if (g('auFrom')) p.push('from=' + encodeURIComponent(g('auFrom') + ' 00:00:00'));
+    if (g('auTo')) p.push('to=' + encodeURIComponent(g('auTo') + ' 23:59:59'));
     if (g('auType')) p.push('actionType=' + encodeURIComponent(g('auType')));
     if (g('auUser')) p.push('userName=' + encodeURIComponent(g('auUser')));
     if (g('auPath')) p.push('path=' + encodeURIComponent(g('auPath')));
@@ -71,9 +72,9 @@
     var pages = Math.max(1, Math.ceil(state.total / state.size));
     var box = document.getElementById('auPager');
     box.innerHTML = '共 ' + state.total + ' 条，第 ' + state.page + '/' + pages + ' 页　';
-    var prev = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '上一页', style: 'margin-top:0' });
+    var prev = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页' });
     prev.onclick = function () { if (state.page > 1) { state.page--; load(); } };
-    var next = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '下一页', style: 'margin-top:0;margin-left:8px' });
+    var next = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页', style: 'margin-left:8px' });
     next.onclick = function () { if (state.page < pages) { state.page++; load(); } };
     box.appendChild(prev);
     box.appendChild(next);

@@ -36,8 +36,8 @@
     var ibar = DN.h('div', { class: 'gov-desc' });
     ibar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '新建工单',
       onclick: addIssue, style: 'margin-top:0' }));
-    var fsel = DN.h('select', { id: 'hsIssueFilter',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-left:8px' });
+    var fsel = DN.h('select', { id: 'hsIssueFilter', class: 'iw-form-select',
+      style: 'width:auto;margin-left:8px' });
     fsel.appendChild(DN.h('option', { value: '', text: '全部状态' }));
     ISSUE_STATUS.forEach(function (s) { fsel.appendChild(DN.h('option', { value: s, text: s })); });
     fsel.addEventListener('change', loadIssues);
@@ -161,10 +161,13 @@
       });
       box.querySelectorAll('[data-asg]').forEach(function (a) {
         a.onclick = function () {
-          var owner = prompt('指派负责人'); if (owner == null) return;
-          DN.post('/api/gov/health/issues/' + a.getAttribute('data-asg') + '/assign', { owner: owner })
-            .then(function () { DN.toast('已指派'); loadIssues(); loadBoard(); })
-            .catch(function (e) { DN.toast(e.message, 'error'); });
+          var id = a.getAttribute('data-asg');
+          var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
+          modal('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close) {
+            DN.post('/api/gov/health/issues/' + id + '/assign', { owner: ownerInput.value.trim() })
+              .then(function () { DN.toast('已指派'); close(); loadIssues(); loadBoard(); })
+              .catch(function (e) { DN.toast(e.message, 'error'); });
+          });
         };
       });
       box.querySelectorAll('[data-del]').forEach(function (a) {
@@ -178,17 +181,24 @@
   }
 
   function addIssue() {
-    var title = prompt('工单标题'); if (!title) return;
-    var type = prompt('问题类型 STANDARD/QUALITY/SECURITY/LINEAGE/LIFECYCLE/OTHER', 'OTHER'); if (!type) return;
-    var dimension = prompt('所属维度(规范/质量/安全/生命周期/血缘,可空)') || '';
-    var severity = prompt('级别 HIGH/MEDIUM/LOW', 'MEDIUM') || 'MEDIUM';
-    var owner = prompt('负责人(可空)') || '';
-    var desc = prompt('描述(可空)') || '';
-    DN.post('/api/gov/health/issues', {
-      title: title, issueType: type.trim().toUpperCase(), dimension: dimension,
-      severity: severity.trim().toUpperCase(), owner: owner, description: desc
-    }).then(function () { DN.toast('已新建'); loadIssues(); loadBoard(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    var titleInput = DN.h('input', { class: 'iw-form-input', placeholder: '工单标题' });
+    var typeSel = selectOf(['STANDARD', 'QUALITY', 'SECURITY', 'LINEAGE', 'LIFECYCLE', 'OTHER'], 'OTHER');
+    var dimSel = selectOf(DIMS, '', '（不限维度）');
+    var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人（可空）' });
+    var descInput = DN.h('input', { class: 'iw-form-input', placeholder: '描述（可空）' });
+    modal('新建工单', [
+      formRow('标题', titleInput), formRow('问题类型', typeSel), formRow('所属维度', dimSel),
+      formRow('级别', sevSel), formRow('负责人', ownerInput), formRow('描述', descInput)
+    ], function (close) {
+      var title = titleInput.value.trim();
+      if (!title) { DN.toast('标题不能为空', 'error'); return; }
+      DN.post('/api/gov/health/issues', {
+        title: title, issueType: typeSel.value, dimension: dimSel.value,
+        severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
+      }).then(function () { DN.toast('已新建'); close(); loadIssues(); loadBoard(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   function loadBoard() {
@@ -239,15 +249,21 @@
 
   function addMaturity() {
     DN.get('/api/gov/health/maturity/domains').then(function (domains) {
-      var domain = prompt('能力域:\n' + (domains || []).join(' / '), (domains || [])[0] || '');
-      if (!domain) return;
-      var score = prompt('自评分 0-100', '60'); if (score == null) return;
-      var level = prompt('成熟度等级 1-5', '3'); if (level == null) return;
-      var note = prompt('备注(可空)') || '';
-      DN.post('/api/gov/health/maturity', {
-        domain: domain.trim(), score: Number(score), level: Number(level), note: note
-      }).then(function () { DN.toast('已录入'); loadMaturity(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      var domainSel = selectOf(domains || [], (domains || [])[0] || '');
+      var scoreInput = DN.h('input', { class: 'iw-form-input', type: 'number', min: '0', max: '100', value: '60' });
+      var levelSel = selectOf(['1', '2', '3', '4', '5'], '3');
+      var noteInput = DN.h('input', { class: 'iw-form-input', placeholder: '备注（可空）' });
+      modal('录入 DCMM 自评', [
+        formRow('能力域', domainSel), formRow('自评分', scoreInput),
+        formRow('成熟度等级', levelSel), formRow('备注', noteInput)
+      ], function (close) {
+        if (!domainSel.value) { DN.toast('请选择能力域', 'error'); return; }
+        DN.post('/api/gov/health/maturity', {
+          domain: domainSel.value, score: Number(scoreInput.value),
+          level: Number(levelSel.value), note: noteInput.value.trim()
+        }).then(function () { DN.toast('已录入'); close(); loadMaturity(); })
+          .catch(function (e) { DN.toast(e.message, 'error'); });
+      });
     });
   }
 
@@ -313,4 +329,36 @@
   function angle(i, n) { return -Math.PI / 2 + 2 * Math.PI * i / n; }
   function polar(cx, cy, r, a) { return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
   function esc(s) { return DN.esc(s); }
+
+  // ========== 轻量表单 UI ==========
+
+  /** 构造下拉：items 选项数组，sel 默认值，emptyText 传入则首项为空选项 */
+  function selectOf(items, sel, emptyText) {
+    var opts = (emptyText != null) ? [DN.h('option', { value: '', text: emptyText })] : [];
+    (items || []).forEach(function (v) { opts.push(DN.h('option', { value: v, text: v })); });
+    var s = DN.h('select', { class: 'iw-form-select' }, opts);
+    if (sel != null) s.value = sel;
+    return s;
+  }
+
+  function formRow(label, control) {
+    return DN.h('div', { class: 'ds-form-row', style: 'align-items:flex-start' }, [
+      DN.h('label', { text: label }), control
+    ]);
+  }
+
+  function modal(title, bodyNodes, onOk) {
+    var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
+    var box = DN.h('div', { style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
+    box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
+    bodyNodes.forEach(function (n) { box.appendChild(n); });
+    function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); }
+    var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
+    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: close }));
+    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(close); } }));
+    box.appendChild(footer);
+    mask.appendChild(box);
+    mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+    document.body.appendChild(mask);
+  }
 })();
