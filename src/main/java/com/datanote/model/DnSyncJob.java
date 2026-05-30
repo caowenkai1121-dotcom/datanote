@@ -54,4 +54,7 @@ public class DnSyncJob {
     // M4b CDC 深水
     private Integer incrementalSnapshotEnabled;
     private Integer ddlSyncEnabled;
+
+    // M4c 资源隔离：调度优先级，大者先跑（默认 5）
+    private Integer priority;
 }
