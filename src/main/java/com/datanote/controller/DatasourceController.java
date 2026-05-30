@@ -143,6 +143,9 @@ public class DatasourceController {
                 String dbSeg = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "" : "databaseName=" + ds.getDatabaseName() + ";";
                 url = "jdbc:sqlserver://" + ds.getHost() + ":" + ds.getPort() + ";" + dbSeg
                         + "encrypt=false;trustServerCertificate=true;loginTimeout=5";
+            } else if (com.datanote.service.MetadataService.isOracle(ds.getType())) {
+                String svc = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "XEPDB1" : ds.getDatabaseName();
+                url = "jdbc:oracle:thin:@//" + ds.getHost() + ":" + ds.getPort() + "/" + svc;
             } else {
                 url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
                         + "/?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000";

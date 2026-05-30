@@ -57,6 +57,13 @@
             <version>11.2.3.jre8</version>
         </dependency>
 
+        <!-- Oracle Driver（DS-M9 异构源；ojdbc8 兼容 Java 8） -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>21.9.0.0</version>
+        </dependency>
+
         <!-- JSON -->
         <dependency>
             <groupId>com.alibaba</groupId>

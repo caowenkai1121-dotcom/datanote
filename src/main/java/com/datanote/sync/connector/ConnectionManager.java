@@ -78,6 +78,12 @@ public class ConnectionManager {
         return url.toString();
     }
 
+    /** 构建 Oracle jdbcUrl（DS-M9，可单测）。db=服务名（如 XEPDB1）。 */
+    public static String buildOracleUrl(String host, Integer port, String db) {
+        String svc = (db == null || db.isEmpty()) ? "XEPDB1" : db;
+        return "jdbc:oracle:thin:@//" + host + ":" + port + "/" + svc;
+    }
+
     private static String poolKey(Long datasourceId, String db) {
         return datasourceId + ":" + (db == null ? "" : db);
     }
@@ -121,6 +127,7 @@ public class ConnectionManager {
         String type = ds.getType() == null ? "MYSQL" : ds.getType().trim().toUpperCase();
         boolean pg = "POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type);
         boolean mssql = "SQLSERVER".equals(type) || "MSSQL".equals(type) || "SQL_SERVER".equals(type);
+        boolean oracle = "ORACLE".equals(type);
         String url;
         String driver;
         if (pg) {
@@ -129,6 +136,9 @@ public class ConnectionManager {
         } else if (mssql) {
             url = buildSqlServerUrl(ds.getHost(), ds.getPort(), ds.getDatabaseName(), ds.getExtraParams());
             driver = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
+        } else if (oracle) {
+            url = buildOracleUrl(ds.getHost(), ds.getPort(), ds.getDatabaseName());
+            driver = "oracle.jdbc.OracleDriver";
         } else {
             url = buildJdbcUrl(ds.getHost(), ds.getPort(), db != null ? db : ds.getDatabaseName(), ds.getExtraParams());
             driver = "com.mysql.cj.jdbc.Driver";

@@ -434,6 +434,10 @@ public class SyncJobService {
         if ("SQLSERVER".equals(type) || "MSSQL".equals(type) || "SQL_SERVER".equals(type)) {
             return new com.datanote.sync.connector.SqlServerConnector(connectionManager, datasourceId, db);
         }
+        // DS-M9：Oracle 源走 OracleConnector（db 即 schema/owner，大写）
+        if ("ORACLE".equals(type)) {
+            return new com.datanote.sync.connector.OracleConnector(connectionManager, datasourceId, db);
+        }
         return new MysqlConnector(connectionManager, datasourceId, db, type);
     }
 
