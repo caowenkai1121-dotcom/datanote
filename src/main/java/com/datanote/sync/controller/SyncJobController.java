@@ -165,6 +165,13 @@ public class SyncJobController {
         }
     }
 
+    @Operation(summary = "分片checksum深度对账")
+    @PostMapping("/{id}/checksum")
+    public R<java.util.Map<String, Object>> checksum(@PathVariable Long id) {
+        try { return R.ok(reconciliationService.checksum(id)); }
+        catch (Exception e) { return R.fail("checksum对账失败: " + e.getMessage()); }
+    }
+
     // ===== M3c：监控大盘（放 Controller 避免 SyncJobService 注入 CdcEngineManager 成环） =====
 
     @Operation(summary = "监控大盘(所有任务状态+最新计数+CDC指标)")

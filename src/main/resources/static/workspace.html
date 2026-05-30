@@ -4594,6 +4594,24 @@ html, body {
       </div>
     </div>
 
+    <!-- ===== M4a: 深度对账(checksum)弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncChecksumModal">
+      <div class="dbsync-modal" style="width:680px;max-width:96vw;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncChecksumTitle">深度对账(checksum)</span>
+          <button class="g-modal-close" onclick="dbsyncCloseChecksum()">&times;</button>
+        </div>
+        <div class="dbsync-modal-body" style="padding:16px 24px;max-height:60vh;overflow-y:auto;">
+          <div id="dbsyncChecksumBody">
+            <div style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</div>
+          </div>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncCloseChecksum()">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== 文件夹新建/重命名弹窗 ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncFolderModal">
       <div class="dbsync-modal dbsync-folder-modal" style="width:420px;">
@@ -14762,6 +14780,7 @@ window.dbsyncOpenRowMenu = function(evt, id) {
       '<button onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
     + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
     + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'checksum\',' + id + ')">' + icCheck + ' 深度对账</button>'
     + '<div class="dbsync-row-menu-sep"></div>'
     + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
   menu.setAttribute('data-job', String(id));
@@ -14783,6 +14802,7 @@ window.dbsyncRowMenuAct = function(act, id) {
   if (act === 'edit') dbsyncOpenEditModal(id);
   else if (act === 'move') dbsyncOpenMoveJobDialog(id, nm);
   else if (act === 'reconcile') dbsyncOpenReconcile(id, nm);
+  else if (act === 'checksum') dbsyncOpenChecksum(id, nm);
   else if (act === 'del') dbsyncDeleteJob(id, nm);
 };
 function dbsyncCloseRowMenu() {
@@ -14868,15 +14888,17 @@ function dbsyncRenderDetailHead(job) {
   document.getElementById('dbsyncDetailSub').textContent = src + '  →  ' + tgt;
   var pbtn = document.getElementById('dbsyncDetailPrimaryBtn');
   var reconcileBtn = '<button class="btn btn-sm" onclick="dbsyncOpenReconcile(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" style="margin-left:4px;" title="行数对账">行数对账</button>';
+  var checksumBtn  = '<button class="btn btn-sm" onclick="dbsyncOpenChecksum(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" style="margin-left:4px;" title="深度对账(checksum)">深度对账</button>';
   if (job.syncMode === 'CDC') {
     var cdcBtns = (job.status === 'RUNNING')
       ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
       : '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
     cdcBtns += '<button class="btn btn-sm btn-warning" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照" style="margin-left:4px;">重置</button>';
     cdcBtns += reconcileBtn;
+    cdcBtns += checksumBtn;
     pbtn.innerHTML = cdcBtns;
   } else {
-    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn;
+    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn + checksumBtn;
   }
 }
 // 状态变更后（列表刷新触发）同步刷新抽屉头部 + 概览/历史
@@ -15266,6 +15288,74 @@ window.dbsyncOpenReconcile = function(id, nm) {
 
 window.dbsyncCloseReconcile = function() {
   var overlay = document.getElementById('dbsyncReconcileModal');
+  if (overlay) overlay.classList.remove('show');
+};
+
+/* ============================================================
+ * M4a: 深度对账(checksum)
+ * ============================================================ */
+window.dbsyncOpenChecksum = function(id, nm) {
+  var overlay = document.getElementById('dbsyncChecksumModal');
+  if (!overlay) return;
+  document.getElementById('dbsyncChecksumTitle').textContent = '深度对账(checksum) — ' + (nm || ('#' + id));
+  var body = document.getElementById('dbsyncChecksumBody');
+  body.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">对账中，请稍候...</div>';
+  overlay.classList.add('show');
+  apiPost('/api/sync-job/' + id + '/checksum', {}).then(function(res) {
+    var data = (res && res.ok != null) ? res : (res.data || res);
+    var tables = data.tables || [];
+    var mismatch = tables.filter(function(t) { return !t.match; }).length;
+    if (tables.length === 0) {
+      body.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">暂无对账数据</div>';
+      showToast('checksum 对账完成，无表数据', 'info');
+      return;
+    }
+    var html = '<table class="dbsync-exec-table" style="width:100%;">'
+      + '<thead><tr><th>表名</th><th>分桶数</th><th>是否一致</th></tr></thead><tbody>';
+    tables.forEach(function(t) {
+      var matchStyle = t.match ? '' : 'color:#ff4d4f;font-weight:500;';
+      var matchLabel = t.match ? '一致' : '不一致';
+      var rowStyle = t.error ? 'color:#ff4d4f;' : matchStyle;
+      html += '<tr>'
+        + '<td>' + escapeHtml(t.table || '-') + '</td>'
+        + '<td style="text-align:right;">' + (t.bucketCount != null ? t.bucketCount : '-') + '</td>'
+        + '<td style="' + rowStyle + '">' + (t.error ? ('错误: ' + escapeHtml(t.error)) : matchLabel) + '</td>'
+        + '</tr>';
+      // 若有差异桶，展开子行
+      if (!t.match && t.mismatchBuckets && t.mismatchBuckets.length > 0) {
+        html += '<tr><td colspan="3" style="padding:0 0 6px 16px;">'
+          + '<table class="dbsync-exec-table" style="width:100%;font-size:12px;background:var(--bg-hover,#fafafa);">'
+          + '<thead><tr>'
+          + '<th>桶号</th><th style="text-align:right;">源端行数</th><th style="text-align:right;">目标端行数</th>'
+          + '<th style="text-align:right;">源端校验和</th><th style="text-align:right;">目标端校验和</th>'
+          + '</tr></thead><tbody>';
+        t.mismatchBuckets.forEach(function(b) {
+          html += '<tr>'
+            + '<td>' + (b.bucket != null ? b.bucket : '-') + '</td>'
+            + '<td style="text-align:right;">' + (b.sourceCnt != null ? b.sourceCnt : '-') + '</td>'
+            + '<td style="text-align:right;">' + (b.targetCnt != null ? b.targetCnt : '-') + '</td>'
+            + '<td style="text-align:right;font-family:monospace;">' + escapeHtml(String(b.sourceChk != null ? b.sourceChk : '-')) + '</td>'
+            + '<td style="text-align:right;font-family:monospace;">' + escapeHtml(String(b.targetChk != null ? b.targetChk : '-')) + '</td>'
+            + '</tr>';
+        });
+        html += '</tbody></table></td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+    body.innerHTML = html;
+    if (mismatch > 0) {
+      showToast('checksum 对账：' + mismatch + ' 张表内容不一致', 'error');
+    } else {
+      showToast('checksum 对账：全部表内容一致 ✓', 'success');
+    }
+  }).catch(function() {
+    body.innerHTML = '<div style="text-align:center;color:var(--error);padding:20px;">对账请求失败，请重试</div>';
+    showToast('checksum 对账请求失败', 'error');
+  });
+};
+
+window.dbsyncCloseChecksum = function() {
+  var overlay = document.getElementById('dbsyncChecksumModal');
   if (overlay) overlay.classList.remove('show');
 };
 

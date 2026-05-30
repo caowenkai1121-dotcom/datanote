@@ -160,6 +160,24 @@ class WorkspaceDbSyncUiTest {
     }
 
     @Test
+    void checksumButtonAndModalArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncChecksumModal\""),
+                "checksum modal overlay should have a stable id");
+        assertTrue(html.contains("id=\"dbsyncChecksumBody\""),
+                "checksum modal should have a body element for results");
+        assertTrue(html.contains("/checksum"),
+                "checksum should call the /checksum endpoint");
+        assertTrue(html.contains("dbsyncOpenChecksum"),
+                "row menu and drawer should reference dbsyncOpenChecksum function");
+        assertTrue(html.contains("dbsyncCloseChecksum"),
+                "checksum modal should have a close function");
+        assertTrue(html.contains("mismatchBuckets"),
+                "checksum result rendering should handle mismatchBuckets detail rows");
+    }
+
+    @Test
     void checkpointTabAndResetActionsArePresent() throws Exception {
         String html = readWorkspaceHtml();
 
