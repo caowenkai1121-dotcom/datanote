@@ -2,6 +2,7 @@ package com.datanote.controller;
 
 import com.datanote.config.AuthProperties;
 import com.datanote.model.R;
+import com.datanote.service.RbacService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -10,13 +11,16 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 认证控制器 — 登录、登出、状态查询
@@ -29,6 +33,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final AuthProperties authProperties;
+    private final RbacService rbacService;
 
     /**
      * 登录
@@ -52,6 +57,7 @@ public class AuthController {
 
             Map<String, Object> data = new HashMap<>();
             data.put("username", authentication.getName());
+            data.put("perms", resolvePerms(authentication));
             return R.ok(data);
         } catch (AuthenticationException e) {
             return R.fail(R.CODE_UNAUTHORIZED, "用户名或密码错误");
@@ -75,8 +81,32 @@ public class AuthController {
         data.put("authenticated", authenticated);
         if (authenticated) {
             data.put("username", authentication.getName());
+            data.put("perms", resolvePerms(authentication));
         }
         return R.ok(data);
+    }
+
+    /**
+     * 解析当前认证主体的权限集：优先查 dn_user；查不到则按 authorities 判断 admin（内存兜底）。
+     */
+    private Set<String> resolvePerms(Authentication authentication) {
+        Set<String> perms;
+        try {
+            perms = rbacService.getUserPermsByUsername(authentication.getName());
+        } catch (Exception e) {
+            // dn_user 表未建 / 查询异常时降级，避免登录/状态接口 500
+            perms = new HashSet<>();
+        }
+        if (perms.isEmpty()) {
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));
+            if (isAdmin) {
+                perms = new HashSet<>();
+                perms.add("*");
+            }
+        }
+        return perms;
     }
 
     /**
