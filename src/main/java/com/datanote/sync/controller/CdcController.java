@@ -60,6 +60,19 @@ public class CdcController {
         return R.ok(cdcEngineManager.metrics(jobId));
     }
 
+    @Operation(summary = "触发CDC增量快照(补数/重快照单表,需源库已建dn_cdc_signal)")
+    @PostMapping("/{jobId}/incremental-snapshot")
+    public R<String> incrementalSnapshot(@PathVariable Long jobId,
+                                         @org.springframework.web.bind.annotation.RequestParam String tables) {
+        try {
+            cdcEngineManager.triggerIncrementalSnapshot(jobId, java.util.Arrays.asList(tables.split(",")));
+            return R.ok("已触发增量快照");
+        } catch (Exception e) {
+            log.error("触发CDC增量快照失败 jobId={}", jobId, e);
+            return R.fail("触发失败: " + e.getMessage());
+        }
+    }
+
     @Operation(summary = "重置 CDC(清位点+schema历史,可选重新全量快照)")
     @PostMapping("/{jobId}/reset")
     public R<String> reset(@PathVariable Long jobId,

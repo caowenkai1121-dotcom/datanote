@@ -74,6 +74,8 @@ public class CdcSyncEngine {
     private final Map<String, TableSyncConfig> tableMap = new ConcurrentHashMap<>();
     /** "目标库.目标表" -> 主键列（缓存，避免每条事件查 information_schema；带库名前缀防多库同名表取错）。 */
     private final Map<String, List<String>> pkCache = new ConcurrentHashMap<>();
+    /** "目标库.目标表" -> 目标列集合（DDL 同步漂移检测缓存，ADD COLUMN 后失效）。 */
+    private final Map<String, java.util.Set<String>> targetColsCache = new ConcurrentHashMap<>();
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -208,6 +210,14 @@ public class CdcSyncEngine {
         props.setProperty("max.queue.size", String.valueOf(maxQueueSize));
         props.setProperty("poll.interval.ms", String.valueOf(pollIntervalMs));
         if (heartbeatIntervalMs > 0) props.setProperty("heartbeat.interval.ms", String.valueOf(heartbeatIntervalMs));
+        // M4b 增量快照（默认关）：仅开关开时加 signal 配置，关时上面 table.include.list 等保持原样
+        if (job.getIncrementalSnapshotEnabled() != null && job.getIncrementalSnapshotEnabled() == 1) {
+            String signalColl = job.getSourceDb() + ".dn_cdc_signal";
+            props.setProperty("signal.data.collection", signalColl);
+            // signal 表需在捕获范围：并入 table.include.list
+            props.setProperty("table.include.list", buildTableIncludeList() + "," + signalColl);
+            props.setProperty("read.only", "true");
+        }
         return props;
     }
 
@@ -305,7 +315,9 @@ public class CdcSyncEngine {
         String targetDb = job.getTargetDb();
         switch (change.opType) {
             case INSERT:
-                writeUpsert(conn, targetDb, targetTable, projectByFields(change.after, tc));
+                Map<String, Object> insertProj = projectByFields(change.after, tc);
+                syncDriftColumns(conn, targetDb, targetTable, change.sourceTable, insertProj);
+                writeUpsert(conn, targetDb, targetTable, insertProj);
                 break;
             case UPDATE:
                 Map<String, Object> beforeProj = projectByFields(change.before, tc);
@@ -314,6 +326,7 @@ public class CdcSyncEngine {
                 if (isPkChanged(targetDb, targetTable, beforeProj, afterProj)) {
                     writeDelete(conn, targetDb, targetTable, beforeProj);
                 }
+                syncDriftColumns(conn, targetDb, targetTable, change.sourceTable, afterProj);
                 writeUpsert(conn, targetDb, targetTable, afterProj);
                 break;
             case DELETE:
@@ -474,6 +487,76 @@ public class CdcSyncEngine {
         }
         pkCache.put(cacheKey, pks);
         return pks;
+    }
+
+    /** 目标表列集合（缓存，DDL 漂移检测用；ADD COLUMN 后失效）。 */
+    private java.util.Set<String> targetColumnsOf(String db, String table) throws Exception {
+        String key = db + "." + table;
+        java.util.Set<String> c = targetColsCache.get(key);
+        if (c != null) {
+            return c;
+        }
+        TableMeta meta = targetConnector.getTableMeta(db, table);
+        java.util.Set<String> cols = new java.util.LinkedHashSet<>(meta.getColumns());
+        targetColsCache.put(key, cols);
+        return cols;
+    }
+
+    /**
+     * DDL 漂移同步（默认关）：after 出现目标表没有的列时，查源列类型并 ALTER 目标 ADD COLUMN。
+     * 仅 job.ddlSyncEnabled==1 时生效；关时第一行直接 return（写路径零开销零行为变化）。
+     * ALTER 失败上抛（由 handleBatch 回滚重试，避免列加不上导致后续 INSERT 列不匹配静默失败）。
+     */
+    private void syncDriftColumns(Connection conn, String db, String table, String sourceTable,
+                                  Map<String, Object> after) throws Exception {
+        if (job.getDdlSyncEnabled() == null || job.getDdlSyncEnabled() != 1 || after == null) {
+            return;
+        }
+        java.util.Set<String> existing = targetColumnsOf(db, table);
+        for (String col : after.keySet()) {
+            if (!existing.contains(col)) {
+                String colType = sourceColumnType(sourceTable, col);
+                String mapped = mapDriftColumnType(colType);
+                String ddl = "ALTER TABLE " + com.datanote.sync.util.SqlIdentifiers.quote(db)
+                        + "." + com.datanote.sync.util.SqlIdentifiers.quote(table)
+                        + " ADD COLUMN " + com.datanote.sync.util.SqlIdentifiers.quote(col) + " " + mapped + " NULL";
+                try (PreparedStatement ps = conn.prepareStatement(ddl)) {
+                    ps.executeUpdate();
+                }
+                broadcast("WARN", "DDL同步：目标表 " + table + " 新增列 " + col + " " + mapped);
+                targetColsCache.remove(db + "." + table); // 失效缓存，下次重查
+            }
+        }
+    }
+
+    /** 漂移列类型映射：目标 MySQL 原样用源 COLUMN_TYPE；Doris/StarRocks 走 TypeMappingService。 */
+    private String mapDriftColumnType(String colType) {
+        String type = targetConnector.getDatabaseType();
+        if ("MYSQL".equalsIgnoreCase(type)) {
+            return colType;
+        }
+        return new com.datanote.sync.schema.TypeMappingService().mysqlToDoris(colType);
+    }
+
+    /** 查源表某列的 COLUMN_TYPE（用源连接）。查不到给 TEXT 宽松兜底（不抛）。 */
+    private String sourceColumnType(String sourceTable, String col) {
+        try (Connection c = connectionManager.getConnection(job.getSourceDsId(), job.getSourceDb())) {
+            String sql = "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?";
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, job.getSourceDb());
+                ps.setString(2, sourceTable);
+                ps.setString(3, col);
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getString(1);
+                    }
+                }
+            }
+        } catch (Exception ignore) {
+            // 查不到/查询异常：兜底 TEXT，不阻塞写入
+        }
+        return "TEXT";
     }
 
     /** 优雅关闭：close 引擎 + 关线程池。 */

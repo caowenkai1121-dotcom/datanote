@@ -4444,6 +4444,23 @@ html, body {
                 <label class="dbsync-form-label">限速值</label>
                 <input class="dbsync-form-input" type="number" id="dbsyncRateLimitValue" placeholder="令牌/秒" style="width:100%;">
               </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">增量快照</label>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <select class="dbsync-form-input" id="dbsyncIncrSnapshot" style="width:80px;">
+                    <option value="0">关闭</option>
+                    <option value="1">开启</option>
+                  </select>
+                  <span style="font-size:11px;color:var(--text-muted);">需源库已建 dn_cdc_signal 且启用 GTID（read-only 增量快照前置）</span>
+                </div>
+              </div>
+              <div class="dbsync-form-row" style="grid-column:1/-1;">
+                <label class="dbsync-form-label">DDL 同步</label>
+                <select class="dbsync-form-input" id="dbsyncDdlSync" style="width:80px;">
+                  <option value="0">关闭</option>
+                  <option value="1">开启</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -13907,6 +13924,10 @@ function dbsyncResetAdvanced() {
   if (rlm) rlm.value = 'NONE';
   var rlv = document.getElementById('dbsyncRateLimitValue');
   if (rlv) rlv.value = '';
+  var isnap = document.getElementById('dbsyncIncrSnapshot');
+  if (isnap) isnap.value = '0';
+  var ddls = document.getElementById('dbsyncDdlSync');
+  if (ddls) ddls.value = '0';
   // 收起高级设置面板
   var sec = document.getElementById('dfsAdvancedSection');
   if (sec) sec.style.display = 'none';
@@ -13949,6 +13970,10 @@ function dbsyncFillAdvanced(job) {
   if (rlm) rlm.value = job.rateLimitMode || 'NONE';
   var rlv = document.getElementById('dbsyncRateLimitValue');
   if (rlv) rlv.value = (job.rateLimitValue != null) ? job.rateLimitValue : '';
+  var isnap = document.getElementById('dbsyncIncrSnapshot');
+  if (isnap) isnap.value = (job.incrementalSnapshotEnabled != null) ? String(job.incrementalSnapshotEnabled) : '0';
+  var ddls = document.getElementById('dbsyncDdlSync');
+  if (ddls) ddls.value = (job.ddlSyncEnabled != null) ? String(job.ddlSyncEnabled) : '0';
   // 如有非默认值则自动展开
   if (dm === 'LOGICAL' || markTs || job.preSql || job.postSql) {
     var sec = document.getElementById('dfsAdvancedSection');
@@ -14116,6 +14141,8 @@ window.dbsyncSaveJob = function() {
   var retryBackoffDelayStr = ((document.getElementById('dbsyncRetryBackoffDelay') || {}).value || '').trim();
   var rateLimitMode = ((document.getElementById('dbsyncRateLimitMode') || {}).value || 'NONE');
   var rateLimitValueStr = ((document.getElementById('dbsyncRateLimitValue') || {}).value || '').trim();
+  var incrSnapshotEnabled = parseInt(((document.getElementById('dbsyncIncrSnapshot') || {}).value || '0')) || 0;
+  var ddlSyncEnabled = parseInt(((document.getElementById('dbsyncDdlSync') || {}).value || '0')) || 0;
   var body = {
     jobName:            jobName,
     syncMode:           syncMode,
@@ -14139,7 +14166,9 @@ window.dbsyncSaveJob = function() {
     retryBackoffType:   retryBackoffType,
     retryBackoffDelay:  retryBackoffDelayStr !== '' ? parseInt(retryBackoffDelayStr) : null,
     rateLimitMode:      rateLimitMode,
-    rateLimitValue:     rateLimitValueStr !== '' ? parseInt(rateLimitValueStr) : null
+    rateLimitValue:     rateLimitValueStr !== '' ? parseInt(rateLimitValueStr) : null,
+    incrementalSnapshotEnabled: incrSnapshotEnabled,
+    ddlSyncEnabled:     ddlSyncEnabled
   };
   if (deleteMode === 'LOGICAL') {
     body.logicalDeleteField = logicalDeleteField;
@@ -14659,6 +14688,21 @@ window.dbsyncCdcReset = function(id) {
     }).catch(function() { showToast('重置请求失败', 'error'); });
 };
 
+/* ---------- 增量快照触发 ---------- */
+window.dbsyncTriggerIncrSnapshot = function(id) {
+  var tables = prompt('请输入源表名（逗号分隔，如 db.t1,db.t2）：');
+  if (tables == null || tables.trim() === '') return;
+  fetch('/api/cdc/' + id + '/incremental-snapshot?tables=' + encodeURIComponent(tables.trim()), { method: 'POST' })
+    .then(_handleResponse)
+    .then(function(res) {
+      if (res.code === 0) {
+        showToast('增量快照信号已发送', 'success');
+      } else {
+        showToast('发送失败: ' + (res.msg || ''), 'error');
+      }
+    }).catch(function() { showToast('增量快照请求失败', 'error'); });
+};
+
 /* ---------- 删除任务 ---------- */
 window.dbsyncDeleteJob = function(id, name) {
   confirmBox('确定删除同步任务"' + escapeHtml(name) + '"？', function() {
@@ -14894,6 +14938,7 @@ function dbsyncRenderDetailHead(job) {
       ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
       : '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
     cdcBtns += '<button class="btn btn-sm btn-warning" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照" style="margin-left:4px;">重置</button>';
+    cdcBtns += '<button class="btn btn-sm" onclick="dbsyncTriggerIncrSnapshot(' + job.id + ')" title="需先开启增量快照开关并在源库建 signal 表" style="margin-left:4px;">增量快照</button>';
     cdcBtns += reconcileBtn;
     cdcBtns += checksumBtn;
     pbtn.innerHTML = cdcBtns;
