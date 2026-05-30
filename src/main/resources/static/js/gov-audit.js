@@ -1,45 +1,78 @@
-/* 治理模块：全局审计中心（M12）—— 检索(时间/类型/人/路径) + 分页 + CSV 导出。
-   注册 GOV_RENDERERS.audit；并暴露 window.openGovAudit() 供其它模块跳转(导航项后补，governance.html 不改)。 */
+/* 治理模块：全局审计中心（M12）—— 现代套件重绘。
+   检索(时间/类型/人/路径) + 现代表格(内置分页) + CSV 导出。
+   注册 GOV_RENDERERS.audit；并暴露 window.openGovAudit() 供其它模块跳转(governance.html 不改)。 */
 (function () {
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   var TYPES = ['', 'LOGIN', 'DATA_ACCESS', 'EXPORT', 'PERM_CHANGE', 'META_CHANGE', 'RULE_CHANGE', 'LABEL_CHANGE', 'OTHER'];
-  var state = { page: 1, size: 20, total: 0 };
+  // actionType -> 药丸色调
+  var TYPE_TONE = {
+    LOGIN: 'info', DATA_ACCESS: 'ok', EXPORT: 'warn',
+    PERM_CHANGE: 'err', META_CHANGE: 'info', RULE_CHANGE: 'info', LABEL_CHANGE: 'info', OTHER: 'muted'
+  };
+  var state = { page: 1, size: 50, total: 0 };
+  var els = {};
+  var auditTbl = null;
 
   window.GOV_RENDERERS.audit = function (c) {
-    var ctl = 'width:auto;margin-right:8px';
+    state.page = 1;
 
-    // 过滤条
-    var bar = DN.h('div', { class: 'gov-desc', style: 'display:flex;gap:0;align-items:center;flex-wrap:wrap' });
-    bar.appendChild(DN.h('input', { id: 'auFrom', type: 'date', title: '起始日期', class: 'iw-form-input', style: ctl }));
-    bar.appendChild(DN.h('input', { id: 'auTo', type: 'date', title: '截止日期', class: 'iw-form-input', style: ctl }));
-    var sel = DN.h('select', { id: 'auType', class: 'iw-form-select', style: ctl });
-    TYPES.forEach(function (t) { sel.appendChild(DN.h('option', { value: t, text: t || '全部类型' })); });
-    bar.appendChild(sel);
-    bar.appendChild(DN.h('input', { id: 'auUser', placeholder: '操作人', class: 'iw-form-input', style: ctl }));
-    bar.appendChild(DN.h('input', { id: 'auPath', placeholder: '路径含…', class: 'iw-form-input', style: ctl }));
-    bar.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检索',
-      onclick: function () { state.page = 1; load(); } }));
-    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV',
-      onclick: exportCsv, style: 'margin-left:8px' }));
-    c.appendChild(bar);
+    // 统计区（按类型分布）
+    var statBox = DN.h('div', { id: 'auStats' });
+    c.appendChild(statBox);
 
-    c.appendChild(DN.h('div', { id: 'auTable' }));
-    c.appendChild(DN.h('div', { id: 'auPager', class: 'gov-desc' }));
+    // 过滤工具条
+    els.from = DN.h('input', { type: 'date', title: '起始日期', class: 'iw-form-select', style: 'height:34px;' });
+    els.to = DN.h('input', { type: 'date', title: '截止日期', class: 'iw-form-select', style: 'height:34px;' });
+    els.type = DN.h('select', { class: 'iw-form-select', style: 'height:34px;' });
+    TYPES.forEach(function (t) { els.type.appendChild(DN.h('option', { value: t, text: t || '全部类型' })); });
+    els.user = DN.h('input', { placeholder: '操作人', class: 'iw-form-select', style: 'height:34px;width:120px;' });
+    var searchBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检索',
+      onclick: function () { state.page = 1; load(); } });
+    var exportBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: exportCsv });
+    var toolbar = [els.from, els.to, els.type, els.user, searchBtn, exportBtn];
+
+    // 现代表格（toolbar 内置过滤条 + 路径搜索框；客户端搜索覆盖当前页路径）
+    auditTbl = DN.table({
+      columns: [
+        { key: 'createdAt', label: '时间', render: function (r) { return fmtTs(r.createdAt); } },
+        { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
+        { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
+        { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
+        { key: 'path', label: '路径', render: function (r) { return r.path || '-'; } },
+        { key: 'ip', label: 'IP', render: function (r) { return r.ip || '-'; } },
+        { key: 'status', label: '状态', render: function (r) { return r.status == null ? '-' : DN.pill(String(r.status), statusTone(r.status)); } },
+        { key: 'detail', label: '详情', render: function (r) { return r.detail || '-'; } }
+      ],
+      rows: [],
+      pageSize: state.size,
+      searchKeys: ['path', 'userName', 'detail'],
+      searchPlaceholder: '过滤当前结果(路径/人/详情)',
+      toolbar: toolbar,
+      empty: '无审计记录', emptyIcon: 'doc'
+    });
+    c.appendChild(auditTbl);
 
     load();
   };
 
+  function statusTone(s) {
+    var n = Number(s);
+    if (isNaN(n)) return 'muted';
+    if (n >= 500) return 'err';
+    if (n >= 400) return 'warn';
+    if (n >= 200 && n < 300) return 'ok';
+    return 'info';
+  }
+
   function qsParams() {
-    var g = function (id) { return document.getElementById(id).value.trim(); };
+    var g = function (el) { return (el && el.value || '').trim(); };
     var p = [];
-    // date 输入仅含日期，补足为当日起止时刻，保持后端 datetime 过滤语义
-    if (g('auFrom')) p.push('from=' + encodeURIComponent(g('auFrom') + ' 00:00:00'));
-    if (g('auTo')) p.push('to=' + encodeURIComponent(g('auTo') + ' 23:59:59'));
-    if (g('auType')) p.push('actionType=' + encodeURIComponent(g('auType')));
-    if (g('auUser')) p.push('userName=' + encodeURIComponent(g('auUser')));
-    if (g('auPath')) p.push('path=' + encodeURIComponent(g('auPath')));
+    if (g(els.from)) p.push('from=' + encodeURIComponent(g(els.from) + ' 00:00:00'));
+    if (g(els.to)) p.push('to=' + encodeURIComponent(g(els.to) + ' 23:59:59'));
+    if (g(els.type)) p.push('actionType=' + encodeURIComponent(g(els.type)));
+    if (g(els.user)) p.push('userName=' + encodeURIComponent(g(els.user)));
     return p;
   }
 
@@ -48,36 +81,44 @@
     p.push('page=' + state.page);
     p.push('size=' + state.size);
     DN.get('/api/gov/audit/search?' + p.join('&')).then(function (data) {
+      data = data || {};
       state.total = data.total || 0;
       var rows = data.list || [];
-      var box = document.getElementById('auTable');
-      if (!rows.length) { box.innerHTML = '<div class="gov-placeholder">无审计记录</div>'; renderPager(); return; }
-      var body = rows.map(function (r) {
-        return '<tr><td>' + DN.esc(fmtTs(r.createdAt)) + '</td><td>' + DN.esc(r.userName) +
-          '</td><td>' + DN.esc(r.actionType) + '</td><td>' + DN.esc(r.method || '') +
-          '</td><td>' + DN.esc(r.path || '') + '</td><td>' + DN.esc(r.ip || '') +
-          '</td><td>' + (r.status == null ? '' : r.status) + '</td><td>' + DN.esc(r.detail || '') + '</td></tr>';
-      }).join('');
-      box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
-        '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-        '<th style="padding:8px">时间</th><th style="padding:8px">操作人</th><th style="padding:8px">类型</th>' +
-        '<th style="padding:8px">方法</th><th style="padding:8px">路径</th><th style="padding:8px">IP</th>' +
-        '<th style="padding:8px">状态</th><th style="padding:8px">详情</th></tr></thead><tbody>' + body + '</tbody></table>';
-      box.querySelectorAll('td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
-      renderPager();
+      if (auditTbl) auditTbl.reload(rows);
+      renderStats(rows);
+      renderServerPager(rows.length);
     }).catch(function (e) { DN.toast(e.message, 'error'); });
   }
 
-  function renderPager() {
+  // 按类型统计（本页数据）用 DN.bars
+  function renderStats(rows) {
+    var box = document.getElementById('auStats');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!rows.length) return;
+    var byType = {};
+    rows.forEach(function (r) { var t = r.actionType || 'OTHER'; byType[t] = (byType[t] || 0) + 1; });
+    var items = Object.keys(byType).sort(function (a, b) { return byType[b] - byType[a]; }).map(function (t) {
+      var tone = TYPE_TONE[t] === 'ok' ? 'ok' : TYPE_TONE[t] === 'warn' ? 'warn' : TYPE_TONE[t] === 'err' ? 'err' : 'info';
+      return { label: t, value: byType[t], tone: tone };
+    });
+    var card = DN.card({ title: '本页操作类型分布', icon: 'chart' });
+    card.body.appendChild(DN.bars(items));
+    box.appendChild(card.el);
+  }
+
+  // 服务端分页（总数由后端给出，单独追加在表格下方）
+  function renderServerPager(pageCount) {
+    var existing = document.getElementById('auSrvPager');
+    if (existing) existing.remove();
     var pages = Math.max(1, Math.ceil(state.total / state.size));
-    var box = document.getElementById('auPager');
-    box.innerHTML = '共 ' + state.total + ' 条，第 ' + state.page + '/' + pages + ' 页　';
-    var prev = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页' });
-    prev.onclick = function () { if (state.page > 1) { state.page--; load(); } };
-    var next = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页', style: 'margin-left:8px' });
-    next.onclick = function () { if (state.page < pages) { state.page++; load(); } };
-    box.appendChild(prev);
-    box.appendChild(next);
+    var box = DN.h('div', { id: 'auSrvPager', class: 'gov-pager' });
+    box.appendChild(DN.h('span', { text: '服务端共 ' + state.total + ' 条 · 第 ' + state.page + '/' + pages + ' 页' }));
+    box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页',
+      onclick: function () { if (state.page > 1) { state.page--; load(); } } }));
+    box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页',
+      onclick: function () { if (state.page < pages) { state.page++; load(); } } }));
+    if (auditTbl && auditTbl.parentNode) auditTbl.parentNode.appendChild(box);
   }
 
   function exportCsv() {
@@ -90,8 +131,7 @@
     return String(s).replace('T', ' ').slice(0, 19);
   }
 
-  // 供其它模块（健康分/安全）跳转的入口；导航项可后补，本期 governance.html 不改。
-  // 直接渲染进 govContent 容器，不改 hash（audit 未登记进 GOV_MODULES，走路由会取不到模块而报错）。
+  // 供其它模块跳转的入口；直接渲染进 govContent 容器（保持原行为）。
   window.openGovAudit = function () {
     var box = document.getElementById('govContent') || document.body;
     box.innerHTML = '';
