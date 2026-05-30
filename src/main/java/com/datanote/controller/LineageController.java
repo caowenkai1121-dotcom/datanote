@@ -152,4 +152,11 @@ public class LineageController {
     public R<List<Map<String, Object>>> trace(@RequestParam String db, @RequestParam String table) {
         return R.ok(lineageEdgeService.trace(db, table));
     }
+
+    @GetMapping("/graph")
+    @Operation(summary = "以某表为中心的N跳血缘子图(双向BFS)")
+    public R<Map<String, Object>> graph(@RequestParam String db, @RequestParam String table,
+                                        @RequestParam(defaultValue = "2") int depth) {
+        return R.ok(lineageEdgeService.graph(db, table, depth));
+    }
 }

@@ -175,4 +175,100 @@ public class LineageEdgeService {
 
     private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
     private static String nz(String s) { return s == null ? "" : s; }
+
+    // ========== F1：血缘图谱（多跳子图） ==========
+
+    /** 表级边轻量四元组（src/dst 为 "db.table"），供 buildSubgraph 纯函数使用。 */
+    public static class TableEdge {
+        public final String src;
+        public final String dst;
+        public final String level;
+        public final String source;
+        public TableEdge(String src, String dst, String level, String source) {
+            this.src = src; this.dst = dst; this.level = level; this.source = source;
+        }
+    }
+
+    /** 子图结果：节点集合（含起点，保序）+ 去重后的边列表。 */
+    public static class SubGraph {
+        public final java.util.Set<String> nodes = new java.util.LinkedHashSet<>();
+        public final List<TableEdge> edges = new ArrayList<>();
+    }
+
+    /**
+     * 纯函数：以 (db.table) 为中心做双向 BFS，返回子图。
+     * 每跳同时扩展下游(边 src==当前) 与上游(边 dst==当前)；visited 防环；节点达 maxNodes 即停止扩展（起点必含）。
+     */
+    static SubGraph buildSubgraph(List<TableEdge> allEdges, String db, String table, int depth, int maxNodes) {
+        SubGraph g = new SubGraph();
+        String start = key(db, table);
+        g.nodes.add(start);
+        if (allEdges == null || depth <= 0) return g;
+
+        java.util.Set<String> edgeKeys = new java.util.HashSet<>();
+        java.util.Deque<String[]> queue = new java.util.ArrayDeque<>(); // [node, depth]
+        queue.add(new String[]{start, "0"});
+        while (!queue.isEmpty()) {
+            String[] cur = queue.poll();
+            String node = cur[0];
+            int d = Integer.parseInt(cur[1]);
+            if (d >= depth) continue;
+            for (TableEdge e : allEdges) {
+                String neighbor;
+                if (node.equals(e.src)) neighbor = e.dst;        // 下游
+                else if (node.equals(e.dst)) neighbor = e.src;   // 上游
+                else continue;
+                // 命中相关边：去重后收录
+                String ek = e.src + "|" + e.dst + "|" + (e.source == null ? "" : e.source);
+                boolean firstSeenEdge = edgeKeys.add(ek);
+                boolean neighborKnown = g.nodes.contains(neighbor);
+                if (!neighborKnown) {
+                    if (g.nodes.size() >= maxNodes) continue; // 满了不再纳入新节点（及其边）
+                    g.nodes.add(neighbor);
+                    queue.add(new String[]{neighbor, String.valueOf(d + 1)});
+                }
+                if (firstSeenEdge) g.edges.add(e);
+            }
+        }
+        return g;
+    }
+
+    private static final int GRAPH_MAX_NODES = 100;
+    private static final int GRAPH_MAX_DEPTH = 6;
+
+    /** 以 (db.table) 为中心的 N 跳血缘子图：{nodes:[{id,db,table}], edges:[{src,dst,level,source}]}。 */
+    public Map<String, Object> graph(String db, String table, int depth) {
+        int d = depth <= 0 ? 2 : Math.min(depth, GRAPH_MAX_DEPTH);
+        QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
+        qw.eq("level_type", "TABLE");
+        List<TableEdge> edges = new ArrayList<>();
+        for (DnLineageEdge e : edgeMapper.selectList(qw)) {
+            edges.add(new TableEdge(key(e.getSrcDb(), e.getSrcTable()),
+                    key(e.getDstDb(), e.getDstTable()), "TABLE", e.getSource()));
+        }
+        SubGraph sub = buildSubgraph(edges, db, table, d, GRAPH_MAX_NODES);
+
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        for (String id : sub.nodes) {
+            int dot = id.indexOf('.');
+            Map<String, Object> n = new HashMap<>();
+            n.put("id", id);
+            n.put("db", dot >= 0 ? id.substring(0, dot) : "");
+            n.put("table", dot >= 0 ? id.substring(dot + 1) : id);
+            nodes.add(n);
+        }
+        List<Map<String, Object>> edgeList = new ArrayList<>();
+        for (TableEdge e : sub.edges) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("src", e.src);
+            m.put("dst", e.dst);
+            m.put("level", e.level);
+            m.put("source", e.source);
+            edgeList.add(m);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("nodes", nodes);
+        result.put("edges", edgeList);
+        return result;
+    }
 }
