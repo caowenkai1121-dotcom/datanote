@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataNote · 数据治理中心</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2329; background: #f5f6f8; }
+  .gov-top { height: 52px; background: #fff; border-bottom: 1px solid #e5e6eb; display: flex; align-items: center; padding: 0 20px; gap: 12px; }
+  .gov-top .brand { font-weight: 600; font-size: 16px; color: #1f2329; }
+  .gov-top .brand .accent { color: #1890ff; }
+  .gov-top .spacer { flex: 1; }
+  .gov-top a.back { color: #4e5969; text-decoration: none; font-size: 13px; padding: 6px 12px; border: 1px solid #e5e6eb; border-radius: 6px; }
+  .gov-top a.back:hover { color: #1890ff; border-color: #1890ff; }
+  .gov-layout { display: flex; height: calc(100vh - 52px); }
+  .gov-nav { width: 200px; background: #fff; border-right: 1px solid #e5e6eb; padding: 10px 0; overflow-y: auto; }
+  .gov-nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; cursor: pointer; color: #4e5969; font-size: 14px; border-left: 3px solid transparent; }
+  .gov-nav-item:hover { background: rgba(0,0,0,.03); color: #1890ff; }
+  .gov-nav-item.active { background: rgba(24,144,255,.06); color: #1890ff; border-left-color: #1890ff; font-weight: 500; }
+  .gov-nav-item .badge { margin-left: auto; font-size: 11px; padding: 1px 6px; border-radius: 8px; }
+  .badge-live { background: rgba(82,196,26,.12); color: #52c41a; }
+  .badge-plan { background: rgba(140,140,140,.12); color: #8c8c8c; }
+  .gov-content { flex: 1; padding: 24px 28px; overflow-y: auto; }
+  .gov-h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .gov-desc { color: #86909c; font-size: 13px; margin-bottom: 20px; }
+  .gov-placeholder { background: #fff; border: 1px dashed #d4d7de; border-radius: 8px; padding: 48px; text-align: center; color: #86909c; }
+  .gov-placeholder .ms { display: inline-block; margin-top: 10px; font-size: 12px; color: #1890ff; background: rgba(24,144,255,.08); padding: 3px 10px; border-radius: 10px; }
+  .gov-btn { display: inline-block; margin-top: 16px; background: #1890ff; color: #fff; text-decoration: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; }
+  .gov-btn:hover { background: #40a3ff; }
+  .dn-toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-10px); background: #1f2329; color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 13px; opacity: 0; transition: all .3s; z-index: 9999; }
+  .dn-toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="gov-top">
+  <span class="brand">DataNote <span class="accent">数据治理中心</span></span>
+  <span class="spacer"></span>
+  <a class="back" href="workspace.html#/home">返回工作台</a>
+</div>
+<div class="gov-layout">
+  <nav class="gov-nav" id="govNav"></nav>
+  <main class="gov-content" id="govContent"></main>
+</div>
+
+<script src="js/dn-common.js"></script>
+<script>
+/* 治理模块注册表：M0 仅搭壳，live 模块链入既有工作台，planned 模块占位标注里程碑 */
+var GOV_MODULES = [
+  { key: 'assets',         label: '资产目录',   status: 'live',    ms: 'M2 / M10', desc: '元数据自动采集、数据目录、资产盘点与生命周期' },
+  { key: 'lineage',        label: '数据血缘',   status: 'live',    ms: 'M3 / M4',  desc: '字段级血缘、SQL 解析、影响分析与溯源' },
+  { key: 'quality',        label: '数据质量',   status: 'live',    ms: '',          desc: '质量规则、检查执行与历史',
+    link: 'workspace.html#/quality' },
+  { key: 'standard',       label: '数据标准',   status: 'planned', ms: 'M7',        desc: '数据元、命名词根、码表与落标稽核' },
+  { key: 'classification', label: '分类分级',   status: 'planned', ms: 'M8',        desc: '国家三级/金融五级分级、敏感识别与打标' },
+  { key: 'security',       label: '数据安全',   status: 'planned', ms: 'M6/M9/M12', desc: 'RBAC、行列权限、动态脱敏与全局审计' },
+  { key: 'health',         label: '治理健康分', status: 'planned', ms: 'M11',       desc: '五维健康分、治理工单与 DCMM 成熟度自评' }
+];
+
+function currentKey() {
+  var h = (location.hash || '').replace(/^#/, '');
+  var found = GOV_MODULES.filter(function (m) { return m.key === h; })[0];
+  return found ? h : GOV_MODULES[0].key;
+}
+
+function renderNav() {
+  var nav = document.getElementById('govNav');
+  nav.innerHTML = '';
+  var active = currentKey();
+  GOV_MODULES.forEach(function (m) {
+    var item = DN.h('div', {
+      class: 'gov-nav-item' + (m.key === active ? ' active' : ''),
+      onclick: function () { location.hash = '#' + m.key; }
+    }, [
+      DN.h('span', { text: m.label }),
+      DN.h('span', { class: 'badge ' + (m.status === 'live' ? 'badge-live' : 'badge-plan'),
+                     text: m.status === 'live' ? '已上线' : '规划中' })
+    ]);
+    nav.appendChild(item);
+  });
+}
+
+function renderContent() {
+  var c = document.getElementById('govContent');
+  var m = GOV_MODULES.filter(function (x) { return x.key === currentKey(); })[0];
+  c.innerHTML = '';
+  c.appendChild(DN.h('div', { class: 'gov-h1', text: m.label }));
+  c.appendChild(DN.h('div', { class: 'gov-desc', text: m.desc }));
+  if (m.status === 'live' && typeof MODULE_RENDERERS[m.key] === 'function') {
+    MODULE_RENDERERS[m.key](c);
+    return;
+  }
+  if (m.status === 'live' && m.link) {
+    var box = DN.h('div', { class: 'gov-placeholder' }, [
+      DN.h('div', { text: '该模块已上线，当前托管于工作台。' }),
+      DN.h('a', { class: 'gov-btn', href: m.link, text: '前往 ' + m.label })
+    ]);
+    c.appendChild(box);
+  } else {
+    c.appendChild(DN.h('div', { class: 'gov-placeholder' }, [
+      DN.h('div', { text: m.label + ' 模块正在建设中。' }),
+      DN.h('span', { class: 'ms', text: '将于里程碑 ' + m.ms + ' 上线' })
+    ]));
+  }
+}
+
+var MODULE_RENDERERS = {
+  assets: renderAssets,
+  lineage: renderLineage
+};
+
+function fmtBytes(n) {
+  if (n == null) return '-';
+  var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0, v = Number(n);
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(1) + ' ' + u[i];
+}
+
+function renderAssets(c) {
+  var bar = DN.h('div', { class: 'gov-desc' });
+  var btnAll = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '采集全部(源库+数仓)',
+    onclick: function () {
+      DN.post('/api/metadata-center/crawl/all').then(function (msg) {
+        DN.toast(msg || '采集已启动'); setTimeout(function () { loadAssets(); }, 1500);
+      }).catch(function (e) { DN.toast(e.message, 'error'); });
+    } });
+  bar.appendChild(btnAll);
+  c.appendChild(bar);
+
+  c.appendChild(DN.h('div', { id: 'assetLogs', class: 'gov-desc' }));
+  c.appendChild(DN.h('div', { id: 'assetList' }));
+
+  loadAssets();
+}
+
+function loadAssets() {
+  DN.get('/api/metadata-center/collect-logs').then(function (logs) {
+    var box = document.getElementById('assetLogs');
+    if (!box) return;
+    if (!logs || !logs.length) { box.textContent = '尚无采集记录'; return; }
+    var last = logs[0];
+    box.textContent = '最近采集: ' + (last.dbType || '') + ' / ' + (last.status || '') +
+      ' / 表' + (last.tableCount || 0) + ' 字段' + (last.columnCount || 0) +
+      ' / ' + (last.startedAt || '');
+  }).catch(function () {});
+
+  DN.get('/api/metadata-center/tables').then(function (tables) {
+    var box = document.getElementById('assetList');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!tables || !tables.length) {
+      box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '暂无资产，点击上方采集' }));
+      return;
+    }
+    var rows = tables.slice(0, 200).map(function (t) {
+      return '<tr><td>' + DN.esc(t.dbType || '') + '</td><td>' + DN.esc(t.databaseName || '') +
+        '</td><td>' + DN.esc(t.tableName || '') + '</td><td>' + DN.esc(t.tableComment || '') +
+        '</td><td style="text-align:right">' + (t.rowCount == null ? '-' : t.rowCount) +
+        '</td><td style="text-align:right">' + fmtBytes(t.sizeBytes) + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
+      '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
+      '<th style="padding:8px">来源</th><th style="padding:8px">库</th><th style="padding:8px">表</th>' +
+      '<th style="padding:8px">业务描述</th><th style="padding:8px;text-align:right">行数</th>' +
+      '<th style="padding:8px;text-align:right">体量</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    box.querySelectorAll('td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+  }).catch(function (e) {
+    var box = document.getElementById('assetList');
+    if (box) box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
+  });
+}
+
+function renderLineage(c) {
+  var bar = DN.h('div', { class: 'gov-desc' });
+  bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
+    onclick: function () {
+      DN.post('/api/lineage/rebuild-edges').then(function (r) {
+        DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边');
+      }).catch(function (e) { DN.toast(e.message, 'error'); });
+    } }));
+  c.appendChild(bar);
+
+  var q = DN.h('div', { class: 'gov-desc' });
+  var inDb = DN.h('input', { id: 'lnDb', placeholder: '库名(如 ods)',
+    style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
+  var inTab = DN.h('input', { id: 'lnTable', placeholder: '表名',
+    style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
+  var btn = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '查询血缘',
+    onclick: queryLineage, style: 'margin-top:0' });
+  q.appendChild(inDb); q.appendChild(inTab); q.appendChild(btn);
+  c.appendChild(q);
+
+  c.appendChild(DN.h('div', { id: 'lnResult' }));
+}
+
+function queryLineage() {
+  var db = document.getElementById('lnDb').value.trim();
+  var table = document.getElementById('lnTable').value.trim();
+  if (!db || !table) { DN.toast('请输入库名与表名', 'error'); return; }
+  var box = document.getElementById('lnResult');
+  box.innerHTML = '加载中...';
+  var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+  Promise.all([
+    DN.get('/api/lineage/table-edges' + qs),
+    DN.get('/api/lineage/column-edges' + qs)
+  ]).then(function (res) {
+    var nb = res[0] || {}, cols = res[1] || [];
+    var up = (nb.upstream || []).map(function (e) { return e.srcDb + '.' + e.srcTable; });
+    var down = (nb.downstream || []).map(function (e) { return e.dstDb + '.' + e.dstTable; });
+    var html = '<div class="gov-desc"><b>上游表:</b> ' + (up.length ? up.map(DN.esc).join(', ') : '无') + '</div>' +
+      '<div class="gov-desc"><b>下游表:</b> ' + (down.length ? down.map(DN.esc).join(', ') : '无') + '</div>';
+    if (cols.length) {
+      html += '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px"><thead>' +
+        '<tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
+        '<th style="padding:8px">目标列</th><th style="padding:8px">来源</th><th style="padding:8px">变换</th></tr></thead><tbody>' +
+        cols.map(function (e) {
+          return '<tr><td style="padding:8px;border-bottom:1px solid #f2f3f5">' + DN.esc(e.dstColumn) +
+            '</td><td style="padding:8px;border-bottom:1px solid #f2f3f5">' + DN.esc(e.srcDb + '.' + e.srcTable + '.' + e.srcColumn) +
+            '</td><td style="padding:8px;border-bottom:1px solid #f2f3f5">' + DN.esc(e.transformType || '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else {
+      html += '<div class="gov-placeholder">无字段级血缘（先点上方重建，或该表非同步目标）</div>';
+    }
+    box.innerHTML = html;
+  }).catch(function (e) { box.innerHTML = '<div class="gov-placeholder">查询失败: ' + DN.esc(e.message) + '</div>'; });
+}
+
+function route() { renderNav(); renderContent(); }
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

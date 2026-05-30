@@ -2,10 +2,13 @@ package com.datanote.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnColumnMetaMapper;
+import com.datanote.mapper.DnMetaCollectLogMapper;
 import com.datanote.mapper.DnTableMetaMapper;
 import com.datanote.model.DnColumnMeta;
+import com.datanote.model.DnMetaCollectLog;
 import com.datanote.model.DnTableMeta;
 import com.datanote.model.R;
+import com.datanote.service.MetadataCrawlerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,8 @@ public class MetadataCenterController {
 
     private final DnTableMetaMapper tableMetaMapper;
     private final DnColumnMetaMapper columnMetaMapper;
+    private final MetadataCrawlerService crawlerService;
+    private final DnMetaCollectLogMapper collectLogMapper;
 
     /**
      * 搜索表元数据
@@ -159,5 +164,44 @@ public class MetadataCenterController {
         data.put("coreTableCount", tableMetaMapper.selectCount(coreQw));
 
         return R.ok(data);
+    }
+
+    /**
+     * 手动触发采集：指定源数据源
+     */
+    @Operation(summary = "采集指定数据源元数据")
+    @PostMapping("/crawl/datasource/{id}")
+    public R<DnMetaCollectLog> crawlDatasource(@PathVariable Long id) {
+        return R.ok(crawlerService.crawlDatasource(id));
+    }
+
+    /**
+     * 手动触发采集：Doris 数仓
+     */
+    @Operation(summary = "采集Doris数仓元数据")
+    @PostMapping("/crawl/warehouse")
+    public R<DnMetaCollectLog> crawlWarehouse() {
+        return R.ok(crawlerService.crawlWarehouse());
+    }
+
+    /**
+     * 手动触发采集：全部（源库 + 数仓，异步执行避免请求超时）
+     */
+    @Operation(summary = "采集全部元数据")
+    @PostMapping("/crawl/all")
+    public R<String> crawlAll() {
+        new Thread(crawlerService::crawlAll, "meta-crawl-all").start();
+        return R.ok("采集已启动，完成后可在采集日志查看");
+    }
+
+    /**
+     * 采集日志列表（最近 50 条）
+     */
+    @Operation(summary = "采集日志")
+    @GetMapping("/collect-logs")
+    public R<List<DnMetaCollectLog>> collectLogs() {
+        QueryWrapper<DnMetaCollectLog> qw = new QueryWrapper<>();
+        qw.orderByDesc("started_at").last("LIMIT 50");
+        return R.ok(collectLogMapper.selectList(qw));
     }
 }

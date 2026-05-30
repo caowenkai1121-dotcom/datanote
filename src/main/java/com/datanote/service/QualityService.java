@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.config.HiveConfig;
 import com.datanote.exception.BusinessException;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnQualityRunMapper;
@@ -34,6 +35,7 @@ public class QualityService {
     private final DnDatasourceMapper datasourceMapper;
     private final DnQualityRunMapper qualityRunMapper;
     private final ObjectMapper objectMapper;
+    private final HiveConfig hiveConfig;
 
     /** 合法标识符：字母/数字/下划线/中文，1-128 字符 */
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("^[\\w\\u4e00-\\u9fa5]{1,128}$");
@@ -63,19 +65,22 @@ public class QualityService {
 
         long startMs = System.currentTimeMillis();
         try {
-            DnDatasource ds = datasourceMapper.selectById(rule.getDatasourceId());
-            if (ds == null) {
-                throw new BusinessException("数据源不存在: " + rule.getDatasourceId());
-            }
-            String password = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
             validateIdentifier(rule.getDatabaseName(), "数据库名");
-
-            String url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
-                    + "/" + rule.getDatabaseName()
-                    + "?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=10000";
-
-            try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password)) {
-                executeCheck(conn, rule, run);
+            try (Connection conn = openConnection(rule)) {
+                String origCatalog = null;
+                try {
+                    origCatalog = conn.getCatalog();
+                    conn.setCatalog(rule.getDatabaseName());
+                } catch (SQLException ignore) {
+                    // 个别驱动不支持切库，忽略，依赖 SQL 中的库定位
+                }
+                try {
+                    executeCheck(conn, rule, run);
+                } finally {
+                    if (origCatalog != null) {
+                        try { conn.setCatalog(origCatalog); } catch (SQLException ignore) { /* 还原失败不影响结果 */ }
+                    }
+                }
             }
         } catch (Exception e) {
             run.setRunStatus("error");
@@ -88,6 +93,34 @@ public class QualityService {
         run.setFinishedAt(LocalDateTime.now());
         qualityRunMapper.insert(run);
         return run;
+    }
+
+    /**
+     * 按规则目标打开连接：数仓走 Doris 连接池，源库走 DriverManager。
+     */
+    private Connection openConnection(DnQualityRule rule) throws SQLException {
+        if (isWarehouseTarget(rule)) {
+            return hiveConfig.getConnection();
+        }
+        DnDatasource ds = datasourceMapper.selectById(rule.getDatasourceId());
+        if (ds == null) {
+            throw new BusinessException("数据源不存在: " + rule.getDatasourceId());
+        }
+        String password = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
+        String url = buildSourceJdbcUrl(ds.getHost(), ds.getPort(), rule.getDatabaseName());
+        return DriverManager.getConnection(url, ds.getUsername(), password);
+    }
+
+    /** datasourceId 为 null 或 0 表示目标是 Doris 数仓（约定与 DataMapService 一致） */
+    static boolean isWarehouseTarget(DnQualityRule rule) {
+        Long id = rule.getDatasourceId();
+        return id == null || id == 0L;
+    }
+
+    /** 构建源库 JDBC URL（MySQL 协议，Doris/StarRocks 亦兼容） */
+    static String buildSourceJdbcUrl(String host, Integer port, String db) {
+        return "jdbc:mysql://" + host + ":" + port + "/" + db
+                + "?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=10000";
     }
 
     private void executeCheck(Connection conn, DnQualityRule rule, DnQualityRun run) throws Exception {

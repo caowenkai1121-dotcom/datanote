@@ -21,6 +21,10 @@ public class DnTableMeta {
     private String importance;
     private Integer viewCount;
     private Long rowCount;
+    private String dbType;
+    private String tableType;
+    private Long sizeBytes;
+    private LocalDateTime lastCollectedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
