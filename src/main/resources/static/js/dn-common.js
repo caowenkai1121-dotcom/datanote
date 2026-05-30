@@ -81,6 +81,60 @@
     return v.toFixed(1) + ' ' + u[i];
   };
 
+  // ===== 元数据下拉数据源（数仓侧，复用工作台同款接口） =====
+  DN.metaDatabases = function () { return DN.get('/api/metadata/databases'); };
+  DN.metaTables = function (db) { return DN.get('/api/metadata/tables?db=' + encodeURIComponent(db)); };
+  DN.metaColumns = function (db, table) {
+    return DN.get('/api/metadata/columns?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table));
+  };
+
+  /**
+   * 级联库/表(/列)下拉选择器，用系统原生 .iw-form-select 样式，避免用户手输。
+   * opts: { withColumn, defaultDb, onChange(db,table,column) }
+   * 返回 { el, db(), table(), column() }
+   */
+  DN.dbTablePicker = function (opts) {
+    opts = opts || {};
+    var withColumn = !!opts.withColumn;
+    function sel(ph) {
+      var s = DN.h('select', { class: 'iw-form-select', style: 'min-width:140px;margin-right:4px;' });
+      s.innerHTML = '<option value="">' + ph + '</option>';
+      return s;
+    }
+    function lbl(t) { return DN.h('span', { text: t, style: 'color:var(--text-muted,#86909c);font-size:13px;margin-right:4px;' }); }
+    function addOpts(s, items, val, text) {
+      (items || []).forEach(function (it) {
+        var o = document.createElement('option');
+        o.value = val(it); o.textContent = text(it);
+        s.appendChild(o);
+      });
+    }
+    var dbSel = sel('选择库'), tbSel = sel('选择表'), colSel = withColumn ? sel('选择字段') : null;
+    var wrap = DN.h('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;' },
+      [lbl('库'), dbSel, lbl('表'), tbSel].concat(withColumn ? [lbl('字段'), colSel] : []));
+    function fire() { if (opts.onChange) opts.onChange(dbSel.value, tbSel.value, colSel ? colSel.value : null); }
+    dbSel.onchange = function () {
+      tbSel.innerHTML = '<option value="">选择表</option>';
+      if (colSel) colSel.innerHTML = '<option value="">选择字段</option>';
+      if (dbSel.value) DN.metaTables(dbSel.value).then(function (ts) { addOpts(tbSel, ts, function (t) { return t; }, function (t) { return t; }); }).catch(function () {});
+      fire();
+    };
+    tbSel.onchange = function () {
+      if (colSel) {
+        colSel.innerHTML = '<option value="">选择字段</option>';
+        if (dbSel.value && tbSel.value) DN.metaColumns(dbSel.value, tbSel.value)
+          .then(function (cs) { addOpts(colSel, cs, function (c) { return c.name; }, function (c) { return c.name + (c.type ? ' (' + c.type + ')' : ''); }); }).catch(function () {});
+      }
+      fire();
+    };
+    if (colSel) colSel.onchange = fire;
+    DN.metaDatabases().then(function (dbs) {
+      addOpts(dbSel, dbs, function (d) { return d; }, function (d) { return d; });
+      if (opts.defaultDb) { dbSel.value = opts.defaultDb; dbSel.onchange(); }
+    }).catch(function () {});
+    return { el: wrap, db: function () { return dbSel.value; }, table: function () { return tbSel.value; }, column: function () { return colSel ? colSel.value : null; } };
+  };
+
   global.DN = DN;
   // 治理模块渲染器注册表：各 js/gov-<key>.js 注册 render 到此，governance.html 据此渲染
   global.GOV_RENDERERS = global.GOV_RENDERERS || {};
