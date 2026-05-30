@@ -1,4 +1,4 @@
--- 数据治理迁移合并包 (M2-M12, 按序, 幂等可重复执行)
+-- 数据治理迁移合并包 (M2-M12 + 迭代2, 按序, 幂等可重复执行)
 -- 用法: mysql -h<host> -P<port> -uroot -p datanote < sql/governance-migrations.sql
 
 -- ===== 32_metadata_collect =====
@@ -491,3 +491,31 @@ CREATE TABLE IF NOT EXISTS dn_audit_log (
   INDEX idx_user_name (user_name),
   INDEX idx_action_type (action_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='全局审计日志(只增不改)';
+
+-- ===== 43_metric_ref =====
+-- 指标-资产关联表（指标关联到具体库.表.列）
+CREATE TABLE IF NOT EXISTS `dn_metric_ref` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `metric_id` BIGINT NOT NULL COMMENT '指标ID(dn_metric.id)',
+  `db_name` VARCHAR(128) DEFAULT NULL COMMENT '库名',
+  `table_name` VARCHAR(128) DEFAULT NULL COMMENT '表名',
+  `column_name` VARCHAR(128) DEFAULT NULL COMMENT '列名(可空,表级关联时为空)',
+  `ref_type` VARCHAR(32) DEFAULT 'SOURCE' COMMENT '关联类型: SOURCE来源/DIM维度/RESULT结果',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_metric (`metric_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='指标-资产关联';
+
+-- ===== 44_glossary =====
+-- 数据治理 F4：业务术语表（Glossary）。幂等：CREATE TABLE IF NOT EXISTS
+USE datanote;
+
+CREATE TABLE IF NOT EXISTS dn_glossary_term (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  term        VARCHAR(128) NOT NULL COMMENT '术语名',
+  alias       VARCHAR(255) DEFAULT NULL COMMENT '别名(逗号分隔)',
+  definition  TEXT         DEFAULT NULL COMMENT '定义/解释',
+  category    VARCHAR(64)  DEFAULT NULL COMMENT '分类',
+  created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  INDEX idx_term (term),
+  INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='业务术语表';
