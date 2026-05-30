@@ -91,6 +91,22 @@ class WorkspaceDbSyncUiTest {
                 "dbsync route init should call window-scoped functions after refresh navigation");
     }
 
+    @Test
+    void cdcMetricsPanelContainsExtendedFields() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("eventsSeen"),
+                "CDC metrics panel should display eventsSeen field");
+        assertTrue(html.contains("snapshotRunning"),
+                "CDC metrics panel should display snapshotRunning field");
+        assertTrue(html.contains("snapshotCompleted"),
+                "CDC metrics panel should display snapshotCompleted field");
+        assertTrue(html.contains("dbsyncCdcReset"),
+                "CDC action area should contain a reset function call");
+        assertTrue(html.contains("/api/cdc/' + id + '/reset?confirm=true"),
+                "CDC reset should call the reset endpoint with confirm=true");
+    }
+
     private static String readWorkspaceHtml() throws Exception {
         byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/workspace.html"));
         return new String(bytes, StandardCharsets.UTF_8);

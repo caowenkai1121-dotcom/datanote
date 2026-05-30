@@ -65,6 +65,10 @@ public class CdcSyncEngine {
     private final int maxBatchSize;
     private final int maxQueueSize;
     private final int pollIntervalMs;
+    /** Debezium 心跳间隔毫秒（>0 才启用，用于低频源库及时推进 offset）。 */
+    private final int heartbeatIntervalMs;
+    /** 死信 Mapper（坏事件落库，可为 null 表示不落库）。 */
+    private final com.datanote.mapper.DnCdcDeadLetterMapper deadLetterMapper;
 
     /** 源表名 -> 该表同步配置（含目标表名）。 */
     private final Map<String, TableSyncConfig> tableMap = new ConcurrentHashMap<>();
@@ -97,7 +101,9 @@ public class CdcSyncEngine {
                          long serverIdBase,
                          int maxBatchSize,
                          int maxQueueSize,
-                         int pollIntervalMs) {
+                         int pollIntervalMs,
+                         int heartbeatIntervalMs,
+                         com.datanote.mapper.DnCdcDeadLetterMapper deadLetterMapper) {
         this.job = job;
         this.sourceDs = sourceDs;
         this.tables = tables;
@@ -109,6 +115,8 @@ public class CdcSyncEngine {
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
         this.pollIntervalMs = pollIntervalMs;
+        this.heartbeatIntervalMs = heartbeatIntervalMs;
+        this.deadLetterMapper = deadLetterMapper;
         for (TableSyncConfig tc : tables) {
             if (tc.getSourceTable() != null) {
                 tableMap.put(tc.getSourceTable(), tc);
@@ -199,6 +207,7 @@ public class CdcSyncEngine {
         props.setProperty("max.batch.size", String.valueOf(maxBatchSize));
         props.setProperty("max.queue.size", String.valueOf(maxQueueSize));
         props.setProperty("poll.interval.ms", String.valueOf(pollIntervalMs));
+        if (heartbeatIntervalMs > 0) props.setProperty("heartbeat.interval.ms", String.valueOf(heartbeatIntervalMs));
         return props;
     }
 
@@ -243,6 +252,7 @@ public class CdcSyncEngine {
             } catch (Exception e) {
                 errorCount.incrementAndGet();
                 log.error("CDC 解析失败 jobId={} value={}", job.getId(), abbreviate(value), e);
+                saveDeadLetter(null, null, value, e.getMessage(), "PARSE");
                 continue;
             }
             if (change == null) {
@@ -546,11 +556,49 @@ public class CdcSyncEngine {
         }
     }
 
+    /** 累计已处理（snapshot+streaming）事件总数，来自 streaming 上下文 MBean。读不到返回 null。 */
+    public Long getEventsSeen() { return readMbeanNumber("streaming", "TotalNumberOfEventsSeen"); }
+    /** 全量快照是否已完成（snapshot 上下文 MBean）。读不到返回 null。 */
+    public Boolean getSnapshotCompleted() { return readSnapshotBool("SnapshotCompleted"); }
+    /** 全量快照是否正在进行（snapshot 上下文 MBean）。读不到返回 null。 */
+    public Boolean getSnapshotRunning() { return readSnapshotBool("SnapshotRunning"); }
+    private Long readMbeanNumber(String context, String attr) {
+        try {
+            javax.management.MBeanServer mbs = java.lang.management.ManagementFactory.getPlatformMBeanServer();
+            javax.management.ObjectName on = new javax.management.ObjectName(
+                "debezium.mysql:type=connector-metrics,context=" + context + ",server=datanote_cdc_" + job.getId());
+            Object v = mbs.getAttribute(on, attr);
+            return v == null ? null : ((Number) v).longValue();
+        } catch (Exception e) { return null; }
+    }
+    private Boolean readSnapshotBool(String attr) {
+        try {
+            javax.management.MBeanServer mbs = java.lang.management.ManagementFactory.getPlatformMBeanServer();
+            javax.management.ObjectName on = new javax.management.ObjectName(
+                "debezium.mysql:type=connector-metrics,context=snapshot,server=datanote_cdc_" + job.getId());
+            Object v = mbs.getAttribute(on, attr);
+            return v == null ? null : (Boolean) v;
+        } catch (Exception e) { return null; }
+    }
+
     /** 当前日志缓冲快照（供执行记录落库回放）。 */
     public String getLogSnapshot() {
         synchronized (logLock) {
             return logBuffer.toString();
         }
+    }
+
+    /** 坏事件落库到死信表（deadLetterMapper 为 null 或落库异常均静默忽略，不影响主流程）。 */
+    private void saveDeadLetter(String db, String table, String originValue, String reason, String type) {
+        if (deadLetterMapper == null) return;
+        try {
+            com.datanote.model.DnCdcDeadLetter dl = new com.datanote.model.DnCdcDeadLetter();
+            dl.setJobId(job.getId());
+            dl.setSourceDb(db); dl.setSourceTable(table);
+            dl.setOriginValue(abbreviate(originValue));
+            dl.setErrorReason(reason); dl.setErrorType(type);
+            deadLetterMapper.insert(dl);
+        } catch (Exception ignore) {}
     }
 
     private static String abbreviate(String s) {

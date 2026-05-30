@@ -57,6 +57,6 @@ class CdcSyncEngineConfigTest {
         table.setTargetTable("t_order");
 
         return new CdcSyncEngine(job, source, Collections.singletonList(table),
-                null, null, "1234567890123456", "DORIS", 5400L, 2048, 8192, 500);
+                null, null, "1234567890123456", "DORIS", 5400L, 2048, 8192, 500, 30000, null);
     }
 }

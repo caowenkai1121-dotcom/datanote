@@ -66,6 +66,8 @@ datanote:
       max-batch-size: ${SYNC_CDC_MAX_BATCH:2048}
       max-queue-size: ${SYNC_CDC_MAX_QUEUE:8192}
       poll-interval-ms: ${SYNC_CDC_POLL_MS:500}
+      # Debezium 心跳间隔毫秒，低频源库借此推进 offset（>0 启用，0 关闭）
+      heartbeat-interval-ms: ${SYNC_CDC_HEARTBEAT_MS:30000}
 
 # -------------------- SpringDoc API 文档 --------------------
 springdoc:

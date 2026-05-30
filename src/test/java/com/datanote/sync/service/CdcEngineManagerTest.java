@@ -1,5 +1,6 @@
 package com.datanote.sync.service;
 
+import com.datanote.mapper.DnCdcDeadLetterMapper;
 import com.datanote.mapper.DnCdcOffsetMapper;
 import com.datanote.mapper.DnCdcSchemaHistoryMapper;
 import com.datanote.mapper.DnDatasourceMapper;
@@ -44,7 +45,8 @@ class CdcEngineManagerTest {
                 mock(LogBroadcastService.class),
                 syncJobService,
                 tableSchemaService,
-                mock(DnTaskExecutionMapper.class));
+                mock(DnTaskExecutionMapper.class),
+                mock(DnCdcDeadLetterMapper.class));
 
         DnSyncJob job = new DnSyncJob();
         job.setId(7L);

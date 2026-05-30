@@ -1,6 +1,7 @@
 package com.datanote.sync.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnCdcDeadLetterMapper;
 import com.datanote.mapper.DnCdcOffsetMapper;
 import com.datanote.mapper.DnCdcSchemaHistoryMapper;
 import com.datanote.mapper.DnDatasourceMapper;
@@ -54,6 +55,7 @@ public class CdcEngineManager {
     private final SyncJobService syncJobService;
     private final TableSchemaService tableSchemaService;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final DnCdcDeadLetterMapper deadLetterMapper;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -71,6 +73,9 @@ public class CdcEngineManager {
     @Value("${datanote.sync.cdc.poll-interval-ms:500}")
     private int cdcPollIntervalMs;
 
+    @Value("${datanote.sync.cdc.heartbeat-interval-ms:30000}")
+    private int cdcHeartbeatMs;
+
     /** jobId -> 运行中的引擎实例。 */
     private final Map<Long, CdcSyncEngine> engines = new ConcurrentHashMap<>();
     /** jobId -> 当前运行对应的执行记录 id（dn_task_execution）。 */
@@ -87,7 +92,8 @@ public class CdcEngineManager {
                             LogBroadcastService logBroadcastService,
                             SyncJobService syncJobService,
                             TableSchemaService tableSchemaService,
-                            DnTaskExecutionMapper taskExecutionMapper) {
+                            DnTaskExecutionMapper taskExecutionMapper,
+                            DnCdcDeadLetterMapper deadLetterMapper) {
         this.offsetMapper = offsetMapper;
         this.historyMapper = historyMapper;
         this.syncJobMapper = syncJobMapper;
@@ -97,6 +103,7 @@ public class CdcEngineManager {
         this.syncJobService = syncJobService;
         this.tableSchemaService = tableSchemaService;
         this.taskExecutionMapper = taskExecutionMapper;
+        this.deadLetterMapper = deadLetterMapper;
     }
 
     /**
@@ -154,7 +161,7 @@ public class CdcEngineManager {
         String targetType = targetDs.getType() == null ? "MYSQL" : targetDs.getType().toUpperCase();
         CdcSyncEngine engine = new CdcSyncEngine(job, sourceDs, tables,
                 connectionManager, logBroadcastService, cryptoKey, targetType, serverIdBase,
-                cdcMaxBatchSize, cdcMaxQueueSize, cdcPollIntervalMs);
+                cdcMaxBatchSize, cdcMaxQueueSize, cdcPollIntervalMs, cdcHeartbeatMs, deadLetterMapper);
         engine.start();
         engines.put(jobId, engine);
         updateStatus(jobId, "RUNNING");
@@ -189,6 +196,22 @@ public class CdcEngineManager {
         log.info("CDC 任务已停止 jobId={}", jobId);
     }
 
+    /**
+     * 重置 CDC（高危）：停引擎、清该 job 的 offset 与 schema_history，使下次启动重新全量快照。
+     * restart=true 时清理后立即重启（重新全量），false 时仅置 STOPPED 不重启。
+     */
+    public synchronized void resetAndRestart(Long jobId, boolean restart) {
+        CdcSyncEngine engine = engines.remove(jobId);
+        if (engine != null) { engine.stop(); finalizeExecution(jobId, "STOPPED", engine); }
+        offsetMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcOffset>()
+                .eq(com.datanote.model.DnCdcOffset::getJobId, jobId));
+        historyMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcSchemaHistory>()
+                .eq(com.datanote.model.DnCdcSchemaHistory::getJobId, jobId));
+        log.warn("CDC 已重置 offset+schema_history jobId={}", jobId);
+        if (restart) { DnSyncJob job = syncJobMapper.selectById(jobId); if (job != null) doStart(job); }
+        else { updateStatus(jobId, "STOPPED"); }
+    }
+
     /** 该任务是否正在运行。 */
     public boolean status(Long jobId) {
         CdcSyncEngine engine = engines.get(jobId);
@@ -205,6 +228,9 @@ public class CdcEngineManager {
             m.put("writeCount", engine.getWriteCount());
             m.put("errorCount", engine.getErrorCount());
             m.put("lagMs", engine.getStreamingLagMs());
+            m.put("eventsSeen", engine.getEventsSeen());
+            m.put("snapshotRunning", engine.getSnapshotRunning());
+            m.put("snapshotCompleted", engine.getSnapshotCompleted());
         }
         return m;
     }
