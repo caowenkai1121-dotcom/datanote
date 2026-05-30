@@ -426,6 +426,10 @@ public class SyncJobService {
             throw new IllegalArgumentException("数据源不存在: " + datasourceId);
         }
         String type = ds.getType() == null ? "MYSQL" : ds.getType().toUpperCase();
+        // DS-M8：PostgreSQL 源走 PostgresConnector（db 即 PG schema）
+        if ("POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type)) {
+            return new com.datanote.sync.connector.PostgresConnector(connectionManager, datasourceId, db);
+        }
         return new MysqlConnector(connectionManager, datasourceId, db, type);
     }
 

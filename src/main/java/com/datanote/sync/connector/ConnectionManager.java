@@ -53,6 +53,18 @@ public class ConnectionManager {
         return url.toString();
     }
 
+    /** 构建 PostgreSQL jdbcUrl（DS-M8，可单测）。db=PG 数据库名（非 schema）。 */
+    public static String buildPgUrl(String host, Integer port, String db, String extraParams) {
+        StringBuilder url = new StringBuilder("jdbc:postgresql://").append(host).append(":").append(port).append("/");
+        if (db != null && !db.isEmpty()) {
+            url.append(db);
+        }
+        if (extraParams != null && !extraParams.isEmpty()) {
+            url.append("?").append(extraParams);
+        }
+        return url.toString();
+    }
+
     private static String poolKey(Long datasourceId, String db) {
         return datasourceId + ":" + (db == null ? "" : db);
     }
@@ -92,14 +104,24 @@ public class ConnectionManager {
             throw new IllegalArgumentException("数据源不存在: " + datasourceId);
         }
         String pwd = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
-        String url = buildJdbcUrl(ds.getHost(), ds.getPort(),
-                db != null ? db : ds.getDatabaseName(), ds.getExtraParams());
+        // DS-M8：按数据源 type 选驱动/URL（PG 连接库取 databaseName，同步「db」为 schema 不入 URL）
+        String type = ds.getType() == null ? "MYSQL" : ds.getType().trim().toUpperCase();
+        boolean pg = "POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type);
+        String url;
+        String driver;
+        if (pg) {
+            url = buildPgUrl(ds.getHost(), ds.getPort(), ds.getDatabaseName(), ds.getExtraParams());
+            driver = "org.postgresql.Driver";
+        } else {
+            url = buildJdbcUrl(ds.getHost(), ds.getPort(), db != null ? db : ds.getDatabaseName(), ds.getExtraParams());
+            driver = "com.mysql.cj.jdbc.Driver";
+        }
 
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl(url);
         cfg.setUsername(ds.getUsername());
         cfg.setPassword(pwd);
-        cfg.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        cfg.setDriverClassName(driver);
         cfg.setMaximumPoolSize(poolMaxSize);
         cfg.setMinimumIdle(Math.min(2, poolMaxSize));
         cfg.setConnectionTimeout(10000);

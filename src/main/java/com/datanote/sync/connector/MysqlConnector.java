@@ -101,6 +101,29 @@ public class MysqlConnector implements DbConnector {
         return list;
     }
 
+    // ===== DS-M8：DbConnector 源端方言 SQL（委托既有静态实现，行为 byte-identical） =====
+    @Override
+    public String scanSql(String db, String table, List<String> columns, String extraWhere) {
+        return buildFullScanSql(db, table, columns, extraWhere);
+    }
+
+    @Override
+    public String keysetPageSql(String db, String table, List<String> columns,
+                                List<String> pkColumns, boolean hasCursor, String extraWhere) {
+        return buildKeysetPageSqlMulti(db, table, columns, pkColumns, hasCursor, extraWhere);
+    }
+
+    @Override
+    public String incrementalPageSql(String db, String table, List<String> columns,
+                                     String incField, List<String> pkColumns, boolean firstPage, String extraWhere) {
+        return buildIncrementalPageSqlMulti(db, table, columns, incField, pkColumns, firstPage, extraWhere);
+    }
+
+    @Override
+    public String countSql(String db, String table, String extraWhere) {
+        return buildCountSql(db, table, extraWhere);
+    }
+
     // ===== 纯逻辑：可单测的 SQL 构建 =====
 
     /** keyset 分页查询 SQL。hasCursor=true 时带 WHERE 游标。 */

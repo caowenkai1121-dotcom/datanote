@@ -3675,9 +3675,16 @@ html, body {
         </h3>
         <input type="hidden" id="dsId">
         <div class="ds-form-row"><label>名称</label><input id="dsName" placeholder="如：本地 MySQL"></div>
-        <div class="ds-form-row"><label>类型</label><input id="dsType" value="MySQL" readonly></div>
+        <div class="ds-form-row"><label>类型</label>
+          <select id="dsType">
+            <option value="MySQL">MySQL</option>
+            <option value="Doris">Doris</option>
+            <option value="PostgreSQL">PostgreSQL</option>
+          </select>
+        </div>
         <div class="ds-form-row"><label>主机</label><input id="dsHost" placeholder="127.0.0.1"></div>
         <div class="ds-form-row"><label>端口</label><input id="dsPort" placeholder="3306" type="number"></div>
+        <div class="ds-form-row"><label>数据库名</label><input id="dsDatabaseName" placeholder="PostgreSQL 连接库名(如 testdb)；MySQL 可留空"></div>
         <div class="ds-form-row"><label>用户名</label><input id="dsUser" placeholder="root"></div>
         <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码"></div>
         <div class="ds-form-actions">
@@ -5760,6 +5767,7 @@ function ctxNewDatasource() {
   document.getElementById('dsType').value = 'MySQL';
   document.getElementById('dsHost').value = '';
   document.getElementById('dsPort').value = '3306';
+  var _dsDb = document.getElementById('dsDatabaseName'); if (_dsDb) _dsDb.value = '';
   document.getElementById('dsUser').value = '';
   document.getElementById('dsPass').value = '';
 }
@@ -7867,7 +7875,8 @@ function saveDatasource() {
     host: document.getElementById('dsHost').value,
     port: parseInt(document.getElementById('dsPort').value) || 3306,
     username: document.getElementById('dsUser').value,
-    password: document.getElementById('dsPass').value
+    password: document.getElementById('dsPass').value,
+    databaseName: document.getElementById('dsDatabaseName').value
   };
   var id = document.getElementById('dsId').value;
   if (id) ds.id = parseInt(id);
@@ -7890,7 +7899,8 @@ function testDatasource() {
     host: document.getElementById('dsHost').value,
     port: parseInt(document.getElementById('dsPort').value) || 3306,
     username: document.getElementById('dsUser').value,
-    password: document.getElementById('dsPass').value
+    password: document.getElementById('dsPass').value,
+    databaseName: document.getElementById('dsDatabaseName').value
   };
   var id = document.getElementById('dsId').value;
   if (id) ds.id = parseInt(id);
@@ -8057,6 +8067,7 @@ function openDatasource(el, dsId, dsName) {
       document.getElementById('dsType').value = d.type || 'MySQL';
       document.getElementById('dsHost').value = d.host || '';
       document.getElementById('dsPort').value = d.port || 3306;
+      document.getElementById('dsDatabaseName').value = d.databaseName || '';
       document.getElementById('dsUser').value = d.username || '';
       document.getElementById('dsPass').value = d.password || '';
     }

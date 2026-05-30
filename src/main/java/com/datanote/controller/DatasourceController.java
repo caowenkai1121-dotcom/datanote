@@ -135,8 +135,14 @@ public class DatasourceController {
                     pwd = CryptoUtil.decryptSafe(old.getPassword(), cryptoKey);
                 }
             }
-            String url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
-                    + "/?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000";
+            String url;
+            if (com.datanote.service.MetadataService.isPg(ds.getType())) {
+                String db = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "postgres" : ds.getDatabaseName();
+                url = "jdbc:postgresql://" + ds.getHost() + ":" + ds.getPort() + "/" + db + "?connectTimeout=3";
+            } else {
+                url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
+                        + "/?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000";
+            }
             try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), pwd)) {
                 return R.ok("连接成功");
             }
@@ -154,7 +160,7 @@ public class DatasourceController {
     public R<List<String>> databases(@PathVariable Long id) {
         try {
             DnDatasource ds = requireDatasource(id);
-            return R.ok(metadataService.getDatabasesByConnection(ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword()));
+            return R.ok(metadataService.getDatabasesByConnection(ds.getType(), ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), ds.getDatabaseName()));
         } catch (SQLException e) {
             log.error("获取数据库列表失败, datasourceId={}", id, e);
             return R.fail("获取数据库列表失败");
@@ -169,7 +175,7 @@ public class DatasourceController {
     public R<List<String>> tables(@PathVariable Long id, @RequestParam String db) {
         try {
             DnDatasource ds = requireDatasource(id);
-            return R.ok(metadataService.getTablesByConnection(ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), db));
+            return R.ok(metadataService.getTablesByConnection(ds.getType(), ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), ds.getDatabaseName(), db));
         } catch (SQLException e) {
             log.error("获取表列表失败, datasourceId={}, db={}", id, db, e);
             return R.fail("获取表列表失败");
@@ -184,7 +190,7 @@ public class DatasourceController {
     public R<List<ColumnInfo>> columns(@PathVariable Long id, @RequestParam String db, @RequestParam String table) {
         try {
             DnDatasource ds = requireDatasource(id);
-            return R.ok(metadataService.getColumnsByConnection(ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), db, table));
+            return R.ok(metadataService.getColumnsByConnection(ds.getType(), ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(), ds.getDatabaseName(), db, table));
         } catch (SQLException e) {
             log.error("获取字段列表失败, datasourceId={}, db={}, table={}", id, db, table, e);
             return R.fail("获取字段列表失败");

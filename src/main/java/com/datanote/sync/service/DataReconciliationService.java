@@ -69,7 +69,7 @@ public class DataReconciliationService {
     }
 
     private long count(DbConnector conn, String db, String table, String ew) throws Exception {
-        String sql = MysqlConnector.buildCountSql(db, table, ew);
+        String sql = conn.countSql(db, table, ew);
         try (Connection c = conn.getConnection();
              PreparedStatement ps = c.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

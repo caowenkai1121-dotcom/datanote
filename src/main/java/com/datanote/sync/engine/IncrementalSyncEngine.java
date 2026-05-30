@@ -100,8 +100,8 @@ public class IncrementalSyncEngine implements SyncEngine {
 
         String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), ctx.getWriteMode(), tgtDb, tc.getTargetTable(),
                 writeColumns, fm.pkTargetColumns);
-        String firstSql = MysqlConnector.buildIncrementalPageSqlMulti(srcDb, tc.getSourceTable(), srcColumns, incField, fm.pkSourceColumns, true, extraWhere);
-        String nextSql  = MysqlConnector.buildIncrementalPageSqlMulti(srcDb, tc.getSourceTable(), srcColumns, incField, fm.pkSourceColumns, false, extraWhere);
+        String firstSql = ctx.getSource().incrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, fm.pkSourceColumns, true, extraWhere);
+        String nextSql  = ctx.getSource().incrementalPageSql(srcDb, tc.getSourceTable(), srcColumns, incField, fm.pkSourceColumns, false, extraWhere);
 
         ctx.log("INFO", "开始增量同步 " + tc.getSourceTable() + " -> " + tc.getTargetTable()
                 + "，增量字段=" + incField + "，主键=" + fm.pkSourceColumns + "，起始断点=" + startValue);

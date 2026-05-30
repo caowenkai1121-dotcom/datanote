@@ -133,7 +133,7 @@ public class FullSyncEngine implements SyncEngine {
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
             BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns, tc.getSourceTable(), tc.getTargetTable());
             while (!ctx.getStopped().get()) {
-                String pageSql = MysqlConnector.buildKeysetPageSqlMulti(
+                String pageSql = ctx.getSource().keysetPageSql(
                         srcDb, tc.getSourceTable(), srcColumns, fm.pkSourceColumns, hasCursor, extraWhere);
 
                 int rowsThisPage = 0;
@@ -215,7 +215,7 @@ public class FullSyncEngine implements SyncEngine {
         // 无主键强制 INSERT（UPSERT 无意义且无主键无法去重）
         String writeSql = WriteSqlBuilder.build(target.getDatabaseType(), "INSERT", tgtDb,
                 tc.getTargetTable(), writeColumns, java.util.Collections.emptyList());
-        String pageSql = MysqlConnector.buildFullScanSql(srcDb, tc.getSourceTable(), srcColumns, extraWhere);
+        String pageSql = ctx.getSource().scanSql(srcDb, tc.getSourceTable(), srcColumns, extraWhere);
 
         long tableRead = 0;
         int batchSize = ctx.getBatchSize();

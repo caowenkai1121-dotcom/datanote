@@ -141,4 +141,94 @@ public class MetadataService {
                 + "/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true";
         return DriverManager.getConnection(url, username, password);
     }
+
+    // ===== DS-M8：PostgreSQL 元数据（databases=schema；tables 走标准 information_schema；columns 用 PG 变体） =====
+
+    public static boolean isPg(String type) {
+        if (type == null) return false;
+        String t = type.trim().toUpperCase();
+        return t.startsWith("POSTGRE") || t.equals("PG");
+    }
+
+    private static final String SQL_PG_SCHEMAS =
+            "SELECT schema_name FROM information_schema.schemata "
+            + "WHERE schema_name NOT IN ('information_schema','pg_catalog','pg_toast') ORDER BY schema_name";
+
+    private Connection getExternalConnection(String type, String host, int port, String username,
+                                             String password, String databaseName) throws SQLException {
+        if (isPg(type)) {
+            String db = (databaseName == null || databaseName.isEmpty()) ? "postgres" : databaseName;
+            return DriverManager.getConnection("jdbc:postgresql://" + host + ":" + port + "/" + db, username, password);
+        }
+        return getExternalConnection(host, port, username, password);
+    }
+
+    public List<String> getDatabasesByConnection(String type, String host, int port, String username,
+                                                 String password, String databaseName) throws SQLException {
+        try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
+            if (isPg(type)) {
+                List<String> list = new ArrayList<>();
+                try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(SQL_PG_SCHEMAS)) {
+                    while (rs.next()) list.add(rs.getString(1));
+                }
+                return list;
+            }
+            return queryDatabases(conn);
+        }
+    }
+
+    public List<String> getTablesByConnection(String type, String host, int port, String username,
+                                              String password, String databaseName, String db) throws SQLException {
+        try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
+            return queryTables(conn, db); // information_schema.tables 对 MySQL/PG 通用
+        }
+    }
+
+    public List<ColumnInfo> getColumnsByConnection(String type, String host, int port, String username,
+                                                   String password, String databaseName, String db, String table) throws SQLException {
+        try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
+            return isPg(type) ? queryPgColumns(conn, db, table) : queryColumns(conn, db, table);
+        }
+    }
+
+    private List<ColumnInfo> queryPgColumns(Connection conn, String schema, String table) throws SQLException {
+        java.util.Set<String> pks = new java.util.HashSet<>();
+        String pkSql = "SELECT kcu.column_name FROM information_schema.table_constraints tc "
+                + "JOIN information_schema.key_column_usage kcu "
+                + "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema "
+                + "WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = ? AND tc.table_name = ?";
+        try (PreparedStatement ps = conn.prepareStatement(pkSql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) pks.add(rs.getString(1));
+            }
+        }
+        List<ColumnInfo> list = new ArrayList<>();
+        String sql = "SELECT column_name, data_type, character_maximum_length, numeric_precision, numeric_scale, is_nullable "
+                + "FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ColumnInfo col = new ColumnInfo();
+                    String name = rs.getString("column_name");
+                    col.setName(name);
+                    col.setType(com.datanote.sync.connector.PostgresConnector.pgTypeToMysql(
+                            rs.getString("data_type"),
+                            (Integer) rs.getObject("character_maximum_length"),
+                            (Integer) rs.getObject("numeric_precision"),
+                            (Integer) rs.getObject("numeric_scale")));
+                    col.setComment("");
+                    col.setKey(pks.contains(name) ? "PRI" : "");
+                    col.setNullable(rs.getString("is_nullable"));
+                    col.setExtra("");
+                    col.setHiveType("string");
+                    list.add(col);
+                }
+            }
+        }
+        return list;
+    }
 }
