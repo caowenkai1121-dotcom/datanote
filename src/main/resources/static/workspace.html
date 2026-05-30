@@ -13403,6 +13403,7 @@ var _dbsyncSrcTables = [];  // 源表列表缓存
 var _dbsyncFolderNavExpanded = true;
 var _dbsyncStatusFilter = 'ALL'; // 状态筛选: ALL/RUNNING/FAILED/STOPPED/CREATED
 var _dbsyncRenderBase = [];       // 当前渲染基准列表(已经过文件夹+搜索过滤)
+var _dbsyncSelected = {};         // 批量选中 id->true
 
 /* ---------- Tab 切换 ---------- */
 window.switchDbSyncTab = function(el, tab) {
@@ -14522,13 +14523,37 @@ function dbsyncRenderJobs(list) {
     chips += '<span onclick="dbsyncSetStatusFilter(\'' + g.k + '\')" style="cursor:pointer;font-size:12.5px;padding:4px 12px;border-radius:14px;transition:all .15s;border:1px solid ' + (act ? 'var(--primary)' : 'var(--border)') + ';color:' + (act ? '#fff' : 'var(--text-regular)') + ';background:' + (act ? 'var(--primary)' : '#fff') + ';">' + g.label + ' ' + cnt(g.k) + '</span>';
   });
   chips += '</div>';
+  // KPI 概览磁贴
+  function kpi(label, val, color) {
+    return '<div style="flex:1;min-width:120px;background:var(--bg-card,#fff);border:1px solid var(--border,#eceef1);border-radius:10px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">'
+      + '<div style="font-size:24px;font-weight:700;color:' + color + ';line-height:1.1;font-variant-numeric:tabular-nums;">' + val + '</div>'
+      + '<div style="font-size:12px;color:var(--text-muted,#86909c);margin-top:3px;">' + label + '</div></div>';
+  }
+  var kpiHtml = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
+    + kpi('总任务', base.length, 'var(--text-regular,#1f2329)')
+    + kpi('运行中', cnt('RUNNING'), '#52c41a')
+    + kpi('失败', cnt('FAILED'), '#ff4d4f')
+    + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#1890ff)')
+    + '</div>';
+  // 批量操作条(选中>0时显示)
+  var selIds = Object.keys(_dbsyncSelected).filter(function(id) { return _dbsyncSelected[id]; });
+  var bulkHtml = '';
+  if (selIds.length) {
+    bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(24,144,255,.08));border:1px solid var(--primary,#1890ff);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;">'
+      + '<span>已选 <b>' + selIds.length + '</b> 个任务</span>'
+      + '<button class="btn btn-sm btn-success" onclick="dbsyncBulkRun()">批量运行</button>'
+      + '<button class="btn btn-sm btn-danger" onclick="dbsyncBulkStop()">批量停止</button>'
+      + '<button class="btn btn-sm" onclick="dbsyncClearSel()">取消选择</button></div>';
+  }
   var shown = _dbsyncStatusFilter === 'ALL' ? base : base.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
   if (!shown.length) {
-    container.innerHTML = chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务</div>';
+    container.innerHTML = kpiHtml + chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务</div>';
     return;
   }
   var list = shown;
-  var html = chips + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
+  var allChecked = shown.every(function(j) { return _dbsyncSelected[j.id]; });
+  var html = kpiHtml + chips + bulkHtml + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
+    + '<th style="width:34px;text-align:center;"><input type="checkbox" ' + (allChecked ? 'checked' : '') + ' onclick="dbsyncToggleSelAll(this)"></th>'
     + '<th style="width:160px;">任务名称</th>'
     + '<th style="width:90px;">同步模式</th>'
     + '<th>源端（数据源.库）</th>'
@@ -14544,6 +14569,7 @@ function dbsyncRenderJobs(list) {
     var srcLabel = escapeHtml((job.sourceDsName || ('ds#' + job.sourceDsId)) + '.' + (job.sourceDb || ''));
     var tgtLabel = escapeHtml((job.targetDsName || ('ds#' + job.targetDsId)) + '.' + (job.targetDb || ''));
     html += '<tr>';
+    html += '<td style="text-align:center;"><input type="checkbox" ' + (_dbsyncSelected[job.id] ? 'checked' : '') + ' onclick="dbsyncToggleSel(' + job.id + ',this)"></td>';
     html += '<td style="font-weight:500;">' + escapeHtml(job.jobName || '') + '</td>';
     html += '<td><span class="dbsync-mode-badge ' + modeClass + '">' + modeLabel + '</span></td>';
     html += '<td>' + srcLabel + '</td>';
@@ -14578,6 +14604,48 @@ function dbsyncRenderJobs(list) {
   html += '</tbody></table></div>';
   container.innerHTML = html;
 }
+
+/* ---------- 批量选择 / 克隆 / 导出 ---------- */
+window.dbsyncToggleSel = function(id, cb) { _dbsyncSelected[id] = cb.checked; dbsyncRenderJobs(_dbsyncRenderBase); };
+window.dbsyncToggleSelAll = function(cb) {
+  var view = _dbsyncStatusFilter === 'ALL' ? _dbsyncRenderBase
+    : _dbsyncRenderBase.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
+  view.forEach(function(j) { _dbsyncSelected[j.id] = cb.checked; });
+  dbsyncRenderJobs(_dbsyncRenderBase);
+};
+window.dbsyncClearSel = function() { _dbsyncSelected = {}; dbsyncRenderJobs(_dbsyncRenderBase); };
+function _dbsyncSelectedIds() { return Object.keys(_dbsyncSelected).filter(function(id) { return _dbsyncSelected[id]; }).map(Number); }
+function _dbsyncBulk(path, title, ids) {
+  msgConfirm(title, '确定对选中的 ' + ids.length + ' 个任务执行此操作？').then(function(ok) {
+    if (!ok) return;
+    var done = 0;
+    function fin() { done++; if (done === ids.length) { showToast('已对 ' + ids.length + ' 个任务下发操作', 'success'); _dbsyncSelected = {}; dbsyncLoadJobs(); } }
+    ids.forEach(function(id) { api('/api/sync-job/' + id + path, { method: 'POST' }).then(fin, fin); });
+  });
+}
+window.dbsyncBulkRun = function() { var ids = _dbsyncSelectedIds(); if (ids.length) _dbsyncBulk('/run', '批量运行', ids); };
+window.dbsyncBulkStop = function() { var ids = _dbsyncSelectedIds(); if (ids.length) _dbsyncBulk('/stop', '批量停止', ids); };
+window.dbsyncCloneJob = function(id) {
+  api('/api/sync-job/' + id).then(function(res) {
+    if (res.code !== 0 || !res.data) { showToast('读取任务失败', 'error'); return; }
+    var job = res.data;
+    job.id = null; job.jobName = (job.jobName || '任务') + '_副本'; job.status = 'CREATED'; job.scheduleStatus = null;
+    api('/api/sync-job/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job) }).then(function(r) {
+      if (r.code === 0) { showToast('已克隆为「' + job.jobName + '」', 'success'); dbsyncLoadJobs(); }
+      else showToast('克隆失败: ' + (r.msg || ''), 'error');
+    });
+  });
+};
+window.dbsyncExportJob = function(id, name) {
+  api('/api/sync-job/' + id).then(function(res) {
+    if (res.code !== 0 || !res.data) { showToast('读取任务失败', 'error'); return; }
+    var blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'sync-job-' + (name || id) + '.json'; document.body.appendChild(a); a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+    showToast('已导出任务配置', 'success');
+  });
+};
 
 /* ---------- 移动任务到文件夹 ---------- */
 var _dbsyncMoveJobId = null;
@@ -14883,8 +14951,12 @@ window.dbsyncOpenRowMenu = function(evt, id) {
   var icMove  = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 4a1 1 0 011-1h3l1.2 1.2H11.5a1 1 0 011 1v5a1 1 0 01-1 1h-9a1 1 0 01-1-1V4z"/></svg>';
   var icCheck = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7h10M7 2v10"/><circle cx="7" cy="7" r="5.5"/></svg>';
   var icDel   = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h9M5.5 4V2.7h3V4M3.7 4l.4 7.3h5.8l.4-7.3"/></svg>';
+  var icClone = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5"/><path d="M9.5 4.5V3A1.5 1.5 0 008 1.5H3A1.5 1.5 0 001.5 3v5A1.5 1.5 0 003 9.5h1.5"/></svg>';
+  var icExport = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 1.5v7M4.5 6L7 8.5 9.5 6M2 10v1.5a1 1 0 001 1h8a1 1 0 001-1V10"/></svg>';
   menu.innerHTML =
       '<button onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'clone\',' + id + ')">' + icClone + ' 克隆任务</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'export\',' + id + ')">' + icExport + ' 导出配置</button>'
     + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
     + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'checksum\',' + id + ')">' + icCheck + ' 深度对账</button>'
@@ -14907,6 +14979,8 @@ window.dbsyncRowMenuAct = function(act, id) {
   var job = (_dbsyncAllJobs || []).find(function(j) { return j.id === id; });
   var nm = job ? (job.jobName || '') : '';
   if (act === 'edit') dbsyncOpenEditModal(id);
+  else if (act === 'clone') dbsyncCloneJob(id);
+  else if (act === 'export') dbsyncExportJob(id, nm);
   else if (act === 'move') dbsyncOpenMoveJobDialog(id, nm);
   else if (act === 'reconcile') dbsyncOpenReconcile(id, nm);
   else if (act === 'checksum') dbsyncOpenChecksum(id, nm);
