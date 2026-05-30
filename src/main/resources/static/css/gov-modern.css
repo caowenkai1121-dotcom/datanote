@@ -1,0 +1,100 @@
+/* ============================================================
+   数据治理 现代设计套件 — 基于系统设计令牌(--primary 等)做现代化提升。
+   作用域限定 #govModuleContent，不影响工作台其它部分。
+   ============================================================ */
+#govModuleContent {
+  --gov-gap: 16px;
+  --gov-radius: 10px;
+  --gov-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+  --gov-shadow-h: 0 4px 16px rgba(24,144,255,.12);
+  --gov-ok: #52c41a; --gov-warn: #faad14; --gov-err: #ff4d4f; --gov-info: var(--primary,#1890ff);
+  color: var(--text-regular,#1f2329);
+}
+#govModuleContent .gov-h1 { font-size:19px; font-weight:650; letter-spacing:.2px; margin-bottom:4px; }
+#govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:18px; }
+
+/* ---- 网格 ---- */
+#govModuleContent .gov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gov-gap); }
+#govModuleContent .gov-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:var(--gov-gap); }
+
+/* ---- KPI 磁贴 ---- */
+#govModuleContent .gov-stat { position:relative; display:flex; align-items:center; gap:14px; background:var(--bg-card,#fff);
+  border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; box-shadow:var(--gov-shadow); transition:transform .15s, box-shadow .15s; }
+#govModuleContent .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); }
+#govModuleContent .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(24,144,255,.08)); color:var(--primary,#1890ff); }
+#govModuleContent .gov-stat .ic svg { width:22px; height:22px; }
+#govModuleContent .gov-stat.tone-ok .ic { background:rgba(82,196,26,.1); color:var(--gov-ok); }
+#govModuleContent .gov-stat.tone-warn .ic { background:rgba(250,173,20,.12); color:var(--gov-warn); }
+#govModuleContent .gov-stat.tone-err .ic { background:rgba(255,77,79,.1); color:var(--gov-err); }
+#govModuleContent .gov-stat .v { font-size:26px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
+#govModuleContent .gov-stat .l { font-size:12.5px; color:var(--text-muted,#86909c); margin-top:3px; }
+#govModuleContent .gov-stat .sub { font-size:11px; color:var(--text-muted,#86909c); }
+
+/* ---- 卡片 ---- */
+#govModuleContent .gov-card { background:var(--bg-card,#fff); border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); box-shadow:var(--gov-shadow); margin-bottom:var(--gov-gap); overflow:hidden; }
+#govModuleContent .gov-card-hd { display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; font-size:14px; }
+#govModuleContent .gov-card-hd .ic { color:var(--primary,#1890ff); display:flex; }
+#govModuleContent .gov-card-hd .ic svg { width:18px; height:18px; }
+#govModuleContent .gov-card-hd .sp { flex:1; }
+#govModuleContent .gov-card-bd { padding:18px; }
+
+/* ---- 工具条 ---- */
+#govModuleContent .gov-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+#govModuleContent .gov-search { position:relative; }
+#govModuleContent .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
+#govModuleContent .gov-search input:focus { border-color:var(--primary,#1890ff); box-shadow:0 0 0 3px var(--primary-light,rgba(24,144,255,.1)); }
+#govModuleContent .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
+
+/* ---- 现代表格 ---- */
+#govModuleContent .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow:hidden; background:var(--bg-card,#fff); }
+#govModuleContent table.gov-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+#govModuleContent table.gov-tbl thead th { position:sticky; top:0; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:11px 14px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
+#govModuleContent table.gov-tbl tbody td { padding:11px 14px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); }
+#govModuleContent table.gov-tbl tbody tr { transition:background .12s; }
+#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.05)); }
+#govModuleContent table.gov-tbl tbody tr:last-child td { border-bottom:none; }
+
+/* ---- 分页 ---- */
+#govModuleContent .gov-pager { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:10px 4px 0; font-size:12.5px; color:var(--text-muted,#86909c); }
+
+/* ---- 状态药丸 ---- */
+#govModuleContent .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
+#govModuleContent .gov-pill.is-ok { background:rgba(82,196,26,.12); color:var(--gov-ok); }
+#govModuleContent .gov-pill.is-warn { background:rgba(250,173,20,.14); color:#d48806; }
+#govModuleContent .gov-pill.is-err { background:rgba(255,77,79,.1); color:var(--gov-err); }
+#govModuleContent .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:var(--primary,#1890ff); }
+#govModuleContent .gov-pill.is-muted { background:rgba(140,140,140,.1); color:#8c8c8c; }
+
+/* ---- 横向条形图 ---- */
+#govModuleContent .gov-bar { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
+#govModuleContent .gov-bar .bl { width:96px; color:var(--text-regular,#1f2329); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#govModuleContent .gov-bar .bt { flex:1; height:8px; background:#f0f1f3; border-radius:5px; overflow:hidden; }
+#govModuleContent .gov-bar .bf { height:100%; border-radius:5px; background:var(--primary,#1890ff); transition:width .5s ease; }
+#govModuleContent .gov-bar .bv { width:54px; text-align:right; color:var(--text-muted,#86909c); font-variant-numeric:tabular-nums; flex-shrink:0; }
+
+/* ---- 环形仪表 ---- */
+#govModuleContent .gov-gauge { display:inline-flex; flex-direction:column; align-items:center; }
+#govModuleContent .gov-gauge .gv { font-size:30px; font-weight:750; font-variant-numeric:tabular-nums; }
+#govModuleContent .gov-gauge .gl { font-size:12px; color:var(--text-muted,#86909c); margin-top:2px; }
+
+/* ---- 空态 ---- */
+#govModuleContent .gov-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; color:var(--text-muted,#9aa0a6); text-align:center; }
+#govModuleContent .gov-empty svg { width:42px; height:42px; opacity:.45; }
+#govModuleContent .gov-empty .et { font-size:13px; }
+
+/* ---- 骨架屏 ---- */
+#govModuleContent .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.3s ease infinite; margin:10px 0; }
+@keyframes govShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
+
+/* ---- 抽屉 ---- */
+#govDrawerMask { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:9000; opacity:0; transition:opacity .2s; }
+#govDrawerMask.show { opacity:1; }
+.gov-drawer { position:fixed; top:0; right:0; height:100vh; width:560px; max-width:92vw; background:var(--bg-card,#fff); box-shadow:-4px 0 24px rgba(0,0,0,.12); z-index:9001; transform:translateX(100%); transition:transform .25s ease; display:flex; flex-direction:column; }
+.gov-drawer.show { transform:translateX(0); }
+.gov-drawer .dh { display:flex; align-items:center; gap:8px; padding:16px 20px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; }
+.gov-drawer .dh .x { margin-left:auto; cursor:pointer; color:var(--text-muted,#86909c); border:0; background:none; font-size:18px; line-height:1; }
+.gov-drawer .db { padding:18px 20px; overflow-y:auto; flex:1; }
+
+/* ---- 内联表单(替代弹窗手输) ---- */
+#govModuleContent .gov-form { background:#fafbfc; border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; margin-bottom:14px; }
+#govModuleContent .gov-form .ds-form-row { margin-bottom:12px; }

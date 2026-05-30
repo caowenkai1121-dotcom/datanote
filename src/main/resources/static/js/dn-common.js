@@ -135,6 +135,158 @@
     return { el: wrap, db: function () { return dbSel.value; }, table: function () { return tbSel.value; }, column: function () { return colSel ? colSel.value : null; } };
   };
 
+  // ===== 现代 UI 套件（配合 css/gov-modern.css，让各治理模块渲染一致的现代界面） =====
+  var ICONS = {
+    grid: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
+    chart: '<path d="M3 16V8M8 16V4M13 16v-6M3 16h14"/>',
+    db: '<ellipse cx="10" cy="5" rx="6.5" ry="2.5"/><path d="M3.5 5v10c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5V5"/><path d="M3.5 10c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5"/>',
+    lineage: '<circle cx="5" cy="5" r="2.2"/><circle cx="15" cy="10" r="2.2"/><circle cx="5" cy="15" r="2.2"/><path d="M7 6l6 3M7 14l6-3"/>',
+    shield: '<path d="M10 2l7 3v5c0 4-3 6.8-7 8-4-1.2-7-4-7-8V5l7-3z"/><path d="M7 9.5l2 2 4-4"/>',
+    doc: '<rect x="4" y="2.5" width="12" height="15" rx="1.5"/><path d="M7 7h6M7 10h6M7 13h4"/>',
+    tag: '<path d="M3 3h6l8 8-6 6-8-8V3z"/><circle cx="6.5" cy="6.5" r="1.2"/>',
+    alert: '<path d="M10 3l8 14H2L10 3z"/><path d="M10 8v4M10 14.5h.01"/>',
+    check: '<circle cx="10" cy="10" r="7.5"/><path d="M6.5 10l2.5 2.5 4.5-5"/>',
+    search: '<circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/>',
+    inbox: '<path d="M3 12l2.5-7h9L17 12v4H3v-4z"/><path d="M3 12h4l1 2h4l1-2h4"/>',
+    clock: '<circle cx="10" cy="10" r="7.5"/><path d="M10 5.5V10l3 2"/>',
+    user: '<circle cx="10" cy="6.5" r="3"/><path d="M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5"/>',
+    lock: '<rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 016 0V9"/>',
+    layers: '<path d="M10 3l7 3.5-7 3.5-7-3.5L10 3z"/><path d="M3 10l7 3.5 7-3.5M3 13.5l7 3.5 7-3.5"/>',
+    list: '<path d="M6 5h11M6 10h11M6 15h11"/><circle cx="3" cy="5" r="1"/><circle cx="3" cy="10" r="1"/><circle cx="3" cy="15" r="1"/>'
+  };
+  DN.icon = function (name, attrs) {
+    var p = ICONS[name] || ICONS.grid;
+    return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' + (attrs || '') + '>' + p + '</svg>';
+  };
+
+  DN.statTile = function (o) {
+    o = o || {};
+    var meta = DN.h('div', {}, [
+      DN.h('div', { class: 'v', text: (o.value == null ? '-' : String(o.value)) }),
+      DN.h('div', { class: 'l', text: o.label || '' })
+    ]);
+    if (o.sub) meta.appendChild(DN.h('div', { class: 'sub', text: o.sub }));
+    return DN.h('div', { class: 'gov-stat' + (o.tone ? ' tone-' + o.tone : '') },
+      [DN.h('div', { class: 'ic', html: DN.icon(o.icon || 'chart') }), meta]);
+  };
+  DN.statRow = function (tiles) { return DN.h('div', { class: 'gov-stats' }, (tiles || []).map(function (t) { return DN.statTile(t); })); };
+
+  /** 卡片：返回 {el, body}，把内容 append 到 body */
+  DN.card = function (o) {
+    o = o || {};
+    var body = DN.h('div', { class: 'gov-card-bd' });
+    var hd = DN.h('div', { class: 'gov-card-hd' }, [
+      DN.h('span', { class: 'ic', html: DN.icon(o.icon || 'grid') }),
+      DN.h('span', { text: o.title || '' }), DN.h('span', { class: 'sp' })
+    ]);
+    if (o.actions) (Array.isArray(o.actions) ? o.actions : [o.actions]).forEach(function (a) { if (a) hd.appendChild(a); });
+    return { el: DN.h('div', { class: 'gov-card' }, [hd, body]), body: body };
+  };
+
+  DN.empty = function (text, icon) {
+    return DN.h('div', { class: 'gov-empty' }, [DN.h('span', { html: DN.icon(icon || 'inbox') }), DN.h('div', { class: 'et', text: text || '暂无数据' })]);
+  };
+  DN.skeleton = function (rows) {
+    var w = DN.h('div', {});
+    for (var i = 0; i < (rows || 3); i++) w.appendChild(DN.h('div', { class: 'gov-skel', style: 'width:' + (100 - i * 7) + '%' }));
+    return w;
+  };
+  DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
+
+  function toneColor(t) { return t === 'ok' ? '#52c41a' : t === 'warn' ? '#faad14' : t === 'err' ? '#ff4d4f' : 'var(--primary,#1890ff)'; }
+  DN.bars = function (items) {
+    var max = Math.max.apply(null, (items || []).map(function (i) { return i.max || i.value || 0; }).concat([1]));
+    var w = DN.h('div', {});
+    (items || []).forEach(function (i) {
+      var pct = Math.round((i.value || 0) / (i.max || max || 1) * 100);
+      var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + toneColor(i.tone) });
+      w.appendChild(DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]));
+    });
+    return w;
+  };
+
+  /** 环形仪表：值 0-100，按分值着色(红<60/黄<80/绿) */
+  DN.gauge = function (val, opts) {
+    opts = opts || {}; var size = opts.size || 124, sw = 11, r = (size - sw) / 2, c = 2 * Math.PI * r;
+    var v = Math.max(0, Math.min(100, Number(val) || 0)); var col = v < 60 ? '#ff4d4f' : v < 80 ? '#faad14' : '#52c41a';
+    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">'
+      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>'
+      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - v / 100)) + '" transform="rotate(-90 ' + (size / 2) + ' ' + (size / 2) + ')" style="transition:stroke-dashoffset .6s ease"/></svg>';
+    var ring = DN.h('div', { style: 'position:relative;width:' + size + 'px;height:' + size + 'px', html: svg });
+    ring.appendChild(DN.h('div', { style: 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center' },
+      [DN.h('div', { class: 'gv', style: 'color:' + col, text: (opts.decimals ? v.toFixed(opts.decimals) : Math.round(v)) }), opts.label ? DN.h('div', { class: 'gl', text: opts.label }) : null]));
+    return DN.h('div', { class: 'gov-gauge' }, [ring]);
+  };
+
+  /**
+   * 现代表格(内置搜索+客户端分页+空态)。
+   * o: { columns:[{key,label,align,render(row)->Node|string, html:bool}], rows, pageSize, search, searchKeys, searchPlaceholder, toolbar, empty, emptyIcon }
+   * 返回 element，附 .reload(rows)
+   */
+  DN.table = function (o) {
+    o = o || {}; var cols = o.columns || [], all = o.rows || [], pageSize = o.pageSize || 20, page = 1, q = '';
+    var wrap = DN.h('div', {});
+    if (o.search !== false) {
+      var inp = DN.h('input', { placeholder: o.searchPlaceholder || '搜索...', oninput: function () { q = inp.value.trim().toLowerCase(); page = 1; draw(); } });
+      var bar = DN.h('div', { class: 'gov-toolbar' }, [DN.h('div', { class: 'gov-search' }, [DN.h('span', { html: DN.icon('search') }), inp])]);
+      if (o.toolbar) (Array.isArray(o.toolbar) ? o.toolbar : [o.toolbar]).forEach(function (t) { if (t) bar.appendChild(t); });
+      wrap.appendChild(bar);
+    } else if (o.toolbar) {
+      var bar2 = DN.h('div', { class: 'gov-toolbar' }); (Array.isArray(o.toolbar) ? o.toolbar : [o.toolbar]).forEach(function (t) { if (t) bar2.appendChild(t); }); wrap.appendChild(bar2);
+    }
+    var tw = DN.h('div', { class: 'gov-tbl-wrap' }), pager = DN.h('div', { class: 'gov-pager' });
+    wrap.appendChild(tw); wrap.appendChild(pager);
+    function filt() {
+      if (!q) return all;
+      return all.filter(function (r) {
+        var s = (o.searchKeys || Object.keys(r)).map(function (k) { return r[k]; }).join(' ');
+        return String(s).toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    function draw() {
+      var data = filt(), total = data.length, pages = Math.max(1, Math.ceil(total / pageSize));
+      if (page > pages) page = pages;
+      tw.innerHTML = '';
+      if (!total) { tw.appendChild(DN.empty(o.empty || '暂无数据', o.emptyIcon)); pager.innerHTML = ''; return; }
+      var thead = '<thead><tr>' + cols.map(function (c) { return '<th' + (c.align ? ' style="text-align:' + c.align + '"' : '') + '>' + DN.esc(c.label) + '</th>'; }).join('') + '</tr></thead>';
+      var table = DN.h('table', { class: 'gov-tbl', html: thead }), tbody = document.createElement('tbody');
+      data.slice((page - 1) * pageSize, page * pageSize).forEach(function (r) {
+        var tr = document.createElement('tr');
+        cols.forEach(function (c) {
+          var td = document.createElement('td'); if (c.align) td.style.textAlign = c.align;
+          var cell = c.render ? c.render(r) : (r[c.key] == null ? '' : r[c.key]);
+          if (cell instanceof Node) td.appendChild(cell); else if (c.html) td.innerHTML = cell; else td.textContent = String(cell);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody); tw.appendChild(table);
+      pager.innerHTML = '';
+      pager.appendChild(DN.h('span', { text: '共 ' + total + ' 条' + (pages > 1 ? ' · ' + page + '/' + pages : '') }));
+      if (pages > 1) {
+        pager.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页', onclick: function () { if (page > 1) { page--; draw(); } } }));
+        pager.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页', onclick: function () { if (page < pages) { page++; draw(); } } }));
+      }
+    }
+    draw();
+    wrap.reload = function (rows) { all = rows || []; page = 1; draw(); };
+    return wrap;
+  };
+
+  /** 右侧抽屉：返回 {close, body} */
+  DN.drawer = function (title, bodyNode) {
+    var old = document.getElementById('govDrawerMask'); if (old) old.remove();
+    var oldD = document.querySelector('.gov-drawer'); if (oldD) oldD.remove();
+    var mask = DN.h('div', { id: 'govDrawerMask' });
+    var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
+    function close() { mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    var dr = DN.h('div', { class: 'gov-drawer' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close })]), bd]);
+    mask.onclick = close;
+    document.body.appendChild(mask); document.body.appendChild(dr);
+    requestAnimationFrame(function () { mask.classList.add('show'); dr.classList.add('show'); });
+    return { close: close, body: bd };
+  };
+
   global.DN = DN;
   // 治理模块渲染器注册表：各 js/gov-<key>.js 注册 render 到此，governance.html 据此渲染
   global.GOV_RENDERERS = global.GOV_RENDERERS || {};
