@@ -211,4 +211,26 @@ public class SyncJobController {
         return m;
     }
 
+    // ===== M3c：断点管理（增量水位 + 全量 chunk） =====
+
+    @Operation(summary = "查看断点(增量水位+chunk)")
+    @GetMapping("/{id}/checkpoints")
+    public R<java.util.Map<String, Object>> checkpoints(@PathVariable Long id) {
+        return R.ok(syncJobService.getCheckpoints(id));
+    }
+
+    @Operation(summary = "重置增量水位")
+    @PostMapping("/{id}/checkpoint/reset-incremental")
+    public R<String> resetIncr(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.resetIncremental(id, table);
+        return R.ok("已重置增量水位");
+    }
+
+    @Operation(summary = "重置全量chunk断点")
+    @PostMapping("/{id}/checkpoint/reset-chunk")
+    public R<String> resetChunk(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.clearChunkCursor(id, table);
+        return R.ok("已重置chunk断点");
+    }
+
 }
