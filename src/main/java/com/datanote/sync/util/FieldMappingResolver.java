@@ -32,6 +32,10 @@ public final class FieldMappingResolver {
         public final String pkTarget;
         /** M1：源列名 -> FieldMapping，仅含 sync==true 且 source 非空的字段；fields 为空时为空 Map。 */
         public final Map<String, FieldMapping> srcToFieldMapping;
+        /** M2b：主键源列名列表（无主键时为空 list）。 */
+        public final List<String> pkSourceColumns;
+        /** M2b：主键目标列名列表（无主键时为空 list，与 pkSourceColumns 一一对应）。 */
+        public final List<String> pkTargetColumns;
 
         /** 向后兼容的 3 参构造器（srcToFieldMapping 默认为空 Map）。 */
         public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget) {
@@ -40,38 +44,71 @@ public final class FieldMappingResolver {
 
         public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget,
                         Map<String, FieldMapping> srcToFieldMapping) {
+            this(srcColumns, tgtColumns, pkTarget, srcToFieldMapping,
+                    pkTarget != null ? Collections.singletonList(pkTarget) : Collections.emptyList(),
+                    pkTarget != null ? Collections.singletonList(pkTarget) : Collections.emptyList());
+        }
+
+        public Resolved(List<String> srcColumns, List<String> tgtColumns, String pkTarget,
+                        Map<String, FieldMapping> srcToFieldMapping,
+                        List<String> pkSourceColumns, List<String> pkTargetColumns) {
             this.srcColumns = srcColumns;
             this.tgtColumns = tgtColumns;
             this.pkTarget = pkTarget;
             this.srcToFieldMapping = srcToFieldMapping;
+            this.pkSourceColumns = pkSourceColumns != null ? pkSourceColumns : Collections.emptyList();
+            this.pkTargetColumns = pkTargetColumns != null ? pkTargetColumns : Collections.emptyList();
         }
     }
 
     /**
-     * 解析单表字段映射。
+     * 解析单表字段映射（单主键，向后兼容入口）。
      *
      * @param tc          表配置（取 fields）
      * @param allColumns  源表全部列（按序，用于 fields 为空时的全列回退）
-     * @param pkSource    源表单列主键名
+     * @param pkSource    源表单列主键名（null 视为无主键）
      * @return 解析结果；fields 为空时 src=tgt=allColumns、pkTarget=pkSource
-     * @throws IllegalStateException fields 非空但选中列为空、或主键的 source 未在选中列中
      */
     public static Resolved resolve(TableSyncConfig tc, List<String> allColumns, String pkSource) {
+        return resolve(tc, allColumns,
+                pkSource == null ? Collections.emptyList() : Collections.singletonList(pkSource));
+    }
+
+    /**
+     * 解析单表字段映射（复合/无主键重载）。
+     *
+     * @param tc          表配置（取 fields）
+     * @param allColumns  源表全部列（按序，用于 fields 为空时的全列回退）
+     * @param pkSources   源表主键列名列表（空 list 表示无主键，跳过主键校验）
+     * @return 解析结果
+     * @throws IllegalStateException fields 非空但选中列为空、或主键的 source 未在选中列中
+     */
+    public static Resolved resolve(TableSyncConfig tc, List<String> allColumns, List<String> pkSources) {
+        List<String> pks = pkSources == null ? Collections.emptyList() : pkSources;
         List<FieldMapping> fields = tc == null ? null : tc.getFields();
         if (fields == null || fields.isEmpty()) {
-            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkSource,
-                    Collections.emptyMap());
+            // 全列回退：source = target
+            List<String> pkTgtCols = new ArrayList<>();
+            for (String ps : pks) pkTgtCols.add(ps);
+            String pkTarget = pkTgtCols.isEmpty() ? null : pkTgtCols.get(0);
+            return new Resolved(new ArrayList<>(allColumns), new ArrayList<>(allColumns), pkTarget,
+                    Collections.emptyMap(), new ArrayList<>(pks), pkTgtCols);
         }
         Map<String, String> srcToTgt = buildSrcToTgt(fields);
         if (srcToTgt.isEmpty()) {
             throw new IllegalStateException("字段映射已配置但未选中任何同步字段，表: "
                     + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()));
         }
-        if (!srcToTgt.containsKey(pkSource)) {
-            throw new IllegalStateException("字段映射必须包含主键列 " + pkSource
-                    + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
+        // 主键非空时校验每个主键源列均在选中列中
+        if (!pks.isEmpty()) {
+            for (String pkSrc : pks) {
+                if (!srcToTgt.containsKey(pkSrc)) {
+                    throw new IllegalStateException("字段映射必须包含主键列 " + pkSrc
+                            + "（表: " + (tc.getSourceTable() == null ? "?" : tc.getSourceTable()) + "）");
+                }
+            }
         }
-        // 不允许多个源列映射到同一目标列（否则到写入期 INSERT 列重复才报错），解析期提前校验
+        // 不允许多个源列映射到同一目标列
         Set<String> seenTgt = new HashSet<>();
         for (String t : srcToTgt.values()) {
             if (!seenTgt.add(t.toLowerCase())) {
@@ -92,7 +129,12 @@ public final class FieldMappingResolver {
             if (src == null || src.trim().isEmpty()) continue;
             src2fm.put(src, fm);
         }
-        return new Resolved(srcColumns, tgtColumns, srcToTgt.get(pkSource), src2fm);
+        // 构建主键目标列名列表
+        List<String> pkSrcCols = new ArrayList<>(pks);
+        List<String> pkTgtCols = new ArrayList<>();
+        for (String ps : pks) pkTgtCols.add(srcToTgt.get(ps));
+        String pkTarget = pkTgtCols.isEmpty() ? null : pkTgtCols.get(0);
+        return new Resolved(srcColumns, tgtColumns, pkTarget, src2fm, pkSrcCols, pkTgtCols);
     }
 
     /**
