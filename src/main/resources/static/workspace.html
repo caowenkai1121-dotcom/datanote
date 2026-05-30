@@ -10857,7 +10857,7 @@ function loadQualityDatasources() {
       if (res.code !== 0) return;
       qualityDatasources = res.data || [];
       var sel = document.getElementById('qrDatasource');
-      sel.innerHTML = '<option value="">请选择数据源</option>';
+      sel.innerHTML = '<option value="">请选择数据源</option><option value="0">Doris 数仓</option>';
       qualityDatasources.forEach(function(ds) {
         sel.innerHTML += '<option value="' + ds.id + '">' + escapeHtml(ds.name) + ' (' + escapeHtml(ds.host) + ':' + ds.port + ')</option>';
       });
@@ -10867,9 +10867,10 @@ function loadQualityDatasources() {
 
 function loadQualityDatabases() {
   var dsId = document.getElementById('qrDatasource').value;
-  if (!dsId) return Promise.resolve();
+  if (dsId === '') return Promise.resolve();
   document.getElementById('qrDatabase').innerHTML = '<option value="">加载中...</option>';
-  return fetch('/api/datasource/' + dsId + '/databases')
+  var url = dsId === '0' ? '/api/metadata/databases' : '/api/datasource/' + dsId + '/databases';
+  return fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(res) {
       var sel = document.getElementById('qrDatabase');
@@ -10885,9 +10886,12 @@ function loadQualityDatabases() {
 function loadQualityTables() {
   var dsId = document.getElementById('qrDatasource').value;
   var db = document.getElementById('qrDatabase').value;
-  if (!dsId || !db) return Promise.resolve();
+  if (dsId === '' || !db) return Promise.resolve();
   document.getElementById('qrTable').innerHTML = '<option value="">加载中...</option>';
-  return fetch('/api/datasource/' + dsId + '/tables?db=' + db)
+  var url = dsId === '0'
+    ? '/api/metadata/tables?db=' + encodeURIComponent(db)
+    : '/api/datasource/' + dsId + '/tables?db=' + db;
+  return fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(res) {
       var sel = document.getElementById('qrTable');
@@ -10904,9 +10908,12 @@ function loadQualityColumns() {
   var dsId = document.getElementById('qrDatasource').value;
   var db = document.getElementById('qrDatabase').value;
   var table = document.getElementById('qrTable').value;
-  if (!dsId || !db || !table) return Promise.resolve();
+  if (dsId === '' || !db || !table) return Promise.resolve();
   document.getElementById('qrColumn').innerHTML = '<option value="">加载中...</option>';
-  return fetch('/api/datasource/' + dsId + '/columns?db=' + db + '&table=' + table)
+  var url = dsId === '0'
+    ? '/api/metadata/columns?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)
+    : '/api/datasource/' + dsId + '/columns?db=' + db + '&table=' + table;
+  return fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(res) {
       var sel = document.getElementById('qrColumn');
@@ -10924,7 +10931,7 @@ function saveQualityRule() {
   var payload = {
     ruleName: document.getElementById('qrName').value,
     ruleType: document.getElementById('qrType').value,
-    datasourceId: parseInt(document.getElementById('qrDatasource').value) || null,
+    datasourceId: document.getElementById('qrDatasource').value === '' ? null : parseInt(document.getElementById('qrDatasource').value),
     databaseName: document.getElementById('qrDatabase').value,
     tableName: document.getElementById('qrTable').value,
     columnName: document.getElementById('qrColumn').value || null,
@@ -10933,7 +10940,7 @@ function saveQualityRule() {
     severity: document.getElementById('qrSeverity').value
   };
   if (id) payload.id = parseInt(id);
-  if (!payload.ruleName || !payload.datasourceId || !payload.databaseName || !payload.tableName) {
+  if (!payload.ruleName || payload.datasourceId === null || isNaN(payload.datasourceId) || !payload.databaseName || !payload.tableName) {
     msgBox('请填写完整的规则信息');
     return;
   }
@@ -10969,7 +10976,7 @@ function editQualityRule(id) {
       onQualityRuleTypeChange();
       document.getElementById('qualityRuleModal').style.display = 'flex';
       loadQualityDatasources().then(function() {
-        document.getElementById('qrDatasource').value = r.datasourceId || '';
+        document.getElementById('qrDatasource').value = r.datasourceId != null ? r.datasourceId : '';
         return loadQualityDatabases();
       }).then(function() {
         document.getElementById('qrDatabase').value = r.databaseName || '';
