@@ -1,5 +1,6 @@
 /* 治理模块：治理健康分 + 工单闭环 + DCMM 成熟度自评（M11）
-   五维雷达 SVG 自绘 + 健康分大屏 + 工单列表与状态流转 + 成熟度雷达。零图表库依赖。 */
+   健康分大环形 + 五维明细表 + 工单现代表格(状态药丸/流转) + 排行榜条形 + DCMM 雷达卡片。
+   抽屉内表单录入，状态机与后端 IssueService 一致。零图表库依赖。 */
 (function () {
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
@@ -14,49 +15,50 @@
     VERIFIED: ['CLOSED', 'FIXING'],
     CLOSED: ['OPEN']
   };
-  var STATUS_COLOR = {
-    OPEN: '#f53f3f', FIXING: '#ff7d00', RESOLVED: '#165dff',
-    VERIFIED: '#00b42a', CLOSED: '#86909c'
+  // 工单状态 → 药丸色调
+  var STATUS_TONE = {
+    OPEN: 'info', FIXING: 'warn', RESOLVED: 'ok', VERIFIED: 'ok', CLOSED: 'muted'
   };
 
-  window.GOV_RENDERERS.health = function (c) {
-    // 健康分大屏
-    c.appendChild(DN.h('h3', { text: '治理健康分', style: 'margin:6px 0 8px' }));
-    var top = DN.h('div', { id: 'hsTop',
-      style: 'display:flex;gap:24px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #e5e6eb;border-radius:8px;padding:16px' });
-    c.appendChild(top);
-    var bar = DN.h('div', { class: 'gov-desc' });
-    bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '重算并快照',
-      onclick: refreshScore, style: 'margin-top:0' }));
-    c.appendChild(bar);
-    c.appendChild(DN.h('div', { id: 'hsTrend', class: 'gov-desc' }));
+  var issueTable = null; // DN.table 句柄，便于 reload
 
-    // 工单
-    c.appendChild(DN.h('h3', { text: '治理工单', style: 'margin:18px 0 8px' }));
-    var ibar = DN.h('div', { class: 'gov-desc' });
-    ibar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '新建工单',
-      onclick: addIssue, style: 'margin-top:0' }));
-    var fsel = DN.h('select', { id: 'hsIssueFilter', class: 'iw-form-select',
-      style: 'width:auto;margin-left:8px' });
+  window.GOV_RENDERERS.health = function (c) {
+    // ---- 健康分 ----
+    var hc = DN.card({
+      title: '治理健康分', icon: 'shield',
+      actions: [DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '重算并快照', onclick: refreshScore })]
+    });
+    hc.body.appendChild(DN.h('div', { id: 'hsTop' }, DN.skeleton(3)));
+    hc.body.appendChild(DN.h('div', { id: 'hsTrend', style: 'margin-top:14px' }));
+    c.appendChild(hc.el);
+
+    // ---- 工单 ----
+    var fsel = DN.h('select', { id: 'hsIssueFilter', class: 'iw-form-select', style: 'width:auto' });
     fsel.appendChild(DN.h('option', { value: '', text: '全部状态' }));
     ISSUE_STATUS.forEach(function (s) { fsel.appendChild(DN.h('option', { value: s, text: s })); });
     fsel.addEventListener('change', loadIssues);
-    ibar.appendChild(fsel);
-    c.appendChild(ibar);
-    c.appendChild(DN.h('div', { id: 'hsIssues' }));
-    c.appendChild(DN.h('h4', { text: '工单排行榜(按负责人)', style: 'margin:14px 0 6px' }));
-    c.appendChild(DN.h('div', { id: 'hsBoard' }));
+    var icCard = DN.card({
+      title: '治理工单', icon: 'inbox',
+      actions: [fsel, DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建工单', onclick: addIssue })]
+    });
+    icCard.body.appendChild(DN.h('div', { id: 'hsIssues' }, DN.skeleton(4)));
+    c.appendChild(icCard.el);
 
-    // 成熟度
-    c.appendChild(DN.h('h3', { text: 'DCMM 八大域成熟度自评', style: 'margin:18px 0 8px' }));
-    var mbar = DN.h('div', { class: 'gov-desc' });
-    mbar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '录入自评',
-      onclick: addMaturity, style: 'margin-top:0' }));
-    c.appendChild(mbar);
+    // ---- 排行榜 ----
+    var bc = DN.card({ title: '工单排行榜（按负责人）', icon: 'user' });
+    bc.body.appendChild(DN.h('div', { id: 'hsBoard' }, DN.skeleton(3)));
+    c.appendChild(bc.el);
+
+    // ---- 成熟度 ----
+    var mc = DN.card({
+      title: 'DCMM 八大域成熟度自评', icon: 'layers',
+      actions: [DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '录入自评', onclick: addMaturity })]
+    });
     var mwrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start' });
     mwrap.appendChild(DN.h('div', { id: 'hsMaturityRadar' }));
-    mwrap.appendChild(DN.h('div', { id: 'hsMaturityTable', style: 'flex:1;min-width:280px' }));
-    c.appendChild(mwrap);
+    mwrap.appendChild(DN.h('div', { id: 'hsMaturityTable', style: 'flex:1;min-width:300px' }, DN.skeleton(4)));
+    mc.body.appendChild(mwrap);
+    c.appendChild(mc.el);
 
     loadScore();
     loadIssues();
@@ -79,29 +81,33 @@
     var total = r.totalScore != null ? r.totalScore : 0;
     var dims = r.dimensions || {};
     var weights = r.weights || {};
-    // 总分仪表
-    var color = total >= 85 ? '#00b42a' : (total >= 70 ? '#165dff' : (total >= 60 ? '#ff7d00' : '#f53f3f'));
-    var scoreBox = '<div style="text-align:center;min-width:140px">' +
-      '<div style="font-size:48px;font-weight:700;color:' + color + ';line-height:1">' + total + '</div>' +
-      '<div style="color:#86909c;font-size:13px;margin-top:4px">治理健康总分</div></div>';
-    // 五维雷达
-    var vals = DIMS.map(function (d) {
-      var dd = dims[d]; return dd ? (dd.score || 0) : 0;
-    });
-    var radar = drawRadar(DIMS, vals, 260, color);
-    // 明细表
-    var rows = DIMS.map(function (d) {
-      var dd = dims[d] || {};
-      return '<tr><td>' + DN.esc(d) + '</td><td><b>' + (dd.score != null ? dd.score : '-') + '</b></td>' +
-        '<td>' + (weights[d] != null ? weights[d] : '-') + '</td>' +
-        '<td style="color:#86909c">' + DN.esc(dd.source || '') + '</td></tr>';
-    }).join('');
-    var table = '<table style="border-collapse:collapse;font-size:13px;min-width:320px">' +
-      '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-      '<th style="padding:6px">维度</th><th style="padding:6px">得分</th><th style="padding:6px">权重</th><th style="padding:6px">数据源</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table>';
-    top.innerHTML = scoreBox + '<div>' + radar + '</div><div style="flex:1;min-width:320px">' + table + '</div>';
-    top.querySelectorAll('td').forEach(function (td) { td.style.padding = '6px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+    top.innerHTML = '';
+    var row = DN.h('div', { style: 'display:flex;gap:32px;align-items:center;flex-wrap:wrap' });
+    // 总分大环形
+    row.appendChild(DN.gauge(total, { label: '治理健康总分', decimals: total % 1 ? 1 : 0 }));
+    // 五维明细表
+    var tblBox = DN.h('div', { style: 'flex:1;min-width:320px' });
+    tblBox.appendChild(DN.table({
+      search: false,
+      columns: [
+        { key: 'dim', label: '维度' },
+        { key: 'score', label: '得分', align: 'right', render: function (x) { return DN.pill(x.score, scoreTone(x.scoreNum)); } },
+        { key: 'weight', label: '权重', align: 'right' },
+        { key: 'source', label: '数据源' }
+      ],
+      rows: DIMS.map(function (d) {
+        var dd = dims[d] || {};
+        return {
+          dim: d,
+          score: dd.score != null ? String(dd.score) : '-',
+          scoreNum: Number(dd.score) || 0,
+          weight: weights[d] != null ? weights[d] : '-',
+          source: dd.source || '-'
+        };
+      })
+    }));
+    row.appendChild(tblBox);
+    top.appendChild(row);
   }
 
   function refreshScore() {
@@ -117,11 +123,12 @@
       var box = document.getElementById('hsTrend');
       if (!box) return;
       if (!rows || rows.length < 2) {
-        box.innerHTML = '<span class="gov-placeholder">趋势数据不足(点击"重算并快照"积累时序)</span>';
+        box.innerHTML = '';
+        box.appendChild(DN.empty('趋势数据不足（点击“重算并快照”积累时序）', 'clock'));
         return;
       }
       var vals = rows.map(function (x) { return Number(x.totalScore) || 0; });
-      box.innerHTML = '<b style="font-size:13px;color:#86909c">近30天趋势: </b>' + drawSparkline(vals, 320, 60);
+      box.innerHTML = '<b style="font-size:13px;color:var(--text-muted,#86909c)">近 30 天趋势：</b>' + drawSparkline(vals, 320, 60);
     }).catch(function () {});
   }
 
@@ -130,54 +137,71 @@
   function loadIssues() {
     var status = (document.getElementById('hsIssueFilter') || {}).value || '';
     DN.get('/api/gov/health/issues' + (status ? '?status=' + encodeURIComponent(status) : '')).then(function (rows) {
-      var box = document.getElementById('hsIssues');
-      if (!box) return;
-      if (!rows || !rows.length) { box.innerHTML = '<div class="gov-placeholder">暂无工单</div>'; return; }
-      var body = rows.map(function (it) {
-        var nexts = FLOW[it.status] || [];
-        var ops = nexts.map(function (ns) {
-          return '<a href="javascript:void(0)" data-tr="' + it.id + '" data-to="' + ns + '" style="margin-right:8px">' + ns + '</a>';
-        }).join('');
-        return '<tr><td>' + it.id + '</td><td>' + DN.esc(it.title) + '</td>' +
-          '<td>' + DN.esc(it.dimension || '-') + '</td><td>' + DN.esc(it.severity || '') + '</td>' +
-          '<td>' + DN.esc(it.owner || '未分配') + '</td>' +
-          '<td><span style="color:#fff;background:' + (STATUS_COLOR[it.status] || '#86909c') +
-          ';padding:2px 8px;border-radius:10px;font-size:12px">' + DN.esc(it.status) + '</span></td>' +
-          '<td>' + ops + '<a href="javascript:void(0)" data-asg="' + it.id + '" style="margin-right:8px">指派</a>' +
-          '<a href="javascript:void(0)" data-del="' + it.id + '" style="color:#f53f3f">删除</a></td></tr>';
-      }).join('');
-      box.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
-        '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-        '<th>ID</th><th>标题</th><th>维度</th><th>级别</th><th>负责人</th><th>状态</th><th>操作</th></tr></thead>' +
-        '<tbody>' + body + '</tbody></table>';
-      box.querySelectorAll('th,td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
-      box.querySelectorAll('[data-tr]').forEach(function (a) {
-        a.onclick = function () {
-          DN.post('/api/gov/health/issues/' + a.getAttribute('data-tr') + '/transition',
-            { status: a.getAttribute('data-to') })
-            .then(function () { DN.toast('已流转'); loadIssues(); loadBoard(); })
-            .catch(function (e) { DN.toast(e.message, 'error'); });
-        };
-      });
-      box.querySelectorAll('[data-asg]').forEach(function (a) {
-        a.onclick = function () {
-          var id = a.getAttribute('data-asg');
-          var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
-          modal('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close) {
-            DN.post('/api/gov/health/issues/' + id + '/assign', { owner: ownerInput.value.trim() })
-              .then(function () { DN.toast('已指派'); close(); loadIssues(); loadBoard(); })
-              .catch(function (e) { DN.toast(e.message, 'error'); });
-          });
-        };
-      });
-      box.querySelectorAll('[data-del]').forEach(function (a) {
-        a.onclick = function () {
-          DN.del('/api/gov/health/issues/' + a.getAttribute('data-del'))
-            .then(function () { DN.toast('已删除'); loadIssues(); loadBoard(); })
-            .catch(function (e) { DN.toast(e.message, 'error'); });
-        };
-      });
+      renderIssues(rows || []);
     }).catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  function renderIssues(rows) {
+    var box = document.getElementById('hsIssues');
+    if (!box) return;
+    issueTable = DN.table({
+      rows: rows,
+      pageSize: 10,
+      searchKeys: ['title', 'dimension', 'owner', 'status'],
+      searchPlaceholder: '搜索标题/维度/负责人/状态',
+      empty: '暂无工单', emptyIcon: 'inbox',
+      columns: [
+        { key: 'id', label: 'ID', align: 'right' },
+        { key: 'title', label: '标题' },
+        { key: 'dimension', label: '维度', render: function (it) { return it.dimension || '-'; } },
+        { key: 'severity', label: '级别', render: function (it) { return severityPill(it.severity); } },
+        { key: 'owner', label: '负责人', render: function (it) { return it.owner || '未分配'; } },
+        { key: 'status', label: '状态', render: function (it) { return DN.pill(it.status, STATUS_TONE[it.status] || 'muted'); } },
+        { key: 'ops', label: '操作', render: function (it) { return issueOps(it); } }
+      ]
+    });
+    box.innerHTML = '';
+    box.appendChild(issueTable);
+  }
+
+  function severityPill(sev) {
+    if (!sev) return '-';
+    var t = sev === 'HIGH' ? 'err' : (sev === 'MEDIUM' ? 'warn' : 'info');
+    return DN.pill(sev, t);
+  }
+
+  function issueOps(it) {
+    var wrap = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' });
+    (FLOW[it.status] || []).forEach(function (ns) {
+      wrap.appendChild(DN.h('a', {
+        href: 'javascript:void(0)', text: ns,
+        onclick: function () { transition(it.id, ns); }
+      }));
+    });
+    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', onclick: function () { assignIssue(it.id); } }));
+    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)', onclick: function () { delIssue(it.id); } }));
+    return wrap;
+  }
+
+  function transition(id, to) {
+    DN.post('/api/gov/health/issues/' + id + '/transition', { status: to })
+      .then(function () { DN.toast('已流转'); loadIssues(); loadBoard(); })
+      .catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  function delIssue(id) {
+    DN.del('/api/gov/health/issues/' + id)
+      .then(function () { DN.toast('已删除'); loadIssues(); loadBoard(); })
+      .catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  function assignIssue(id) {
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
+    drawerForm('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close) {
+      DN.post('/api/gov/health/issues/' + id + '/assign', { owner: ownerInput.value.trim() })
+        .then(function () { DN.toast('已指派'); close(); loadIssues(); loadBoard(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   function addIssue() {
@@ -187,7 +211,7 @@
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
     var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人（可空）' });
     var descInput = DN.h('input', { class: 'iw-form-input', placeholder: '描述（可空）' });
-    modal('新建工单', [
+    drawerForm('新建工单', [
       formRow('标题', titleInput), formRow('问题类型', typeSel), formRow('所属维度', dimSel),
       formRow('级别', sevSel), formRow('负责人', ownerInput), formRow('描述', descInput)
     ], function (close) {
@@ -205,15 +229,14 @@
     DN.get('/api/gov/health/issues/leaderboard').then(function (rows) {
       var box = document.getElementById('hsBoard');
       if (!box) return;
-      if (!rows || !rows.length) { box.innerHTML = '<div class="gov-placeholder">暂无数据</div>'; return; }
-      var body = rows.map(function (r) {
-        return '<tr><td>' + DN.esc(r.owner) + '</td><td>' + r.total + '</td>' +
-          '<td style="color:#f53f3f">' + r.open + '</td><td style="color:#00b42a">' + r.closed + '</td></tr>';
-      }).join('');
-      box.innerHTML = '<table style="border-collapse:collapse;background:#fff;font-size:13px;min-width:360px">' +
-        '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-        '<th>负责人</th><th>总数</th><th>未关单</th><th>已关单</th></tr></thead><tbody>' + body + '</tbody></table>';
-      box.querySelectorAll('th,td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+      box.innerHTML = '';
+      if (!rows || !rows.length) { box.appendChild(DN.empty('暂无数据', 'user')); return; }
+      box.appendChild(DN.bars(rows.map(function (r) {
+        return {
+          label: r.owner, value: Number(r.total) || 0, tone: 'info',
+          display: '总' + (r.total || 0) + ' · 未关' + (r.open || 0) + ' · 已关' + (r.closed || 0)
+        };
+      })));
     }).catch(function () {});
   }
 
@@ -230,19 +253,21 @@
         domains = domains || [];
         var vals = domains.map(function (d) { return byDomain[d] ? Number(byDomain[d].score) || 0 : 0; });
         radarBox.innerHTML = drawRadar(domains, vals, 280, '#722ed1');
+        tableBox.innerHTML = '';
         if (!rows || !rows.length) {
-          tableBox.innerHTML = '<div class="gov-placeholder">暂无自评，点击"录入自评"</div>';
+          tableBox.appendChild(DN.empty('暂无自评，点击“录入自评”', 'layers'));
           return;
         }
-        var body = domains.map(function (d) {
-          var r = byDomain[d];
-          return '<tr><td>' + DN.esc(d) + '</td><td>' + (r ? r.score : '-') + '</td>' +
-            '<td>L' + (r ? r.level : '-') + '</td><td style="color:#86909c">' + DN.esc(r && r.note ? r.note : '') + '</td></tr>';
-        }).join('');
-        tableBox.innerHTML = '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:13px">' +
-          '<thead><tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
-          '<th>能力域</th><th>得分</th><th>等级</th><th>备注</th></tr></thead><tbody>' + body + '</tbody></table>';
-        tableBox.querySelectorAll('th,td').forEach(function (td) { td.style.padding = '8px'; td.style.borderBottom = '1px solid #f2f3f5'; });
+        tableBox.appendChild(DN.table({
+          search: false,
+          columns: [
+            { key: 'domain', label: '能力域' },
+            { key: 'score', label: '得分', align: 'right', render: function (x) { return x.r ? DN.pill(String(x.r.score), scoreTone(Number(x.r.score) || 0)) : '-'; } },
+            { key: 'level', label: '等级', align: 'right', render: function (x) { return x.r ? 'L' + x.r.level : '-'; } },
+            { key: 'note', label: '备注', render: function (x) { return (x.r && x.r.note) ? x.r.note : '-'; } }
+          ],
+          rows: domains.map(function (d) { return { domain: d, r: byDomain[d] || null }; })
+        }));
       });
     }).catch(function (e) { DN.toast(e.message, 'error'); });
   }
@@ -253,7 +278,7 @@
       var scoreInput = DN.h('input', { class: 'iw-form-input', type: 'number', min: '0', max: '100', value: '60' });
       var levelSel = selectOf(['1', '2', '3', '4', '5'], '3');
       var noteInput = DN.h('input', { class: 'iw-form-input', placeholder: '备注（可空）' });
-      modal('录入 DCMM 自评', [
+      drawerForm('录入 DCMM 自评', [
         formRow('能力域', domainSel), formRow('自评分', scoreInput),
         formRow('成熟度等级', levelSel), formRow('备注', noteInput)
       ], function (close) {
@@ -267,7 +292,7 @@
     });
   }
 
-  // ========== SVG 自绘 ==========
+  // ========== SVG 自绘（DCMM 雷达 + 趋势折线保留） ==========
 
   /** 雷达图：axes 维度名数组，vals 0-100 数组，size 画布边长，color 主色 */
   function drawRadar(axes, vals, size, color) {
@@ -329,8 +354,10 @@
   function angle(i, n) { return -Math.PI / 2 + 2 * Math.PI * i / n; }
   function polar(cx, cy, r, a) { return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
   function esc(s) { return DN.esc(s); }
+  // 分值 → 药丸色调
+  function scoreTone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
 
-  // ========== 轻量表单 UI ==========
+  // ========== 抽屉内表单 UI ==========
 
   /** 构造下拉：items 选项数组，sel 默认值，emptyText 传入则首项为空选项 */
   function selectOf(items, sel, emptyText) {
@@ -347,18 +374,14 @@
     ]);
   }
 
-  function modal(title, bodyNodes, onOk) {
-    var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
-    var box = DN.h('div', { style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
-    box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
-    bodyNodes.forEach(function (n) { box.appendChild(n); });
-    function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); }
+  /** 在右侧抽屉里渲染表单 + 操作按钮，onOk(close) */
+  function drawerForm(title, bodyNodes, onOk) {
+    var form = DN.h('div', { class: 'gov-form' });
+    bodyNodes.forEach(function (n) { form.appendChild(n); });
+    var dr = DN.drawer(title, form);
     var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
-    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: close }));
-    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(close); } }));
-    box.appendChild(footer);
-    mask.appendChild(box);
-    mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
-    document.body.appendChild(mask);
+    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: dr.close }));
+    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(dr.close); } }));
+    form.appendChild(footer);
   }
 })();
