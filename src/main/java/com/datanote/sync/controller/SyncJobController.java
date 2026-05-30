@@ -1,9 +1,11 @@
 package com.datanote.sync.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncErrorRowMapper;
 import com.datanote.mapper.DnSyncFolderMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
+import com.datanote.model.DnSyncErrorRow;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
 import com.datanote.model.R;
@@ -35,6 +37,7 @@ public class SyncJobController {
     private final com.datanote.mapper.DnSyncJobAuditMapper auditMapper;
     private final com.datanote.sync.service.DataReconciliationService reconciliationService;
     private final com.datanote.sync.service.CdcEngineManager cdcEngineManager;
+    private final DnSyncErrorRowMapper syncErrorRowMapper;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -69,6 +72,27 @@ public class SyncJobController {
     public R<String> delete(@PathVariable Long id) {
         syncJobService.delete(id);
         return R.ok("删除成功");
+    }
+
+    @Operation(summary = "坏行(DLQ)列表")
+    @GetMapping("/{id}/error-rows")
+    public R<List<DnSyncErrorRow>> errorRows(@PathVariable Long id,
+                                             @RequestParam(defaultValue = "200") int limit) {
+        int n = Math.min(Math.max(limit, 1), 1000);
+        List<DnSyncErrorRow> rows = syncErrorRowMapper.selectList(
+                new LambdaQueryWrapper<DnSyncErrorRow>()
+                        .eq(DnSyncErrorRow::getJobId, id)
+                        .orderByDesc(DnSyncErrorRow::getId)
+                        .last("limit " + n));
+        return R.ok(rows);
+    }
+
+    @Operation(summary = "清空坏行(DLQ)")
+    @DeleteMapping("/{id}/error-rows")
+    public R<String> clearErrorRows(@PathVariable Long id) {
+        int del = syncErrorRowMapper.delete(
+                new LambdaQueryWrapper<DnSyncErrorRow>().eq(DnSyncErrorRow::getJobId, id));
+        return R.ok("已清空 " + del + " 条");
     }
 
     @Operation(summary = "手动运行（全量）")

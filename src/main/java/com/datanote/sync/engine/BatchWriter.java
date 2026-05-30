@@ -12,10 +12,11 @@ public final class BatchWriter {
     private final Connection conn;
     private final SyncContext ctx;
     private final int writeColCount;
+    private final String sourceTable;
     private final List<Object[]> buffer = new ArrayList<>();
 
-    public BatchWriter(PreparedStatement ps, Connection conn, SyncContext ctx, int writeColCount) {
-        this.ps = ps; this.conn = conn; this.ctx = ctx; this.writeColCount = writeColCount;
+    public BatchWriter(PreparedStatement ps, Connection conn, SyncContext ctx, int writeColCount, String sourceTable) {
+        this.ps = ps; this.conn = conn; this.ctx = ctx; this.writeColCount = writeColCount; this.sourceTable = sourceTable;
     }
 
     public void add(Object[] writeRow) throws Exception {
@@ -45,6 +46,8 @@ public final class BatchWriter {
                 } catch (Exception rowEx) {
                     long dirty = ctx.getDirtyCount().incrementAndGet();
                     ctx.log("ERROR", "坏行丢弃(累计脏数据=" + dirty + "): " + rowEx.getMessage());
+                    // DS-M1：坏行落 DLQ(失败不阻断同步)
+                    try { ctx.getBadRowSink().accept(sourceTable, row, rowEx.getMessage()); } catch (Exception ignore) {}
                     if (exceeded(dirty, ctx.getReadCount().get(), ctx.getErrorLimitRows(), ctx.getErrorLimitRatio())) {
                         conn.commit();
                         ctx.getWriteCount().addAndGet(ok);

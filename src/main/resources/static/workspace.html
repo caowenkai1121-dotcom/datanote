@@ -4562,6 +4562,7 @@ html, body {
         <button data-tab="config" onclick="dbsyncDetailTab(this,'config')">同步配置</button>
         <button data-tab="audit" onclick="dbsyncDetailTab(this,'audit')">操作审计</button>
         <button data-tab="checkpoint" onclick="dbsyncDetailTab(this,'checkpoint')">断点</button>
+        <button data-tab="errors" onclick="dbsyncDetailTab(this,'errors')">错误行</button>
       </div>
       <div class="dbsync-drawer-body">
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_overview"></div>
@@ -4579,6 +4580,7 @@ html, body {
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_config" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_audit" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_checkpoint" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_errors" style="display:none;"></div>
       </div>
     </aside>
     <!-- 行操作下拉菜单（全局单例，fixed 定位） -->
@@ -15033,7 +15035,7 @@ window.dbsyncCloseDetail = function() {
 function dbsyncDetailLoading() {
   return '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">加载中...</div>';
 }
-var _dbsyncAllDetailTabs = ['overview', 'log', 'history', 'config', 'audit', 'checkpoint'];
+var _dbsyncAllDetailTabs = ['overview', 'log', 'history', 'config', 'audit', 'checkpoint', 'errors'];
 function dbsyncDetailResetTab() {
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) {
     b.classList.toggle('active', b.getAttribute('data-tab') === 'overview');
@@ -15052,6 +15054,9 @@ window.dbsyncDetailTab = function(btn, tab) {
   });
   if (tab === 'checkpoint' && _dbsyncDetailJobId != null) {
     dbsyncLoadCheckpoints(_dbsyncDetailJobId);
+  }
+  if (tab === 'errors' && _dbsyncDetailJobId != null) {
+    dbsyncLoadErrorRows(_dbsyncDetailJobId);
   }
 };
 function dbsyncRenderDetailHead(job) {
@@ -15702,6 +15707,62 @@ window.dbsyncResetChunkCp = function(jobId, table) {
     showToast('Chunk 断点已重置', 'success');
     dbsyncLoadCheckpoints(jobId);
   }).catch(function() { showToast('重置失败，请重试', 'error'); });
+};
+
+/* DS-M1：坏行(DLQ) 页签 —— 全量/增量逐行写失败的行落表，可见 + 可清空 */
+window.dbsyncLoadErrorRows = function(id) {
+  var pane = document.getElementById('dbsyncDetailPane_errors');
+  if (!pane) return;
+  pane.innerHTML = dbsyncDetailLoading();
+  api('/api/sync-job/' + id + '/error-rows?limit=200').then(function(res) {
+    if (_dbsyncDetailJobId !== id) return;
+    var rows = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []);
+    dbsyncRenderErrorRows(pane, id, rows);
+  }).catch(function() {
+    if (_dbsyncDetailJobId !== id) return;
+    pane.innerHTML = '<div style="padding:24px;color:var(--error);font-size:13px;">坏行加载失败，请重试</div>';
+  });
+};
+
+function dbsyncRenderErrorRows(pane, jobId, rows) {
+  var bar = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    + '<span style="font-size:12px;color:var(--text-muted);">逐行写入失败的坏行（最多展示 200 条）。修复根因后，<b>重新运行任务</b>即可幂等重试这些行。</span>'
+    + (rows.length ? '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
+    + '</div>';
+  if (!rows || rows.length === 0) {
+    pane.innerHTML = bar + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无坏行记录</div>';
+    return;
+  }
+  var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
+    + '<th style="white-space:nowrap;">时间</th><th>源表</th><th style="width:60px;">阶段</th><th>错误信息</th><th style="width:60px;">原始行</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function(r, i) {
+    var stage = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC' }[r.stage] || (r.stage || '-');
+    var msg = r.errorMsg ? String(r.errorMsg) : '';
+    var raw = r.rawRow ? String(r.rawRow) : '';
+    var rawId = 'dbsyncErrRaw_' + i;
+    var rawCell = raw
+      ? '<a href="#" onclick="dbsyncToggleEl(\'' + rawId + '\');return false;" style="font-size:11px;color:var(--primary);">查看</a>'
+        + '<pre id="' + rawId + '" style="display:none;margin:6px 0 0;padding:8px;background:var(--bg-hover);border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto;color:var(--text-regular);">' + escapeHtml(raw) + '</pre>'
+      : '-';
+    html += '<tr>'
+      + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(r.createdAt)) + '</td>'
+      + '<td style="font-family:monospace;">' + escapeHtml(r.sourceTable || '-') + '</td>'
+      + '<td>' + escapeHtml(stage) + '</td>'
+      + '<td style="max-width:320px;word-break:break-all;color:#ff4d4f;"><span title="' + escapeHtml(msg) + '">' + escapeHtml(msg.length > 120 ? msg.slice(0, 120) + '…' : msg) + '</span></td>'
+      + '<td>' + rawCell + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  pane.innerHTML = html;
+}
+
+window.dbsyncClearErrorRows = function(jobId) {
+  if (!confirm('确认清空该任务的全部坏行记录？此操作不可恢复（仅删除 DLQ 记录，不影响目标数据）。')) return;
+  fetch('/api/sync-job/' + jobId + '/error-rows', { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+    showToast((res && res.data) ? res.data : '已清空', 'success');
+    dbsyncLoadErrorRows(jobId);
+  }).catch(function() { showToast('清空失败，请重试', 'error'); });
 };
 
 })(); // end IIFE

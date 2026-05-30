@@ -1,8 +1,10 @@
 package com.datanote.sync.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.mapper.DnSyncErrorRowMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
+import com.datanote.model.DnSyncErrorRow;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
 import com.datanote.service.LogBroadcastService;
@@ -48,6 +50,7 @@ public class SyncJobExecutor {
     private final LogBroadcastService logBroadcastService;
     private final TableSchemaService tableSchemaService;
     private final DnSyncJobMapper syncJobMapper;
+    private final DnSyncErrorRowMapper syncErrorRowMapper;
     private final AuditLogService auditLogService;
     private final AlertService alertService;
 
@@ -234,6 +237,20 @@ public class SyncJobExecutor {
         ctx.setChunkLoad(t -> syncJobService.loadChunkCursor(jobId, t));
         ctx.setChunkSave((t, v) -> syncJobService.saveChunkCursor(jobId, t, v));
         ctx.setChunkClear(t -> syncJobService.clearChunkCursor(jobId, t));
+        // DS-M1：坏行落 DLQ(dn_sync_error_row)，写失败不阻断同步
+        ctx.setBadRowSink((table, row, err) -> {
+            try {
+                DnSyncErrorRow er = new DnSyncErrorRow();
+                er.setJobId(jobId);
+                er.setRunId(execId);
+                er.setSourceTable(table);
+                er.setRawRow(com.alibaba.fastjson.JSON.toJSONString(row));
+                er.setErrorMsg(err == null ? null : (err.length() > 2000 ? err.substring(0, 2000) : err));
+                er.setStage(syncMode);
+                er.setAttempt(attempt);
+                syncErrorRowMapper.insert(er);
+            } catch (Exception ignore) { /* DLQ 落表失败不影响主流程 */ }
+        });
         // 注册运行上下文，供停止/超时设置停止标志
         runningContexts.put(jobId, ctx);
 

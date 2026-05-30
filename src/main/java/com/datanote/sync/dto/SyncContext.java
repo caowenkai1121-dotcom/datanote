@@ -57,6 +57,8 @@ public class SyncContext {
     private java.util.function.Function<String,String> chunkLoad = t -> null;
     private java.util.function.BiConsumer<String,String> chunkSave = (t,v) -> {};
     private java.util.function.Consumer<String> chunkClear = t -> {};
+    // DS-M1：坏行落 DLQ 回调（默认空实现，执行器装配）
+    private BadRowSink badRowSink = (table, row, err) -> {};
 
     private static boolean blank(String s) { return s == null || s.trim().isEmpty(); }
 
