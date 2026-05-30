@@ -3,7 +3,9 @@ package com.datanote.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnMetricMapper;
+import com.datanote.mapper.DnMetricRefMapper;
 import com.datanote.model.DnMetric;
+import com.datanote.model.DnMetricRef;
 import com.datanote.model.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class MetricController {
 
     private final DnMetricMapper metricMapper;
+    private final DnMetricRefMapper metricRefMapper;
 
     /**
      * 指标列表（支持关键词搜索和分类筛选）
@@ -119,5 +122,47 @@ public class MetricController {
         activeQw.eq("status", 1);
         data.put("activeMetrics", metricMapper.selectCount(activeQw));
         return R.ok(data);
+    }
+
+    // ==================== 指标-资产关联 ====================
+
+    /**
+     * 查询指标关联的资产
+     */
+    @Operation(summary = "指标关联列表")
+    @GetMapping("/{id}/refs")
+    public R<List<DnMetricRef>> listRefs(@PathVariable Long id) {
+        QueryWrapper<DnMetricRef> qw = new QueryWrapper<>();
+        qw.eq("metric_id", id).orderByAsc("id");
+        return R.ok(metricRefMapper.selectList(qw));
+    }
+
+    /**
+     * 新增指标-资产关联
+     */
+    @Operation(summary = "新增指标关联")
+    @PostMapping("/{id}/refs")
+    public R<DnMetricRef> addRef(@PathVariable Long id, @RequestBody DnMetricRef ref) {
+        if (metricMapper.selectById(id) == null) {
+            throw new ResourceNotFoundException("指标");
+        }
+        ref.setMetricId(id);
+        ref.setId(null);
+        if (ref.getRefType() == null || ref.getRefType().isEmpty()) {
+            ref.setRefType("SOURCE");
+        }
+        ref.setCreatedAt(LocalDateTime.now());
+        metricRefMapper.insert(ref);
+        return R.ok(ref);
+    }
+
+    /**
+     * 删除指标-资产关联
+     */
+    @Operation(summary = "删除指标关联")
+    @DeleteMapping("/refs/{refId}")
+    public R<String> deleteRef(@PathVariable Long refId) {
+        metricRefMapper.deleteById(refId);
+        return R.ok("删除成功");
     }
 }

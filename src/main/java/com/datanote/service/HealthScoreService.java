@@ -6,6 +6,7 @@ import com.datanote.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -216,6 +217,17 @@ public class HealthScoreService {
         result.put("dimensions", detail);
         result.put("weights", weights);
         return result;
+    }
+
+    /** 每日 1:30 自动计算并落库健康分快照（趋势数据来源） */
+    @Scheduled(cron = "0 30 1 * * ?")
+    public void scheduledSnapshot() {
+        try {
+            computeAndSnapshot();
+            log.info("健康分每日快照已生成");
+        } catch (Exception e) {
+            log.error("健康分每日快照失败: {}", e.getMessage(), e);
+        }
     }
 
     /** 计算并写入时序快照，返回计算结果 */
