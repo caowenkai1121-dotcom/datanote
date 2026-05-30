@@ -81,6 +81,55 @@ public class LineageEdgeService {
         return edgeMapper.selectList(qw);
     }
 
+    private static final int MAX_DEPTH = 10;
+
+    /** 下游影响清单：从 (db.table) 出发沿表级边 src→dst 做 BFS，返回去重的下游节点。 */
+    public List<Map<String, Object>> impact(String db, String table) {
+        return bfs(db, table, true);
+    }
+
+    /** 上游溯源清单：沿表级边 dst→src 做 BFS，返回去重的上游节点。 */
+    public List<Map<String, Object>> trace(String db, String table) {
+        return bfs(db, table, false);
+    }
+
+    /** BFS over 表级边，limit 深度防环。downstream=true 顺向(src→dst)，否则逆向(dst→src)。 */
+    private List<Map<String, Object>> bfs(String db, String table, boolean downstream) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.util.Set<String> visited = new java.util.HashSet<>();
+        java.util.Deque<String[]> queue = new java.util.ArrayDeque<>(); // [db, table, depth]
+        String start = key(db, table);
+        visited.add(start);
+        queue.add(new String[]{db, table, "0"});
+        while (!queue.isEmpty()) {
+            String[] cur = queue.poll();
+            int depth = Integer.parseInt(cur[2]);
+            if (depth >= MAX_DEPTH) continue;
+            QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
+            qw.eq("level_type", "TABLE");
+            if (downstream) qw.eq("src_db", cur[0]).eq("src_table", cur[1]);
+            else qw.eq("dst_db", cur[0]).eq("dst_table", cur[1]);
+            for (DnLineageEdge e : edgeMapper.selectList(qw)) {
+                String nDb = downstream ? e.getDstDb() : e.getSrcDb();
+                String nTab = downstream ? e.getDstTable() : e.getSrcTable();
+                String k = key(nDb, nTab);
+                if (!visited.add(k)) continue;
+                Map<String, Object> node = new HashMap<>();
+                node.put("db", nDb);
+                node.put("table", nTab);
+                node.put("depth", depth + 1);
+                node.put("source", e.getSource());
+                result.add(node);
+                queue.add(new String[]{nDb, nTab, String.valueOf(depth + 1)});
+            }
+        }
+        return result;
+    }
+
+    private static String key(String db, String table) {
+        return (db == null ? "" : db) + "." + (table == null ? "" : table);
+    }
+
     // ========== 纯函数（可单测） ==========
 
     /** 把一个同步任务的表/字段映射转成血缘边（源 MAPPING，置信度 100）。 */
