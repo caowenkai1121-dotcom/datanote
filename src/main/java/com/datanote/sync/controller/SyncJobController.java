@@ -33,6 +33,8 @@ public class SyncJobController {
     private final DnSyncJobMapper syncJobMapper;
     private final DnSyncFolderMapper folderMapper;
     private final com.datanote.mapper.DnSyncJobAuditMapper auditMapper;
+    private final com.datanote.sync.service.DataReconciliationService reconciliationService;
+    private final com.datanote.sync.service.CdcEngineManager cdcEngineManager;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -149,4 +151,86 @@ public class SyncJobController {
         syncJobMapper.updateById(job);
         return R.ok("已停用定时调度");
     }
+
+    // ===== M3c：行数对账 =====
+
+    @Operation(summary = "行数对账(源/目标 count 比对)")
+    @PostMapping("/{id}/reconcile")
+    public R<java.util.Map<String, Object>> reconcile(@PathVariable Long id) {
+        try {
+            return R.ok(reconciliationService.reconcile(id));
+        } catch (Exception e) {
+            log.error("对账失败: id={}", id, e);
+            return R.fail("对账失败: " + e.getMessage());
+        }
+    }
+
+    // ===== M3c：监控大盘（放 Controller 避免 SyncJobService 注入 CdcEngineManager 成环） =====
+
+    @Operation(summary = "监控大盘(所有任务状态+最新计数+CDC指标)")
+    @GetMapping("/dashboard")
+    public R<java.util.List<java.util.Map<String, Object>>> dashboard() {
+        java.util.List<java.util.Map<String, Object>> list = new java.util.ArrayList<>();
+        for (DnSyncJob job : syncJobService.list()) {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", job.getId());
+            m.put("jobName", job.getJobName());
+            m.put("syncMode", job.getSyncMode());
+            m.put("status", job.getStatus());
+            m.put("scheduleStatus", job.getScheduleStatus());
+            DnTaskExecution last = taskExecutionMapper.selectOne(new LambdaQueryWrapper<DnTaskExecution>()
+                    .eq(DnTaskExecution::getSyncTaskId, job.getId())
+                    .eq(DnTaskExecution::getTaskType, "DbSync")
+                    .orderByDesc(DnTaskExecution::getId).last("LIMIT 1"));
+            if (last != null) {
+                m.put("lastStatus", last.getStatus());
+                m.put("lastReadCount", last.getReadCount());
+                m.put("lastWriteCount", last.getWriteCount());
+                m.put("lastErrorCount", last.getErrorCount());
+                m.put("lastTime", last.getStartTime());
+            }
+            if ("CDC".equalsIgnoreCase(job.getSyncMode())) {
+                try {
+                    m.putAll(prefixCdc(cdcEngineManager.metrics(job.getId())));
+                } catch (Exception ignore) {
+                    // CDC 指标获取失败忽略，不影响整体大盘
+                }
+            }
+            list.add(m);
+        }
+        return R.ok(list);
+    }
+
+    private static java.util.Map<String, Object> prefixCdc(java.util.Map<String, Object> cdc) {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        if (cdc != null) {
+            m.put("cdcRunning", cdc.get("running"));
+            m.put("cdcLagMs", cdc.get("lagMs"));
+            m.put("cdcEventsSeen", cdc.get("eventsSeen"));
+        }
+        return m;
+    }
+
+    // ===== M3c：断点管理（增量水位 + 全量 chunk） =====
+
+    @Operation(summary = "查看断点(增量水位+chunk)")
+    @GetMapping("/{id}/checkpoints")
+    public R<java.util.Map<String, Object>> checkpoints(@PathVariable Long id) {
+        return R.ok(syncJobService.getCheckpoints(id));
+    }
+
+    @Operation(summary = "重置增量水位")
+    @PostMapping("/{id}/checkpoint/reset-incremental")
+    public R<String> resetIncr(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.resetIncremental(id, table);
+        return R.ok("已重置增量水位");
+    }
+
+    @Operation(summary = "重置全量chunk断点")
+    @PostMapping("/{id}/checkpoint/reset-chunk")
+    public R<String> resetChunk(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.clearChunkCursor(id, table);
+        return R.ok("已重置chunk断点");
+    }
+
 }

@@ -219,6 +219,42 @@ public class SyncJobService {
                 .eq(DnSyncChunkCheckpoint::getSourceTable, sourceTable));
     }
 
+    /** M3c：查看任务断点——增量每表水位 + 全量 chunk 游标。 */
+    public Map<String, Object> getCheckpoints(Long jobId) {
+        DnSyncJob job = getById(jobId);
+        Map<String, Object> r = new LinkedHashMap<>();
+        List<Map<String, Object>> incr = new ArrayList<>();
+        if (job != null) {
+            for (TableSyncConfig tc : parseTables(job)) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("table", tc.getSourceTable());
+                m.put("incrementalField", tc.getIncrementalField());
+                m.put("incrementalValue", tc.getIncrementalValue());
+                incr.add(m);
+            }
+        }
+        r.put("incremental", incr);
+        r.put("chunk", chunkCheckpointMapper.selectList(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncChunkCheckpoint>()
+                .eq(DnSyncChunkCheckpoint::getSyncJobId, jobId)));
+        return r;
+    }
+
+    /** M3c：重置某表增量水位（置空，下次从初值重扫）。 */
+    public void resetIncremental(Long jobId, String sourceTable) {
+        DnSyncJob job = getById(jobId);
+        if (job == null) {
+            return;
+        }
+        List<TableSyncConfig> tables = parseTables(job);
+        for (TableSyncConfig tc : tables) {
+            if (eq(tc.getSourceTable(), sourceTable)) {
+                tc.setIncrementalValue(null);
+            }
+        }
+        updateTableConfig(jobId, tables);
+    }
+
     /**
      * 同步前预检：源/目标库连通性、源表主键(是否单列、能否自动建表)、目标库可达、cron 合法性。
      * 返回 {ok, checks:[{name, ok, message}]}，逐项捕获异常不抛出。

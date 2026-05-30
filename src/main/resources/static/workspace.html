@@ -4201,6 +4201,10 @@ html, body {
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
                   新建任务
                 </button>
+                <button class="btn btn-sm" onclick="dbsyncOpenDashboard()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
+                  监控大盘
+                </button>
                 <button class="btn btn-sm" onclick="dbsyncLoadJobs()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M2 7a5 5 0 105-.5"/><path d="M10.5 2.5v4h-4"/></svg>
                   刷新
@@ -4511,6 +4515,7 @@ html, body {
         <button data-tab="history" onclick="dbsyncDetailTab(this,'history')">执行历史</button>
         <button data-tab="config" onclick="dbsyncDetailTab(this,'config')">同步配置</button>
         <button data-tab="audit" onclick="dbsyncDetailTab(this,'audit')">操作审计</button>
+        <button data-tab="checkpoint" onclick="dbsyncDetailTab(this,'checkpoint')">断点</button>
       </div>
       <div class="dbsync-drawer-body">
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_overview"></div>
@@ -4527,10 +4532,67 @@ html, body {
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_history" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_config" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_audit" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_checkpoint" style="display:none;"></div>
       </div>
     </aside>
     <!-- 行操作下拉菜单（全局单例，fixed 定位） -->
     <div class="dbsync-row-menu" id="dbsyncRowMenu"></div>
+
+    <!-- ===== M3c: 监控大盘弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncDashboardModal">
+      <div class="dbsync-modal" style="width:900px;">
+        <div class="dbsync-modal-header">
+          <span>监控大盘</span>
+          <button class="g-modal-close" onclick="dbsyncCloseDashboard()">&times;</button>
+        </div>
+        <div class="dbsync-modal-body" style="padding:16px 24px;">
+          <table class="dbsync-exec-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th>任务名</th><th>模式</th><th>运行状态</th><th>最近执行状态</th>
+                <th style="text-align:right;">最近读取</th><th style="text-align:right;">最近写入</th>
+                <th style="text-align:right;">最近错误</th><th>CDC延迟</th>
+              </tr>
+            </thead>
+            <tbody id="dbsyncDashboardBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">每 5 秒自动刷新</div>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncCloseDashboard()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== M3c: 行数对账弹窗 ===== -->
+    <div class="dbsync-modal-overlay" id="dbsyncReconcileModal">
+      <div class="dbsync-modal" style="width:560px;">
+        <div class="dbsync-modal-header">
+          <span id="dbsyncReconcileTitle">行数对账</span>
+          <button class="g-modal-close" onclick="dbsyncCloseReconcile()">&times;</button>
+        </div>
+        <div class="dbsync-modal-body" style="padding:16px 24px;">
+          <table class="dbsync-exec-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th>表名</th>
+                <th style="text-align:right;">源端行数</th>
+                <th style="text-align:right;">目标端行数</th>
+                <th>是否一致</th>
+              </tr>
+            </thead>
+            <tbody id="dbsyncReconcileBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncCloseReconcile()">关闭</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== 文件夹新建/重命名弹窗 ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncFolderModal">
@@ -14692,12 +14754,14 @@ window.dbsyncOpenRowMenu = function(evt, id) {
   if (!menu) return;
   // 同一按钮再次点击则收起
   if (menu.classList.contains('show') && menu.getAttribute('data-job') === String(id)) { dbsyncCloseRowMenu(); return; }
-  var icEdit = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2.5l2.5 2.5M2 12l1-3.5 6-6 2.5 2.5-6 6L2 12z"/></svg>';
-  var icMove = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 4a1 1 0 011-1h3l1.2 1.2H11.5a1 1 0 011 1v5a1 1 0 01-1 1h-9a1 1 0 01-1-1V4z"/></svg>';
-  var icDel  = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h9M5.5 4V2.7h3V4M3.7 4l.4 7.3h5.8l.4-7.3"/></svg>';
+  var icEdit  = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2.5l2.5 2.5M2 12l1-3.5 6-6 2.5 2.5-6 6L2 12z"/></svg>';
+  var icMove  = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 4a1 1 0 011-1h3l1.2 1.2H11.5a1 1 0 011 1v5a1 1 0 01-1 1h-9a1 1 0 01-1-1V4z"/></svg>';
+  var icCheck = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7h10M7 2v10"/><circle cx="7" cy="7" r="5.5"/></svg>';
+  var icDel   = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h9M5.5 4V2.7h3V4M3.7 4l.4 7.3h5.8l.4-7.3"/></svg>';
   menu.innerHTML =
       '<button onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
     + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
     + '<div class="dbsync-row-menu-sep"></div>'
     + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
   menu.setAttribute('data-job', String(id));
@@ -14718,6 +14782,7 @@ window.dbsyncRowMenuAct = function(act, id) {
   var nm = job ? (job.jobName || '') : '';
   if (act === 'edit') dbsyncOpenEditModal(id);
   else if (act === 'move') dbsyncOpenMoveJobDialog(id, nm);
+  else if (act === 'reconcile') dbsyncOpenReconcile(id, nm);
   else if (act === 'del') dbsyncDeleteJob(id, nm);
 };
 function dbsyncCloseRowMenu() {
@@ -14767,11 +14832,12 @@ window.dbsyncCloseDetail = function() {
 function dbsyncDetailLoading() {
   return '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">加载中...</div>';
 }
+var _dbsyncAllDetailTabs = ['overview', 'log', 'history', 'config', 'audit', 'checkpoint'];
 function dbsyncDetailResetTab() {
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) {
     b.classList.toggle('active', b.getAttribute('data-tab') === 'overview');
   });
-  ['overview', 'log', 'history', 'config'].forEach(function(t) {
+  _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
     if (pane) pane.style.display = (t === 'overview') ? '' : 'none';
   });
@@ -14779,10 +14845,13 @@ function dbsyncDetailResetTab() {
 window.dbsyncDetailTab = function(btn, tab) {
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
-  ['overview', 'log', 'history', 'config'].forEach(function(t) {
+  _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
     if (pane) pane.style.display = (t === tab) ? '' : 'none';
   });
+  if (tab === 'checkpoint' && _dbsyncDetailJobId != null) {
+    dbsyncLoadCheckpoints(_dbsyncDetailJobId);
+  }
 };
 function dbsyncRenderDetailHead(job) {
   var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
@@ -14798,14 +14867,16 @@ function dbsyncRenderDetailHead(job) {
   var tgt = (job.targetDsName || ('ds#' + (job.targetDsId || ''))) + '.' + (job.targetDb || '');
   document.getElementById('dbsyncDetailSub').textContent = src + '  →  ' + tgt;
   var pbtn = document.getElementById('dbsyncDetailPrimaryBtn');
+  var reconcileBtn = '<button class="btn btn-sm" onclick="dbsyncOpenReconcile(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" style="margin-left:4px;" title="行数对账">行数对账</button>';
   if (job.syncMode === 'CDC') {
     var cdcBtns = (job.status === 'RUNNING')
       ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
       : '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
     cdcBtns += '<button class="btn btn-sm btn-warning" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照" style="margin-left:4px;">重置</button>';
+    cdcBtns += reconcileBtn;
     pbtn.innerHTML = cdcBtns;
   } else {
-    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>';
+    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn;
   }
 }
 // 状态变更后（列表刷新触发）同步刷新抽屉头部 + 概览/历史
@@ -15090,6 +15161,200 @@ document.addEventListener('keydown', function(e) {
   if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
   if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
 });
+
+/* ============================================================
+ * M3c: 监控大盘
+ * ============================================================ */
+var _dbsyncDashboardTimer = null;
+
+window.dbsyncOpenDashboard = function() {
+  var overlay = document.getElementById('dbsyncDashboardModal');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  dbsyncFetchDashboard();
+  if (_dbsyncDashboardTimer) clearInterval(_dbsyncDashboardTimer);
+  _dbsyncDashboardTimer = setInterval(dbsyncFetchDashboard, 5000);
+};
+
+window.dbsyncCloseDashboard = function() {
+  var overlay = document.getElementById('dbsyncDashboardModal');
+  if (overlay) overlay.classList.remove('show');
+  if (_dbsyncDashboardTimer) { clearInterval(_dbsyncDashboardTimer); _dbsyncDashboardTimer = null; }
+};
+
+function dbsyncFetchDashboard() {
+  api('/api/sync-job/dashboard').then(function(res) {
+    var list = Array.isArray(res) ? res : (res.data || []);
+    dbsyncRenderDashboard(list);
+  }).catch(function() {
+    var body = document.getElementById('dbsyncDashboardBody');
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--error);padding:20px;">加载失败，请重试</td></tr>';
+  });
+}
+
+function dbsyncRenderDashboard(list) {
+  var body = document.getElementById('dbsyncDashboardBody');
+  if (!body) return;
+  if (!list || list.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">暂无任务数据</td></tr>';
+    return;
+  }
+  var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC' };
+  var html = '';
+  list.forEach(function(job) {
+    var isFailed = job.status === 'FAILED' || job.lastStatus === 'FAILED';
+    var rowStyle = isFailed ? ' style="background:rgba(255,77,79,.04);"' : '';
+    var statusCls = 'dbsync-status-badge ' + (job.status || 'CREATED');
+    var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }[job.status] || (job.status || '-');
+    var lastStatusColor = job.lastStatus === 'FAILED' ? 'color:#ff4d4f;font-weight:500;' : 'color:var(--text-muted);';
+    var lagCell = (job.cdcLagMs != null) ? (job.cdcLagMs + ' ms') : '-';
+    html += '<tr' + rowStyle + '>'
+      + '<td>' + escapeHtml(job.jobName || ('#' + job.id)) + '</td>'
+      + '<td><span class="dbsync-mode-badge ' + (job.syncMode || '') + '">' + escapeHtml(modeLabel[job.syncMode] || (job.syncMode || '-')) + '</span></td>'
+      + '<td><span class="' + statusCls + '">' + escapeHtml(statusLabel) + '</span></td>'
+      + '<td style="' + lastStatusColor + '">' + escapeHtml(job.lastStatus || '-') + '</td>'
+      + '<td>' + (job.lastReadCount != null ? job.lastReadCount : '-') + '</td>'
+      + '<td>' + (job.lastWriteCount != null ? job.lastWriteCount : '-') + '</td>'
+      + '<td style="' + (job.lastErrorCount > 0 ? 'color:#ff4d4f;font-weight:500;' : '') + '">' + (job.lastErrorCount != null ? job.lastErrorCount : '-') + '</td>'
+      + '<td>' + escapeHtml(lagCell) + '</td>'
+      + '</tr>';
+  });
+  body.innerHTML = html;
+}
+
+/* ============================================================
+ * M3c: 行数对账
+ * ============================================================ */
+window.dbsyncOpenReconcile = function(id, nm) {
+  var overlay = document.getElementById('dbsyncReconcileModal');
+  if (!overlay) return;
+  document.getElementById('dbsyncReconcileTitle').textContent = '行数对账 — ' + (nm || ('#' + id));
+  var body = document.getElementById('dbsyncReconcileBody');
+  body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">对账中，请稍候...</td></tr>';
+  overlay.classList.add('show');
+  apiPost('/api/sync-job/' + id + '/reconcile', {}).then(function(res) {
+    var data = (res && res.ok != null) ? res : (res.data || res);
+    var tables = data.tables || [];
+    var mismatch = tables.filter(function(t) { return !t.match; }).length;
+    if (tables.length === 0) {
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">暂无对账数据</td></tr>';
+      showToast('对账完成，无表数据', 'info');
+      return;
+    }
+    var html = '';
+    tables.forEach(function(t) {
+      var matchStyle = t.match ? '' : 'color:#ff4d4f;font-weight:500;';
+      var matchLabel = t.match ? '一致' : '不一致';
+      html += '<tr>'
+        + '<td>' + escapeHtml(t.table || '-') + '</td>'
+        + '<td style="text-align:right;">' + (t.sourceCount != null ? t.sourceCount : '-') + '</td>'
+        + '<td style="text-align:right;">' + (t.targetCount != null ? t.targetCount : '-') + '</td>'
+        + '<td style="' + matchStyle + '">' + matchLabel + '</td>'
+        + '</tr>';
+    });
+    body.innerHTML = html;
+    if (mismatch > 0) {
+      showToast('对账完成：' + mismatch + ' 张表不一致', 'error');
+    } else {
+      showToast('对账完成：全部表一致 ✓', 'success');
+    }
+  }).catch(function() {
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--error);padding:20px;">对账请求失败，请重试</td></tr>';
+    showToast('对账请求失败', 'error');
+  });
+};
+
+window.dbsyncCloseReconcile = function() {
+  var overlay = document.getElementById('dbsyncReconcileModal');
+  if (overlay) overlay.classList.remove('show');
+};
+
+/* ============================================================
+ * M3c: 断点管理
+ * ============================================================ */
+window.dbsyncLoadCheckpoints = function(id) {
+  var pane = document.getElementById('dbsyncDetailPane_checkpoint');
+  if (!pane) return;
+  pane.innerHTML = dbsyncDetailLoading();
+  api('/api/sync-job/' + id + '/checkpoints').then(function(res) {
+    if (_dbsyncDetailJobId !== id) return;
+    var data = (res && res.code === 0) ? (res.data || res) : (res || {});
+    // 兼容：后端直接返回对象或 {code,data} 包装
+    if (res && res.code === 0 && res.data) data = res.data;
+    dbsyncRenderCheckpoints(pane, id, data);
+  }).catch(function() {
+    if (_dbsyncDetailJobId !== id) return;
+    pane.innerHTML = '<div style="padding:24px;color:var(--error);font-size:13px;">断点加载失败，请重试</div>';
+  });
+};
+
+function dbsyncRenderCheckpoints(pane, jobId, data) {
+  var incremental = data.incremental || [];
+  var chunk = data.chunk || [];
+  var html = '';
+
+  html += '<div class="dbsync-detail-card">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7h10M7 4l3 3-3 3"/></svg> 增量水位（增量/CDC 断点）</div>';
+  if (incremental.length === 0) {
+    html += '<div style="padding:10px 0;color:var(--text-muted);font-size:12px;">暂无增量断点记录</div>';
+  } else {
+    html += '<table class="dbsync-exec-table"><thead><tr><th>表名</th><th>增量字段</th><th>当前水位值</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+    incremental.forEach(function(cp) {
+      var tbl = escapeHtml(cp.table || '-');
+      var field = escapeHtml(cp.incrementalField || '-');
+      var val = escapeHtml(String(cp.incrementalValue != null ? cp.incrementalValue : '-'));
+      html += '<tr>'
+        + '<td>' + tbl + '</td>'
+        + '<td style="font-family:monospace;">' + field + '</td>'
+        + '<td style="font-family:monospace;">' + val + '</td>'
+        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetIncrementalCp(' + jobId + ',\'' + escapeHtml(cp.table || '') + '\')">重置</button></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  html += '<div class="dbsync-detail-card" style="margin-top:10px;">'
+    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5.5h10"/></svg> Chunk 游标（分块同步断点）</div>';
+  if (chunk.length === 0) {
+    html += '<div style="padding:10px 0;color:var(--text-muted);font-size:12px;">暂无 Chunk 断点记录</div>';
+  } else {
+    html += '<table class="dbsync-exec-table"><thead><tr><th>源表</th><th>游标值</th><th>已同步行数</th><th>更新时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+    chunk.forEach(function(cp) {
+      var tbl = escapeHtml(cp.sourceTable || '-');
+      var cursor = escapeHtml(String(cp.cursorValue != null ? cp.cursorValue : '-'));
+      var rows = cp.rowCount != null ? cp.rowCount : '-';
+      var updAt = escapeHtml(dbsyncFmtTime(cp.updatedAt));
+      html += '<tr>'
+        + '<td>' + tbl + '</td>'
+        + '<td style="font-family:monospace;">' + cursor + '</td>'
+        + '<td>' + rows + '</td>'
+        + '<td style="white-space:nowrap;">' + updAt + '</td>'
+        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetChunkCp(' + jobId + ',\'' + escapeHtml(cp.sourceTable || '') + '\')">重置</button></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  pane.innerHTML = html;
+}
+
+window.dbsyncResetIncrementalCp = function(jobId, table) {
+  if (!confirm('确认重置表 [' + table + '] 的增量水位断点？重置后将从头开始增量同步。')) return;
+  apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-incremental?table=' + encodeURIComponent(table), {}).then(function() {
+    showToast('增量断点已重置', 'success');
+    dbsyncLoadCheckpoints(jobId);
+  }).catch(function() { showToast('重置失败，请重试', 'error'); });
+};
+
+window.dbsyncResetChunkCp = function(jobId, table) {
+  if (!confirm('确认重置表 [' + table + '] 的 Chunk 游标？重置后将从头开始分块同步。')) return;
+  apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-chunk?table=' + encodeURIComponent(table), {}).then(function() {
+    showToast('Chunk 断点已重置', 'success');
+    dbsyncLoadCheckpoints(jobId);
+  }).catch(function() { showToast('重置失败，请重试', 'error'); });
+};
 
 })(); // end IIFE
 </script>
