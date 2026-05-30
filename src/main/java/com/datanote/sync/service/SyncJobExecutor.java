@@ -48,6 +48,7 @@ public class SyncJobExecutor {
     private final LogBroadcastService logBroadcastService;
     private final TableSchemaService tableSchemaService;
     private final DnSyncJobMapper syncJobMapper;
+    private final AuditLogService auditLogService;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
@@ -107,6 +108,8 @@ public class SyncJobExecutor {
         }
         ctx.requestStop("manual");
         ctx.log("WARN", "收到停止请求");
+        DnSyncJob job = syncJobService.getById(jobId);
+        auditLogService.record(jobId, job == null ? null : job.getJobName(), "STOP", "manual");
         return true;
     }
 
@@ -172,6 +175,7 @@ public class SyncJobExecutor {
                 }
             }, timeoutSec, TimeUnit.SECONDS);
         }
+        auditLogService.record(jobId, job.getJobName(), "RUN", "trigger=" + triggerType);
         return execId;
     }
 

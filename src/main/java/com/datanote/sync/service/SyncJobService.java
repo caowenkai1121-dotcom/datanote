@@ -39,6 +39,7 @@ public class SyncJobService {
     private final DnDatasourceMapper datasourceMapper;
     private final ConnectionManager connectionManager;
     private final DnSyncChunkCheckpointMapper chunkCheckpointMapper;
+    private final AuditLogService auditLogService;
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -108,8 +109,11 @@ public class SyncJobService {
     public DnSyncJob save(DnSyncJob job) {
         validate(job);
         if (job.getId() != null) {
+            DnSyncJob old = syncJobMapper.selectById(job.getId());
             job.setUpdatedAt(LocalDateTime.now());
             syncJobMapper.updateById(job);
+            auditLogService.record(job.getId(), job.getJobName(), "UPDATE",
+                    "before=" + summary(old) + " after=" + summary(job));
         } else {
             job.setCreatedAt(LocalDateTime.now());
             job.setUpdatedAt(LocalDateTime.now());
@@ -117,8 +121,22 @@ public class SyncJobService {
                 job.setStatus("CREATED");
             }
             syncJobMapper.insert(job);
+            auditLogService.record(job.getId(), job.getJobName(), "CREATE", summary(job));
         }
         return job;
+    }
+
+    /** 审计摘要：关键字段 JSON（tableConfig 截断，避免过长）。 */
+    private static String summary(DnSyncJob job) {
+        if (job == null) {
+            return "null";
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("syncMode", job.getSyncMode());
+        m.put("writeMode", job.getWriteMode());
+        String tc = job.getTableConfig();
+        m.put("tableConfig", tc == null ? null : (tc.length() > 500 ? tc.substring(0, 500) + "..." : tc));
+        return JSON.toJSONString(m);
     }
 
     public void delete(Long id) {
