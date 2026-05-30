@@ -121,6 +121,64 @@ class WorkspaceDbSyncUiTest {
                 "detail drawer should have an audit pane element");
     }
 
+    @Test
+    void dashboardModalAndPollingArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncDashboardModal\""),
+                "dashboard modal overlay should have a stable id");
+        assertTrue(html.contains("id=\"dbsyncDashboardBody\""),
+                "dashboard modal should have a tbody element for rows");
+        assertTrue(html.contains("/api/sync-job/dashboard"),
+                "dashboard fetch should call /api/sync-job/dashboard");
+        assertTrue(html.contains("dbsyncOpenDashboard"),
+                "toolbar should reference dbsyncOpenDashboard function");
+        assertTrue(html.contains("dbsyncCloseDashboard"),
+                "dashboard close should call dbsyncCloseDashboard");
+        assertTrue(html.contains("_dbsyncDashboardTimer"),
+                "dashboard polling timer variable should be managed");
+        assertTrue(html.contains("clearInterval(_dbsyncDashboardTimer)"),
+                "dashboard close should clearInterval to prevent timer leak");
+        assertTrue(html.contains("setInterval(dbsyncFetchDashboard, 5000)"),
+                "dashboard should poll every 5 seconds via setInterval");
+    }
+
+    @Test
+    void reconcileButtonAndModalArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("id=\"dbsyncReconcileModal\""),
+                "reconcile modal overlay should have a stable id");
+        assertTrue(html.contains("id=\"dbsyncReconcileBody\""),
+                "reconcile modal should have a tbody element for results");
+        assertTrue(html.contains("/reconcile"),
+                "reconcile should call the /reconcile endpoint");
+        assertTrue(html.contains("dbsyncOpenReconcile"),
+                "row menu and drawer should reference dbsyncOpenReconcile function");
+        assertTrue(html.contains("dbsyncCloseReconcile"),
+                "reconcile modal should have a close function");
+    }
+
+    @Test
+    void checkpointTabAndResetActionsArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("data-tab=\"checkpoint\""),
+                "detail drawer should have a checkpoint tab button");
+        assertTrue(html.contains("id=\"dbsyncDetailPane_checkpoint\""),
+                "detail drawer should have a checkpoint pane element");
+        assertTrue(html.contains("/checkpoints"),
+                "checkpoint tab should load /api/sync-job/{id}/checkpoints");
+        assertTrue(html.contains("/checkpoint/reset-incremental"),
+                "checkpoint panel should call reset-incremental endpoint");
+        assertTrue(html.contains("/checkpoint/reset-chunk"),
+                "checkpoint panel should call reset-chunk endpoint");
+        assertTrue(html.contains("dbsyncResetIncrementalCp"),
+                "incremental checkpoint reset function should be present");
+        assertTrue(html.contains("dbsyncResetChunkCp"),
+                "chunk checkpoint reset function should be present");
+    }
+
     private static String readWorkspaceHtml() throws Exception {
         byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/workspace.html"));
         return new String(bytes, StandardCharsets.UTF_8);
