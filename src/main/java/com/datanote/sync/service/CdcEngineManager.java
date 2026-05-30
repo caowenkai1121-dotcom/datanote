@@ -243,6 +243,44 @@ public class CdcEngineManager {
         return m;
     }
 
+    /**
+     * 触发指定表的增量快照（向源库 signal 表写 execute-snapshot 信号）。
+     * 源库须已建 dn_cdc_signal 且任务开启 incrementalSnapshotEnabled。
+     */
+    public void triggerIncrementalSnapshot(Long jobId, List<String> sourceTables) {
+        DnSyncJob job = syncJobMapper.selectById(jobId);
+        if (job == null) {
+            throw new IllegalArgumentException("任务不存在: " + jobId);
+        }
+        if (job.getIncrementalSnapshotEnabled() == null || job.getIncrementalSnapshotEnabled() != 1) {
+            throw new IllegalStateException("该任务未开启增量快照");
+        }
+        DnDatasource ds = datasourceMapper.selectById(job.getSourceDsId());
+        if (ds == null) {
+            throw new IllegalArgumentException("源数据源不存在: " + job.getSourceDsId());
+        }
+        List<String> colls = new ArrayList<>();
+        for (String t : sourceTables) {
+            colls.add(job.getSourceDb() + "." + t.trim());
+        }
+        String data = com.datanote.sync.util.SignalSqlBuilder.executeSnapshotData(colls);
+        String sql = com.datanote.sync.util.SignalSqlBuilder.insertSql(job.getSourceDb());
+        // 直连源库（非池）写 signal 行
+        String url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort() + "/" + job.getSourceDb()
+                + "?useSSL=false&allowPublicKeyRetrieval=true";
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection(url, ds.getUsername(),
+                com.datanote.util.CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, java.util.UUID.randomUUID().toString());
+            ps.setString(2, "execute-snapshot");
+            ps.setString(3, data);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("写 signal 失败（源库需已建 dn_cdc_signal）: " + e.getMessage(), e);
+        }
+        log.info("已触发增量快照 jobId={} tables={}", jobId, sourceTables);
+    }
+
     private void updateStatus(Long jobId, String status) {
         DnSyncJob update = new DnSyncJob();
         update.setId(jobId);

@@ -208,6 +208,14 @@ public class CdcSyncEngine {
         props.setProperty("max.queue.size", String.valueOf(maxQueueSize));
         props.setProperty("poll.interval.ms", String.valueOf(pollIntervalMs));
         if (heartbeatIntervalMs > 0) props.setProperty("heartbeat.interval.ms", String.valueOf(heartbeatIntervalMs));
+        // M4b 增量快照（默认关）：仅开关开时加 signal 配置，关时上面 table.include.list 等保持原样
+        if (job.getIncrementalSnapshotEnabled() != null && job.getIncrementalSnapshotEnabled() == 1) {
+            String signalColl = job.getSourceDb() + ".dn_cdc_signal";
+            props.setProperty("signal.data.collection", signalColl);
+            // signal 表需在捕获范围：并入 table.include.list
+            props.setProperty("table.include.list", buildTableIncludeList() + "," + signalColl);
+            props.setProperty("read.only", "true");
+        }
         return props;
     }
 
