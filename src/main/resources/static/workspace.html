@@ -13401,6 +13401,8 @@ var _dbsyncEditId  = null;  // 当前编辑任务 ID（null=新建）
 var _dbsyncSyncMode = 'FULL'; // 当前表单同步模式
 var _dbsyncSrcTables = [];  // 源表列表缓存
 var _dbsyncFolderNavExpanded = true;
+var _dbsyncStatusFilter = 'ALL'; // 状态筛选: ALL/RUNNING/FAILED/STOPPED/CREATED
+var _dbsyncRenderBase = [];       // 当前渲染基准列表(已经过文件夹+搜索过滤)
 
 /* ---------- Tab 切换 ---------- */
 window.switchDbSyncTab = function(el, tab) {
@@ -14496,14 +14498,37 @@ window.dbsyncFilterJobs = function() {
   dbsyncRenderJobs(base.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
 };
 
+window.dbsyncSetStatusFilter = function(k) {
+  _dbsyncStatusFilter = k;
+  dbsyncRenderJobs(_dbsyncRenderBase);
+};
+
 function dbsyncRenderJobs(list) {
   var container = document.getElementById('dbsyncJobsContent');
   if (!container) return;
-  if (!list || list.length === 0) {
+  _dbsyncRenderBase = list || [];
+  var base = _dbsyncRenderBase;
+  // 整体空（无任何任务）：保留原空态
+  if (!base.length) {
     container.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text-muted);"><svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 12px;color:var(--divider);"><rect x="6" y="6" width="36" height="36" rx="4"/><path d="M16 16h16M16 24h10"/></svg><div style="font-size:13px;">暂无同步任务，点击"新建任务"开始</div></div>';
     return;
   }
-  var html = '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
+  // 状态筛选条(带实时计数)
+  var groups = [{ k: 'ALL', label: '全部' }, { k: 'RUNNING', label: '运行中' }, { k: 'FAILED', label: '失败' }, { k: 'STOPPED', label: '已停止' }, { k: 'CREATED', label: '未运行' }];
+  function cnt(k) { return k === 'ALL' ? base.length : base.filter(function(j) { return (j.status || 'CREATED') === k; }).length; }
+  var chips = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">';
+  groups.forEach(function(g) {
+    var act = _dbsyncStatusFilter === g.k;
+    chips += '<span onclick="dbsyncSetStatusFilter(\'' + g.k + '\')" style="cursor:pointer;font-size:12.5px;padding:4px 12px;border-radius:14px;transition:all .15s;border:1px solid ' + (act ? 'var(--primary)' : 'var(--border)') + ';color:' + (act ? '#fff' : 'var(--text-regular)') + ';background:' + (act ? 'var(--primary)' : '#fff') + ';">' + g.label + ' ' + cnt(g.k) + '</span>';
+  });
+  chips += '</div>';
+  var shown = _dbsyncStatusFilter === 'ALL' ? base : base.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
+  if (!shown.length) {
+    container.innerHTML = chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务</div>';
+    return;
+  }
+  var list = shown;
+  var html = chips + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
     + '<th style="width:160px;">任务名称</th>'
     + '<th style="width:90px;">同步模式</th>'
     + '<th>源端（数据源.库）</th>'
