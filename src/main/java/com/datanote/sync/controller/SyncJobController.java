@@ -39,6 +39,7 @@ public class SyncJobController {
     private final com.datanote.sync.service.CdcEngineManager cdcEngineManager;
     private final DnSyncErrorRowMapper syncErrorRowMapper;
     private final com.datanote.sync.schema.TableSchemaService tableSchemaService;
+    private final com.datanote.sync.schema.SchemaDriftService schemaDriftService;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -130,6 +131,13 @@ public class SyncJobController {
         } catch (Exception e) {
             return R.fail("样本预览失败: " + e.getMessage());
         }
+    }
+
+    @Operation(summary = "重置源表schema快照(人工确认危险漂移后恢复同步)")
+    @DeleteMapping("/{id}/schema-snapshot")
+    public R<String> resetSchemaSnapshot(@PathVariable Long id, @RequestParam String table) {
+        int n = schemaDriftService.reset(id, table);
+        return R.ok("已重置 " + n + " 条快照，下次运行将以当前 schema 重建基线");
     }
 
     @Operation(summary = "目标建表DDL预览")

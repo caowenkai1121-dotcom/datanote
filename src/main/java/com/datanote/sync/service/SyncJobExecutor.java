@@ -54,6 +54,7 @@ public class SyncJobExecutor {
     private final com.datanote.sync.connector.ConnectionManager connectionManager;
     private final AuditLogService auditLogService;
     private final AlertService alertService;
+    private final com.datanote.sync.schema.SchemaDriftService schemaDriftService;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
@@ -282,10 +283,15 @@ public class SyncJobExecutor {
         Exception caught = null;
         try {
             for (TableSyncConfig tc : tables) {
+                // DS-M7：源 schema 危险漂移(删列/改类型/改主键)→告警+跳过该表；新增列放行
+                List<ColumnDef> srcCols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
+                if (schemaDriftService.checkAndTrack(jobId, job.getJobName(), tc.getSourceTable(), srcCols)) {
+                    ctx.log("WARN", "源表 " + tc.getSourceTable() + " schema 危险漂移，跳过同步（重置快照后恢复）");
+                    continue;
+                }
                 if (Boolean.TRUE.equals(tc.getCreateTargetTable())) {
-                    List<ColumnDef> cols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
-                    // 配置了字段映射时只用选中字段建表（列名取 target、保留源类型/主键标记）
-                    cols = CreateColumnSupport.applyFieldMapping(cols, tc);
+                    // 复用上面已读取的源列定义
+                    List<ColumnDef> cols = CreateColumnSupport.applyFieldMapping(srcCols, tc);
                     // 迭代V3：标记同步时间戳时，自动建表追加一列 syncTsField（DATETIME，可空，非主键）
                     cols = CreateColumnSupport.appendSyncTsColumn(cols, job.getMarkSyncTs(), job.getSyncTsField());
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
