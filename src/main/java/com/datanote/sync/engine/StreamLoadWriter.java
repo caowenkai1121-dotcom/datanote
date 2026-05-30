@@ -113,10 +113,16 @@ public final class StreamLoadWriter {
         }
         String resp = readBody(conn, code);
         conn.disconnect();
-        if (code != 200) throw new RuntimeException("Stream Load HTTP " + code + ": " + resp);
+        // 异常信息会进日志：响应体截断，避免泄漏服务端冗长/敏感错误内容
+        if (code != 200) throw new RuntimeException("Stream Load HTTP " + code + ": " + truncate(resp, 200));
         Result r = parseResult(resp);
-        if (!r.success) throw new RuntimeException("Stream Load 失败 status=" + r.status + " msg=" + r.message);
+        if (!r.success) throw new RuntimeException("Stream Load 失败 status=" + r.status + " msg=" + truncate(r.message, 200));
         return r.loadedRows;
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) return "";
+        return s.length() > max ? s.substring(0, max) + "…" : s;
     }
 
     private static HttpURLConnection open(String url, String auth, String label, String cols, int len) throws Exception {

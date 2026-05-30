@@ -310,15 +310,18 @@ public class SyncJobController {
         m.put("paused", paused);
         m.put("failed", failed);
         // 近200次 DbSync 执行算成功率 + 今日执行聚合
+        // 仅取聚合所需列（避免加载 LONGTEXT log 列）+ 限行，防大盘 5s 轮询拖垮 DB
         java.util.List<DnTaskExecution> recent = taskExecutionMapper.selectList(
                 new LambdaQueryWrapper<DnTaskExecution>()
+                        .select(DnTaskExecution::getStatus)
                         .eq(DnTaskExecution::getTaskType, "DbSync")
                         .orderByDesc(DnTaskExecution::getId).last("LIMIT 200"));
         java.time.LocalDateTime todayStart = java.time.LocalDate.now().atStartOfDay();
         java.util.List<DnTaskExecution> today = taskExecutionMapper.selectList(
                 new LambdaQueryWrapper<DnTaskExecution>()
+                        .select(DnTaskExecution::getStatus, DnTaskExecution::getWriteCount)
                         .eq(DnTaskExecution::getTaskType, "DbSync")
-                        .ge(DnTaskExecution::getStartTime, todayStart));
+                        .ge(DnTaskExecution::getStartTime, todayStart).last("LIMIT 5000"));
         m.putAll(aggregateRuns(recent, today));
         long dlq = syncErrorRowMapper.selectCount(new LambdaQueryWrapper<DnSyncErrorRow>());
         m.put("dlqTotal", dlq);
