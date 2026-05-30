@@ -27,8 +27,188 @@
     c.appendChild(DN.h('div', { class: 'gov-h1', text: '角色', style: 'margin-top:24px' }));
     c.appendChild(DN.h('div', { id: 'rbacRoleList' }));
 
-    loadRoles().then(loadUsers);
+    // M9：脱敏策略
+    var maskBar = DN.h('div', { class: 'gov-desc', style: 'margin-top:24px' });
+    maskBar.appendChild(DN.h('span', { class: 'gov-h1', text: '脱敏策略' }));
+    maskBar.appendChild(DN.h('a', {
+      class: 'gov-btn', href: 'javascript:void(0)', text: '+ 新建脱敏策略',
+      style: 'margin-left:12px', onclick: function () { openMaskingForm(); }
+    }));
+    c.appendChild(maskBar);
+    c.appendChild(DN.h('div', { id: 'maskingPolicyList' }));
+
+    // M9：行级权限
+    var rowBar = DN.h('div', { class: 'gov-desc', style: 'margin-top:24px' });
+    rowBar.appendChild(DN.h('span', { class: 'gov-h1', text: '行级权限' }));
+    rowBar.appendChild(DN.h('a', {
+      class: 'gov-btn', href: 'javascript:void(0)', text: '+ 新建行策略',
+      style: 'margin-left:12px', onclick: function () { openRowPolicyForm(); }
+    }));
+    c.appendChild(rowBar);
+    c.appendChild(DN.h('div', { id: 'rowPolicyList' }));
+
+    loadRoles().then(loadUsers).then(loadMaskingPolicies).then(loadRowPolicies);
   };
+
+  // ============== M9 脱敏策略 ==============
+
+  function loadMaskingPolicies() {
+    return DN.get('/api/gov/masking/policies').then(function (list) {
+      var box = document.getElementById('maskingPolicyList');
+      if (!box) return;
+      box.innerHTML = '';
+      if (!list || !list.length) {
+        box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '暂无脱敏策略，请先应用 sql/39_masking.sql 或点击新建' }));
+        return;
+      }
+      var tbl = DN.h('table', { style: 'width:100%;border-collapse:collapse;background:#fff;font-size:13px' });
+      tbl.appendChild(DN.h('thead', { html: '<tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
+        th('策略名') + th('维度') + th('敏感类型') + th('库.表.列') + th('脱敏函数') + th('状态') + th('操作') + '</tr>' }));
+      var tbody = DN.h('tbody');
+      list.forEach(function (p) {
+        var loc = p.matchDim === 'COLUMN'
+          ? ((p.dbName || '') + '.' + (p.tableName || '') + '.' + (p.columnName || '')) : '-';
+        var tr = DN.h('tr');
+        tr.innerHTML = td(p.policyName || '') + td(p.matchDim || '') + td(p.sensitiveType || '-') +
+          td(loc) + td(p.maskingFunc || '') + td(p.enabled === 1 ? '启用' : '停用');
+        var ops = DN.h('td', { style: 'padding:8px;border-bottom:1px solid #f2f3f5' });
+        ops.appendChild(link('编辑', function () { openMaskingForm(p); }));
+        ops.appendChild(link('删除', function () { delMasking(p); }));
+        tr.appendChild(ops);
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
+      box.appendChild(tbl);
+    }).catch(function (e) {
+      var box = document.getElementById('maskingPolicyList');
+      if (box) box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
+    });
+  }
+
+  function openMaskingForm(p) {
+    var isEdit = !!p;
+    var nameInput = DN.h('input', { value: isEdit ? (p.policyName || '') : '', placeholder: '策略名', style: inputStyle() });
+    var dimSel = DN.h('select', { style: inputStyle() }, [
+      DN.h('option', { value: 'SENSITIVE_TYPE', text: '按敏感类型' }),
+      DN.h('option', { value: 'COLUMN', text: '按具体列' })
+    ]);
+    var stInput = DN.h('input', { value: isEdit ? (p.sensitiveType || '') : '', placeholder: 'PHONE/EMAIL/ID_CARD/BANK_CARD/USCC', style: inputStyle() });
+    var dbInput = DN.h('input', { value: isEdit ? (p.dbName || '') : '', placeholder: '库名', style: inputStyle() });
+    var tblInput = DN.h('input', { value: isEdit ? (p.tableName || '') : '', placeholder: '表名', style: inputStyle() });
+    var colInput = DN.h('input', { value: isEdit ? (p.columnName || '') : '', placeholder: '列名', style: inputStyle() });
+    var funcSel = DN.h('select', { style: inputStyle() }, [
+      DN.h('option', { value: 'MASK', text: 'MASK 掩码' }),
+      DN.h('option', { value: 'HASH', text: 'HASH (MD5)' }),
+      DN.h('option', { value: 'REPLACE', text: 'REPLACE 常量' }),
+      DN.h('option', { value: 'RANGE', text: 'RANGE 区间' })
+    ]);
+    var statusSel = DN.h('select', { style: inputStyle() }, [
+      DN.h('option', { value: '1', text: '启用' }), DN.h('option', { value: '0', text: '停用' })
+    ]);
+    if (isEdit) {
+      dimSel.value = p.matchDim || 'SENSITIVE_TYPE';
+      funcSel.value = p.maskingFunc || 'MASK';
+      statusSel.value = String(p.enabled == null ? 1 : p.enabled);
+    }
+    modal(isEdit ? '编辑脱敏策略' : '新建脱敏策略', [
+      field('策略名', nameInput), field('匹配维度', dimSel),
+      field('敏感类型（按类型时填）', stInput),
+      field('库名（按列时填）', dbInput), field('表名（按列时填）', tblInput), field('列名（按列时填）', colInput),
+      field('脱敏函数', funcSel), field('状态', statusSel)
+    ], function (close) {
+      var body = {
+        policyName: nameInput.value.trim(), matchDim: dimSel.value,
+        sensitiveType: stInput.value.trim() || null,
+        dbName: dbInput.value.trim() || null, tableName: tblInput.value.trim() || null,
+        columnName: colInput.value.trim() || null,
+        maskingFunc: funcSel.value, enabled: parseInt(statusSel.value, 10)
+      };
+      if (isEdit) body.id = p.id;
+      if (!body.policyName) { DN.toast('策略名不能为空', 'error'); return; }
+      DN.post('/api/gov/masking/policies', body)
+        .then(function () { DN.toast('保存成功'); close(); loadMaskingPolicies(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
+  }
+
+  function delMasking(p) {
+    if (!window.confirm('确认删除脱敏策略 ' + p.policyName + ' ?')) return;
+    DN.del('/api/gov/masking/policies/' + p.id)
+      .then(function () { DN.toast('已删除'); loadMaskingPolicies(); })
+      .catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  // ============== M9 行级权限 ==============
+
+  function loadRowPolicies() {
+    return DN.get('/api/gov/masking/row-policies').then(function (list) {
+      var box = document.getElementById('rowPolicyList');
+      if (!box) return;
+      box.innerHTML = '';
+      if (!list || !list.length) {
+        box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '暂无行级权限策略，点击新建' }));
+        return;
+      }
+      var tbl = DN.h('table', { style: 'width:100%;border-collapse:collapse;background:#fff;font-size:13px' });
+      tbl.appendChild(DN.h('thead', { html: '<tr style="text-align:left;color:#86909c;border-bottom:1px solid #e5e6eb">' +
+        th('角色编码') + th('库') + th('表') + th('行过滤条件') + th('状态') + th('操作') + '</tr>' }));
+      var tbody = DN.h('tbody');
+      list.forEach(function (p) {
+        var tr = DN.h('tr');
+        tr.innerHTML = td(p.roleCode || '') + td(p.dbName || '') + td(p.tableName || '') +
+          td(p.rowFilter || '') + td(p.enabled === 1 ? '启用' : '停用');
+        var ops = DN.h('td', { style: 'padding:8px;border-bottom:1px solid #f2f3f5' });
+        ops.appendChild(link('编辑', function () { openRowPolicyForm(p); }));
+        ops.appendChild(link('删除', function () { delRowPolicy(p); }));
+        tr.appendChild(ops);
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
+      box.appendChild(tbl);
+    }).catch(function (e) {
+      var box = document.getElementById('rowPolicyList');
+      if (box) box.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
+    });
+  }
+
+  function openRowPolicyForm(p) {
+    var isEdit = !!p;
+    var roleSel = DN.h('select', { style: inputStyle() }, rolesCache.map(function (r) {
+      return DN.h('option', { value: r.roleCode, text: r.roleName + ' (' + r.roleCode + ')' });
+    }));
+    var dbInput = DN.h('input', { value: isEdit ? (p.dbName || '') : '', placeholder: '库名', style: inputStyle() });
+    var tblInput = DN.h('input', { value: isEdit ? (p.tableName || '') : '', placeholder: '表名', style: inputStyle() });
+    var filterInput = DN.h('input', { value: isEdit ? (p.rowFilter || '') : '', placeholder: "行过滤片段，如 region = 'EAST'", style: inputStyle() });
+    var statusSel = DN.h('select', { style: inputStyle() }, [
+      DN.h('option', { value: '1', text: '启用' }), DN.h('option', { value: '0', text: '停用' })
+    ]);
+    if (isEdit) {
+      roleSel.value = p.roleCode || '';
+      statusSel.value = String(p.enabled == null ? 1 : p.enabled);
+    }
+    modal(isEdit ? '编辑行策略' : '新建行策略', [
+      field('角色', roleSel), field('库名', dbInput), field('表名', tblInput),
+      field('行过滤条件', filterInput), field('状态', statusSel)
+    ], function (close) {
+      var body = {
+        roleCode: roleSel.value, dbName: dbInput.value.trim(), tableName: tblInput.value.trim(),
+        rowFilter: filterInput.value.trim(), enabled: parseInt(statusSel.value, 10)
+      };
+      if (isEdit) body.id = p.id;
+      if (!body.roleCode) { DN.toast('请选择角色', 'error'); return; }
+      if (!body.dbName || !body.tableName || !body.rowFilter) { DN.toast('库名/表名/过滤条件不能为空', 'error'); return; }
+      DN.post('/api/gov/masking/row-policies', body)
+        .then(function () { DN.toast('保存成功'); close(); loadRowPolicies(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
+  }
+
+  function delRowPolicy(p) {
+    if (!window.confirm('确认删除该行策略 ?')) return;
+    DN.del('/api/gov/masking/row-policies/' + p.id)
+      .then(function () { DN.toast('已删除'); loadRowPolicies(); })
+      .catch(function (e) { DN.toast(e.message, 'error'); });
+  }
 
   function loadRoles() {
     return DN.get('/api/rbac/roles').then(function (roles) {
