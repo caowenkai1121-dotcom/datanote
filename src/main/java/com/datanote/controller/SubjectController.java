@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSubjectMapper;
 import com.datanote.model.DnSubject;
 import com.datanote.model.R;
+import com.datanote.service.SubjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.*;
 public class SubjectController {
 
     private final DnSubjectMapper subjectMapper;
+    private final SubjectService subjectService;
 
     /**
      * 获取所有主题域（平铺列表）
@@ -93,7 +95,8 @@ public class SubjectController {
     @Operation(summary = "删除主题域")
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Long id) {
-        subjectMapper.deleteById(id);
+        // 走 service 级联删除子主题，避免留下孤儿节点
+        subjectService.delete(id);
         return R.ok("删除成功");
     }
 }
