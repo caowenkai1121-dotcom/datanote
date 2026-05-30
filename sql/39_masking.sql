@@ -39,4 +39,3 @@ CREATE TABLE IF NOT EXISTS dn_row_policy (
   INDEX idx_role (role_code),
   INDEX idx_table (db_name, table_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='行级权限策略';
-</content>

@@ -59,4 +59,3 @@ INSERT INTO dn_user_role (user_id, role_id)
 SELECT u.id, r.id FROM dn_user u, dn_role r
 WHERE u.username = 'admin' AND r.role_code = 'ADMIN'
 ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
-</content>
