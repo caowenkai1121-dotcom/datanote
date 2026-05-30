@@ -3329,7 +3329,7 @@ html, body {
     </a>
     <a class="header-tab" href="#/dbsync" data-route="dbsync">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="5" cy="5" rx="3" ry="1.5"/><path d="M2 5v6c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5V5"/><path d="M2 8c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5"/><path d="M10 7h4M12 5l2 2-2 2"/></svg>
-      关系库同步
+      数据同步
     </a>
     <a class="header-tab" href="#/metrics" data-route="metrics">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V7h3v6H2zM7 13V4h3v9H7zM12 13V1h3v12h-3z"/></svg>
@@ -4218,7 +4218,7 @@ html, body {
           <!-- ===== 任务列表面板 ===== -->
           <div class="ops-dashboard" id="dbsyncJobsPanel">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">关系库同步任务</h2>
+              <h2 style="font-size:16px;font-weight:600;margin:0;">数据同步任务</h2>
               <div style="display:flex;gap:8px;align-items:center;">
                 <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名..." oninput="dbsyncFilterJobs()"
                   style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;width:180px;background:var(--bg-card);">
@@ -13380,7 +13380,13 @@ function closeAiScriptNameModal() {
 (function() {
   loadFileTree();
   loadWelcomeStats();
-  navigateTo(parseRoute());
+  // 初始路由跳转延后到全部内联脚本(含 dbsync 等后置定义的 window.* 函数)解析完成后，
+  // 否则直链/刷新 #/dbsync 时路由 init 调用尚未定义的 window.dbsyncLoadFolders 会报错、列表卡死。
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { navigateTo(parseRoute()); });
+  } else {
+    navigateTo(parseRoute());
+  }
 })();
 </script>
 <script>

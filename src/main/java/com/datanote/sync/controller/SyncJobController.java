@@ -23,7 +23,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/sync-job")
-@Tag(name = "关系库同步", description = "关系型数据库之间的同步任务管理与执行")
+@Tag(name = "数据同步", description = "数据库之间的同步任务管理与执行")
 @RequiredArgsConstructor
 public class SyncJobController {
 
