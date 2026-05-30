@@ -97,13 +97,19 @@ public class DataReconciliationService {
                 Map<Integer, long[]> srcMap = runChecksum(src, job.getSourceDb(), tc.getSourceTable(), fm.srcColumns, fm.pkSourceColumns, buckets);
                 Map<Integer, long[]> tgtMap = runChecksum(tgt, job.getTargetDb(), tc.getTargetTable(), fm.tgtColumns, fm.pkTargetColumns, buckets);
                 List<Map<String, Object>> mism = new ArrayList<>();
+                // 跨方言(如 MySQL→Doris)值序列化不同(datetime精度/decimal末尾零/float表示),
+                // MD5 内容校验不可靠;仅当源目标同方言族才比对内容校验和,否则只比对分桶行数。
+                boolean contentComparable = src.getDatabaseType().equalsIgnoreCase(tgt.getDatabaseType());
                 java.util.Set<Integer> allKeys = new java.util.TreeSet<>();
                 allKeys.addAll(srcMap.keySet());
                 allKeys.addAll(tgtMap.keySet());
                 for (Integer b : allKeys) {
                     long[] s = srcMap.getOrDefault(b, new long[]{0, 0, 0});
                     long[] t = tgtMap.getOrDefault(b, new long[]{0, 0, 0});
-                    if (s[0] != t[0] || s[1] != t[1] || s[2] != t[2]) {
+                    boolean diff = contentComparable
+                            ? (s[0] != t[0] || s[1] != t[1] || s[2] != t[2])
+                            : (s[0] != t[0]);
+                    if (diff) {
                         Map<String, Object> mb = new LinkedHashMap<>();
                         mb.put("bucket", b);
                         mb.put("sourceCnt", s[0]);
@@ -118,6 +124,10 @@ public class DataReconciliationService {
                 tr.put("bucketCount", buckets);
                 tr.put("match", match);
                 tr.put("mismatchBuckets", mism);
+                if (!contentComparable) {
+                    tr.put("note", "跨方言(" + src.getDatabaseType() + "→" + tgt.getDatabaseType()
+                            + "):值序列化差异,仅比对分桶行数,内容校验和不可靠");
+                }
             } catch (Exception e) {
                 tr.put("match", false);
                 tr.put("error", e.getMessage());
