@@ -107,6 +107,20 @@ class WorkspaceDbSyncUiTest {
                 "CDC reset should call the reset endpoint with confirm=true");
     }
 
+    @Test
+    void auditHistoryTabAndApiCallArePresent() throws Exception {
+        String html = readWorkspaceHtml();
+
+        assertTrue(html.contains("/audit"),
+                "detail drawer should call /audit endpoint for operation history");
+        assertTrue(html.contains("操作审计"),
+                "detail drawer should have an audit tab labeled '操作审计'");
+        assertTrue(html.contains("dbsyncRenderAudit"),
+                "should have a dbsyncRenderAudit function to render audit records");
+        assertTrue(html.contains("dbsyncDetailPane_audit"),
+                "detail drawer should have an audit pane element");
+    }
+
     private static String readWorkspaceHtml() throws Exception {
         byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/workspace.html"));
         return new String(bytes, StandardCharsets.UTF_8);
