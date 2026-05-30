@@ -10,16 +10,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GovernanceAssetsUiTest {
 
-    private static String gov() throws Exception {
-        return new String(Files.readAllBytes(Paths.get("src/main/resources/static/governance.html")), StandardCharsets.UTF_8);
+    private static String read(String path) throws Exception {
+        return new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
     }
 
     @Test
-    void assetsModuleIsLiveAndCallsCrawlAndList() throws Exception {
-        String html = gov();
-        assertTrue(html.contains("renderAssets"), "资产目录应有专门渲染函数");
-        assertTrue(html.contains("/api/metadata-center/crawl/all"), "应能触发全量采集");
-        assertTrue(html.contains("/api/metadata-center/collect-logs"), "应能查询采集日志");
-        assertTrue(html.contains("/api/metadata-center/tables"), "应能列出资产表元数据");
+    void assetsModuleRegistersAndCallsApis() throws Exception {
+        String js = read("src/main/resources/static/js/gov-assets.js");
+        assertTrue(js.contains("GOV_RENDERERS.assets"), "资产模块应注册到 GOV_RENDERERS");
+        assertTrue(js.contains("/api/metadata-center/crawl/all"), "应能触发全量采集");
+        assertTrue(js.contains("/api/metadata-center/collect-logs"), "应能查询采集日志");
+        assertTrue(js.contains("/api/metadata-center/tables"), "应能列出资产表元数据");
+    }
+
+    @Test
+    void governanceIncludesAssetsScript() throws Exception {
+        assertTrue(read("src/main/resources/static/governance.html").contains("js/gov-assets.js"),
+                "治理入口应预包含 gov-assets.js");
     }
 }
