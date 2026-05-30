@@ -32,6 +32,7 @@ public class SyncJobController {
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnSyncJobMapper syncJobMapper;
     private final DnSyncFolderMapper folderMapper;
+    private final com.datanote.mapper.DnSyncJobAuditMapper auditMapper;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -115,6 +116,14 @@ public class SyncJobController {
                 .orderByDesc(DnTaskExecution::getId)
                 .last("LIMIT 50");
         return R.ok(taskExecutionMapper.selectList(wrapper));
+    }
+
+    @Operation(summary = "操作审计历史")
+    @GetMapping("/{id}/audit")
+    public R<List<com.datanote.model.DnSyncJobAudit>> audit(@PathVariable Long id) {
+        return R.ok(auditMapper.selectList(new LambdaQueryWrapper<com.datanote.model.DnSyncJobAudit>()
+            .eq(com.datanote.model.DnSyncJobAudit::getJobId, id)
+            .orderByDesc(com.datanote.model.DnSyncJobAudit::getId).last("LIMIT 100")));
     }
 
     @Operation(summary = "启用定时调度")

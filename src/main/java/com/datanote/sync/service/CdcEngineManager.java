@@ -56,6 +56,8 @@ public class CdcEngineManager {
     private final TableSchemaService tableSchemaService;
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnCdcDeadLetterMapper deadLetterMapper;
+    private final AuditLogService auditLogService;
+    private final AlertService alertService;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -93,7 +95,9 @@ public class CdcEngineManager {
                             SyncJobService syncJobService,
                             TableSchemaService tableSchemaService,
                             DnTaskExecutionMapper taskExecutionMapper,
-                            DnCdcDeadLetterMapper deadLetterMapper) {
+                            DnCdcDeadLetterMapper deadLetterMapper,
+                            AuditLogService auditLogService,
+                            AlertService alertService) {
         this.offsetMapper = offsetMapper;
         this.historyMapper = historyMapper;
         this.syncJobMapper = syncJobMapper;
@@ -104,6 +108,8 @@ public class CdcEngineManager {
         this.tableSchemaService = tableSchemaService;
         this.taskExecutionMapper = taskExecutionMapper;
         this.deadLetterMapper = deadLetterMapper;
+        this.auditLogService = auditLogService;
+        this.alertService = alertService;
     }
 
     /**
@@ -208,7 +214,9 @@ public class CdcEngineManager {
         historyMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcSchemaHistory>()
                 .eq(com.datanote.model.DnCdcSchemaHistory::getJobId, jobId));
         log.warn("CDC 已重置 offset+schema_history jobId={}", jobId);
-        if (restart) { DnSyncJob job = syncJobMapper.selectById(jobId); if (job != null) doStart(job); }
+        DnSyncJob job = syncJobMapper.selectById(jobId);
+        auditLogService.record(jobId, job == null ? null : job.getJobName(), "RESET", "restart=" + restart);
+        if (restart) { if (job != null) doStart(job); }
         else { updateStatus(jobId, "STOPPED"); }
     }
 
@@ -269,6 +277,7 @@ public class CdcEngineManager {
                     engines.remove(jobId, engine);
                     finalizeExecution(jobId, "FAILED", engine);
                     updateStatus(jobId, "FAILED");
+                    alertService.alert(jobId, null, "CDC_FAILED", "CDC引擎异常退出");
                 }
             } catch (Exception e) {
                 log.warn("CDC 执行记录刷新失败 jobId={}", jobId, e);

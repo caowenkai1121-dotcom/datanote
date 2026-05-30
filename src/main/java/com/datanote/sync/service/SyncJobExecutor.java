@@ -48,6 +48,8 @@ public class SyncJobExecutor {
     private final LogBroadcastService logBroadcastService;
     private final TableSchemaService tableSchemaService;
     private final DnSyncJobMapper syncJobMapper;
+    private final AuditLogService auditLogService;
+    private final AlertService alertService;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
@@ -107,6 +109,8 @@ public class SyncJobExecutor {
         }
         ctx.requestStop("manual");
         ctx.log("WARN", "收到停止请求");
+        DnSyncJob job = syncJobService.getById(jobId);
+        auditLogService.record(jobId, job == null ? null : job.getJobName(), "STOP", "manual");
         return true;
     }
 
@@ -172,6 +176,7 @@ public class SyncJobExecutor {
                 }
             }, timeoutSec, TimeUnit.SECONDS);
         }
+        auditLogService.record(jobId, job.getJobName(), "RUN", "trigger=" + triggerType);
         return execId;
     }
 
@@ -305,6 +310,9 @@ public class SyncJobExecutor {
             if (!fi.retryable || attempt > maxRetries) {
                 syncJobService.updateStatus(job.getId(), fi.finalStatus);
                 logBroadcastService.broadcastSyncStatus(job.getId(), fi.finalStatus);
+                if ("FAILED".equals(fi.finalStatus)) {
+                    alertService.alert(job.getId(), job.getJobName(), "FAILED", "同步失败");
+                }
                 return;
             }
             int delay = com.datanote.sync.util.BackoffCalculator.delaySeconds(attempt, btype, base, 300);

@@ -27,7 +27,8 @@ class SyncJobControllerTest {
     private final SyncJobExecutor executor = mock(SyncJobExecutor.class);
     private final SyncJobController controller = new SyncJobController(
             service, executor,
-            mock(DnTaskExecutionMapper.class), mock(DnSyncJobMapper.class), mock(DnSyncFolderMapper.class));
+            mock(DnTaskExecutionMapper.class), mock(DnSyncJobMapper.class), mock(DnSyncFolderMapper.class),
+            mock(com.datanote.mapper.DnSyncJobAuditMapper.class));
 
     @Test
     void stop_hitRunningTask_returnsOk() {

@@ -4510,6 +4510,7 @@ html, body {
         <button data-tab="log" onclick="dbsyncDetailTab(this,'log')">实时日志</button>
         <button data-tab="history" onclick="dbsyncDetailTab(this,'history')">执行历史</button>
         <button data-tab="config" onclick="dbsyncDetailTab(this,'config')">同步配置</button>
+        <button data-tab="audit" onclick="dbsyncDetailTab(this,'audit')">操作审计</button>
       </div>
       <div class="dbsync-drawer-body">
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_overview"></div>
@@ -4525,6 +4526,7 @@ html, body {
         </div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_history" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="dbsyncDetailPane_config" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="dbsyncDetailPane_audit" style="display:none;"></div>
       </div>
     </aside>
     <!-- 行操作下拉菜单（全局单例，fixed 定位） -->
@@ -14749,6 +14751,7 @@ window.dbsyncOpenDetail = function(id) {
   document.getElementById('dbsyncDetailPane_overview').innerHTML = dbsyncDetailLoading();
   document.getElementById('dbsyncDetailPane_history').innerHTML = dbsyncDetailLoading();
   document.getElementById('dbsyncDetailPane_config').innerHTML = dbsyncDetailLoading();
+  document.getElementById('dbsyncDetailPane_audit').innerHTML = dbsyncDetailLoading();
   mask.classList.add('show');
   drawer.classList.add('show');
   drawer.setAttribute('aria-hidden', 'false');
@@ -14826,11 +14829,13 @@ window.dbsyncLoadDetailData = function(id) {
   // 先获取任务基础信息，再按模式决定是否拉取 CDC 指标
   Promise.all([
     api('/api/sync-job/' + id),
-    api('/api/sync-job/' + id + '/executions')
+    api('/api/sync-job/' + id + '/executions'),
+    api('/api/sync-job/' + id + '/audit').catch(function() { return null; })
   ]).then(function(r) {
     if (_dbsyncDetailJobId !== id) return; // 已切换/关闭
     var job = (r[0] && r[0].code === 0) ? (r[0].data || {}) : {};
     var execs = (r[1] && r[1].code === 0) ? (r[1].data || []) : [];
+    var audits = (r[2] && r[2].code === 0) ? (r[2].data || []) : [];
     _dbsyncDetailData = job;
     if (job.syncMode === 'CDC') {
       api('/api/cdc/' + id + '/metrics').then(function(mr) {
@@ -14845,6 +14850,7 @@ window.dbsyncLoadDetailData = function(id) {
     }
     dbsyncRenderConfig(job);
     dbsyncRenderHistory(execs);
+    dbsyncRenderAudit(audits);
   }).catch(function() {
     if (_dbsyncDetailJobId !== id) return;
     document.getElementById('dbsyncDetailPane_overview').innerHTML = '<div style="padding:24px;color:var(--error);font-size:13px;">明细加载失败，请重试</div>';
@@ -15021,6 +15027,35 @@ function dbsyncRenderHistory(execs) {
       + '<td>' + (ex.errorCount || 0) + '</td>'
       + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
       + '<td style="max-width:200px;">' + logCell + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  pane.innerHTML = html;
+}
+// 操作类型中文映射
+var _dbsyncAuditOpLabel = { CREATE: '新建', UPDATE: '修改', RUN: '运行', STOP: '停止', RESET: '重置' };
+function dbsyncRenderAudit(audits) {
+  var pane = document.getElementById('dbsyncDetailPane_audit');
+  if (!pane) return;
+  if (!audits || audits.length === 0) {
+    pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无审计记录</div>';
+    return;
+  }
+  var html = '<table class="dbsync-exec-table"><thead><tr>'
+    + '<th>操作类型</th><th>操作时间</th><th>操作人</th><th>变更详情</th>'
+    + '</tr></thead><tbody>';
+  audits.forEach(function(a) {
+    var opLabel = _dbsyncAuditOpLabel[a.operationType] || (a.operationType || '-');
+    var opColor = a.operationType === 'RUN' ? '#52c41a' : a.operationType === 'STOP' ? '#ff4d4f' : 'var(--primary)';
+    var detail = a.changeDetail ? String(a.changeDetail) : '';
+    var detailCell = detail
+      ? '<span title="' + escapeHtml(detail) + '">' + escapeHtml(detail.length > 60 ? detail.slice(0, 60) + '…' : detail) + '</span>'
+      : '-';
+    html += '<tr>'
+      + '<td><span style="color:' + opColor + ';font-weight:500;">' + escapeHtml(opLabel) + '</span></td>'
+      + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(a.createdAt)) + '</td>'
+      + '<td>' + escapeHtml(a.operator || '-') + '</td>'
+      + '<td style="max-width:260px;word-break:break-all;">' + detailCell + '</td>'
       + '</tr>';
   });
   html += '</tbody></table>';
