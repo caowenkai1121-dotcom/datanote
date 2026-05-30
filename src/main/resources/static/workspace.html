@@ -2751,6 +2751,7 @@ html, body {
 .tag-ready { background: rgba(82,196,26,.1); color: var(--success); }
 .tag-dev { background: rgba(250,140,22,.1); color: var(--warning); }
 .tag-plan { background: rgba(24,144,255,.08); color: var(--primary); }
+.tag-live { background: rgba(82,196,26,.1); color: var(--success); }
 .ic-blue { background: rgba(24,144,255,.08); }
 .ic-blue svg { color: var(--primary); }
 .ic-green { background: rgba(82,196,26,.08); }
@@ -5137,7 +5138,7 @@ html, body {
 <div id="viewGovernance" class="page-view" style="display:none">
   <div class="section-title">治理模块</div>
   <div class="module-grid">
-    <a class="module-card" href="#">
+    <a class="module-card" href="governance.html#assets">
       <div class="m-icon ic-purple">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="10" cy="5.5" rx="7" ry="2.8"/><path d="M3 5.5v4.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V5.5"/><path d="M3 10v4.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V10"/></svg>
       </div>
@@ -5147,17 +5148,17 @@ html, body {
         <span class="m-tag tag-plan">规划中</span>
       </div>
     </a>
-    <a class="module-card" href="#">
+    <a class="module-card" href="#/quality">
       <div class="m-icon ic-cyan">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l7 4v5c0 3.5-3 6.2-7 7-4-.8-7-3.5-7-7V6l7-4z"/><path d="M7.5 10l1.8 1.8 3.5-3.5"/></svg>
       </div>
       <div class="m-body">
         <h4>数据质量</h4>
         <p>数据校验规则配置、质量报告看板，保障数据准确性和完整性</p>
-        <span class="m-tag tag-plan">规划中</span>
+        <span class="m-tag tag-live">已上线</span>
       </div>
     </a>
-    <a class="module-card" href="#">
+    <a class="module-card" href="governance.html#standard">
       <div class="m-icon ic-blue">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 7h6M7 10h4M7 13h5"/></svg>
       </div>
@@ -5167,7 +5168,7 @@ html, body {
         <span class="m-tag tag-plan">规划中</span>
       </div>
     </a>
-    <a class="module-card" href="#">
+    <a class="module-card" href="governance.html#lineage">
       <div class="m-icon ic-green">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="2.5"/><circle cx="14" cy="6" r="2.5"/><circle cx="10" cy="14" r="2.5"/><path d="M8 7l2 5M12 7l-2 5"/></svg>
       </div>
@@ -5177,7 +5178,7 @@ html, body {
         <span class="m-tag tag-plan">规划中</span>
       </div>
     </a>
-    <a class="module-card" href="#">
+    <a class="module-card" href="governance.html">
       <div class="m-icon ic-orange">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17V7l7-5 7 5v10H3z"/><rect x="7" y="11" width="6" height="6" rx="1"/></svg>
       </div>
@@ -5187,7 +5188,7 @@ html, body {
         <span class="m-tag tag-plan">规划中</span>
       </div>
     </a>
-    <a class="module-card" href="#">
+    <a class="module-card" href="governance.html#security">
       <div class="m-icon ic-red">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3a7 7 0 110 14 7 7 0 010-14z"/><path d="M10 7v4M10 13h.01"/></svg>
       </div>
@@ -9760,7 +9761,8 @@ var ROUTES = {
     }
   },
   'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData(); } },
-  'governance':  { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
+  'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() {} },
+  'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },
