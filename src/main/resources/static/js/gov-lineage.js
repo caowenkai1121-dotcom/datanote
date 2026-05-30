@@ -3,15 +3,18 @@
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
+  // 三处库表选择器（替代自由文本框，级联真实元数据）
+  var lnPicker = null, impPicker = null, grPicker = null;
+
   window.GOV_RENDERERS.lineage = function (c) {
     var bar = DN.h('div', { class: 'gov-desc' });
-    bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
+    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
       onclick: function () {
         DN.post('/api/lineage/rebuild-edges').then(function (r) {
           DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边');
         }).catch(function (e) { DN.toast(e.message, 'error'); });
       } }));
-    bar.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘',
+    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘',
       style: 'margin-left:8px',
       onclick: function () {
         DN.post('/api/lineage/parse-scripts').then(function (r) {
@@ -20,44 +23,37 @@
       } }));
     c.appendChild(bar);
 
-    var q = DN.h('div', { class: 'gov-desc' });
-    var inDb = DN.h('input', { id: 'lnDb', placeholder: '库名(如 ods)',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    var inTab = DN.h('input', { id: 'lnTable', placeholder: '表名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    var btn = DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '查询血缘',
-      onclick: queryLineage, style: 'margin-top:0' });
-    q.appendChild(inDb); q.appendChild(inTab); q.appendChild(btn);
+    var q = DN.h('div', { class: 'gov-desc', style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
+    lnPicker = DN.dbTablePicker({});
+    q.appendChild(lnPicker.el);
+    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '查询血缘',
+      onclick: queryLineage }));
     c.appendChild(q);
 
     c.appendChild(DN.h('div', { id: 'lnResult' }));
 
     // 影响/溯源查询区（基于 dn_lineage_edge 表级 BFS）
-    var iq = DN.h('div', { class: 'gov-desc', style: 'margin-top:16px;border-top:1px solid #e5e6eb;padding-top:12px' });
-    var iDb = DN.h('input', { id: 'impDb', placeholder: '库名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    var iTab = DN.h('input', { id: 'impTable', placeholder: '表名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    iq.appendChild(iDb); iq.appendChild(iTab);
-    iq.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '下游影响',
-      onclick: function () { queryFlow('impact'); }, style: 'margin-top:0' }));
-    iq.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '上游溯源',
-      onclick: function () { queryFlow('trace'); }, style: 'margin-top:0;margin-left:8px' }));
+    var iq = DN.h('div', { class: 'gov-desc', style: 'margin-top:16px;border-top:1px solid #e5e6eb;padding-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
+    impPicker = DN.dbTablePicker({});
+    iq.appendChild(impPicker.el);
+    iq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '下游影响',
+      onclick: function () { queryFlow('impact'); } }));
+    iq.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上游溯源',
+      onclick: function () { queryFlow('trace'); } }));
     c.appendChild(iq);
     c.appendChild(DN.h('div', { id: 'impResult' }));
 
     // 血缘图谱（交互式 SVG 有向图）
-    var gq = DN.h('div', { class: 'gov-desc', style: 'margin-top:16px;border-top:1px solid #e5e6eb;padding-top:12px' });
-    gq.appendChild(DN.h('b', { text: '血缘图谱', style: 'margin-right:12px' }));
-    var gDb = DN.h('input', { id: 'grDb', placeholder: '库名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    var gTab = DN.h('input', { id: 'grTable', placeholder: '表名',
-      style: 'padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
+    var gq = DN.h('div', { class: 'gov-desc', style: 'margin-top:16px;border-top:1px solid #e5e6eb;padding-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
+    gq.appendChild(DN.h('b', { text: '血缘图谱' }));
+    grPicker = DN.dbTablePicker({});
+    gq.appendChild(grPicker.el);
+    gq.appendChild(DN.h('span', { text: '跳数', style: 'color:#86909c;font-size:13px' }));
     var gDep = DN.h('input', { id: 'grDepth', type: 'number', value: '2', min: '1', max: '6',
-      title: '跳数', style: 'width:60px;padding:6px 10px;border:1px solid #d4d7de;border-radius:6px;margin-right:8px' });
-    gq.appendChild(gDb); gq.appendChild(gTab); gq.appendChild(gDep);
-    gq.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '画血缘图',
-      onclick: queryGraph, style: 'margin-top:0' }));
+      class: 'iw-form-input', title: '跳数', style: 'width:60px' });
+    gq.appendChild(gDep);
+    gq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '画血缘图',
+      onclick: queryGraph }));
     c.appendChild(gq);
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'color:#86909c;font-size:12px',
       html: '<span style="display:inline-block;width:12px;height:12px;background:#165dff;vertical-align:middle;margin-right:4px"></span>中心表 ' +
@@ -74,10 +70,10 @@
   }
 
   function queryGraph() {
-    var db = document.getElementById('grDb').value.trim();
-    var table = document.getElementById('grTable').value.trim();
+    var db = grPicker.db();
+    var table = grPicker.table();
     var depth = parseInt(document.getElementById('grDepth').value, 10) || 2;
-    if (!db || !table) { DN.toast('请输入库名与表名', 'error'); return; }
+    if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('graphResult');
     box.innerHTML = '加载中...';
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table) + '&depth=' + depth;
@@ -221,9 +217,9 @@
   }
 
   function queryFlow(kind) {
-    var db = document.getElementById('impDb').value.trim();
-    var table = document.getElementById('impTable').value.trim();
-    if (!db || !table) { DN.toast('请输入库名与表名', 'error'); return; }
+    var db = impPicker.db();
+    var table = impPicker.table();
+    if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('impResult');
     box.innerHTML = '加载中...';
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
@@ -244,9 +240,9 @@
   }
 
   function queryLineage() {
-    var db = document.getElementById('lnDb').value.trim();
-    var table = document.getElementById('lnTable').value.trim();
-    if (!db || !table) { DN.toast('请输入库名与表名', 'error'); return; }
+    var db = lnPicker.db();
+    var table = lnPicker.table();
+    if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('lnResult');
     box.innerHTML = '加载中...';
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
