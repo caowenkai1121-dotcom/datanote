@@ -7,16 +7,20 @@
   var LAYERS = ['DWD', 'DIM', 'DWS', 'ADS', 'ALL'];
 
   window.GOV_RENDERERS.subject = function (c) {
+    var card = DN.card({ title: '主题域', icon: 'layers' });
+    c.appendChild(card.el);
+
     var form = buildForm(function () { reload(list, form); });
-    c.appendChild(form.el);
+    card.body.appendChild(form.el);
     var list = DN.h('div', { id: 'subjectList' });
-    c.appendChild(list);
+    card.body.appendChild(list);
+    list.appendChild(DN.skeleton(4));
     reload(list, form);
   };
 
-  // ========== 新增表单 ==========
+  // ========== 新增表单（就近 .gov-form，父主题/分层下拉保留） ==========
   function buildForm(onSaved) {
-    var box = DN.h('div', { class: 'gov-desc', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' });
+    var box = DN.h('div', { class: 'gov-form', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px' });
     var name = inp('主题名称');
     var parent = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
     var layer = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
@@ -38,7 +42,7 @@
         }).catch(function (e) { DN.toast(e.message, 'error'); });
       }
     });
-    box.appendChild(DN.h('span', { text: '父主题：', style: 'color:#86909c;margin-right:4px' }));
+    box.appendChild(DN.h('span', { text: '父主题：', style: 'color:var(--text-muted,#86909c);margin-right:4px' }));
     box.appendChild(parent);
     box.appendChild(name);
     box.appendChild(layer);
@@ -53,14 +57,14 @@
       data = data || [];
       fillParentOptions(form.parentSel, data);
       list.innerHTML = '';
-      if (!data.length) { list.appendChild(DN.h('div', { class: 'gov-placeholder', text: '暂无主题域' })); return; }
+      if (!data.length) { list.appendChild(DN.empty('暂无主题域', 'layers')); return; }
       var tree = buildTree(data, null);
-      var ul = DN.h('div', { style: 'margin-top:8px' });
+      var ul = DN.h('div', {});
       renderNodes(tree, ul, 0, function () { reload(list, form); });
       list.appendChild(ul);
     }).catch(function (e) {
       list.innerHTML = '';
-      list.appendChild(DN.h('div', { class: 'gov-placeholder', text: '加载失败: ' + e.message }));
+      list.appendChild(DN.empty('加载失败: ' + e.message, 'alert'));
     });
   }
 
@@ -89,23 +93,29 @@
 
   function renderNodes(nodes, container, depth, reloadFn) {
     nodes.forEach(function (n) {
+      var hasChild = !!(n.children && n.children.length);
       var row = DN.h('div', {
-        style: 'display:flex;align-items:center;padding:6px 8px;border-bottom:1px solid #f2f3f5;' +
-          'padding-left:' + (8 + depth * 22) + 'px'
+        style: 'display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--divider,#f3f4f6);' +
+          'padding-left:' + (12 + depth * 22) + 'px'
       });
+      // 层级图标：父节点用 layers，叶子用 doc
       row.appendChild(DN.h('span', {
-        text: (n.children && n.children.length ? '▸ ' : '· ') + n.name,
-        style: 'flex:1;font-size:13px'
+        class: 'subj-ic', html: DN.icon(hasChild ? 'layers' : 'doc'),
+        style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#1890ff);margin-right:8px;flex:none'
       }));
-      row.appendChild(DN.h('span', { text: n.layer || 'ALL', style: 'color:#86909c;font-size:12px;margin-right:12px' }));
-      row.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#165dff);margin-right:10px',
+      row.appendChild(DN.h('span', {
+        text: n.name, style: 'flex:1;font-size:13px;color:var(--text-regular,#1f2329)'
+      }));
+      row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
+      var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
+      ops.appendChild(DN.h('a', {
+        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff);font-size:13px;margin-right:12px',
         onclick: function () { editNode(n, reloadFn); }
       }));
-      row.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)',
+      ops.appendChild(DN.h('a', {
+        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#ff4d4f);font-size:13px',
         onclick: function () {
-          var tip = (n.children && n.children.length)
+          var tip = hasChild
             ? '主题「' + n.name + '」含 ' + n.children.length + ' 个子主题，将一并级联删除，确认？'
             : '确认删除主题「' + n.name + '」？';
           confirmModal(tip, function () {
@@ -114,8 +124,9 @@
           });
         }
       }));
+      row.appendChild(ops);
       container.appendChild(row);
-      if (n.children && n.children.length) renderNodes(n.children, container, depth + 1, reloadFn);
+      if (hasChild) renderNodes(n.children, container, depth + 1, reloadFn);
     });
   }
 
