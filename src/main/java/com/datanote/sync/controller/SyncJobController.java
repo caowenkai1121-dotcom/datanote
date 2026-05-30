@@ -138,6 +138,10 @@ public class SyncJobController {
     public R<java.util.List<String>> matchTables(@RequestParam Long dsId, @RequestParam String db,
                                                  @RequestParam(required = false) String include,
                                                  @RequestParam(required = false) String exclude) {
+        // 正则长度护栏：限制用户正则长度，缓解 ReDoS（叠加鉴权 + 表名短，风险可控）
+        if ((include != null && include.length() > 200) || (exclude != null && exclude.length() > 200)) {
+            return R.fail("正则表达式过长（>200 字符）");
+        }
         try {
             com.datanote.sync.connector.DbConnector c = syncJobService.buildConnector(dsId, db);
             java.util.List<String> all = c.listTables(db);

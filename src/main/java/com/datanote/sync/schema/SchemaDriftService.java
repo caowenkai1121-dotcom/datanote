@@ -44,9 +44,20 @@ public class SchemaDriftService {
             save(null, jobId, sourceTable, cur, curPk);
             return false;
         }
-        Map<String, String> prev = JSON.parseObject(snap.getColumnsJson() == null ? "{}" : snap.getColumnsJson(),
-                new TypeReference<LinkedHashMap<String, String>>() {});
-        List<String> prevPk = JSON.parseArray(snap.getPkJson() == null ? "[]" : snap.getPkJson(), String.class);
+        Map<String, String> prev;
+        List<String> prevPk;
+        try {
+            prev = JSON.parseObject(snap.getColumnsJson() == null ? "{}" : snap.getColumnsJson(),
+                    new TypeReference<LinkedHashMap<String, String>>() {});
+            prevPk = JSON.parseArray(snap.getPkJson() == null ? "[]" : snap.getPkJson(), String.class);
+            if (prev == null) prev = new LinkedHashMap<>();
+            if (prevPk == null) prevPk = new ArrayList<>();
+        } catch (Exception ex) {
+            // 快照损坏（截断/非法JSON）：以当前 schema 重建基线，不阻断、不崩溃
+            log.warn("schema 快照解析失败，以当前 schema 重建基线 jobId={} table={}: {}", jobId, sourceTable, ex.getMessage());
+            save(snap.getId(), jobId, sourceTable, cur, curPk);
+            return false;
+        }
         SchemaDriftClassifier.Result r = SchemaDriftClassifier.classify(prev, prevPk, cur, curPk);
         if (r.dangerous()) {
             StringBuilder sb = new StringBuilder("源表 ").append(sourceTable).append(" schema 危险漂移:");

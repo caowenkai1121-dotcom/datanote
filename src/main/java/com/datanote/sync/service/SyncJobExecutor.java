@@ -282,8 +282,10 @@ public class SyncJobExecutor {
         String finalStatus;
         Exception caught = null;
         try {
+            // DS-M7：漂移阻断的表不进入引擎；仅对放行表建表，并以放行表列表驱动引擎
+            List<TableSyncConfig> toSync = new java.util.ArrayList<>();
             for (TableSyncConfig tc : tables) {
-                // DS-M7：源 schema 危险漂移(删列/改类型/改主键)→告警+跳过该表；新增列放行
+                // 源 schema 危险漂移(删列/改类型/改主键)→告警+跳过该表；新增列放行
                 List<ColumnDef> srcCols = source.getColumnDefs(job.getSourceDb(), tc.getSourceTable());
                 if (schemaDriftService.checkAndTrack(jobId, job.getJobName(), tc.getSourceTable(), srcCols)) {
                     ctx.log("WARN", "源表 " + tc.getSourceTable() + " schema 危险漂移，跳过同步（重置快照后恢复）");
@@ -297,7 +299,10 @@ public class SyncJobExecutor {
                     tableSchemaService.ensureTargetTable(target, job.getTargetDb(), tc.getTargetTable(), cols);
                     ctx.log("INFO", "目标表就绪: " + tc.getTargetTable());
                 }
+                toSync.add(tc);
             }
+            // 仅放行表交给引擎（漂移阻断表既不建表也不同步、不推进断点）
+            ctx.setTables(toSync);
 
             SyncEngine engine = SyncEngineFactory.get(syncMode);
             engine.sync(ctx);
