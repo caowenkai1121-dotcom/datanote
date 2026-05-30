@@ -29,7 +29,7 @@ class GovernanceClassificationUiTest {
 
     @Test
     void governanceIncludesClassificationScript() throws Exception {
-        assertTrue(read("src/main/resources/static/governance.html").contains("js/gov-classification.js"),
+        assertTrue(read("src/main/resources/static/workspace.html").contains("js/gov-classification.js"),
                 "治理入口应预包含 gov-classification.js");
     }
 }

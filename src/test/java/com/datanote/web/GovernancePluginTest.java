@@ -20,7 +20,7 @@ class GovernancePluginTest {
 
     @Test
     void preIncludesAllModuleScripts() throws Exception {
-        String html = read("src/main/resources/static/governance.html");
+        String html = read("src/main/resources/static/workspace.html");
         String[] scripts = {"js/gov-standard.js", "js/gov-classification.js",
                 "js/gov-security.js", "js/gov-health.js", "js/gov-quality.js", "js/gov-audit.js"};
         for (String s : scripts) {
@@ -30,7 +30,7 @@ class GovernancePluginTest {
 
     @Test
     void usesRendererRegistry() throws Exception {
-        assertTrue(read("src/main/resources/static/governance.html").contains("GOV_RENDERERS"),
+        assertTrue(read("src/main/resources/static/workspace.html").contains("GOV_RENDERERS"),
                 "治理入口应据 GOV_RENDERERS 注册表渲染");
         assertTrue(read("src/main/resources/static/js/dn-common.js").contains("GOV_RENDERERS"),
                 "公共层应初始化 GOV_RENDERERS 注册表");

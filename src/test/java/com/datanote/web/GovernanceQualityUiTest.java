@@ -26,7 +26,7 @@ class GovernanceQualityUiTest {
 
     @Test
     void governanceIncludesQualityScript() throws Exception {
-        assertTrue(read("src/main/resources/static/governance.html").contains("js/gov-quality.js"),
+        assertTrue(read("src/main/resources/static/workspace.html").contains("js/gov-quality.js"),
                 "治理入口应预包含 gov-quality.js");
     }
 }

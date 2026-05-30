@@ -30,7 +30,7 @@ class GovernanceHealthUiTest {
 
     @Test
     void governanceIncludesHealthScript() throws Exception {
-        assertTrue(read("src/main/resources/static/governance.html").contains("js/gov-health.js"),
+        assertTrue(read("src/main/resources/static/workspace.html").contains("js/gov-health.js"),
                 "治理入口应预包含 gov-health.js");
     }
 }

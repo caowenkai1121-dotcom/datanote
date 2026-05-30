@@ -3275,6 +3275,27 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
+<!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS) -->
+<script src="js/dn-common.js"></script>
+<script src="js/gov-assets.js"></script>
+<script src="js/gov-lineage.js"></script>
+<script src="js/gov-quality.js"></script>
+<script src="js/gov-standard.js"></script>
+<script src="js/gov-classification.js"></script>
+<script src="js/gov-security.js"></script>
+<script src="js/gov-health.js"></script>
+<script src="js/gov-audit.js"></script>
+<style>
+  #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
+  #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
+  #govModuleContent .gov-placeholder { background:var(--bg-card,#fff); border:1px dashed var(--border,#d4d7de); border-radius:8px; padding:40px; text-align:center; color:var(--text-muted,#86909c); }
+  #govModuleContent .gov-placeholder .ms { display:inline-block; margin-top:10px; font-size:12px; color:var(--primary); background:var(--primary-light); padding:3px 10px; border-radius:10px; }
+  #govModuleContent .gov-btn { display:inline-block; margin-top:12px; background:var(--primary); color:#fff; text-decoration:none; padding:7px 16px; border-radius:6px; font-size:13px; cursor:pointer; }
+  #govModuleContent .gov-btn:hover { background:var(--primary-hover); }
+  #govModuleContent .badge { font-size:11px; padding:1px 6px; border-radius:8px; }
+  .dn-toast { position:fixed; top:64px; left:50%; transform:translateX(-50%) translateY(-10px); background:#1f2329; color:#fff; padding:8px 16px; border-radius:6px; font-size:13px; opacity:0; transition:all .3s; z-index:99999; }
+  .dn-toast-show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
 
 <!-- ===== Header ===== -->
 <div class="dev-header">
@@ -5134,70 +5155,13 @@ html, body {
   </div>
 </div>
 
-<!-- Governance Page -->
-<div id="viewGovernance" class="page-view" style="display:none">
-  <div class="section-title">治理模块</div>
-  <div class="module-grid">
-    <a class="module-card" href="governance.html#assets">
-      <div class="m-icon ic-purple">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="10" cy="5.5" rx="7" ry="2.8"/><path d="M3 5.5v4.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V5.5"/><path d="M3 10v4.5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V10"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>数据资产</h4>
-        <p>元数据管理、数据目录、表血缘追踪，全方位掌握数据全貌</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
-    <a class="module-card" href="#/quality">
-      <div class="m-icon ic-cyan">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l7 4v5c0 3.5-3 6.2-7 7-4-.8-7-3.5-7-7V6l7-4z"/><path d="M7.5 10l1.8 1.8 3.5-3.5"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>数据质量</h4>
-        <p>数据校验规则配置、质量报告看板，保障数据准确性和完整性</p>
-        <span class="m-tag tag-live">已上线</span>
-      </div>
-    </a>
-    <a class="module-card" href="governance.html#standard">
-      <div class="m-icon ic-blue">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 7h6M7 10h4M7 13h5"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>数据标准</h4>
-        <p>命名规范、词根字典、编码规则，统一全域数据标准体系</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
-    <a class="module-card" href="governance.html#lineage">
-      <div class="m-icon ic-green">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="2.5"/><circle cx="14" cy="6" r="2.5"/><circle cx="10" cy="14" r="2.5"/><path d="M8 7l2 5M12 7l-2 5"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>血缘分析</h4>
-        <p>字段级血缘追踪，可视化数据流转路径和上下游依赖</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
-    <a class="module-card" href="governance.html">
-      <div class="m-icon ic-orange">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17V7l7-5 7 5v10H3z"/><rect x="7" y="11" width="6" height="6" rx="1"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>数仓规范</h4>
-        <p>分层设计、主题划分、表设计规范、SQL 开发规约</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
-    <a class="module-card" href="governance.html#security">
-      <div class="m-icon ic-red">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3a7 7 0 110 14 7 7 0 010-14z"/><path d="M10 7v4M10 13h.01"/></svg>
-      </div>
-      <div class="m-body">
-        <h4>安全管理</h4>
-        <p>敏感数据识别、权限管控、数据脱敏和访问审计</p>
-        <span class="m-tag tag-plan">规划中</span>
-      </div>
-    </a>
+<!-- Governance Page — 治理中心(原生 ops-sidebar,与数据运维/质量风格统一) -->
+<div id="viewGovernance" class="page-view" style="display:none; max-width:none; padding:0;">
+  <div class="ops-layout">
+    <div class="ops-sidebar" id="govSidebar"></div>
+    <div class="ops-main" style="flex:1; min-width:0; padding:24px 28px; overflow-y:auto;">
+      <div id="govModuleContent"></div>
+    </div>
   </div>
 </div>
 
@@ -9748,6 +9712,51 @@ function addKeywordNewlines(sql) {
 }
 
 // ===== Route Configuration =====
+// ===== 数据治理中心：原生 ops-sidebar + gov-*.js 插件渲染 =====
+var GOV_MODS = [
+  { key: 'assets',         label: '资产目录',   desc: '元数据自动采集、数据目录、资产盘点与生命周期' },
+  { key: 'lineage',        label: '数据血缘',   desc: '字段级血缘、SQL 解析、影响分析与溯源' },
+  { key: 'quality',        label: '数据质量',   desc: '质量规则、调度、阈值告警、评分与趋势' },
+  { key: 'standard',       label: '数据标准',   desc: '数据元、命名词根、码表与落标稽核' },
+  { key: 'classification', label: '分类分级',   desc: '国家三级/金融五级分级、敏感识别与打标' },
+  { key: 'security',       label: '数据安全',   desc: 'RBAC、行列权限、动态脱敏' },
+  { key: 'health',         label: '治理健康分', desc: '五维健康分、治理工单与 DCMM 成熟度自评' },
+  { key: 'audit',          label: '审计中心',   desc: '登录/数据访问/导出/权限变更等全局审计' }
+];
+function initGovCenter() {
+  var sb = document.getElementById('govSidebar');
+  if (!sb) return;
+  sb.innerHTML = '';
+  GOV_MODS.forEach(function(m, idx) {
+    var it = document.createElement('div');
+    it.className = 'ops-sidebar-item' + (idx === 0 ? ' active' : '');
+    it.textContent = m.label;
+    it.onclick = function() { switchGovModule(it, m.key); };
+    sb.appendChild(it);
+  });
+  if (sb.firstChild) switchGovModule(sb.firstChild, GOV_MODS[0].key);
+}
+function switchGovModule(el, key) {
+  var sb = document.getElementById('govSidebar');
+  if (sb) sb.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var c = document.getElementById('govModuleContent');
+  if (!c) return;
+  c.innerHTML = '';
+  var meta = GOV_MODS.filter(function(m) { return m.key === key; })[0] || { label: key, desc: '' };
+  var h = document.createElement('div'); h.className = 'gov-h1'; h.textContent = meta.label; c.appendChild(h);
+  var d = document.createElement('div'); d.className = 'gov-desc'; d.textContent = meta.desc; c.appendChild(d);
+  var r = (window.GOV_RENDERERS || {})[key];
+  if (typeof r === 'function') {
+    try { r(c); } catch (e) {
+      var err = document.createElement('div'); err.className = 'gov-placeholder';
+      err.textContent = '模块加载失败: ' + (e && e.message ? e.message : e); c.appendChild(err);
+    }
+  } else {
+    var p = document.createElement('div'); p.className = 'gov-placeholder'; p.textContent = '该模块建设中'; c.appendChild(p);
+  }
+}
+
 var ROUTES = {
   'home':        { view: 'viewHome',               layout: 'page',   init: function() { loadDashboard(); } },
   'develop':     { view: null,                      layout: 'editor', init: null },
@@ -9761,8 +9770,7 @@ var ROUTES = {
     }
   },
   'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData(); } },
-  'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() {} },
-  'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
+  'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter(); } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: null },

@@ -25,7 +25,7 @@ class GovernanceLineageUiTest {
 
     @Test
     void governanceIncludesLineageScript() throws Exception {
-        assertTrue(read("src/main/resources/static/governance.html").contains("js/gov-lineage.js"),
+        assertTrue(read("src/main/resources/static/workspace.html").contains("js/gov-lineage.js"),
                 "治理入口应预包含 gov-lineage.js");
     }
 }

@@ -8,6 +8,10 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * 治理中心已原生整合进工作台(workspace.html)：header tab「数据治理」→ ops-sidebar 8 模块,
+ * 各 gov-*.js 自注册到 GOV_RENDERERS,switchGovModule 渲染到内容区。独立 governance.html 改为重定向。
+ */
 class GovernanceShellTest {
 
     private static String read(String path) throws Exception {
@@ -23,29 +27,31 @@ class GovernanceShellTest {
     }
 
     @Test
-    void governanceHtmlHasNavAndLoadsCommon() throws Exception {
-        String html = read("src/main/resources/static/governance.html");
-        assertTrue(html.contains("js/dn-common.js"), "治理入口应加载 dn-common.js");
-        assertTrue(html.contains("GOV_MODULES"), "治理入口应有模块注册表");
-        assertTrue(html.contains("数据标准") && html.contains("分类分级") && html.contains("治理健康分"),
-                "导航应含规划中的治理模块");
-        assertTrue(html.contains("workspace.html#/quality"), "质量模块应链入工作台质量路由");
+    void governanceIntegratedIntoWorkspace() throws Exception {
+        String ws = read("src/main/resources/static/workspace.html");
+        assertTrue(ws.contains("js/dn-common.js"), "工作台应加载治理公共层");
+        assertTrue(ws.contains("id=\"govSidebar\""), "应有原生 ops-sidebar 治理菜单容器");
+        assertTrue(ws.contains("function initGovCenter"), "应有 initGovCenter 构建侧边菜单");
+        assertTrue(ws.contains("function switchGovModule"), "应有 switchGovModule 渲染模块");
+        assertTrue(ws.contains("var GOV_MODS"), "应有治理模块清单");
+        assertTrue(ws.contains("数据标准") && ws.contains("分类分级")
+                        && ws.contains("治理健康分") && ws.contains("审计中心"),
+                "ops-sidebar 应含各治理模块");
     }
 
     @Test
-    void workspaceRoutesGovernanceToHubAndKeepsQuality() throws Exception {
-        String html = read("src/main/resources/static/workspace.html");
-        assertTrue(html.contains("'governance':  { view: 'viewGovernance'"),
-                "#/governance 应指向治理启动页 viewGovernance");
-        assertTrue(html.contains("'quality':"),
-                "应新增 #/quality 路由保证质量页可达");
+    void workspaceRoutesGovernanceAndQuality() throws Exception {
+        String ws = read("src/main/resources/static/workspace.html");
+        assertTrue(ws.contains("'governance':  { view: 'viewGovernance'"),
+                "#/governance 应指向治理视图");
+        assertTrue(ws.contains("initGovCenter();"), "数据治理路由 init 应构建治理中心");
+        assertTrue(ws.contains("'quality':"), "应保留 #/quality 路由");
     }
 
     @Test
-    void governanceHubCardsAreWired() throws Exception {
-        String html = read("src/main/resources/static/workspace.html");
-        assertTrue(html.contains("href=\"#/quality\""), "数据质量卡片应链到 #/quality");
-        assertTrue(html.contains("href=\"governance.html#standard\""), "数据标准卡片应链到 governance.html");
-        assertTrue(html.contains("href=\"governance.html#security\""), "安全管理卡片应链到 governance.html");
+    void governanceHtmlRedirectsToWorkspace() throws Exception {
+        String gov = read("src/main/resources/static/governance.html");
+        assertTrue(gov.contains("workspace.html#/governance"), "独立页应重定向到工作台治理入口");
+        assertTrue(gov.contains("location.replace"), "应用 location.replace 重定向");
     }
 }
