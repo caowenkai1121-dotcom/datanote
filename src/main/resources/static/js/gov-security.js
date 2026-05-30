@@ -12,6 +12,7 @@
     });
   }
 
+  var SENSITIVE_TYPES = ['PHONE', 'EMAIL', 'ID_CARD', 'BANK_CARD', 'USCC'];
   var rolesCache = [];
 
   window.GOV_RENDERERS.security = function (c) {
@@ -87,40 +88,43 @@
 
   function openMaskingForm(p) {
     var isEdit = !!p;
-    var nameInput = DN.h('input', { value: isEdit ? (p.policyName || '') : '', placeholder: '策略名', style: inputStyle() });
-    var dimSel = DN.h('select', { style: inputStyle() }, [
+    var nameInput = DN.h('input', { class: 'iw-form-input', value: isEdit ? (p.policyName || '') : '', placeholder: '策略名' });
+    var dimSel = DN.h('select', { class: 'iw-form-select' }, [
       DN.h('option', { value: 'SENSITIVE_TYPE', text: '按敏感类型' }),
       DN.h('option', { value: 'COLUMN', text: '按具体列' })
     ]);
-    var stInput = DN.h('input', { value: isEdit ? (p.sensitiveType || '') : '', placeholder: 'PHONE/EMAIL/ID_CARD/BANK_CARD/USCC', style: inputStyle() });
-    var dbInput = DN.h('input', { value: isEdit ? (p.dbName || '') : '', placeholder: '库名', style: inputStyle() });
-    var tblInput = DN.h('input', { value: isEdit ? (p.tableName || '') : '', placeholder: '表名', style: inputStyle() });
-    var colInput = DN.h('input', { value: isEdit ? (p.columnName || '') : '', placeholder: '列名', style: inputStyle() });
-    var funcSel = DN.h('select', { style: inputStyle() }, [
+    var stSel = DN.h('select', { class: 'iw-form-select' },
+      [DN.h('option', { value: '', text: '请选择敏感类型' })].concat(SENSITIVE_TYPES.map(function (t) {
+        return DN.h('option', { value: t, text: t });
+      })));
+    // 库/表/列改用系统级联下拉，避免手输
+    var picker = DN.dbTablePicker({ withColumn: true, defaultDb: isEdit ? p.dbName : null });
+    var funcSel = DN.h('select', { class: 'iw-form-select' }, [
       DN.h('option', { value: 'MASK', text: 'MASK 掩码' }),
       DN.h('option', { value: 'HASH', text: 'HASH (MD5)' }),
       DN.h('option', { value: 'REPLACE', text: 'REPLACE 常量' }),
       DN.h('option', { value: 'RANGE', text: 'RANGE 区间' })
     ]);
-    var statusSel = DN.h('select', { style: inputStyle() }, [
+    var statusSel = DN.h('select', { class: 'iw-form-select' }, [
       DN.h('option', { value: '1', text: '启用' }), DN.h('option', { value: '0', text: '停用' })
     ]);
     if (isEdit) {
       dimSel.value = p.matchDim || 'SENSITIVE_TYPE';
+      stSel.value = p.sensitiveType || '';
       funcSel.value = p.maskingFunc || 'MASK';
       statusSel.value = String(p.enabled == null ? 1 : p.enabled);
     }
     modal(isEdit ? '编辑脱敏策略' : '新建脱敏策略', [
       field('策略名', nameInput), field('匹配维度', dimSel),
-      field('敏感类型（按类型时填）', stInput),
-      field('库名（按列时填）', dbInput), field('表名（按列时填）', tblInput), field('列名（按列时填）', colInput),
+      field('敏感类型（按类型时填）', stSel),
+      field('库表列（按列时填）', picker.el),
       field('脱敏函数', funcSel), field('状态', statusSel)
     ], function (close) {
       var body = {
         policyName: nameInput.value.trim(), matchDim: dimSel.value,
-        sensitiveType: stInput.value.trim() || null,
-        dbName: dbInput.value.trim() || null, tableName: tblInput.value.trim() || null,
-        columnName: colInput.value.trim() || null,
+        sensitiveType: stSel.value || null,
+        dbName: picker.db() || null, tableName: picker.table() || null,
+        columnName: picker.column() || null,
         maskingFunc: funcSel.value, enabled: parseInt(statusSel.value, 10)
       };
       if (isEdit) body.id = p.id;
@@ -132,10 +136,11 @@
   }
 
   function delMasking(p) {
-    if (!window.confirm('确认删除脱敏策略 ' + p.policyName + ' ?')) return;
-    DN.del('/api/gov/masking/policies/' + p.id)
-      .then(function () { DN.toast('已删除'); loadMaskingPolicies(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    confirmModal('确认删除脱敏策略「' + (p.policyName || '') + '」？', function () {
+      DN.del('/api/gov/masking/policies/' + p.id)
+        .then(function () { DN.toast('已删除'); loadMaskingPolicies(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   // ============== M9 行级权限 ==============
@@ -173,13 +178,14 @@
 
   function openRowPolicyForm(p) {
     var isEdit = !!p;
-    var roleSel = DN.h('select', { style: inputStyle() }, rolesCache.map(function (r) {
-      return DN.h('option', { value: r.roleCode, text: r.roleName + ' (' + r.roleCode + ')' });
-    }));
-    var dbInput = DN.h('input', { value: isEdit ? (p.dbName || '') : '', placeholder: '库名', style: inputStyle() });
-    var tblInput = DN.h('input', { value: isEdit ? (p.tableName || '') : '', placeholder: '表名', style: inputStyle() });
-    var filterInput = DN.h('input', { value: isEdit ? (p.rowFilter || '') : '', placeholder: "行过滤片段，如 region = 'EAST'", style: inputStyle() });
-    var statusSel = DN.h('select', { style: inputStyle() }, [
+    var roleSel = DN.h('select', { class: 'iw-form-select' },
+      [DN.h('option', { value: '', text: '请选择角色' })].concat(rolesCache.map(function (r) {
+        return DN.h('option', { value: r.roleCode, text: r.roleName + ' (' + r.roleCode + ')' });
+      })));
+    // 库/表改用系统级联下拉
+    var picker = DN.dbTablePicker({ defaultDb: isEdit ? p.dbName : null });
+    var filterInput = DN.h('input', { class: 'iw-form-input', value: isEdit ? (p.rowFilter || '') : '', placeholder: "行过滤片段，如 region = 'EAST'" });
+    var statusSel = DN.h('select', { class: 'iw-form-select' }, [
       DN.h('option', { value: '1', text: '启用' }), DN.h('option', { value: '0', text: '停用' })
     ]);
     if (isEdit) {
@@ -187,11 +193,11 @@
       statusSel.value = String(p.enabled == null ? 1 : p.enabled);
     }
     modal(isEdit ? '编辑行策略' : '新建行策略', [
-      field('角色', roleSel), field('库名', dbInput), field('表名', tblInput),
+      field('角色', roleSel), field('库表', picker.el),
       field('行过滤条件', filterInput), field('状态', statusSel)
     ], function (close) {
       var body = {
-        roleCode: roleSel.value, dbName: dbInput.value.trim(), tableName: tblInput.value.trim(),
+        roleCode: roleSel.value, dbName: picker.db(), tableName: picker.table(),
         rowFilter: filterInput.value.trim(), enabled: parseInt(statusSel.value, 10)
       };
       if (isEdit) body.id = p.id;
@@ -204,10 +210,11 @@
   }
 
   function delRowPolicy(p) {
-    if (!window.confirm('确认删除该行策略 ?')) return;
-    DN.del('/api/gov/masking/row-policies/' + p.id)
-      .then(function () { DN.toast('已删除'); loadRowPolicies(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    confirmModal('确认删除该行策略？', function () {
+      DN.del('/api/gov/masking/row-policies/' + p.id)
+        .then(function () { DN.toast('已删除'); loadRowPolicies(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   function loadRoles() {
@@ -268,11 +275,11 @@
 
   function openUserForm(user) {
     var isEdit = !!user;
-    var nameInput = DN.h('input', { value: isEdit ? (user.username || '') : '',
-      disabled: isEdit ? 'disabled' : null, placeholder: '用户名', style: inputStyle() });
-    var nickInput = DN.h('input', { value: isEdit ? (user.nickname || '') : '', placeholder: '昵称', style: inputStyle() });
-    var pwdInput = DN.h('input', { type: 'password', placeholder: isEdit ? '留空则不修改密码' : '密码', style: inputStyle() });
-    var statusSel = DN.h('select', { style: inputStyle() }, [
+    var nameInput = DN.h('input', { class: 'iw-form-input', value: isEdit ? (user.username || '') : '',
+      disabled: isEdit ? 'disabled' : null, placeholder: '用户名' });
+    var nickInput = DN.h('input', { class: 'iw-form-input', value: isEdit ? (user.nickname || '') : '', placeholder: '昵称' });
+    var pwdInput = DN.h('input', { class: 'iw-form-input', type: 'password', placeholder: isEdit ? '留空则不修改密码' : '密码' });
+    var statusSel = DN.h('select', { class: 'iw-form-select' }, [
       DN.h('option', { value: '1', text: '启用' }),
       DN.h('option', { value: '0', text: '停用' })
     ]);
@@ -320,10 +327,11 @@
   }
 
   function delUser(user) {
-    if (!window.confirm('确认删除用户 ' + user.username + ' ?')) return;
-    DN.del('/api/rbac/users/' + user.id)
-      .then(function () { DN.toast('已删除'); loadUsers(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    confirmModal('确认删除用户「' + (user.username || '') + '」？', function () {
+      DN.del('/api/rbac/users/' + user.id)
+        .then(function () { DN.toast('已删除'); loadUsers(); })
+        .catch(function (e) { DN.toast(e.message, 'error'); });
+    });
   }
 
   // ---------- 轻量 UI 辅助 ----------
@@ -340,9 +348,9 @@
     bodyNodes.forEach(function (n) { box.appendChild(n); });
     function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); }
     var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
-    footer.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '取消',
+    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消',
       style: 'margin-right:8px', onclick: close }));
-    footer.appendChild(DN.h('a', { class: 'gov-btn', href: 'javascript:void(0)', text: '确定',
+    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定',
       onclick: function () { onOk(close); } }));
     box.appendChild(footer);
     mask.appendChild(box);
@@ -350,19 +358,21 @@
     document.body.appendChild(mask);
   }
 
-  function field(label, input) {
-    return DN.h('div', { style: 'margin-bottom:12px' }, [
-      DN.h('div', { style: 'font-size:13px;color:#4e5969;margin-bottom:4px', text: label }), input
-    ]);
+  /** 就近确认弹窗，替代 window.confirm */
+  function confirmModal(text, onOk) {
+    modal('确认操作', [DN.h('div', { style: 'font-size:13px;color:var(--text-regular,#4e5969)', text: text })],
+      function (close) { close(); onOk(); });
   }
 
-  function inputStyle() {
-    return 'width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c9cdd4;border-radius:4px;font-size:13px';
+  function field(label, input) {
+    return DN.h('div', { style: 'margin-bottom:12px' }, [
+      DN.h('div', { style: 'font-size:13px;color:var(--text-muted,#86909c);margin-bottom:4px', text: label }), input
+    ]);
   }
 
   function link(text, fn) {
     return DN.h('a', { href: 'javascript:void(0)', text: text,
-      style: 'margin-right:12px;color:#165dff;font-size:13px', onclick: fn });
+      style: 'margin-right:12px;color:var(--primary,#165dff);font-size:13px', onclick: fn });
   }
 
   function table(heads, rowsHtml) {
