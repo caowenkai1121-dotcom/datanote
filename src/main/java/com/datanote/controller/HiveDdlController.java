@@ -56,6 +56,10 @@ public class HiveDdlController {
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
 
+    /** 脱敏改写时为裸表名（不带库名）兜底补全的会话默认库（Doris 连接库） */
+    @Value("${doris.database:}")
+    private String defaultDb;
+
     /**
      * 修改 Hive 表字段（ALTER TABLE CHANGE COLUMN）
      */
@@ -412,7 +416,8 @@ public class HiveDdlController {
             return sql; // 无策略，no-op
         }
         try {
-            return SqlMaskRewriter.rewrite(sql, "", masks, rowFilters);
+            // 注入会话默认库，使不带库名的裸表（SELECT x FROM users）也能匹配元数据/策略
+            return SqlMaskRewriter.rewrite(sql, defaultDb, masks, rowFilters);
         } catch (SqlMaskRewriter.MaskRewriteException e) {
             throw new BusinessException("查询被安全策略拦截：" + e.getMessage());
         }

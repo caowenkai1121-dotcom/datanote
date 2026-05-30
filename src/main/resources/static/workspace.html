@@ -3285,6 +3285,8 @@ html, body {
 <script src="js/gov-security.js"></script>
 <script src="js/gov-health.js"></script>
 <script src="js/gov-audit.js"></script>
+<script src="js/gov-overview.js"></script>
+<script src="js/gov-subject.js"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -9714,6 +9716,7 @@ function addKeywordNewlines(sql) {
 // ===== Route Configuration =====
 // ===== 数据治理中心：原生 ops-sidebar + gov-*.js 插件渲染 =====
 var GOV_MODS = [
+  { key: 'overview',       label: '治理总览',   desc: '健康分/资产/质量/工单/敏感分布一屏总览' },
   { key: 'assets',         label: '资产目录',   desc: '元数据自动采集、数据目录、资产盘点与生命周期' },
   { key: 'lineage',        label: '数据血缘',   desc: '字段级血缘、SQL 解析、影响分析与溯源' },
   { key: 'quality',        label: '数据质量',   desc: '质量规则、调度、阈值告警、评分与趋势' },
@@ -9721,7 +9724,8 @@ var GOV_MODS = [
   { key: 'classification', label: '分类分级',   desc: '国家三级/金融五级分级、敏感识别与打标' },
   { key: 'security',       label: '数据安全',   desc: 'RBAC、行列权限、动态脱敏' },
   { key: 'health',         label: '治理健康分', desc: '五维健康分、治理工单与 DCMM 成熟度自评' },
-  { key: 'audit',          label: '审计中心',   desc: '登录/数据访问/导出/权限变更等全局审计' }
+  { key: 'audit',          label: '审计中心',   desc: '登录/数据访问/导出/权限变更等全局审计' },
+  { key: 'subject',        label: '主题域',     desc: '主题域树管理与层级维护' }
 ];
 function initGovCenter() {
   var sb = document.getElementById('govSidebar');
