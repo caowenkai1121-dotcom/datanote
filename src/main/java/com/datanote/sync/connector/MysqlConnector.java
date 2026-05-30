@@ -181,4 +181,23 @@ public class MysqlConnector implements DbConnector {
         return "SELECT " + cols + " FROM " + fullTable + " WHERE " + where
                 + " ORDER BY " + inc + " ASC, " + pk + " ASC LIMIT ?";
     }
+
+    /** 多列主键增量分页 SQL（(incField, pk1, pk2..) 复合游标）。pkColumns 顺序即 ORDER BY 顺序。
+     *  firstPage=true：incField >= ?（含起始断点，配合 UPSERT 幂等）；
+     *  firstPage=false：incField > ? OR (incField = ? AND (pk1,..) > (?,..))。 */
+    public static String buildIncrementalPageSqlMulti(String db, String table, List<String> columns,
+                                                      String incField, List<String> pkColumns,
+                                                      boolean firstPage, String extraWhere) {
+        String cols = columns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String fullTable = SqlIdentifiers.quote(db) + "." + SqlIdentifiers.quote(table);
+        String inc = SqlIdentifiers.quote(incField);
+        String pkList = pkColumns.stream().map(SqlIdentifiers::quote).collect(Collectors.joining(", "));
+        String ph = pkColumns.stream().map(p -> "?").collect(Collectors.joining(", "));
+        String pkOrder = pkColumns.stream().map(p -> SqlIdentifiers.quote(p) + " ASC").collect(Collectors.joining(", "));
+        String where = firstPage ? inc + " >= ?"
+                : "(" + inc + " > ? OR (" + inc + " = ? AND (" + pkList + ") > (" + ph + ")))";
+        if (extraWhere != null && !extraWhere.trim().isEmpty()) where = where + " AND " + extraWhere;
+        return "SELECT " + cols + " FROM " + fullTable + " WHERE " + where
+                + " ORDER BY " + inc + " ASC, " + pkOrder + " LIMIT ?";
+    }
 }
