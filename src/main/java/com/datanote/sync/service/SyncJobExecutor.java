@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -54,8 +54,11 @@ public class SyncJobExecutor {
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
 
-    /** 后台执行线程池（FULL/INCREMENTAL 一次性任务）。 */
-    private final ExecutorService pool = Executors.newFixedThreadPool(4);
+    /** 优先级线程池大小（可配置，资源隔离）。 */
+    @org.springframework.beans.factory.annotation.Value("${datanote.sync.executor.pool-size:4}")
+    private int poolSize;
+    /** 后台执行优先级线程池（FULL/INCREMENTAL 一次性任务），高 priority 任务先跑。在 @PostConstruct 初始化。 */
+    private ThreadPoolExecutor pool;
     /** 超时调度器：到点请求停止运行中的任务。 */
     private final ScheduledExecutorService timeoutScheduler = Executors.newSingleThreadScheduledExecutor();
     /** 正在运行的 jobId 集合，防同一任务重复运行。 */
@@ -69,6 +72,10 @@ public class SyncJobExecutor {
      */
     @PostConstruct
     public void recoverOrphans() {
+        // 先初始化优先级线程池（一个类仅一个 @PostConstruct 生效，故并入此处）
+        pool = new ThreadPoolExecutor(poolSize, poolSize, 0L, TimeUnit.MILLISECONDS,
+                new PriorityBlockingQueue<>(),
+                r -> { Thread t = new Thread(r, "datanote-sync-exec"); t.setDaemon(true); return t; });
         try {
             List<DnSyncJob> running = syncJobMapper.selectList(
                     new LambdaQueryWrapper<DnSyncJob>().eq(DnSyncJob::getStatus, "RUNNING"));
@@ -156,23 +163,23 @@ public class SyncJobExecutor {
 
         final Long execId = exec.getId();
         final int timeoutSec = job.getTimeoutSeconds() == null ? 0 : job.getTimeoutSeconds();
-        Future<?> future = pool.submit(() -> {
+        int priority = job.getPriority() == null ? 5 : job.getPriority();
+        pool.execute(new com.datanote.sync.util.PrioritizedTask(priority, jobId, () -> {
             try {
                 doRunWithRetry(job, triggerType, exec);
             } finally {
                 runningJobs.remove(jobId);
                 runningContexts.remove(jobId);
             }
-        });
-        // 超时终止：到点若仍在跑，请求停止（引擎在分页边界检查后中断，置 FAILED）
+        }));
+        // 超时终止：到点若仍在跑（runningContexts 仍有上下文，跑完 finally 已 remove），请求停止
+        // （引擎在分页边界检查后中断，置 FAILED）
         if (timeoutSec > 0) {
             timeoutScheduler.schedule(() -> {
-                if (!future.isDone()) {
-                    SyncContext ctx = runningContexts.get(jobId);
-                    if (ctx != null) {
-                        ctx.requestStop("timeout");
-                        ctx.log("WARN", "任务超时(" + timeoutSec + "s)，请求停止");
-                    }
+                SyncContext ctx = runningContexts.get(jobId);
+                if (ctx != null) {
+                    ctx.requestStop("timeout");
+                    ctx.log("WARN", "任务超时(" + timeoutSec + "s)，请求停止");
                 }
             }, timeoutSec, TimeUnit.SECONDS);
         }
