@@ -351,17 +351,19 @@
 
   /** 右侧抽屉：返回 {close, body} */
   DN.drawer = function (title, bodyNode) {
+    // 替换旧抽屉时先解绑其 keydown 监听,避免监听器泄漏累积
+    if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
     var old = document.getElementById('govDrawerMask'); if (old) old.remove();
     var oldD = document.querySelector('.gov-drawer'); if (oldD) oldD.remove();
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
     function onKey(e) { if (e.key === 'Escape') close(); }
     var _closing = false;
-    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var dr = DN.h('div', { class: 'gov-drawer' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close })]), bd]);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);
-    document.addEventListener('keydown', onKey);
+    DN._drawerKey = onKey; document.addEventListener('keydown', onKey);
     requestAnimationFrame(function () { mask.classList.add('show'); dr.classList.add('show'); var f = bd.querySelector('input,select,textarea,button'); if (f) try { f.focus(); } catch (e) {} });
     return { close: close, body: bd };
   };

@@ -209,7 +209,7 @@
       var head = DN.h('div', { style: 'font-size:12px;color:var(--text-regular);margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + DN.fmtBytes(g.sum) + '</span>' });
       var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:6px;overflow:hidden' });
       g.tables.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); }).forEach(function (t) {
-        var w = (Number(t.sizeBytes) || 0) / g.sum * 100;
+        var w = (Number(t.sizeBytes) || 0) / (g.sum || 1) * 100;
         var cell = DN.h('div', { title: t.tableName + ' · ' + DN.fmtBytes(t.sizeBytes) + (t.rowCount != null ? ' · ' + fmtInt(t.rowCount) + ' 行' : ''),
           style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.sizeBytes) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap;' });
         cell.textContent = w > 8 ? t.tableName : '';
