@@ -17,11 +17,38 @@
   var DATA_TYPES = ['VARCHAR', 'CHAR', 'TEXT', 'INT', 'BIGINT', 'DECIMAL', 'DOUBLE', 'DATE', 'DATETIME', 'TIMESTAMP', 'BOOLEAN'];
   var securityLevels = ['公开', '内部', '秘密', '机密']; // 兜底，加载后用方案密级覆盖
 
+  // 数据标准总览(大功能): 数据元/词根/码表/落标率 聚合磁贴
+  function buildStdOverview(box) {
+    Promise.all([
+      DN.get(API + '/elements').catch(function () { return []; }),
+      DN.get(API + '/roots').catch(function () { return []; }),
+      DN.get(API + '/dicts').catch(function () { return []; }),
+      DN.get(API + '/check/runs').catch(function () { return []; })
+    ]).then(function (r) {
+      if (!document.body.contains(box)) return;
+      var els = r[0] || [], roots = r[1] || [], dicts = r[2] || [], runs = r[3] || [];
+      var latest = runs.slice().sort(function (a, b) { return (b.id || 0) - (a.id || 0); })[0];
+      var rate = latest && latest.passRate != null ? Number(latest.passRate) : null;
+      var rTone = rate == null ? 'muted' : rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'err';
+      box.innerHTML = '';
+      box.appendChild(DN.statRow([
+        { icon: 'list', label: '数据元', value: els.length },
+        { icon: 'tag', label: '命名词根', value: roots.length },
+        { icon: 'grid', label: '码表', value: dicts.length },
+        { icon: 'check', label: '最新落标率', value: rate == null ? '-' : (rate + '%'), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核' }
+      ]));
+    });
+  }
+
   window.GOV_RENDERERS.standard = function (c) {
     // 预取密级方案（落标/数据元密级下拉用），失败保留兜底
     DN.get('/api/gov/classification/levels').then(function (rows) {
       if (rows && rows.length) securityLevels = rows.map(function (r) { return r.levelName; });
     }).catch(function () {});
+
+    var ov = DN.h('div', { id: 'stdOverview', style: 'margin-bottom:14px' });
+    c.appendChild(ov);
+    buildStdOverview(ov);
 
     var sub = DN.h('div', { class: 'gov-desc', id: 'stdSub', style: 'display:flex;gap:8px' });
     var body = DN.h('div', { id: 'stdBody' });
