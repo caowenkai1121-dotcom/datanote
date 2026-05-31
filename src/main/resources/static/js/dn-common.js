@@ -252,7 +252,7 @@
     var sortKey = null, sortDir = 1, inp = null, _t = null;
     var wrap = DN.h('div', {});
     if (o.search !== false) {
-      inp = DN.h('input', { placeholder: o.searchPlaceholder || '搜索...', oninput: function () { clearTimeout(_t); _t = setTimeout(function () { q = inp.value.trim().toLowerCase(); page = 1; draw(); }, 220); } });
+      inp = DN.h('input', { placeholder: o.searchPlaceholder || '搜索...', oninput: function () { clearTimeout(_t); inp.style.opacity = '0.6'; _t = setTimeout(function () { q = inp.value.trim().toLowerCase(); page = 1; draw(); inp.style.opacity = '1'; }, 220); } });
       var clr = DN.h('span', { class: 'gov-search-clr', text: '×', title: '清除', onclick: function () { inp.value = ''; q = ''; page = 1; draw(); inp.focus(); } });
       var bar = DN.h('div', { class: 'gov-toolbar' }, [DN.h('div', { class: 'gov-search' }, [DN.h('span', { html: DN.icon('search') }), inp, clr])]);
       if (o.exportName) bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: function () { exportCsv(); } }));

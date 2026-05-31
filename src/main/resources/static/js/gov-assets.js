@@ -293,6 +293,7 @@
     DN.get('/api/gov/asset/detail' + qs).then(function (d) {
       var cols = (d && d.columns) || [];
       box.innerHTML = '';
+      if (!cols.length) { box.appendChild(DN.empty('该表暂无字段元数据(可重新采集该库)', 'list')); return; }
       // 敏感/密级摘要徽标条
       var secN = cols.filter(function (c) { return c.securityLevel; }).length;
       var senN = cols.filter(function (c) { return c.sensitiveType; }).length;

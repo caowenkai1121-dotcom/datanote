@@ -3306,19 +3306,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r1">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r2">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r1"></script>
-<script src="js/gov-assets.js?v=q100r1"></script>
-<script src="js/gov-lineage.js?v=q100r1"></script>
-<script src="js/gov-quality.js?v=q100r1"></script>
-<script src="js/gov-standard.js?v=q100r1"></script>
-<script src="js/gov-classification.js?v=q100r1"></script>
-<script src="js/gov-security.js?v=q100r1"></script>
-<script src="js/gov-health.js?v=q100r1"></script>
-<script src="js/gov-audit.js?v=q100r1"></script>
-<script src="js/gov-overview.js?v=q100r1"></script>
-<script src="js/gov-subject.js?v=q100r1"></script>
+<script src="js/dn-common.js?v=q100r2"></script>
+<script src="js/gov-assets.js?v=q100r2"></script>
+<script src="js/gov-lineage.js?v=q100r2"></script>
+<script src="js/gov-quality.js?v=q100r2"></script>
+<script src="js/gov-standard.js?v=q100r2"></script>
+<script src="js/gov-classification.js?v=q100r2"></script>
+<script src="js/gov-security.js?v=q100r2"></script>
+<script src="js/gov-health.js?v=q100r2"></script>
+<script src="js/gov-audit.js?v=q100r2"></script>
+<script src="js/gov-overview.js?v=q100r2"></script>
+<script src="js/gov-subject.js?v=q100r2"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12377,6 +12377,12 @@ document.addEventListener('keydown', function(e) {
   }
 }, true);
 
+// CSV 单元格安全转义: 双引号转义 + 去换行 + 防公式注入(=+-@ 前缀加')
+window.csvCell = function(v) {
+  var s = String(v == null ? '' : v).replace(/[\r\n]+/g, ' ');
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+};
 // 微光骨架屏(UX): 替代生硬的"加载中..."文本
 function wsSkeleton(rows) {
   var n = rows || 4, h = '<div class="ws-skel-wrap">';
@@ -13005,11 +13011,11 @@ window.projRestoreFilters = function() {
 window.projExportCsv = function() {
   var rows = _projFiltered && _projFiltered.length ? _projFiltered : _projList;
   var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
-  var head = ['项目名', '编码', '类型', '环境', '负责人', '状态', '标签', '创建时间'];
+  var head = ['项目名', '编码', '类型', '环境', '负责人', '状态', '标签', '描述', '创建时间'];
   var lines = [head.map(cell).join(',')];
   rows.forEach(function(p) {
     var tags = (_projTagMap[p.id] || []).map(function(t) { var o = _projTagById(t); return o ? o.tagName : ''; }).filter(Boolean).join(' ');
-    lines.push([p.projectName, p.projectCode, PROJ_TYPE_LABEL[p.projectType] || p.projectType, PROJ_ENV_LABEL[p.env] || p.env, p.owner, (PROJ_STATUS[p.status] || {}).t || p.status, tags, (p.createdAt || '').replace('T', ' ').slice(0, 16)].map(cell).join(','));
+    lines.push([p.projectName, p.projectCode, PROJ_TYPE_LABEL[p.projectType] || p.projectType, PROJ_ENV_LABEL[p.env] || p.env, p.owner, (PROJ_STATUS[p.status] || {}).t || p.status, tags, p.description || '', (p.createdAt || '').replace('T', ' ').slice(0, 16)].map(cell).join(','));
   });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -13158,7 +13164,7 @@ function projShowModalBox(title, inner) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100000;display:flex;align-items:center;justify-content:center;';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
   var box = document.createElement('div');
-  box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;min-width:340px;max-width:80vw;max-height:80vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);';
+  box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;min-width:min(340px,92vw);max-width:min(90vw,640px);max-height:85vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);';
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);"><b>' + escapeHtml(title) + '</b><span style="cursor:pointer;font-size:20px;color:var(--text-muted);" onclick="projCloseModalBox()">&times;</span></div><div style="padding:14px 16px;">' + inner + '</div>';
   ov.appendChild(box); document.body.appendChild(ov);
 }
@@ -13440,7 +13446,7 @@ window.projLoadInvites = function() {
       h += '</tbody></table>';
     }
     box.innerHTML = h;
-  }).catch(function() {});
+  }).catch(function() { box.innerHTML = '<div style="font-size:12px;color:var(--error);">成员邀请加载失败</div>'; });
 };
 function projRoleLabel(r) { return ({ OWNER: '负责人', ADMIN: '管理员', DEVELOPER: '开发', OPS: '运维', VIEWER: '访客' })[r] || r; }
 window.projCreateInvite = function() {
@@ -13549,10 +13555,10 @@ window.projLoadQuota = function() {
     var q = (res && res.code === 0) ? (res.data || {}) : {};
     card.innerHTML = '<div style="font-weight:600;margin-bottom:10px;font-size:13px;">资源配额</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-      + '<label style="font-size:12px;">并发上限 <input id="pqConcurrent" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.concurrentLimit != null ? q.concurrentLimit : 4) + '"></label>'
-      + '<label style="font-size:12px;">默认超时(秒,0不限) <input id="pqTimeout" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.timeoutDefault != null ? q.timeoutDefault : 0) + '"></label>'
-      + '<label style="font-size:12px;">默认重试次 <input id="pqRetry" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.retryDefault != null ? q.retryDefault : 0) + '"></label>'
-      + '<label style="font-size:12px;">存储配额GB(0不限) <input id="pqStorage" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.storageQuotaGb != null ? q.storageQuotaGb : 0) + '"></label>'
+      + '<label style="font-size:12px;">并发上限 <input id="pqConcurrent" type="number" min="0" placeholder="例如 4" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.concurrentLimit != null ? q.concurrentLimit : 4) + '"></label>'
+      + '<label style="font-size:12px;">默认超时(秒,0不限) <input id="pqTimeout" type="number" min="0" placeholder="例如 300" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.timeoutDefault != null ? q.timeoutDefault : 0) + '"></label>'
+      + '<label style="font-size:12px;">默认重试次 <input id="pqRetry" type="number" min="0" placeholder="例如 3" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.retryDefault != null ? q.retryDefault : 0) + '"></label>'
+      + '<label style="font-size:12px;">存储配额GB(0不限) <input id="pqStorage" type="number" min="0" placeholder="例如 100" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.storageQuotaGb != null ? q.storageQuotaGb : 0) + '"></label>'
       + '</div><div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="projSaveQuota()">保存配额</button></div>';
   }).catch(function() { card.innerHTML = '<div style="color:var(--error);">配额加载失败</div>'; });
 };
@@ -13953,7 +13959,7 @@ window.projRenderActs = function() {
 };
 window.projExportActs = function() {
   var as = _projActs || []; if (!as.length) { showToast('暂无活动', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = window.csvCell || function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
   var lines = [['时间', '操作人', '方法', '路径', '状态'].map(cell).join(',')];
   as.forEach(function(a) { lines.push([(a.createdAt || '').replace('T', ' ').slice(0, 19), a.userName, a.method, a.path, a.status].map(cell).join(',')); });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -17018,7 +17024,7 @@ function dbsyncShowPreview(title, innerHtml) {
   box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;max-width:80vw;max-height:80vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:420px;';
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);position:sticky;top:0;background:var(--bg-card,#fff);z-index:1;">'
     + '<b style="font-size:14px;">' + escapeHtml(title) + '</b>'
-    + '<span style="cursor:pointer;font-size:20px;color:var(--text-muted);" onclick="document.getElementById(\'dbsyncPreviewOverlay\').remove()">&times;</span></div>'
+    + '<span title="关闭" style="cursor:pointer;font-size:20px;color:#666;border-radius:4px;padding:0 6px;transition:background .15s;" onmouseover="this.style.background=\'rgba(0,0,0,.06)\'" onmouseout="this.style.background=\'\'" onclick="document.getElementById(\'dbsyncPreviewOverlay\').remove()">&times;</span></div>'
     + '<div style="padding:14px 16px;">' + innerHtml + '</div>';
   ov.appendChild(box);
   document.body.appendChild(ov);
@@ -17205,6 +17211,7 @@ window.dbsyncLoadFolders = function() {
     _dbsyncFolders = [];
     dbsyncRenderFolderTabs();
     dbsyncFillFolderSelect();
+    showToast('文件夹加载失败，点击刷新重试', 'warning');
   });
 };
 
