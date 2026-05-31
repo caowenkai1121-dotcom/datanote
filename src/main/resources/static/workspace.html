@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r20">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r21">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r20"></script>
-<script src="js/gov-assets.js?v=g2r20"></script>
-<script src="js/gov-lineage.js?v=g2r20"></script>
-<script src="js/gov-quality.js?v=g2r20"></script>
-<script src="js/gov-standard.js?v=g2r20"></script>
-<script src="js/gov-classification.js?v=g2r20"></script>
-<script src="js/gov-security.js?v=g2r20"></script>
-<script src="js/gov-health.js?v=g2r20"></script>
-<script src="js/gov-audit.js?v=g2r20"></script>
-<script src="js/gov-overview.js?v=g2r20"></script>
-<script src="js/gov-subject.js?v=g2r20"></script>
+<script src="js/dn-common.js?v=g2r21"></script>
+<script src="js/gov-assets.js?v=g2r21"></script>
+<script src="js/gov-lineage.js?v=g2r21"></script>
+<script src="js/gov-quality.js?v=g2r21"></script>
+<script src="js/gov-standard.js?v=g2r21"></script>
+<script src="js/gov-classification.js?v=g2r21"></script>
+<script src="js/gov-security.js?v=g2r21"></script>
+<script src="js/gov-health.js?v=g2r21"></script>
+<script src="js/gov-audit.js?v=g2r21"></script>
+<script src="js/gov-overview.js?v=g2r21"></script>
+<script src="js/gov-subject.js?v=g2r21"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4792,6 +4792,7 @@ html, body {
               <select id="dbsyncDetailLogLevel" class="dbsync-form-select" style="width:auto;height:26px;font-size:12px;" onchange="dbsyncApplyLogLevelFilter()">
                 <option value="">全部级别</option><option value="INFO">INFO</option><option value="WARN">WARN</option><option value="ERROR">ERROR</option><option value="OK">OK</option>
               </select>
+              <input id="dbsyncDetailLogKw" type="text" placeholder="关键字过滤" oninput="dbsyncApplyLogLevelFilter()" style="height:26px;font-size:12px;width:120px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);">
               <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="dbsyncDetailLogAutoscroll" checked> 自动滚动</label>
               <button class="btn btn-sm" onclick="dbsyncDownloadDetailLog()">下载</button>
               <button class="btn btn-sm" onclick="dbsyncClearDetailLog()">清空</button>
@@ -17504,17 +17505,26 @@ window.dbsyncToggleEl = function(elId) {
   var el = document.getElementById(elId);
   if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
 };
+var _dbsyncHistAll = [], _dbsyncHistFilter = '';
 function dbsyncRenderHistory(execs) {
   var pane = document.getElementById('dbsyncDetailPane_history');
   if (!pane) return;
-  if (!execs || execs.length === 0) {
+  if (arguments.length) _dbsyncHistAll = execs || [];
+  if (!_dbsyncHistAll.length) {
     pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无执行记录</div>';
     return;
   }
-  var html = '<table class="dbsync-exec-table"><thead><tr>'
+  // 状态筛选条 + 导出CSV
+  var labels = {}; _dbsyncHistAll.forEach(function(ex) { var l = dbsyncExecLabel(ex.status); if (l) labels[l] = ex.status; });
+  var opts = '<option value="">全部状态</option>' + Object.keys(labels).map(function(l) { return '<option value="' + escapeHtml(l) + '"' + (_dbsyncHistFilter === l ? ' selected' : '') + '>' + escapeHtml(l) + '</option>'; }).join('');
+  var bar = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:flex-end;">'
+    + '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterHistory(this.value)">' + opts + '</select>'
+    + '<button class="btn btn-sm" onclick="dbsyncExportHistory()">导出CSV</button></div>';
+  var view = _dbsyncHistFilter ? _dbsyncHistAll.filter(function(ex) { return dbsyncExecLabel(ex.status) === _dbsyncHistFilter; }) : _dbsyncHistAll;
+  var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
     + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th style="width:60px;">日志</th>'
     + '</tr></thead><tbody>';
-  execs.forEach(function(ex, i) {
+  view.forEach(function(ex, i) {
     var kind = dbsyncExecKind(ex.status);
     var label = dbsyncExecLabel(ex.status);
     var color = kind === 'ok' ? '#52c41a' : kind === 'err' ? '#ff4d4f' : 'var(--primary)';
@@ -17537,6 +17547,20 @@ function dbsyncRenderHistory(execs) {
   html += '</tbody></table>';
   pane.innerHTML = html;
 }
+window.dbsyncFilterHistory = function(v) { _dbsyncHistFilter = v; dbsyncRenderHistory(); };
+window.dbsyncExportHistory = function() {
+  var view = _dbsyncHistFilter ? _dbsyncHistAll.filter(function(ex) { return dbsyncExecLabel(ex.status) === _dbsyncHistFilter; }) : _dbsyncHistAll;
+  if (!view.length) { showToast('暂无记录', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['执行时间', '状态', '读取', '写入', '错误', '耗时(秒)'].map(cell).join(',')];
+  view.forEach(function(ex) {
+    lines.push([dbsyncFmtTime(ex.startTime || ex.createTime), dbsyncExecLabel(ex.status), ex.readCount || 0, ex.writeCount || 0, ex.errorCount || 0, ex.duration != null ? ex.duration : ''].map(cell).join(','));
+  });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'exec_history.csv'; document.body.appendChild(a); a.click();
+  setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+};
 // 操作类型中文映射
 var _dbsyncAuditOpLabel = { CREATE: '新建', UPDATE: '修改', RUN: '运行', STOP: '停止', RESET: '重置' };
 var _dbsyncAuditAll = [], _dbsyncAuditFilter = '';
@@ -17603,7 +17627,8 @@ function dbsyncDetailAppendLog(data) {
   line.setAttribute('data-lv', level);
   line.textContent = '[' + (data.time || '') + '][' + level + '] ' + (data.message || '');
   var lf = (document.getElementById('dbsyncDetailLogLevel') || {}).value || '';
-  if (lf && level !== lf) line.style.display = 'none';
+  var kw = ((document.getElementById('dbsyncDetailLogKw') || {}).value || '').trim().toLowerCase();
+  if ((lf && level !== lf) || (kw && line.textContent.toLowerCase().indexOf(kw) < 0)) line.style.display = 'none';
   panel.appendChild(line);
   panel.appendChild(document.createTextNode('\n'));
   var auto = document.getElementById('dbsyncDetailLogAutoscroll');
@@ -17613,9 +17638,12 @@ function dbsyncDetailAppendLog(data) {
 }
 window.dbsyncApplyLogLevelFilter = function() {
   var lf = (document.getElementById('dbsyncDetailLogLevel') || {}).value || '';
+  var kw = ((document.getElementById('dbsyncDetailLogKw') || {}).value || '').trim().toLowerCase();
   var panel = document.getElementById('dbsyncDetailLogPanel'); if (!panel) return;
   Array.prototype.slice.call(panel.querySelectorAll('.dbsync-log-line')).forEach(function(ln) {
-    ln.style.display = (!lf || ln.getAttribute('data-lv') === lf) ? '' : 'none';
+    var okLv = !lf || ln.getAttribute('data-lv') === lf;
+    var okKw = !kw || ln.textContent.toLowerCase().indexOf(kw) >= 0;
+    ln.style.display = (okLv && okKw) ? '' : 'none';
   });
 };
 window.dbsyncDownloadDetailLog = function() {
