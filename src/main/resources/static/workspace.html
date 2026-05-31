@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r4">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r5">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r4"></script>
-<script src="js/gov-assets.js?v=g2r4"></script>
-<script src="js/gov-lineage.js?v=g2r4"></script>
-<script src="js/gov-quality.js?v=g2r4"></script>
-<script src="js/gov-standard.js?v=g2r4"></script>
-<script src="js/gov-classification.js?v=g2r4"></script>
-<script src="js/gov-security.js?v=g2r4"></script>
-<script src="js/gov-health.js?v=g2r4"></script>
-<script src="js/gov-audit.js?v=g2r4"></script>
-<script src="js/gov-overview.js?v=g2r4"></script>
-<script src="js/gov-subject.js?v=g2r4"></script>
+<script src="js/dn-common.js?v=g2r5"></script>
+<script src="js/gov-assets.js?v=g2r5"></script>
+<script src="js/gov-lineage.js?v=g2r5"></script>
+<script src="js/gov-quality.js?v=g2r5"></script>
+<script src="js/gov-standard.js?v=g2r5"></script>
+<script src="js/gov-classification.js?v=g2r5"></script>
+<script src="js/gov-security.js?v=g2r5"></script>
+<script src="js/gov-health.js?v=g2r5"></script>
+<script src="js/gov-audit.js?v=g2r5"></script>
+<script src="js/gov-overview.js?v=g2r5"></script>
+<script src="js/gov-subject.js?v=g2r5"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13463,9 +13463,23 @@ window.projLoadOverview = function() {
     }
     h += '</div>';
     pane.innerHTML = h;
+    projSetTabBadge('release', d.releasePending || 0, '#fa8c16');
+    projSetTabBadge('member', d.memberCount || 0, '#8c8c8c');
     projLoadHealthCard();
     projLoadAnnounceCard();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+// 详情抽屉 tab 数量徽标
+window.projSetTabBadge = function(ptab, n, color) {
+  var btn = document.querySelector('#projDetailTabs button[data-ptab="' + ptab + '"]'); if (!btn) return;
+  var old = btn.querySelector('.proj-tab-badge'); if (old) old.remove();
+  if (n > 0) {
+    var b = document.createElement('span');
+    b.className = 'proj-tab-badge';
+    b.style.cssText = 'display:inline-block;min-width:16px;text-align:center;background:' + (color || '#fa8c16') + ';color:#fff;border-radius:8px;font-size:10px;padding:0 5px;margin-left:4px;line-height:16px;';
+    b.textContent = n > 99 ? '99+' : n;
+    btn.appendChild(b);
+  }
 };
 window.projLoadAnnounceCard = function() {
   var card = document.getElementById('projAnnounceCard'); if (!card || !_projDetail) return;
@@ -13551,10 +13565,14 @@ window.projLoadTasks = function() {
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
     var cnt = { TODO: 0, DOING: 0, DONE: 0 };
     tasks.forEach(function(t) { cnt[t.status] = (cnt[t.status] || 0) + 1; });
+    var _today = new Date().toISOString().slice(0, 10);
+    var overdueN = tasks.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _today; }).length;
+    var donePct = tasks.length ? Math.round(cnt.DONE * 100 / tasks.length) : 0;
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
-      + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + '</span></div>';
+      + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
+    if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
     if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无任务</div>';
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
@@ -13567,7 +13585,7 @@ window.projLoadTasks = function() {
           h += '<tr><td style="width:50px;"><span style="color:' + pr.c + ';font-size:11px;">' + pr.t + '</span></td>'
             + '<td><b>' + escapeHtml(t.title) + '</b>' + (t.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(t.description) + '</div>' : '') + '</td>'
             + '<td style="width:80px;">' + escapeHtml(t.assignee || '-') + '</td>'
-            + '<td style="width:90px;">' + escapeHtml(t.dueDate || '') + '</td>'
+            + '<td style="width:110px;' + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? 'color:#ff4d4f;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate || '') + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? ' 超期' : '') + '</td>'
             + '<td style="width:90px;color:var(--text-muted);">' + escapeHtml(msName[t.milestoneId] || '') + '</td>'
             + '<td style="width:90px;"><select class="dbsync-form-select" style="width:84px;" onchange="projTaskStatus(' + t.id + ',this.value)">'
             + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></td>'
@@ -13577,6 +13595,7 @@ window.projLoadTasks = function() {
       });
     }
     pane.innerHTML = h;
+    if (window.projSetTabBadge) projSetTabBadge('task', (cnt.TODO || 0) + (cnt.DOING || 0), '#1677ff');
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 window.projTaskModal = function(taskId) {
