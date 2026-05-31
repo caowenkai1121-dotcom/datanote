@@ -169,12 +169,7 @@
         trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
         var colorOf = function (s) { return s === 'PASS' ? '#52c41a' : s === 'FAIL' ? '#faad14' : s === 'ERROR' ? '#ff4d4f' : '#8c8c8c'; };
         var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
-        var dwrap = DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' });
-        dwrap.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次' }));
-        var lg = DN.h('div', { class: 'gov-legend' });
-        segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + s.color }), DN.h('span', { text: s.label + ' ' + s.value })])); });
-        dwrap.appendChild(lg);
-        trendBody.appendChild(dwrap);
+        trendBody.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次', legend: true }));
       }
       var fails = (fa.recentFailures || []);
       if (fails.length) {

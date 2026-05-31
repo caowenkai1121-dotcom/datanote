@@ -22,6 +22,7 @@
 
   var issueTable = null; // DN.table 句柄，便于 reload
   var selectedIssues = {}; // 批量流转选中：id -> 当前状态
+  var boardOwnerFilter = ''; // 排行榜点击联动：按负责人客户端过滤工单
 
   window.GOV_RENDERERS.health = function (c) {
     // ---- 健康分 ----
@@ -167,6 +168,14 @@
     var box = document.getElementById('hsIssues');
     if (!box) return;
     selectedIssues = {};
+    if (boardOwnerFilter) rows = (rows || []).filter(function (it) { return (it.owner || '未分配') === boardOwnerFilter; });
+    box.innerHTML = '';
+    if (boardOwnerFilter) {
+      box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;display:flex;align-items:center;gap:8px' }, [
+        DN.h('span', { text: '已按负责人「' + boardOwnerFilter + '」筛选' }),
+        DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '清除', onclick: function () { boardOwnerFilter = ''; loadIssues(); } })
+      ]));
+    }
     issueTable = DN.table({
       rows: rows,
       pageSize: 10,
@@ -184,7 +193,6 @@
         { key: 'ops', label: '操作', render: function (it) { return issueOps(it); } }
       ]
     });
-    box.innerHTML = '';
     box.appendChild(issueTable);
   }
 
@@ -293,7 +301,8 @@
       box.appendChild(DN.bars(rows.map(function (r) {
         return {
           label: r.owner, value: Number(r.total) || 0, tone: 'info',
-          display: '总' + (r.total || 0) + ' · 未关' + (r.open || 0) + ' · 已关' + (r.closed || 0)
+          display: '总' + (r.total || 0) + ' · 未关' + (r.open || 0) + ' · 已关' + (r.closed || 0),
+          onClick: function () { boardOwnerFilter = (boardOwnerFilter === r.owner) ? '' : r.owner; loadIssues(); DN.toast(boardOwnerFilter ? ('仅看负责人 ' + r.owner) : '显示全部工单', 'info'); }
         };
       })));
     }).catch(function () {});

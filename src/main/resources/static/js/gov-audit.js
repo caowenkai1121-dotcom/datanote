@@ -14,6 +14,35 @@
   var state = { page: 1, size: 50, total: 0 };
   var els = {};
   var auditTbl = null;
+  var toolbar = null;
+  var lastRows = [];
+
+  function buildTable() {
+    return DN.table({
+      columns: [
+        { key: 'createdAt', label: '时间', render: function (r) { return fmtTs(r.createdAt); } },
+        { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
+        { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
+        { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
+        { key: 'path', label: '路径', render: function (r) { return r.path || '-'; } },
+        { key: 'ip', label: 'IP', render: function (r) { return r.ip || '-'; } },
+        { key: 'status', label: '状态', render: function (r) { return r.status == null ? '-' : DN.pill(String(r.status), statusTone(r.status)); } },
+        { key: 'detail', label: '详情', render: function (r) { return r.detail || '-'; } }
+      ],
+      rows: lastRows,
+      pageSize: state.size,
+      searchKeys: ['path', 'userName', 'detail'],
+      searchPlaceholder: '过滤当前结果(路径/人/详情)',
+      toolbar: toolbar,
+      empty: '无审计记录', emptyIcon: 'doc'
+    });
+  }
+  function rebuildTable() {
+    if (!auditTbl || !auditTbl.parentNode) return;
+    var fresh = buildTable();
+    auditTbl.parentNode.replaceChild(fresh, auditTbl);
+    auditTbl = fresh;
+  }
 
   window.GOV_RENDERERS.audit = function (c) {
     state.page = 1;
@@ -36,27 +65,11 @@
     var searchBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检索',
       onclick: function () { state.page = 1; load(); } });
     var exportBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: exportCsv });
-    var toolbar = [els.from, els.to, els.type, els.user, searchBtn, exportBtn];
+    toolbar = [els.from, els.to, els.type, els.user, searchBtn, exportBtn];
+    lastRows = [];
 
     // 现代表格（toolbar 内置过滤条 + 路径搜索框；客户端搜索覆盖当前页路径）
-    auditTbl = DN.table({
-      columns: [
-        { key: 'createdAt', label: '时间', render: function (r) { return fmtTs(r.createdAt); } },
-        { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
-        { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
-        { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
-        { key: 'path', label: '路径', render: function (r) { return r.path || '-'; } },
-        { key: 'ip', label: 'IP', render: function (r) { return r.ip || '-'; } },
-        { key: 'status', label: '状态', render: function (r) { return r.status == null ? '-' : DN.pill(String(r.status), statusTone(r.status)); } },
-        { key: 'detail', label: '详情', render: function (r) { return r.detail || '-'; } }
-      ],
-      rows: [],
-      pageSize: state.size,
-      searchKeys: ['path', 'userName', 'detail'],
-      searchPlaceholder: '过滤当前结果(路径/人/详情)',
-      toolbar: toolbar,
-      empty: '无审计记录', emptyIcon: 'doc'
-    });
+    auditTbl = buildTable();
     c.appendChild(auditTbl);
 
     load();
@@ -89,6 +102,7 @@
       data = data || {};
       state.total = data.total || 0;
       var rows = data.list || [];
+      lastRows = rows;
       if (auditTbl) auditTbl.reload(rows);
       renderStats(rows);
       renderServerPager(rows.length);
@@ -156,6 +170,12 @@
     var pages = Math.max(1, Math.ceil(state.total / state.size));
     var box = DN.h('div', { id: 'auSrvPager', class: 'gov-pager' });
     box.appendChild(DN.h('span', { text: '服务端共 ' + state.total + ' 条 · 第 ' + state.page + '/' + pages + ' 页' }));
+    // 每页条数选择器
+    var sizeSel = DN.h('select', { class: 'iw-form-select', style: 'height:30px;width:auto;' });
+    [20, 50, 100, 200].forEach(function (n) { sizeSel.appendChild(DN.h('option', { value: String(n), text: n + ' 条/页' })); });
+    sizeSel.value = String(state.size);
+    sizeSel.onchange = function () { state.size = Number(sizeSel.value) || 50; state.page = 1; rebuildTable(); load(); };
+    box.appendChild(sizeSel);
     box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页',
       onclick: function () { if (state.page > 1) { state.page--; load(); } } }));
     box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页',

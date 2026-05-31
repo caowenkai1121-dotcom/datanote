@@ -391,7 +391,11 @@
     var ring = DN.h('div', { style: 'position:relative;width:' + size + 'px;height:' + size + 'px', html: svg });
     if (opts.centerLabel != null || opts.centerSub != null) ring.appendChild(DN.h('div', { style: 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center' },
       [opts.centerLabel != null ? DN.h('div', { style: 'font-size:20px;font-weight:750;line-height:1', text: String(opts.centerLabel) }) : null, opts.centerSub ? DN.h('div', { style: 'font-size:11px;color:#86909c;margin-top:2px', text: opts.centerSub }) : null]));
-    return ring;
+    if (!opts.legend) return ring;
+    // 可选内置图例：环 + 图例并排
+    var lg = DN.h('div', { class: 'gov-legend' });
+    segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + (s.color || '#1890ff') }), DN.h('span', { text: (s.label != null ? s.label : '') + ' ' + (s.value || 0) })])); });
+    return DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' }, [ring, lg]);
   };
 
   /** 热力清单：items:[{label,value,display?}] 按值映射蓝色深浅。opts:{rgb,onClick} */
