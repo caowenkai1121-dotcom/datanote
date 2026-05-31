@@ -4325,10 +4325,34 @@ html, body {
             </div>
           </div>
           <div class="ops-dashboard" id="settingsSecurityPanel" style="display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">安全设置</h2>
             </div>
-            <div style="padding:24px;color:var(--text-muted);">登录策略、密码规则、操作日志和审计</div>
+            <div id="secAuthCard" style="margin-bottom:18px;"><div style="color:var(--text-muted);">加载中...</div></div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text-regular);">操作审计</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+              <input id="secAuFrom" type="date" class="dbsync-form-input" style="width:150px;" title="起始日期">
+              <input id="secAuTo" type="date" class="dbsync-form-input" style="width:150px;" title="结束日期">
+              <select id="secAuType" class="dbsync-form-select" style="width:130px;">
+                <option value="">全部动作</option>
+                <option value="LOGIN">登录</option>
+                <option value="DATA_ACCESS">数据访问</option>
+                <option value="EXPORT">导出</option>
+                <option value="PERM_CHANGE">权限变更</option>
+                <option value="META_CHANGE">元数据变更</option>
+                <option value="RULE_CHANGE">规则变更</option>
+                <option value="LABEL_CHANGE">标签变更</option>
+                <option value="OTHER">其他</option>
+              </select>
+              <input id="secAuUser" class="dbsync-form-input" style="width:120px;" placeholder="操作人">
+              <input id="secAuPath" class="dbsync-form-input" style="width:160px;" placeholder="路径包含">
+              <button class="btn btn-sm btn-primary" onclick="secAuditSearch(1)">查询</button>
+              <button class="btn btn-sm" onclick="secAuditReset()">重置</button>
+              <button class="btn btn-sm" onclick="secAuditExport()">导出 CSV</button>
+            </div>
+            <div id="secStatBox" style="margin-bottom:10px;"></div>
+            <div id="secAuditBox"><div style="color:var(--text-muted);">点击「查询」加载审计记录</div></div>
+            <div id="secAuditPager" style="display:flex;align-items:center;gap:10px;margin-top:10px;"></div>
           </div>
           <div class="ops-dashboard" id="settingsAiPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -13882,6 +13906,7 @@ function switchSettingsTab(el, tab) {
   if (tab === 'datasource') loadDatasourceConfig();
   if (tab === 'env') loadEnvConfig();
   if (tab === 'user') loadUserMgmt();
+  if (tab === 'security') loadSecurityCenter();
   if (tab === 'monitor') smInit(); else smStopAuto();
 }
 
@@ -14135,6 +14160,93 @@ function smRenderAudit(rows) {
   });
   box.innerHTML = h + '</tbody></table>';
 }
+
+// ===== 系统管理：安全设置(认证状态 + 操作审计) =====
+var _secAuditPage = 1, _secAuditTotal = 0, _secAuditSize = 20;
+var SEC_ACTION_LABEL = { LOGIN: '登录', DATA_ACCESS: '数据访问', EXPORT: '导出', PERM_CHANGE: '权限变更', META_CHANGE: '元数据变更', RULE_CHANGE: '规则变更', LABEL_CHANGE: '标签变更', OTHER: '其他' };
+window.loadSecurityCenter = function() {
+  // 认证与会话卡
+  Promise.all([api('/api/auth/status').catch(function() { return null; }), api('/api/rbac/me').catch(function() { return null; })]).then(function(r) {
+    var st = (r[0] && r[0].code === 0) ? r[0].data || {} : {};
+    var me = (r[1] && r[1].code === 0) ? r[1].data || {} : {};
+    var card = document.getElementById('secAuthCard'); if (!card) return;
+    var enabled = st.authEnabled === true;
+    var authed = st.authenticated === true;
+    var permCnt = (me.perms || []).length, allPerm = (me.perms || []).indexOf('*') >= 0;
+    function tile(label, val, color) { return '<div style="flex:1;min-width:160px;border:1px solid var(--divider,#eee);border-radius:8px;padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">' + label + '</div><div style="font-size:16px;font-weight:600;margin-top:4px;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div></div>'; }
+    card.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+      + tile('登录认证', enabled ? '已启用' : '未启用（开放访问）', enabled ? '#52c41a' : '#faad14')
+      + tile('当前身份', authed ? escapeHtml(st.username || me.username || '-') : '匿名/未登录', authed ? 'var(--text-primary)' : '#8c8c8c')
+      + tile('权限', allPerm ? '全部权限(*)' : (permCnt + ' 项权限点'), 'var(--text-primary)')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">认证开关由服务端环境变量 DATANOTE_PASSWORD 控制（为空=开放访问）；用户/角色在「用户管理」维护。</div>';
+  });
+  secAuditSearch(1);
+};
+function secAuditParams() {
+  var q = [];
+  var f = document.getElementById('secAuFrom').value, t = document.getElementById('secAuTo').value;
+  var ty = document.getElementById('secAuType').value, u = (document.getElementById('secAuUser').value || '').trim(), p = (document.getElementById('secAuPath').value || '').trim();
+  if (f) q.push('from=' + encodeURIComponent(f + ' 00:00:00'));
+  if (t) q.push('to=' + encodeURIComponent(t + ' 23:59:59'));
+  if (ty) q.push('actionType=' + encodeURIComponent(ty));
+  if (u) q.push('userName=' + encodeURIComponent(u));
+  if (p) q.push('path=' + encodeURIComponent(p));
+  return q.join('&');
+}
+window.secAuditReset = function() {
+  ['secAuFrom', 'secAuTo', 'secAuUser', 'secAuPath'].forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('secAuType').value = '';
+  secAuditSearch(1);
+};
+window.secAuditSearch = function(page) {
+  _secAuditPage = page || 1;
+  var box = document.getElementById('secAuditBox'); if (box) box.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  var base = secAuditParams();
+  api('/api/gov/audit/search?page=' + _secAuditPage + '&size=' + _secAuditSize + (base ? '&' + base : '')).then(function(res) {
+    var d = (res && res.code === 0) ? res.data || {} : {};
+    _secAuditTotal = d.total || 0;
+    secRenderAudit(d.list || []);
+    secRenderPager();
+  }).catch(function() { if (box) box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+  // 按类型统计(仅首次/查询时刷新)
+  api('/api/gov/audit/stat/type').then(function(res) {
+    var box2 = document.getElementById('secStatBox'); if (!box2) return;
+    var list = (res && res.code === 0) ? res.data || [] : [];
+    if (!list.length) { box2.innerHTML = ''; return; }
+    box2.innerHTML = list.map(function(s) { return '<span style="display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;margin:2px;background:var(--bg-hover);color:var(--text-regular);cursor:pointer;" onclick="secFilterByType(\'' + s.actionType + '\')">' + escapeHtml(SEC_ACTION_LABEL[s.actionType] || s.actionType || '其他') + ' ' + (s.cnt || 0) + '</span>'; }).join('');
+  }).catch(function() {});
+};
+window.secFilterByType = function(t) { document.getElementById('secAuType').value = t; secAuditSearch(1); };
+function secRenderAudit(list) {
+  var box = document.getElementById('secAuditBox'); if (!box) return;
+  if (!list.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">无匹配审计记录</div>'; return; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>方法</th><th>路径</th><th>IP</th><th>状态</th></tr></thead><tbody>';
+  list.forEach(function(a) {
+    var st = String(a.status == null ? '' : a.status);
+    var bad = st.indexOf('4') === 0 || st.indexOf('5') === 0;
+    h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
+      + '<td>' + escapeHtml(a.userName || '-') + '</td>'
+      + '<td>' + escapeHtml(SEC_ACTION_LABEL[a.actionType] || a.actionType || '-') + '</td>'
+      + '<td style="font-size:12px;">' + escapeHtml(a.method || '-') + '</td>'
+      + '<td style="font-size:12px;word-break:break-all;max-width:320px;">' + escapeHtml(a.path || '-') + '</td>'
+      + '<td style="font-size:12px;">' + escapeHtml(a.ip || '-') + '</td>'
+      + '<td style="color:' + (bad ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(st || '-') + '</td></tr>';
+  });
+  box.innerHTML = h + '</tbody></table>';
+}
+function secRenderPager() {
+  var box = document.getElementById('secAuditPager'); if (!box) return;
+  var totalPages = Math.max(1, Math.ceil(_secAuditTotal / _secAuditSize));
+  if (!_secAuditTotal) { box.innerHTML = ''; return; }
+  box.innerHTML = '<button class="btn btn-sm" ' + (_secAuditPage <= 1 ? 'disabled' : '') + ' onclick="secAuditSearch(' + (_secAuditPage - 1) + ')">上一页</button>'
+    + '<span style="font-size:12px;color:var(--text-muted);">第 ' + _secAuditPage + ' / ' + totalPages + ' 页 · 共 ' + _secAuditTotal + ' 条</span>'
+    + '<button class="btn btn-sm" ' + (_secAuditPage >= totalPages ? 'disabled' : '') + ' onclick="secAuditSearch(' + (_secAuditPage + 1) + ')">下一页</button>';
+}
+window.secAuditExport = function() {
+  var base = secAuditParams();
+  window.open('/api/gov/audit/export' + (base ? '?' + base : ''), '_blank');
+};
 
 // ===== 系统配置：数据源管理 =====
 function loadDatasourceConfig() {
