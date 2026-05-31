@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r14">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r15">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r14"></script>
-<script src="js/gov-assets.js?v=q100r14"></script>
-<script src="js/gov-lineage.js?v=q100r14"></script>
-<script src="js/gov-quality.js?v=q100r14"></script>
-<script src="js/gov-standard.js?v=q100r14"></script>
-<script src="js/gov-classification.js?v=q100r14"></script>
-<script src="js/gov-security.js?v=q100r14"></script>
-<script src="js/gov-health.js?v=q100r14"></script>
-<script src="js/gov-audit.js?v=q100r14"></script>
-<script src="js/gov-overview.js?v=q100r14"></script>
-<script src="js/gov-subject.js?v=q100r14"></script>
+<script src="js/dn-common.js?v=q100r15"></script>
+<script src="js/gov-assets.js?v=q100r15"></script>
+<script src="js/gov-lineage.js?v=q100r15"></script>
+<script src="js/gov-quality.js?v=q100r15"></script>
+<script src="js/gov-standard.js?v=q100r15"></script>
+<script src="js/gov-classification.js?v=q100r15"></script>
+<script src="js/gov-security.js?v=q100r15"></script>
+<script src="js/gov-health.js?v=q100r15"></script>
+<script src="js/gov-audit.js?v=q100r15"></script>
+<script src="js/gov-overview.js?v=q100r15"></script>
+<script src="js/gov-subject.js?v=q100r15"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17222,22 +17222,7 @@ window.dbsyncLoadFolders = function() {
   });
 };
 
-function dbsyncRenderFolderTabs() {
-  var wrap = document.getElementById('dbsyncFolderTabs');
-  if (!wrap) return;
-  var html = '<button class="dbsync-folder-tab' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (_dbsyncSelectedFolderId === 0 ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">全部</button>';
-  // 只渲染根文件夹（parentId=0 或 null）的一级
-  _dbsyncFolders.filter(function(f) { return !f.parentId || f.parentId === 0; }).forEach(function(f) {
-    var isActive = _dbsyncSelectedFolderId === f.id;
-    html += '<span style="display:inline-flex;align-items:center;gap:2px;">'
-      + '<button class="dbsync-folder-tab' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding:3px 10px;font-size:12px;border-radius:12px;border:1px solid var(--border);cursor:pointer;' + (isActive ? 'background:var(--primary);color:#fff;' : 'background:var(--bg-card);color:var(--text-regular);') + '">'
-      + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10" style="margin-right:2px;"><path d="M1 3a1 1 0 011-1h2.586a1 1 0 01.707.293L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
-      + escapeHtml(f.folderName || '') + '</button>'
-      + '<button onclick="dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹" style="padding:1px 4px;font-size:11px;border:none;background:transparent;cursor:pointer;color:var(--text-muted);" onmouseover="this.style.color=\'var(--error)\'" onmouseout="this.style.color=\'var(--text-muted)\'">×</button>'
-      + '</span>';
-  });
-  wrap.innerHTML = html;
-}
+/* (旧 dbsyncRenderFolderTabs 已移除: 被下方树形版本覆盖, 此处为死代码) */
 
 function dbsyncFillFolderSelect() {
   var sel = document.getElementById('dfsFolderId');
