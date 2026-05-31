@@ -3306,19 +3306,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r50q2">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r50q3">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r50q2"></script>
-<script src="js/gov-assets.js?v=g3r50q2"></script>
-<script src="js/gov-lineage.js?v=g3r50q2"></script>
-<script src="js/gov-quality.js?v=g3r50q2"></script>
-<script src="js/gov-standard.js?v=g3r50q2"></script>
-<script src="js/gov-classification.js?v=g3r50q2"></script>
-<script src="js/gov-security.js?v=g3r50q2"></script>
-<script src="js/gov-health.js?v=g3r50q2"></script>
-<script src="js/gov-audit.js?v=g3r50q2"></script>
-<script src="js/gov-overview.js?v=g3r50q2"></script>
-<script src="js/gov-subject.js?v=g3r50q2"></script>
+<script src="js/dn-common.js?v=g3r50q3"></script>
+<script src="js/gov-assets.js?v=g3r50q3"></script>
+<script src="js/gov-lineage.js?v=g3r50q3"></script>
+<script src="js/gov-quality.js?v=g3r50q3"></script>
+<script src="js/gov-standard.js?v=g3r50q3"></script>
+<script src="js/gov-classification.js?v=g3r50q3"></script>
+<script src="js/gov-security.js?v=g3r50q3"></script>
+<script src="js/gov-health.js?v=g3r50q3"></script>
+<script src="js/gov-audit.js?v=g3r50q3"></script>
+<script src="js/gov-overview.js?v=g3r50q3"></script>
+<script src="js/gov-subject.js?v=g3r50q3"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13050,15 +13050,8 @@ function projRenderList(list) {
     box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">' + (_projList.length ? '无匹配项目' : '暂无项目，点击右上角「新建项目」开始') + '</div>';
     return;
   }
-  // 顶部统计概览(基于全量项目)
-  var all = _projList || [];
-  var actN = all.filter(function(p) { return p.status === 'ACTIVE'; }).length;
-  var arcN = all.filter(function(p) { return p.status === 'ARCHIVED'; }).length;
-  var favN = Object.keys(_projFav || {}).filter(function(id) { return _projFav[id] && _projFav[id].fav; }).length;
-  var stat = function(v, l, c) { return '<div style="flex:1;min-width:80px;background:var(--bg-card,#fff);border:1px solid var(--divider);border-radius:8px;padding:8px 12px;"><div style="font-size:20px;font-weight:700;color:' + (c || 'var(--text-regular)') + ';">' + v + '</div><div style="font-size:11px;color:var(--text-muted);">' + l + '</div></div>'; };
-  var banner = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-    + stat(all.length, '项目总数') + stat(actN, '活跃', '#52c41a') + stat(arcN, '已归档', '#8c8c8c') + stat(favN, '我的收藏', '#faad14') + '</div>';
-  var lvTog = banner + '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><span style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
+  // (统计概览已由页面级 projTile 横幅提供, 此处不再重复)
+  var lvTog = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><span style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
     + '<a href="#" onclick="projSetListView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projListView === 'table' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">表格</a>'
     + '<a href="#" onclick="projSetListView(\'card\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projListView === 'card' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">卡片</a></span></div>';
   if (_projListView === 'card') { box.innerHTML = lvTog + projListCards(rows); return; }
