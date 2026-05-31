@@ -4094,8 +4094,10 @@ html, body {
           <div class="ops-dashboard" id="projectSpacePanel">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">项目空间</h2>
+              <button class="btn btn-primary btn-sm" onclick="projOpenCreate()">+ 新建项目</button>
             </div>
-            <div style="padding:32px;text-align:center;color:var(--text-muted);">项目创建、成员管理、资源配额和环境隔离<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+            <div id="projKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;"></div>
+            <div id="projListBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
           </div>
           <div class="ops-dashboard" id="projectMemberPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -4109,6 +4111,46 @@ html, body {
             </div>
             <div style="padding:32px;text-align:center;color:var(--text-muted);">版本发布流程、变更审批和上线记录<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 项目 新建/编辑 弹窗 -->
+    <div class="g-modal-overlay" id="projModal">
+      <div class="g-modal" style="width:520px;">
+        <div class="g-modal-header"><span id="projModalTitle">新建项目</span><button class="g-modal-close" onclick="projCloseModal()">&times;</button></div>
+        <div class="g-modal-body">
+          <input type="hidden" id="projId">
+          <div class="ds-form-row"><label>项目名称</label><input id="projName" placeholder="如：销售数仓"></div>
+          <div class="ds-form-row"><label>编码</label><input id="projCode" placeholder="留空自动生成(如 SALESDW)"></div>
+          <div class="ds-form-row"><label>类型</label>
+            <select id="projType" class="g-modal-input">
+              <option value="GENERAL">通用</option>
+              <option value="DATASYNC">数据同步</option>
+              <option value="DEVSQL">SQL开发</option>
+              <option value="HYBRID">混合</option>
+            </select>
+          </div>
+          <div class="ds-form-row"><label>环境</label>
+            <select id="projEnv" class="g-modal-input">
+              <option value="DEV">开发</option>
+              <option value="PROD">生产</option>
+              <option value="MIXED">混合</option>
+            </select>
+          </div>
+          <div class="ds-form-row"><label>负责人</label><input id="projOwner" placeholder="留空默认当前用户"></div>
+          <div class="ds-form-row"><label>敏感度</label>
+            <select id="projSensitivity" class="g-modal-input">
+              <option value="NORMAL">普通</option>
+              <option value="SENSITIVE">敏感</option>
+            </select>
+          </div>
+          <div class="ds-form-row"><label>标签</label><input id="projTags" placeholder="逗号分隔，如 核心,实时"></div>
+          <div class="ds-form-row"><label>描述</label><input id="projDesc" placeholder="项目用途简述"></div>
+        </div>
+        <div class="g-modal-footer">
+          <button class="btn" onclick="projCloseModal()">取消</button>
+          <button class="btn btn-primary" onclick="projSave()">保存</button>
         </div>
       </div>
     </div>
@@ -9811,7 +9853,7 @@ var ROUTES = {
   'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter(); } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
-  'project':     { view: 'viewProject',             layout: 'editor', init: null },
+  'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
 };
@@ -12519,10 +12561,135 @@ function switchProjectTab(el, tab) {
   el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   el.classList.add('active');
   ['projectSpacePanel', 'projectMemberPanel', 'projectReleasePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
-  if (tab === 'space') document.getElementById('projectSpacePanel').style.display = '';
+  if (tab === 'space') { document.getElementById('projectSpacePanel').style.display = ''; loadProjectSpace(); }
   else if (tab === 'member') document.getElementById('projectMemberPanel').style.display = '';
   else if (tab === 'release') document.getElementById('projectReleasePanel').style.display = '';
 }
+
+/* ============================================================
+ * 项目管理 — PM-M1 项目空间(CRUD)
+ * ============================================================ */
+var _projList = [];
+var PROJ_TYPE_LABEL = { GENERAL: '通用', DATASYNC: '数据同步', DEVSQL: 'SQL开发', HYBRID: '混合' };
+var PROJ_ENV_LABEL = { DEV: '开发', PROD: '生产', MIXED: '混合' };
+var PROJ_STATUS = { ACTIVE: { t: '活跃', c: '#52c41a' }, ARCHIVED: { t: '已归档', c: '#8c8c8c' }, DELETED: { t: '已删除', c: '#ff4d4f' } };
+
+window.loadProjectSpace = function() {
+  var box = document.getElementById('projListBox');
+  if (!box) return;
+  api('/api/project/list').then(function(res) {
+    _projList = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []);
+    projRenderKpi();
+    projRenderList();
+  }).catch(function() {
+    box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">加载失败，请重试</div>';
+  });
+};
+
+function projTile(label, value, color) {
+  return '<div style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;">'
+    + '<div style="font-size:20px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>';
+}
+function projRenderKpi() {
+  var box = document.getElementById('projKpiRow');
+  if (!box) return;
+  var total = _projList.length;
+  var active = _projList.filter(function(p) { return p.status === 'ACTIVE'; }).length;
+  var archived = _projList.filter(function(p) { return p.status === 'ARCHIVED'; }).length;
+  var ym = new Date().toISOString().slice(0, 7);
+  var month = _projList.filter(function(p) { return (p.createdAt || '').slice(0, 7) === ym; }).length;
+  box.innerHTML = projTile('项目总数', total) + projTile('活跃', active, '#52c41a')
+    + projTile('已归档', archived, '#8c8c8c') + projTile('本月新增', month, '#1677ff');
+}
+function projRenderList() {
+  var box = document.getElementById('projListBox');
+  if (!box) return;
+  if (!_projList.length) {
+    box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">暂无项目，点击右上角「新建项目」开始</div>';
+    return;
+  }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
+    + '<th>项目名</th><th>编码</th><th>类型</th><th>环境</th><th>负责人</th><th>状态</th><th>创建时间</th><th style="width:180px;">操作</th>'
+    + '</tr></thead><tbody>';
+  _projList.forEach(function(p) {
+    var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
+    h += '<tr>'
+      + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
+      + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
+      + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
+      + '<td>' + escapeHtml(p.owner || '-') + '</td>'
+      + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
+      + '<td style="white-space:nowrap;">' + escapeHtml((p.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+      + '<td><a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">归档</a>' : '')
+      + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#ff4d4f;">删除</a></td>'
+      + '</tr>';
+  });
+  h += '</tbody></table>';
+  box.innerHTML = h;
+}
+
+window.projOpenCreate = function() {
+  document.getElementById('projModalTitle').textContent = '新建项目';
+  document.getElementById('projId').value = '';
+  document.getElementById('projName').value = '';
+  document.getElementById('projCode').value = '';
+  document.getElementById('projType').value = 'GENERAL';
+  document.getElementById('projEnv').value = 'DEV';
+  document.getElementById('projOwner').value = '';
+  document.getElementById('projSensitivity').value = 'NORMAL';
+  document.getElementById('projTags').value = '';
+  document.getElementById('projDesc').value = '';
+  document.getElementById('projModal').classList.add('show');
+};
+window.projOpenEdit = function(id) {
+  var p = _projList.find(function(x) { return x.id === id; });
+  if (!p) return;
+  document.getElementById('projModalTitle').textContent = '编辑项目';
+  document.getElementById('projId').value = p.id;
+  document.getElementById('projName').value = p.projectName || '';
+  document.getElementById('projCode').value = p.projectCode || '';
+  document.getElementById('projType').value = p.projectType || 'GENERAL';
+  document.getElementById('projEnv').value = p.env || 'DEV';
+  document.getElementById('projOwner').value = p.owner || '';
+  document.getElementById('projSensitivity').value = p.sensitivity || 'NORMAL';
+  document.getElementById('projTags').value = p.tags || '';
+  document.getElementById('projDesc').value = p.description || '';
+  document.getElementById('projModal').classList.add('show');
+};
+window.projCloseModal = function() { document.getElementById('projModal').classList.remove('show'); };
+window.projSave = function() {
+  var name = (document.getElementById('projName').value || '').trim();
+  if (!name) { showToast('请填写项目名称', 'error'); return; }
+  var id = document.getElementById('projId').value;
+  var body = {
+    projectName: name,
+    projectCode: (document.getElementById('projCode').value || '').trim(),
+    projectType: document.getElementById('projType').value,
+    env: document.getElementById('projEnv').value,
+    owner: (document.getElementById('projOwner').value || '').trim(),
+    sensitivity: document.getElementById('projSensitivity').value,
+    tags: (document.getElementById('projTags').value || '').trim(),
+    description: (document.getElementById('projDesc').value || '').trim()
+  };
+  if (id) body.id = parseInt(id);
+  apiPost('/api/project/save', body).then(function(res) {
+    if (res && res.code === 0) { showToast('已保存', 'success'); projCloseModal(); loadProjectSpace(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.projArchive = function(id) {
+  if (!confirm('确认归档该项目？归档后成员只读，可在状态筛选查看。')) return;
+  apiPost('/api/project/' + id + '/archive', {}).then(function() { showToast('已归档', 'success'); loadProjectSpace(); })
+    .catch(function() { showToast('归档失败', 'error'); });
+};
+window.projDelete = function(id, name) {
+  if (!confirm('确认删除项目 [' + name + ']？(软删除，资产关联与成员将不再展示)')) return;
+  fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); loadProjectSpace(); })
+    .catch(function() { showToast('删除失败', 'error'); });
+};
 
 // ===== 系统管理 tab 切换 =====
 function switchSettingsTab(el, tab) {
