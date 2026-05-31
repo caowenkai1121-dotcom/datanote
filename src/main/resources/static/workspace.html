@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=gv2r7">
+<link rel="stylesheet" href="css/gov-modern.css?v=gv2r8">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=gv2r7"></script>
-<script src="js/gov-assets.js?v=gv2r7"></script>
-<script src="js/gov-lineage.js?v=gv2r7"></script>
-<script src="js/gov-quality.js?v=gv2r7"></script>
-<script src="js/gov-standard.js?v=gv2r7"></script>
-<script src="js/gov-classification.js?v=gv2r7"></script>
-<script src="js/gov-security.js?v=gv2r7"></script>
-<script src="js/gov-health.js?v=gv2r7"></script>
-<script src="js/gov-audit.js?v=gv2r7"></script>
-<script src="js/gov-overview.js?v=gv2r7"></script>
-<script src="js/gov-subject.js?v=gv2r7"></script>
+<script src="js/dn-common.js?v=gv2r8"></script>
+<script src="js/gov-assets.js?v=gv2r8"></script>
+<script src="js/gov-lineage.js?v=gv2r8"></script>
+<script src="js/gov-quality.js?v=gv2r8"></script>
+<script src="js/gov-standard.js?v=gv2r8"></script>
+<script src="js/gov-classification.js?v=gv2r8"></script>
+<script src="js/gov-security.js?v=gv2r8"></script>
+<script src="js/gov-health.js?v=gv2r8"></script>
+<script src="js/gov-audit.js?v=gv2r8"></script>
+<script src="js/gov-overview.js?v=gv2r8"></script>
+<script src="js/gov-subject.js?v=gv2r8"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13302,7 +13302,7 @@ window.projLoadAssets = function() {
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>类型</th><th>资产名</th><th>资产ID</th><th>绑定时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
       as.forEach(function(a) {
         h += '<tr><td>' + escapeHtml(PROJ_ASSET_TYPE[a.assetType] || a.assetType) + '</td>'
-          + '<td>' + escapeHtml(a.assetName || '-') + '</td><td>' + a.assetId + '</td>'
+          + '<td>' + escapeHtml(a.assetName || '-') + '</td><td>' + escapeHtml(String(a.assetId == null ? '-' : a.assetId)) + '</td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
           + '<td><a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
           + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
@@ -13443,7 +13443,7 @@ window.projSaveAnnounce = function() {
 };
 window.projDeleteAnnounce = function(annId) {
   if (!confirm('删除该公告？')) return;
-  fetch('/api/project/' + _projDetail.id + '/announcements/' + annId, { method: 'DELETE' }).then(_handleResponse).then(function() { projLoadAnnounceCard(); }).catch(function() { showToast('删除失败', 'error'); });
+  fetch('/api/project/' + _projDetail.id + '/announcements/' + annId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadAnnounceCard(); }).catch(function() { showToast('删除失败', 'error'); });
 };
 window.projLoadHealthCard = function() {
   var card = document.getElementById('projHealthCard'); if (!card || !_projDetail) return;
@@ -17182,6 +17182,7 @@ window.dbsyncAddDep = function(jobId) {
 };
 /* ---------- 上游依赖：移除 ---------- */
 window.dbsyncRemoveDep = function(jobId, upId) {
+  if (!confirm('确认移除该上游依赖？移除后调度将不再等待该上游。')) return;
   fetch('/api/sync-job/' + jobId + '/dependencies?upstreamId=' + upId, { method: 'DELETE' })
     .then(function(r) { return r.json(); })
     .then(function(res) {
@@ -17221,6 +17222,7 @@ function dbsyncRenderConfig(job) {
     html += '<div style="padding:10px 0;color:var(--text-muted);font-size:12px;">未配置同步表</div>';
   } else {
     tables.forEach(function(t) {
+      if (!t) return; // 防 tableConfig 数组含 null 项致后续访问崩溃
       var createTag = t.createTargetTable ? '<span class="dbsync-cfg-tag">自动建表</span>' : '<span class="dbsync-cfg-tag muted">写入已有表</span>';
       var incr = (job.syncMode === 'INCREMENTAL' && t.incrementalField)
         ? ' <span class="dbsync-cfg-tag muted">增量字段 ' + escapeHtml(t.incrementalField) + (t.incrementalType ? ('/' + escapeHtml(t.incrementalType)) : '') + '</span>' : '';
