@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r23">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r24">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r23"></script>
-<script src="js/gov-assets.js?v=g2r23"></script>
-<script src="js/gov-lineage.js?v=g2r23"></script>
-<script src="js/gov-quality.js?v=g2r23"></script>
-<script src="js/gov-standard.js?v=g2r23"></script>
-<script src="js/gov-classification.js?v=g2r23"></script>
-<script src="js/gov-security.js?v=g2r23"></script>
-<script src="js/gov-health.js?v=g2r23"></script>
-<script src="js/gov-audit.js?v=g2r23"></script>
-<script src="js/gov-overview.js?v=g2r23"></script>
-<script src="js/gov-subject.js?v=g2r23"></script>
+<script src="js/dn-common.js?v=g2r24"></script>
+<script src="js/gov-assets.js?v=g2r24"></script>
+<script src="js/gov-lineage.js?v=g2r24"></script>
+<script src="js/gov-quality.js?v=g2r24"></script>
+<script src="js/gov-standard.js?v=g2r24"></script>
+<script src="js/gov-classification.js?v=g2r24"></script>
+<script src="js/gov-security.js?v=g2r24"></script>
+<script src="js/gov-health.js?v=g2r24"></script>
+<script src="js/gov-audit.js?v=g2r24"></script>
+<script src="js/gov-overview.js?v=g2r24"></script>
+<script src="js/gov-subject.js?v=g2r24"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13338,10 +13338,14 @@ window.projLoadEnvParams = function() {
     _projEnvParams = ps;
     if (!ps.length) h += '<div style="padding:14px;text-align:center;color:var(--text-muted);">暂无环境参数</div>';
     else {
-      h += '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;"><input id="pepSearch" class="dbsync-form-input" style="width:160px;" placeholder="搜索参数键/值" oninput="projFilterEnvParams()"><button class="btn btn-sm" style="margin-left:auto;" onclick="projExportEnvParams()">导出CSV</button></div>';
+      var diffN = ps.filter(function(p) { return (p.devValue || '') !== (p.prodValue || ''); }).length;
+      h += '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;"><input id="pepSearch" class="dbsync-form-input" style="width:160px;" placeholder="搜索参数键/值" oninput="projFilterEnvParams()">'
+        + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:3px;"><input type="checkbox" id="pepDiffOnly" onchange="projFilterEnvParams()"> 仅看差异(' + diffN + ')</label>'
+        + '<button class="btn btn-sm" style="margin-left:auto;" onclick="projExportEnvParams()">导出CSV</button></div>';
       h += '<table class="dbsync-exec-table" id="projEnvTbl" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
       ps.forEach(function(p) {
-        h += '<tr class="proj-env-row" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td>' + escapeHtml(p.prodValue || '-') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
+        var diff = (p.devValue || '') !== (p.prodValue || '');
+        h += '<tr class="proj-env-row" data-diff="' + (diff ? '1' : '0') + '" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td' + (diff ? ' style="background:#fff7e6;color:#d46b08;font-weight:600;"' : '') + '>' + escapeHtml(p.prodValue || '-') + (diff ? ' <span title="开发值≠生产值">≠</span>' : '') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
           + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
       });
       h += '</tbody></table>';
@@ -13352,8 +13356,11 @@ window.projLoadEnvParams = function() {
 var _projEnvParams = [];
 window.projFilterEnvParams = function() {
   var kw = ((document.getElementById('pepSearch') || {}).value || '').trim().toLowerCase();
+  var diffOnly = !!(document.getElementById('pepDiffOnly') || {}).checked;
   Array.prototype.slice.call(document.querySelectorAll('#projEnvTbl .proj-env-row')).forEach(function(tr) {
-    tr.style.display = (!kw || (tr.getAttribute('data-k') || '').indexOf(kw) >= 0) ? '' : 'none';
+    var okKw = !kw || (tr.getAttribute('data-k') || '').indexOf(kw) >= 0;
+    var okDiff = !diffOnly || tr.getAttribute('data-diff') === '1';
+    tr.style.display = (okKw && okDiff) ? '' : 'none';
   });
 };
 window.projExportEnvParams = function() {
@@ -14062,8 +14069,18 @@ window.projLoadReleases = function() {
     var h = '<div style="margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button></div>';
     if (!rs.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无发布版本</div>';
     else {
+      // 状态统计条
+      var sc = {}; rs.forEach(function(r) { sc[r.status] = (sc[r.status] || 0) + 1; });
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">';
+      Object.keys(sc).forEach(function(s) { var st = REL_STATUS[s] || { t: s, c: 'var(--text-muted)' }; h += '<span style="font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid ' + st.c + ';color:' + st.c + ';">' + escapeHtml(st.t) + ' ' + sc[s] + '</span>'; });
+      h += '</div>';
+      // 待审批(PENDING)置顶, 其余保持原序(稳定排序)
+      var ordered = rs.map(function(r, i) { return { r: r, i: i }; }).sort(function(a, b) {
+        var pa = a.r.status === 'PENDING' ? 0 : 1, pb = b.r.status === 'PENDING' ? 0 : 1;
+        return pa !== pb ? pa - pb : a.i - b.i;
+      }).map(function(x) { return x.r; });
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>版本</th><th>标题</th><th>环境</th><th>状态</th><th>提交人</th><th>提交时间</th><th style="width:120px;">操作</th></tr></thead><tbody>';
-      rs.forEach(function(r) {
+      ordered.forEach(function(r) {
         var st = REL_STATUS[r.status] || { t: r.status, c: '' };
         h += '<tr><td>v' + r.versionNo + '</td><td><a href="#" onclick="projRelDetail(' + r.id + ');return false;" style="color:var(--primary);">' + escapeHtml(r.title || '-') + '</a></td><td>' + escapeHtml(r.targetEnv || '-') + '</td>'
           + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
@@ -17983,6 +18000,16 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
   var incremental = data.incremental || [];
   var chunk = data.chunk || [];
   var html = '';
+
+  // 两类断点均为空 → 正向说明空态
+  if (incremental.length === 0 && chunk.length === 0) {
+    pane.innerHTML = '<div class="dbsync-detail-card" style="text-align:center;padding:28px 16px;">'
+      + '<svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#52c41a" stroke-width="2" style="display:block;margin:0 auto 12px;"><circle cx="24" cy="24" r="20"/><path d="M16 24l6 6 12-12"/></svg>'
+      + '<div style="font-size:14px;font-weight:600;color:var(--text-regular);margin-bottom:6px;">暂无断点记录 · 状态正常</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.7;max-width:420px;margin:0 auto;">增量/CDC 任务运行后会在此记录<b>增量水位</b>(增量字段的当前最大值，用于断点续传)；分片全量任务会记录 <b>Chunk 断点</b>(已完成的数据分片)。当前任务尚未产生断点，或为全量覆盖模式无需断点。</div>'
+      + '</div>';
+    return;
+  }
 
   html += '<div class="dbsync-detail-card">'
     + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7h10M7 4l3 3-3 3"/></svg> 增量水位（增量/CDC 断点）</div>';
