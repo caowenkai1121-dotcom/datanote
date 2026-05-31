@@ -23,6 +23,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectMemberService projectMemberService;
     private final com.datanote.service.ProjectAssetService projectAssetService;
     private final com.datanote.service.ProjectOverviewService projectOverviewService;
+    private final com.datanote.service.ProjectReleaseService projectReleaseService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -171,6 +172,78 @@ public class ProjectController {
     public R<List<java.util.Map<String, Object>>> assetCandidates(@PathVariable Long id, @RequestParam String type) {
         try {
             return R.ok(projectAssetService.candidates(id, type));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    // ===== PM-M5：发布管理 =====
+
+    @Operation(summary = "项目发布版本列表")
+    @GetMapping("/{id}/releases")
+    public R<List<com.datanote.model.DnProjectRelease>> releases(@PathVariable Long id) {
+        try {
+            return R.ok(projectReleaseService.list(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "提交发布")
+    @PostMapping("/{id}/releases")
+    public R<com.datanote.model.DnProjectRelease> submitRelease(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        try {
+            return R.ok(projectReleaseService.submit(id, body.get("title"), body.get("content"), body.get("targetEnv")));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "跨项目发布中心")
+    @GetMapping("/releases/all")
+    public R<List<com.datanote.model.DnProjectRelease>> allReleases(@RequestParam(required = false) String status) {
+        return R.ok(projectReleaseService.listAll(status));
+    }
+
+    @Operation(summary = "审批通过")
+    @PostMapping("/releases/{releaseId}/approve")
+    public R<String> approveRelease(@PathVariable Long releaseId, @RequestBody(required = false) java.util.Map<String, String> body) {
+        try {
+            projectReleaseService.approve(releaseId, body == null ? null : body.get("comment"));
+            return R.ok("已通过");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "审批驳回")
+    @PostMapping("/releases/{releaseId}/reject")
+    public R<String> rejectRelease(@PathVariable Long releaseId, @RequestBody(required = false) java.util.Map<String, String> body) {
+        try {
+            projectReleaseService.reject(releaseId, body == null ? null : body.get("comment"));
+            return R.ok("已驳回");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "发布上线")
+    @PostMapping("/releases/{releaseId}/release")
+    public R<String> doRelease(@PathVariable Long releaseId) {
+        try {
+            projectReleaseService.release(releaseId);
+            return R.ok("已发布");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "回滚")
+    @PostMapping("/releases/{releaseId}/rollback")
+    public R<String> rollbackRelease(@PathVariable Long releaseId) {
+        try {
+            projectReleaseService.rollback(releaseId);
+            return R.ok("已回滚");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

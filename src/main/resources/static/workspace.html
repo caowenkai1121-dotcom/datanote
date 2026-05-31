@@ -4108,8 +4108,9 @@ html, body {
           <div class="ops-dashboard" id="projectReleasePanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">发布管理</h2>
+              <span style="font-size:12px;color:var(--text-muted);">跨项目发布与审批中心（提交发布在 项目详情→发布）</span>
             </div>
-            <div style="padding:32px;text-align:center;color:var(--text-muted);">版本发布流程、变更审批和上线记录<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+            <div id="projReleaseCenterBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
           </div>
         </div>
       </div>
@@ -4151,6 +4152,26 @@ html, body {
         <div class="g-modal-footer">
           <button class="btn" onclick="projCloseModal()">取消</button>
           <button class="btn btn-primary" onclick="projSave()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提交发布 弹窗 -->
+    <div class="g-modal-overlay" id="projReleaseModal">
+      <div class="g-modal" style="width:520px;">
+        <div class="g-modal-header"><span>提交发布</span><button class="g-modal-close" onclick="projCloseReleaseModal()">&times;</button></div>
+        <div class="g-modal-body">
+          <div class="ds-form-row"><label>标题</label><input id="projRelTitle" placeholder="留空默认 发布 vN"></div>
+          <div class="ds-form-row"><label>目标环境</label>
+            <select id="projRelEnv" class="g-modal-input"><option value="PROD">生产</option><option value="DEV">开发</option></select>
+          </div>
+          <div class="ds-form-row" style="align-items:flex-start;"><label>发布内容</label>
+            <textarea id="projRelContent" style="flex:1;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;" placeholder="变更说明 / 资产快照（可选）"></textarea>
+          </div>
+        </div>
+        <div class="g-modal-footer">
+          <button class="btn" onclick="projCloseReleaseModal()">取消</button>
+          <button class="btn btn-primary" onclick="projSubmitRelease()">提交</button>
         </div>
       </div>
     </div>
@@ -12950,6 +12971,109 @@ window.projLoadOverview = function() {
     pane.innerHTML = h;
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
+
+/* ===== PM-M5：发布管理 ===== */
+var REL_STATUS = { PENDING: { t: '待审批', c: '#fa8c16' }, APPROVED: { t: '已通过', c: '#1677ff' }, REJECTED: { t: '已驳回', c: '#8c8c8c' }, RELEASED: { t: '已发布', c: '#52c41a' }, ROLLED_BACK: { t: '已回滚', c: '#ff4d4f' } };
+function projRelActionLinks(r, scope) {
+  var s = r.status, rid = r.id, a = '';
+  if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:#52c41a;margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:#ff4d4f;">驳回</a>';
+  else if (s === 'APPROVED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'release\',\'' + scope + '\');return false;" style="color:var(--primary);">发布上线</a>';
+  else if (s === 'RELEASED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:#d48806;">回滚</a>';
+  else a = '<span style="color:var(--text-muted);">-</span>';
+  return a;
+}
+window.projLoadReleases = function() {
+  var pane = document.getElementById('projPane_release'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/releases').then(function(res) {
+    var rs = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button></div>';
+    if (!rs.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无发布版本</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>版本</th><th>标题</th><th>环境</th><th>状态</th><th>提交人</th><th>提交时间</th><th style="width:120px;">操作</th></tr></thead><tbody>';
+      rs.forEach(function(r) {
+        var st = REL_STATUS[r.status] || { t: r.status, c: '' };
+        h += '<tr><td>v' + r.versionNo + '</td><td>' + escapeHtml(r.title || '-') + '</td><td>' + escapeHtml(r.targetEnv || '-') + '</td>'
+          + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
+          + '<td>' + escapeHtml(r.submittedBy || '-') + '</td>'
+          + '<td style="white-space:nowrap;">' + escapeHtml((r.submittedAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+          + '<td>' + projRelActionLinks(r, 'detail') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    pane.innerHTML = h;
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projOpenReleaseModal = function() {
+  document.getElementById('projRelTitle').value = '';
+  document.getElementById('projRelEnv').value = 'PROD';
+  document.getElementById('projRelContent').value = '';
+  document.getElementById('projReleaseModal').classList.add('show');
+};
+window.projCloseReleaseModal = function() { document.getElementById('projReleaseModal').classList.remove('show'); };
+window.projSubmitRelease = function() {
+  if (!_projDetail) return;
+  var body = {
+    title: (document.getElementById('projRelTitle').value || '').trim(),
+    targetEnv: document.getElementById('projRelEnv').value,
+    content: document.getElementById('projRelContent').value || ''
+  };
+  apiPost('/api/project/' + _projDetail.id + '/releases', body).then(function(res) {
+    if (res && res.code === 0) { showToast('已提交发布', 'success'); projCloseReleaseModal(); projLoadReleases(); }
+    else showToast((res && res.msg) || '提交失败', 'error');
+  }).catch(function() { showToast('提交失败', 'error'); });
+};
+window.projRelAct = function(rid, action, scope) {
+  var refresh = function() { if (scope === 'center') loadProjectReleaseCenter(); else projLoadReleases(); };
+  if (action === 'approve' || action === 'reject') {
+    var comment = prompt(action === 'approve' ? '审批意见(可选)：' : '驳回原因：', '');
+    if (action === 'reject' && comment === null) return;
+    apiPost('/api/project/releases/' + rid + '/' + action, { comment: comment || '' }).then(function(res) {
+      if (res && res.code === 0) { showToast(action === 'approve' ? '已通过' : '已驳回', 'success'); refresh(); }
+      else showToast((res && res.msg) || '操作失败', 'error');
+    }).catch(function() { showToast('操作失败', 'error'); });
+  } else {
+    if (!confirm(action === 'release' ? '确认发布上线该版本？' : '确认回滚该版本？')) return;
+    apiPost('/api/project/releases/' + rid + '/' + action, {}).then(function(res) {
+      if (res && res.code === 0) { showToast(action === 'release' ? '已发布' : '已回滚', 'success'); refresh(); }
+      else showToast((res && res.msg) || '操作失败', 'error');
+    }).catch(function() { showToast('操作失败', 'error'); });
+  }
+};
+
+/* 发布管理 顶级页签：跨项目发布中心 */
+var _projReleaseFilter = '';
+window.loadProjectReleaseCenter = function() {
+  var box = document.getElementById('projReleaseCenterBox'); if (!box) return;
+  box.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  Promise.all([
+    api('/api/project/releases/all' + (_projReleaseFilter ? '?status=' + _projReleaseFilter : '')),
+    api('/api/project/list')
+  ]).then(function(arr) {
+    var rs = (arr[0] && arr[0].code === 0) ? (arr[0].data || []) : [];
+    var projs = (arr[1] && arr[1].code === 0) ? (arr[1].data || []) : [];
+    var nameMap = {}; projs.forEach(function(p) { nameMap[p.id] = p.projectName; });
+    var chips = [['', '全部'], ['PENDING', '待审批'], ['APPROVED', '已通过'], ['RELEASED', '已发布'], ['REJECTED', '已驳回'], ['ROLLED_BACK', '已回滚']];
+    var h = '<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">' + chips.map(function(c) {
+      var on = _projReleaseFilter === c[0];
+      return '<button class="btn btn-sm" style="' + (on ? 'background:var(--primary);color:#fff;border-color:var(--primary);' : '') + '" onclick="projReleaseFilter(\'' + c[0] + '\')">' + c[1] + '</button>';
+    }).join('') + '</div>';
+    if (!rs.length) h += '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无发布记录</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>项目</th><th>版本</th><th>标题</th><th>环境</th><th>状态</th><th>提交人</th><th>提交时间</th><th style="width:120px;">操作</th></tr></thead><tbody>';
+      rs.forEach(function(r) {
+        var st = REL_STATUS[r.status] || { t: r.status, c: '' };
+        h += '<tr><td>' + escapeHtml(nameMap[r.projectId] || ('#' + r.projectId)) + '</td><td>v' + r.versionNo + '</td><td>' + escapeHtml(r.title || '-') + '</td>'
+          + '<td>' + escapeHtml(r.targetEnv || '-') + '</td><td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
+          + '<td>' + escapeHtml(r.submittedBy || '-') + '</td><td style="white-space:nowrap;">' + escapeHtml((r.submittedAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+          + '<td>' + projRelActionLinks(r, 'center') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    box.innerHTML = h;
+  }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projReleaseFilter = function(s) { _projReleaseFilter = s; loadProjectReleaseCenter(); };
 
 // ===== 系统管理 tab 切换 =====
 function switchSettingsTab(el, tab) {
