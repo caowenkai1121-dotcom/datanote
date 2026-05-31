@@ -3278,19 +3278,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r9">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r10">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r9"></script>
-<script src="js/gov-assets.js?v=g3r9"></script>
-<script src="js/gov-lineage.js?v=g3r9"></script>
-<script src="js/gov-quality.js?v=g3r9"></script>
-<script src="js/gov-standard.js?v=g3r9"></script>
-<script src="js/gov-classification.js?v=g3r9"></script>
-<script src="js/gov-security.js?v=g3r9"></script>
-<script src="js/gov-health.js?v=g3r9"></script>
-<script src="js/gov-audit.js?v=g3r9"></script>
-<script src="js/gov-overview.js?v=g3r9"></script>
-<script src="js/gov-subject.js?v=g3r9"></script>
+<script src="js/dn-common.js?v=g3r10"></script>
+<script src="js/gov-assets.js?v=g3r10"></script>
+<script src="js/gov-lineage.js?v=g3r10"></script>
+<script src="js/gov-quality.js?v=g3r10"></script>
+<script src="js/gov-standard.js?v=g3r10"></script>
+<script src="js/gov-classification.js?v=g3r10"></script>
+<script src="js/gov-security.js?v=g3r10"></script>
+<script src="js/gov-health.js?v=g3r10"></script>
+<script src="js/gov-audit.js?v=g3r10"></script>
+<script src="js/gov-overview.js?v=g3r10"></script>
+<script src="js/gov-subject.js?v=g3r10"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13643,7 +13643,8 @@ window.projLoadActivities = function() {
     var as = (res && res.code === 0) ? (res.data || []) : [];
     _projActs = as;
     if (!as.length) { pane.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无活动记录（成员/资产/发布/设置等写操作将在此留痕）</div>'; return; }
-    var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
+    var h = projActHeatmap(as)
+      + '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<select id="projActMethod" class="dbsync-form-select" style="width:auto;" onchange="projRenderActs()"><option value="">全部方法</option><option>POST</option><option>PUT</option><option>DELETE</option><option>GET</option></select>'
       + '<select id="projActStatus" class="dbsync-form-select" style="width:auto;" onchange="projRenderActs()"><option value="">全部状态</option><option value="ok">成功(&lt;400)</option><option value="err">失败(≥400)</option></select>'
       + '<input id="projActSearch" class="dbsync-form-input" style="width:160px;" placeholder="搜索路径/操作人" oninput="projRenderActs()">'
@@ -13653,6 +13654,41 @@ window.projLoadActivities = function() {
     projRenderActs();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
+// 活动贡献热力图(大功能): 近13周按天活动量, GitHub风格色块
+function projActHeatmap(acts) {
+  var WEEKS = 13;
+  var cnt = {}; // YYYY-MM-DD -> n
+  acts.forEach(function(a) { var d = (a.createdAt || '').slice(0, 10); if (d) cnt[d] = (cnt[d] || 0) + 1; });
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  // 对齐到本周日(列尾)
+  var end = new Date(today); end.setDate(end.getDate() + (6 - end.getDay()));
+  var start = new Date(end); start.setDate(start.getDate() - (WEEKS * 7 - 1));
+  var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  var fmt = function(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  var max = 0; Object.keys(cnt).forEach(function(k) { if (cnt[k] > max) max = cnt[k]; });
+  var colorOf = function(n) {
+    if (!n) return 'var(--bg-hover,#ebedf0)';
+    var r = n / (max || 1);
+    return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff';
+  };
+  var cells = '';
+  var totalActs = 0;
+  for (var wk = 0; wk < WEEKS; wk++) {
+    cells += '<div style="display:flex;flex-direction:column;gap:3px;">';
+    for (var dow = 0; dow < 7; dow++) {
+      var d = new Date(start); d.setDate(start.getDate() + wk * 7 + dow);
+      if (d > today) { cells += '<div style="width:12px;height:12px;"></div>'; continue; }
+      var ds = fmt(d), n = cnt[ds] || 0; totalActs += n;
+      cells += '<div title="' + ds + ' · ' + n + ' 次活动" style="width:12px;height:12px;border-radius:2px;background:' + colorOf(n) + ';"></div>';
+    }
+    cells += '</div>';
+  }
+  return '<div style="border:1px solid var(--divider);border-radius:8px;padding:12px;margin-bottom:12px;">'
+    + '<div style="display:flex;align-items:center;margin-bottom:8px;"><span style="font-size:13px;font-weight:600;">活动热力 · 近 ' + WEEKS + ' 周</span>'
+    + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">少 <span style="width:11px;height:11px;background:var(--bg-hover,#ebedf0);border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#bcd7ff;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#69a9ff;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#1677ff;border-radius:2px;display:inline-block;"></span> 多</span></div>'
+    + '<div style="display:flex;gap:3px;overflow-x:auto;">' + cells + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">窗口内共 ' + totalActs + ' 次活动, 单日峰值 ' + max + ' 次</div></div>';
+}
 var _projActs = [];
 window.projRenderActs = function() {
   var box = document.getElementById('projActTblBox'); if (!box) return;
