@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r1">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r2">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r1"></script>
-<script src="js/gov-assets.js?v=g3r1"></script>
-<script src="js/gov-lineage.js?v=g3r1"></script>
-<script src="js/gov-quality.js?v=g3r1"></script>
-<script src="js/gov-standard.js?v=g3r1"></script>
-<script src="js/gov-classification.js?v=g3r1"></script>
-<script src="js/gov-security.js?v=g3r1"></script>
-<script src="js/gov-health.js?v=g3r1"></script>
-<script src="js/gov-audit.js?v=g3r1"></script>
-<script src="js/gov-overview.js?v=g3r1"></script>
-<script src="js/gov-subject.js?v=g3r1"></script>
+<script src="js/dn-common.js?v=g3r2"></script>
+<script src="js/gov-assets.js?v=g3r2"></script>
+<script src="js/gov-lineage.js?v=g3r2"></script>
+<script src="js/gov-quality.js?v=g3r2"></script>
+<script src="js/gov-standard.js?v=g3r2"></script>
+<script src="js/gov-classification.js?v=g3r2"></script>
+<script src="js/gov-security.js?v=g3r2"></script>
+<script src="js/gov-health.js?v=g3r2"></script>
+<script src="js/gov-audit.js?v=g3r2"></script>
+<script src="js/gov-overview.js?v=g3r2"></script>
+<script src="js/gov-subject.js?v=g3r2"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13710,7 +13710,8 @@ window.projLoadTasks = function() {
     var viewToggle = '<span class="proj-view-toggle" style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
       + '<a href="#" onclick="projSetTaskView(\'list\');return false;" title="列表视图" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projTaskView === 'list' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">列表</a>'
       + '<a href="#" onclick="projSetTaskView(\'kanban\');return false;" title="看板视图" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'kanban' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">看板</a>'
-      + '<a href="#" onclick="projSetTaskView(\'calendar\');return false;" title="日历视图(按截止日)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a></span>';
+      + '<a href="#" onclick="projSetTaskView(\'calendar\');return false;" title="日历视图(按截止日)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a>'
+      + '<a href="#" onclick="projSetTaskView(\'gantt\');return false;" title="甘特图(里程碑时间轴)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'gantt' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">甘特</a></span>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
@@ -13725,6 +13726,9 @@ window.projLoadTasks = function() {
     }
     else if (_projTaskView === 'calendar') {
       h += projCalendarHtml(tasks, _today);
+    }
+    else if (_projTaskView === 'gantt') {
+      h += projGanttHtml(tasks, _projMilestones, _today);
     }
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
@@ -13827,6 +13831,55 @@ function projCalendarHtml(tasks, today) {
   }
   h += '</div>';
   return h;
+}
+// 甘特图：里程碑时间轴 + 进度填充 + 今日线(纯前端自绘, 零依赖)
+function projGanttHtml(tasks, milestones, today) {
+  var ms = (milestones || []).filter(function(m) { return m.startDate || m.endDate; });
+  if (!ms.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无带起止日期的里程碑，无法绘制甘特图。请在「里程碑管理」中设置里程碑的开始/结束日期。</div>';
+  var parse = function(s) { return s ? new Date(s + 'T00:00:00') : null; };
+  var dmin = null, dmax = null;
+  ms.forEach(function(m) {
+    var s = parse(m.startDate) || parse(m.endDate), e = parse(m.endDate) || parse(m.startDate);
+    if (s && (!dmin || s < dmin)) dmin = s;
+    if (e && (!dmax || e > dmax)) dmax = e;
+  });
+  var td = parse(today);
+  if (td && td < dmin) dmin = td; if (td && td > dmax) dmax = td;
+  // 两端各留 2 天边距
+  dmin = new Date(dmin.getTime() - 2 * 86400000); dmax = new Date(dmax.getTime() + 2 * 86400000);
+  var span = Math.max(1, (dmax - dmin) / 86400000);
+  var pct = function(d) { return ((d - dmin) / 86400000 / span * 100); };
+  // 月份刻度
+  var ticks = '';
+  var cur = new Date(dmin.getFullYear(), dmin.getMonth(), 1);
+  while (cur <= dmax) {
+    var lp = pct(cur);
+    if (lp >= 0 && lp <= 100) ticks += '<div style="position:absolute;left:' + lp.toFixed(2) + '%;top:0;bottom:0;border-left:1px solid var(--divider);"><span style="position:absolute;top:0;left:3px;font-size:10px;color:var(--text-muted);white-space:nowrap;">' + (cur.getFullYear()) + '/' + (cur.getMonth() + 1) + '</span></div>';
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  var todayLine = '';
+  if (td) { var tp = pct(td); if (tp >= 0 && tp <= 100) todayLine = '<div style="position:absolute;left:' + tp.toFixed(2) + '%;top:0;bottom:0;border-left:2px solid #ff4d4f;z-index:2;"></div>'; }
+  var rows = '';
+  ms.slice().sort(function(a, b) { return (a.startDate || a.endDate || '').localeCompare(b.startDate || b.endDate || ''); }).forEach(function(m) {
+    var s = parse(m.startDate) || parse(m.endDate), e = parse(m.endDate) || parse(m.startDate);
+    var left = Math.max(0, pct(s)), right = Math.min(100, pct(e)); var w = Math.max(1.5, right - left);
+    var mt = tasks.filter(function(t) { return t.milestoneId === m.id; });
+    var doneN = mt.filter(function(t) { return t.status === 'DONE'; }).length;
+    var prog = mt.length ? Math.round(doneN * 100 / mt.length) : 0;
+    var overdue = e && td && e < td && prog < 100;
+    var barColor = prog >= 100 ? '#52c41a' : overdue ? '#ff4d4f' : 'var(--primary)';
+    rows += '<div style="display:flex;align-items:center;height:34px;border-bottom:1px solid var(--divider);">'
+      + '<div style="width:150px;flex-shrink:0;font-size:12px;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(m.name || '') + '">' + escapeHtml(m.name || '里程碑') + '</div>'
+      + '<div style="flex:1;position:relative;height:100%;">'
+      + '<div title="' + escapeHtml((m.startDate || '?') + ' ~ ' + (m.endDate || '?') + ' · ' + doneN + '/' + mt.length + ' 完成 ' + prog + '%') + '" style="position:absolute;left:' + left.toFixed(2) + '%;width:' + w.toFixed(2) + '%;top:8px;height:18px;background:var(--bg-hover,#eee);border-radius:9px;overflow:hidden;border:1px solid ' + barColor + ';">'
+      + '<div style="height:100%;width:' + prog + '%;background:' + barColor + ';opacity:.85;"></div>'
+      + '<span style="position:absolute;inset:0;display:flex;align-items:center;padding-left:8px;font-size:10px;color:var(--text-regular);white-space:nowrap;">' + prog + '% (' + doneN + '/' + mt.length + ')</span>'
+      + '</div></div></div>';
+  });
+  return '<div style="border:1px solid var(--divider);border-radius:8px;overflow:hidden;">'
+    + '<div style="display:flex;align-items:center;height:22px;background:var(--bg-hover,#f6f7f9);"><div style="width:150px;flex-shrink:0;"></div><div style="flex:1;position:relative;height:100%;">' + ticks + '</div></div>'
+    + '<div style="position:relative;">' + todayLine + rows + '</div>'
+    + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:6px;">条形=里程碑周期, 填充=任务完成率; 红线=今日; 红框=超期未完成。</div>';
 }
 var _projKbDragId = null;
 window.projKbDragStart = function(ev, id) { _projKbDragId = id; ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', String(id)); } catch (e) {} var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = '0.5'; };
@@ -17620,6 +17673,35 @@ function dbsyncFillDepSelect(jobId) {
   all.forEach(function(j) { opts += '<option value="' + j.id + '">' + escapeHtml(j.jobName || ('任务#' + j.id)) + '</option>'; });
   sel.innerHTML = opts;
 }
+// 依赖 DAG 拓扑：上游节点纵向排列 → 贝塞尔连线汇入本任务节点(纯前端 SVG)
+function dbsyncDepGraph(ups, selfLabel) {
+  if (!ups.length) return '';
+  var stColor = function(s) { return s === 'RUNNING' ? '#52c41a' : s === 'FAILED' ? '#ff4d4f' : s === 'STOPPED' ? '#faad14' : '#8c8c8c'; };
+  var W = 460, rowH = 38, padY = 14;
+  var H = Math.max(rowH * ups.length + padY * 2, 70);
+  var upX = 14, upW = 150, selfX = 280, selfW = 160;
+  var selfCY = H / 2;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:' + W + 'px;background:var(--bg-hover,#fafafa);border:1px solid var(--divider);border-radius:8px;">';
+  // 连线
+  ups.forEach(function(u, i) {
+    var cy = padY + rowH * i + (rowH - 12) / 2 + 6;
+    var x1 = upX + upW, x2 = selfX;
+    svg += '<path d="M' + x1 + ' ' + cy + ' C' + (x1 + 40) + ' ' + cy + ' ' + (x2 - 40) + ' ' + selfCY + ' ' + x2 + ' ' + selfCY + '" fill="none" stroke="var(--border,#d0d3d9)" stroke-width="1.5"/>';
+  });
+  // 上游节点
+  ups.forEach(function(u, i) {
+    var y = padY + rowH * i, c = stColor(u.status);
+    svg += '<g><rect x="' + upX + '" y="' + y + '" width="' + upW + '" height="' + (rowH - 12) + '" rx="6" fill="#fff" stroke="' + c + '"/>'
+      + '<circle cx="' + (upX + 12) + '" cy="' + (y + (rowH - 12) / 2) + '" r="4" fill="' + c + '"/>'
+      + '<text x="' + (upX + 24) + '" y="' + (y + (rowH - 12) / 2 + 4) + '" font-size="11" fill="#1f2329">' + escapeHtml(_dbsyncTrunc(u.name, 16)) + '</text></g>';
+  });
+  // 本任务节点
+  svg += '<g><rect x="' + selfX + '" y="' + (selfCY - 13) + '" width="' + selfW + '" height="26" rx="6" fill="var(--primary,#1890ff)"/>'
+    + '<text x="' + (selfX + selfW / 2) + '" y="' + (selfCY + 4) + '" font-size="11.5" font-weight="600" fill="#fff" text-anchor="middle">' + escapeHtml(_dbsyncTrunc(selfLabel, 18)) + '</text></g>';
+  svg += '</svg>';
+  return '<div style="margin-bottom:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">依赖拓扑（' + ups.length + ' 个上游 → 本任务，调度按此等待上游完成）</div>' + svg + '</div>';
+}
+function _dbsyncTrunc(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
 /* ---------- 上游依赖：加载已配列表 ---------- */
 function dbsyncLoadDeps(jobId) {
   var list = document.getElementById('dbsyncDepsList');
@@ -17631,7 +17713,16 @@ function dbsyncLoadDeps(jobId) {
       list.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">暂无上游依赖</span>';
       return;
     }
-    var html = '<ul style="margin:0;padding:0;list-style:none;">';
+    // 依赖 DAG 拓扑图(上游 → 本任务)
+    var selfJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === jobId; });
+    var selfLabel = selfJob ? (selfJob.jobName || ('任务#' + jobId)) : ('任务#' + jobId);
+    var ups = deps.map(function(d) {
+      var uid = d.upstreamSyncJobId;
+      var upJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === uid; });
+      return { id: uid, name: upJob ? (upJob.jobName || ('任务#' + uid)) : ('任务#' + uid), status: upJob ? upJob.status : null };
+    });
+    var html = dbsyncDepGraph(ups, selfLabel);
+    html += '<ul style="margin:8px 0 0;padding:0;list-style:none;">';
     deps.forEach(function(d) {
       var uid = d.upstreamSyncJobId;
       var upJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === uid; });
