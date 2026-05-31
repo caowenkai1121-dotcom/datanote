@@ -12,6 +12,8 @@
 
     var form = buildForm(function () { reload(list, form); });
     card.body.appendChild(form.el);
+    var ov = DN.h('div', { id: 'subjectOverview' });
+    card.body.appendChild(ov);
     var list = DN.h('div', { id: 'subjectList' });
     card.body.appendChild(list);
     list.appendChild(DN.skeleton(4));
@@ -56,6 +58,7 @@
     DN.get(API + '/list').then(function (data) {
       data = data || [];
       fillParentOptions(form.parentSel, data);
+      renderSubjectOverview(data);
       list.innerHTML = '';
       if (!data.length) { list.appendChild(DN.empty('暂无主题域', 'layers')); return; }
       var tree = buildTree(data, null);
@@ -66,6 +69,32 @@
       list.innerHTML = '';
       list.appendChild(DN.empty('加载失败: ' + e.message, 'alert'));
     });
+  }
+
+  // 主题域分层统计概览(大功能): 总数/一级数/最大层级/叶子数 + 分层分布条
+  function renderSubjectOverview(data) {
+    var box = document.getElementById('subjectOverview'); if (!box) return;
+    box.innerHTML = '';
+    if (!data.length) return;
+    var byId = {}; data.forEach(function (s) { byId[s.id] = s; });
+    var depthOf = function (s) { var d = 1, cur = s, guard = 0; while (cur && cur.parentId != null && byId[cur.parentId] && guard++ < 20) { d++; cur = byId[cur.parentId]; } return d; };
+    var rootN = data.filter(function (s) { return s.parentId == null; }).length;
+    var childIds = {}; data.forEach(function (s) { if (s.parentId != null) childIds[s.parentId] = 1; });
+    var leafN = data.filter(function (s) { return !childIds[s.id]; }).length;
+    var maxDepth = data.reduce(function (m, s) { return Math.max(m, depthOf(s)); }, 1);
+    box.appendChild(DN.statRow([
+      { icon: 'layers', label: '主题总数', value: data.length },
+      { icon: 'grid', label: '一级主题', value: rootN },
+      { icon: 'chart', label: '最大层级', value: maxDepth + ' 层' },
+      { icon: 'list', label: '叶子主题', value: leafN }
+    ]));
+    var byLayer = {}; data.forEach(function (s) { var l = s.layer || '未分层'; byLayer[l] = (byLayer[l] || 0) + 1; });
+    var keys = Object.keys(byLayer);
+    if (keys.length) {
+      var card = DN.card({ title: '分层分布', icon: 'chart' });
+      card.body.appendChild(DN.bars(keys.map(function (k) { return { label: k, value: byLayer[k], tone: 'info', display: String(byLayer[k]) }; })));
+      box.appendChild(card.el);
+    }
   }
 
   function fillParentOptions(sel, data) {
