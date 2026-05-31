@@ -3284,19 +3284,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r16">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r17">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r16"></script>
-<script src="js/gov-assets.js?v=g3r16"></script>
-<script src="js/gov-lineage.js?v=g3r16"></script>
-<script src="js/gov-quality.js?v=g3r16"></script>
-<script src="js/gov-standard.js?v=g3r16"></script>
-<script src="js/gov-classification.js?v=g3r16"></script>
-<script src="js/gov-security.js?v=g3r16"></script>
-<script src="js/gov-health.js?v=g3r16"></script>
-<script src="js/gov-audit.js?v=g3r16"></script>
-<script src="js/gov-overview.js?v=g3r16"></script>
-<script src="js/gov-subject.js?v=g3r16"></script>
+<script src="js/dn-common.js?v=g3r17"></script>
+<script src="js/gov-assets.js?v=g3r17"></script>
+<script src="js/gov-lineage.js?v=g3r17"></script>
+<script src="js/gov-quality.js?v=g3r17"></script>
+<script src="js/gov-standard.js?v=g3r17"></script>
+<script src="js/gov-classification.js?v=g3r17"></script>
+<script src="js/gov-security.js?v=g3r17"></script>
+<script src="js/gov-health.js?v=g3r17"></script>
+<script src="js/gov-audit.js?v=g3r17"></script>
+<script src="js/gov-overview.js?v=g3r17"></script>
+<script src="js/gov-subject.js?v=g3r17"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13884,22 +13884,41 @@ window.projLoadTasks = function() {
     if (window.projSetTabBadge) projSetTabBadge('task', (cnt.TODO || 0) + (cnt.DOING || 0), '#1677ff');
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
-// 看板视图：三列(待办/进行中/完成) + HTML5 拖拽改状态
+// 看板视图：支持按 状态/指派人/优先级 分组泳道; 状态分组可拖拽改状态
+var _projKbGroup = (function() { try { return localStorage.getItem('proj.kbGroup') || 'status'; } catch (e) { return 'status'; } })();
+window.projSetKbGroup = function(g) { _projKbGroup = g; try { localStorage.setItem('proj.kbGroup', g); } catch (e) {} projLoadTasks(); };
 function projKanbanHtml(tasks, msName, today) {
-  var cols = ['TODO', 'DOING', 'DONE'];
-  var h = '<div class="proj-kanban" style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px;">';
+  var gb = _projKbGroup, dragOk = (gb === 'status');
+  // 计算分组列
+  var cols, colMeta;
+  if (gb === 'priority') {
+    cols = ['HIGH', 'MEDIUM', 'LOW']; colMeta = function(k) { var p = TASK_PRIO[k] || { t: k, c: '#8c8c8c' }; return { t: p.t + '优先级', c: p.c }; };
+  } else if (gb === 'assignee') {
+    var seen = {}; cols = [];
+    tasks.forEach(function(t) { var a = t.assignee || '（未指派）'; if (!seen[a]) { seen[a] = 1; cols.push(a); } });
+    if (!cols.length) cols = ['（未指派）'];
+    colMeta = function(k) { return { t: k, c: '#1677ff' }; };
+  } else {
+    cols = ['TODO', 'DOING', 'DONE']; colMeta = function(k) { return { t: TASK_STATUS[k].t, c: TASK_STATUS[k].c }; };
+  }
+  var keyOf = function(t) { return gb === 'priority' ? (t.priority || 'MEDIUM') : gb === 'assignee' ? (t.assignee || '（未指派）') : (t.status || 'TODO'); };
+  var grpSel = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><span style="font-size:12px;color:var(--text-muted);">分组依据</span>'
+    + '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="projSetKbGroup(this.value)">'
+    + [['status', '状态'], ['assignee', '指派人'], ['priority', '优先级']].map(function(o) { return '<option value="' + o[0] + '"' + (gb === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+    + '</select><span style="font-size:11px;color:var(--text-muted);">' + (dragOk ? '可拖拽卡片改状态' : '该分组为只读视图') + '</span></div>';
+  var h = grpSel + '<div class="proj-kanban" style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px;">';
   cols.forEach(function(st) {
-    var group = tasks.filter(function(t) { return (t.status || 'TODO') === st; });
+    var group = tasks.filter(function(t) { return keyOf(t) === st; });
     group.sort(function(a, b) { return (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'); });
-    var sc = TASK_STATUS[st];
-    h += '<div class="proj-kb-col" ondragover="projKbDragOver(event)" ondragleave="projKbDragLeave(event)" ondrop="projKbDrop(event,\'' + st + '\')" data-st="' + st + '" style="flex:1;min-width:240px;background:var(--bg-hover,#f6f7f9);border-radius:10px;padding:10px;transition:background .15s;">';
-    h += '<div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;margin-bottom:10px;color:' + sc.c + ';"><span style="width:8px;height:8px;border-radius:50%;background:' + sc.c + ';"></span>' + sc.t + ' <span style="color:var(--text-muted);font-weight:400;">' + group.length + '</span></div>';
+    var sc = colMeta(st);
+    h += '<div class="proj-kb-col"' + (dragOk ? ' ondragover="projKbDragOver(event)" ondragleave="projKbDragLeave(event)" ondrop="projKbDrop(event,\'' + st + '\')"' : '') + ' data-st="' + escapeHtml(st) + '" style="flex:1;min-width:240px;background:var(--bg-hover,#f6f7f9);border-radius:10px;padding:10px;transition:background .15s;">';
+    h += '<div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;margin-bottom:10px;color:' + sc.c + ';"><span style="width:8px;height:8px;border-radius:50%;background:' + sc.c + ';"></span>' + escapeHtml(sc.t) + ' <span style="color:var(--text-muted);font-weight:400;">' + group.length + '</span></div>';
     h += '<div class="proj-kb-cards" style="display:flex;flex-direction:column;gap:8px;min-height:40px;">';
-    if (!group.length) h += '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:12px 0;border:1px dashed var(--border);border-radius:8px;">拖拽到此</div>';
+    if (!group.length) h += '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:12px 0;border:1px dashed var(--border);border-radius:8px;">' + (dragOk ? '拖拽到此' : '无') + '</div>';
     group.forEach(function(t) {
       var pr = TASK_PRIO[t.priority] || { t: t.priority || '', c: 'var(--text-muted)' };
       var od = t.dueDate && t.status !== 'DONE' && t.dueDate < today;
-      h += '<div class="proj-kb-card" draggable="true" ondragstart="projKbDragStart(event,' + t.id + ')" ondragend="projKbDragEnd(event)" style="background:var(--bg-card,#fff);border:1px solid var(--border);border-left:3px solid ' + pr.c + ';border-radius:8px;padding:9px 10px;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.04);">'
+      h += '<div class="proj-kb-card"' + (dragOk ? ' draggable="true" ondragstart="projKbDragStart(event,' + t.id + ')" ondragend="projKbDragEnd(event)"' : '') + ' style="background:var(--bg-card,#fff);border:1px solid var(--border);border-left:3px solid ' + pr.c + ';border-radius:8px;padding:9px 10px;cursor:' + (dragOk ? 'grab' : 'default') + ';box-shadow:0 1px 2px rgba(0,0,0,.04);">'
         + '<div style="font-size:13px;font-weight:500;line-height:1.4;margin-bottom:5px;word-break:break-word;">' + escapeHtml(t.title) + '</div>'
         + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);">'
         + (t.priority ? '<span style="color:' + pr.c + ';font-weight:600;">' + pr.t + '</span>' : '')
@@ -13912,7 +13931,8 @@ function projKanbanHtml(tasks, msName, today) {
     });
     h += '</div></div>';
   });
-  h += '</div><div style="font-size:11px;color:var(--text-muted);margin-top:8px;">提示：拖拽卡片到其他列即可改变任务状态</div>';
+  h += '</div>';
+  if (dragOk) h += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">提示：拖拽卡片到其他列即可改变任务状态</div>';
   return h;
 }
 // 日历视图：按截止日把任务铺到月历格, 支持月份切换
