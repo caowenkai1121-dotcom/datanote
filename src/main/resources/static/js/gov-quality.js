@@ -149,7 +149,7 @@
         { key: 'ruleType', label: '类型', render: function (r) { return r.ruleType || '-'; } },
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension || '-'; } },
         { key: 'target', label: '目标库表', render: function (r) {
-            var t = [r.dbName, r.tableName].filter(Boolean).join('.');
+            var t = [(r.databaseName || r.dbName), r.tableName].filter(Boolean).join('.');
             if (r.columnName) t += '.' + r.columnName;
             return t || '-';
           } },
