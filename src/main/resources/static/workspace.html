@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r2">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r3">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r2"></script>
-<script src="js/gov-assets.js?v=g3r2"></script>
-<script src="js/gov-lineage.js?v=g3r2"></script>
-<script src="js/gov-quality.js?v=g3r2"></script>
-<script src="js/gov-standard.js?v=g3r2"></script>
-<script src="js/gov-classification.js?v=g3r2"></script>
-<script src="js/gov-security.js?v=g3r2"></script>
-<script src="js/gov-health.js?v=g3r2"></script>
-<script src="js/gov-audit.js?v=g3r2"></script>
-<script src="js/gov-overview.js?v=g3r2"></script>
-<script src="js/gov-subject.js?v=g3r2"></script>
+<script src="js/dn-common.js?v=g3r3"></script>
+<script src="js/gov-assets.js?v=g3r3"></script>
+<script src="js/gov-lineage.js?v=g3r3"></script>
+<script src="js/gov-quality.js?v=g3r3"></script>
+<script src="js/gov-standard.js?v=g3r3"></script>
+<script src="js/gov-classification.js?v=g3r3"></script>
+<script src="js/gov-security.js?v=g3r3"></script>
+<script src="js/gov-health.js?v=g3r3"></script>
+<script src="js/gov-audit.js?v=g3r3"></script>
+<script src="js/gov-overview.js?v=g3r3"></script>
+<script src="js/gov-subject.js?v=g3r3"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13711,7 +13711,8 @@ window.projLoadTasks = function() {
       + '<a href="#" onclick="projSetTaskView(\'list\');return false;" title="列表视图" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projTaskView === 'list' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">列表</a>'
       + '<a href="#" onclick="projSetTaskView(\'kanban\');return false;" title="看板视图" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'kanban' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">看板</a>'
       + '<a href="#" onclick="projSetTaskView(\'calendar\');return false;" title="日历视图(按截止日)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a>'
-      + '<a href="#" onclick="projSetTaskView(\'gantt\');return false;" title="甘特图(里程碑时间轴)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'gantt' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">甘特</a></span>';
+      + '<a href="#" onclick="projSetTaskView(\'gantt\');return false;" title="甘特图(里程碑时间轴)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'gantt' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">甘特</a>'
+      + '<a href="#" onclick="projSetTaskView(\'burndown\');return false;" title="燃尽图(剩余任务趋势)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'burndown' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">燃尽</a></span>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
@@ -13729,6 +13730,9 @@ window.projLoadTasks = function() {
     }
     else if (_projTaskView === 'gantt') {
       h += projGanttHtml(tasks, _projMilestones, _today);
+    }
+    else if (_projTaskView === 'burndown') {
+      h += projBurndownHtml(tasks, _today);
     }
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
@@ -13831,6 +13835,64 @@ function projCalendarHtml(tasks, today) {
   }
   h += '</div>';
   return h;
+}
+// 燃尽图：按天重建剩余任务曲线(实际) vs 理想匀速线(纯前端自绘)
+function projBurndownHtml(tasks, today) {
+  if (!tasks.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无任务，无法绘制燃尽图。</div>';
+  var dOf = function(s) { return s ? String(s).slice(0, 10) : null; };
+  // 完成时点: DONE 任务取 updatedAt(回退 dueDate); 创建时点取 createdAt(回退最早)
+  var createdDs = tasks.map(function(t) { return dOf(t.createdAt); }).filter(Boolean).sort();
+  var startDs = createdDs[0] || today;
+  var ends = tasks.map(function(t) { return dOf(t.dueDate); }).filter(Boolean);
+  var endDs = ends.sort().slice(-1)[0] || today;
+  if (endDs < today) endDs = today;
+  var start = new Date(startDs + 'T00:00:00'), end = new Date(endDs + 'T00:00:00');
+  var days = Math.min(120, Math.max(1, Math.round((end - start) / 86400000)));
+  var total = tasks.length;
+  var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  var fmt = function(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  var todayD = new Date(today + 'T00:00:00');
+  // 逐日实际剩余 = 已创建数 - 已完成数(完成时点<=该日)
+  var actual = [], ideal = [];
+  for (var i = 0; i <= days; i++) {
+    var d = new Date(start.getTime() + i * 86400000), ds = fmt(d);
+    var created = tasks.filter(function(t) { return (dOf(t.createdAt) || startDs) <= ds; }).length;
+    var done = tasks.filter(function(t) { return t.status === 'DONE' && (dOf(t.updatedAt) || dOf(t.dueDate) || ds) <= ds; }).length;
+    // 未来日期不画实际线
+    actual.push(ds <= today ? Math.max(0, created - done) : null);
+    ideal.push(total - total * i / days);
+  }
+  var W = 600, H = 220, padL = 34, padR = 12, padT = 12, padB = 24;
+  var plotW = W - padL - padR, plotH = H - padT - padB;
+  var x = function(i) { return padL + plotW * i / days; };
+  var y = function(v) { return padT + plotH * (1 - (total ? v / total : 0)); };
+  var line = function(arr, color, dash) {
+    var pts = [];
+    arr.forEach(function(v, i) { if (v != null) pts.push(x(i).toFixed(1) + ',' + y(v).toFixed(1)); });
+    if (pts.length < 2) return arr.some(function(v){return v!=null;}) ? '<circle cx="' + x(0).toFixed(1) + '" cy="' + y(arr[0]||0).toFixed(1) + '" r="3" fill="' + color + '"/>' : '';
+    return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="2"' + (dash ? ' stroke-dasharray="5 4"' : '') + '/>';
+  };
+  var grid = '';
+  for (var g = 0; g <= 4; g++) { var gy = padT + plotH * g / 4; var val = Math.round(total * (1 - g / 4)); grid += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="var(--divider,#eee)" stroke-width="1"/><text x="' + (padL - 5) + '" y="' + (gy + 3) + '" font-size="9" fill="#999" text-anchor="end">' + val + '</text>'; }
+  // 今日竖线
+  var tIdx = Math.round((todayD - start) / 86400000);
+  var todayLine = (tIdx >= 0 && tIdx <= days) ? '<line x1="' + x(tIdx).toFixed(1) + '" y1="' + padT + '" x2="' + x(tIdx).toFixed(1) + '" y2="' + (padT + plotH) + '" stroke="#ff4d4f" stroke-width="1" stroke-dasharray="3 3"/>' : '';
+  var remainNow = actual.filter(function(v){return v!=null;}).slice(-1)[0];
+  var doneNow = total - (remainNow == null ? total : remainNow);
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:' + W + 'px;">'
+    + grid + todayLine
+    + line(ideal, '#bfbfbf', true)
+    + line(actual, '#1890ff', false)
+    + '<text x="' + (padL) + '" y="' + (H - 6) + '" font-size="9" fill="#999">' + startDs + '</text>'
+    + '<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="9" fill="#999" text-anchor="end">' + endDs + '</text>'
+    + '</svg>';
+  return '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;">'
+    + '<span><b style="font-size:18px;">' + total + '</b> 总任务</span>'
+    + '<span style="color:#52c41a;"><b style="font-size:18px;">' + doneNow + '</b> 已完成</span>'
+    + '<span style="color:#1890ff;"><b style="font-size:18px;">' + (remainNow == null ? total : remainNow) + '</b> 剩余</span>'
+    + '<span style="margin-left:auto;color:var(--text-muted);"><span style="color:#1890ff;">━</span> 实际剩余 &nbsp; <span style="color:#bfbfbf;">┄</span> 理想匀速 &nbsp; <span style="color:#ff4d4f;">┊</span> 今日</span></div>'
+    + '<div style="border:1px solid var(--divider);border-radius:8px;padding:8px;">' + svg + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">实际线按任务创建/完成(更新)时点逐日重建; 实际线高于理想线表示进度滞后。</div>';
 }
 // 甘特图：里程碑时间轴 + 进度填充 + 今日线(纯前端自绘, 零依赖)
 function projGanttHtml(tasks, milestones, today) {
