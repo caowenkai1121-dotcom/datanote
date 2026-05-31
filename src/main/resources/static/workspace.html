@@ -12992,8 +12992,50 @@ window.projLoadMembers = function() {
       });
       h += '</tbody></table>';
     }
+    h += '<div id="projInviteBox" style="margin-top:18px;"></div>';
     pane.innerHTML = h;
+    projLoadInvites();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projLoadInvites = function() {
+  var box = document.getElementById('projInviteBox'); if (!box || !_projDetail) return;
+  api('/api/project/' + _projDetail.id + '/invites').then(function(res) {
+    var inv = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="font-weight:600;font-size:13px;margin-bottom:8px;">成员邀请</div>'
+      + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">'
+      + '<input id="projInvUser" class="dbsync-form-input" style="width:140px;" placeholder="被邀请人(可空,凭码加入)">'
+      + '<select id="projInvRole" class="dbsync-form-select" style="width:110px;">' + projRoleOptions('DEVELOPER') + '</select>'
+      + '<button class="btn btn-sm btn-primary" onclick="projCreateInvite()">创建邀请</button></div>';
+    var IST = { PENDING: '待接受', ACCEPTED: '已加入', REJECTED: '已拒绝', CANCELED: '已取消' };
+    if (!inv.length) h += '<div style="font-size:12px;color:var(--text-muted);">暂无邀请</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>被邀请人</th><th>角色</th><th>状态</th><th>邀请码</th><th style="width:120px;">操作</th></tr></thead><tbody>';
+      inv.forEach(function(v) {
+        h += '<tr><td>' + escapeHtml(v.invitee || '（任意凭码）') + '</td><td>' + escapeHtml(projRoleLabel(v.projectRole)) + '</td>'
+          + '<td>' + escapeHtml(IST[v.status] || v.status) + '</td>'
+          + '<td style="font-family:monospace;font-size:11px;">' + escapeHtml((v.token || '').slice(0, 8)) + '…</td>'
+          + '<td>' + (v.status === 'PENDING' ? '<a href="#" onclick="projAcceptInvite(\'' + v.token + '\');return false;" style="color:#52c41a;margin-right:6px;">接受</a><a href="#" onclick="projCancelInvite(' + v.id + ');return false;" style="color:#ff4d4f;">取消</a>' : '-') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    box.innerHTML = h;
+  }).catch(function() {});
+};
+function projRoleLabel(r) { return ({ OWNER: '负责人', ADMIN: '管理员', DEVELOPER: '开发', OPS: '运维', VIEWER: '访客' })[r] || r; }
+window.projCreateInvite = function() {
+  apiPost('/api/project/' + _projDetail.id + '/invites', { role: document.getElementById('projInvRole').value, invitee: (document.getElementById('projInvUser').value || '').trim() }).then(function(res) {
+    if (res && res.code === 0) { showToast('邀请已创建', 'success'); projLoadInvites(); }
+    else showToast((res && res.msg) || '创建失败', 'error');
+  }).catch(function() { showToast('创建失败', 'error'); });
+};
+window.projAcceptInvite = function(token) {
+  apiPost('/api/project/invites/accept', { token: token }).then(function(res) {
+    if (res && res.code === 0) { showToast('已加入', 'success'); projLoadMembers(); }
+    else showToast((res && res.msg) || '接受失败', 'error');
+  }).catch(function() { showToast('接受失败', 'error'); });
+};
+window.projCancelInvite = function(inviteId) {
+  apiPost('/api/project/' + _projDetail.id + '/invites/' + inviteId + '/status', { status: 'CANCELED' }).then(function() { projLoadInvites(); }).catch(function() { showToast('操作失败', 'error'); });
 };
 window.projAddMember = function() {
   var u = (document.getElementById('projMemberUser').value || '').trim();
@@ -13199,6 +13241,7 @@ window.projLoadOverview = function() {
     var d = (res && res.code === 0) ? (res.data || {}) : {};
     var ac = d.assetCounts || {};
     var h = '<div id="projHealthCard" style="margin-bottom:14px;"></div>'
+      + '<div id="projAnnounceCard" style="margin-bottom:14px;"></div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">'
       + projTile('资产总数', d.assetTotal != null ? d.assetTotal : 0, '#1677ff')
       + projTile('成员', d.memberCount != null ? d.memberCount : 0, '#52c41a')
@@ -13245,7 +13288,45 @@ window.projLoadOverview = function() {
     h += '</div>';
     pane.innerHTML = h;
     projLoadHealthCard();
+    projLoadAnnounceCard();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projLoadAnnounceCard = function() {
+  var card = document.getElementById('projAnnounceCard'); if (!card || !_projDetail) return;
+  api('/api/project/' + _projDetail.id + '/announcements').then(function(res) {
+    var as = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:600;font-size:13px;">项目公告</span><button class="btn btn-sm" onclick="projAnnounceModal()">发布公告</button></div>';
+    if (!as.length) h += '<div style="font-size:12px;color:var(--text-muted);">暂无公告</div>';
+    else {
+      h += as.map(function(a) {
+        return '<div style="padding:6px 0;border-top:1px solid var(--border-light,#f0f0f0);"><div style="display:flex;justify-content:space-between;"><span>' + (a.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[重要] </span>' : '') + '<b>' + escapeHtml(a.title) + '</b></span><a href="#" onclick="projDeleteAnnounce(' + a.id + ');return false;" style="color:#ff4d4f;font-size:12px;">删除</a></div>'
+          + (a.content ? '<div style="font-size:12px;color:var(--text-regular);margin-top:2px;">' + escapeHtml(a.content) + '</div>' : '')
+          + '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(a.createdBy || '') + ' · ' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</div></div>';
+      }).join('');
+    }
+    h += '</div>';
+    card.innerHTML = h;
+  }).catch(function() {});
+};
+window.projAnnounceModal = function() {
+  var h = '<div class="ds-form-row"><label>标题</label><input id="paTitle"></div>'
+    + '<div class="ds-form-row"><label>优先级</label><select id="paPriority" class="g-modal-input"><option value="NORMAL">普通</option><option value="HIGH">重要</option></select></div>'
+    + '<div class="ds-form-row" style="align-items:flex-start;"><label>内容</label><textarea id="paContent" style="flex:1;min-height:70px;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;"></textarea></div>'
+    + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveAnnounce()">发布</button></div>';
+  projShowModalBox('发布公告', h);
+};
+window.projSaveAnnounce = function() {
+  var title = (document.getElementById('paTitle').value || '').trim();
+  if (!title) { showToast('请填写标题', 'error'); return; }
+  apiPost('/api/project/' + _projDetail.id + '/announcements', { title: title, priority: document.getElementById('paPriority').value, content: document.getElementById('paContent').value || '' }).then(function(res) {
+    if (res && res.code === 0) { showToast('已发布', 'success'); projCloseModalBox(); projLoadAnnounceCard(); }
+    else showToast((res && res.msg) || '发布失败', 'error');
+  }).catch(function() { showToast('发布失败', 'error'); });
+};
+window.projDeleteAnnounce = function(annId) {
+  if (!confirm('删除该公告？')) return;
+  fetch('/api/project/' + _projDetail.id + '/announcements/' + annId, { method: 'DELETE' }).then(_handleResponse).then(function() { projLoadAnnounceCard(); }).catch(function() { showToast('删除失败', 'error'); });
 };
 window.projLoadHealthCard = function() {
   var card = document.getElementById('projHealthCard'); if (!card || !_projDetail) return;

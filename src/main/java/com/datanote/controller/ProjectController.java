@@ -29,6 +29,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectFavoriteService projectFavoriteService;
     private final com.datanote.service.ProjectActivityService projectActivityService;
     private final com.datanote.service.ProjectTaskService projectTaskService;
+    private final com.datanote.service.ProjectCollabService projectCollabService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -220,6 +221,57 @@ public class ProjectController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    // ===== PM2-M4：公告 + 成员邀请 =====
+
+    @Operation(summary = "公告列表")
+    @GetMapping("/{id}/announcements")
+    public R<List<com.datanote.model.DnProjectAnnouncement>> announcements(@PathVariable Long id) {
+        try { return R.ok(projectCollabService.listAnnouncements(id)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "发布公告")
+    @PostMapping("/{id}/announcements")
+    public R<com.datanote.model.DnProjectAnnouncement> createAnnouncement(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectAnnouncement a) {
+        try { return R.ok(projectCollabService.createAnnouncement(id, a)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "删除公告")
+    @DeleteMapping("/{id}/announcements/{annId}")
+    public R<String> deleteAnnouncement(@PathVariable Long id, @PathVariable Long annId) {
+        try { projectCollabService.deleteAnnouncement(id, annId); return R.ok("已删除"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "邀请列表")
+    @GetMapping("/{id}/invites")
+    public R<List<com.datanote.model.DnProjectInvite>> invites(@PathVariable Long id) {
+        try { return R.ok(projectCollabService.listInvites(id)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "创建邀请")
+    @PostMapping("/{id}/invites")
+    public R<com.datanote.model.DnProjectInvite> createInvite(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        try { return R.ok(projectCollabService.createInvite(id, body.get("role"), body.get("invitee"))); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "接受邀请")
+    @PostMapping("/invites/accept")
+    public R<String> acceptInvite(@RequestBody java.util.Map<String, String> body) {
+        try { projectCollabService.acceptInvite(body.get("token")); return R.ok("已加入"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "处理邀请(拒绝/取消)")
+    @PostMapping("/{id}/invites/{inviteId}/status")
+    public R<String> inviteStatus(@PathVariable Long id, @PathVariable Long inviteId, @RequestBody java.util.Map<String, String> body) {
+        try { projectCollabService.updateInviteStatus(inviteId, body.get("status")); return R.ok("已更新"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     // ===== PM2-M3：任务待办 + 里程碑 =====
