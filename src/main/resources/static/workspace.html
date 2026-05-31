@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r22">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r23">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r22"></script>
-<script src="js/gov-assets.js?v=g2r22"></script>
-<script src="js/gov-lineage.js?v=g2r22"></script>
-<script src="js/gov-quality.js?v=g2r22"></script>
-<script src="js/gov-standard.js?v=g2r22"></script>
-<script src="js/gov-classification.js?v=g2r22"></script>
-<script src="js/gov-security.js?v=g2r22"></script>
-<script src="js/gov-health.js?v=g2r22"></script>
-<script src="js/gov-audit.js?v=g2r22"></script>
-<script src="js/gov-overview.js?v=g2r22"></script>
-<script src="js/gov-subject.js?v=g2r22"></script>
+<script src="js/dn-common.js?v=g2r23"></script>
+<script src="js/gov-assets.js?v=g2r23"></script>
+<script src="js/gov-lineage.js?v=g2r23"></script>
+<script src="js/gov-quality.js?v=g2r23"></script>
+<script src="js/gov-standard.js?v=g2r23"></script>
+<script src="js/gov-classification.js?v=g2r23"></script>
+<script src="js/gov-security.js?v=g2r23"></script>
+<script src="js/gov-health.js?v=g2r23"></script>
+<script src="js/gov-audit.js?v=g2r23"></script>
+<script src="js/gov-overview.js?v=g2r23"></script>
+<script src="js/gov-subject.js?v=g2r23"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17217,6 +17217,10 @@ window.dbsyncDetailTab = function(btn, tab) {
     dbsyncLoadErrorRows(_dbsyncDetailJobId);
   }
 };
+window.dbsyncGoTab = function(tab) {
+  var btn = document.querySelector('#dbsyncDetailTabs button[data-tab="' + tab + '"]');
+  if (btn) dbsyncDetailTab(btn, tab);
+};
 function dbsyncRenderDetailHead(job) {
   var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';
   var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' }[job.syncMode] || (job.syncMode || '');
@@ -17315,6 +17319,18 @@ function dbsyncFmtTime(v) {
   }
   return String(v).replace('T', ' ').replace(/\.\d+$/, '');
 }
+var _dbsyncOvConn = { src: '', tgt: '' };
+window.dbsyncCopyConn = function() {
+  var txt = _dbsyncOvConn.src + ' → ' + _dbsyncOvConn.tgt;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function() { showToast('已复制连接信息', 'success'); }, function() { showToast('复制失败', 'error'); });
+    } else {
+      var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta); showToast('已复制连接信息', 'success');
+    }
+  } catch (e) { showToast('复制失败', 'error'); }
+};
 function dbsyncRenderOverview(job, execs, cdcMetrics) {
   var pane = document.getElementById('dbsyncDetailPane_overview');
   if (!pane) return;
@@ -17340,12 +17356,12 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
   // 近 15 次执行稳定性迷你条(逆序取最近,正序展示)
   if (total > 0) {
     var recent = sorted.slice(0, 15).reverse();
-    html += '<div style="margin-top:10px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">近 ' + recent.length + ' 次执行</div><div style="display:flex;gap:3px;align-items:flex-end;">';
+    html += '<div style="margin-top:10px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">近 ' + recent.length + ' 次执行<span style="color:var(--text-muted);opacity:.7;"> · 点击查看历史</span></div><div style="display:flex;gap:3px;align-items:flex-end;">';
     recent.forEach(function(ex) {
       var k = dbsyncExecKind(ex.status);
       var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#1890ff';
       var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (ex.readCount || 0) + '/写' + (ex.writeCount || 0) + '/错' + (ex.errorCount || 0);
-      html += '<span title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:default;"></span>';
+      html += '<span onclick="dbsyncGoTab(\'history\')" title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:pointer;"></span>';
     });
     html += '</div></div>';
   }
@@ -17369,6 +17385,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
   }
   var src = (listJob.sourceDsName || ('ds#' + (job.sourceDsId || ''))) + '.' + (job.sourceDb || '');
   var tgt = (listJob.targetDsName || ('ds#' + (job.targetDsId || ''))) + '.' + (job.targetDb || '');
+  _dbsyncOvConn = { src: src, tgt: tgt };
   var folderName = '根目录';
   if (job.folderId) {
     var fs = (typeof _dbsyncFolders !== 'undefined' ? _dbsyncFolders : []) || [];
@@ -17379,7 +17396,8 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
   var lastRun = latest ? (dbsyncFmtTime(latest.startTime || latest.createTime) + '（' + dbsyncExecLabel(latest.status) + '）') : '从未运行';
   var kv = function(k, v) { return '<dt>' + k + '</dt><dd>' + v + '</dd>'; };
   html += '<div class="dbsync-detail-card">'
-    + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4"/></svg> 基本信息</div>'
+    + '<div class="dbsync-detail-card-title" style="display:flex;align-items:center;"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4"/></svg> 基本信息'
+    + '<a href="#" onclick="dbsyncCopyConn();return false;" title="复制 源端→目标端" style="margin-left:auto;font-size:11px;color:var(--primary);font-weight:400;">复制连接</a></div>'
     + '<dl class="dbsync-kv">'
     + '<dt class="nb">任务 ID</dt><dd class="nb">' + (job.id || '-') + '</dd>'
     + kv('源端', escapeHtml(src))
@@ -17744,8 +17762,9 @@ function dbsyncFetchDashboard() {
   }).catch(function() {});
 }
 
-function dbsyncDashTile(label, value, color) {
-  return '<div style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;">'
+function dbsyncDashTile(label, value, color, alert) {
+  var bd = alert ? 'border:1px solid #ffccc7;background:#fff2f0;' : 'background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);';
+  return '<div style="' + bd + 'border-radius:8px;padding:10px 12px;">'
     + '<div style="font-size:20px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>';
 }
@@ -17757,11 +17776,11 @@ function dbsyncRenderDashboardSummary(s) {
   var html = ''
     + dbsyncDashTile('任务总数', s.jobsTotal != null ? s.jobsTotal : '-')
     + dbsyncDashTile('运行中', s.running != null ? s.running : '-', '#1677ff')
-    + dbsyncDashTile('失败任务', s.failed != null ? s.failed : '-', (s.failed > 0 ? '#ff4d4f' : ''))
-    + dbsyncDashTile('成功率(近200次)', rate, rateColor)
+    + dbsyncDashTile('失败任务', s.failed != null ? s.failed : '-', (s.failed > 0 ? '#ff4d4f' : ''), s.failed > 0)
+    + dbsyncDashTile('成功率(近200次)', rate, rateColor, (s.successRate != null && s.successRate < 0.9))
     + dbsyncDashTile('今日执行', s.runsToday != null ? s.runsToday : '-')
     + dbsyncDashTile('今日写入行', s.rowsToday != null ? s.rowsToday : '-')
-    + dbsyncDashTile('坏行(DLQ)', s.dlqTotal != null ? s.dlqTotal : '-', (s.dlqTotal > 0 ? '#fa8c16' : ''))
+    + dbsyncDashTile('坏行(DLQ)', s.dlqTotal != null ? s.dlqTotal : '-', (s.dlqTotal > 0 ? '#fa8c16' : ''), s.dlqTotal > 0)
     + dbsyncDashTile('CDC最大延迟', (s.maxCdcLagMs != null ? s.maxCdcLagMs + ' ms' : '-'));
   box.innerHTML = html;
 }
