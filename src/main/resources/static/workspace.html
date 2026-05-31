@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r25">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r26">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r25"></script>
-<script src="js/gov-assets.js?v=g2r25"></script>
-<script src="js/gov-lineage.js?v=g2r25"></script>
-<script src="js/gov-quality.js?v=g2r25"></script>
-<script src="js/gov-standard.js?v=g2r25"></script>
-<script src="js/gov-classification.js?v=g2r25"></script>
-<script src="js/gov-security.js?v=g2r25"></script>
-<script src="js/gov-health.js?v=g2r25"></script>
-<script src="js/gov-audit.js?v=g2r25"></script>
-<script src="js/gov-overview.js?v=g2r25"></script>
-<script src="js/gov-subject.js?v=g2r25"></script>
+<script src="js/dn-common.js?v=g2r26"></script>
+<script src="js/gov-assets.js?v=g2r26"></script>
+<script src="js/gov-lineage.js?v=g2r26"></script>
+<script src="js/gov-quality.js?v=g2r26"></script>
+<script src="js/gov-standard.js?v=g2r26"></script>
+<script src="js/gov-classification.js?v=g2r26"></script>
+<script src="js/gov-security.js?v=g2r26"></script>
+<script src="js/gov-health.js?v=g2r26"></script>
+<script src="js/gov-audit.js?v=g2r26"></script>
+<script src="js/gov-overview.js?v=g2r26"></script>
+<script src="js/gov-subject.js?v=g2r26"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -5700,13 +5700,13 @@ function msgAlert(title, msg, type) {
   });
 }
 
-function msgConfirm(title, msg) {
+function msgConfirm(title, msg, okText) {
   return new Promise(function(resolve) {
     document.getElementById('msgBoxIcon').innerHTML = _msgWarnIcon;
     document.getElementById('msgBoxTitle').textContent = title;
     document.getElementById('msgBoxMsg').innerHTML = msg || '';
     document.getElementById('msgBoxInput').style.display = 'none';
-    document.getElementById('msgBoxBtns').innerHTML = '<button class="btn" onclick="closeMsgBox(false)">取消</button><button class="btn" style="background:var(--error);color:#fff;" onclick="closeMsgBox(true)">确定删除</button>';
+    document.getElementById('msgBoxBtns').innerHTML = '<button class="btn" onclick="closeMsgBox(false)">取消</button><button class="btn" style="background:var(--error);color:#fff;" onclick="closeMsgBox(true)">' + (okText || '确定删除') + '</button>';
     document.getElementById('msgBox').classList.add('show');
     _msgBoxResolve = resolve;
   });
@@ -13675,11 +13675,12 @@ var _projMilestones = [];
 var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#52c41a' } };
 var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
 var _projTaskFilter = { assignee: '', overdue: false, priority: '' };
+var _projTasksAll = [];
 window.projLoadTasks = function() {
   var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
   Promise.all([api('/api/project/' + _projDetail.id + '/tasks'), api('/api/project/' + _projDetail.id + '/milestones')]).then(function(arr) {
-    var tasksAll = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
+    var tasksAll = _projTasksAll = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
     var _td = new Date().toISOString().slice(0, 10);
     var asgOpts = []; (function() { var seen = {}; tasksAll.forEach(function(t) { if (t.assignee && !seen[t.assignee]) { seen[t.assignee] = 1; asgOpts.push(t.assignee); } }); })();
@@ -13760,11 +13761,22 @@ window.projSaveTask = function() {
   }).catch(function() { showToast('保存失败', 'error'); });
 };
 window.projTaskStatus = function(taskId, status) {
-  api('/api/project/' + _projDetail.id + '/tasks').then(function(res) {
-    var t = _pdata(res).find(function(x) { return x.id === taskId; }); if (!t) return;
-    t.status = status;
-    apiPost('/api/project/' + _projDetail.id + '/tasks', t).then(function() { projLoadTasks(); });
-  });
+  // 从本地缓存取整条任务, 避免二次全量 GET; 失败回退到拉取
+  var t = (_projTasksAll || []).find(function(x) { return x.id === taskId; });
+  if (!t) {
+    api('/api/project/' + _projDetail.id + '/tasks').then(function(res) {
+      var tt = _pdata(res).find(function(x) { return x.id === taskId; }); if (!tt) return;
+      tt.status = status;
+      apiPost('/api/project/' + _projDetail.id + '/tasks', tt).then(function() { projLoadTasks(); });
+    });
+    return;
+  }
+  var body = {}; for (var k in t) { if (t.hasOwnProperty(k)) body[k] = t[k]; }
+  body.status = status;
+  apiPost('/api/project/' + _projDetail.id + '/tasks', body).then(function(res) {
+    if (res && res.code === 0) { t.status = status; projLoadTasks(); }
+    else { showToast((res && res.msg) || '更新失败', 'error'); projLoadTasks(); }
+  }).catch(function() { showToast('更新失败', 'error'); projLoadTasks(); });
 };
 window.projDeleteTask = function(taskId) {
   if (!confirm('确认删除该任务？')) return;
@@ -16979,18 +16991,20 @@ window.dbsyncCdcStop = function(id) {
 
 /* ---------- CDC 重置 ---------- */
 window.dbsyncCdcReset = function(id) {
-  if (!confirm('重置将清空CDC位点与schema历史并重新全量快照，确认？')) return;
-  fetch('/api/cdc/' + id + '/reset?confirm=true&restart=true', { method: 'POST' })
-    .then(_handleResponse)
-    .then(function(res) {
-      if (res.code === 0) {
-        showToast('CDC 重置成功，正在重新全量快照', 'success');
-        setTimeout(dbsyncLoadJobs, 1000);
-        if (_dbsyncDetailJobId === id) setTimeout(function() { dbsyncLoadDetailData(id); }, 1500);
-      } else {
-        showToast('重置失败: ' + (res.msg || ''), 'error');
-      }
-    }).catch(function() { showToast('重置请求失败', 'error'); });
+  msgConfirm('CDC 重置', '重置将清空CDC位点与schema历史并重新全量快照，确认？', '确定重置').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/cdc/' + id + '/reset?confirm=true&restart=true', { method: 'POST' })
+      .then(_handleResponse)
+      .then(function(res) {
+        if (res.code === 0) {
+          showToast('CDC 重置成功，正在重新全量快照', 'success');
+          setTimeout(dbsyncLoadJobs, 1000);
+          if (_dbsyncDetailJobId === id) setTimeout(function() { dbsyncLoadDetailData(id); }, 1500);
+        } else {
+          showToast('重置失败: ' + (res.msg || ''), 'error');
+        }
+      }).catch(function() { showToast('重置请求失败', 'error'); });
+  });
 };
 
 /* ---------- 增量快照触发 ---------- */
@@ -17495,17 +17509,19 @@ window.dbsyncAddDep = function(jobId) {
 };
 /* ---------- 上游依赖：移除 ---------- */
 window.dbsyncRemoveDep = function(jobId, upId) {
-  if (!confirm('确认移除该上游依赖？移除后调度将不再等待该上游。')) return;
-  fetch('/api/sync-job/' + jobId + '/dependencies?upstreamId=' + upId, { method: 'DELETE' })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res && res.code === 0) {
-        showToast('已移除', 'success');
-        dbsyncLoadDeps(jobId);
-      } else {
-        showToast('移除失败: ' + (res.msg || ''), 'error');
-      }
-    }).catch(function() { showToast('移除请求失败', 'error'); });
+  msgConfirm('移除上游依赖', '确认移除该上游依赖？移除后调度将不再等待该上游。', '确定移除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/sync-job/' + jobId + '/dependencies?upstreamId=' + upId, { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res && res.code === 0) {
+          showToast('已移除', 'success');
+          dbsyncLoadDeps(jobId);
+        } else {
+          showToast('移除失败: ' + (res.msg || ''), 'error');
+        }
+      }).catch(function() { showToast('移除请求失败', 'error'); });
+  });
 };
 function dbsyncRenderConfig(job) {
   var pane = document.getElementById('dbsyncDetailPane_config');
@@ -18059,19 +18075,23 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
 }
 
 window.dbsyncResetIncrementalCp = function(jobId, table) {
-  if (!confirm('确认重置表 [' + table + '] 的增量水位断点？重置后将从头开始增量同步。')) return;
-  apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-incremental?table=' + encodeURIComponent(table), {}).then(function() {
-    showToast('增量断点已重置', 'success');
-    dbsyncLoadCheckpoints(jobId);
-  }).catch(function() { showToast('重置失败，请重试', 'error'); });
+  msgConfirm('重置增量断点', '确认重置表 [' + escapeHtml(table) + '] 的增量水位断点？重置后将从头开始增量同步。', '确定重置').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-incremental?table=' + encodeURIComponent(table), {}).then(function() {
+      showToast('增量断点已重置', 'success');
+      dbsyncLoadCheckpoints(jobId);
+    }).catch(function() { showToast('重置失败，请重试', 'error'); });
+  });
 };
 
 window.dbsyncResetChunkCp = function(jobId, table) {
-  if (!confirm('确认重置表 [' + table + '] 的 Chunk 游标？重置后将从头开始分块同步。')) return;
-  apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-chunk?table=' + encodeURIComponent(table), {}).then(function() {
-    showToast('Chunk 断点已重置', 'success');
-    dbsyncLoadCheckpoints(jobId);
-  }).catch(function() { showToast('重置失败，请重试', 'error'); });
+  msgConfirm('重置 Chunk 断点', '确认重置表 [' + escapeHtml(table) + '] 的 Chunk 游标？重置后将从头开始分块同步。', '确定重置').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/sync-job/' + jobId + '/checkpoint/reset-chunk?table=' + encodeURIComponent(table), {}).then(function() {
+      showToast('Chunk 断点已重置', 'success');
+      dbsyncLoadCheckpoints(jobId);
+    }).catch(function() { showToast('重置失败，请重试', 'error'); });
+  });
 };
 
 /* DS-M1：坏行(DLQ) 页签 —— 全量/增量逐行写失败的行落表，可见 + 可清空 */
@@ -18145,11 +18165,13 @@ window.dbsyncExportErrorRows = function() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 };
 window.dbsyncClearErrorRows = function(jobId) {
-  if (!confirm('确认清空该任务的全部坏行记录？此操作不可恢复（仅删除 DLQ 记录，不影响目标数据）。')) return;
-  fetch('/api/sync-job/' + jobId + '/error-rows', { method: 'DELETE' }).then(_handleResponse).then(function(res) {
-    showToast((res && res.data) ? res.data : '已清空', 'success');
-    dbsyncLoadErrorRows(jobId);
-  }).catch(function() { showToast('清空失败，请重试', 'error'); });
+  msgConfirm('清空坏行', '确认清空该任务的全部坏行记录？此操作不可恢复（仅删除 DLQ 记录，不影响目标数据）。', '确定清空').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/sync-job/' + jobId + '/error-rows', { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+      showToast((res && res.data) ? res.data : '已清空', 'success');
+      dbsyncLoadErrorRows(jobId);
+    }).catch(function() { showToast('清空失败，请重试', 'error'); });
+  });
 };
 
 })(); // end IIFE
