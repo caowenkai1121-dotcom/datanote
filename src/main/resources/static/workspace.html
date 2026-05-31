@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r12">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r13">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r12"></script>
-<script src="js/gov-assets.js?v=q100r12"></script>
-<script src="js/gov-lineage.js?v=q100r12"></script>
-<script src="js/gov-quality.js?v=q100r12"></script>
-<script src="js/gov-standard.js?v=q100r12"></script>
-<script src="js/gov-classification.js?v=q100r12"></script>
-<script src="js/gov-security.js?v=q100r12"></script>
-<script src="js/gov-health.js?v=q100r12"></script>
-<script src="js/gov-audit.js?v=q100r12"></script>
-<script src="js/gov-overview.js?v=q100r12"></script>
-<script src="js/gov-subject.js?v=q100r12"></script>
+<script src="js/dn-common.js?v=q100r13"></script>
+<script src="js/gov-assets.js?v=q100r13"></script>
+<script src="js/gov-lineage.js?v=q100r13"></script>
+<script src="js/gov-quality.js?v=q100r13"></script>
+<script src="js/gov-standard.js?v=q100r13"></script>
+<script src="js/gov-classification.js?v=q100r13"></script>
+<script src="js/gov-security.js?v=q100r13"></script>
+<script src="js/gov-health.js?v=q100r13"></script>
+<script src="js/gov-audit.js?v=q100r13"></script>
+<script src="js/gov-overview.js?v=q100r13"></script>
+<script src="js/gov-subject.js?v=q100r13"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12979,8 +12979,8 @@ window.projApplyFilter = function() {
     return true;
   });
   list.sort(function(a, b) {
-    if (sort === 'name') return (a.projectName || '').localeCompare(b.projectName || '');
-    if (sort === 'created_asc') return (a.id || 0) - (b.id || 0);
+    if (sort === 'name') return (a.projectName || '').localeCompare(b.projectName || '', 'zh');
+    if (sort === 'created_asc') return String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || ((a.id || 0) - (b.id || 0));
     if (sort === 'recent') { var ra = _projRecent[a.id] || '', rb = _projRecent[b.id] || ''; if (ra === rb) return 0; if (!ra) return 1; if (!rb) return -1; return String(rb).localeCompare(String(ra)); }
     if (sort === 'fav') {
       var pa = (_projFav[a.id] && _projFav[a.id].pinned) ? 2 : ((_projFav[a.id] && _projFav[a.id].fav) ? 1 : 0);
@@ -17571,7 +17571,12 @@ function dbsyncRenderJobs(list) {
   var list = shown.slice();
   if (_dbsyncSort.key) {
     var sk = _dbsyncSort.key, sd = _dbsyncSort.dir;
-    list.sort(function(a, b) { return String(a[sk] == null ? '' : a[sk]).localeCompare(String(b[sk] == null ? '' : b[sk])) * sd; });
+    // 状态/模式按业务优先级排序, 其余字典序
+    var ORD = { status: { RUNNING: 0, FAILED: 1, CREATED: 2, STOPPED: 3, PAUSED: 4, SUCCESS: 5 }, syncMode: { CDC: 0, INCREMENTAL: 1, FULL: 2 } };
+    list.sort(function(a, b) {
+      if (ORD[sk]) { var oa = ORD[sk][a[sk]] != null ? ORD[sk][a[sk]] : 99, ob = ORD[sk][b[sk]] != null ? ORD[sk][b[sk]] : 99; return (oa - ob) * sd || ((a.id || 0) - (b.id || 0)); }
+      return String(a[sk] == null ? '' : a[sk]).localeCompare(String(b[sk] == null ? '' : b[sk])) * sd;
+    });
   }
   var arr = function(k) { return _dbsyncSort.key === k ? (_dbsyncSort.dir > 0 ? ' ▲' : ' ▼') : ' ⇅'; };
   var allChecked = shown.every(function(j) { return _dbsyncSelected[j.id]; });
@@ -18298,9 +18303,9 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
   var fmtN = function(n) { return (Number(n) || 0).toLocaleString(); };
   var card = function(v, l, cls) { return '<div class="dbsync-metric-card"><div class="v ' + (cls || '') + '">' + v + '</div><div class="l">' + l + '</div></div>'; };
   var html = '<div class="dbsync-metric-grid">'
-    + card(latest ? (latest.readCount || 0) : '-', '最近读取行数')
-    + card(latest ? (latest.writeCount || 0) : '-', '最近写入行数')
-    + card(latest ? (latest.errorCount || 0) : '-', '最近错误行数', (latest && latest.errorCount > 0) ? 'err' : '')
+    + card(latest ? fmtN(latest.readCount || 0) : '-', '最近读取行数')
+    + card(latest ? fmtN(latest.writeCount || 0) : '-', '最近写入行数')
+    + card(latest ? fmtN(latest.errorCount || 0) : '-', '最近错误行数', (latest && latest.errorCount > 0) ? 'err' : '')
     + card(latest && latest.duration != null ? latest.duration + 's' : '-', '最近耗时')
     + card(total, '累计执行次数')
     + card(rate != null ? rate + '%' : '-', '成功率', rate != null ? 'ok' : '')
