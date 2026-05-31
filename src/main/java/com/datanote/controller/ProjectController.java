@@ -28,6 +28,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectTagService projectTagService;
     private final com.datanote.service.ProjectFavoriteService projectFavoriteService;
     private final com.datanote.service.ProjectActivityService projectActivityService;
+    private final com.datanote.service.ProjectTaskService projectTaskService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -219,6 +220,50 @@ public class ProjectController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    // ===== PM2-M3：任务待办 + 里程碑 =====
+
+    @Operation(summary = "任务列表")
+    @GetMapping("/{id}/tasks")
+    public R<List<com.datanote.model.DnProjectTask>> tasks(@PathVariable Long id) {
+        try { return R.ok(projectTaskService.listTasks(id)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "保存任务")
+    @PostMapping("/{id}/tasks")
+    public R<com.datanote.model.DnProjectTask> saveTask(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectTask task) {
+        try { return R.ok(projectTaskService.saveTask(id, task)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "删除任务")
+    @DeleteMapping("/{id}/tasks/{taskId}")
+    public R<String> deleteTask(@PathVariable Long id, @PathVariable Long taskId) {
+        try { projectTaskService.deleteTask(id, taskId); return R.ok("已删除"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "里程碑列表")
+    @GetMapping("/{id}/milestones")
+    public R<List<com.datanote.model.DnProjectMilestone>> milestones(@PathVariable Long id) {
+        try { return R.ok(projectTaskService.listMilestones(id)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "保存里程碑")
+    @PostMapping("/{id}/milestones")
+    public R<com.datanote.model.DnProjectMilestone> saveMilestone(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectMilestone m) {
+        try { return R.ok(projectTaskService.saveMilestone(id, m)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "删除里程碑")
+    @DeleteMapping("/{id}/milestones/{milestoneId}")
+    public R<String> deleteMilestone(@PathVariable Long id, @PathVariable Long milestoneId) {
+        try { projectTaskService.deleteMilestone(id, milestoneId); return R.ok("已删除"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "项目健康分")

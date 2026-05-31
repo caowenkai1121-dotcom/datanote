@@ -4214,6 +4214,7 @@ html, body {
         <button class="active" data-ptab="overview" onclick="projDetailTab(this,'overview')">概览</button>
         <button data-ptab="asset" onclick="projDetailTab(this,'asset')">资产</button>
         <button data-ptab="member" onclick="projDetailTab(this,'member')">成员</button>
+        <button data-ptab="task" onclick="projDetailTab(this,'task')">任务</button>
         <button data-ptab="release" onclick="projDetailTab(this,'release')">发布</button>
         <button data-ptab="activity" onclick="projDetailTab(this,'activity')">活动</button>
         <button data-ptab="setting" onclick="projDetailTab(this,'setting')">设置</button>
@@ -4222,6 +4223,7 @@ html, body {
         <div class="dbsync-detail-pane" id="projPane_overview"></div>
         <div class="dbsync-detail-pane" id="projPane_asset" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_member" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_task" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_release" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_activity" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_setting" style="display:none;"></div>
@@ -13278,6 +13280,111 @@ window.projLoadActivities = function() {
     h += '</tbody></table>';
     pane.innerHTML = h;
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+
+/* ===== PM2-M3：任务待办 + 里程碑 ===== */
+var _projMilestones = [];
+var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#52c41a' } };
+var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
+window.projLoadTasks = function() {
+  var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  Promise.all([api('/api/project/' + _projDetail.id + '/tasks'), api('/api/project/' + _projDetail.id + '/milestones')]).then(function(arr) {
+    var tasks = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
+    var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
+    var cnt = { TODO: 0, DOING: 0, DONE: 0 };
+    tasks.forEach(function(t) { cnt[t.status] = (cnt[t.status] || 0) + 1; });
+    var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
+      + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
+      + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
+      + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + '</span></div>';
+    if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无任务</div>';
+    else {
+      ['TODO', 'DOING', 'DONE'].forEach(function(st) {
+        var group = tasks.filter(function(t) { return t.status === st; });
+        if (!group.length) return;
+        h += '<div style="font-weight:600;font-size:13px;margin:10px 0 4px;color:' + TASK_STATUS[st].c + ';">' + TASK_STATUS[st].t + ' (' + group.length + ')</div>';
+        h += '<table class="dbsync-exec-table" style="width:100%;"><tbody>';
+        group.forEach(function(t) {
+          var pr = TASK_PRIO[t.priority] || { t: t.priority, c: '' };
+          h += '<tr><td style="width:50px;"><span style="color:' + pr.c + ';font-size:11px;">' + pr.t + '</span></td>'
+            + '<td><b>' + escapeHtml(t.title) + '</b>' + (t.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(t.description) + '</div>' : '') + '</td>'
+            + '<td style="width:80px;">' + escapeHtml(t.assignee || '-') + '</td>'
+            + '<td style="width:90px;">' + escapeHtml(t.dueDate || '') + '</td>'
+            + '<td style="width:90px;color:var(--text-muted);">' + escapeHtml(msName[t.milestoneId] || '') + '</td>'
+            + '<td style="width:90px;"><select class="dbsync-form-select" style="width:84px;" onchange="projTaskStatus(' + t.id + ',this.value)">'
+            + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></td>'
+            + '<td style="width:80px;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:6px;">编辑</a><a href="#" onclick="projDeleteTask(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+        });
+        h += '</tbody></table>';
+      });
+    }
+    pane.innerHTML = h;
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projTaskModal = function(taskId) {
+  var t = taskId ? null : {};
+  api('/api/project/' + _projDetail.id + '/tasks').then(function(res) {
+    if (taskId) { t = _pdata(res).find(function(x) { return x.id === taskId; }) || {}; }
+    var msOpts = '<option value="">（无）</option>' + _projMilestones.map(function(m) { return '<option value="' + m.id + '"' + (t.milestoneId === m.id ? ' selected' : '') + '>' + escapeHtml(m.name) + '</option>'; }).join('');
+    var h = '<input type="hidden" id="ptkId" value="' + (t.id || '') + '">'
+      + '<div class="ds-form-row"><label>标题</label><input id="ptkTitle" value="' + escapeHtml(t.title || '') + '"></div>'
+      + '<div class="ds-form-row"><label>描述</label><input id="ptkDesc" value="' + escapeHtml(t.description || '') + '"></div>'
+      + '<div class="ds-form-row"><label>指派给</label><input id="ptkAssignee" value="' + escapeHtml(t.assignee || '') + '" placeholder="用户名"></div>'
+      + '<div class="ds-form-row"><label>优先级</label><select id="ptkPriority" class="g-modal-input">' + ['HIGH', 'MEDIUM', 'LOW'].map(function(p) { return '<option value="' + p + '"' + ((t.priority || 'MEDIUM') === p ? ' selected' : '') + '>' + TASK_PRIO[p].t + '</option>'; }).join('') + '</select></div>'
+      + '<div class="ds-form-row"><label>状态</label><select id="ptkStatus" class="g-modal-input">' + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + ((t.status || 'TODO') === s ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></div>'
+      + '<div class="ds-form-row"><label>截止日期</label><input id="ptkDue" type="date" value="' + (t.dueDate || '') + '"></div>'
+      + '<div class="ds-form-row"><label>里程碑</label><select id="ptkMilestone" class="g-modal-input">' + msOpts + '</select></div>'
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTask()">保存</button></div>';
+    projShowModalBox(taskId ? '编辑任务' : '新建任务', h);
+  });
+};
+window.projSaveTask = function() {
+  var title = (document.getElementById('ptkTitle').value || '').trim();
+  if (!title) { showToast('请填写标题', 'error'); return; }
+  var ms = document.getElementById('ptkMilestone').value;
+  var body = { title: title, description: document.getElementById('ptkDesc').value || '', assignee: document.getElementById('ptkAssignee').value || '', priority: document.getElementById('ptkPriority').value, status: document.getElementById('ptkStatus').value, dueDate: document.getElementById('ptkDue').value || null, milestoneId: ms ? parseInt(ms) : null };
+  var id = document.getElementById('ptkId').value;
+  if (id) body.id = parseInt(id);
+  apiPost('/api/project/' + _projDetail.id + '/tasks', body).then(function(res) {
+    if (res && res.code === 0) { showToast('已保存', 'success'); projCloseModalBox(); projLoadTasks(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.projTaskStatus = function(taskId, status) {
+  api('/api/project/' + _projDetail.id + '/tasks').then(function(res) {
+    var t = _pdata(res).find(function(x) { return x.id === taskId; }); if (!t) return;
+    t.status = status;
+    apiPost('/api/project/' + _projDetail.id + '/tasks', t).then(function() { projLoadTasks(); });
+  });
+};
+window.projDeleteTask = function(taskId) {
+  if (!confirm('确认删除该任务？')) return;
+  fetch('/api/project/' + _projDetail.id + '/tasks/' + taskId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadTasks(); }).catch(function() { showToast('删除失败', 'error'); });
+};
+window.projMilestoneManage = function() {
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" onclick="projSaveMilestone()">添加</button></div><div id="pmsList"></div>';
+  projShowModalBox('里程碑管理', h);
+  projRenderMilestones();
+};
+function projRenderMilestones() {
+  var box = document.getElementById('pmsList'); if (!box) return;
+  if (!_projMilestones.length) { box.innerHTML = '<div style="color:var(--text-muted);">暂无里程碑</div>'; return; }
+  box.innerHTML = _projMilestones.map(function(m) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span><a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
+}
+window.projSaveMilestone = function() {
+  var name = (document.getElementById('pmsName').value || '').trim();
+  if (!name) { showToast('请填写名称', 'error'); return; }
+  apiPost('/api/project/' + _projDetail.id + '/milestones', { name: name, startDate: document.getElementById('pmsStart').value || null, endDate: document.getElementById('pmsEnd').value || null }).then(function(res) {
+    if (res && res.code === 0) { _projMilestones.push(res.data); document.getElementById('pmsName').value = ''; projRenderMilestones(); }
+    else showToast((res && res.msg) || '添加失败', 'error');
+  }).catch(function() { showToast('添加失败', 'error'); });
+};
+window.projDelMilestone = function(mid) {
+  if (!confirm('删除里程碑？(其下任务将解除关联)')) return;
+  fetch('/api/project/' + _projDetail.id + '/milestones/' + mid, { method: 'DELETE' }).then(_handleResponse).then(function() {
+    _projMilestones = _projMilestones.filter(function(m) { return m.id !== mid; }); projRenderMilestones();
+  }).catch(function() { showToast('删除失败', 'error'); });
 };
 
 /* ===== PM-M5：发布管理 ===== */
