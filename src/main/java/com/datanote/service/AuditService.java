@@ -209,6 +209,7 @@ public class AuditService {
     public List<Map<String, Object>> statByPath() {
         QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
         qw.select("path", "COUNT(*) AS cnt")
+                .isNotNull("path").ne("path", "")
                 .groupBy("path").orderByDesc("cnt").last("LIMIT 20");
         return auditMapper.selectMaps(qw);
     }

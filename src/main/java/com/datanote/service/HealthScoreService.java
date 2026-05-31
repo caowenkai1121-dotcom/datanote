@@ -135,7 +135,8 @@ public class HealthScoreService {
             if (runs != null && !runs.isEmpty()) {
                 double sum = 0.0;
                 for (DnQualityRun r : runs) sum += r.getPassRate().doubleValue();
-                return dim(sum / runs.size() * 100.0, "质量调度(M5,近" + runs.size() + "次)");
+                // pass_rate 已是百分比(0-100,见 QualityService pass*100/total),不可再×100
+                return dim(sum / runs.size(), "质量调度(M5,近" + runs.size() + "次)");
             }
         } catch (Exception e) {
             log.warn("质量维度取数失败: {}", e.getMessage());

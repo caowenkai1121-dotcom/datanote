@@ -54,11 +54,12 @@ public class ClassificationService {
         List<Map<String, Object>> rows = columnMetaMapper.selectMaps(qw);
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> r : rows) {
-            Object tid = r.get("tid"); if (tid == null) continue;
+            Object tid = r.get("tid"); if (!(tid instanceof Number)) continue;
             DnTableMeta tm = tableMetaMapper.selectById(((Number) tid).longValue());
+            if (tm == null) continue; // 元数据已删的脏行跳过,不返回无法定位的虚表名
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("db", tm != null ? tm.getDatabaseName() : "?");
-            m.put("table", tm != null ? tm.getTableName() : ("#" + tid));
+            m.put("db", tm.getDatabaseName());
+            m.put("table", tm.getTableName());
             m.put("count", r.get("cnt"));
             out.add(m);
         }

@@ -12,6 +12,10 @@ public class TimestampStrategy implements IncrementalStrategy {
 
     @Override
     public int compare(Object a, Object b) {
+        // null 视为最小，避免 String.valueOf(null)="null" 污染水位字典序
+        if (a == null && b == null) return 0;
+        if (a == null) return -1;
+        if (b == null) return 1;
         return String.valueOf(a).compareTo(String.valueOf(b));
     }
 

@@ -12,12 +12,12 @@ public final class ProjectHealthScorer {
 
     public static Map<String, Object> score(long assetTotal, long memberCount, long releaseTotal,
                                             long jobSuccess, long jobFailed, long activityCount) {
-        int asset = (int) Math.min(20, assetTotal * 4);
+        int asset = (int) Math.min(20, Math.max(0, assetTotal * 4));
         int member = memberCount >= 3 ? 20 : (memberCount == 2 ? 14 : (memberCount == 1 ? 8 : 0));
-        int release = (int) Math.min(20, releaseTotal * 7);
+        int release = (int) Math.min(20, Math.max(0, releaseTotal * 7));
         long runTotal = jobSuccess + jobFailed;
-        int run = runTotal == 0 ? 12 : (int) Math.round(20.0 * jobSuccess / runTotal);
-        int active = (int) Math.min(20, activityCount * 2);
+        int run = runTotal == 0 ? 12 : (int) Math.round(20.0 * Math.max(0, jobSuccess) / runTotal);
+        int active = (int) Math.min(20, Math.max(0, activityCount * 2));
         int total = asset + member + release + run + active;
 
         Map<String, Object> dims = new LinkedHashMap<>();
