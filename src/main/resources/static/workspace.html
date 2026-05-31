@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r15">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r16">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r15"></script>
-<script src="js/gov-assets.js?v=g2r15"></script>
-<script src="js/gov-lineage.js?v=g2r15"></script>
-<script src="js/gov-quality.js?v=g2r15"></script>
-<script src="js/gov-standard.js?v=g2r15"></script>
-<script src="js/gov-classification.js?v=g2r15"></script>
-<script src="js/gov-security.js?v=g2r15"></script>
-<script src="js/gov-health.js?v=g2r15"></script>
-<script src="js/gov-audit.js?v=g2r15"></script>
-<script src="js/gov-overview.js?v=g2r15"></script>
-<script src="js/gov-subject.js?v=g2r15"></script>
+<script src="js/dn-common.js?v=g2r16"></script>
+<script src="js/gov-assets.js?v=g2r16"></script>
+<script src="js/gov-lineage.js?v=g2r16"></script>
+<script src="js/gov-quality.js?v=g2r16"></script>
+<script src="js/gov-standard.js?v=g2r16"></script>
+<script src="js/gov-classification.js?v=g2r16"></script>
+<script src="js/gov-security.js?v=g2r16"></script>
+<script src="js/gov-health.js?v=g2r16"></script>
+<script src="js/gov-audit.js?v=g2r16"></script>
+<script src="js/gov-overview.js?v=g2r16"></script>
+<script src="js/gov-subject.js?v=g2r16"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4833,6 +4833,7 @@ html, body {
           <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">每 5 秒自动刷新</div>
         </div>
         <div class="dbsync-modal-footer">
+          <label style="font-size:12px;color:var(--text-muted);display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:auto;"><input type="checkbox" checked onchange="dbsyncToggleDashAuto(this)"> 自动刷新(5s)</label>
           <button class="btn" onclick="dbsyncExportDashCsv()">导出CSV</button>
           <button class="btn" onclick="dbsyncCloseDashboard()">关闭</button>
         </div>
@@ -13401,6 +13402,10 @@ window.projLoadAssets = function() {
       + '<button class="btn btn-sm btn-primary" onclick="projBindAsset()">绑定资产</button></div>';
     if (!as.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无绑定资产，从上方选择类型与资产绑定</div>';
     else {
+      var tc = {}; as.forEach(function(a) { tc[a.assetType] = (tc[a.assetType] || 0) + 1; });
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
+      Object.keys(tc).forEach(function(k) { h += '<span style="font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(PROJ_ASSET_TYPE[k] || k) + ' ' + tc[k] + '</span>'; });
+      h += '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">共 ' + as.length + ' 项</span></div>';
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>类型</th><th>资产名</th><th>资产ID</th><th>绑定时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
       as.forEach(function(a) {
         h += '<tr><td>' + escapeHtml(PROJ_ASSET_TYPE[a.assetType] || a.assetType) + '</td>'
@@ -17625,13 +17630,19 @@ document.addEventListener('keydown', function(e) {
  * ============================================================ */
 var _dbsyncDashboardTimer = null;
 
+var _dbsyncDashAuto = true;
+window.dbsyncToggleDashAuto = function(cb) {
+  _dbsyncDashAuto = cb.checked;
+  if (_dbsyncDashboardTimer) { clearInterval(_dbsyncDashboardTimer); _dbsyncDashboardTimer = null; }
+  if (_dbsyncDashAuto) _dbsyncDashboardTimer = setInterval(dbsyncFetchDashboard, 5000);
+};
 window.dbsyncOpenDashboard = function() {
   var overlay = document.getElementById('dbsyncDashboardModal');
   if (!overlay) return;
   overlay.classList.add('show');
   dbsyncFetchDashboard();
   if (_dbsyncDashboardTimer) clearInterval(_dbsyncDashboardTimer);
-  _dbsyncDashboardTimer = setInterval(dbsyncFetchDashboard, 5000);
+  if (_dbsyncDashAuto) _dbsyncDashboardTimer = setInterval(dbsyncFetchDashboard, 5000);
 };
 
 window.dbsyncCloseDashboard = function() {
