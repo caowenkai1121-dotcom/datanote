@@ -166,7 +166,7 @@ public class AuditService {
      */
     public Map<String, Object> search(String from, String to, String actionType,
                                       String userName, String path, int page, int size) {
-        int p = page < 1 ? 1 : page;
+        int p = page < 1 ? 1 : (page > 10000 ? 10000 : page); // 限制翻页深度,防超大 offset 慢查询
         int s = size < 1 ? 20 : (size > 500 ? 500 : size);
         QueryWrapper<DnAuditLog> qw = buildWrapper(from, to, actionType, userName, path);
         long total = auditMapper.selectCount(qw);
