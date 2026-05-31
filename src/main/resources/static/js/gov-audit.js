@@ -161,8 +161,30 @@
     var card = DN.card({ title: '本页操作类型分布', icon: 'chart' });
     card.body.appendChild(DN.bars(items));
     box.appendChild(card.el);
+    // HTTP 状态码分布(2xx/3xx/4xx/5xx)
+    box.appendChild(buildStatusDistCard(rows));
     // 行为时段热力(时×星期)
     box.appendChild(buildHourHeatCard(rows));
+  }
+
+  // HTTP 状态码分布(大功能): 成功/重定向/客户端错/服务端错 占比
+  function buildStatusDistCard(rows) {
+    var grp = { '2xx 成功': 0, '3xx 重定向': 0, '4xx 客户端错误': 0, '5xx 服务端错误': 0, '其它': 0 };
+    rows.forEach(function (r) {
+      var n = Number(r.status);
+      if (isNaN(n)) grp['其它']++;
+      else if (n >= 200 && n < 300) grp['2xx 成功']++;
+      else if (n >= 300 && n < 400) grp['3xx 重定向']++;
+      else if (n >= 400 && n < 500) grp['4xx 客户端错误']++;
+      else if (n >= 500) grp['5xx 服务端错误']++;
+      else grp['其它']++;
+    });
+    var toneMap = { '2xx 成功': 'ok', '3xx 重定向': 'info', '4xx 客户端错误': 'warn', '5xx 服务端错误': 'err', '其它': 'muted' };
+    var items = Object.keys(grp).filter(function (k) { return grp[k] > 0; }).map(function (k) { return { label: k, value: grp[k], tone: toneMap[k] }; });
+    var card = DN.card({ title: '本页 HTTP 状态码分布', icon: 'shield' });
+    if (!items.length) card.body.appendChild(DN.empty('无状态码数据', 'shield'));
+    else card.body.appendChild(DN.bars(items));
+    return card.el;
   }
 
   // 行为时段热力图(大功能): 7星期 × 24小时 操作密度
