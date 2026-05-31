@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r8">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r9">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r8"></script>
-<script src="js/gov-assets.js?v=g2r8"></script>
-<script src="js/gov-lineage.js?v=g2r8"></script>
-<script src="js/gov-quality.js?v=g2r8"></script>
-<script src="js/gov-standard.js?v=g2r8"></script>
-<script src="js/gov-classification.js?v=g2r8"></script>
-<script src="js/gov-security.js?v=g2r8"></script>
-<script src="js/gov-health.js?v=g2r8"></script>
-<script src="js/gov-audit.js?v=g2r8"></script>
-<script src="js/gov-overview.js?v=g2r8"></script>
-<script src="js/gov-subject.js?v=g2r8"></script>
+<script src="js/dn-common.js?v=g2r9"></script>
+<script src="js/gov-assets.js?v=g2r9"></script>
+<script src="js/gov-lineage.js?v=g2r9"></script>
+<script src="js/gov-quality.js?v=g2r9"></script>
+<script src="js/gov-standard.js?v=g2r9"></script>
+<script src="js/gov-classification.js?v=g2r9"></script>
+<script src="js/gov-security.js?v=g2r9"></script>
+<script src="js/gov-health.js?v=g2r9"></script>
+<script src="js/gov-audit.js?v=g2r9"></script>
+<script src="js/gov-overview.js?v=g2r9"></script>
+<script src="js/gov-subject.js?v=g2r9"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13890,8 +13890,20 @@ window.projDoCompare = function() {
   apiPost('/api/project/compare', { ids: ids }).then(function(res) {
     var rows = _pdata(res);
     var box = document.getElementById('pcmpResult'); if (!box) return;
+    // 各指标列内嵌归一化条形, 直观对比量级
+    var maxOf = function(k) { return Math.max.apply(null, rows.map(function(r) { return Number(r[k]) || 0; }).concat([1])); };
+    var mAsset = maxOf('assetTotal'), mMem = maxOf('memberCount'), mRel = maxOf('releaseTotal'), mPend = maxOf('releasePending');
+    var barCell = function(v, max, color) {
+      v = Number(v) || 0;
+      return '<td><div style="display:flex;align-items:center;gap:6px;"><span style="width:28px;text-align:right;font-variant-numeric:tabular-nums;">' + v + '</span>'
+        + '<div style="flex:1;height:7px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;min-width:40px;"><div style="width:' + Math.round(v / max * 100) + '%;height:100%;background:' + color + ';"></div></div></div></td>';
+    };
     var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>项目</th><th>资产</th><th>成员</th><th>发布</th><th>待审批</th></tr></thead><tbody>';
-    rows.forEach(function(r) { h += '<tr><td><b>' + escapeHtml(r.projectName) + '</b></td><td>' + (r.assetTotal || 0) + '</td><td>' + (r.memberCount || 0) + '</td><td>' + (r.releaseTotal || 0) + '</td><td>' + (r.releasePending || 0) + '</td></tr>'; });
+    rows.forEach(function(r) {
+      h += '<tr><td><b>' + escapeHtml(r.projectName) + '</b></td>'
+        + barCell(r.assetTotal, mAsset, '#1677ff') + barCell(r.memberCount, mMem, '#52c41a')
+        + barCell(r.releaseTotal, mRel, '#722ed1') + barCell(r.releasePending, mPend, '#fa8c16') + '</tr>';
+    });
     h += '</tbody></table>';
     box.innerHTML = h;
   }).catch(function() { showToast('对比失败', 'error'); });
@@ -13907,6 +13919,19 @@ window.projSaveAsTemplate = function(pid) {
 
 /* ===== PM-M5：发布管理 ===== */
 var REL_STATUS = { PENDING: { t: '待审批', c: '#fa8c16' }, APPROVED: { t: '已通过', c: '#1677ff' }, REJECTED: { t: '已驳回', c: '#8c8c8c' }, RELEASED: { t: '已发布', c: '#52c41a' }, ROLLED_BACK: { t: '已回滚', c: '#ff4d4f' } };
+var _projReleases = [];
+window.projRelDetail = function(rid) {
+  var r = (_projReleases || []).filter(function(x) { return x.id === rid; })[0]; if (!r) return;
+  var st = REL_STATUS[r.status] || { t: r.status, c: '' };
+  var row = function(k, v) { return v ? '<div style="margin:4px 0;"><span style="color:var(--text-muted);font-size:12px;">' + k + '：</span>' + escapeHtml(v) + '</div>' : ''; };
+  var h = '<div style="margin-bottom:8px;">版本 <b>v' + r.versionNo + '</b> <span style="color:' + st.c + ';font-weight:600;margin-left:6px;">' + escapeHtml(st.t) + '</span></div>'
+    + row('目标环境', r.targetEnv) + row('提交人', r.submittedBy) + row('提交时间', (r.submittedAt || '').replace('T', ' ').slice(0, 19))
+    + (r.approver ? row('审批人', r.approver) : '') + (r.approvedAt ? row('审批时间', (r.approvedAt || '').replace('T', ' ').slice(0, 19)) : '')
+    + (r.approveComment ? row('审批意见', r.approveComment) : '')
+    + '<div style="font-size:12px;color:var(--text-muted);margin:8px 0 4px;">发布内容</div>'
+    + '<div class="proj-md" style="font-size:13px;line-height:1.7;border:1px solid var(--divider);border-radius:6px;padding:10px;max-height:300px;overflow:auto;">' + (r.content ? projMd(r.content) : '<span style="color:var(--text-muted);">（无）</span>') + '</div>';
+  projShowModalBox('发布详情 · v' + r.versionNo, h);
+};
 function projRelActionLinks(r, scope) {
   var s = r.status, rid = r.id, a = '';
   if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:#52c41a;margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:#ff4d4f;">驳回</a>';
@@ -13920,13 +13945,14 @@ window.projLoadReleases = function() {
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
   api('/api/project/' + _projDetail.id + '/releases').then(function(res) {
     var rs = (res && res.code === 0) ? (res.data || []) : [];
+    _projReleases = rs;
     var h = '<div style="margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button></div>';
     if (!rs.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无发布版本</div>';
     else {
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>版本</th><th>标题</th><th>环境</th><th>状态</th><th>提交人</th><th>提交时间</th><th style="width:120px;">操作</th></tr></thead><tbody>';
       rs.forEach(function(r) {
         var st = REL_STATUS[r.status] || { t: r.status, c: '' };
-        h += '<tr><td>v' + r.versionNo + '</td><td>' + escapeHtml(r.title || '-') + '</td><td>' + escapeHtml(r.targetEnv || '-') + '</td>'
+        h += '<tr><td>v' + r.versionNo + '</td><td><a href="#" onclick="projRelDetail(' + r.id + ');return false;" style="color:var(--primary);">' + escapeHtml(r.title || '-') + '</a></td><td>' + escapeHtml(r.targetEnv || '-') + '</td>'
           + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
           + '<td>' + escapeHtml(r.submittedBy || '-') + '</td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((r.submittedAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
