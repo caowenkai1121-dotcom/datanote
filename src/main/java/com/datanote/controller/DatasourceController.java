@@ -145,7 +145,10 @@ public class DatasourceController {
                         + "encrypt=false;trustServerCertificate=true;loginTimeout=5";
             } else if (com.datanote.service.MetadataService.isOracle(ds.getType())) {
                 String svc = (ds.getDatabaseName() == null || ds.getDatabaseName().isEmpty()) ? "XEPDB1" : ds.getDatabaseName();
-                url = "jdbc:oracle:thin:@//" + ds.getHost() + ":" + ds.getPort() + "/" + svc;
+                // DESCRIPTION 格式内嵌 CONNECT_TIMEOUT(秒), 防死库 host 致测连接挂死 HTTP 线程
+                url = "jdbc:oracle:thin:@(DESCRIPTION=(CONNECT_TIMEOUT=5)(TRANSPORT_CONNECT_TIMEOUT=5)"
+                        + "(ADDRESS=(PROTOCOL=TCP)(HOST=" + ds.getHost() + ")(PORT=" + ds.getPort() + "))"
+                        + "(CONNECT_DATA=(SERVICE_NAME=" + svc + ")))";
             } else {
                 url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()
                         + "/?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000";

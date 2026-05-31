@@ -138,7 +138,8 @@ public class MetadataService {
 
     private Connection getExternalConnection(String host, int port, String username, String password) throws SQLException {
         String url = "jdbc:mysql://" + host + ":" + port
-                + "/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true";
+                + "/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true"
+                + "&connectTimeout=5000&socketTimeout=60000"; // 防死库 host 致线程无限阻塞
         return DriverManager.getConnection(url, username, password);
     }
 
@@ -180,7 +181,8 @@ public class MetadataService {
                                              String password, String databaseName) throws SQLException {
         if (isPg(type)) {
             String db = (databaseName == null || databaseName.isEmpty()) ? "postgres" : databaseName;
-            return DriverManager.getConnection("jdbc:postgresql://" + host + ":" + port + "/" + db, username, password);
+            return DriverManager.getConnection("jdbc:postgresql://" + host + ":" + port + "/" + db
+                    + "?connectTimeout=5&socketTimeout=60", username, password); // 防死库 host 阻塞
         }
         if (isSqlServer(type)) {
             String dbSeg = (databaseName == null || databaseName.isEmpty()) ? "" : "databaseName=" + databaseName + ";";
@@ -190,7 +192,12 @@ public class MetadataService {
         }
         if (isOracle(type)) {
             String svc = (databaseName == null || databaseName.isEmpty()) ? "XEPDB1" : databaseName;
-            return DriverManager.getConnection("jdbc:oracle:thin:@//" + host + ":" + port + "/" + svc, username, password);
+            java.util.Properties props = new java.util.Properties();
+            props.put("user", username == null ? "" : username);
+            props.put("password", password == null ? "" : password);
+            props.put("oracle.net.CONNECT_TIMEOUT", "5000"); // 连接超时 5s
+            props.put("oracle.jdbc.ReadTimeout", "60000");   // 读超时 60s, 防死库 host 阻塞
+            return DriverManager.getConnection("jdbc:oracle:thin:@//" + host + ":" + port + "/" + svc, props);
         }
         return getExternalConnection(host, port, username, password);
     }
