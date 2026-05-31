@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r9">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r10">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r9"></script>
-<script src="js/gov-assets.js?v=g2r9"></script>
-<script src="js/gov-lineage.js?v=g2r9"></script>
-<script src="js/gov-quality.js?v=g2r9"></script>
-<script src="js/gov-standard.js?v=g2r9"></script>
-<script src="js/gov-classification.js?v=g2r9"></script>
-<script src="js/gov-security.js?v=g2r9"></script>
-<script src="js/gov-health.js?v=g2r9"></script>
-<script src="js/gov-audit.js?v=g2r9"></script>
-<script src="js/gov-overview.js?v=g2r9"></script>
-<script src="js/gov-subject.js?v=g2r9"></script>
+<script src="js/dn-common.js?v=g2r10"></script>
+<script src="js/gov-assets.js?v=g2r10"></script>
+<script src="js/gov-lineage.js?v=g2r10"></script>
+<script src="js/gov-quality.js?v=g2r10"></script>
+<script src="js/gov-standard.js?v=g2r10"></script>
+<script src="js/gov-classification.js?v=g2r10"></script>
+<script src="js/gov-security.js?v=g2r10"></script>
+<script src="js/gov-health.js?v=g2r10"></script>
+<script src="js/gov-audit.js?v=g2r10"></script>
+<script src="js/gov-overview.js?v=g2r10"></script>
+<script src="js/gov-subject.js?v=g2r10"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17425,14 +17425,38 @@ function dbsyncRenderHistory(execs) {
 }
 // 操作类型中文映射
 var _dbsyncAuditOpLabel = { CREATE: '新建', UPDATE: '修改', RUN: '运行', STOP: '停止', RESET: '重置' };
-function dbsyncRenderAudit(audits) {
+var _dbsyncAuditAll = [], _dbsyncAuditFilter = '';
+function dbsyncAuditBar() {
+  var types = {}; _dbsyncAuditAll.forEach(function(a) { if (a.operationType) types[a.operationType] = 1; });
+  var opts = '<option value="">全部类型</option>' + Object.keys(types).map(function(t) { return '<option value="' + t + '"' + (_dbsyncAuditFilter === t ? ' selected' : '') + '>' + (_dbsyncAuditOpLabel[t] || t) + '</option>'; }).join('');
+  return '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:flex-end;">'
+    + '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterAudit(this.value)">' + opts + '</select>'
+    + '<button class="btn btn-sm" onclick="dbsyncExportAudit()">导出CSV</button></div>';
+}
+window.dbsyncFilterAudit = function(t) {
+  _dbsyncAuditFilter = t;
+  var rows = t ? _dbsyncAuditAll.filter(function(a) { return a.operationType === t; }) : _dbsyncAuditAll;
+  dbsyncRenderAudit(rows, true);
+};
+window.dbsyncExportAudit = function() {
+  var rows = _dbsyncAuditAll || []; if (!rows.length) { showToast('暂无数据', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['操作类型', '操作时间', '操作人', '变更详情'].map(cell).join(',')];
+  rows.forEach(function(a) { lines.push([_dbsyncAuditOpLabel[a.operationType] || a.operationType, dbsyncFmtTime(a.createdAt), a.operator, a.changeDetail].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'sync_audit_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+};
+function dbsyncRenderAudit(audits, _keepCache) {
   var pane = document.getElementById('dbsyncDetailPane_audit');
   if (!pane) return;
+  if (!_keepCache) _dbsyncAuditAll = audits || [];
   if (!audits || audits.length === 0) {
-    pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无审计记录</div>';
+    pane.innerHTML = (_dbsyncAuditAll.length ? dbsyncAuditBar() : '') + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">' + (_dbsyncAuditAll.length ? '该类型下无记录' : '暂无审计记录') + '</div>';
     return;
   }
-  var html = '<table class="dbsync-exec-table"><thead><tr>'
+  var html = dbsyncAuditBar() + '<table class="dbsync-exec-table"><thead><tr>'
     + '<th>操作类型</th><th>操作时间</th><th>操作人</th><th>变更详情</th>'
     + '</tr></thead><tbody>';
   audits.forEach(function(a) {
