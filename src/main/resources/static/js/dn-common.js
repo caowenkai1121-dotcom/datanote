@@ -314,7 +314,7 @@
   /** 纯 SVG 折线/面积趋势图。values:[number]，opts:{height,color,max,min,area} */
   DN.line = function (values, opts) {
     opts = opts || {}; var data = (values || []).map(Number).filter(function (x) { return !isNaN(x); });
-    if (!data.length) return DN.empty('暂无趋势数据', 'chart');
+    if (data.length < 2) return DN.empty('趋势数据不足（需至少 2 个数据点）', 'chart');
     var h = opts.height || 72, pad = 6, vw = 300, n = data.length;
     var max = opts.max != null ? opts.max : Math.max.apply(null, data.concat([1])), min = opts.min != null ? opts.min : Math.min.apply(null, data.concat([0]));
     if (max === min) max = min + 1;

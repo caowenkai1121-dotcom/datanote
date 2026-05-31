@@ -253,6 +253,7 @@ public class SyncJobService {
         for (TableSyncConfig tc : tables) {
             if (eq(tc.getSourceTable(), sourceTable)) {
                 tc.setIncrementalValue(null);
+                break; // 仅重置首个匹配表,防 malformed 配置(同名)误重置多表
             }
         }
         updateTableConfig(jobId, tables);
