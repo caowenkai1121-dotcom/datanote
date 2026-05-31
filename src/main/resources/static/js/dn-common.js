@@ -6,12 +6,14 @@
   /** 统一请求：解析 R<T> 信封（code===0 成功），失败抛 Error */
   DN.api = function (url, options) {
     return fetch(url, options || {}).then(function (resp) {
-      return resp.json().catch(function () { return {}; }).then(function (body) {
+      var _bad = false;
+      return resp.json().catch(function () { _bad = true; return {}; }).then(function (body) {
         if (body && typeof body.code !== 'undefined') {
           if (body.code === 0) return body.data;
           throw new Error(body.msg || ('请求失败(' + body.code + ')'));
         }
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        if (_bad) throw new Error('响应格式错误(非JSON)'); // 服务器返回HTML错误页等
         return body;
       });
     });
@@ -38,7 +40,7 @@
     setTimeout(function () { t.classList.add('dn-toast-show'); }, 10);
     setTimeout(function () {
       t.classList.remove('dn-toast-show');
-      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+      setTimeout(function () { if (t.parentNode && document.body.contains(t)) t.parentNode.removeChild(t); }, 300);
     }, 2600);
   };
 
@@ -92,7 +94,8 @@
   /** 字节可读化 */
   DN.fmtBytes = function (n) {
     if (n == null) return '-';
-    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0, v = Number(n);
+    var v = Number(n); if (isNaN(v) || v < 0) return '-';
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
     return v.toFixed(1) + ' ' + u[i];
   };

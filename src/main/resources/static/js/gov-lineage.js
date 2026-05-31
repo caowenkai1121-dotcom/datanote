@@ -80,6 +80,7 @@
     var db = grPicker.db();
     var table = grPicker.table();
     var depth = parseInt(document.getElementById('grDepth').value, 10) || 2;
+    if (depth < 1 || depth > 6) { DN.toast('跳数需在 1-6 之间', 'error'); return; }
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('graphResult');
     box.innerHTML = '';
@@ -230,7 +231,7 @@
         var xml = new XMLSerializer().serializeToString(s);
         var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + xml], { type: 'image/svg+xml' });
         var url = URL.createObjectURL(blob);
-        var a = document.createElement('a'); a.href = url; a.download = 'lineage_' + centerId.replace(/[^\w]/g, '_') + '.svg';
+        var a = document.createElement('a'); a.href = url; a.download = 'lineage_' + String(centerId || '').replace(/[^a-zA-Z0-9]/g, '_') + '.svg';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
       } catch (e) { DN.toast('导出失败', 'error'); }

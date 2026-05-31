@@ -214,7 +214,7 @@
       searchPlaceholder: '搜索标题/维度/负责人/状态',
       empty: '暂无工单', emptyIcon: 'inbox',
       columns: [
-        { key: '_sel', label: '', render: function (it) { var cb = DN.h('input', { type: 'checkbox' }); cb.checked = !!selectedIssues[it.id]; cb.onchange = function () { if (cb.checked) selectedIssues[it.id] = it.status; else delete selectedIssues[it.id]; }; return cb; } },
+        { key: '_sel', label: '', render: function (it) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择工单 ' + (it.title || it.id) }); cb.checked = !!selectedIssues[it.id]; cb.onchange = function () { if (cb.checked) selectedIssues[it.id] = it.status; else delete selectedIssues[it.id]; }; return cb; } },
         { key: 'id', label: 'ID', align: 'right' },
         { key: 'title', label: '标题' },
         { key: 'dimension', label: '维度', render: function (it) { return it.dimension || '-'; } },

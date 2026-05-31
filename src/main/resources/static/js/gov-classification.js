@@ -283,7 +283,7 @@
 
         // 为每行就近构造勾选框与密级下拉（render 时已引用，先在 reload 前装配）
         rows.forEach(function (r) {
-          r._cb = DN.h('input', { type: 'checkbox' });
+          r._cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (r.db || '') + '.' + (r.table || '') + '.' + (r.column || '') });
           var s = DN.h('select', { class: 'iw-form-select', style: 'width:auto;min-width:110px' });
           s.innerHTML = opts;
           if (r.suggestLevel) s.value = r.suggestLevel;

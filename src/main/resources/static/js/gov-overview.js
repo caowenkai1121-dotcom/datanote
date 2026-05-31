@@ -152,7 +152,7 @@
     box.appendChild(hcCard.el);
     DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
       renderHealthCalendar(hcCard.body, t || []);
-    }).catch(function () { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.empty('暂无健康分历史', 'clock')); });
+    }).catch(function (e) { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.empty('健康分日历加载失败: ' + (e && e.message ? e.message : '请重试'), 'alert')); });
   }
 
   // 健康分日历热力：按天着色(>=85绿/>=60黄/其余红), GitHub风格
