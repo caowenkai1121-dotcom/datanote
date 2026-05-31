@@ -219,17 +219,23 @@
         var minConfSel = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
         [['0', '全部置信度'], ['50', '≥50%'], ['70', '≥70%'], ['80', '≥80%']].forEach(function (o) { minConfSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
         minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };
+        var checkBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '勾选≥阈值', onclick: function () {
+          var mc = Number(minConfSel.value) || 0, n = 0;
+          rows.forEach(function (r) { if ((Number(r.confidence) || 0) >= mc) { r._cb.checked = true; n++; } });
+          DN.toast('已勾选 ' + n + ' 列', 'info');
+        } });
 
         var tbl = DN.table({
           search: false,
-          toolbar: [minConfSel, confirmBtn],
+          toolbar: [minConfSel, checkBtn, confirmBtn],
+          exportName: '敏感识别结果',
           columns: [
             { label: '', render: function (r) { return r._cb; } },
-            { key: 'column', label: '列' },
-            { key: 'sensitiveType', label: '敏感类型' },
-            { label: '置信度', render: function (r) { return DN.pill((r.confidence || 0) + '%', confTone(r.confidence)); } },
-            { label: '当前密级', render: function (r) { return r.currentLevel || '-'; } },
-            { label: '确认密级', render: function (r) { return r._levelSel; } }
+            { key: 'column', label: '列', exportValue: function (r) { return r.column; } },
+            { key: 'sensitiveType', label: '敏感类型', exportValue: function (r) { return r.sensitiveType; } },
+            { label: '置信度', exportValue: function (r) { return (r.confidence || 0) + '%'; }, render: function (r) { return DN.pill((r.confidence || 0) + '%', confTone(r.confidence)); } },
+            { label: '当前密级', exportValue: function (r) { return r.currentLevel || ''; }, render: function (r) { return r.currentLevel || '-'; } },
+            { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r._levelSel; } }
           ],
           rows: rows,
           empty: '未识别到敏感列', emptyIcon: 'check'

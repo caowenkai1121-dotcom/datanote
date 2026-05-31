@@ -152,19 +152,31 @@
     DN.get('/api/gov/asset/detail' + qs).then(function (d) {
       var cols = (d && d.columns) || [];
       box.innerHTML = '';
+      // 敏感/密级摘要徽标条
+      var secN = cols.filter(function (c) { return c.securityLevel; }).length;
+      var senN = cols.filter(function (c) { return c.sensitiveType; }).length;
+      var noDescN = cols.filter(function (c) { return !c.businessDesc; }).length;
+      box.appendChild(DN.statRow([
+        { icon: 'list', label: '字段数', value: cols.length },
+        { icon: 'lock', label: '已分级', value: secN, tone: secN ? 'warn' : 'ok' },
+        { icon: 'tag', label: '敏感字段', value: senN, tone: senN ? 'err' : 'ok' },
+        { icon: 'doc', label: '缺注释', value: noDescN, tone: noDescN ? 'warn' : 'ok' }
+      ]));
       box.appendChild(DN.table({
         columns: [
-          { key: 'columnName', label: '列名' },
-          { key: 'dataType', label: '类型' },
+          { key: 'columnName', label: '列名', sortable: true },
+          { key: 'dataType', label: '类型', sortable: true },
           { key: 'columnKey', label: '键', render: function (r) { return r.columnKey || '-'; } },
           { key: 'isNullable', label: '可空', render: function (r) { return r.isNullable || '-'; } },
           { key: 'businessDesc', label: '注释', render: function (r) { return r.businessDesc || '-'; } },
-          { key: 'securityLevel', label: '密级', render: function (r) { return r.securityLevel ? DN.pill(r.securityLevel, 'err') : '-'; } },
-          { key: 'sensitiveType', label: '敏感', render: function (r) { return r.sensitiveType ? DN.pill(r.sensitiveType, 'warn') : '-'; } }
+          { key: 'securityLevel', label: '密级', sortable: true, render: function (r) { return r.securityLevel ? DN.pill(r.securityLevel, 'err') : '-'; } },
+          { key: 'sensitiveType', label: '敏感', sortable: true, render: function (r) { return r.sensitiveType ? DN.pill(r.sensitiveType, 'warn') : '-'; } }
         ],
         rows: cols,
         pageSize: 50,
-        search: false,
+        searchKeys: ['columnName', 'dataType', 'businessDesc', 'sensitiveType'],
+        searchPlaceholder: '搜索列名/类型/注释',
+        exportName: db + '_' + table + '_columns',
         empty: '无字段元数据（请先采集）'
       }));
     }).catch(function (e) {
