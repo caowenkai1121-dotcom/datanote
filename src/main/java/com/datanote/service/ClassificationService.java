@@ -186,6 +186,7 @@ public class ClassificationService {
     /**
      * 人工确认：回写 dn_column_meta.security_level/sensitive_type + 写 dn_label_audit。
      */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void confirm(String db, String table, String column, String newLevel,
                         String sensitiveType, String operator, String reason) {
         Long tableMetaId = getOrCreateTableMetaId(db, table);

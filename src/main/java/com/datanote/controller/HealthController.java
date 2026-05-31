@@ -94,7 +94,9 @@ public class HealthController {
     @PostMapping("/issues/{id}/assign")
     public R<DnGovernanceIssue> assign(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
-            return R.ok(issueService.assign(id, body.get("owner")));
+            String owner = body == null ? null : body.get("owner");
+            if (owner == null || owner.trim().isEmpty()) return R.fail("负责人不能为空");
+            return R.ok(issueService.assign(id, owner.trim()));
         } catch (IllegalStateException e) {
             return R.fail(e.getMessage());
         }

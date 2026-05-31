@@ -120,7 +120,7 @@ public class QualityService {
             }
         } catch (Exception e) {
             run.setRunStatus("error");
-            run.setErrorMsg(e.getMessage());
+            run.setErrorMsg(e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
             log.error("质量检查执行异常 ruleId={}", rule.getId(), e);
         }
 

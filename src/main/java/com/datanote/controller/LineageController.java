@@ -82,12 +82,15 @@ public class LineageController {
     @GetMapping("/search-tasks")
     @Operation(summary = "搜索在线任务（用于手动添加依赖）")
     public R<List<Map<String, Object>>> searchTasks(@RequestParam String keyword) {
-        return R.ok(taskDependencyService.searchOnlineTasks(keyword));
+        if (keyword == null || keyword.trim().isEmpty()) return R.fail("关键字不能为空");
+        if (keyword.length() > 100) return R.fail("关键字过长");
+        return R.ok(taskDependencyService.searchOnlineTasks(keyword.trim()));
     }
 
     @PostMapping("/add-dep")
     @Operation(summary = "手动添加依赖")
     public R<String> addDependency(@RequestBody Map<String, Object> body) {
+        if (body == null || body.get("taskId") == null || body.get("upstreamTaskId") == null) return R.fail("taskId/upstreamTaskId 不能为空");
         Long taskId = Long.valueOf(body.get("taskId").toString());
         String taskType = (String) body.get("taskType");
         Long upstreamTaskId = Long.valueOf(body.get("upstreamTaskId").toString());
