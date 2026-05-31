@@ -9986,6 +9986,13 @@ function switchGovModule(el, key) {
     var p = document.createElement('div'); p.className = 'gov-placeholder'; p.textContent = '该模块建设中'; c.appendChild(p);
   }
 }
+// 供总览磁贴等按 key 跳转到对应治理子模块(并高亮侧栏项)
+window.govGoModule = function(key) {
+  var sb = document.getElementById('govSidebar'); if (!sb) return;
+  var idx = -1; for (var i = 0; i < GOV_MODS.length; i++) { if (GOV_MODS[i].key === key) { idx = i; break; } }
+  var items = sb.querySelectorAll('.ops-sidebar-item');
+  if (idx >= 0 && items[idx]) switchGovModule(items[idx], key); else switchGovModule(null, key);
+};
 
 var ROUTES = {
   'home':        { view: 'viewHome',               layout: 'page',   init: function() { loadDashboard(); } },

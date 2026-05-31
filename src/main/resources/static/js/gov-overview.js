@@ -35,14 +35,22 @@
     var total = Number(health.total) || 0;
     var rate = Number(quality.recentPassRate) || 0;
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
-    box.appendChild(DN.statRow([
-      { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total) },
-      { icon: 'db', label: '表数', value: fmtInt(assets.tableCount) },
-      { icon: 'list', label: '字段数', value: fmtInt(assets.columnCount) },
-      { icon: 'layers', label: '库数', value: fmtInt(assets.dbCount) },
-      { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate) },
-      { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok' }
-    ]));
+    var kpiRow = DN.statRow([
+      { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total), go: 'health' },
+      { icon: 'db', label: '表数', value: fmtInt(assets.tableCount), go: 'assets' },
+      { icon: 'list', label: '字段数', value: fmtInt(assets.columnCount), go: 'assets' },
+      { icon: 'layers', label: '库数', value: fmtInt(assets.dbCount), go: 'assets' },
+      { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate), go: 'quality' },
+      { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', go: 'health' }
+    ]);
+    // 磁贴点击跳转对应子模块(可发现性)
+    Array.prototype.slice.call(kpiRow.children).forEach(function (tile, i) {
+      var keys = ['health', 'assets', 'assets', 'assets', 'quality', 'health'];
+      tile.classList.add('clickable');
+      tile.title = '点击进入「' + ({ health: '治理健康分', assets: '资产目录', quality: '数据质量' }[keys[i]]) + '」';
+      tile.addEventListener('click', function () { if (window.govGoModule) govGoModule(keys[i]); });
+    });
+    box.appendChild(kpiRow);
 
     // ---- 健康总分 + 五维雷达 ----
     var dims = health.dims || {};

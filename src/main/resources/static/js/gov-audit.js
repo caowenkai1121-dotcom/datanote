@@ -117,7 +117,10 @@
       grid.appendChild(tc.el);
       // Top 操作人
       var uc = DN.card({ title: 'Top 活跃操作人', icon: 'user' });
-      if (users.length) uc.body.appendChild(DN.bars(users.slice(0, 8).map(function (u) { return { label: u.userName || '-', value: Number(u.cnt) || 0, tone: 'info', display: String(u.cnt) }; })));
+      if (users.length) uc.body.appendChild(DN.bars(users.slice(0, 8).map(function (u) {
+        return { label: u.userName || '-', value: Number(u.cnt) || 0, tone: 'info', display: String(u.cnt),
+          onClick: function () { if (els.user) { els.user.value = u.userName || ''; state.page = 1; load(); DN.toast('已按操作人 ' + (u.userName || '') + ' 筛选'); } } };
+      })));
       else uc.body.appendChild(DN.empty('暂无数据', 'user'));
       grid.appendChild(uc.el);
       // Top 路径

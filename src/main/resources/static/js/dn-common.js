@@ -200,7 +200,9 @@
     (items || []).forEach(function (i) {
       var pct = Math.round((i.value || 0) / (i.max || max || 1) * 100);
       var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + toneColor(i.tone) });
-      w.appendChild(DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]));
+      var bar = DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]);
+      if (typeof i.onClick === 'function') { bar.style.cursor = 'pointer'; bar.title = '点击筛选'; bar.addEventListener('click', function () { i.onClick(i); }); }
+      w.appendChild(bar);
     });
     return w;
   };
