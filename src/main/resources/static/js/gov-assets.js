@@ -32,7 +32,7 @@
     quickSelEl = quickSel;
     // 视图切换：表格 / 目录树(库→表层级)
     var viewSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:100px', title: '视图' });
-    [['table', '表格视图'], ['tree', '目录树']].forEach(function (o) { viewSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    [['table', '表格视图'], ['tree', '目录树'], ['treemap', '体量图']].forEach(function (o) { viewSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     viewSel.value = assetState.view;
     viewSel.onchange = function () { assetState.view = viewSel.value; try { localStorage.setItem('gov.assetView', viewSel.value); } catch (e) {} assetTbl = null; renderAssetTable(); };
     // 把工具条（采集按钮 + 来源筛选 + 快捷视图 + 视图切换）通过 DN.table 的 toolbar 注入，先缓存引用
@@ -126,6 +126,7 @@
       return true;
     });
     if (assetState.view === 'tree') { renderAssetTree(rows); return; }
+    if (assetState.view === 'treemap') { renderAssetTreemap(rows); return; }
     if (assetState.quick === 'bigsize') rows = rows.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); });
     else if (assetState.quick === 'bigrow') rows = rows.slice().sort(function (a, b) { return (b.rowCount || 0) - (a.rowCount || 0); });
     if (assetTbl) { assetTbl.reload(rows); return; }
@@ -153,6 +154,43 @@
     });
     box.innerHTML = '';
     box.appendChild(assetTbl);
+  }
+
+  // ===== 资产体量矩形图(大功能): 库分带, 表按体量占比着色分块 =====
+  function renderAssetTreemap(rows) {
+    var box = document.getElementById('assetTbl'); if (!box) return;
+    var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px' });
+    (assetToolbar || []).forEach(function (el) { bar.appendChild(el); });
+    box.innerHTML = ''; box.appendChild(bar);
+    var withSize = rows.filter(function (t) { return (Number(t.sizeBytes) || 0) > 0; });
+    if (!withSize.length) { box.appendChild(DN.empty('暂无体量数据(先采集), 或所有表体量为0', 'chart')); return; }
+    // 按库分组并按总体量降序
+    var byDb = {};
+    withSize.forEach(function (t) { var k = t.databaseName || '(未命名库)'; (byDb[k] = byDb[k] || []).push(t); });
+    var groups = Object.keys(byDb).map(function (k) {
+      var ts = byDb[k]; var sum = ts.reduce(function (s, t) { return s + (Number(t.sizeBytes) || 0); }, 0);
+      return { db: k, tables: ts, sum: sum };
+    }).sort(function (a, b) { return b.sum - a.sum; });
+    var grand = groups.reduce(function (s, g) { return s + g.sum; }, 0) || 1;
+    var maxT = withSize.reduce(function (m, t) { return Math.max(m, Number(t.sizeBytes) || 0); }, 1);
+    var colorOf = function (v) { var r = v / maxT; return r > 0.66 ? '#1677ff' : r > 0.33 ? '#4d94ff' : r > 0.1 ? '#85b8ff' : '#bcd7ff'; };
+    var wrap = DN.h('div', { style: 'display:flex;flex-direction:column;gap:8px' });
+    groups.forEach(function (g) {
+      var bandH = Math.max(28, Math.round(g.sum / grand * 260)); // 带高按库占比
+      var head = DN.h('div', { style: 'font-size:12px;color:var(--text-regular);margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + DN.fmtBytes(g.sum) + '</span>' });
+      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:6px;overflow:hidden' });
+      g.tables.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); }).forEach(function (t) {
+        var w = (Number(t.sizeBytes) || 0) / g.sum * 100;
+        var cell = DN.h('div', { title: t.tableName + ' · ' + DN.fmtBytes(t.sizeBytes) + (t.rowCount != null ? ' · ' + fmtInt(t.rowCount) + ' 行' : ''),
+          style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.sizeBytes) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap;' });
+        cell.textContent = w > 8 ? t.tableName : '';
+        cell.addEventListener('click', function () { openAssetDetail(t.databaseName || '', t.tableName || ''); });
+        band.appendChild(cell);
+      });
+      var gb = DN.h('div', {}); gb.appendChild(head); gb.appendChild(band); wrap.appendChild(gb);
+    });
+    box.appendChild(wrap);
+    box.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:8px', text: '带高=库占总体量比例, 块宽=表占库体量比例, 颜色深浅=表体量; 点击块查看详情。' }));
   }
 
   // ===== 资产目录树视图(大功能): 库→表 层级导航 =====
