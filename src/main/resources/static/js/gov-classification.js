@@ -211,14 +211,18 @@
       .then(function (rows) {
         box.innerHTML = '';
         if (!rows || !rows.length) { box.appendChild(DN.empty('未识别到敏感列', 'check')); return; }
+        rows.sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); }); // 高置信度优先
 
         var opts = levelNames.map(function (n) { return '<option value="' + DN.esc(n) + '">' + DN.esc(n) + '</option>'; }).join('');
         var selAll = DN.h('input', { type: 'checkbox', title: '全选' });
         var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)' });
+        var minConfSel = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
+        [['0', '全部置信度'], ['50', '≥50%'], ['70', '≥70%'], ['80', '≥80%']].forEach(function (o) { minConfSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+        minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };
 
         var tbl = DN.table({
           search: false,
-          toolbar: confirmBtn,
+          toolbar: [minConfSel, confirmBtn],
           columns: [
             { label: '', render: function (r) { return r._cb; } },
             { key: 'column', label: '列' },

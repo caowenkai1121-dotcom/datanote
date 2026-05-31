@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r2">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r3">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r2"></script>
-<script src="js/gov-assets.js?v=g2r2"></script>
-<script src="js/gov-lineage.js?v=g2r2"></script>
-<script src="js/gov-quality.js?v=g2r2"></script>
-<script src="js/gov-standard.js?v=g2r2"></script>
-<script src="js/gov-classification.js?v=g2r2"></script>
-<script src="js/gov-security.js?v=g2r2"></script>
-<script src="js/gov-health.js?v=g2r2"></script>
-<script src="js/gov-audit.js?v=g2r2"></script>
-<script src="js/gov-overview.js?v=g2r2"></script>
-<script src="js/gov-subject.js?v=g2r2"></script>
+<script src="js/dn-common.js?v=g2r3"></script>
+<script src="js/gov-assets.js?v=g2r3"></script>
+<script src="js/gov-lineage.js?v=g2r3"></script>
+<script src="js/gov-quality.js?v=g2r3"></script>
+<script src="js/gov-standard.js?v=g2r3"></script>
+<script src="js/gov-classification.js?v=g2r3"></script>
+<script src="js/gov-security.js?v=g2r3"></script>
+<script src="js/gov-health.js?v=g2r3"></script>
+<script src="js/gov-audit.js?v=g2r3"></script>
+<script src="js/gov-overview.js?v=g2r3"></script>
+<script src="js/gov-subject.js?v=g2r3"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -15211,9 +15211,10 @@ var _dbsyncEditId  = null;  // 当前编辑任务 ID（null=新建）
 var _dbsyncSyncMode = 'FULL'; // 当前表单同步模式
 var _dbsyncSrcTables = [];  // 源表列表缓存
 var _dbsyncFolderNavExpanded = true;
-var _dbsyncStatusFilter = 'ALL'; // 状态筛选: ALL/RUNNING/FAILED/STOPPED/CREATED
+var _dbsyncStatusFilter = (function () { try { return localStorage.getItem('dbsync.statusFilter') || 'ALL'; } catch (e) { return 'ALL'; } })(); // 状态筛选持久化: ALL/RUNNING/FAILED/STOPPED/CREATED
 var _dbsyncRenderBase = [];       // 当前渲染基准列表(已经过文件夹+搜索过滤)
 var _dbsyncSelected = {};         // 批量选中 id->true
+var _dbsyncSort = { key: null, dir: 1 }; // 列排序
 
 /* ---------- Tab 切换 ---------- */
 window.switchDbSyncTab = function(el, tab) {
@@ -16449,6 +16450,7 @@ window.dbsyncFilterJobs = function() {
 
 window.dbsyncSetStatusFilter = function(k) {
   _dbsyncStatusFilter = k;
+  try { localStorage.setItem('dbsync.statusFilter', k); } catch (e) {}
   dbsyncRenderJobs(_dbsyncRenderBase);
 };
 
@@ -16498,15 +16500,20 @@ function dbsyncRenderJobs(list) {
     container.innerHTML = kpiHtml + chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务</div>';
     return;
   }
-  var list = shown;
+  var list = shown.slice();
+  if (_dbsyncSort.key) {
+    var sk = _dbsyncSort.key, sd = _dbsyncSort.dir;
+    list.sort(function(a, b) { return String(a[sk] == null ? '' : a[sk]).localeCompare(String(b[sk] == null ? '' : b[sk])) * sd; });
+  }
+  var arr = function(k) { return _dbsyncSort.key === k ? (_dbsyncSort.dir > 0 ? ' ▲' : ' ▼') : ' ⇅'; };
   var allChecked = shown.every(function(j) { return _dbsyncSelected[j.id]; });
   var html = kpiHtml + chips + bulkHtml + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
     + '<th style="width:34px;text-align:center;"><input type="checkbox" ' + (allChecked ? 'checked' : '') + ' onclick="dbsyncToggleSelAll(this)"></th>'
-    + '<th style="width:160px;">任务名称</th>'
-    + '<th style="width:90px;">同步模式</th>'
+    + '<th style="width:160px;cursor:pointer;" onclick="dbsyncSortBy(\'jobName\')">任务名称' + arr('jobName') + '</th>'
+    + '<th style="width:90px;cursor:pointer;" onclick="dbsyncSortBy(\'syncMode\')">同步模式' + arr('syncMode') + '</th>'
     + '<th>源端（数据源.库）</th>'
     + '<th>目标端（数据源.库）</th>'
-    + '<th style="width:80px;">状态</th>'
+    + '<th style="width:80px;cursor:pointer;" onclick="dbsyncSortBy(\'status\')">状态' + arr('status') + '</th>'
     + '<th style="width:158px;">操作</th>'
     + '</tr></thead><tbody>';
   list.forEach(function(job) {
@@ -16555,6 +16562,7 @@ function dbsyncRenderJobs(list) {
 
 /* ---------- 批量选择 / 克隆 / 导出 ---------- */
 window.dbsyncToggleSel = function(id, cb) { _dbsyncSelected[id] = cb.checked; dbsyncRenderJobs(_dbsyncRenderBase); };
+window.dbsyncSortBy = function(k) { if (_dbsyncSort.key === k) _dbsyncSort.dir = -_dbsyncSort.dir; else { _dbsyncSort.key = k; _dbsyncSort.dir = 1; } dbsyncRenderJobs(_dbsyncRenderBase); };
 window.dbsyncToggleSelAll = function(cb) {
   var view = _dbsyncStatusFilter === 'ALL' ? _dbsyncRenderBase
     : _dbsyncRenderBase.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
