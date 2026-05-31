@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r3">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r4">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r3"></script>
-<script src="js/gov-assets.js?v=g3r3"></script>
-<script src="js/gov-lineage.js?v=g3r3"></script>
-<script src="js/gov-quality.js?v=g3r3"></script>
-<script src="js/gov-standard.js?v=g3r3"></script>
-<script src="js/gov-classification.js?v=g3r3"></script>
-<script src="js/gov-security.js?v=g3r3"></script>
-<script src="js/gov-health.js?v=g3r3"></script>
-<script src="js/gov-audit.js?v=g3r3"></script>
-<script src="js/gov-overview.js?v=g3r3"></script>
-<script src="js/gov-subject.js?v=g3r3"></script>
+<script src="js/dn-common.js?v=g3r4"></script>
+<script src="js/gov-assets.js?v=g3r4"></script>
+<script src="js/gov-lineage.js?v=g3r4"></script>
+<script src="js/gov-quality.js?v=g3r4"></script>
+<script src="js/gov-standard.js?v=g3r4"></script>
+<script src="js/gov-classification.js?v=g3r4"></script>
+<script src="js/gov-security.js?v=g3r4"></script>
+<script src="js/gov-health.js?v=g3r4"></script>
+<script src="js/gov-audit.js?v=g3r4"></script>
+<script src="js/gov-overview.js?v=g3r4"></script>
+<script src="js/gov-subject.js?v=g3r4"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17411,6 +17411,7 @@ window.dbsyncOpenRowMenu = function(evt, id) {
     + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
     + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'checksum\',' + id + ')">' + icCheck + ' 深度对账</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'compare\',' + id + ')">' + icClone + ' 对比配置</button>'
     + '<div class="dbsync-row-menu-sep"></div>'
     + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
   menu.setAttribute('data-job', String(id));
@@ -17435,7 +17436,59 @@ window.dbsyncRowMenuAct = function(act, id) {
   else if (act === 'move') dbsyncOpenMoveJobDialog(id, nm);
   else if (act === 'reconcile') dbsyncOpenReconcile(id, nm);
   else if (act === 'checksum') dbsyncOpenChecksum(id, nm);
+  else if (act === 'compare') dbsyncOpenCompare(id);
   else if (act === 'del') dbsyncDeleteJob(id, nm);
+};
+// ===== 任务配置对比(大功能): 选两个任务并排 diff =====
+var _DBSYNC_CMP_FIELDS = [
+  ['jobName', '任务名'], ['syncMode', '同步模式'], ['sourceDsName', '源数据源'], ['sourceDb', '源库'],
+  ['targetDsName', '目标数据源'], ['targetDb', '目标库'], ['writeMode', '写入模式'], ['writeChannel', '写入通道'],
+  ['batchSize', '批大小'], ['scheduleCron', '调度周期'], ['priority', '调度优先级'], ['status', '状态']
+];
+window.dbsyncOpenCompare = function(leftId) {
+  var old = document.getElementById('dbsyncCompareOverlay'); if (old) old.remove();
+  var others = (_dbsyncAllJobs || []).filter(function(j) { return j.id !== leftId; });
+  var leftJob = (_dbsyncAllJobs || []).find(function(j) { return j.id === leftId; }) || { id: leftId };
+  var ov = document.createElement('div');
+  ov.className = 'dbsync-modal-overlay show'; ov.id = 'dbsyncCompareOverlay';
+  ov.onclick = function(e) { if (e.target === ov) dbsyncCloseCompare(); };
+  ov.innerHTML = '<div class="dbsync-modal" style="width:680px;max-width:94vw;">'
+    + '<div class="dbsync-modal-header"><span>任务配置对比</span><button class="dbsync-modal-close" onclick="dbsyncCloseCompare()">&times;</button></div>'
+    + '<div class="dbsync-modal-body" style="max-height:70vh;overflow:auto;">'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
+    + '<span style="font-size:13px;font-weight:600;">' + escapeHtml(leftJob.jobName || ('任务#' + leftId)) + '</span>'
+    + '<span style="color:var(--text-muted);">对比</span>'
+    + '<select id="dbsyncCmpSel" class="dbsync-form-select" style="width:auto;min-width:200px;">'
+    + '<option value="">选择另一个任务…</option>'
+    + others.map(function(j) { return '<option value="' + j.id + '">' + escapeHtml(j.jobName || ('任务#' + j.id)) + '</option>'; }).join('')
+    + '</select>'
+    + '<button class="btn btn-sm btn-primary" onclick="dbsyncDoCompare(' + leftId + ')">对比</button></div>'
+    + '<div id="dbsyncCmpResult"><div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center;">选择另一个任务后点击「对比」, 差异字段将高亮。</div></div>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+};
+window.dbsyncCloseCompare = function() { var ov = document.getElementById('dbsyncCompareOverlay'); if (ov) ov.remove(); };
+window.dbsyncDoCompare = function(leftId) {
+  var sel = document.getElementById('dbsyncCmpSel'); var rightId = sel ? Number(sel.value) : 0;
+  if (!rightId) { showToast('请选择另一个任务', 'error'); return; }
+  var box = document.getElementById('dbsyncCmpResult');
+  box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">加载中…</div>';
+  Promise.all([api('/api/sync-job/' + leftId), api('/api/sync-job/' + rightId)]).then(function(arr) {
+    var a = (arr[0] && arr[0].code === 0) ? arr[0].data : null, b = (arr[1] && arr[1].code === 0) ? arr[1].data : null;
+    if (!a || !b) { box.innerHTML = '<div style="padding:20px;color:var(--error);">读取任务配置失败</div>'; return; }
+    var fmt = function(v) { return (v == null || v === '') ? '—' : escapeHtml(String(v)); };
+    var diffN = 0;
+    var rows = _DBSYNC_CMP_FIELDS.map(function(f) {
+      var va = a[f[0]], vb = b[f[0]];
+      var diff = String(va == null ? '' : va) !== String(vb == null ? '' : vb);
+      if (diff) diffN++;
+      return '<tr' + (diff ? ' style="background:#fff7e6;"' : '') + '><td style="font-weight:500;color:var(--text-muted);white-space:nowrap;">' + f[1] + '</td>'
+        + '<td' + (diff ? ' style="color:#d46b08;font-weight:600;"' : '') + '>' + fmt(va) + '</td>'
+        + '<td' + (diff ? ' style="color:#d46b08;font-weight:600;"' : '') + '>' + fmt(vb) + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">共 ' + _DBSYNC_CMP_FIELDS.length + ' 项, <b style="color:#d46b08;">' + diffN + '</b> 项存在差异(橙色高亮)</div>'
+      + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:110px;">配置项</th><th>' + escapeHtml(a.jobName || ('#' + leftId)) + '</th><th>' + escapeHtml(b.jobName || ('#' + rightId)) + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }).catch(function() { box.innerHTML = '<div style="padding:20px;color:var(--error);">对比失败</div>'; });
 };
 function dbsyncCloseRowMenu() {
   var menu = document.getElementById('dbsyncRowMenu');
