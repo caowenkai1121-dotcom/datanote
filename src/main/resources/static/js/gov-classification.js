@@ -53,28 +53,61 @@
     loadHeatmap();
   };
 
+  var _clHeatRows = [], _clHeatView = 'heat';
+  window.govClSetHeatView = function (v) { _clHeatView = v; renderClHeat(); };
   function loadHeatmap() {
     DN.get('/api/gov/classification/heatmap').then(function (rows) {
-      var box = document.getElementById('clHeat'); if (!box) return;
-      box.innerHTML = '';
-      if (!rows || !rows.length) { box.appendChild(DN.empty('暂无已标敏感列（先在下方采样识别并确认打标）', 'tag')); return; }
-      var totalCols = rows.reduce(function (s, r) { return s + (Number(r.count) || 0); }, 0);
-      var maxRow = rows.reduce(function (m, r) { return (Number(r.count) || 0) > (Number(m.count) || 0) ? r : m; }, rows[0]);
-      box.appendChild(DN.statRow([
-        { icon: 'tag', label: '已标敏感列', value: totalCols, tone: 'warn' },
-        { icon: 'db', label: '涉及表数', value: rows.length },
-        { icon: 'alert', label: '单表最多', value: (Number(maxRow.count) || 0) + ' 列', sub: maxRow.db + '.' + maxRow.table }
-      ]));
-      box.appendChild(DN.heat(rows.map(function (r) {
-        return { label: r.db + '.' + r.table, value: Number(r.count) || 0, _db: r.db, _table: r.table };
-      }), {
-        rgb: [255, 77, 79],
-        onClick: function (it) {
-          // 点击热力格 → 加载该表打标溯源
-          showAuditTrail(it._db, it._table);
-        }
-      }));
+      _clHeatRows = rows || [];
+      renderClHeat();
     }).catch(function () { var box = document.getElementById('clHeat'); if (box) box.innerHTML = ''; });
+  }
+  function renderClHeat() {
+    var box = document.getElementById('clHeat'); if (!box) return;
+    var rows = _clHeatRows;
+    box.innerHTML = '';
+    if (!rows.length) { box.appendChild(DN.empty('暂无已标敏感列（先在下方采样识别并确认打标）', 'tag')); return; }
+    var totalCols = rows.reduce(function (s, r) { return s + (Number(r.count) || 0); }, 0);
+    var maxRow = rows.reduce(function (m, r) { return (Number(r.count) || 0) > (Number(m.count) || 0) ? r : m; }, rows[0]);
+    box.appendChild(DN.statRow([
+      { icon: 'tag', label: '已标敏感列', value: totalCols, tone: 'warn' },
+      { icon: 'db', label: '涉及表数', value: rows.length },
+      { icon: 'alert', label: '单表最多', value: (Number(maxRow.count) || 0) + ' 列', sub: maxRow.db + '.' + maxRow.table }
+    ]));
+    // 视图切换: 热力 / 矩形树图
+    var tog = DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:6px 0' });
+    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:6px 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#1890ff);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
+    tog.appendChild(mk('heat', '热力')); tog.appendChild(mk('treemap', '矩形图'));
+    box.appendChild(tog);
+    if (_clHeatView === 'treemap') { box.appendChild(buildClTreemap(rows)); return; }
+    box.appendChild(DN.heat(rows.map(function (r) {
+      return { label: r.db + '.' + r.table, value: Number(r.count) || 0, _db: r.db, _table: r.table };
+    }), {
+      rgb: [255, 77, 79],
+      onClick: function (it) { showAuditTrail(it._db, it._table); }
+    }));
+  }
+  // 敏感分布矩形树图: 按库分带, 表块按敏感列数占比
+  function buildClTreemap(rows) {
+    var byDb = {}; rows.forEach(function (r) { (byDb[r.db || '(库)'] = byDb[r.db || '(库)'] || []).push(r); });
+    var groups = Object.keys(byDb).map(function (k) { var ts = byDb[k]; return { db: k, tables: ts, sum: ts.reduce(function (s, t) { return s + (Number(t.count) || 0); }, 0) }; }).sort(function (a, b) { return b.sum - a.sum; });
+    var grand = groups.reduce(function (s, g) { return s + g.sum; }, 0) || 1;
+    var maxT = rows.reduce(function (m, r) { return Math.max(m, Number(r.count) || 0); }, 1);
+    var colorOf = function (v) { var rr = v / maxT; return rr > 0.66 ? '#cf1322' : rr > 0.33 ? '#ff4d4f' : rr > 0.1 ? '#ff7875' : '#ffccc7'; };
+    var wrap = DN.h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-top:6px' });
+    groups.forEach(function (g) {
+      var bandH = Math.max(26, Math.round(g.sum / grand * 220));
+      wrap.appendChild(DN.h('div', { style: 'font-size:12px;margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + g.sum + ' 敏感列</span>' }));
+      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:6px;overflow:hidden' });
+      g.tables.slice().sort(function (a, b) { return (b.count || 0) - (a.count || 0); }).forEach(function (t) {
+        var w = (Number(t.count) || 0) / g.sum * 100;
+        var cell = DN.h('div', { title: t.table + ' · ' + (t.count || 0) + ' 敏感列', style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.count) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap' });
+        cell.textContent = w > 10 ? t.table : '';
+        cell.addEventListener('click', function () { showAuditTrail(t.db, t.table); });
+        band.appendChild(cell);
+      });
+      wrap.appendChild(band);
+    });
+    return wrap;
   }
 
   function showAuditTrail(db, table) {
