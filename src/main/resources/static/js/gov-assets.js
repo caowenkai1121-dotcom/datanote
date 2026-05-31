@@ -161,7 +161,7 @@
     if (assetTbl) { assetTbl.reload(rows); return; }
     assetTbl = DN.table({
       columns: [
-        { key: 'dbType', label: '来源', render: function (r) { return DN.pill(r.dbType || '-', r.dbType === 'DORIS' ? 'info' : 'ok'); } },
+        { key: 'dbType', label: '来源', render: function (r) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(r.dbType || '-', cm[r.dbType] || 'muted'); } },
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
         { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment || '-'; } },

@@ -53,11 +53,12 @@
 #govModuleContent table.gov-tbl thead th { position:sticky; top:0; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:11px 14px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
 #govModuleContent table.gov-tbl tbody td { padding:11px 14px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); }
 #govModuleContent table.gov-tbl tbody tr { transition:background .12s; }
-#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.05)); }
+#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
 #govModuleContent table.gov-tbl tbody tr:last-child td { border-bottom:none; }
 
-/* ---- 分页 ---- */
-#govModuleContent .gov-pager { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:10px 4px 0; font-size:12.5px; color:var(--text-muted,#86909c); }
+/* ---- 分页(小屏换行不挤) ---- */
+#govModuleContent .gov-pager { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:10px 4px 0; font-size:12.5px; color:var(--text-muted,#86909c); }
+@media (max-width:480px) { #govModuleContent .gov-pager > span:first-child { flex-basis:100%; } }
 
 /* ---- 状态药丸 ---- */
 #govModuleContent .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
@@ -150,7 +151,9 @@
   #govModuleContent .gov-radar { transform:scale(.88); transform-origin:center top; }
   #govModuleContent .gov-card-hd { flex-wrap:wrap; gap:6px; }
 }
-@media (max-width:520px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr; } }
+@media (max-width:520px){ #govModuleContent .gov-grid { grid-template-columns:1fr; } #govModuleContent .gov-stats { grid-template-columns:1fr 1fr; } }
+/* 表单下拉最小宽度, 避免长选项(如 BANK_CARD)撑乱排版 */
+#govModuleContent .ds-form-row select, #govModuleContent .iw-form-select { min-width:120px; }
 
 /* ---- 按钮分级 ---- */
 #govModuleContent .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }

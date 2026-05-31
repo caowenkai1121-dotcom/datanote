@@ -3306,19 +3306,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r50q3">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r1">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r50q3"></script>
-<script src="js/gov-assets.js?v=g3r50q3"></script>
-<script src="js/gov-lineage.js?v=g3r50q3"></script>
-<script src="js/gov-quality.js?v=g3r50q3"></script>
-<script src="js/gov-standard.js?v=g3r50q3"></script>
-<script src="js/gov-classification.js?v=g3r50q3"></script>
-<script src="js/gov-security.js?v=g3r50q3"></script>
-<script src="js/gov-health.js?v=g3r50q3"></script>
-<script src="js/gov-audit.js?v=g3r50q3"></script>
-<script src="js/gov-overview.js?v=g3r50q3"></script>
-<script src="js/gov-subject.js?v=g3r50q3"></script>
+<script src="js/dn-common.js?v=q100r1"></script>
+<script src="js/gov-assets.js?v=q100r1"></script>
+<script src="js/gov-lineage.js?v=q100r1"></script>
+<script src="js/gov-quality.js?v=q100r1"></script>
+<script src="js/gov-standard.js?v=q100r1"></script>
+<script src="js/gov-classification.js?v=q100r1"></script>
+<script src="js/gov-security.js?v=q100r1"></script>
+<script src="js/gov-health.js?v=q100r1"></script>
+<script src="js/gov-audit.js?v=q100r1"></script>
+<script src="js/gov-overview.js?v=q100r1"></script>
+<script src="js/gov-subject.js?v=q100r1"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12856,7 +12856,7 @@ function projQsRender(kw) {
   }).slice(0, 30);
   _projQsRows = list;
   var box = document.getElementById('projQsList'); if (!box) return;
-  if (!list.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">无匹配项目</div>'; return; }
+  if (!list.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">' + (kw ? '未找到匹配「' + escapeHtml(kw) + '」的项目' : '暂无项目') + '</div>'; return; }
   box.innerHTML = list.map(function(p, i) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
     return '<div class="proj-qs-row" data-i="' + i + '" onclick="(function(){document.getElementById(\'projQsOverlay\').remove();projOpenDetailById(' + p.id + ');})()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--divider);">'
@@ -12871,6 +12871,7 @@ function projQsHighlight() {
   Array.prototype.slice.call(document.querySelectorAll('#projQsList .proj-qs-row')).forEach(function(r, i) {
     var on = i === _projQsIdx;
     r.style.background = on ? 'var(--primary-bg,#e6f0ff)' : '';
+    r.style.borderLeft = on ? '3px solid var(--primary,#1890ff)' : '3px solid transparent'; // 高对比度选中标识(兼容浅色主题)
     if (on) r.scrollIntoView({ block: 'nearest' });
   });
 }
@@ -12928,8 +12929,8 @@ function projFillTagFilter() {
 function projTile(label, value, color, onclick) {
   var clk = onclick ? ' style="cursor:pointer;" title="点击筛选" onclick="' + onclick + '"' : '';
   return '<div' + clk + ' class="proj-kpi-tile" style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;' + (onclick ? 'cursor:pointer;' : '') + '">'
-    + '<div style="font-size:20px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>';
+    + '<div style="font-size:18px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
+    + '<div style="font-size:12px;color:var(--text-regular);margin-top:2px;">' + label + '</div></div>';
 }
 function projRenderKpi() {
   var box = document.getElementById('projKpiRow');
@@ -13024,7 +13025,7 @@ function projListCards(rows) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: '#8c8c8c' };
     var fav = _projFav[p.id] && _projFav[p.id].fav;
     var pinned = _projFav[p.id] && _projFav[p.id].pinned;
-    var tagChips = (_projTagMap[p.id] || []).map(function(tid) { var t = _projTagById(tid); if (!t) return ''; return '<span style="display:inline-block;font-size:10px;padding:0 6px;border-radius:8px;margin:1px;background:' + (t.tagColor || '#1677ff') + '22;color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span>'; }).join('');
+    var tagChips = (_projTagMap[p.id] || []).map(function(tid) { var t = _projTagById(tid); if (!t) return ''; return '<span style="display:inline-block;font-size:10px;padding:0 6px;border-radius:8px;margin:2px 3px;word-break:break-word;background:' + (t.tagColor || '#1677ff') + '22;color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span>'; }).join('');
     h += '<div style="border:1px solid var(--border);border-top:3px solid ' + st.c + ';border-radius:10px;padding:12px;background:var(--bg-card,#fff);cursor:pointer;transition:box-shadow .15s;" onclick="projOpenDetail(' + p.id + ')" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
       + (pinned ? '<span style="font-size:10px;color:#faad14;">📌</span>' : '')
@@ -13128,12 +13129,14 @@ window.projCreateTag = function() {
   }).catch(function() { showToast('新建失败', 'error'); });
 };
 window.projDeleteTag = function(tagId) {
-  if (!confirm('删除标签将移除其在所有项目的关联，确认？')) return;
-  fetch('/api/project/tags/' + tagId, { method: 'DELETE' }).then(_handleResponse).then(function() {
-    _projTags = _projTags.filter(function(t) { return t.id !== tagId; });
-    Object.keys(_projTagMap).forEach(function(pid) { _projTagMap[pid] = (_projTagMap[pid] || []).filter(function(x) { return x !== tagId; }); });
-    projRenderTagList(); projFillTagFilter(); projApplyFilter();
-  }).catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除标签', '删除标签将移除其在所有项目的关联，确认？', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/tags/' + tagId, { method: 'DELETE' }).then(_handleResponse).then(function() {
+      _projTags = _projTags.filter(function(t) { return t.id !== tagId; });
+      Object.keys(_projTagMap).forEach(function(pid) { _projTagMap[pid] = (_projTagMap[pid] || []).filter(function(x) { return x !== tagId; }); });
+      projRenderTagList(); projFillTagFilter(); projApplyFilter();
+    }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 window.projSetTagsModal = function(pid) {
   if (!_projTags.length) { showToast('请先在「标签管理」新建标签', 'info'); return; }
@@ -13240,14 +13243,18 @@ window.projSave = function() {
   }).catch(function() { showToast('保存失败', 'error'); });
 };
 window.projArchive = function(id) {
-  if (!confirm('确认归档该项目？归档后成员只读，可在状态筛选查看。')) return;
-  apiPost('/api/project/' + id + '/archive', {}).then(function() { showToast('已归档', 'success'); projCloseDetail(); loadProjectSpace(); })
-    .catch(function() { showToast('归档失败', 'error'); });
+  msgConfirm('归档项目', '确认归档该项目？归档后成员只读，可在状态筛选查看。', '确定归档').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/project/' + id + '/archive', {}).then(function() { showToast('已归档', 'success'); projCloseDetail(); loadProjectSpace(); })
+      .catch(function() { showToast('归档失败', 'error'); });
+  });
 };
 window.projDelete = function(id, name) {
-  if (!confirm('确认删除项目 [' + name + ']？(软删除，资产关联与成员将不再展示)')) return;
-  fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projCloseDetail(); loadProjectSpace(); })
-    .catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除项目', '确认删除项目 [' + escapeHtml(name) + ']？(软删除，资产关联与成员将不再展示)', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projCloseDetail(); loadProjectSpace(); })
+      .catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 
 /* ===== PM-M2：项目详情抽屉 + 成员 + 设置 ===== */
@@ -13449,8 +13456,10 @@ window.projAcceptInvite = function(token) {
   }).catch(function() { showToast('接受失败', 'error'); });
 };
 window.projCancelInvite = function(inviteId) {
-  if (!confirm('确认取消该邀请？取消后邀请码失效。')) return;
-  apiPost('/api/project/' + _projDetail.id + '/invites/' + inviteId + '/status', { status: 'CANCELED' }).then(function() { projLoadInvites(); }).catch(function() { showToast('操作失败', 'error'); });
+  msgConfirm('取消邀请', '确认取消该邀请？取消后邀请码失效。', '确定取消').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/project/' + _projDetail.id + '/invites/' + inviteId + '/status', { status: 'CANCELED' }).then(function() { projLoadInvites(); }).catch(function() { showToast('操作失败', 'error'); });
+  });
 };
 window.projCopyInvite = function(token) {
   var done = function() { showToast('邀请码已复制', 'success'); };
@@ -13482,10 +13491,12 @@ window.projChangeRole = function(memberId, role) {
     }).catch(function() { showToast('更新失败', 'error'); projLoadMembers(); });
 };
 window.projRemoveMember = function(memberId) {
-  if (!confirm('确认移除该成员？')) return;
+  msgConfirm('移除成员', '确认移除该成员？', '确定移除').then(function(ok) {
+    if (!ok) return;
   fetch('/api/project/' + _projDetail.id + '/members/' + memberId, { method: 'DELETE' }).then(_handleResponse).then(function(res) {
     if (res && res.code === 0) { showToast('已移除', 'success'); projLoadMembers(); } else showToast((res && res.msg) || '移除失败', 'error');
   }).catch(function() { showToast('移除失败', 'error'); });
+  });
 };
 window.projPickUser = function() {
   api('/api/rbac/users').then(function(res) {
@@ -13547,10 +13558,10 @@ window.projLoadQuota = function() {
 };
 window.projSaveQuota = function() {
   var body = {
-    concurrentLimit: parseInt(document.getElementById('pqConcurrent').value) || 0,
-    timeoutDefault: parseInt(document.getElementById('pqTimeout').value) || 0,
-    retryDefault: parseInt(document.getElementById('pqRetry').value) || 0,
-    storageQuotaGb: parseInt(document.getElementById('pqStorage').value) || 0
+    concurrentLimit: parseInt(document.getElementById('pqConcurrent').value, 10) || 0,
+    timeoutDefault: parseInt(document.getElementById('pqTimeout').value, 10) || 0,
+    retryDefault: parseInt(document.getElementById('pqRetry').value, 10) || 0,
+    storageQuotaGb: parseInt(document.getElementById('pqStorage').value, 10) || 0
   };
   apiPost('/api/project/' + _projDetail.id + '/quota', body).then(function(res) {
     if (res && res.code === 0) { showToast('配额已保存', 'success'); if (window.projLoadQuota) projLoadQuota(); } else showToast((res && res.msg) || '保存失败', 'error');
@@ -13577,7 +13588,8 @@ window.projLoadEnvParams = function() {
       h += '<table class="dbsync-exec-table" id="projEnvTbl" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
       ps.forEach(function(p) {
         var diff = (p.devValue || '') !== (p.prodValue || '');
-        h += '<tr class="proj-env-row" data-diff="' + (diff ? '1' : '0') + '" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td' + (diff ? ' style="background:#fff7e6;color:#d46b08;font-weight:600;"' : '') + '>' + escapeHtml(p.prodValue || '-') + (diff ? ' <span title="开发值≠生产值">≠</span>' : '') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
+        var dcell = diff ? ' style="background:#fff7e6;color:#d46b08;font-weight:600;"' : '';
+        h += '<tr class="proj-env-row" data-diff="' + (diff ? '1' : '0') + '" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td' + dcell + '>' + escapeHtml(p.devValue || '-') + '</td><td' + dcell + '>' + escapeHtml(p.prodValue || '-') + (diff ? ' <span title="开发值≠生产值">≠</span>' : '') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
           + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
       });
       h += '</tbody></table>';
@@ -13614,9 +13626,11 @@ window.projAddEnvParam = function() {
   }).catch(function() { showToast('保存失败', 'error'); });
 };
 window.projDelEnvParam = function(paramId) {
-  if (!confirm('确认删除该环境参数？')) return;
-  fetch('/api/project/' + _projDetail.id + '/env-params/' + paramId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadEnvParams(); })
-    .catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除环境参数', '确认删除该环境参数？', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + _projDetail.id + '/env-params/' + paramId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadEnvParams(); })
+      .catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 
 /* ===== PM-M2：成员权限 顶级页签（角色权限矩阵） ===== */
@@ -13699,9 +13713,11 @@ window.projBindAsset = function() {
   }).catch(function() { showToast('绑定失败', 'error'); });
 };
 window.projUnbindAsset = function(rowId) {
-  if (!confirm('确认解绑该资产？(仅解除项目关联，不删除资产本身)')) return;
-  fetch('/api/project/' + _projDetail.id + '/assets/' + rowId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已解绑', 'success'); projLoadAssets(); })
-    .catch(function() { showToast('解绑失败', 'error'); });
+  msgConfirm('解绑资产', '确认解绑该资产？(仅解除项目关联，不删除资产本身)', '确定解绑').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + _projDetail.id + '/assets/' + rowId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已解绑', 'success'); projLoadAssets(); })
+      .catch(function() { showToast('解绑失败', 'error'); });
+  });
 };
 window.projAssetProjects = function(type, assetId) {
   api('/api/project/asset-projects?type=' + encodeURIComponent(type) + '&assetId=' + assetId).then(function(res) {
@@ -13837,8 +13853,10 @@ window.projSaveAnnounce = function() {
   }).catch(function() { showToast('发布失败', 'error'); });
 };
 window.projDeleteAnnounce = function(annId) {
-  if (!confirm('删除该公告？')) return;
-  fetch('/api/project/' + _projDetail.id + '/announcements/' + annId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadAnnounceCard(); }).catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除公告', '删除该公告？', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + _projDetail.id + '/announcements/' + annId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadAnnounceCard(); }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 window.projLoadHealthCard = function() {
   var card = document.getElementById('projHealthCard'); if (!card || !_projDetail) return;
@@ -14138,7 +14156,6 @@ function projWorkloadHtml(tasks, today) {
     if (t.dueDate && t.status !== 'DONE' && t.dueDate < today) g.overdue++;
   });
   var rows = Object.keys(byAsg).map(function(k) { return { name: k, g: byAsg[k] }; }).sort(function(a, b) {
-    var au = (a.g.TODO + a.g.DOING), bu = (b.g.TODO + b.g.DONE === 0 ? 0 : b.g.TODO + b.g.DOING);
     return (b.g.TODO + b.g.DOING) - (a.g.TODO + a.g.DOING) || b.g.total - a.g.total;
   });
   var maxTotal = rows.reduce(function(m, r) { return Math.max(m, r.g.total); }, 1);
@@ -14392,8 +14409,10 @@ window.projTaskStatus = function(taskId, status) {
   }).catch(function() { showToast('更新失败', 'error'); projLoadTasks(); });
 };
 window.projDeleteTask = function(taskId) {
-  if (!confirm('确认删除该任务？')) return;
-  fetch('/api/project/' + _projDetail.id + '/tasks/' + taskId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadTasks(); }).catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除任务', '确认删除该任务？', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + _projDetail.id + '/tasks/' + taskId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadTasks(); }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 window.projMilestoneManage = function() {
   var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" onclick="projSaveMilestone()">添加</button></div><div id="pmsList"></div>';
@@ -14414,10 +14433,12 @@ window.projSaveMilestone = function() {
   }).catch(function() { showToast('添加失败', 'error'); });
 };
 window.projDelMilestone = function(mid) {
-  if (!confirm('删除里程碑？(其下任务将解除关联)')) return;
+  msgConfirm('删除里程碑', '删除里程碑？(其下任务将解除关联)', '确定删除').then(function(ok) {
+    if (!ok) return;
   fetch('/api/project/' + _projDetail.id + '/milestones/' + mid, { method: 'DELETE' }).then(_handleResponse).then(function() {
     _projMilestones = _projMilestones.filter(function(m) { return m.id !== mid; }); projRenderMilestones();
   }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 
 /* ===== PM2-M5：文档 Wiki ===== */
@@ -14562,8 +14583,10 @@ window.projWikiSave = function() {
   }).catch(function() { showToast('保存失败', 'error'); });
 };
 window.projWikiDelete = function(pageId) {
-  if (!confirm('删除该文档页面？(子页面将提升为根)')) return;
-  fetch('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId, { method: 'DELETE' }).then(_handleResponse).then(function() { _projWikiCur = null; projLoadWiki(); }).catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除文档', '删除该文档页面？(子页面将提升为根)', '确定删除').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId, { method: 'DELETE' }).then(_handleResponse).then(function() { _projWikiCur = null; projLoadWiki(); }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 
 /* ===== PM2-M7/M8：工作台 + 模板 + 对比 ===== */
@@ -14638,8 +14661,10 @@ window.loadProjectTemplates = function() {
   }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 window.projDeleteTemplate = function(tid) {
-  if (!confirm('删除该模板？')) return;
+  msgConfirm('删除模板', '删除该模板？', '确定删除').then(function(ok) {
+    if (!ok) return;
   fetch('/api/project/templates/' + tid, { method: 'DELETE' }).then(_handleResponse).then(function() { loadProjectTemplates(); }).catch(function() { showToast('删除失败', 'error'); });
+  });
 };
 window.projFromTemplateModal = function(presetTid) {
   api('/api/project/templates').then(function(res) {
@@ -14849,11 +14874,13 @@ window.projRelAct = function(rid, action, scope) {
       else showToast((res && res.msg) || '操作失败', 'error');
     }).catch(function() { showToast('操作失败', 'error'); });
   } else {
-    if (!confirm(action === 'release' ? '确认发布上线该版本？' : '确认回滚该版本？')) return;
-    apiPost('/api/project/releases/' + rid + '/' + action, {}).then(function(res) {
-      if (res && res.code === 0) { showToast(action === 'release' ? '已发布' : '已回滚', 'success'); refresh(); }
-      else showToast((res && res.msg) || '操作失败', 'error');
-    }).catch(function() { showToast('操作失败', 'error'); });
+    msgConfirm(action === 'release' ? '发布上线' : '回滚版本', action === 'release' ? '确认发布上线该版本？' : '确认回滚该版本？', action === 'release' ? '确定发布' : '确定回滚').then(function(ok) {
+      if (!ok) return;
+      apiPost('/api/project/releases/' + rid + '/' + action, {}).then(function(res) {
+        if (res && res.code === 0) { showToast(action === 'release' ? '已发布' : '已回滚', 'success'); refresh(); }
+        else showToast((res && res.msg) || '操作失败', 'error');
+      }).catch(function() { showToast('操作失败', 'error'); });
+    });
   }
 };
 
@@ -16244,7 +16271,7 @@ window.dbsyncOnModeChange = function() {
 function dbsyncRenderFieldMapHtml(fields, targetColumns) {
   var hasTgtCols = targetColumns && targetColumns.length > 0;
   var html = '<table class="dfs-field-map-table"><thead><tr>'
-    + '<th style="width:32px;">同步</th><th>源字段</th><th style="width:20px;text-align:center;">→</th><th>目标字段</th>'
+    + '<th style="width:32px;">同步</th><th style="min-width:140px;">源字段</th><th style="width:20px;text-align:center;">→</th><th style="min-width:140px;">目标字段</th>'
     + '<th style="width:90px;font-size:11px;">空值处理</th><th style="width:90px;font-size:11px;">默认值</th>'
     + '<th style="width:110px;font-size:11px;">转换</th><th style="width:80px;font-size:11px;">脱敏</th>'
     + '<th style="width:28px;"></th>'
@@ -17096,6 +17123,11 @@ window.dbsyncSaveJob = function() {
   if (!tgtDsId)  { showToast('请选择目标数据源', 'error'); return; }
   if (!tgtDb)    { showToast('请选择目标数据库', 'error'); return; }
   if (tableConfigs.length === 0) { showToast('请至少配置一张表', 'error'); return; }
+  // 校验每张表的源表/目标表非空, 避免保存无效配置
+  for (var _ti = 0; _ti < tableConfigs.length; _ti++) {
+    var _tc = tableConfigs[_ti] || {};
+    if (!(_tc.sourceTable || '').trim() || !(_tc.targetTable || '').trim()) { showToast('第 ' + (_ti + 1) + ' 行表配置不完整(源表/目标表必填)', 'error'); return; }
+  }
   var jsonErr = dbsyncValidateJsonFields();
   if (jsonErr) { showToast(jsonErr, 'error'); return; }
 
@@ -17512,7 +17544,7 @@ function dbsyncRenderJobs(list) {
   var selIds = Object.keys(_dbsyncSelected).filter(function(id) { return _dbsyncSelected[id]; });
   var bulkHtml = '';
   if (selIds.length) {
-    bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(24,144,255,.08));border:1px solid var(--primary,#1890ff);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;">'
+    bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(24,144,255,.08));border:1px solid var(--primary,#1890ff);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;animation:wsOverlayIn .15s ease;">'
       + '<span>已选 <b>' + selIds.length + '</b> 个任务</span>'
       + '<button class="btn btn-sm btn-success" onclick="dbsyncBulkRun()">批量运行</button>'
       + '<button class="btn btn-sm btn-danger" onclick="dbsyncBulkStop()">批量停止</button>'
@@ -17520,7 +17552,7 @@ function dbsyncRenderJobs(list) {
   }
   var shown = _dbsyncStatusFilter === 'ALL' ? base : base.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
   if (!shown.length) {
-    container.innerHTML = kpiHtml + chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务</div>';
+    container.innerHTML = kpiHtml + chips + '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">该状态下暂无任务，<a href="#" onclick="dbsyncSetStatusFilter(\'ALL\');return false;" style="color:var(--primary);">查看全部</a></div>';
     return;
   }
   var list = shown.slice();
@@ -17541,7 +17573,7 @@ function dbsyncRenderJobs(list) {
     + '<th>源端（数据源.库）</th>'
     + '<th>目标端（数据源.库）</th>'
     + '<th style="width:80px;cursor:pointer;" onclick="dbsyncSortBy(\'status\')">状态' + arr('status') + '</th>'
-    + '<th style="width:158px;">操作</th>'
+    + '<th style="width:158px;min-width:158px;">操作</th>'
     + '</tr></thead><tbody>';
   list.forEach(function(job) {
     var modeClass = { FULL: 'FULL', INCREMENTAL: 'INCREMENTAL', CDC: 'CDC' }[job.syncMode] || 'FULL';

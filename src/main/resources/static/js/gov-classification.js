@@ -258,7 +258,7 @@
         var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)' });
         var minConfSel = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
         [['0', '全部置信度'], ['50', '≥50%'], ['70', '≥70%'], ['80', '≥80%']].forEach(function (o) { minConfSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
-        minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };
+        minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; rows.forEach(function (r) { if (r._cb) r._cb.checked = false; }); tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };
         var checkBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '勾选≥阈值', onclick: function () {
           var mc = Number(minConfSel.value) || 0, n = 0;
           rows.forEach(function (r) { if ((Number(r.confidence) || 0) >= mc) { r._cb.checked = true; n++; } });

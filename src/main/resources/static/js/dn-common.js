@@ -353,7 +353,8 @@
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
     function onKey(e) { if (e.key === 'Escape') close(); }
-    function close() { document.removeEventListener('keydown', onKey); mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    var _closing = false;
+    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var dr = DN.h('div', { class: 'gov-drawer' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close })]), bd]);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);
