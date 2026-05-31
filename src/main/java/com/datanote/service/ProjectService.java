@@ -73,6 +73,7 @@ public class ProjectService {
             p.setStatus(old.getStatus());
             p.setCreatedBy(old.getCreatedBy());
             p.setCreatedAt(old.getCreatedAt());
+            p.setUpdatedAt(LocalDateTime.now());
             projectMapper.updateById(p);
         }
         return p;

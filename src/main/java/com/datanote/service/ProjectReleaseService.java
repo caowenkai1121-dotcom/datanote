@@ -32,7 +32,7 @@ public class ProjectReleaseService {
         return releaseMapper.selectList(w);
     }
 
-    public DnProjectRelease submit(Long projectId, String title, String content, String targetEnv) {
+    public synchronized DnProjectRelease submit(Long projectId, String title, String content, String targetEnv) {
         projectService.getById(projectId);
         DnProjectRelease r = new DnProjectRelease();
         r.setProjectId(projectId);

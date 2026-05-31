@@ -163,8 +163,13 @@ public class ProjectController {
     @Operation(summary = "解绑资产")
     @DeleteMapping("/{id}/assets/{rowId}")
     public R<String> unbindAsset(@PathVariable Long id, @PathVariable Long rowId) {
-        projectAssetService.unbind(rowId);
-        return R.ok("已解绑");
+        try {
+            projectService.getById(id);
+            projectAssetService.unbind(rowId);
+            return R.ok("已解绑");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @Operation(summary = "可绑定资产候选")

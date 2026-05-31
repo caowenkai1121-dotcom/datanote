@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS dn_project_release (
   approve_comment VARCHAR(512) DEFAULT NULL,
   released_at     DATETIME DEFAULT NULL,
   created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_project_version (project_id, version_no),
   INDEX idx_pr_project (project_id),
   INDEX idx_pr_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目发布版本';
