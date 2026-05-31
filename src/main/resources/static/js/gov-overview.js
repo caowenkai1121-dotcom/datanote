@@ -145,6 +145,43 @@
     // ---- 敏感分布 ----
     box.appendChild(sensitiveCard('敏感等级分布', 'lock', sensitive.byLevel, 'info'));
     box.appendChild(sensitiveCard('敏感类型分布', 'tag', sensitive.byType, 'info'));
+
+    // ---- 健康分90天日历热力(大功能) ----
+    var hcCard = DN.card({ title: '治理健康分 · 近 90 天日历', icon: 'clock' });
+    hcCard.body.appendChild(DN.skeleton(2));
+    box.appendChild(hcCard.el);
+    DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
+      renderHealthCalendar(hcCard.body, t || []);
+    }).catch(function () { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.empty('暂无健康分历史', 'clock')); });
+  }
+
+  // 健康分日历热力：按天着色(>=85绿/>=60黄/其余红), GitHub风格
+  function renderHealthCalendar(box, trend) {
+    box.innerHTML = '';
+    var byDay = {};
+    (trend || []).forEach(function (t) { var d = (t.day || t.date || '').toString().slice(0, 10); if (d) byDay[d] = Number(t.score || t.totalScore || 0); });
+    var keys = Object.keys(byDay);
+    if (!keys.length) { box.appendChild(DN.empty('暂无健康分历史', 'clock')); return; }
+    var WEEKS = 13;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var end = new Date(today); end.setDate(end.getDate() + (6 - end.getDay()));
+    var start = new Date(end); start.setDate(start.getDate() - (WEEKS * 7 - 1));
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var fmt = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+    var colorOf = function (v) { return v == null ? 'var(--bg-hover,#ebedf0)' : v >= 85 ? '#52c41a' : v >= 60 ? '#faad14' : '#ff4d4f'; };
+    var wrap = DN.h('div', { style: 'display:flex;gap:3px;overflow-x:auto' });
+    for (var wk = 0; wk < WEEKS; wk++) {
+      var colEl = DN.h('div', { style: 'display:flex;flex-direction:column;gap:3px' });
+      for (var dow = 0; dow < 7; dow++) {
+        var d = new Date(start); d.setDate(start.getDate() + wk * 7 + dow);
+        if (d > today) { colEl.appendChild(DN.h('div', { style: 'width:13px;height:13px' })); continue; }
+        var ds = fmt(d), v = byDay[ds];
+        colEl.appendChild(DN.h('div', { title: ds + (v != null ? ' · 健康分 ' + (Math.round(v * 10) / 10) : ' · 无数据'), style: 'width:13px;height:13px;border-radius:2px;background:' + colorOf(v) }));
+      }
+      wrap.appendChild(colEl);
+    }
+    box.appendChild(wrap);
+    box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '绿≥85 优秀 · 黄≥60 一般 · 红<60 待完善（近13周每日健康分）' }));
   }
 
   function sensitiveCard(title, icon, map, barTone) {
