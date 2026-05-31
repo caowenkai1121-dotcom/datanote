@@ -277,7 +277,9 @@
     var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增策略',
       onclick: function () {
         if (!picker.db() || !picker.table()) { DN.toast('请先选择库和表', 'error'); return; }
-        var d = parseInt(days.value, 10);
+        var dv = days.value.trim();
+        var d = parseInt(dv, 10);
+        if (dv && (isNaN(d) || d <= 0)) { DN.toast('天数需为正整数', 'error'); return; }
         var body = { dbName: picker.db(), tableName: picker.table(), policyType: type.value, enabled: 1 };
         if (type.value === 'HOT_COLD') body.coldDays = isNaN(d) ? null : d; else body.ttlDays = isNaN(d) ? null : d;
         DN.post('/api/gov/lifecycle/policies', body).then(function () { DN.toast('已新增'); loadPolicies(); })
@@ -362,11 +364,19 @@
       // 回收成本汇总
       var totalBytes = rows.reduce(function (a, u) { return a + (Number(u.sizeBytes) || 0); }, 0);
       var noLineage = rows.filter(function (u) { return !u.hasDownstreamLineage; }).length;
-      box.appendChild(DN.statRow([
+      var wrap = DN.h('div', { style: 'display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:6px' });
+      var st = DN.statRow([
         { icon: 'alert', label: '无用表候选', value: rows.length, tone: rows.length > 0 ? 'warn' : 'ok' },
         { icon: 'db', label: '可回收体量', value: DN.fmtBytes(totalBytes), tone: 'info' },
         { icon: 'lineage', label: '无下游血缘', value: noLineage, sub: '可安全回收' }
-      ]));
+      ]);
+      st.style.flex = '1'; st.style.marginBottom = '0';
+      wrap.appendChild(st);
+      if (rows.length > 0) wrap.appendChild(DN.donut([
+        { label: '无下游', value: noLineage, color: '#52c41a' },
+        { label: '有下游', value: rows.length - noLineage, color: '#faad14' }
+      ], { size: 96, stroke: 12, centerLabel: rows.length, centerSub: '候选' }));
+      box.appendChild(wrap);
       unusedTbl = DN.table({
         columns: [
           { key: '_t', label: '库.表', render: function (u) { return (u.db || '') + '.' + (u.table || ''); } },
@@ -425,6 +435,15 @@
       if (!box) return;
       var rows = list || [];
       box.innerHTML = '';
+      // 成本总计/平均统计
+      var totalCost = rows.reduce(function (a, s) { return a + (Number(s.costEstimate) || 0); }, 0);
+      if (totalCost > 0) {
+        box.appendChild(DN.statRow([
+          { icon: 'chart', label: '总月成本', value: '¥' + totalCost.toFixed(0), tone: 'warn' },
+          { icon: 'chart', label: '平均/表', value: '¥' + (rows.length ? (totalCost / rows.length).toFixed(1) : 0), tone: 'info' },
+          { icon: 'db', label: '统计表数', value: rows.length }
+        ]));
+      }
       // 成本 Top10 热力
       var top = rows.slice(0, 10).filter(function (s) { return (Number(s.costEstimate) || Number(s.sizeBytes) || 0) > 0; });
       if (top.length) {

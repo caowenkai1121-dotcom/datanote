@@ -124,6 +124,8 @@
       };
       if (isEdit) body.id = p.id;
       if (!body.policyName) { DN.toast('策略名不能为空', 'error'); return; }
+      if (body.matchDim === 'SENSITIVE_TYPE' && !body.sensitiveType) { DN.toast('按敏感类型匹配时需填敏感类型', 'error'); return; }
+      if (body.matchDim === 'COLUMN' && (!body.dbName || !body.tableName || !body.columnName)) { DN.toast('按列匹配时需选库/表/列', 'error'); return; }
       DN.post('/api/gov/masking/policies', body)
         .then(function () { DN.toast('保存成功'); close(); loadMaskingPolicies(); })
         .catch(function (e) { DN.toast(e.message, 'error'); });
