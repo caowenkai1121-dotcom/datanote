@@ -12860,6 +12860,63 @@ window.loadProjectRoleMatrix = function() {
   }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 
+/* ===== PM-M3：资产纳管 ===== */
+var PROJ_ASSET_TYPE = { SYNC_JOB: '同步任务', SCRIPT: '脚本', DATASOURCE: '数据源', QUALITY_RULE: '质量规则' };
+window.projLoadAssets = function() {
+  var pane = document.getElementById('projPane_asset'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/assets').then(function(res) {
+    var as = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
+      + '<select id="projAssetType" class="dbsync-form-select" style="width:120px;" onchange="projLoadAssetCandidates()">'
+      + Object.keys(PROJ_ASSET_TYPE).map(function(k) { return '<option value="' + k + '">' + PROJ_ASSET_TYPE[k] + '</option>'; }).join('')
+      + '</select>'
+      + '<select id="projAssetCand" class="dbsync-form-select" style="width:220px;"><option value="">加载中...</option></select>'
+      + '<button class="btn btn-sm btn-primary" onclick="projBindAsset()">绑定资产</button></div>';
+    if (!as.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无绑定资产，从上方选择类型与资产绑定</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>类型</th><th>资产名</th><th>资产ID</th><th>绑定时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+      as.forEach(function(a) {
+        h += '<tr><td>' + escapeHtml(PROJ_ASSET_TYPE[a.assetType] || a.assetType) + '</td>'
+          + '<td>' + escapeHtml(a.assetName || '-') + '</td><td>' + a.assetId + '</td>'
+          + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+          + '<td><a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    pane.innerHTML = h;
+    projLoadAssetCandidates();
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projLoadAssetCandidates = function() {
+  var typeEl = document.getElementById('projAssetType'), candEl = document.getElementById('projAssetCand');
+  if (!typeEl || !candEl || !_projDetail) return;
+  candEl.innerHTML = '<option value="">加载中...</option>';
+  api('/api/project/' + _projDetail.id + '/asset-candidates?type=' + encodeURIComponent(typeEl.value)).then(function(res) {
+    var list = (res && res.code === 0) ? (res.data || []) : [];
+    var avail = list.filter(function(x) { return !x.bound; });
+    if (!avail.length) { candEl.innerHTML = '<option value="">（无可绑定资产）</option>'; return; }
+    candEl.innerHTML = avail.map(function(x) { return '<option value="' + x.id + '" data-name="' + escapeHtml(String(x.name || '')) + '">' + escapeHtml(String(x.name || x.id)) + '</option>'; }).join('');
+  }).catch(function() { candEl.innerHTML = '<option value="">加载失败</option>'; });
+};
+window.projBindAsset = function() {
+  var type = document.getElementById('projAssetType').value;
+  var sel = document.getElementById('projAssetCand');
+  var id = sel.value;
+  if (!id) { showToast('请选择要绑定的资产', 'error'); return; }
+  var opt = sel.options[sel.selectedIndex];
+  var name = opt ? opt.getAttribute('data-name') : '';
+  apiPost('/api/project/' + _projDetail.id + '/assets', { assetType: type, assetId: parseInt(id), assetName: name }).then(function(res) {
+    if (res && res.code === 0) { showToast('已绑定', 'success'); projLoadAssets(); }
+    else showToast((res && res.msg) || '绑定失败', 'error');
+  }).catch(function() { showToast('绑定失败', 'error'); });
+};
+window.projUnbindAsset = function(rowId) {
+  if (!confirm('确认解绑该资产？(仅解除项目关联，不删除资产本身)')) return;
+  fetch('/api/project/' + _projDetail.id + '/assets/' + rowId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已解绑', 'success'); projLoadAssets(); })
+    .catch(function() { showToast('解绑失败', 'error'); });
+};
+
 // ===== 系统管理 tab 切换 =====
 function switchSettingsTab(el, tab) {
   el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
