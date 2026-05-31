@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r3">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r4">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r3"></script>
-<script src="js/gov-assets.js?v=g2r3"></script>
-<script src="js/gov-lineage.js?v=g2r3"></script>
-<script src="js/gov-quality.js?v=g2r3"></script>
-<script src="js/gov-standard.js?v=g2r3"></script>
-<script src="js/gov-classification.js?v=g2r3"></script>
-<script src="js/gov-security.js?v=g2r3"></script>
-<script src="js/gov-health.js?v=g2r3"></script>
-<script src="js/gov-audit.js?v=g2r3"></script>
-<script src="js/gov-overview.js?v=g2r3"></script>
-<script src="js/gov-subject.js?v=g2r3"></script>
+<script src="js/dn-common.js?v=g2r4"></script>
+<script src="js/gov-assets.js?v=g2r4"></script>
+<script src="js/gov-lineage.js?v=g2r4"></script>
+<script src="js/gov-quality.js?v=g2r4"></script>
+<script src="js/gov-standard.js?v=g2r4"></script>
+<script src="js/gov-classification.js?v=g2r4"></script>
+<script src="js/gov-security.js?v=g2r4"></script>
+<script src="js/gov-health.js?v=g2r4"></script>
+<script src="js/gov-audit.js?v=g2r4"></script>
+<script src="js/gov-overview.js?v=g2r4"></script>
+<script src="js/gov-subject.js?v=g2r4"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4789,7 +4789,11 @@ html, body {
           <div class="dbsync-drawer-log-toolbar">
             <span style="font-size:12px;color:var(--text-muted);">实时输出本任务运行日志（运行中自动刷新）</span>
             <div style="display:flex;gap:10px;align-items:center;">
+              <select id="dbsyncDetailLogLevel" class="dbsync-form-select" style="width:auto;height:26px;font-size:12px;" onchange="dbsyncApplyLogLevelFilter()">
+                <option value="">全部级别</option><option value="INFO">INFO</option><option value="WARN">WARN</option><option value="ERROR">ERROR</option><option value="OK">OK</option>
+              </select>
               <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="dbsyncDetailLogAutoscroll" checked> 自动滚动</label>
+              <button class="btn btn-sm" onclick="dbsyncDownloadDetailLog()">下载</button>
               <button class="btn btn-sm" onclick="dbsyncClearDetailLog()">清空</button>
             </div>
           </div>
@@ -4829,6 +4833,7 @@ html, body {
           <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">每 5 秒自动刷新</div>
         </div>
         <div class="dbsync-modal-footer">
+          <button class="btn" onclick="dbsyncExportDashCsv()">导出CSV</button>
           <button class="btn" onclick="dbsyncCloseDashboard()">关闭</button>
         </div>
       </div>
@@ -17388,7 +17393,10 @@ function dbsyncDetailAppendLog(data) {
   var level = data.level || 'INFO';
   var line = document.createElement('span');
   line.className = 'dbsync-log-line ' + level;
+  line.setAttribute('data-lv', level);
   line.textContent = '[' + (data.time || '') + '][' + level + '] ' + (data.message || '');
+  var lf = (document.getElementById('dbsyncDetailLogLevel') || {}).value || '';
+  if (lf && level !== lf) line.style.display = 'none';
   panel.appendChild(line);
   panel.appendChild(document.createTextNode('\n'));
   var auto = document.getElementById('dbsyncDetailLogAutoscroll');
@@ -17396,6 +17404,22 @@ function dbsyncDetailAppendLog(data) {
   var lines = panel.querySelectorAll('.dbsync-log-line');
   if (lines.length > 800) { for (var i = 0; i < 80; i++) { if (lines[i]) lines[i].remove(); } }
 }
+window.dbsyncApplyLogLevelFilter = function() {
+  var lf = (document.getElementById('dbsyncDetailLogLevel') || {}).value || '';
+  var panel = document.getElementById('dbsyncDetailLogPanel'); if (!panel) return;
+  Array.prototype.slice.call(panel.querySelectorAll('.dbsync-log-line')).forEach(function(ln) {
+    ln.style.display = (!lf || ln.getAttribute('data-lv') === lf) ? '' : 'none';
+  });
+};
+window.dbsyncDownloadDetailLog = function() {
+  var panel = document.getElementById('dbsyncDetailLogPanel'); if (!panel) return;
+  var txt = Array.prototype.slice.call(panel.querySelectorAll('.dbsync-log-line')).map(function(l) { return l.textContent; }).join('\n');
+  if (!txt) { showToast('暂无日志', 'info'); return; }
+  var blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'sync_log_' + (_dbsyncDetailJobId || '') + '_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '') + '.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+};
 window.dbsyncClearDetailLog = function() {
   var panel = document.getElementById('dbsyncDetailLogPanel');
   if (panel) panel.innerHTML = '<span style="color:var(--text-muted);">日志已清空。</span>';
@@ -17465,6 +17489,19 @@ function dbsyncRenderDashboardSummary(s) {
   box.innerHTML = html;
 }
 
+var _dbsyncDashLast = [];
+window.dbsyncExportDashCsv = function() {
+  var rows = _dbsyncDashLast || [];
+  if (!rows.length) { showToast('暂无数据可导出', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var head = ['任务名', '模式', '运行状态', '最近执行状态', '最近读取', '最近写入', '最近错误', 'CDC延迟ms'];
+  var lines = [head.map(cell).join(',')];
+  rows.forEach(function(j) { lines.push([j.jobName, j.syncMode, j.status, j.lastStatus, j.lastReadCount, j.lastWriteCount, j.lastErrorCount, j.cdcLagMs].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'sync_dashboard_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+};
 function dbsyncRenderDashboard(list) {
   var body = document.getElementById('dbsyncDashboardBody');
   if (!body) return;
@@ -17473,10 +17510,14 @@ function dbsyncRenderDashboard(list) {
     return;
   }
   var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC' };
+  _dbsyncDashLast = list.slice();
+  // 失败置顶 → 运行中 → 其余
+  var rank = function(j) { return (j.status === 'FAILED' || j.lastStatus === 'FAILED') ? 0 : (j.status === 'RUNNING' ? 1 : 2); };
+  list = list.slice().sort(function(a, b) { return rank(a) - rank(b); });
   var html = '';
   list.forEach(function(job) {
     var isFailed = job.status === 'FAILED' || job.lastStatus === 'FAILED';
-    var rowStyle = isFailed ? ' style="background:rgba(255,77,79,.04);"' : '';
+    var rowStyle = ' style="cursor:pointer;' + (isFailed ? 'background:rgba(255,77,79,.04);' : '') + '" title="点击查看明细" onclick="dbsyncCloseDashboard();dbsyncOpenDetail(' + job.id + ')"';
     var statusCls = 'dbsync-status-badge ' + (job.status || 'CREATED');
     var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }[job.status] || (job.status || '-');
     var lastStatusColor = job.lastStatus === 'FAILED' ? 'color:#ff4d4f;font-weight:500;' : 'color:var(--text-muted);';
