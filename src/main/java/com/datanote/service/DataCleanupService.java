@@ -3,8 +3,10 @@ package com.datanote.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSchedulerRunMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
+import com.datanote.mapper.DnSyncErrorRowMapper;
 import com.datanote.model.DnSchedulerRun;
 import com.datanote.model.DnTaskExecution;
+import com.datanote.model.DnSyncErrorRow;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,7 @@ public class DataCleanupService {
 
     private final DnSchedulerRunMapper schedulerRunMapper;
     private final DnTaskExecutionMapper taskExecutionMapper;
+    private final DnSyncErrorRowMapper syncErrorRowMapper;
 
     /**
      * 每天凌晨 2:00 清理超过 30 天的数据
@@ -45,9 +48,14 @@ public class DataCleanupService {
         execQw.lt("created_at", cutoffDateTime);
         int deletedExecs = taskExecutionMapper.delete(execQw);
 
-        if (deletedRuns > 0 || deletedExecs > 0) {
-            log.info("数据清理完成: 删除 {} 条调度记录, {} 条执行指标 (截止 {})",
-                    deletedRuns, deletedExecs, cutoffDate);
+        // 清理 dn_sync_error_row（坏行 DLQ 只增不删会膨胀，按同保留期清理）
+        QueryWrapper<DnSyncErrorRow> errQw = new QueryWrapper<>();
+        errQw.lt("created_at", cutoffDateTime);
+        int deletedErrs = syncErrorRowMapper.delete(errQw);
+
+        if (deletedRuns > 0 || deletedExecs > 0 || deletedErrs > 0) {
+            log.info("数据清理完成: 删除 {} 条调度记录, {} 条执行指标, {} 条同步坏行 (截止 {})",
+                    deletedRuns, deletedExecs, deletedErrs, cutoffDate);
         }
     }
 }

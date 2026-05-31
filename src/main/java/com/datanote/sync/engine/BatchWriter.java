@@ -64,7 +64,8 @@ public final class BatchWriter {
                     ctx.log("ERROR", "坏行丢弃(累计脏数据=" + dirty + "): " + rowEx.getMessage());
                     // DS-M1：坏行落 DLQ(失败不阻断同步)
                     try { ctx.getBadRowSink().accept(sourceTable, row, rowEx.getMessage()); } catch (Exception ignore) {}
-                    if (exceeded(dirty, ctx.getReadCount().get(), ctx.getErrorLimitRows(), ctx.getErrorLimitRatio())) {
+                    // 分母含当前批已读行(readCount 在本页 flush 后才累加,直接取会偏小致比率阈值失效)
+                    if (exceeded(dirty, ctx.getReadCount().get() + buffer.size(), ctx.getErrorLimitRows(), ctx.getErrorLimitRatio())) {
                         conn.commit();
                         ctx.getWriteCount().addAndGet(ok);
                         throw new DirtyDataExceededException("脏数据超阈值,累计=" + dirty);

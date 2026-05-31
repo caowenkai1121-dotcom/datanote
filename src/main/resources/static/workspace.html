@@ -3296,8 +3296,13 @@ html, body {
   #govModuleContent .gov-btn { display:inline-block; margin-top:12px; background:var(--primary); color:#fff; text-decoration:none; padding:7px 16px; border-radius:6px; font-size:13px; cursor:pointer; }
   #govModuleContent .gov-btn:hover { background:var(--primary-hover); }
   #govModuleContent .badge { font-size:11px; padding:1px 6px; border-radius:8px; }
-  .dn-toast { position:fixed; top:64px; left:50%; transform:translateX(-50%) translateY(-10px); background:#1f2329; color:#fff; padding:8px 16px; border-radius:6px; font-size:13px; opacity:0; transition:all .3s; z-index:99999; }
+  .dn-toast { position:fixed; top:64px; left:50%; transform:translateX(-50%) translateY(-10px); background:#1f2329; color:#fff; padding:8px 16px; border-radius:6px; font-size:13px; opacity:0; transition:all .3s; z-index:99999; box-shadow:0 2px 8px rgba(0,0,0,.12); }
   .dn-toast-show { opacity:1; transform:translateX(-50%) translateY(0); }
+  /* 类型分色，与 showToast 调色板统一 */
+  .dn-toast-error { background:#fff1f0; color:#cf1322; border:1px solid #ffa39e; }
+  .dn-toast-success { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
+  .dn-toast-warn { background:#fffbe6; color:#d48806; border:1px solid #ffe58f; }
+  .dn-toast-info { background:#e6f7ff; color:#096dd9; border:1px solid #91d5ff; }
 </style>
 
 <!-- ===== Header ===== -->
@@ -16351,16 +16356,20 @@ window.dbsyncDeleteFolder = function(id, name) {
 };
 
 /* ---------- 任务列表 ---------- */
+var _dbsyncJobsSeq = 0;
 window.dbsyncLoadJobs = function() {
   var container = document.getElementById('dbsyncJobsContent');
   if (!container) return;
+  var seq = ++_dbsyncJobsSeq; // 仅应用最新一次请求的响应，避免并发刷新乱序闪烁
   api('/api/sync-job/list').then(function(res) {
+    if (seq !== _dbsyncJobsSeq) return; // 已有更新的请求发出，丢弃过期响应
     if (res.code !== 0) { container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
     _dbsyncAllJobs = res.data || [];
     dbsyncApplyFolderFilter();
     // 明细抽屉打开时，状态变更后同步刷新其头部与概览（保持当前页签）
     if (_dbsyncDetailJobId != null) dbsyncRefreshDetailHeaderFromList();
   }).catch(function() {
+    if (seq !== _dbsyncJobsSeq) return;
     container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
   });
 };
