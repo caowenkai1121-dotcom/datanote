@@ -1860,6 +1860,14 @@ html, body {
 .dbsync-exec-table tbody tr:nth-child(even) { background: rgba(0,0,0,.015); }
 .dbsync-exec-table tbody tr:hover { background: var(--primary-bg, rgba(24,144,255,.07)); }
 .proj-view-toggle a, #dbsyncJobsContent a[onclick*="View"], #projListBox a[onclick*="View"] { transition: background .15s, color .15s; }
+/* 细化滚动条(UX) */
+.dbsync-drawer ::-webkit-scrollbar, .g-modal ::-webkit-scrollbar, #projWikiContent ::-webkit-scrollbar, .dbsync-modal-body::-webkit-scrollbar { width: 8px; height: 8px; }
+.dbsync-drawer ::-webkit-scrollbar-thumb, .g-modal ::-webkit-scrollbar-thumb, #projWikiContent ::-webkit-scrollbar-thumb, .dbsync-modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 4px; }
+.dbsync-drawer ::-webkit-scrollbar-thumb:hover, .g-modal ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.32); }
+/* 键盘焦点可见(无障碍) */
+.btn:focus-visible, a:focus-visible, .dbsync-form-select:focus-visible, .dbsync-form-input:focus-visible { outline: 2px solid var(--primary, #1890ff); outline-offset: 1px; }
+/* 卡片网格统一悬浮过渡 */
+.dbsync-job-card { transition: box-shadow .15s, transform .15s; }
 .dm-ai-error {
   border-color: rgba(239,68,68,.3) !important;
   background: rgba(239,68,68,.06) !important;
@@ -3289,19 +3297,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r42">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r43">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r42"></script>
-<script src="js/gov-assets.js?v=g3r42"></script>
-<script src="js/gov-lineage.js?v=g3r42"></script>
-<script src="js/gov-quality.js?v=g3r42"></script>
-<script src="js/gov-standard.js?v=g3r42"></script>
-<script src="js/gov-classification.js?v=g3r42"></script>
-<script src="js/gov-security.js?v=g3r42"></script>
-<script src="js/gov-health.js?v=g3r42"></script>
-<script src="js/gov-audit.js?v=g3r42"></script>
-<script src="js/gov-overview.js?v=g3r42"></script>
-<script src="js/gov-subject.js?v=g3r42"></script>
+<script src="js/dn-common.js?v=g3r43"></script>
+<script src="js/gov-assets.js?v=g3r43"></script>
+<script src="js/gov-lineage.js?v=g3r43"></script>
+<script src="js/gov-quality.js?v=g3r43"></script>
+<script src="js/gov-standard.js?v=g3r43"></script>
+<script src="js/gov-classification.js?v=g3r43"></script>
+<script src="js/gov-security.js?v=g3r43"></script>
+<script src="js/gov-health.js?v=g3r43"></script>
+<script src="js/gov-audit.js?v=g3r43"></script>
+<script src="js/gov-overview.js?v=g3r43"></script>
+<script src="js/gov-subject.js?v=g3r43"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
