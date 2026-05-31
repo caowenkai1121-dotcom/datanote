@@ -27,6 +27,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectSettingService projectSettingService;
     private final com.datanote.service.ProjectTagService projectTagService;
     private final com.datanote.service.ProjectFavoriteService projectFavoriteService;
+    private final com.datanote.service.ProjectActivityService projectActivityService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -215,6 +216,39 @@ public class ProjectController {
     public R<java.util.Map<String, Object>> overview(@PathVariable Long id) {
         try {
             return R.ok(projectOverviewService.overview(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "项目健康分")
+    @GetMapping("/{id}/health")
+    public R<java.util.Map<String, Object>> health(@PathVariable Long id) {
+        try {
+            java.util.Map<String, Object> ov = projectOverviewService.overview(id);
+            long assetTotal = ((Number) ov.getOrDefault("assetTotal", 0L)).longValue();
+            long memberCount = ((Number) ov.getOrDefault("memberCount", 0L)).longValue();
+            long releaseTotal = ((Number) ov.getOrDefault("releaseTotal", 0L)).longValue();
+            long actCnt = ov.get("activity") instanceof java.util.List ? ((java.util.List<?>) ov.get("activity")).size() : 0;
+            long jobSuccess = 0, jobFailed = 0;
+            Object jr = ov.get("jobRuns");
+            if (jr instanceof java.util.Map) {
+                java.util.Map<?, ?> m = (java.util.Map<?, ?>) jr;
+                Object s = m.get("success"), f = m.get("failed");
+                if (s instanceof Number) jobSuccess = ((Number) s).longValue();
+                if (f instanceof Number) jobFailed = ((Number) f).longValue();
+            }
+            return R.ok(com.datanote.service.ProjectHealthScorer.score(assetTotal, memberCount, releaseTotal, jobSuccess, jobFailed, actCnt));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "项目活动审计")
+    @GetMapping("/{id}/activities")
+    public R<List<com.datanote.model.DnAuditLog>> activities(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit) {
+        try {
+            return R.ok(projectActivityService.list(id, limit));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

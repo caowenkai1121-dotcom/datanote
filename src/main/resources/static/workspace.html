@@ -4215,6 +4215,7 @@ html, body {
         <button data-ptab="asset" onclick="projDetailTab(this,'asset')">资产</button>
         <button data-ptab="member" onclick="projDetailTab(this,'member')">成员</button>
         <button data-ptab="release" onclick="projDetailTab(this,'release')">发布</button>
+        <button data-ptab="activity" onclick="projDetailTab(this,'activity')">活动</button>
         <button data-ptab="setting" onclick="projDetailTab(this,'setting')">设置</button>
       </div>
       <div class="dbsync-drawer-body">
@@ -4222,6 +4223,7 @@ html, body {
         <div class="dbsync-detail-pane" id="projPane_asset" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_member" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_release" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_activity" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_setting" style="display:none;"></div>
       </div>
     </aside>
@@ -12917,7 +12919,7 @@ window.projDelete = function(id, name) {
 
 /* ===== PM-M2：项目详情抽屉 + 成员 + 设置 ===== */
 var _projDetail = null;
-var PROJ_ALL_TABS = ['overview', 'asset', 'member', 'release', 'setting'];
+var PROJ_ALL_TABS = ['overview', 'asset', 'member', 'task', 'release', 'activity', 'wiki', 'lineage', 'setting'];
 
 window.projOpenDetail = function(id) {
   var p = _projList.find(function(x) { return x.id === id; });
@@ -12951,6 +12953,10 @@ function projLoadPane(tab) {
   else if (tab === 'asset' && window.projLoadAssets) projLoadAssets();
   else if (tab === 'overview' && window.projLoadOverview) projLoadOverview();
   else if (tab === 'release' && window.projLoadReleases) projLoadReleases();
+  else if (tab === 'activity' && window.projLoadActivities) projLoadActivities();
+  else if (tab === 'task' && window.projLoadTasks) projLoadTasks();
+  else if (tab === 'wiki' && window.projLoadWiki) projLoadWiki();
+  else if (tab === 'lineage' && window.projLoadLineage) projLoadLineage();
   else { var el = document.getElementById('projPane_' + tab); if (el) el.innerHTML = '<div style="padding:24px;color:var(--text-muted);">即将完善</div>'; }
 }
 function projRenderDetailHead(p) {
@@ -13190,7 +13196,8 @@ window.projLoadOverview = function() {
   api('/api/project/' + _projDetail.id + '/overview').then(function(res) {
     var d = (res && res.code === 0) ? (res.data || {}) : {};
     var ac = d.assetCounts || {};
-    var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">'
+    var h = '<div id="projHealthCard" style="margin-bottom:14px;"></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">'
       + projTile('资产总数', d.assetTotal != null ? d.assetTotal : 0, '#1677ff')
       + projTile('成员', d.memberCount != null ? d.memberCount : 0, '#52c41a')
       + projTile('发布版本', d.releaseTotal != null ? d.releaseTotal : 0)
@@ -13234,6 +13241,41 @@ window.projLoadOverview = function() {
       h += '</div>';
     }
     h += '</div>';
+    pane.innerHTML = h;
+    projLoadHealthCard();
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projLoadHealthCard = function() {
+  var card = document.getElementById('projHealthCard'); if (!card || !_projDetail) return;
+  api('/api/project/' + _projDetail.id + '/health').then(function(res) {
+    var d = (res && res.code === 0) ? (res.data || {}) : {};
+    var dims = d.dims || {};
+    var color = d.total >= 80 ? '#52c41a' : (d.total >= 60 ? '#1677ff' : (d.total >= 40 ? '#faad14' : '#ff4d4f'));
+    var dimLabel = { asset: '资产', member: '成员', release: '发布', run: '运行', active: '活跃' };
+    var bars = Object.keys(dimLabel).map(function(k) {
+      var v = dims[k] || 0;
+      return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0;"><span style="width:32px;color:var(--text-muted);">' + dimLabel[k] + '</span>'
+        + '<div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + (v * 5) + '%;height:100%;background:' + color + ';"></div></div><span style="width:24px;text-align:right;">' + v + '</span></div>';
+    }).join('');
+    card.innerHTML = '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;display:flex;gap:16px;align-items:center;">'
+      + '<div style="text-align:center;min-width:90px;"><div style="font-size:30px;font-weight:700;color:' + color + ';">' + (d.total != null ? d.total : '-') + '</div><div style="font-size:12px;color:var(--text-muted);">健康分 · ' + escapeHtml(d.level || '') + '</div></div>'
+      + '<div style="flex:1;">' + bars + '</div></div>';
+  }).catch(function() {});
+};
+window.projLoadActivities = function() {
+  var pane = document.getElementById('projPane_activity'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/activities?limit=80').then(function(res) {
+    var as = (res && res.code === 0) ? (res.data || []) : [];
+    if (!as.length) { pane.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无活动记录（成员/资产/发布/设置等写操作将在此留痕）</div>'; return; }
+    var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th></tr></thead><tbody>';
+    as.forEach(function(a) {
+      h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
+        + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
+        + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
+        + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td></tr>';
+    });
+    h += '</tbody></table>';
     pane.innerHTML = h;
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
