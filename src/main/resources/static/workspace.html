@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r21">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r22">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r21"></script>
-<script src="js/gov-assets.js?v=g2r21"></script>
-<script src="js/gov-lineage.js?v=g2r21"></script>
-<script src="js/gov-quality.js?v=g2r21"></script>
-<script src="js/gov-standard.js?v=g2r21"></script>
-<script src="js/gov-classification.js?v=g2r21"></script>
-<script src="js/gov-security.js?v=g2r21"></script>
-<script src="js/gov-health.js?v=g2r21"></script>
-<script src="js/gov-audit.js?v=g2r21"></script>
-<script src="js/gov-overview.js?v=g2r21"></script>
-<script src="js/gov-subject.js?v=g2r21"></script>
+<script src="js/dn-common.js?v=g2r22"></script>
+<script src="js/gov-assets.js?v=g2r22"></script>
+<script src="js/gov-lineage.js?v=g2r22"></script>
+<script src="js/gov-quality.js?v=g2r22"></script>
+<script src="js/gov-standard.js?v=g2r22"></script>
+<script src="js/gov-classification.js?v=g2r22"></script>
+<script src="js/gov-security.js?v=g2r22"></script>
+<script src="js/gov-health.js?v=g2r22"></script>
+<script src="js/gov-audit.js?v=g2r22"></script>
+<script src="js/gov-overview.js?v=g2r22"></script>
+<script src="js/gov-subject.js?v=g2r22"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12892,7 +12892,7 @@ function projRenderList(list) {
     }).join('');
     h += '<tr>'
       + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#faad14' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
-      + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#faad14;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#faad14;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
       + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
@@ -13509,13 +13509,22 @@ window.projLoadOverview = function() {
     }
     var acts = d.activity || [];
     h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
-      + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">最近活动</div>';
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-weight:600;font-size:13px;">最近活动</span>';
+    if (acts.length) {
+      var kinds = { member: ['成员', '#52c41a'], asset: ['资产', '#1677ff'], release: ['发布', '#fa8c16'] };
+      var present = {}; acts.forEach(function(a) { present[a.kind || 'release'] = 1; });
+      h += '<span style="margin-left:auto;display:flex;gap:4px;">';
+      h += '<span onclick="projFilterOverviewActs(\'\')" class="proj-act-chip" data-k="" data-color="var(--text-regular)" style="cursor:pointer;font-size:11px;padding:1px 8px;border-radius:10px;background:var(--primary);color:#fff;">全部</span>';
+      Object.keys(kinds).forEach(function(k) { if (present[k]) h += '<span onclick="projFilterOverviewActs(\'' + k + '\')" class="proj-act-chip" data-k="' + k + '" data-color="' + kinds[k][1] + '" style="cursor:pointer;font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover);color:' + kinds[k][1] + ';">' + kinds[k][0] + '</span>'; });
+      h += '</span>';
+    }
+    h += '</div>';
     if (!acts.length) h += '<div style="color:var(--text-muted);font-size:12px;">暂无活动</div>';
     else {
-      h += '<div style="font-size:12px;line-height:1.9;">';
+      h += '<div id="projOverviewActs" style="font-size:12px;line-height:1.9;">';
       acts.forEach(function(a) {
         var dot = a.kind === 'member' ? '#52c41a' : (a.kind === 'asset' ? '#1677ff' : '#fa8c16');
-        h += '<div style="display:flex;gap:8px;"><span style="color:' + dot + ';">●</span><span style="flex:1;">' + escapeHtml(a.text || '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((a.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
+        h += '<div class="proj-act-row" data-kind="' + escapeHtml(a.kind || 'release') + '" style="display:flex;gap:8px;"><span style="color:' + dot + ';">●</span><span style="flex:1;">' + escapeHtml(a.text || '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((a.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
       });
       h += '</div>';
     }
@@ -13525,6 +13534,16 @@ window.projLoadOverview = function() {
     projSetTabBadge('member', d.memberCount || 0, '#8c8c8c');
     projLoadHealthCard();
     projLoadAnnounceCard();
+    window.projFilterOverviewActs = window.projFilterOverviewActs || function(k) {
+      Array.prototype.slice.call(document.querySelectorAll('#projOverviewActs .proj-act-row')).forEach(function(r) {
+        r.style.display = (!k || (r.getAttribute('data-kind') || '') === k) ? '' : 'none';
+      });
+      Array.prototype.slice.call(document.querySelectorAll('.proj-act-chip')).forEach(function(c) {
+        var on = (c.getAttribute('data-k') || '') === k;
+        c.style.background = on ? 'var(--primary)' : 'var(--bg-hover)';
+        c.style.color = on ? '#fff' : (c.getAttribute('data-color') || 'var(--text-regular)');
+      });
+    };
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 // 详情抽屉 tab 数量徽标
@@ -13913,13 +13932,18 @@ window.loadProjectHome = function() {
     var favs = (d.favorites || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">★ ' + escapeHtml(p.projectName) + '</div>'; }).join('') || empty();
     var recent = (d.recent || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((p.accessAt || '').replace('T', ' ').slice(0, 16)) + '</span></div>'; }).join('') || empty();
     var appr = (d.pendingApprovals || []).map(function(a) { return '<div style="padding:3px 0;">' + escapeHtml(a.projectName) + ' v' + a.versionNo + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(a.title || '') + '</span> <a href="#" onclick="projOpenDetailById(' + a.projectId + ');return false;" style="color:var(--primary);">去处理</a></div>'; }).join('') || empty();
-    var tasks = (d.myTasks || []).map(function(t) { return '<div style="padding:3px 0;">' + (t.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[高] </span>' : '') + escapeHtml(t.title) + ' <span style="color:var(--text-muted);font-size:11px;">@' + escapeHtml(t.projectName) + (t.dueDate ? ' · ' + t.dueDate : '') + '</span></div>'; }).join('') || empty();
+    var _homeToday = new Date().toISOString().slice(0, 10);
+    var overdueN = (d.myTasks || []).filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday; }).length;
+    var tasks = (d.myTasks || []).map(function(t) {
+      var od = t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday;
+      return '<div style="padding:3px 0;">' + (t.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[高] </span>' : '') + escapeHtml(t.title) + ' <span style="color:var(--text-muted);font-size:11px;">@' + escapeHtml(t.projectName) + (t.dueDate ? ' · ' + t.dueDate : '') + '</span>' + (od ? ' <span style="color:#ff4d4f;font-weight:600;font-size:11px;">超期</span>' : '') + '</div>';
+    }).join('') || empty();
     box.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
       + card('我负责的项目 (' + (d.myProjects || []).length + ')', mine)
       + card('我的收藏 (' + (d.favorites || []).length + ')', favs)
       + card('最近访问', recent)
       + card('待我审批的发布 (' + (d.pendingApprovals || []).length + ')', appr)
-      + '</div><div style="margin-top:14px;">' + card('我的待办 (' + (d.myTasks || []).length + ')', tasks) + '</div>';
+      + '</div><div style="margin-top:14px;">' + card('我的待办 (' + (d.myTasks || []).length + ')' + (overdueN ? ' <span style="color:#ff4d4f;font-weight:600;">· 超期 ' + overdueN + '</span>' : ''), tasks) + '</div>';
   }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 window.loadProjectTemplates = function() {
