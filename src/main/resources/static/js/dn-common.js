@@ -344,7 +344,9 @@
   /** 热力清单：items:[{label,value,display?}] 按值映射蓝色深浅。opts:{rgb,onClick} */
   DN.heat = function (items, opts) {
     opts = opts || {}; items = items || []; if (!items.length) return DN.empty('暂无数据');
-    var max = Math.max.apply(null, items.map(function (i) { return i.value || 0; }).concat([1])), base = opts.rgb || [24, 144, 255];
+    var vals = items.map(function (i) { return Number(i.value) || 0; });
+    var max = Math.max.apply(null, vals.concat([1]));
+    var base = opts.rgb || [24, 144, 255];
     var w = DN.h('div', { class: 'gov-heat' });
     items.forEach(function (it) {
       var a = (0.1 + (it.value || 0) / max * 0.8).toFixed(2);

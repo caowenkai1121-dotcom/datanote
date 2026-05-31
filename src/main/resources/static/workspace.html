@@ -12794,7 +12794,7 @@ window.projApplyFilter = function() {
   list.sort(function(a, b) {
     if (sort === 'name') return (a.projectName || '').localeCompare(b.projectName || '');
     if (sort === 'created_asc') return (a.id || 0) - (b.id || 0);
-    if (sort === 'recent') return String(_projRecent[b.id] || '').localeCompare(String(_projRecent[a.id] || ''));
+    if (sort === 'recent') { var ra = _projRecent[a.id] || '', rb = _projRecent[b.id] || ''; if (ra === rb) return 0; if (!ra) return 1; if (!rb) return -1; return String(rb).localeCompare(String(ra)); }
     if (sort === 'fav') {
       var pa = (_projFav[a.id] && _projFav[a.id].pinned) ? 2 : ((_projFav[a.id] && _projFav[a.id].fav) ? 1 : 0);
       var pb = (_projFav[b.id] && _projFav[b.id].pinned) ? 2 : ((_projFav[b.id] && _projFav[b.id].fav) ? 1 : 0);
@@ -13215,7 +13215,7 @@ window.projSaveQuota = function() {
     storageQuotaGb: parseInt(document.getElementById('pqStorage').value) || 0
   };
   apiPost('/api/project/' + _projDetail.id + '/quota', body).then(function(res) {
-    if (res && res.code === 0) showToast('配额已保存', 'success'); else showToast((res && res.msg) || '保存失败', 'error');
+    if (res && res.code === 0) { showToast('配额已保存', 'success'); if (window.projLoadQuota) projLoadQuota(); } else showToast((res && res.msg) || '保存失败', 'error');
   }).catch(function() { showToast('保存失败', 'error'); });
 };
 window.projLoadEnvParams = function() {

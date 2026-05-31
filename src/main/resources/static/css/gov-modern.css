@@ -137,6 +137,11 @@
 /* ---- 响应式网格 ---- */
 @media (max-width:1200px){ #govModuleContent .gov-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }
 @media (max-width:768px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:760px){
+  #govModuleContent .gov-radar svg text { font-size:9px; }
+  #govModuleContent .gov-radar { transform:scale(.88); transform-origin:center top; }
+  #govModuleContent .gov-card-hd { flex-wrap:wrap; gap:6px; }
+}
 @media (max-width:520px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr; } }
 
 /* ---- 按钮分级 ---- */
