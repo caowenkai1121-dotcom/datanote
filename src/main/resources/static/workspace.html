@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r12">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r13">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r12"></script>
-<script src="js/gov-assets.js?v=g2r12"></script>
-<script src="js/gov-lineage.js?v=g2r12"></script>
-<script src="js/gov-quality.js?v=g2r12"></script>
-<script src="js/gov-standard.js?v=g2r12"></script>
-<script src="js/gov-classification.js?v=g2r12"></script>
-<script src="js/gov-security.js?v=g2r12"></script>
-<script src="js/gov-health.js?v=g2r12"></script>
-<script src="js/gov-audit.js?v=g2r12"></script>
-<script src="js/gov-overview.js?v=g2r12"></script>
-<script src="js/gov-subject.js?v=g2r12"></script>
+<script src="js/dn-common.js?v=g2r13"></script>
+<script src="js/gov-assets.js?v=g2r13"></script>
+<script src="js/gov-lineage.js?v=g2r13"></script>
+<script src="js/gov-quality.js?v=g2r13"></script>
+<script src="js/gov-standard.js?v=g2r13"></script>
+<script src="js/gov-classification.js?v=g2r13"></script>
+<script src="js/gov-security.js?v=g2r13"></script>
+<script src="js/gov-health.js?v=g2r13"></script>
+<script src="js/gov-audit.js?v=g2r13"></script>
+<script src="js/gov-overview.js?v=g2r13"></script>
+<script src="js/gov-subject.js?v=g2r13"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13581,20 +13581,32 @@ window.projLoadActivities = function() {
 var _projMilestones = [];
 var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#52c41a' } };
 var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
+var _projTaskFilter = { assignee: '', overdue: false };
 window.projLoadTasks = function() {
   var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
   Promise.all([api('/api/project/' + _projDetail.id + '/tasks'), api('/api/project/' + _projDetail.id + '/milestones')]).then(function(arr) {
-    var tasks = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
+    var tasksAll = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
+    var _td = new Date().toISOString().slice(0, 10);
+    var asgOpts = []; (function() { var seen = {}; tasksAll.forEach(function(t) { if (t.assignee && !seen[t.assignee]) { seen[t.assignee] = 1; asgOpts.push(t.assignee); } }); })();
+    var fAsg = _projTaskFilter.assignee, fOver = _projTaskFilter.overdue;
+    var tasks = tasksAll.filter(function(t) {
+      if (fAsg && (t.assignee || '') !== fAsg) return false;
+      if (fOver && !(t.dueDate && t.status !== 'DONE' && t.dueDate < _td)) return false;
+      return true;
+    });
     var cnt = { TODO: 0, DOING: 0, DONE: 0 };
     tasks.forEach(function(t) { cnt[t.status] = (cnt[t.status] || 0) + 1; });
     var _today = new Date().toISOString().slice(0, 10);
     var overdueN = tasks.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _today; }).length;
     var donePct = tasks.length ? Math.round(cnt.DONE * 100 / tasks.length) : 0;
+    var asgSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.assignee=this.value;projLoadTasks();"><option value="">全部指派人</option>' + asgOpts.map(function(a) { return '<option value="' + escapeHtml(a) + '"' + (fAsg === a ? ' selected' : '') + '>' + escapeHtml(a) + '</option>'; }).join('') + '</select>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
+      + asgSel
+      + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
       + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
     if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
     if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无任务</div>';
@@ -13748,7 +13760,7 @@ window.projLoadWiki = function() {
   api('/api/project/' + _projDetail.id + '/wiki/pages').then(function(res) {
     _projWikiPages = _pdata(res);
     pane.innerHTML = '<div style="display:flex;gap:12px;min-height:320px;">'
-      + '<div style="width:190px;border-right:1px solid var(--divider);padding-right:10px;"><button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:8px;" onclick="projWikiNew()">+ 新建页面</button><div id="projWikiTree"></div></div>'
+      + '<div style="width:190px;border-right:1px solid var(--divider);padding-right:10px;"><button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:8px;" onclick="projWikiNew()">+ 新建页面</button><input id="projWikiSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索文档" oninput="projWikiRenderTree()"><div id="projWikiTree"></div></div>'
       + '<div style="flex:1;" id="projWikiContent"><div style="color:var(--text-muted);padding:20px;">选择左侧页面查看，或新建页面</div></div></div>';
     projWikiRenderTree();
     if (_projWikiPages.length) projWikiSelect((_projWikiCur && _projWikiPages.some(function(p) { return p.id === _projWikiCur; })) ? _projWikiCur : _projWikiPages[0].id);
@@ -13758,6 +13770,13 @@ function projWikiRenderTree() {
   var box = document.getElementById('projWikiTree'); if (!box) return;
   if (!_projWikiPages.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">暂无文档</div>'; return; }
   function item(p, indent) { return '<div style="padding:4px 0 4px ' + (4 + indent * 14) + 'px;cursor:pointer;font-size:13px;' + (_projWikiCur === p.id ? 'color:var(--primary);font-weight:600;' : '') + '" onclick="projWikiSelect(' + p.id + ')">' + (indent ? '• ' : '') + escapeHtml(p.title) + '</div>'; }
+  // 搜索: 命中标题则平铺展示
+  var kw = ((document.getElementById('projWikiSearch') || {}).value || '').trim().toLowerCase();
+  if (kw) {
+    var hits = _projWikiPages.filter(function(p) { return (p.title || '').toLowerCase().indexOf(kw) >= 0; });
+    box.innerHTML = hits.length ? hits.map(function(p) { return item(p, 0); }).join('') : '<div style="color:var(--text-muted);font-size:12px;">无匹配文档</div>';
+    return;
+  }
   var byParent = {};
   _projWikiPages.forEach(function(p) { var k = (!p.parentId || p.parentId === 0) ? 0 : p.parentId; (byParent[k] = byParent[k] || []).push(p); });
   var seen = {}, h = '';
