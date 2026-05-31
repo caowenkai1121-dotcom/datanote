@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r16">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r17">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r16"></script>
-<script src="js/gov-assets.js?v=q100r16"></script>
-<script src="js/gov-lineage.js?v=q100r16"></script>
-<script src="js/gov-quality.js?v=q100r16"></script>
-<script src="js/gov-standard.js?v=q100r16"></script>
-<script src="js/gov-classification.js?v=q100r16"></script>
-<script src="js/gov-security.js?v=q100r16"></script>
-<script src="js/gov-health.js?v=q100r16"></script>
-<script src="js/gov-audit.js?v=q100r16"></script>
-<script src="js/gov-overview.js?v=q100r16"></script>
-<script src="js/gov-subject.js?v=q100r16"></script>
+<script src="js/dn-common.js?v=q100r17"></script>
+<script src="js/gov-assets.js?v=q100r17"></script>
+<script src="js/gov-lineage.js?v=q100r17"></script>
+<script src="js/gov-quality.js?v=q100r17"></script>
+<script src="js/gov-standard.js?v=q100r17"></script>
+<script src="js/gov-classification.js?v=q100r17"></script>
+<script src="js/gov-security.js?v=q100r17"></script>
+<script src="js/gov-health.js?v=q100r17"></script>
+<script src="js/gov-audit.js?v=q100r17"></script>
+<script src="js/gov-overview.js?v=q100r17"></script>
+<script src="js/gov-subject.js?v=q100r17"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -9715,7 +9715,7 @@ function switchHistoryTab(idx) {
 
 function openParamRunModal() {
   if (!currentScriptId) { msgBox('请先选择脚本'); return; }
-  var today = new Date().toISOString().slice(0, 10);
+  var today = wsLocalDate();
   // 阿里云风格: ${bizdate} 格式
   var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">'
     + '脚本中可使用 <code style="background:var(--bg-body);padding:1px 4px;border-radius:2px;">${bizdate}</code> 作为业务日期参数。<br>'
@@ -12381,6 +12381,12 @@ document.addEventListener('keydown', function(e) {
   }
 }, true);
 
+// 本地日期 YYYY-MM-DD(避免 toISOString 的 UTC 时区误差导致超期判断错位)
+window.wsLocalDate = function(d) {
+  d = d || new Date();
+  var p = function(n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+};
 // CSV 单元格安全转义: 双引号转义 + 去换行 + 防公式注入(=+-@ 前缀加')
 window.csvCell = function(v) {
   var s = String(v == null ? '' : v).replace(/[\r\n]+/g, ' ');
@@ -13284,7 +13290,7 @@ window.projGenReport = function() {
   ]).then(function(arr) {
     var tasks = arr[0] || [], ms = arr[1] || [], members = arr[2] || [];
     var p = _projDetail, esc = escapeHtml;
-    var today = new Date().toISOString().slice(0, 10);
+    var today = wsLocalDate();
     var doneN = tasks.filter(function(t) { return t.status === 'DONE'; }).length;
     var doingN = tasks.filter(function(t) { return t.status === 'DOING'; }).length;
     var todoN = tasks.filter(function(t) { return t.status === 'TODO'; }).length;
@@ -13988,7 +13994,7 @@ window.projLoadTasks = function() {
   Promise.all([api('/api/project/' + _projDetail.id + '/tasks'), api('/api/project/' + _projDetail.id + '/milestones')]).then(function(arr) {
     var tasksAll = _projTasksAll = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
-    var _td = new Date().toISOString().slice(0, 10);
+    var _td = wsLocalDate();
     var asgOpts = []; (function() { var seen = {}; tasksAll.forEach(function(t) { if (t.assignee && !seen[t.assignee]) { seen[t.assignee] = 1; asgOpts.push(t.assignee); } }); })();
     var fAsg = _projTaskFilter.assignee, fOver = _projTaskFilter.overdue, fPrio = _projTaskFilter.priority;
     var tasks = tasksAll.filter(function(t) {
@@ -13999,7 +14005,7 @@ window.projLoadTasks = function() {
     });
     var cnt = { TODO: 0, DOING: 0, DONE: 0 };
     tasks.forEach(function(t) { cnt[t.status] = (cnt[t.status] || 0) + 1; });
-    var _today = new Date().toISOString().slice(0, 10);
+    var _today = wsLocalDate();
     var overdueN = tasks.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _today; }).length;
     var donePct = tasks.length ? Math.round(cnt.DONE * 100 / tasks.length) : 0;
     var asgSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.assignee=this.value;projLoadTasks();"><option value="">全部指派人</option>' + asgOpts.map(function(a) { return '<option value="' + escapeHtml(a) + '"' + (fAsg === a ? ' selected' : '') + '>' + escapeHtml(a) + '</option>'; }).join('') + '</select>';
@@ -14300,7 +14306,7 @@ function projGanttHtml(tasks, milestones, today) {
 window.projTaskView = function(id) {
   var t = (_projTasksAll || []).find(function(x) { return x.id === id; });
   if (!t) { projTaskModal(id); return; }
-  var today = new Date().toISOString().slice(0, 10);
+  var today = wsLocalDate();
   var st = TASK_STATUS[t.status] || { t: t.status, c: '#8c8c8c' };
   var pr = TASK_PRIO[t.priority] || { t: t.priority || '-', c: 'var(--text-muted)' };
   var ms = (_projMilestones || []).find(function(m) { return m.id === t.milestoneId; });
@@ -14330,7 +14336,7 @@ window.projMilestoneDetail = function(msId) {
   var m = (_projMilestones || []).find(function(x) { return x.id === msId; });
   if (!m) { showToast('里程碑不存在', 'error'); return; }
   var mt = (_projTasksAll || []).filter(function(t) { return t.milestoneId === msId; });
-  var today = new Date().toISOString().slice(0, 10);
+  var today = wsLocalDate();
   var doneN = mt.filter(function(t) { return t.status === 'DONE'; }).length;
   var prog = mt.length ? Math.round(doneN * 100 / mt.length) : 0;
   var overdueN = mt.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < today; }).length;
@@ -14618,7 +14624,7 @@ window.loadProjectHome = function() {
     var favs = (d.favorites || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">★ ' + escapeHtml(p.projectName) + '</div>'; }).join('') || empty();
     var recent = (d.recent || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((p.accessAt || '').replace('T', ' ').slice(0, 16)) + '</span></div>'; }).join('') || empty();
     var appr = (d.pendingApprovals || []).map(function(a) { return '<div style="padding:3px 0;">' + escapeHtml(a.projectName) + ' v' + escapeHtml(String(a.versionNo == null ? '' : a.versionNo)) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(a.title || '') + '</span> <a href="#" onclick="projOpenDetailById(' + parseInt(a.projectId, 10) + ');return false;" style="color:var(--primary);">去处理</a></div>'; }).join('') || empty();
-    var _homeToday = new Date().toISOString().slice(0, 10);
+    var _homeToday = wsLocalDate();
     var overdueN = (d.myTasks || []).filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday; }).length;
     var tasks = (d.myTasks || []).map(function(t) {
       var od = t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday;
