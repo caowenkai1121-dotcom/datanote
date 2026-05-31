@@ -3289,19 +3289,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r38">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r39">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r38"></script>
-<script src="js/gov-assets.js?v=g3r38"></script>
-<script src="js/gov-lineage.js?v=g3r38"></script>
-<script src="js/gov-quality.js?v=g3r38"></script>
-<script src="js/gov-standard.js?v=g3r38"></script>
-<script src="js/gov-classification.js?v=g3r38"></script>
-<script src="js/gov-security.js?v=g3r38"></script>
-<script src="js/gov-health.js?v=g3r38"></script>
-<script src="js/gov-audit.js?v=g3r38"></script>
-<script src="js/gov-overview.js?v=g3r38"></script>
-<script src="js/gov-subject.js?v=g3r38"></script>
+<script src="js/dn-common.js?v=g3r39"></script>
+<script src="js/gov-assets.js?v=g3r39"></script>
+<script src="js/gov-lineage.js?v=g3r39"></script>
+<script src="js/gov-quality.js?v=g3r39"></script>
+<script src="js/gov-standard.js?v=g3r39"></script>
+<script src="js/gov-classification.js?v=g3r39"></script>
+<script src="js/gov-security.js?v=g3r39"></script>
+<script src="js/gov-health.js?v=g3r39"></script>
+<script src="js/gov-audit.js?v=g3r39"></script>
+<script src="js/gov-overview.js?v=g3r39"></script>
+<script src="js/gov-subject.js?v=g3r39"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -18405,8 +18405,19 @@ function dbsyncRenderConfig(job) {
   html += '</dl></div>';
   var tables = [];
   try { tables = JSON.parse(job.tableConfig || '[]'); } catch (e) { tables = []; }
+  // 字段映射概览统计
+  var totFields = 0, syncFields = 0, autoCreate = 0;
+  tables.forEach(function(t) { if (!t) return; if (t.createTargetTable) autoCreate++; var fs = t.fields || []; totFields += fs.length; fs.forEach(function(fm) { if (fm.sync !== false) syncFields++; }); });
   html += '<div class="dbsync-detail-card">'
     + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5.5h10M6 5.5V12"/></svg> 表与字段映射（' + tables.length + ' 张表）</div>';
+  if (tables.length) {
+    html += '<div class="dbsync-metric-grid" style="margin-bottom:6px;">'
+      + '<div class="dbsync-metric-card"><div class="v">' + tables.length + '</div><div class="l">同步表数</div></div>'
+      + '<div class="dbsync-metric-card"><div class="v">' + autoCreate + '</div><div class="l">自动建表</div></div>'
+      + '<div class="dbsync-metric-card"><div class="v">' + (totFields || '全部') + '</div><div class="l">配置字段</div></div>'
+      + '<div class="dbsync-metric-card"><div class="v ' + (totFields && syncFields < totFields ? 'err' : '') + '">' + (totFields ? syncFields : '全部') + '</div><div class="l">同步字段</div></div>'
+      + '</div>';
+  }
   if (tables.length === 0) {
     html += '<div style="padding:10px 0;color:var(--text-muted);font-size:12px;">未配置同步表</div>';
   } else {
