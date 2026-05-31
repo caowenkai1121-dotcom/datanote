@@ -353,7 +353,7 @@ public class ProjectController {
     @Operation(summary = "处理邀请(拒绝/取消)")
     @PostMapping("/{id}/invites/{inviteId}/status")
     public R<String> inviteStatus(@PathVariable Long id, @PathVariable Long inviteId, @RequestBody java.util.Map<String, String> body) {
-        try { projectCollabService.updateInviteStatus(inviteId, body.get("status")); return R.ok("已更新"); }
+        try { projectCollabService.updateInviteStatus(id, inviteId, body.get("status")); return R.ok("已更新"); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 

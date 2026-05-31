@@ -45,13 +45,15 @@ public class ProjectTagService {
         return mappingMapper.selectList(null);
     }
 
-    /** 覆盖设置某项目的标签集合。 */
+    /** 覆盖设置某项目的标签集合（仅接受真实存在的标签，避免孤立关联）。 */
     public void setProjectTags(Long projectId, List<Long> tagIds) {
         mappingMapper.delete(new LambdaQueryWrapper<DnProjectTagMapping>().eq(DnProjectTagMapping::getProjectId, projectId));
         if (tagIds == null) return;
+        java.util.Set<Long> existing = new java.util.HashSet<>();
+        for (DnProjectTag t : tagMapper.selectList(null)) existing.add(t.getId());
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (Long tid : tagIds) {
-            if (tid == null || !seen.add(tid)) continue;
+            if (tid == null || !existing.contains(tid) || !seen.add(tid)) continue;
             DnProjectTagMapping m = new DnProjectTagMapping();
             m.setProjectId(projectId);
             m.setTagId(tid);

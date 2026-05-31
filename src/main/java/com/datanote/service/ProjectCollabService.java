@@ -72,7 +72,7 @@ public class ProjectCollabService {
     }
 
     /** 接受邀请：被邀请人(或当前用户)按角色加入项目成员。 */
-    public void acceptInvite(String token) {
+    public synchronized void acceptInvite(String token) {
         DnProjectInvite inv = inviteMapper.selectOne(new LambdaQueryWrapper<DnProjectInvite>().eq(DnProjectInvite::getToken, token));
         if (inv == null) throw new IllegalArgumentException("邀请不存在");
         if (!"PENDING".equals(inv.getStatus())) throw new IllegalArgumentException("邀请已处理");
@@ -93,9 +93,10 @@ public class ProjectCollabService {
         inviteMapper.updateById(inv);
     }
 
-    public void updateInviteStatus(Long inviteId, String status) {
+    public void updateInviteStatus(Long projectId, Long inviteId, String status) {
         DnProjectInvite inv = inviteMapper.selectById(inviteId);
         if (inv == null) throw new IllegalArgumentException("邀请不存在");
+        if (!projectId.equals(inv.getProjectId())) throw new IllegalArgumentException("邀请不属于该项目");
         if (!"REJECTED".equals(status) && !"CANCELED".equals(status)) throw new IllegalArgumentException("非法操作");
         inv.setStatus(status);
         inv.setHandledAt(LocalDateTime.now());

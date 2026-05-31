@@ -19,7 +19,7 @@ public class ProjectFavoriteService {
     private final DnProjectFavoriteMapper favoriteMapper;
     private final DnProjectAccessMapper accessMapper;
 
-    public boolean toggleFavorite(Long projectId) {
+    public synchronized boolean toggleFavorite(Long projectId) {
         String user = ProjectService.currentUser();
         DnProjectFavorite f = favoriteMapper.selectOne(fw(user, projectId));
         if (f != null) {
@@ -34,7 +34,7 @@ public class ProjectFavoriteService {
         return true;
     }
 
-    public void setPinned(Long projectId, boolean pinned) {
+    public synchronized void setPinned(Long projectId, boolean pinned) {
         String user = ProjectService.currentUser();
         DnProjectFavorite f = favoriteMapper.selectOne(fw(user, projectId));
         if (f == null) {
@@ -55,7 +55,7 @@ public class ProjectFavoriteService {
     }
 
     /** 记录访问（按 用户+项目 唯一，access_at 自动刷新）。 */
-    public void recordAccess(Long projectId) {
+    public synchronized void recordAccess(Long projectId) {
         String user = ProjectService.currentUser();
         DnProjectAccess a = accessMapper.selectOne(new LambdaQueryWrapper<DnProjectAccess>()
                 .eq(DnProjectAccess::getUsername, user).eq(DnProjectAccess::getProjectId, projectId));

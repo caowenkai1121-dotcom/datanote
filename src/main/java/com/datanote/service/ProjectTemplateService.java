@@ -33,6 +33,7 @@ public class ProjectTemplateService {
         Long dup = templateMapper.selectCount(new LambdaQueryWrapper<DnProjectTemplate>().eq(DnProjectTemplate::getTemplateName, name));
         if (dup != null && dup > 0) throw new IllegalArgumentException("模板已存在: " + name);
 
+        // 模板仅快照项目基础属性与成员，刻意不含 env-params（设备/库密钥等敏感值），新建后需重新配置。
         JSONObject cfg = new JSONObject();
         cfg.put("projectType", p.getProjectType());
         cfg.put("env", p.getEnv());

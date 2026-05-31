@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "DataNote" [ref=e3] [cursor=pointer]:
+      - /url: "#/home"
+      - img [ref=e4]
+      - text: DataNote
+    - navigation [ref=e7]:
+      - link "首页" [ref=e8] [cursor=pointer]:
+        - /url: "#/home"
+        - img [ref=e9]
+        - text: 首页
+      - link "数据开发" [ref=e12] [cursor=pointer]:
+        - /url: "#/develop"
+        - img [ref=e13]
+        - text: 数据开发
+      - link "数据运维" [ref=e16] [cursor=pointer]:
+        - /url: "#/operations"
+        - img [ref=e17]
+        - text: 数据运维
+      - link "数据地图" [ref=e20] [cursor=pointer]:
+        - /url: "#/catalog"
+        - img [ref=e21]
+        - text: 数据地图
+      - link "数据治理" [ref=e26] [cursor=pointer]:
+        - /url: "#/governance"
+        - img [ref=e27]
+        - text: 数据治理
+      - link "关系库同步" [ref=e30] [cursor=pointer]:
+        - /url: "#/dbsync"
+        - img [ref=e31]
+        - text: 关系库同步
+      - link "指标管理" [ref=e36] [cursor=pointer]:
+        - /url: "#/metrics"
+        - img [ref=e37]
+        - text: 指标管理
+      - link "项目管理" [ref=e39] [cursor=pointer]:
+        - /url: "#/project"
+        - img [ref=e40]
+        - text: 项目管理
+      - link "系统管理" [ref=e44] [cursor=pointer]:
+        - /url: "#/settings"
+        - img [ref=e45]
+        - text: 系统管理
+    - generic [ref=e48]:
+      - generic [ref=e49]: 本地环境
+      - generic [ref=e50] [cursor=pointer]: A
+  - generic [ref=e52]:
+    - text: 📍
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56] [cursor=pointer]:
+          - generic [ref=e57]: 任务列表
+          - button "展开/收起文件夹" [ref=e58]:
+            - img [ref=e59]
+        - generic [ref=e61]:
+          - button "全部" [ref=e64] [cursor=pointer]:
+            - img [ref=e65]
+            - generic [ref=e67]: 全部
+          - button "新建文件夹" [ref=e68] [cursor=pointer]:
+            - img [ref=e69]
+            - text: 新建文件夹
+        - generic [ref=e71] [cursor=pointer]: 实时日志
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - heading "关系库同步任务" [level=2] [ref=e75]
+          - generic [ref=e76]:
+            - textbox "搜索任务名..." [ref=e77]
+            - button "新建任务" [ref=e78] [cursor=pointer]:
+              - img [ref=e79]
+              - text: 新建任务
+            - button "监控大盘" [ref=e81] [cursor=pointer]:
+              - img [ref=e82]
+              - text: 监控大盘
+            - button "刷新" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+              - text: 刷新
+        - generic [ref=e92]: 加载中...
+    - complementary [ref=e93]:
+      - generic [ref=e94]:
+        - generic [ref=e97]: 任务明细
+        - button [ref=e101] [cursor=pointer]: ×
+      - generic [ref=e102]:
+        - button [ref=e103] [cursor=pointer]: 概览
+        - button [ref=e104] [cursor=pointer]: 实时日志
+        - button [ref=e105] [cursor=pointer]: 执行历史
+        - button [ref=e106] [cursor=pointer]: 同步配置
+        - button [ref=e107] [cursor=pointer]: 操作审计
+        - button [ref=e108] [cursor=pointer]: 断点
+  - generic [ref=e110]:
+    - alert
+    - alert
