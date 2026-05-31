@@ -34,7 +34,9 @@
     });
   }
 
+  var _lastData = null, _lastTrend = null;
   function render(box, d, trend) {
+    _lastData = d; _lastTrend = trend;
     var health = d.health || {};
     var assets = d.assets || {};
     var quality = d.quality || {};
@@ -49,6 +51,7 @@
     var bar = DN.h('div', { style: 'display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px' }, [
       DN.h('label', { class: 'gov-desc', style: 'margin:0;cursor:pointer;display:flex;align-items:center;gap:4px' }, [autoCb, DN.h('span', { text: '自动刷新(30s)' })]),
       DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '更新于 ' + new Date().toLocaleTimeString() }),
+      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '生成体检报告', onclick: function () { buildReport(); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { reload(box); } })
     ]);
     box.appendChild(bar);
@@ -156,6 +159,54 @@
       return { label: k, value: v, tone: barTone, display: fmtInt(v), onClick: function () { if (window.govGoModule) govGoModule('classification'); } };
     })));
     return c.el;
+  }
+
+  // ========== 治理体检报告(大功能): 汇编总览数据为可打印报告 ==========
+  function buildReport() {
+    var d = _lastData;
+    if (!d) { DN.toast('数据未就绪, 请稍后重试', 'warn'); return; }
+    var health = d.health || {}, assets = d.assets || {}, quality = d.quality || {}, issues = d.issues || {}, sensitive = d.sensitive || {};
+    var dims = health.dims || {}, weights = health.weights || {};
+    var total = round1(Number(health.total) || 0);
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
+    var now = new Date();
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var ts = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    var dimRows = DIMS.map(function (k) {
+      var v = round1(Number(dims[k]) || 0), w = weights[k];
+      return '<tr><td>' + k + '</td><td>' + v + '</td><td>' + (w != null ? w : '-') + '</td><td>' + level(v) + '</td></tr>';
+    }).join('');
+    var sensRows = Object.keys(sensitive.byLevel || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + (sensitive.byLevel[k]) + '</td></tr>'; }).join('') || '<tr><td colspan="2" style="color:#999">无敏感分布数据</td></tr>';
+    var rate = round1(Number(quality.recentPassRate) || 0);
+    var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
+    var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>数据治理体检报告 ' + ts + '</title>'
+      + '<style>body{font-family:-apple-system,"Microsoft YaHei",sans-serif;color:#1f2329;max-width:820px;margin:24px auto;padding:0 20px;line-height:1.7}'
+      + 'h1{font-size:24px;border-bottom:3px solid #1890ff;padding-bottom:10px}h2{font-size:17px;margin-top:26px;color:#1890ff;border-left:4px solid #1890ff;padding-left:8px}'
+      + '.score{font-size:48px;font-weight:800;color:' + (total >= 85 ? '#52c41a' : total >= 60 ? '#faad14' : '#ff4d4f') + '}'
+      + 'table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left}th{background:#f6f7f9}'
+      + '.kpi{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}.kpi div{font-size:13px;color:#666}.kpi b{display:block;font-size:22px;color:#1f2329}'
+      + '.muted{color:#86909c;font-size:12px}@media print{.noprint{display:none}body{margin:0}}</style></head><body>'
+      + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#1890ff;color:#fff;border:0;border-radius:6px;cursor:pointer">打印 / 另存为PDF</button></div>'
+      + '<h1>数据治理体检报告</h1><div class="muted">生成时间：' + ts + '　|　DataNote 数据治理平台</div>'
+      + '<h2>一、治理健康总分</h2><div class="score">' + total + ' <span style="font-size:18px;color:#86909c">/ 100 · ' + level(total) + '</span></div>'
+      + '<h2>二、五维健康明细</h2><table><tr><th>维度</th><th>得分</th><th>权重</th><th>评级</th></tr>' + dimRows + '</table>'
+      + '<h2>三、数据资产概览</h2><div class="kpi"><div><b>' + fmtInt(assets.tableCount) + '</b>表数</div><div><b>' + fmtInt(assets.columnCount) + '</b>字段数</div><div><b>' + fmtInt(assets.dbCount) + '</b>库数</div><div><b>' + DN.fmtBytes(assets.totalSizeBytes) + '</b>总体量</div></div>'
+      + '<h2>四、数据质量</h2><div class="kpi"><div><b>' + rate + '%</b>近期检查通过率</div><div><b>' + fmtInt(quality.runs24h) + '</b>近24h运行数</div></div>'
+      + '<h2>五、治理工单</h2><div class="kpi"><div><b>' + fmtInt(issues.open) + '</b>待处理</div><div><b>' + fmtInt(issues.fixing) + '</b>处理中</div><div><b>' + fmtInt(issues.closed) + '</b>已关闭</div><div><b style="color:' + (pending ? '#faad14' : '#52c41a') + '">' + pending + '</b>待办合计</div></div>'
+      + '<h2>六、敏感数据分布</h2><table><tr><th>敏感等级</th><th>列数</th></tr>' + sensRows + '</table>'
+      + '<h2>七、体检结论</h2><p>' + reportConclusion(total, rate, pending) + '</p>'
+      + '<div class="muted" style="margin-top:30px;border-top:1px solid #e5e6eb;padding-top:10px">本报告由系统依据实时治理指标自动生成，供治理决策参考。</div>'
+      + '</body></html>';
+    var w = window.open('', '_blank');
+    if (!w) { DN.toast('弹窗被拦截, 请允许后重试', 'warn'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+  function reportConclusion(total, rate, pending) {
+    var parts = [];
+    parts.push(total >= 85 ? '治理健康总分优秀，整体治理水平良好。' : total >= 60 ? '治理健康总分中等，部分维度有提升空间。' : '治理健康总分偏低，亟需加强治理投入。');
+    parts.push(rate >= 90 ? '数据质量检查通过率高，质量管控有效。' : rate >= 70 ? '数据质量通过率中等，建议核查不达标规则。' : '数据质量通过率偏低，需优先排查高频失败规则。');
+    parts.push(pending > 0 ? ('当前有 ' + pending + ' 个待处理治理工单，建议尽快闭环。') : '治理工单已全部闭环，状态良好。');
+    return parts.join('');
   }
 
   // ========== 工具 ==========
