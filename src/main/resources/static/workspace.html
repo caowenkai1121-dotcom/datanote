@@ -12920,7 +12920,71 @@ window.projLoadSetting = function() {
     + '<button class="btn btn-sm btn-primary" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
     + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" onclick="projArchive(' + p.id + ')">归档</button>' : '')
     + '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
-    + '</div></div>';
+    + '</div></div>'
+    + '<div class="dbsync-detail-card" id="projQuotaCard" style="border:1px solid var(--divider);border-radius:8px;padding:14px;margin-top:12px;"><div style="color:var(--text-muted);">资源配额加载中...</div></div>'
+    + '<div class="dbsync-detail-card" id="projEnvParamCard" style="border:1px solid var(--divider);border-radius:8px;padding:14px;margin-top:12px;"><div style="color:var(--text-muted);">环境参数加载中...</div></div>';
+  projLoadQuota();
+  projLoadEnvParams();
+};
+window.projLoadQuota = function() {
+  var card = document.getElementById('projQuotaCard'); if (!card || !_projDetail) return;
+  api('/api/project/' + _projDetail.id + '/quota').then(function(res) {
+    var q = (res && res.code === 0) ? (res.data || {}) : {};
+    card.innerHTML = '<div style="font-weight:600;margin-bottom:10px;font-size:13px;">资源配额</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<label style="font-size:12px;">并发上限 <input id="pqConcurrent" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.concurrentLimit != null ? q.concurrentLimit : 4) + '"></label>'
+      + '<label style="font-size:12px;">默认超时(秒,0不限) <input id="pqTimeout" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.timeoutDefault != null ? q.timeoutDefault : 0) + '"></label>'
+      + '<label style="font-size:12px;">默认重试次 <input id="pqRetry" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.retryDefault != null ? q.retryDefault : 0) + '"></label>'
+      + '<label style="font-size:12px;">存储配额GB(0不限) <input id="pqStorage" type="number" class="dbsync-form-input" style="width:100%;" value="' + (q.storageQuotaGb != null ? q.storageQuotaGb : 0) + '"></label>'
+      + '</div><div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="projSaveQuota()">保存配额</button></div>';
+  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">配额加载失败</div>'; });
+};
+window.projSaveQuota = function() {
+  var body = {
+    concurrentLimit: parseInt(document.getElementById('pqConcurrent').value) || 0,
+    timeoutDefault: parseInt(document.getElementById('pqTimeout').value) || 0,
+    retryDefault: parseInt(document.getElementById('pqRetry').value) || 0,
+    storageQuotaGb: parseInt(document.getElementById('pqStorage').value) || 0
+  };
+  apiPost('/api/project/' + _projDetail.id + '/quota', body).then(function(res) {
+    if (res && res.code === 0) showToast('配额已保存', 'success'); else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.projLoadEnvParams = function() {
+  var card = document.getElementById('projEnvParamCard'); if (!card || !_projDetail) return;
+  api('/api/project/' + _projDetail.id + '/env-params').then(function(res) {
+    var ps = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="font-weight:600;margin-bottom:10px;font-size:13px;">环境参数映射 <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(参数键→开发/生产值，配置存档)</span></div>';
+    h += '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">'
+      + '<input id="pepKey" class="dbsync-form-input" style="width:120px;" placeholder="参数键">'
+      + '<input id="pepDev" class="dbsync-form-input" style="width:120px;" placeholder="开发值">'
+      + '<input id="pepProd" class="dbsync-form-input" style="width:120px;" placeholder="生产值">'
+      + '<input id="pepRemark" class="dbsync-form-input" style="width:120px;" placeholder="说明">'
+      + '<button class="btn btn-sm btn-primary" onclick="projAddEnvParam()">添加/更新</button></div>';
+    if (!ps.length) h += '<div style="padding:14px;text-align:center;color:var(--text-muted);">暂无环境参数</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
+      ps.forEach(function(p) {
+        h += '<tr><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td>' + escapeHtml(p.prodValue || '-') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
+          + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    card.innerHTML = h;
+  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">环境参数加载失败</div>'; });
+};
+window.projAddEnvParam = function() {
+  var key = (document.getElementById('pepKey').value || '').trim();
+  if (!key) { showToast('请填写参数键', 'error'); return; }
+  var body = { paramKey: key, devValue: document.getElementById('pepDev').value || '', prodValue: document.getElementById('pepProd').value || '', remark: document.getElementById('pepRemark').value || '' };
+  apiPost('/api/project/' + _projDetail.id + '/env-params', body).then(function(res) {
+    if (res && res.code === 0) { showToast('已保存', 'success'); projLoadEnvParams(); } else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.projDelEnvParam = function(paramId) {
+  if (!confirm('确认删除该环境参数？')) return;
+  fetch('/api/project/' + _projDetail.id + '/env-params/' + paramId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projLoadEnvParams(); })
+    .catch(function() { showToast('删除失败', 'error'); });
 };
 
 /* ===== PM-M2：成员权限 顶级页签（角色权限矩阵） ===== */

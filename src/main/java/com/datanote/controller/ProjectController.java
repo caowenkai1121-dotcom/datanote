@@ -24,6 +24,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectAssetService projectAssetService;
     private final com.datanote.service.ProjectOverviewService projectOverviewService;
     private final com.datanote.service.ProjectReleaseService projectReleaseService;
+    private final com.datanote.service.ProjectSettingService projectSettingService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -186,6 +187,55 @@ public class ProjectController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    // ===== PM-E3：项目设置（资源配额 + 环境参数映射） =====
+
+    @Operation(summary = "项目资源配额")
+    @GetMapping("/{id}/quota")
+    public R<com.datanote.model.DnProjectQuota> getQuota(@PathVariable Long id) {
+        try {
+            return R.ok(projectSettingService.getQuota(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "保存资源配额")
+    @PostMapping("/{id}/quota")
+    public R<com.datanote.model.DnProjectQuota> saveQuota(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectQuota quota) {
+        try {
+            return R.ok(projectSettingService.saveQuota(id, quota));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "环境参数列表")
+    @GetMapping("/{id}/env-params")
+    public R<List<com.datanote.model.DnProjectEnvParam>> envParams(@PathVariable Long id) {
+        try {
+            return R.ok(projectSettingService.listEnvParams(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "保存环境参数")
+    @PostMapping("/{id}/env-params")
+    public R<com.datanote.model.DnProjectEnvParam> saveEnvParam(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectEnvParam param) {
+        try {
+            return R.ok(projectSettingService.saveEnvParam(id, param));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "删除环境参数")
+    @DeleteMapping("/{id}/env-params/{paramId}")
+    public R<String> deleteEnvParam(@PathVariable Long id, @PathVariable Long paramId) {
+        projectSettingService.deleteEnvParam(paramId);
+        return R.ok("已删除");
     }
 
     // ===== PM-M5：发布管理 =====
