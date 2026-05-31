@@ -119,7 +119,8 @@ public class MaskingService {
                 String st = cm.getSensitiveType() == null ? null : cm.getSensitiveType().toUpperCase();
                 if (st == null || !typeFunc.containsKey(st)) continue;
                 DnTableMeta tm = tableCache.computeIfAbsent(cm.getTableMetaId(), tableMetaMapper::selectById);
-                if (tm == null || tm.getDatabaseName() == null || tm.getTableName() == null) continue;
+                if (tm == null || tm.getDatabaseName() == null || tm.getTableName() == null
+                        || cm.getColumnName() == null || cm.getColumnName().isEmpty()) continue;
                 masks.add(new SqlMaskRewriter.ColumnMask(
                         tm.getDatabaseName(), tm.getTableName(), cm.getColumnName(), typeFunc.get(st)));
             }

@@ -97,6 +97,7 @@ public class RbacService {
         user.setUpdatedAt(LocalDateTime.now());
         user.setCreatedAt(null);
         userMapper.updateById(user);
+        user.setPassword(null); // 清空密码哈希,避免回传到响应(与 createUser 一致)
         return user;
     }
 
