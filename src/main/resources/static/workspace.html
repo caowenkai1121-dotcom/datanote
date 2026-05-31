@@ -12960,7 +12960,8 @@ window.projLoadAssets = function() {
         h += '<tr><td>' + escapeHtml(PROJ_ASSET_TYPE[a.assetType] || a.assetType) + '</td>'
           + '<td>' + escapeHtml(a.assetName || '-') + '</td><td>' + a.assetId + '</td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-          + '<td><a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
+          + '<td><a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
+          + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -12996,6 +12997,14 @@ window.projUnbindAsset = function(rowId) {
   fetch('/api/project/' + _projDetail.id + '/assets/' + rowId, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已解绑', 'success'); projLoadAssets(); })
     .catch(function() { showToast('解绑失败', 'error'); });
 };
+window.projAssetProjects = function(type, assetId) {
+  api('/api/project/asset-projects?type=' + encodeURIComponent(type) + '&assetId=' + assetId).then(function(res) {
+    var ps = (res && res.code === 0) ? (res.data || []) : [];
+    if (!ps.length) { showToast('该资产仅属于当前项目', 'info'); return; }
+    var names = ps.map(function(p) { return p.projectName + '(' + p.projectCode + ')'; }).join('、');
+    showToast('归属项目：' + names, 'info');
+  }).catch(function() { showToast('查询失败', 'error'); });
+};
 
 /* ===== PM-M4：概览大盘 ===== */
 window.projLoadOverview = function() {
@@ -13014,6 +13023,27 @@ window.projLoadOverview = function() {
       + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">资产分布</div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
       + Object.keys(PROJ_ASSET_TYPE).map(function(k) { return '<span>' + PROJ_ASSET_TYPE[k] + '：<b>' + (ac[k] || 0) + '</b></span>'; }).join('')
       + '</div></div>';
+    // 绑定同步任务运行
+    var jr = d.jobRuns || {};
+    if (jr.total > 0) {
+      h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;margin-bottom:14px;">'
+        + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">绑定同步任务运行</div>'
+        + '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;flex-wrap:wrap;">'
+        + '<span>成功 <b style="color:#52c41a;">' + (jr.success || 0) + '</b></span>'
+        + '<span>失败 <b style="color:#ff4d4f;">' + (jr.failed || 0) + '</b></span>'
+        + '<span>运行中 <b style="color:#1677ff;">' + (jr.running || 0) + '</b></span>'
+        + '<span>未运行 <b style="color:#8c8c8c;">' + (jr.neverRun || 0) + '</b></span></div>';
+      var rec = jr.recent || [];
+      if (rec.length) {
+        h += '<div style="font-size:12px;line-height:1.9;">';
+        rec.forEach(function(x) {
+          var c = x.status === 'SUCCESS' ? '#52c41a' : (x.status === 'FAILED' ? '#ff4d4f' : (x.status === 'RUNNING' ? '#1677ff' : '#8c8c8c'));
+          h += '<div style="display:flex;gap:8px;"><span style="flex:1;">' + escapeHtml(x.name || '-') + '</span><span style="color:' + c + ';">' + escapeHtml(x.status || '-') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((x.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
+        });
+        h += '</div>';
+      }
+      h += '</div>';
+    }
     var acts = d.activity || [];
     h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
       + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">最近活动</div>';

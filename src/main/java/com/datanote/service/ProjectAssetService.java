@@ -14,6 +14,7 @@ import java.util.*;
 public class ProjectAssetService {
 
     private final DnProjectAssetMapper assetMapper;
+    private final DnProjectMapper projectMapper;
     private final ProjectService projectService;
     private final DnSyncJobMapper syncJobMapper;
     private final DnScriptMapper scriptMapper;
@@ -94,6 +95,24 @@ public class ProjectAssetService {
 
     public static String typeLabel(String type) {
         return TYPE_LABEL.getOrDefault(type, type);
+    }
+
+    /** 资产反查：该资产被哪些项目绑定（返回 {projectId, projectName, projectCode}）。 */
+    public List<Map<String, Object>> projectsOfAsset(String type, Long assetId) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (!TYPES.contains(type) || assetId == null) return out;
+        List<DnProjectAsset> bindings = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getAssetType, type).eq(DnProjectAsset::getAssetId, assetId));
+        for (DnProjectAsset b : bindings) {
+            com.datanote.model.DnProject p = projectMapper.selectById(b.getProjectId());
+            if (p == null || "DELETED".equals(p.getStatus())) continue;
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("projectId", p.getId());
+            m.put("projectName", p.getProjectName());
+            m.put("projectCode", p.getProjectCode());
+            out.add(m);
+        }
+        return out;
     }
 
     private List<Object[]> allOfType(String type) {

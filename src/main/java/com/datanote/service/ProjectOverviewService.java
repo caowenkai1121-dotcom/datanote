@@ -24,6 +24,7 @@ public class ProjectOverviewService {
     private final DnProjectMemberMapper memberMapper;
     private final DnProjectAssetMapper assetMapper;
     private final DnProjectReleaseMapper releaseMapper;
+    private final com.datanote.mapper.DnTaskExecutionMapper taskExecutionMapper;
 
     public Map<String, Object> overview(Long projectId) {
         DnProject p = projectService.getById(projectId);
@@ -52,7 +53,57 @@ public class ProjectOverviewService {
         r.put("releaseReleased", released);
 
         r.put("activity", buildActivity(projectId, releases));
+        r.put("jobRuns", boundJobRuns(projectId));
         return r;
+    }
+
+    /** 绑定的同步任务最近运行聚合：按最新一次执行统计成功/失败/运行中 + 最近列表。 */
+    private Map<String, Object> boundJobRuns(Long projectId) {
+        List<DnProjectAsset> jobs = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, "SYNC_JOB"));
+        long success = 0, failed = 0, running = 0, neverRun = 0;
+        List<Object[]> recents = new ArrayList<>(); // [time, name, status]
+        for (DnProjectAsset job : jobs) {
+            List<com.datanote.model.DnTaskExecution> ex = taskExecutionMapper.selectList(
+                    new LambdaQueryWrapper<com.datanote.model.DnTaskExecution>()
+                            .eq(com.datanote.model.DnTaskExecution::getSyncTaskId, job.getAssetId())
+                            .eq(com.datanote.model.DnTaskExecution::getTaskType, "DbSync")
+                            .orderByDesc(com.datanote.model.DnTaskExecution::getId).last("LIMIT 1"));
+            if (ex.isEmpty()) {
+                neverRun++;
+                continue;
+            }
+            com.datanote.model.DnTaskExecution e = ex.get(0);
+            String st = e.getStatus();
+            if ("SUCCESS".equals(st)) success++;
+            else if ("FAILED".equals(st)) failed++;
+            else if ("RUNNING".equals(st)) running++;
+            recents.add(new Object[]{e.getStartTime(), job.getAssetName(), st});
+        }
+        recents.sort((x, y) -> {
+            LocalDateTime a = (LocalDateTime) x[0], b = (LocalDateTime) y[0];
+            if (a == null && b == null) return 0;
+            if (a == null) return 1;
+            if (b == null) return -1;
+            return b.compareTo(a);
+        });
+        List<Map<String, Object>> recent = new ArrayList<>();
+        for (int i = 0; i < recents.size() && i < 8; i++) {
+            Object[] e = recents.get(i);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("at", e[0] == null ? null : e[0].toString());
+            m.put("name", e[1]);
+            m.put("status", e[2]);
+            recent.add(m);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", jobs.size());
+        out.put("success", success);
+        out.put("failed", failed);
+        out.put("running", running);
+        out.put("neverRun", neverRun);
+        out.put("recent", recent);
+        return out;
     }
 
     /** 合成活动流：成员加入 / 资产绑定 / 发布事件，按时间倒序取前 15。 */

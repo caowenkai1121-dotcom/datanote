@@ -172,6 +172,12 @@ public class ProjectController {
         }
     }
 
+    @Operation(summary = "资产反查所属项目")
+    @GetMapping("/asset-projects")
+    public R<List<java.util.Map<String, Object>>> assetProjects(@RequestParam String type, @RequestParam Long assetId) {
+        return R.ok(projectAssetService.projectsOfAsset(type, assetId));
+    }
+
     @Operation(summary = "可绑定资产候选")
     @GetMapping("/{id}/asset-candidates")
     public R<List<java.util.Map<String, Object>>> assetCandidates(@PathVariable Long id, @RequestParam String type) {
