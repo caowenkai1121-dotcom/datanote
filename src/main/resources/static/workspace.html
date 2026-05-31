@@ -3284,19 +3284,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r18">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r19">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r18"></script>
-<script src="js/gov-assets.js?v=g3r18"></script>
-<script src="js/gov-lineage.js?v=g3r18"></script>
-<script src="js/gov-quality.js?v=g3r18"></script>
-<script src="js/gov-standard.js?v=g3r18"></script>
-<script src="js/gov-classification.js?v=g3r18"></script>
-<script src="js/gov-security.js?v=g3r18"></script>
-<script src="js/gov-health.js?v=g3r18"></script>
-<script src="js/gov-audit.js?v=g3r18"></script>
-<script src="js/gov-overview.js?v=g3r18"></script>
-<script src="js/gov-subject.js?v=g3r18"></script>
+<script src="js/dn-common.js?v=g3r19"></script>
+<script src="js/gov-assets.js?v=g3r19"></script>
+<script src="js/gov-lineage.js?v=g3r19"></script>
+<script src="js/gov-quality.js?v=g3r19"></script>
+<script src="js/gov-standard.js?v=g3r19"></script>
+<script src="js/gov-classification.js?v=g3r19"></script>
+<script src="js/gov-security.js?v=g3r19"></script>
+<script src="js/gov-health.js?v=g3r19"></script>
+<script src="js/gov-audit.js?v=g3r19"></script>
+<script src="js/gov-overview.js?v=g3r19"></script>
+<script src="js/gov-subject.js?v=g3r19"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14109,9 +14109,9 @@ function projGanttHtml(tasks, milestones, today) {
     var overdue = e && td && e < td && prog < 100;
     var barColor = prog >= 100 ? '#52c41a' : overdue ? '#ff4d4f' : 'var(--primary)';
     rows += '<div style="display:flex;align-items:center;height:34px;border-bottom:1px solid var(--divider);">'
-      + '<div style="width:150px;flex-shrink:0;font-size:12px;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(m.name || '') + '">' + escapeHtml(m.name || '里程碑') + '</div>'
+      + '<div onclick="projMilestoneDetail(' + m.id + ')" style="width:150px;flex-shrink:0;font-size:12px;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:var(--primary);" title="点击查看里程碑任务: ' + escapeHtml(m.name || '') + '">' + escapeHtml(m.name || '里程碑') + '</div>'
       + '<div style="flex:1;position:relative;height:100%;">'
-      + '<div title="' + escapeHtml((m.startDate || '?') + ' ~ ' + (m.endDate || '?') + ' · ' + doneN + '/' + mt.length + ' 完成 ' + prog + '%') + '" style="position:absolute;left:' + left.toFixed(2) + '%;width:' + w.toFixed(2) + '%;top:8px;height:18px;background:var(--bg-hover,#eee);border-radius:9px;overflow:hidden;border:1px solid ' + barColor + ';">'
+      + '<div onclick="projMilestoneDetail(' + m.id + ')" title="' + escapeHtml((m.startDate || '?') + ' ~ ' + (m.endDate || '?') + ' · ' + doneN + '/' + mt.length + ' 完成 ' + prog + '% · 点击详情') + '" style="position:absolute;left:' + left.toFixed(2) + '%;width:' + w.toFixed(2) + '%;top:8px;height:18px;background:var(--bg-hover,#eee);border-radius:9px;overflow:hidden;border:1px solid ' + barColor + ';cursor:pointer;">'
       + '<div style="height:100%;width:' + prog + '%;background:' + barColor + ';opacity:.85;"></div>'
       + '<span style="position:absolute;inset:0;display:flex;align-items:center;padding-left:8px;font-size:10px;color:var(--text-regular);white-space:nowrap;">' + prog + '% (' + doneN + '/' + mt.length + ')</span>'
       + '</div></div></div>';
@@ -14121,6 +14121,40 @@ function projGanttHtml(tasks, milestones, today) {
     + '<div style="position:relative;">' + todayLine + rows + '</div>'
     + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:6px;">条形=里程碑周期, 填充=任务完成率; 红线=今日; 红框=超期未完成。</div>';
 }
+// 里程碑详情(大功能): 甘特/列表点击里程碑→任务清单按状态分组+进度
+window.projMilestoneDetail = function(msId) {
+  var m = (_projMilestones || []).find(function(x) { return x.id === msId; });
+  if (!m) { showToast('里程碑不存在', 'error'); return; }
+  var mt = (_projTasksAll || []).filter(function(t) { return t.milestoneId === msId; });
+  var today = new Date().toISOString().slice(0, 10);
+  var doneN = mt.filter(function(t) { return t.status === 'DONE'; }).length;
+  var prog = mt.length ? Math.round(doneN * 100 / mt.length) : 0;
+  var overdueN = mt.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < today; }).length;
+  var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">'
+    + '周期 ' + escapeHtml(m.startDate || '?') + ' ~ ' + escapeHtml(m.endDate || '?')
+    + ' · 任务 ' + mt.length + ' · 完成 ' + doneN + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</div>';
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#52c41a' : 'var(--primary)') + ';"></div></div></div>';
+  if (!mt.length) h += '<div style="padding:16px;text-align:center;color:var(--text-muted);">该里程碑暂无关联任务</div>';
+  else {
+    ['DOING', 'TODO', 'DONE'].forEach(function(st) {
+      var g = mt.filter(function(t) { return t.status === st; });
+      if (!g.length) return;
+      g.sort(function(a, b) { return (a.dueDate || '9999').localeCompare(b.dueDate || '9999'); });
+      h += '<div style="font-weight:600;font-size:12px;margin:10px 0 4px;color:' + TASK_STATUS[st].c + ';">' + TASK_STATUS[st].t + ' (' + g.length + ')</div>';
+      g.forEach(function(t) {
+        var od = t.dueDate && t.status !== 'DONE' && t.dueDate < today;
+        var pr = TASK_PRIO[t.priority] || { t: '', c: 'var(--text-muted)' };
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--divider);font-size:12.5px;">'
+          + '<span style="width:3px;height:14px;background:' + pr.c + ';border-radius:2px;flex-shrink:0;"></span>'
+          + '<a href="#" onclick="projCloseModalBox&&projCloseModalBox();projTaskModal(' + t.id + ');return false;" style="flex:1;color:var(--text-regular);text-decoration:none;">' + escapeHtml(t.title) + '</a>'
+          + (t.assignee ? '<span style="font-size:11px;color:var(--text-muted);">@' + escapeHtml(t.assignee) + '</span>' : '')
+          + (t.dueDate ? '<span style="font-size:11px;' + (od ? 'color:#ff4d4f;font-weight:600;' : 'color:var(--text-muted);') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
+          + '</div>';
+      });
+    });
+  }
+  projShowModalBox('里程碑 · ' + (m.name || ''), h);
+};
 var _projKbDragId = null;
 window.projKbDragStart = function(ev, id) { _projKbDragId = id; ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', String(id)); } catch (e) {} var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = '0.5'; };
 window.projKbDragEnd = function(ev) { var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = ''; };
