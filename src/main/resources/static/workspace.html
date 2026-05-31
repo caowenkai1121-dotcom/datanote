@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r15">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r16">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r15"></script>
-<script src="js/gov-assets.js?v=q100r15"></script>
-<script src="js/gov-lineage.js?v=q100r15"></script>
-<script src="js/gov-quality.js?v=q100r15"></script>
-<script src="js/gov-standard.js?v=q100r15"></script>
-<script src="js/gov-classification.js?v=q100r15"></script>
-<script src="js/gov-security.js?v=q100r15"></script>
-<script src="js/gov-health.js?v=q100r15"></script>
-<script src="js/gov-audit.js?v=q100r15"></script>
-<script src="js/gov-overview.js?v=q100r15"></script>
-<script src="js/gov-subject.js?v=q100r15"></script>
+<script src="js/dn-common.js?v=q100r16"></script>
+<script src="js/gov-assets.js?v=q100r16"></script>
+<script src="js/gov-lineage.js?v=q100r16"></script>
+<script src="js/gov-quality.js?v=q100r16"></script>
+<script src="js/gov-standard.js?v=q100r16"></script>
+<script src="js/gov-classification.js?v=q100r16"></script>
+<script src="js/gov-security.js?v=q100r16"></script>
+<script src="js/gov-health.js?v=q100r16"></script>
+<script src="js/gov-audit.js?v=q100r16"></script>
+<script src="js/gov-overview.js?v=q100r16"></script>
+<script src="js/gov-subject.js?v=q100r16"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14617,7 +14617,7 @@ window.loadProjectHome = function() {
     var mine = (d.myProjects || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(p.projectCode || '') + '</span></div>'; }).join('') || empty();
     var favs = (d.favorites || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">★ ' + escapeHtml(p.projectName) + '</div>'; }).join('') || empty();
     var recent = (d.recent || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((p.accessAt || '').replace('T', ' ').slice(0, 16)) + '</span></div>'; }).join('') || empty();
-    var appr = (d.pendingApprovals || []).map(function(a) { return '<div style="padding:3px 0;">' + escapeHtml(a.projectName) + ' v' + a.versionNo + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(a.title || '') + '</span> <a href="#" onclick="projOpenDetailById(' + a.projectId + ');return false;" style="color:var(--primary);">去处理</a></div>'; }).join('') || empty();
+    var appr = (d.pendingApprovals || []).map(function(a) { return '<div style="padding:3px 0;">' + escapeHtml(a.projectName) + ' v' + escapeHtml(String(a.versionNo == null ? '' : a.versionNo)) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(a.title || '') + '</span> <a href="#" onclick="projOpenDetailById(' + parseInt(a.projectId, 10) + ');return false;" style="color:var(--primary);">去处理</a></div>'; }).join('') || empty();
     var _homeToday = new Date().toISOString().slice(0, 10);
     var overdueN = (d.myTasks || []).filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday; }).length;
     var tasks = (d.myTasks || []).map(function(t) {
@@ -14645,6 +14645,8 @@ window.loadProjectHome = function() {
         + '<div style="width:84px;height:84px;border-radius:50%;background:conic-gradient(#52c41a 0 ' + t1.toFixed(1) + '%,#1677ff ' + t1.toFixed(1) + '% ' + t2.toFixed(1) + '%,#8c8c8c ' + t2.toFixed(1) + '% 100%);position:relative;flex-shrink:0;"><div style="position:absolute;inset:16px;background:var(--bg-card,#fff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + mt.length + '</div></div>'
         + '<div style="font-size:12px;line-height:2;"><div><span style="color:#52c41a;">●</span> 完成 ' + tDone + '</div><div><span style="color:#1677ff;">●</span> 进行中 ' + tDoing + '</div><div><span style="color:#8c8c8c;">●</span> 待办 ' + tTodo + '</div></div>'
         + '<div style="margin-left:auto;font-size:12px;color:var(--text-muted);">我的任务概览</div></div>';
+    } else {
+      donut = '<div style="margin-bottom:14px;padding:14px;border:1px solid var(--divider);border-radius:8px;text-align:center;color:var(--text-muted);font-size:13px;">🎉 暂无待办任务，保持节奏！</div>';
     }
     box.innerHTML = kpi + donut + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
       + card('我负责的项目 (' + (d.myProjects || []).length + ')', mine)
@@ -14675,7 +14677,7 @@ window.loadProjectTemplates = function() {
 window.projDeleteTemplate = function(tid) {
   msgConfirm('删除模板', '删除该模板？', '确定删除').then(function(ok) {
     if (!ok) return;
-  fetch('/api/project/templates/' + tid, { method: 'DELETE' }).then(_handleResponse).then(function() { loadProjectTemplates(); }).catch(function() { showToast('删除失败', 'error'); });
+  fetch('/api/project/templates/' + tid, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('模板已删除', 'success'); loadProjectTemplates(); }).catch(function() { showToast('删除失败', 'error'); });
   });
 };
 window.projFromTemplateModal = function(presetTid) {
@@ -19231,7 +19233,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
     chunk.forEach(function(cp) {
       var tbl = escapeHtml(cp.sourceTable || '-');
       var cursor = escapeHtml(String(cp.cursorValue != null ? cp.cursorValue : '-'));
-      var rows = cp.rowCount != null ? cp.rowCount : '-';
+      var rows = cp.rowCount != null ? (Number(cp.rowCount) || 0).toLocaleString() : '-';
       var updAt = escapeHtml(dbsyncFmtTime(cp.updatedAt));
       html += '<tr>'
         + '<td>' + tbl + '</td>'
