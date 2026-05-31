@@ -3284,19 +3284,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r27">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r28">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r27"></script>
-<script src="js/gov-assets.js?v=g3r27"></script>
-<script src="js/gov-lineage.js?v=g3r27"></script>
-<script src="js/gov-quality.js?v=g3r27"></script>
-<script src="js/gov-standard.js?v=g3r27"></script>
-<script src="js/gov-classification.js?v=g3r27"></script>
-<script src="js/gov-security.js?v=g3r27"></script>
-<script src="js/gov-health.js?v=g3r27"></script>
-<script src="js/gov-audit.js?v=g3r27"></script>
-<script src="js/gov-overview.js?v=g3r27"></script>
-<script src="js/gov-subject.js?v=g3r27"></script>
+<script src="js/dn-common.js?v=g3r28"></script>
+<script src="js/gov-assets.js?v=g3r28"></script>
+<script src="js/gov-lineage.js?v=g3r28"></script>
+<script src="js/gov-quality.js?v=g3r28"></script>
+<script src="js/gov-standard.js?v=g3r28"></script>
+<script src="js/gov-classification.js?v=g3r28"></script>
+<script src="js/gov-security.js?v=g3r28"></script>
+<script src="js/gov-health.js?v=g3r28"></script>
+<script src="js/gov-audit.js?v=g3r28"></script>
+<script src="js/gov-overview.js?v=g3r28"></script>
+<script src="js/gov-subject.js?v=g3r28"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -18538,12 +18538,66 @@ window.dbsyncClearDetailLog = function() {
   var panel = document.getElementById('dbsyncDetailLogPanel');
   if (panel) panel.innerHTML = '<span style="color:var(--text-muted);">日志已清空。</span>';
 };
+// 任务快速切换命令面板(大功能, Ctrl/Cmd+K)
+var _dbsyncQsIdx = 0, _dbsyncQsRows = [];
+window.dbsyncQuickSwitch = function() {
+  var old = document.getElementById('dbsyncQsOverlay'); if (old) { old.remove(); return; }
+  var ov = document.createElement('div');
+  ov.id = 'dbsyncQsOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:100001;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = '<div style="width:560px;max-width:92vw;background:var(--bg-card,#fff);border-radius:12px;box-shadow:0 12px 48px rgba(0,0,0,.24);overflow:hidden;">'
+    + '<input id="dbsyncQsInput" placeholder="搜索任务名/源/目标，↑↓ 选择，Enter 打开详情，Esc 关闭" autocomplete="off" style="width:100%;box-sizing:border-box;padding:14px 16px;border:0;border-bottom:1px solid var(--divider);font-size:14px;outline:none;background:transparent;color:var(--text-regular);">'
+    + '<div id="dbsyncQsList" style="max-height:50vh;overflow:auto;"></div></div>';
+  document.body.appendChild(ov);
+  var input = document.getElementById('dbsyncQsInput');
+  _dbsyncQsIdx = 0; dbsyncQsRender('');
+  input.oninput = function() { _dbsyncQsIdx = 0; dbsyncQsRender(input.value); };
+  input.onkeydown = function(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); _dbsyncQsIdx = Math.min(_dbsyncQsRows.length - 1, _dbsyncQsIdx + 1); dbsyncQsHi(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _dbsyncQsIdx = Math.max(0, _dbsyncQsIdx - 1); dbsyncQsHi(); }
+    else if (e.key === 'Enter') { e.preventDefault(); var r = _dbsyncQsRows[_dbsyncQsIdx]; if (r) { ov.remove(); dbsyncOpenDetail(r.id); } }
+    else if (e.key === 'Escape') { ov.remove(); }
+  };
+  setTimeout(function() { input.focus(); }, 30);
+};
+function dbsyncQsRender(kw) {
+  kw = (kw || '').trim().toLowerCase();
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#1890ff'], SUCCESS: ['成功', '#52c41a'] };
+  var list = (_dbsyncAllJobs || []).filter(function(j) {
+    if (!kw) return true;
+    return ((j.jobName || '') + ' ' + (j.sourceDsName || '') + '.' + (j.sourceDb || '') + ' ' + (j.targetDsName || '') + '.' + (j.targetDb || '')).toLowerCase().indexOf(kw) >= 0;
+  }).slice(0, 30);
+  _dbsyncQsRows = list;
+  var box = document.getElementById('dbsyncQsList'); if (!box) return;
+  if (!list.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">无匹配任务</div>'; return; }
+  box.innerHTML = list.map(function(j, i) {
+    var st = stMeta[j.status] || [j.status || '', '#8c8c8c'];
+    return '<div class="dbsync-qs-row" data-i="' + i + '" onclick="(function(){document.getElementById(\'dbsyncQsOverlay\').remove();dbsyncOpenDetail(' + j.id + ');})()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--divider);">'
+      + '<span style="font-weight:500;font-size:13px;">' + escapeHtml(j.jobName || ('#' + j.id)) + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml((j.sourceDb || '') + '→' + (j.targetDb || '')) + '</span>'
+      + '<span style="font-size:11px;color:' + st[1] + ';margin-left:auto;">' + escapeHtml(st[0]) + '</span></div>';
+  }).join('');
+  dbsyncQsHi();
+}
+function dbsyncQsHi() {
+  Array.prototype.slice.call(document.querySelectorAll('#dbsyncQsList .dbsync-qs-row')).forEach(function(r, i) {
+    var on = i === _dbsyncQsIdx; r.style.background = on ? 'var(--primary-bg,#e6f0ff)' : ''; if (on) r.scrollIntoView({ block: 'nearest' });
+  });
+}
 // Esc 关闭：优先收行菜单，否则关抽屉
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    var qs = document.getElementById('dbsyncQsOverlay'); if (qs) { qs.remove(); return; }
     var menu = document.getElementById('dbsyncRowMenu');
     if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
     if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
+    return;
+  }
+  // Ctrl/Cmd+K 任务快速切换(dbsync 视图激活时)
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    var v2 = document.getElementById('viewDbSync');
+    if (v2 && v2.classList.contains('active')) { e.preventDefault(); dbsyncQuickSwitch(); }
     return;
   }
   // 全局快捷键: 仅 dbsync 视图可见、未在输入框/弹窗时生效
