@@ -1864,8 +1864,11 @@ html, body {
 .dbsync-drawer ::-webkit-scrollbar, .g-modal ::-webkit-scrollbar, #projWikiContent ::-webkit-scrollbar, .dbsync-modal-body::-webkit-scrollbar { width: 8px; height: 8px; }
 .dbsync-drawer ::-webkit-scrollbar-thumb, .g-modal ::-webkit-scrollbar-thumb, #projWikiContent ::-webkit-scrollbar-thumb, .dbsync-modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 4px; }
 .dbsync-drawer ::-webkit-scrollbar-thumb:hover, .g-modal ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.32); }
-/* 键盘焦点可见(无障碍) */
-.btn:focus-visible, a:focus-visible, .dbsync-form-select:focus-visible, .dbsync-form-input:focus-visible { outline: 2px solid var(--primary, #1890ff); outline-offset: 1px; }
+/* 键盘焦点可见(无障碍) — 覆盖全表单控件 */
+.btn:focus-visible, a:focus-visible, .dbsync-form-select:focus-visible, .dbsync-form-input:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary, #1890ff); outline-offset: 1px; }
+/* 只读输入禁用态视觉 */
+input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 /* 卡片网格统一悬浮过渡 */
 .dbsync-job-card { transition: box-shadow .15s, transform .15s; }
 /* 禁用态按钮视觉统一(UX) */
@@ -3306,19 +3309,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r4">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r5">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r4"></script>
-<script src="js/gov-assets.js?v=q100r4"></script>
-<script src="js/gov-lineage.js?v=q100r4"></script>
-<script src="js/gov-quality.js?v=q100r4"></script>
-<script src="js/gov-standard.js?v=q100r4"></script>
-<script src="js/gov-classification.js?v=q100r4"></script>
-<script src="js/gov-security.js?v=q100r4"></script>
-<script src="js/gov-health.js?v=q100r4"></script>
-<script src="js/gov-audit.js?v=q100r4"></script>
-<script src="js/gov-overview.js?v=q100r4"></script>
-<script src="js/gov-subject.js?v=q100r4"></script>
+<script src="js/dn-common.js?v=q100r5"></script>
+<script src="js/gov-assets.js?v=q100r5"></script>
+<script src="js/gov-lineage.js?v=q100r5"></script>
+<script src="js/gov-quality.js?v=q100r5"></script>
+<script src="js/gov-standard.js?v=q100r5"></script>
+<script src="js/gov-classification.js?v=q100r5"></script>
+<script src="js/gov-security.js?v=q100r5"></script>
+<script src="js/gov-health.js?v=q100r5"></script>
+<script src="js/gov-audit.js?v=q100r5"></script>
+<script src="js/gov-overview.js?v=q100r5"></script>
+<script src="js/gov-subject.js?v=q100r5"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4522,7 +4525,7 @@ html, body {
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row" style="grid-column:1/-1;">
-              <label class="dbsync-form-label">任务名称 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">任务名称 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <input class="dbsync-form-input" id="dfsJobName" placeholder="请输入任务名称">
             </div>
             <div class="dbsync-form-row">
@@ -4532,7 +4535,7 @@ html, body {
               </select>
             </div>
             <div class="dbsync-form-row" style="grid-column:1/-1;">
-              <label class="dbsync-form-label">同步模式 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">同步模式 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <div style="display:flex;gap:16px;padding:8px 0;">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
                   <input type="radio" name="dfsSyncMode" value="FULL" checked onchange="dbsyncOnModeChange()"> 全量同步 FULL
@@ -4554,13 +4557,13 @@ html, body {
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">源数据源 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">源数据源 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <select class="dbsync-form-select" id="dfsSrcDsId" onchange="dbsyncLoadSrcDbs()">
                 <option value="">请选择数据源</option>
               </select>
             </div>
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">源数据库 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">源数据库 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <select class="dbsync-form-select" id="dfsSrcDb" onchange="dbsyncLoadSrcTables()">
                 <option value="">请选择数据库</option>
               </select>
@@ -4574,13 +4577,13 @@ html, body {
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">目标数据源 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">目标数据源 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <select class="dbsync-form-select" id="dfsTgtDsId" onchange="dbsyncLoadTgtDbs()">
                 <option value="">请选择数据源</option>
               </select>
             </div>
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">目标数据库 <span style="color:#ff4d4f">*</span></label>
+              <label class="dbsync-form-label">目标数据库 <span style="color:var(--error,#ff4d4f)">*</span></label>
               <select class="dbsync-form-select" id="dfsTgtDb">
                 <option value="">请选择数据库</option>
               </select>
