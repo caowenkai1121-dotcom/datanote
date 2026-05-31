@@ -266,13 +266,14 @@
         text: title + '（共 ' + list.length + ' 个表）' }));
       box.appendChild(DN.table({
         columns: [
-          { label: '表', render: function (n) { return n.db + '.' + n.table; } },
-          { label: '层级', align: 'center', render: function (n) { return DN.pill('第 ' + n.depth + ' 层', 'info'); } },
-          { label: '来源', render: function (n) { return n.source ? DN.pill(n.source, 'muted') : '-'; } }
+          { label: '表', render: function (n) { return n.db + '.' + n.table; }, exportValue: function (n) { return n.db + '.' + n.table; } },
+          { label: '层级', align: 'center', render: function (n) { return DN.pill('第 ' + n.depth + ' 层', 'info'); }, exportValue: function (n) { return '第 ' + n.depth + ' 层'; } },
+          { label: '来源', render: function (n) { return n.source ? DN.pill(n.source, 'muted') : '-'; }, exportValue: function (n) { return n.source || ''; } }
         ],
         rows: list,
         searchKeys: ['db', 'table', 'source'],
         searchPlaceholder: '搜索表/来源...',
+        exportName: title,
         empty: '无' + title, emptyIcon: 'lineage'
       }));
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('查询失败: ' + e.message, 'alert')); });

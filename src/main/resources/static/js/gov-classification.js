@@ -58,6 +58,13 @@
       var box = document.getElementById('clHeat'); if (!box) return;
       box.innerHTML = '';
       if (!rows || !rows.length) { box.appendChild(DN.empty('暂无已标敏感列（先在下方采样识别并确认打标）', 'tag')); return; }
+      var totalCols = rows.reduce(function (s, r) { return s + (Number(r.count) || 0); }, 0);
+      var maxRow = rows.reduce(function (m, r) { return (Number(r.count) || 0) > (Number(m.count) || 0) ? r : m; }, rows[0]);
+      box.appendChild(DN.statRow([
+        { icon: 'tag', label: '已标敏感列', value: totalCols, tone: 'warn' },
+        { icon: 'db', label: '涉及表数', value: rows.length },
+        { icon: 'alert', label: '单表最多', value: (Number(maxRow.count) || 0) + ' 列', sub: maxRow.db + '.' + maxRow.table }
+      ]));
       box.appendChild(DN.heat(rows.map(function (r) {
         return { label: r.db + '.' + r.table, value: Number(r.count) || 0, _db: r.db, _table: r.table };
       }), {

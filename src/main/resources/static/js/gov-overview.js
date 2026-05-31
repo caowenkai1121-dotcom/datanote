@@ -153,7 +153,7 @@
     }
     c.body.appendChild(DN.bars(keys.map(function (k) {
       var v = Number(map[k]) || 0;
-      return { label: k, value: v, tone: barTone, display: fmtInt(v) };
+      return { label: k, value: v, tone: barTone, display: fmtInt(v), onClick: function () { if (window.govGoModule) govGoModule('classification'); } };
     })));
     return c.el;
   }
