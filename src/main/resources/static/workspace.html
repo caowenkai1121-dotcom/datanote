@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r17">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r18">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r17"></script>
-<script src="js/gov-assets.js?v=q100r17"></script>
-<script src="js/gov-lineage.js?v=q100r17"></script>
-<script src="js/gov-quality.js?v=q100r17"></script>
-<script src="js/gov-standard.js?v=q100r17"></script>
-<script src="js/gov-classification.js?v=q100r17"></script>
-<script src="js/gov-security.js?v=q100r17"></script>
-<script src="js/gov-health.js?v=q100r17"></script>
-<script src="js/gov-audit.js?v=q100r17"></script>
-<script src="js/gov-overview.js?v=q100r17"></script>
-<script src="js/gov-subject.js?v=q100r17"></script>
+<script src="js/dn-common.js?v=q100r18"></script>
+<script src="js/gov-assets.js?v=q100r18"></script>
+<script src="js/gov-lineage.js?v=q100r18"></script>
+<script src="js/gov-quality.js?v=q100r18"></script>
+<script src="js/gov-standard.js?v=q100r18"></script>
+<script src="js/gov-classification.js?v=q100r18"></script>
+<script src="js/gov-security.js?v=q100r18"></script>
+<script src="js/gov-health.js?v=q100r18"></script>
+<script src="js/gov-audit.js?v=q100r18"></script>
+<script src="js/gov-overview.js?v=q100r18"></script>
+<script src="js/gov-subject.js?v=q100r18"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14343,7 +14343,7 @@ window.projMilestoneDetail = function(msId) {
   var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">'
     + '周期 ' + escapeHtml(m.startDate || '?') + ' ~ ' + escapeHtml(m.endDate || '?')
     + ' · 任务 ' + mt.length + ' · 完成 ' + doneN + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</div>';
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#52c41a' : 'var(--primary)') + ';"></div></div></div>';
+  if (mt.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#52c41a' : 'var(--primary)') + ';"></div></div></div>';
   if (!mt.length) h += '<div style="padding:16px;text-align:center;color:var(--text-muted);">该里程碑暂无关联任务</div>';
   else {
     ['DOING', 'TODO', 'DONE'].forEach(function(st) {
@@ -16296,6 +16296,9 @@ function dbsyncRenderFieldMapHtml(fields, targetColumns) {
     + '<th style="width:110px;font-size:11px;">转换</th><th style="width:80px;font-size:11px;">脱敏</th>'
     + '<th style="width:28px;"></th>'
     + '</tr></thead><tbody>';
+  if (!fields || !fields.length) {
+    return html + '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:14px;font-size:12px;">未获取到源表字段，请先选择源表或检查数据源连接</td></tr></tbody></table>';
+  }
   fields.forEach(function(f) {
     var src = f.source || f.name || '';
     var tgt = f.target || '';
@@ -16383,7 +16386,9 @@ window.dbsyncToggleFieldMap = function(btn) {
 
   if (!isExisting) {
     // 自动建表：仅拉源列，目标=源（可编辑文本）
+    var loadTok = srcDb + '/' + srcTable; content.setAttribute('data-load-token', loadTok);
     api(srcUrl).then(function(res) {
+      if (content.getAttribute('data-load-token') !== loadTok) return; // 已切换源表,丢弃旧响应
       if (res.code !== 0 || !res.data || res.data.length === 0) {
         content.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">暂无字段数据（' + escapeHtml(res.msg || '空') + '）</div>';
         return;
@@ -16405,7 +16410,9 @@ window.dbsyncToggleFieldMap = function(btn) {
     return;
   }
   var tgtUrl = '/api/datasource/' + encodeURIComponent(tgtDsId) + '/columns?db=' + encodeURIComponent(tgtDb) + '&table=' + encodeURIComponent(tgtTable);
+  var loadTok2 = srcDb + '/' + srcTable + '>' + tgtDb + '/' + tgtTable; content.setAttribute('data-load-token', loadTok2);
   Promise.all([api(srcUrl), api(tgtUrl)]).then(function(r) {
+    if (content.getAttribute('data-load-token') !== loadTok2) return; // 已切换源/目标表,丢弃旧响应
     var srcCols = (r[0] && r[0].code === 0 && r[0].data) ? r[0].data : [];
     var tgtCols = (r[1] && r[1].code === 0 && r[1].data) ? r[1].data : [];
     if (srcCols.length === 0) {
@@ -18144,7 +18151,8 @@ function dbsyncDetailResetTab() {
   try { remembered = localStorage.getItem('dbsync.detailTab') || ''; } catch (e) {}
   var target = (_dbsyncAllDetailTabs.indexOf(remembered) >= 0 && document.querySelector('#dbsyncDetailTabs button[data-tab="' + remembered + '"]')) ? remembered : 'overview';
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) {
-    b.classList.toggle('active', b.getAttribute('data-tab') === target);
+    var on = b.getAttribute('data-tab') === target;
+    b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
@@ -18154,8 +18162,8 @@ function dbsyncDetailResetTab() {
   if (target === 'errors' && _dbsyncDetailJobId != null) dbsyncLoadErrorRows(_dbsyncDetailJobId);
 }
 window.dbsyncDetailTab = function(btn, tab) {
-  document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
+  document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+  btn.classList.add('active'); btn.setAttribute('aria-selected', 'true');
   try { localStorage.setItem('dbsync.detailTab', tab); } catch (e) {}
   _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
@@ -19223,7 +19231,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td>' + tbl + '</td>'
         + '<td style="font-family:monospace;">' + field + '</td>'
         + '<td style="font-family:monospace;">' + val + '</td>'
-        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetIncrementalCp(' + jobId + ',\'' + escapeHtml(cp.table || '') + '\')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetIncrementalCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.table || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -19246,7 +19254,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td style="font-family:monospace;">' + cursor + '</td>'
         + '<td>' + rows + '</td>'
         + '<td style="white-space:nowrap;">' + updAt + '</td>'
-        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetChunkCp(' + jobId + ',\'' + escapeHtml(cp.sourceTable || '') + '\')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetChunkCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.sourceTable || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';

@@ -17,6 +17,9 @@
   var DATA_TYPES = ['VARCHAR', 'CHAR', 'TEXT', 'INT', 'BIGINT', 'DECIMAL', 'DOUBLE', 'DATE', 'DATETIME', 'TIMESTAMP', 'BOOLEAN'];
   var securityLevels = ['公开', '内部', '秘密', '机密']; // 兜底，加载后用方案密级覆盖
 
+  // 落标率格式化：保留最多 1 位小数，避免后端浮点 83.33333% 难看
+  function fmtRate(v) { if (v == null) return '-'; var n = Number(v); if (isNaN(n)) return '-'; return (Math.round(n * 10) / 10) + '%'; }
+
   // 数据标准总览(大功能): 数据元/词根/码表/落标率 聚合磁贴
   function buildStdOverview(box) {
     Promise.all([
@@ -35,7 +38,7 @@
         { icon: 'list', label: '数据元', value: els.length },
         { icon: 'tag', label: '命名词根', value: roots.length },
         { icon: 'grid', label: '码表', value: dicts.length },
-        { icon: 'check', label: '最新落标率', value: rate == null ? '-' : (rate + '%'), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核' }
+        { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核' }
       ]));
     });
   }
@@ -301,7 +304,7 @@
               return delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(box, dictId); });
             } }
         ],
-        rows: data.items || [], search: false, empty: '暂无明细项，使用上方表单新增'
+        rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增'
       }));
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); });
   }
@@ -320,7 +323,7 @@
         var scope = picker.db() ? (picker.table() ? picker.db() + '.' + picker.table() : picker.db()) : '';
         var url = API + '/check/run' + (scope ? '?scope=' + encodeURIComponent(scope) : '');
         DN.post(url).then(function (run) {
-          DN.toast('稽核完成，落标率 ' + run.passRate + '%');
+          DN.toast('稽核完成，落标率 ' + fmtRate(run.passRate));
           showRun(result, run);
           loadRuns(historyBody);
         }).catch(function (e) { DN.toast(e.message, 'error'); });
@@ -379,7 +382,7 @@
           { key: 'passRate', label: '落标率', align: 'right', render: function (r) {
               if (r.passRate == null) return '-';
               var t = r.passRate >= 80 ? 'ok' : (r.passRate >= 60 ? 'warn' : 'err');
-              return DN.pill(r.passRate + '%', t);
+              return DN.pill(fmtRate(r.passRate), t);
             } },
           { key: 'createdAt', label: '时间' }
         ],
@@ -395,7 +398,7 @@
     var rate = (run.passRate == null ? 0 : Number(run.passRate));
     var tone = rate >= 80 ? 'ok' : (rate >= 60 ? 'warn' : 'err');
     box.appendChild(DN.statRow([
-      { icon: 'check', label: '落标率', value: (run.passRate == null ? '-' : run.passRate + '%'), tone: tone },
+      { icon: 'check', label: '落标率', value: fmtRate(run.passRate), tone: tone },
       { icon: 'doc', label: '稽核字段', value: run.totalCount || 0 },
       { icon: 'alert', label: '不合规', value: run.violationCount || 0, tone: 'err' }
     ]));
