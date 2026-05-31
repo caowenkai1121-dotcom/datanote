@@ -20,6 +20,9 @@
       onchange: function () { assetState.src = srcSel.value; renderAssetTable(); } });
     srcSel.innerHTML = '<option value="">全部来源</option><option value="MYSQL">MYSQL</option><option value="DORIS">DORIS</option>';
 
+    var histBox = DN.h('div', { id: 'assetCollectHistory' });
+    c.appendChild(histBox);
+
     var listCard = DN.card({ title: '资产清单', icon: 'list' });
     c.appendChild(listCard.el);
     var listBody = listCard.body;
@@ -53,11 +56,14 @@
   var assetToolbar = null;
   var quickSelEl = null;      // 快捷视图下拉（供统计磁贴联动同步）
 
+  var _collectLogs = [];
   function loadAssets() {
-    // 统计 + 最近采集状态
+    // 统计 + 最近采集状态 + 采集历史
     DN.get('/api/metadata-center/collect-logs').then(function (logs) {
-      lastLog = (logs && logs[0]) || null;
+      _collectLogs = logs || [];
+      lastLog = _collectLogs[0] || null;
       renderStats();
+      renderCollectHistory();
     }).catch(function () { lastLog = null; });
 
     DN.get('/api/metadata-center/tables').then(function (tables) {
@@ -104,6 +110,29 @@
         } },
       { icon: 'clock', label: '最近采集', value: statusText, sub: statusSub, tone: statusTone }
     ]));
+  }
+
+  // 采集历史时间线(大功能): 近若干次元数据采集记录
+  function renderCollectHistory() {
+    var box = document.getElementById('assetCollectHistory'); if (!box) return;
+    var logs = _collectLogs || [];
+    box.innerHTML = '';
+    if (!logs.length) return;
+    var card = DN.card({ title: '采集历史（近 ' + Math.min(logs.length, 10) + ' 次）', icon: 'clock' });
+    var wrap = DN.h('div', { style: 'position:relative;padding-left:16px' });
+    wrap.appendChild(DN.h('div', { style: 'position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--divider,#eee)' }));
+    logs.slice(0, 10).forEach(function (lg) {
+      var st = (lg.status || '').toUpperCase();
+      var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#52c41a' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#ff4d4f' : '#1890ff';
+      var row = DN.h('div', { style: 'position:relative;padding:0 0 12px 14px' });
+      row.innerHTML = '<div style="position:absolute;left:-16px;top:2px;width:9px;height:9px;border-radius:50%;background:' + color + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + color + '"></div>'
+        + '<div style="font-size:12px"><b style="color:' + color + '">' + DN.esc(lg.status || '-') + '</b> '
+        + '<span style="color:var(--text-muted)">' + DN.esc(lg.dbType || '') + (lg.tableCount != null ? ' · ' + lg.tableCount + ' 表' : '') + '</span></div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + DN.esc((lg.startedAt || lg.createdAt || '').toString().replace('T', ' ').slice(0, 19)) + (lg.message ? ' · ' + DN.esc(String(lg.message).slice(0, 60)) : '') + '</div>';
+      wrap.appendChild(row);
+    });
+    card.body.appendChild(wrap);
+    box.appendChild(card.el);
   }
 
   var _maxRow = 0, _maxSize = 0;
