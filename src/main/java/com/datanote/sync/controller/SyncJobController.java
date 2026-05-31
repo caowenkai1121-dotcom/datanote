@@ -206,12 +206,15 @@ public class SyncJobController {
     @Operation(summary = "移动任务到文件夹")
     @PostMapping("/{id}/move")
     public R<String> move(@PathVariable Long id, @RequestParam Long folderId) {
+        if (folderId == null || folderId < 0) {
+            return R.fail("目标文件夹非法");
+        }
         DnSyncJob job = syncJobMapper.selectById(id);
         if (job == null) {
             return R.fail("任务不存在: " + id);
         }
         // folderId==0 表示根目录，直接放行；否则校验文件夹是否存在
-        if (folderId != null && folderId != 0) {
+        if (folderId != 0) {
             if (folderMapper.selectById(folderId) == null) {
                 return R.fail("目标文件夹不存在");
             }

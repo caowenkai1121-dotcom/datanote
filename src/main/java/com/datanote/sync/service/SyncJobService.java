@@ -167,7 +167,8 @@ public class SyncJobService {
     }
 
     /** 按表回写单张表的增量断点（读现有 JSON，仅改对应表，避免整段覆盖丢其他表）。 */
-    public void updateTableCheckpoint(Long jobId, TableSyncConfig updated) {
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public synchronized void updateTableCheckpoint(Long jobId, TableSyncConfig updated) {
         DnSyncJob job = syncJobMapper.selectById(jobId);
         if (job == null) {
             return;
