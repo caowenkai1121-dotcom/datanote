@@ -3284,19 +3284,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r20">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r21">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r20"></script>
-<script src="js/gov-assets.js?v=g3r20"></script>
-<script src="js/gov-lineage.js?v=g3r20"></script>
-<script src="js/gov-quality.js?v=g3r20"></script>
-<script src="js/gov-standard.js?v=g3r20"></script>
-<script src="js/gov-classification.js?v=g3r20"></script>
-<script src="js/gov-security.js?v=g3r20"></script>
-<script src="js/gov-health.js?v=g3r20"></script>
-<script src="js/gov-audit.js?v=g3r20"></script>
-<script src="js/gov-overview.js?v=g3r20"></script>
-<script src="js/gov-subject.js?v=g3r20"></script>
+<script src="js/dn-common.js?v=g3r21"></script>
+<script src="js/gov-assets.js?v=g3r21"></script>
+<script src="js/gov-lineage.js?v=g3r21"></script>
+<script src="js/gov-quality.js?v=g3r21"></script>
+<script src="js/gov-standard.js?v=g3r21"></script>
+<script src="js/gov-classification.js?v=g3r21"></script>
+<script src="js/gov-security.js?v=g3r21"></script>
+<script src="js/gov-health.js?v=g3r21"></script>
+<script src="js/gov-audit.js?v=g3r21"></script>
+<script src="js/gov-overview.js?v=g3r21"></script>
+<script src="js/gov-subject.js?v=g3r21"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17206,6 +17206,36 @@ window.dbsyncSetStatusFilter = function(k) {
   dbsyncRenderJobs(_dbsyncRenderBase);
 };
 
+// 任务卡片视图(大功能): 网格卡片, 状态/模式/源目标/快捷操作
+var _dbsyncJobsView = (function() { try { return localStorage.getItem('dbsync.jobsView') || 'table'; } catch (e) { return 'table'; } })();
+window.dbsyncSetJobsView = function(v) { _dbsyncJobsView = v; try { localStorage.setItem('dbsync.jobsView', v); } catch (e) {} dbsyncRenderJobs(_dbsyncRenderBase); };
+function dbsyncJobsCards(list) {
+  var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' };
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#1890ff'], SUCCESS: ['成功', '#52c41a'] };
+  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
+  list.forEach(function(job) {
+    var st = stMeta[job.status] || [job.status || '未运行', '#8c8c8c'];
+    var src = escapeHtml((job.sourceDsName || ('ds#' + job.sourceDsId)) + '.' + (job.sourceDb || ''));
+    var tgt = escapeHtml((job.targetDsName || ('ds#' + job.targetDsId)) + '.' + (job.targetDb || ''));
+    var checked = _dbsyncSelected[job.id] ? 'checked' : '';
+    h += '<div class="dbsync-job-card" style="border:1px solid var(--border);border-left:3px solid ' + st[1] + ';border-radius:10px;padding:12px;background:var(--bg-card,#fff);transition:box-shadow .15s;cursor:pointer;" onclick="dbsyncOpenDetail(' + job.id + ')" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.1)\'" onmouseout="this.style.boxShadow=\'\'">'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+      + '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();dbsyncToggleSel(' + job.id + ',this)">'
+      + '<span style="font-weight:600;font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(job.jobName || '') + '">' + escapeHtml(job.jobName || ('#' + job.id)) + '</span>'
+      + '<span class="dbsync-status-badge ' + (job.status || 'CREATED') + '">' + escapeHtml(st[0]) + '</span></div>'
+      + '<div style="font-size:11px;color:var(--text-muted);line-height:1.8;">'
+      + '<div><span class="dbsync-mode-badge ' + (job.syncMode || 'FULL') + '">' + escapeHtml(modeLabel[job.syncMode] || job.syncMode || '全量') + '</span></div>'
+      + '<div title="' + src + '">源 ' + src + '</div>'
+      + '<div title="' + tgt + '">目标 ' + tgt + '</div></div>'
+      + '<div style="margin-top:8px;display:flex;gap:6px;" onclick="event.stopPropagation()">'
+      + (job.status === 'RUNNING'
+          ? '<button class="btn btn-sm btn-danger" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStop' : 'dbsyncStopJob') + '(' + job.id + ')">停止</button>'
+          : '<button class="btn btn-sm btn-success" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStart' : 'dbsyncRunJob') + '(' + job.id + ')">运行</button>')
+      + '<button class="btn btn-sm" onclick="dbsyncOpenDetail(' + job.id + ')">详情</button></div>'
+      + '</div>';
+  });
+  return h + '</div>';
+}
 function dbsyncRenderJobs(list) {
   var container = document.getElementById('dbsyncJobsContent');
   if (!container) return;
@@ -17260,7 +17290,11 @@ function dbsyncRenderJobs(list) {
   }
   var arr = function(k) { return _dbsyncSort.key === k ? (_dbsyncSort.dir > 0 ? ' ▲' : ' ▼') : ' ⇅'; };
   var allChecked = shown.every(function(j) { return _dbsyncSelected[j.id]; });
-  var html = kpiHtml + chips + bulkHtml + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
+  var jvTog = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><span style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
+    + '<a href="#" onclick="dbsyncSetJobsView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_dbsyncJobsView === 'table' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">表格</a>'
+    + '<a href="#" onclick="dbsyncSetJobsView(\'card\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_dbsyncJobsView === 'card' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">卡片</a></span></div>';
+  if (_dbsyncJobsView === 'card') { container.innerHTML = kpiHtml + chips + bulkHtml + jvTog + dbsyncJobsCards(list); return; }
+  var html = kpiHtml + chips + bulkHtml + jvTog + '<div style="overflow-x:auto;"><table class="dbsync-table"><thead><tr>'
     + '<th style="width:34px;text-align:center;"><input type="checkbox" ' + (allChecked ? 'checked' : '') + ' onclick="dbsyncToggleSelAll(this)"></th>'
     + '<th style="width:160px;cursor:pointer;" onclick="dbsyncSortBy(\'jobName\')">任务名称' + arr('jobName') + '</th>'
     + '<th style="width:90px;cursor:pointer;" onclick="dbsyncSortBy(\'syncMode\')">同步模式' + arr('syncMode') + '</th>'
