@@ -3278,19 +3278,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r10">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r11">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r10"></script>
-<script src="js/gov-assets.js?v=g3r10"></script>
-<script src="js/gov-lineage.js?v=g3r10"></script>
-<script src="js/gov-quality.js?v=g3r10"></script>
-<script src="js/gov-standard.js?v=g3r10"></script>
-<script src="js/gov-classification.js?v=g3r10"></script>
-<script src="js/gov-security.js?v=g3r10"></script>
-<script src="js/gov-health.js?v=g3r10"></script>
-<script src="js/gov-audit.js?v=g3r10"></script>
-<script src="js/gov-overview.js?v=g3r10"></script>
-<script src="js/gov-subject.js?v=g3r10"></script>
+<script src="js/dn-common.js?v=g3r11"></script>
+<script src="js/gov-assets.js?v=g3r11"></script>
+<script src="js/gov-lineage.js?v=g3r11"></script>
+<script src="js/gov-quality.js?v=g3r11"></script>
+<script src="js/gov-standard.js?v=g3r11"></script>
+<script src="js/gov-classification.js?v=g3r11"></script>
+<script src="js/gov-security.js?v=g3r11"></script>
+<script src="js/gov-health.js?v=g3r11"></script>
+<script src="js/gov-audit.js?v=g3r11"></script>
+<script src="js/gov-overview.js?v=g3r11"></script>
+<script src="js/gov-subject.js?v=g3r11"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4438,6 +4438,10 @@ html, body {
                 <button class="btn btn-primary btn-sm" onclick="dbsyncOpenCreateModal()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
                   新建任务
+                </button>
+                <button class="btn btn-sm" onclick="dbsyncOpenTemplates()" title="从模板新建 / 管理模板">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="2" y="2" width="10" height="10" rx="1.5"/><path d="M2 5h10M5 5v7"/></svg>
+                  模板
                 </button>
                 <button class="btn btn-sm" onclick="dbsyncOpenDashboard()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
@@ -16436,6 +16440,62 @@ function dbsyncFillAdvanced(job) {
 }
 
 /* ---------- 打开新建弹窗 ---------- */
+// ===== 任务模板(大功能, localStorage): 常用配置预设, 一键新建 =====
+function dbsyncGetTemplates() { try { return JSON.parse(localStorage.getItem('dbsync.templates') || '[]'); } catch (e) { return []; } }
+function dbsyncSetTemplates(arr) { try { localStorage.setItem('dbsync.templates', JSON.stringify(arr)); } catch (e) {} }
+window.dbsyncSaveAsTemplate = function(id) {
+  api('/api/sync-job/' + id).then(function(res) {
+    if (res.code !== 0 || !res.data) { showToast('读取任务失败', 'error'); return; }
+    var j = res.data;
+    msgPrompt('另存为模板', '模板名称', (j.jobName || '') + '_模板').then(function(name) {
+      if (name == null || !String(name).trim()) return;
+      var tpls = dbsyncGetTemplates();
+      tpls.push({
+        name: String(name).trim(),
+        syncMode: j.syncMode || 'FULL', writeMode: j.writeMode || 'UPSERT',
+        writeChannel: j.writeChannel || 'JDBC', batchSize: j.batchSize || 1000,
+        scheduleCron: j.scheduleCron || ''
+      });
+      dbsyncSetTemplates(tpls);
+      showToast('已保存模板「' + String(name).trim() + '」', 'success');
+    });
+  });
+};
+window.dbsyncOpenTemplates = function() {
+  var tpls = dbsyncGetTemplates();
+  var old = document.getElementById('dbsyncTplOverlay'); if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.className = 'dbsync-modal-overlay show'; ov.id = 'dbsyncTplOverlay';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  var rows = tpls.length ? tpls.map(function(t, i) {
+    return '<tr><td><b>' + escapeHtml(t.name) + '</b></td>'
+      + '<td style="font-size:11px;color:var(--text-muted);">' + escapeHtml(t.syncMode) + ' · ' + escapeHtml(t.writeMode) + ' · ' + escapeHtml(t.writeChannel) + ' · 批' + (t.batchSize || '-') + (t.scheduleCron ? ' · ' + escapeHtml(t.scheduleCron) : '') + '</td>'
+      + '<td style="white-space:nowrap;"><a href="#" onclick="dbsyncNewFromTemplate(' + i + ');return false;" style="color:var(--primary);margin-right:8px;">新建</a>'
+      + '<a href="#" onclick="dbsyncDelTemplate(' + i + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+  }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text-muted);">暂无模板。可在任务行菜单「另存为模板」保存常用配置。</td></tr>';
+  ov.innerHTML = '<div class="dbsync-modal" style="width:560px;max-width:94vw;">'
+    + '<div class="dbsync-modal-header"><span>任务模板</span><button class="dbsync-modal-close" onclick="document.getElementById(\'dbsyncTplOverlay\').remove()">&times;</button></div>'
+    + '<div class="dbsync-modal-body" style="max-height:70vh;overflow:auto;"><table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模板名</th><th>配置摘要</th><th style="width:110px;">操作</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  document.body.appendChild(ov);
+};
+window.dbsyncDelTemplate = function(i) {
+  var tpls = dbsyncGetTemplates(); tpls.splice(i, 1); dbsyncSetTemplates(tpls); dbsyncOpenTemplates();
+};
+window.dbsyncNewFromTemplate = function(i) {
+  var t = dbsyncGetTemplates()[i]; if (!t) return;
+  var ov = document.getElementById('dbsyncTplOverlay'); if (ov) ov.remove();
+  dbsyncOpenCreateModal();
+  // 弹窗渲染后回填模板字段(数据源/表需用户另选)
+  setTimeout(function() {
+    document.querySelectorAll('input[name="dfsSyncMode"]').forEach(function(r) { r.checked = (r.value === t.syncMode); });
+    _dbsyncSyncMode = t.syncMode || 'FULL';
+    var set = function(id, v) { var el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+    set('dfsWriteMode', t.writeMode); set('dfsWriteChannel', t.writeChannel);
+    set('dfsBatchSize', t.batchSize); set('dfsScheduleCron', t.scheduleCron);
+    if (window.dbsyncOnModeChange) dbsyncOnModeChange();
+    showToast('已套用模板「' + t.name + '」, 请选择源/目标数据源与表', 'info');
+  }, 60);
+};
 window.dbsyncOpenCreateModal = function() {
   _dbsyncEditId = null;
   _dbsyncSyncMode = 'FULL';
@@ -17495,6 +17555,7 @@ window.dbsyncOpenRowMenu = function(evt, id) {
     + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'checksum\',' + id + ')">' + icCheck + ' 深度对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'compare\',' + id + ')">' + icClone + ' 对比配置</button>'
+    + '<button onclick="dbsyncRowMenuAct(\'template\',' + id + ')">' + icExport + ' 另存为模板</button>'
     + '<div class="dbsync-row-menu-sep"></div>'
     + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
   menu.setAttribute('data-job', String(id));
@@ -17520,6 +17581,7 @@ window.dbsyncRowMenuAct = function(act, id) {
   else if (act === 'reconcile') dbsyncOpenReconcile(id, nm);
   else if (act === 'checksum') dbsyncOpenChecksum(id, nm);
   else if (act === 'compare') dbsyncOpenCompare(id);
+  else if (act === 'template') dbsyncSaveAsTemplate(id);
   else if (act === 'del') dbsyncDeleteJob(id, nm);
 };
 // ===== 任务配置对比(大功能): 选两个任务并排 diff =====
