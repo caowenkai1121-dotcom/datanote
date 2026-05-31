@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r10">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r11">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r10"></script>
-<script src="js/gov-assets.js?v=g2r10"></script>
-<script src="js/gov-lineage.js?v=g2r10"></script>
-<script src="js/gov-quality.js?v=g2r10"></script>
-<script src="js/gov-standard.js?v=g2r10"></script>
-<script src="js/gov-classification.js?v=g2r10"></script>
-<script src="js/gov-security.js?v=g2r10"></script>
-<script src="js/gov-health.js?v=g2r10"></script>
-<script src="js/gov-audit.js?v=g2r10"></script>
-<script src="js/gov-overview.js?v=g2r10"></script>
-<script src="js/gov-subject.js?v=g2r10"></script>
+<script src="js/dn-common.js?v=g2r11"></script>
+<script src="js/gov-assets.js?v=g2r11"></script>
+<script src="js/gov-lineage.js?v=g2r11"></script>
+<script src="js/gov-quality.js?v=g2r11"></script>
+<script src="js/gov-standard.js?v=g2r11"></script>
+<script src="js/gov-classification.js?v=g2r11"></script>
+<script src="js/gov-security.js?v=g2r11"></script>
+<script src="js/gov-health.js?v=g2r11"></script>
+<script src="js/gov-audit.js?v=g2r11"></script>
+<script src="js/gov-overview.js?v=g2r11"></script>
+<script src="js/gov-subject.js?v=g2r11"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17210,6 +17210,18 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     + card(total, '累计执行次数')
     + card(rate != null ? rate + '%' : '-', '成功率', rate != null ? 'ok' : '')
     + '</div>';
+  // 近 15 次执行稳定性迷你条(逆序取最近,正序展示)
+  if (total > 0) {
+    var recent = sorted.slice(0, 15).reverse();
+    html += '<div style="margin-top:10px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">近 ' + recent.length + ' 次执行</div><div style="display:flex;gap:3px;align-items:flex-end;">';
+    recent.forEach(function(ex) {
+      var k = dbsyncExecKind(ex.status);
+      var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#1890ff';
+      var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (ex.readCount || 0) + '/写' + (ex.writeCount || 0) + '/错' + (ex.errorCount || 0);
+      html += '<span title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:default;"></span>';
+    });
+    html += '</div></div>';
+  }
   // CDC 实时指标面板
   if (job.syncMode === 'CDC') {
     var m = cdcMetrics || {};
@@ -17519,10 +17531,22 @@ window.dbsyncClearDetailLog = function() {
 };
 // Esc 关闭：优先收行菜单，否则关抽屉
 document.addEventListener('keydown', function(e) {
-  if (e.key !== 'Escape') return;
-  var menu = document.getElementById('dbsyncRowMenu');
-  if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
-  if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
+  if (e.key === 'Escape') {
+    var menu = document.getElementById('dbsyncRowMenu');
+    if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
+    if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
+    return;
+  }
+  // 全局快捷键: 仅 dbsync 视图可见、未在输入框/弹窗时生效
+  var view = document.getElementById('viewDbSync');
+  if (!view || !view.classList.contains('active')) return;
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.altKey || e.metaKey) return;
+  if (_dbsyncDetailJobId != null) return; // 抽屉打开时不触发
+  if (e.key === '/') { var s = document.getElementById('dbsyncSearchInput'); if (s) { e.preventDefault(); s.focus(); } }
+  else if (e.key === 'n' || e.key === 'N') { if (window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }
+  else if (e.key === 'r' || e.key === 'R') { if (window.dbsyncLoadJobs) dbsyncLoadJobs(); }
+  else if (e.key === 'd' || e.key === 'D') { if (window.dbsyncOpenDashboard) dbsyncOpenDashboard(); }
 });
 
 /* ============================================================
