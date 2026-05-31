@@ -3289,19 +3289,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r35">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r36">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r35"></script>
-<script src="js/gov-assets.js?v=g3r35"></script>
-<script src="js/gov-lineage.js?v=g3r35"></script>
-<script src="js/gov-quality.js?v=g3r35"></script>
-<script src="js/gov-standard.js?v=g3r35"></script>
-<script src="js/gov-classification.js?v=g3r35"></script>
-<script src="js/gov-security.js?v=g3r35"></script>
-<script src="js/gov-health.js?v=g3r35"></script>
-<script src="js/gov-audit.js?v=g3r35"></script>
-<script src="js/gov-overview.js?v=g3r35"></script>
-<script src="js/gov-subject.js?v=g3r35"></script>
+<script src="js/dn-common.js?v=g3r36"></script>
+<script src="js/gov-assets.js?v=g3r36"></script>
+<script src="js/gov-lineage.js?v=g3r36"></script>
+<script src="js/gov-quality.js?v=g3r36"></script>
+<script src="js/gov-standard.js?v=g3r36"></script>
+<script src="js/gov-classification.js?v=g3r36"></script>
+<script src="js/gov-security.js?v=g3r36"></script>
+<script src="js/gov-health.js?v=g3r36"></script>
+<script src="js/gov-audit.js?v=g3r36"></script>
+<script src="js/gov-overview.js?v=g3r36"></script>
+<script src="js/gov-subject.js?v=g3r36"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -19094,6 +19094,41 @@ window.dbsyncLoadErrorRows = function(id) {
   });
 };
 
+// 坏行错误分布(大功能): 按源表/错误类型归类, 快速定位主因
+function dbsyncErrDist(rows) {
+  if (!rows || rows.length < 2) return '';
+  var byTable = {}, byKind = {};
+  // 错误信息粗分类(取首段/常见关键词)
+  var classify = function(msg) {
+    msg = String(msg || '');
+    if (/duplicate|Duplicate|唯一|unique/i.test(msg)) return '主键/唯一冲突';
+    if (/null|NULL|不能为空|cannot be null/i.test(msg)) return '空值约束';
+    if (/data too long|truncat|超长|out of range|overflow/i.test(msg)) return '长度/越界';
+    if (/type|类型|convert|parse|format/i.test(msg)) return '类型/转换';
+    if (/connection|connect|timeout|超时|refused/i.test(msg)) return '连接/超时';
+    if (/foreign|外键/i.test(msg)) return '外键约束';
+    return msg ? '其它' : '未知';
+  };
+  rows.forEach(function(r) {
+    var t = r.sourceTable || '未知表'; byTable[t] = (byTable[t] || 0) + 1;
+    var k = classify(r.errorMsg); byKind[k] = (byKind[k] || 0) + 1;
+  });
+  var topN = function(obj, n) { return Object.keys(obj).map(function(k) { return { k: k, v: obj[k] }; }).sort(function(a, b) { return b.v - a.v; }).slice(0, n); };
+  var max = function(arr) { return arr.reduce(function(m, x) { return Math.max(m, x.v); }, 1); };
+  var col = function(arr, color, total) {
+    var mx = max(arr);
+    return arr.map(function(x) {
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;">'
+        + '<span style="width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(x.k) + '">' + escapeHtml(x.k) + '</span>'
+        + '<span style="flex:1;height:12px;background:var(--bg-hover,#f0f1f3);border-radius:3px;overflow:hidden;"><span style="display:block;height:100%;width:' + (x.v / mx * 100).toFixed(1) + '%;background:' + color + ';"></span></span>'
+        + '<span style="width:60px;text-align:right;color:var(--text-muted);">' + x.v + ' (' + Math.round(x.v * 100 / total) + '%)</span></div>';
+    }).join('');
+  };
+  return '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;border:1px solid var(--divider);border-radius:8px;padding:10px;">'
+    + '<div style="flex:1;min-width:240px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">错误类型分布</div>' + col(topN(byKind, 6), '#ff4d4f', rows.length) + '</div>'
+    + '<div style="flex:1;min-width:240px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">源表 Top5</div>' + col(topN(byTable, 5), '#fa8c16', rows.length) + '</div>'
+    + '</div>';
+}
 function dbsyncRenderErrorRows(pane, jobId, rows) {
   var srcOpts = '';
   (function() { var seen = {}; (rows || []).forEach(function(r) { var s = r.sourceTable || ''; if (s && !seen[s]) { seen[s] = 1; srcOpts += '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>'; } }); })();
@@ -19108,7 +19143,7 @@ function dbsyncRenderErrorRows(pane, jobId, rows) {
     pane.innerHTML = bar + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无坏行记录</div>';
     return;
   }
-  var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
+  var html = bar + dbsyncErrDist(rows) + '<table class="dbsync-exec-table"><thead><tr>'
     + '<th style="white-space:nowrap;">时间</th><th>源表</th><th style="width:60px;">阶段</th><th>错误信息</th><th style="width:60px;">原始行</th>'
     + '</tr></thead><tbody>';
   rows.forEach(function(r, i) {
