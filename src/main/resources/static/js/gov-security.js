@@ -17,6 +17,12 @@
   var userTbl = null, roleTbl = null, maskTbl = null, rowTbl = null;
 
   window.GOV_RENDERERS.security = function (c) {
+    // 安全态势概览(大功能): 聚合 用户/角色/脱敏/行级 + 脱敏类型分布环图
+    var ovBox = DN.h('div', { id: 'secOverview' });
+    ovBox.appendChild(DN.skeleton(2));
+    c.appendChild(ovBox);
+    buildSecurityOverview(ovBox);
+
     // 用户
     var userCard = DN.card({ title: '用户', icon: 'user',
       actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建用户', onclick: function () { openUserForm(null); } }) });
@@ -46,6 +52,38 @@
 
     loadRoles().then(loadUsers).then(loadMaskingPolicies).then(loadRowPolicies);
   };
+
+  // ============== 安全态势概览(大功能) ==============
+  function buildSecurityOverview(box) {
+    Promise.all([
+      DN.get('/api/rbac/users').catch(function () { return []; }),
+      DN.get('/api/rbac/roles').catch(function () { return []; }),
+      DN.get('/api/gov/masking/policies').catch(function () { return []; }),
+      DN.get('/api/gov/masking/row-policies').catch(function () { return []; })
+    ]).then(function (r) {
+      if (!document.body.contains(box)) return;
+      var users = r[0] || [], roles = r[1] || [], masks = r[2] || [], rowp = r[3] || [];
+      var enabledMask = masks.filter(function (m) { return m.enabled === 1 || m.enabled === true || m.status === 1; }).length;
+      box.innerHTML = '';
+      box.appendChild(DN.statRow([
+        { icon: 'user', label: '系统用户', value: users.length },
+        { icon: 'shield', label: '角色', value: roles.length },
+        { icon: 'lock', label: '脱敏策略', value: masks.length, sub: enabledMask + ' 启用', tone: masks.length ? 'ok' : 'muted' },
+        { icon: 'layers', label: '行级策略', value: rowp.length, tone: rowp.length ? 'ok' : 'muted' }
+      ]));
+      // 脱敏策略按敏感类型分布环图
+      var byType = {};
+      masks.forEach(function (m) { var t = m.sensitiveType || '其它'; byType[t] = (byType[t] || 0) + 1; });
+      var keys = Object.keys(byType);
+      if (keys.length) {
+        var palette = ['#1890ff', '#52c41a', '#faad14', '#ff4d4f', '#13c2c2', '#722ed1'];
+        var segs = keys.map(function (k, i) { return { label: k, value: byType[k], color: palette[i % palette.length] }; });
+        var card = DN.card({ title: '脱敏策略覆盖（按敏感类型）', icon: 'lock' });
+        card.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: masks.length, centerSub: '策略', legend: true }));
+        box.appendChild(card.el);
+      }
+    });
+  }
 
   // ============== M9 脱敏策略 ==============
 
