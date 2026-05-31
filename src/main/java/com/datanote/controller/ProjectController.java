@@ -20,6 +20,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final com.datanote.service.ProjectMemberService projectMemberService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -64,6 +65,56 @@ public class ProjectController {
         try {
             projectService.delete(id);
             return R.ok("已删除");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    // ===== PM-M2：成员与项目角色 =====
+
+    @Operation(summary = "项目角色权限矩阵")
+    @GetMapping("/roles")
+    public R<List<java.util.Map<String, Object>>> roles() {
+        return R.ok(com.datanote.service.ProjectRoles.matrix());
+    }
+
+    @Operation(summary = "项目成员列表")
+    @GetMapping("/{id}/members")
+    public R<List<com.datanote.model.DnProjectMember>> members(@PathVariable Long id) {
+        try {
+            return R.ok(projectMemberService.list(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "添加成员")
+    @PostMapping("/{id}/members")
+    public R<com.datanote.model.DnProjectMember> addMember(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        try {
+            return R.ok(projectMemberService.add(id, body.get("username"), body.get("role")));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "修改成员角色")
+    @PutMapping("/{id}/members/{memberId}")
+    public R<String> changeRole(@PathVariable Long id, @PathVariable Long memberId, @RequestBody java.util.Map<String, String> body) {
+        try {
+            projectMemberService.changeRole(memberId, body.get("role"));
+            return R.ok("已更新");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "移除成员")
+    @DeleteMapping("/{id}/members/{memberId}")
+    public R<String> removeMember(@PathVariable Long id, @PathVariable Long memberId) {
+        try {
+            projectMemberService.remove(memberId);
+            return R.ok("已移除");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

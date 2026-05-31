@@ -4103,7 +4103,7 @@ html, body {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">成员权限</h2>
             </div>
-            <div style="padding:32px;text-align:center;color:var(--text-muted);">团队成员管理、角色分配和数据权限控制<br><span class="m-tag tag-plan" style="margin-top:8px;display:inline-block;">规划中</span></div>
+            <div id="projRoleMatrixBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
           </div>
           <div class="ops-dashboard" id="projectReleasePanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -4154,6 +4154,37 @@ html, body {
         </div>
       </div>
     </div>
+
+    <!-- 项目详情抽屉 -->
+    <div class="dbsync-drawer-mask" id="projDetailMask" onclick="projCloseDetail()"></div>
+    <aside class="dbsync-drawer" id="projDetailDrawer" aria-hidden="true">
+      <div class="dbsync-drawer-head">
+        <div class="dbsync-drawer-title-wrap">
+          <div class="dbsync-drawer-title">
+            <span class="name" id="projDetailName">项目</span>
+            <span id="projDetailStatus"></span>
+          </div>
+          <div class="dbsync-drawer-sub" id="projDetailSub"></div>
+        </div>
+        <div class="dbsync-drawer-head-actions">
+          <button class="dbsync-drawer-close" onclick="projCloseDetail()" title="关闭">&times;</button>
+        </div>
+      </div>
+      <div class="dbsync-drawer-tabs" id="projDetailTabs">
+        <button class="active" data-ptab="overview" onclick="projDetailTab(this,'overview')">概览</button>
+        <button data-ptab="asset" onclick="projDetailTab(this,'asset')">资产</button>
+        <button data-ptab="member" onclick="projDetailTab(this,'member')">成员</button>
+        <button data-ptab="release" onclick="projDetailTab(this,'release')">发布</button>
+        <button data-ptab="setting" onclick="projDetailTab(this,'setting')">设置</button>
+      </div>
+      <div class="dbsync-drawer-body">
+        <div class="dbsync-detail-pane" id="projPane_overview"></div>
+        <div class="dbsync-detail-pane" id="projPane_asset" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_member" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_release" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_setting" style="display:none;"></div>
+      </div>
+    </aside>
 
     <!-- === Settings View === -->
     <div class="view-quality" id="viewSettings" style="display:none;">
@@ -12562,8 +12593,8 @@ function switchProjectTab(el, tab) {
   el.classList.add('active');
   ['projectSpacePanel', 'projectMemberPanel', 'projectReleasePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
   if (tab === 'space') { document.getElementById('projectSpacePanel').style.display = ''; loadProjectSpace(); }
-  else if (tab === 'member') document.getElementById('projectMemberPanel').style.display = '';
-  else if (tab === 'release') document.getElementById('projectReleasePanel').style.display = '';
+  else if (tab === 'member') { document.getElementById('projectMemberPanel').style.display = ''; loadProjectRoleMatrix(); }
+  else if (tab === 'release') { document.getElementById('projectReleasePanel').style.display = ''; if (window.loadProjectReleaseCenter) loadProjectReleaseCenter(); }
 }
 
 /* ============================================================
@@ -12622,7 +12653,8 @@ function projRenderList() {
       + '<td>' + escapeHtml(p.owner || '-') + '</td>'
       + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
       + '<td style="white-space:nowrap;">' + escapeHtml((p.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-      + '<td><a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<td><a href="#" onclick="projOpenDetail(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>'
+      + '<a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">归档</a>' : '')
       + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#ff4d4f;">删除</a></td>'
       + '</tr>';
@@ -12682,13 +12714,150 @@ window.projSave = function() {
 };
 window.projArchive = function(id) {
   if (!confirm('确认归档该项目？归档后成员只读，可在状态筛选查看。')) return;
-  apiPost('/api/project/' + id + '/archive', {}).then(function() { showToast('已归档', 'success'); loadProjectSpace(); })
+  apiPost('/api/project/' + id + '/archive', {}).then(function() { showToast('已归档', 'success'); projCloseDetail(); loadProjectSpace(); })
     .catch(function() { showToast('归档失败', 'error'); });
 };
 window.projDelete = function(id, name) {
   if (!confirm('确认删除项目 [' + name + ']？(软删除，资产关联与成员将不再展示)')) return;
-  fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); loadProjectSpace(); })
+  fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projCloseDetail(); loadProjectSpace(); })
     .catch(function() { showToast('删除失败', 'error'); });
+};
+
+/* ===== PM-M2：项目详情抽屉 + 成员 + 设置 ===== */
+var _projDetail = null;
+var PROJ_ALL_TABS = ['overview', 'asset', 'member', 'release', 'setting'];
+
+window.projOpenDetail = function(id) {
+  var p = _projList.find(function(x) { return x.id === id; });
+  if (!p) return;
+  _projDetail = p;
+  projRenderDetailHead(p);
+  document.querySelectorAll('#projDetailTabs button').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-ptab') === 'overview'); });
+  PROJ_ALL_TABS.forEach(function(t) { var el = document.getElementById('projPane_' + t); if (el) el.style.display = (t === 'overview') ? '' : 'none'; });
+  document.getElementById('projDetailMask').classList.add('show');
+  var d = document.getElementById('projDetailDrawer');
+  d.classList.add('show'); d.setAttribute('aria-hidden', 'false');
+  projLoadPane('overview');
+};
+window.projCloseDetail = function() {
+  _projDetail = null;
+  var d = document.getElementById('projDetailDrawer'), m = document.getElementById('projDetailMask');
+  if (d) { d.classList.remove('show'); d.setAttribute('aria-hidden', 'true'); }
+  if (m) m.classList.remove('show');
+};
+window.projDetailTab = function(btn, tab) {
+  document.querySelectorAll('#projDetailTabs button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  PROJ_ALL_TABS.forEach(function(t) { var el = document.getElementById('projPane_' + t); if (el) el.style.display = (t === tab) ? '' : 'none'; });
+  projLoadPane(tab);
+};
+function projLoadPane(tab) {
+  if (_projDetail == null) return;
+  if (tab === 'member') projLoadMembers();
+  else if (tab === 'setting') projLoadSetting();
+  else if (tab === 'asset' && window.projLoadAssets) projLoadAssets();
+  else if (tab === 'overview' && window.projLoadOverview) projLoadOverview();
+  else if (tab === 'release' && window.projLoadReleases) projLoadReleases();
+  else { var el = document.getElementById('projPane_' + tab); if (el) el.innerHTML = '<div style="padding:24px;color:var(--text-muted);">即将完善</div>'; }
+}
+function projRenderDetailHead(p) {
+  document.getElementById('projDetailName').textContent = p.projectName || ('项目#' + p.id);
+  var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
+  document.getElementById('projDetailStatus').innerHTML = '<span style="font-size:12px;padding:1px 8px;border-radius:10px;background:rgba(140,140,140,.12);color:' + st.c + ';">' + escapeHtml(st.t) + '</span>';
+  document.getElementById('projDetailSub').textContent = (p.projectCode || '') + ' · ' + (PROJ_TYPE_LABEL[p.projectType] || p.projectType || '') + ' · ' + (PROJ_ENV_LABEL[p.env] || p.env || '') + ' · 负责人 ' + (p.owner || '-');
+}
+function projRoleOptions(sel) {
+  return [['OWNER', '负责人'], ['ADMIN', '管理员'], ['DEVELOPER', '开发'], ['OPS', '运维'], ['VIEWER', '访客']]
+    .map(function(r) { return '<option value="' + r[0] + '"' + (r[0] === sel ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('');
+}
+window.projLoadMembers = function() {
+  var pane = document.getElementById('projPane_member'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/members').then(function(res) {
+    var ms = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
+      + '<input id="projMemberUser" class="dbsync-form-input" style="width:160px;" placeholder="用户名">'
+      + '<select id="projMemberRole" class="dbsync-form-select" style="width:110px;">' + projRoleOptions('DEVELOPER') + '</select>'
+      + '<button class="btn btn-sm btn-primary" onclick="projAddMember()">添加成员</button>'
+      + '<a href="#" onclick="projPickUser();return false;" style="font-size:12px;color:var(--primary);margin-left:4px;">从用户列表选</a></div>';
+    if (!ms.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无成员</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>用户名</th><th>项目角色</th><th>加入时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+      ms.forEach(function(m) {
+        h += '<tr><td>' + escapeHtml(m.username) + '</td>'
+          + '<td><select class="dbsync-form-select" style="width:110px;" onchange="projChangeRole(' + m.id + ',this.value)">' + projRoleOptions(m.projectRole) + '</select></td>'
+          + '<td style="white-space:nowrap;">' + escapeHtml((m.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+          + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:#ff4d4f;">移除</a></td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    pane.innerHTML = h;
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projAddMember = function() {
+  var u = (document.getElementById('projMemberUser').value || '').trim();
+  if (!u) { showToast('请填写用户名', 'error'); return; }
+  var role = document.getElementById('projMemberRole').value;
+  apiPost('/api/project/' + _projDetail.id + '/members', { username: u, role: role }).then(function(res) {
+    if (res && res.code === 0) { showToast('已添加', 'success'); projLoadMembers(); }
+    else showToast((res && res.msg) || '添加失败', 'error');
+  }).catch(function() { showToast('添加失败', 'error'); });
+};
+window.projChangeRole = function(memberId, role) {
+  fetch('/api/project/' + _projDetail.id + '/members/' + memberId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: role }) })
+    .then(_handleResponse).then(function(res) {
+      if (res && res.code === 0) showToast('角色已更新', 'success');
+      else { showToast((res && res.msg) || '更新失败', 'error'); projLoadMembers(); }
+    }).catch(function() { showToast('更新失败', 'error'); projLoadMembers(); });
+};
+window.projRemoveMember = function(memberId) {
+  if (!confirm('确认移除该成员？')) return;
+  fetch('/api/project/' + _projDetail.id + '/members/' + memberId, { method: 'DELETE' }).then(_handleResponse).then(function(res) {
+    if (res && res.code === 0) { showToast('已移除', 'success'); projLoadMembers(); } else showToast((res && res.msg) || '移除失败', 'error');
+  }).catch(function() { showToast('移除失败', 'error'); });
+};
+window.projPickUser = function() {
+  api('/api/rbac/users').then(function(res) {
+    var users = (res && res.code === 0) ? (res.data || []) : [];
+    var names = users.map(function(u) { return u.username; }).filter(Boolean);
+    if (!names.length) { showToast('无可选用户', 'info'); return; }
+    var pick = prompt('输入用户名（可选：' + names.slice(0, 20).join(', ') + '）');
+    if (pick) document.getElementById('projMemberUser').value = pick.trim();
+  }).catch(function() { showToast('用户列表加载失败', 'error'); });
+};
+window.projLoadSetting = function() {
+  var pane = document.getElementById('projPane_setting'); if (!pane || !_projDetail) return;
+  var p = _projDetail;
+  pane.innerHTML = '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:14px;">'
+    + '<div style="font-size:13px;line-height:2;">'
+    + '<div><b>名称</b>：' + escapeHtml(p.projectName || '-') + '</div>'
+    + '<div><b>编码</b>：<span style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</span></div>'
+    + '<div><b>类型</b>：' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '　<b>环境</b>：' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</div>'
+    + '<div><b>负责人</b>：' + escapeHtml(p.owner || '-') + '　<b>敏感度</b>：' + escapeHtml(p.sensitivity === 'SENSITIVE' ? '敏感' : '普通') + '</div>'
+    + '<div><b>标签</b>：' + escapeHtml(p.tags || '-') + '</div>'
+    + '<div><b>描述</b>：' + escapeHtml(p.description || '-') + '</div></div>'
+    + '<div style="margin-top:14px;display:flex;gap:8px;">'
+    + '<button class="btn btn-sm btn-primary" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
+    + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" onclick="projArchive(' + p.id + ')">归档</button>' : '')
+    + '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
+    + '</div></div>';
+};
+
+/* ===== PM-M2：成员权限 顶级页签（角色权限矩阵） ===== */
+window.loadProjectRoleMatrix = function() {
+  var box = document.getElementById('projRoleMatrixBox'); if (!box) return;
+  box.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/roles').then(function(res) {
+    var rows = (res && res.code === 0) ? (res.data || []) : [];
+    var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">项目角色与权限矩阵（软控制：用于成员管理、发布审批人与展示，不强制拦截资产 API）。具体成员在「项目空间 → 项目详情 → 成员」管理。</div>';
+    h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>角色</th><th>权限点</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      h += '<tr><td><b>' + escapeHtml(r.label || r.role) + '</b> <span style="color:var(--text-muted);font-family:monospace;font-size:11px;">' + escapeHtml(r.role) + '</span></td>'
+        + '<td style="font-family:monospace;font-size:12px;">' + (r.perms || []).map(escapeHtml).join('、') + '</td></tr>';
+    });
+    h += '</tbody></table>';
+    box.innerHTML = h;
+  }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 
 // ===== 系统管理 tab 切换 =====
