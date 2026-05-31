@@ -4086,15 +4086,29 @@ html, body {
     <div class="view-quality" id="viewProject" style="display:none;">
       <div class="ops-layout">
         <div class="ops-sidebar">
+          <div class="ops-sidebar-item" onclick="switchProjectTab(this,'home')">工作台</div>
           <div class="ops-sidebar-item active" onclick="switchProjectTab(this,'space')">项目空间</div>
           <div class="ops-sidebar-item" onclick="switchProjectTab(this,'member')">成员权限</div>
+          <div class="ops-sidebar-item" onclick="switchProjectTab(this,'template')">模板管理</div>
           <div class="ops-sidebar-item" onclick="switchProjectTab(this,'release')">发布管理</div>
         </div>
         <div class="ops-main">
+          <div class="ops-dashboard" id="projectHomePanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h2 style="font-size:16px;font-weight:600;margin:0;">工作台</h2></div>
+            <div id="projHomeBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
+          </div>
+          <div class="ops-dashboard" id="projectTemplatePanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h2 style="font-size:16px;font-weight:600;margin:0;">模板管理</h2></div>
+            <div id="projTemplateBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
+          </div>
           <div class="ops-dashboard" id="projectSpacePanel">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">项目空间</h2>
-              <button class="btn btn-primary btn-sm" onclick="projOpenCreate()">+ 新建项目</button>
+              <span style="display:flex;gap:6px;">
+                <button class="btn btn-sm" onclick="projCompareModal()">多项目对比</button>
+                <button class="btn btn-sm" onclick="projFromTemplateModal()">从模板新建</button>
+                <button class="btn btn-primary btn-sm" onclick="projOpenCreate()">+ 新建项目</button>
+              </span>
             </div>
             <div id="projKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;"></div>
             <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
@@ -12638,9 +12652,12 @@ function switchProjectTab(el, tab) {
   el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   el.classList.add('active');
   ['projectSpacePanel', 'projectMemberPanel', 'projectReleasePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  ['projectHomePanel', 'projectTemplatePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
   if (tab === 'space') { document.getElementById('projectSpacePanel').style.display = ''; loadProjectSpace(); }
   else if (tab === 'member') { document.getElementById('projectMemberPanel').style.display = ''; loadProjectRoleMatrix(); }
   else if (tab === 'release') { document.getElementById('projectReleasePanel').style.display = ''; if (window.loadProjectReleaseCenter) loadProjectReleaseCenter(); }
+  else if (tab === 'home') { document.getElementById('projectHomePanel').style.display = ''; loadProjectHome(); }
+  else if (tab === 'template') { document.getElementById('projectTemplatePanel').style.display = ''; loadProjectTemplates(); }
 }
 
 /* ============================================================
@@ -13083,6 +13100,7 @@ window.projLoadSetting = function() {
     + '<div><b>描述</b>：' + escapeHtml(p.description || '-') + '</div></div>'
     + '<div style="margin-top:14px;display:flex;gap:8px;">'
     + '<button class="btn btn-sm btn-primary" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
+    + '<button class="btn btn-sm" onclick="projSaveAsTemplate(' + p.id + ')">存为模板</button>'
     + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" onclick="projArchive(' + p.id + ')">归档</button>' : '')
     + '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
     + '</div></div>'
@@ -13527,6 +13545,104 @@ window.projWikiSave = function() {
 window.projWikiDelete = function(pageId) {
   if (!confirm('删除该文档页面？(子页面将提升为根)')) return;
   fetch('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId, { method: 'DELETE' }).then(_handleResponse).then(function() { _projWikiCur = null; projLoadWiki(); }).catch(function() { showToast('删除失败', 'error'); });
+};
+
+/* ===== PM2-M7/M8：工作台 + 模板 + 对比 ===== */
+window.projOpenDetailById = function(id) {
+  var p = (_projList || []).find(function(x) { return x.id === id; });
+  if (p) { projOpenDetail(id); return; }
+  api('/api/project/' + id).then(function(res) { if (res && res.code === 0) { _projList = _projList || []; _projList.push(res.data); projOpenDetail(id); } });
+};
+window.loadProjectHome = function() {
+  var box = document.getElementById('projHomeBox'); if (!box) return;
+  box.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/home').then(function(res) {
+    var d = (res && res.code === 0) ? (res.data || {}) : {};
+    function card(title, inner) { return '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;"><div style="font-weight:600;margin-bottom:8px;font-size:13px;">' + title + '</div>' + inner + '</div>'; }
+    function empty() { return '<div style="color:var(--text-muted);font-size:12px;">暂无</div>'; }
+    var mine = (d.myProjects || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(p.projectCode || '') + '</span></div>'; }).join('') || empty();
+    var favs = (d.favorites || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;color:var(--primary);" onclick="projOpenDetailById(' + p.id + ')">★ ' + escapeHtml(p.projectName) + '</div>'; }).join('') || empty();
+    var recent = (d.recent || []).map(function(p) { return '<div style="padding:3px 0;cursor:pointer;" onclick="projOpenDetailById(' + p.id + ')">' + escapeHtml(p.projectName) + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((p.accessAt || '').replace('T', ' ').slice(0, 16)) + '</span></div>'; }).join('') || empty();
+    var appr = (d.pendingApprovals || []).map(function(a) { return '<div style="padding:3px 0;">' + escapeHtml(a.projectName) + ' v' + a.versionNo + ' <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml(a.title || '') + '</span> <a href="#" onclick="projOpenDetailById(' + a.projectId + ');return false;" style="color:var(--primary);">去处理</a></div>'; }).join('') || empty();
+    var tasks = (d.myTasks || []).map(function(t) { return '<div style="padding:3px 0;">' + (t.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[高] </span>' : '') + escapeHtml(t.title) + ' <span style="color:var(--text-muted);font-size:11px;">@' + escapeHtml(t.projectName) + (t.dueDate ? ' · ' + t.dueDate : '') + '</span></div>'; }).join('') || empty();
+    box.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+      + card('我负责的项目 (' + (d.myProjects || []).length + ')', mine)
+      + card('我的收藏 (' + (d.favorites || []).length + ')', favs)
+      + card('最近访问', recent)
+      + card('待我审批的发布 (' + (d.pendingApprovals || []).length + ')', appr)
+      + '</div><div style="margin-top:14px;">' + card('我的待办 (' + (d.myTasks || []).length + ')', tasks) + '</div>';
+  }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.loadProjectTemplates = function() {
+  var box = document.getElementById('projTemplateBox'); if (!box) return;
+  box.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/templates').then(function(res) {
+    var ts = _pdata(res);
+    var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">把成熟项目「存为模板」(项目详情→设置)，新建时「从模板新建」快速复用 类型/环境/标签/成员角色。</div>';
+    if (!ts.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无模板</div>';
+    else {
+      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模板名</th><th>类型</th><th>描述</th><th>创建人</th><th style="width:160px;">操作</th></tr></thead><tbody>';
+      ts.forEach(function(t) {
+        h += '<tr><td><b>' + escapeHtml(t.templateName) + '</b></td><td>' + escapeHtml(PROJ_TYPE_LABEL[t.templateType] || t.templateType || '-') + '</td><td>' + escapeHtml(t.description || '-') + '</td><td>' + escapeHtml(t.createdBy || '-') + '</td>'
+          + '<td><a href="#" onclick="projFromTemplateModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:8px;">新建项目</a><a href="#" onclick="projDeleteTemplate(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    box.innerHTML = h;
+  }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.projDeleteTemplate = function(tid) {
+  if (!confirm('删除该模板？')) return;
+  fetch('/api/project/templates/' + tid, { method: 'DELETE' }).then(_handleResponse).then(function() { loadProjectTemplates(); }).catch(function() { showToast('删除失败', 'error'); });
+};
+window.projFromTemplateModal = function(presetTid) {
+  api('/api/project/templates').then(function(res) {
+    var ts = _pdata(res);
+    if (!ts.length) { showToast('暂无模板，请先在项目详情→设置「存为模板」', 'info'); return; }
+    var opts = ts.map(function(t) { return '<option value="' + t.id + '"' + (presetTid === t.id ? ' selected' : '') + '>' + escapeHtml(t.templateName) + '</option>'; }).join('');
+    var h = '<div class="ds-form-row"><label>模板</label><select id="pftTpl" class="g-modal-input">' + opts + '</select></div>'
+      + '<div class="ds-form-row"><label>项目名称</label><input id="pftName" placeholder="新项目名称"></div>'
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projDoFromTemplate()">创建</button></div>';
+    projShowModalBox('从模板新建项目', h);
+  });
+};
+window.projDoFromTemplate = function() {
+  var tid = document.getElementById('pftTpl').value;
+  var name = (document.getElementById('pftName').value || '').trim();
+  if (!name) { showToast('请填写项目名称', 'error'); return; }
+  apiPost('/api/project/templates/' + tid + '/create', { projectName: name }).then(function(res) {
+    if (res && res.code === 0) { showToast('已创建', 'success'); projCloseModalBox(); if (document.getElementById('projectSpacePanel').style.display !== 'none') loadProjectSpace(); }
+    else showToast((res && res.msg) || '创建失败', 'error');
+  }).catch(function() { showToast('创建失败', 'error'); });
+};
+window.projCompareModal = function() {
+  api('/api/project/list').then(function(res) {
+    var ps = _pdata(res).filter(function(p) { return p.status === 'ACTIVE'; });
+    if (ps.length < 2) { showToast('至少需要 2 个活跃项目', 'info'); return; }
+    var h = '<div style="max-height:240px;overflow:auto;margin-bottom:10px;">' + ps.map(function(p) { return '<label style="display:block;padding:3px 0;cursor:pointer;"><input type="checkbox" class="pcmpChk" value="' + p.id + '"> ' + escapeHtml(p.projectName) + '</label>'; }).join('') + '</div>'
+      + '<div style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="projDoCompare()">对比</button></div><div id="pcmpResult" style="margin-top:12px;"></div>';
+    projShowModalBox('多项目对比', h);
+  });
+};
+window.projDoCompare = function() {
+  var ids = []; document.querySelectorAll('.pcmpChk:checked').forEach(function(c) { ids.push(parseInt(c.value)); });
+  if (ids.length < 2) { showToast('请至少选择 2 个项目', 'error'); return; }
+  apiPost('/api/project/compare', { ids: ids }).then(function(res) {
+    var rows = _pdata(res);
+    var box = document.getElementById('pcmpResult'); if (!box) return;
+    var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>项目</th><th>资产</th><th>成员</th><th>发布</th><th>待审批</th></tr></thead><tbody>';
+    rows.forEach(function(r) { h += '<tr><td><b>' + escapeHtml(r.projectName) + '</b></td><td>' + (r.assetTotal || 0) + '</td><td>' + (r.memberCount || 0) + '</td><td>' + (r.releaseTotal || 0) + '</td><td>' + (r.releasePending || 0) + '</td></tr>'; });
+    h += '</tbody></table>';
+    box.innerHTML = h;
+  }).catch(function() { showToast('对比失败', 'error'); });
+};
+window.projSaveAsTemplate = function(pid) {
+  var name = prompt('模板名称：', (_projDetail ? _projDetail.projectName : '') + ' 模板');
+  if (!name) return;
+  apiPost('/api/project/' + pid + '/save-as-template', { name: name.trim(), description: '' }).then(function(res) {
+    if (res && res.code === 0) showToast('已存为模板', 'success');
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
 };
 
 /* ===== PM-M5：发布管理 ===== */

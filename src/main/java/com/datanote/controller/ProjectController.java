@@ -31,6 +31,8 @@ public class ProjectController {
     private final com.datanote.service.ProjectTaskService projectTaskService;
     private final com.datanote.service.ProjectCollabService projectCollabService;
     private final com.datanote.service.ProjectWikiService projectWikiService;
+    private final com.datanote.service.ProjectTemplateService projectTemplateService;
+    private final com.datanote.service.ProjectHomeService projectHomeService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -222,6 +224,56 @@ public class ProjectController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    // ===== PM2-M7：项目模板 =====
+
+    @Operation(summary = "模板列表")
+    @GetMapping("/templates")
+    public R<List<com.datanote.model.DnProjectTemplate>> templates() {
+        return R.ok(projectTemplateService.list());
+    }
+
+    @Operation(summary = "存为模板")
+    @PostMapping("/{id}/save-as-template")
+    public R<com.datanote.model.DnProjectTemplate> saveAsTemplate(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        try { return R.ok(projectTemplateService.saveAsTemplate(id, body.get("name"), body.get("description"))); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "从模板新建项目")
+    @PostMapping("/templates/{templateId}/create")
+    public R<DnProject> createFromTemplate(@PathVariable Long templateId, @RequestBody java.util.Map<String, String> body) {
+        try { return R.ok(projectTemplateService.createFromTemplate(templateId, body.get("projectName"))); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "删除模板")
+    @DeleteMapping("/templates/{templateId}")
+    public R<String> deleteTemplate(@PathVariable Long templateId) {
+        projectTemplateService.delete(templateId);
+        return R.ok("已删除");
+    }
+
+    // ===== PM2-M8：工作台首页 + 多项目对比 =====
+
+    @Operation(summary = "工作台首页")
+    @GetMapping("/home")
+    public R<java.util.Map<String, Object>> home() {
+        return R.ok(projectHomeService.home());
+    }
+
+    @Operation(summary = "多项目对比")
+    @PostMapping("/compare")
+    public R<List<java.util.Map<String, Object>>> compare(@RequestBody java.util.Map<String, Object> body) {
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        Object arr = body.get("ids");
+        if (arr instanceof java.util.List) {
+            for (Object o : (java.util.List<?>) arr) {
+                try { ids.add(Long.valueOf(String.valueOf(o))); } catch (NumberFormatException ignore) {}
+            }
+        }
+        return R.ok(projectHomeService.compare(ids));
     }
 
     // ===== PM2-M5：文档 Wiki =====
