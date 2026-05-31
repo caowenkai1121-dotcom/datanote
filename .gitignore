@@ -35,3 +35,5 @@ src/main/resources/application-local.yml
 # Runtime data
 data/
 logs/
+
+deploy_jar.py
