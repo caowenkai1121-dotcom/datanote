@@ -3055,12 +3055,12 @@ html, body {
   display: inline-flex; align-items: center; padding: 2px 8px;
   border-radius: 10px; font-size: 11px; font-weight: 500;
 }
-.dbsync-status-badge.CREATED  { background: rgba(24,144,255,.08); color: #1890ff; }
-.dbsync-status-badge.RUNNING  { background: rgba(82,196,26,.08);  color: #52c41a; }
-.dbsync-status-badge.STOPPED  { background: rgba(118,124,130,.12); color: #767c82; }
-.dbsync-status-badge.FAILED   { background: rgba(255,77,79,.08);  color: #ff4d4f; }
-.dbsync-status-badge.PAUSED   { background: rgba(250,173,20,.08); color: #faad14; }
-.dbsync-status-badge.SUCCESS  { background: rgba(82,196,26,.08);  color: #52c41a; }
+.dbsync-status-badge.CREATED  { background: rgba(24,144,255,.10); color: #096dd9; }
+.dbsync-status-badge.RUNNING  { background: rgba(82,196,26,.12);  color: #389e0d; }
+.dbsync-status-badge.STOPPED  { background: rgba(118,124,130,.14); color: #5c6166; }
+.dbsync-status-badge.FAILED   { background: rgba(255,77,79,.10);  color: #cf1322; }
+.dbsync-status-badge.PAUSED   { background: rgba(250,173,20,.14); color: #ad6800; }
+.dbsync-status-badge.SUCCESS  { background: rgba(82,196,26,.12);  color: #389e0d; }
 .dbsync-mode-badge {
   display: inline-flex; align-items: center; padding: 2px 8px;
   border-radius: 10px; font-size: 11px; font-weight: 500;
@@ -3306,19 +3306,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r3">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r4">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r3"></script>
-<script src="js/gov-assets.js?v=q100r3"></script>
-<script src="js/gov-lineage.js?v=q100r3"></script>
-<script src="js/gov-quality.js?v=q100r3"></script>
-<script src="js/gov-standard.js?v=q100r3"></script>
-<script src="js/gov-classification.js?v=q100r3"></script>
-<script src="js/gov-security.js?v=q100r3"></script>
-<script src="js/gov-health.js?v=q100r3"></script>
-<script src="js/gov-audit.js?v=q100r3"></script>
-<script src="js/gov-overview.js?v=q100r3"></script>
-<script src="js/gov-subject.js?v=q100r3"></script>
+<script src="js/dn-common.js?v=q100r4"></script>
+<script src="js/gov-assets.js?v=q100r4"></script>
+<script src="js/gov-lineage.js?v=q100r4"></script>
+<script src="js/gov-quality.js?v=q100r4"></script>
+<script src="js/gov-standard.js?v=q100r4"></script>
+<script src="js/gov-classification.js?v=q100r4"></script>
+<script src="js/gov-security.js?v=q100r4"></script>
+<script src="js/gov-health.js?v=q100r4"></script>
+<script src="js/gov-audit.js?v=q100r4"></script>
+<script src="js/gov-overview.js?v=q100r4"></script>
+<script src="js/gov-subject.js?v=q100r4"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -7393,7 +7393,7 @@ function runTask() {
   var sseCompleted = false; // 防止 onerror 重复触发
 
   source.onmessage = function(e) {
-    var data = JSON.parse(e.data);
+    var data; try { data = JSON.parse(e.data); } catch (ex) { return; } // 容错: 跳过格式错误的SSE消息
     var cls = data.level === 'ERROR' ? 'log-err' : data.level === 'OK' ? 'log-ok' : data.level === 'HIVE' ? '' : 'log-info';
     var prefix = data.level === 'HIVE'
       ? '<span style="color:var(--text-muted);">[Doris]</span> '
@@ -7404,7 +7404,7 @@ function runTask() {
 
   source.addEventListener('result', function(e) {
     sseCompleted = true;
-    var d = JSON.parse(e.data);
+    var d; try { d = JSON.parse(e.data); } catch (ex) { source.close(); appendLog('<span class="log-err">ERROR</span> 结果响应格式错误'); return; }
     source.close();
     var tmpEntry = document.getElementById(logId);
     if (tmpEntry) { tmpEntry.querySelector('.run-log-status').className = 'run-log-status ok'; tmpEntry.querySelector('.run-log-status').textContent = 'SUCCESS'; tmpEntry.querySelector('.run-log-detail').textContent = '执行完成'; }
@@ -7425,7 +7425,7 @@ function runTask() {
     if (sseCompleted) return;
     sseCompleted = true;
     if (e.data) {
-      var data = JSON.parse(e.data);
+      var data; try { data = JSON.parse(e.data); } catch (ex) { data = {}; }
       appendLog('<span class="log-err">ERROR</span> ' + (data.message || '执行失败'));
     }
     source.close();
@@ -16415,6 +16415,7 @@ window.dbsyncToggleFieldMap = function(btn) {
 
 /* ---------- 源表选择后自动带出目标表名 ---------- */
 window.dbsyncOnSrcTableChange = function(selectEl) {
+  if (!selectEl) return;
   var row = selectEl.closest('.dbsync-table-row');
   if (!row) return;
   var tgtInput = row.querySelector('.dfs-tgt-table');
