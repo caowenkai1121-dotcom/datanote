@@ -4097,6 +4097,14 @@ html, body {
               <button class="btn btn-primary btn-sm" onclick="projOpenCreate()">+ 新建项目</button>
             </div>
             <div id="projKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
+              <input id="projSearch" class="dbsync-form-input" style="width:180px;" placeholder="搜索 名称/编码/负责人" oninput="projApplyFilter()">
+              <select id="projFilterType" class="dbsync-form-select" style="width:110px;" onchange="projApplyFilter()"><option value="">全部类型</option><option value="GENERAL">通用</option><option value="DATASYNC">数据同步</option><option value="DEVSQL">SQL开发</option><option value="HYBRID">混合</option></select>
+              <select id="projFilterStatus" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部状态</option><option value="ACTIVE">活跃</option><option value="ARCHIVED">已归档</option></select>
+              <select id="projFilterEnv" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部环境</option><option value="DEV">开发</option><option value="PROD">生产</option><option value="MIXED">混合</option></select>
+              <select id="projSort" class="dbsync-form-select" style="width:120px;" onchange="projApplyFilter()"><option value="created_desc">最新创建</option><option value="created_asc">最早创建</option><option value="name">名称</option></select>
+              <span id="projFilterCount" style="font-size:12px;color:var(--text-muted);"></span>
+            </div>
             <div id="projListBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
           </div>
           <div class="ops-dashboard" id="projectMemberPanel" style="display:none;">
@@ -4122,6 +4130,14 @@ html, body {
         <div class="g-modal-header"><span id="projModalTitle">新建项目</span><button class="g-modal-close" onclick="projCloseModal()">&times;</button></div>
         <div class="g-modal-body">
           <input type="hidden" id="projId">
+          <div class="ds-form-row" id="projTemplateRow"><label>模板</label>
+            <select id="projTemplate" class="g-modal-input" onchange="projApplyTemplate()">
+              <option value="">空白项目</option>
+              <option value="DATASYNC">数据同步项目（DATASYNC/生产）</option>
+              <option value="DEVSQL">SQL开发项目（DEVSQL/开发）</option>
+              <option value="HYBRID">数仓混合项目（HYBRID/混合）</option>
+            </select>
+          </div>
           <div class="ds-form-row"><label>项目名称</label><input id="projName" placeholder="如：销售数仓"></div>
           <div class="ds-form-row"><label>编码</label><input id="projCode" placeholder="留空自动生成(如 SALESDW)"></div>
           <div class="ds-form-row"><label>类型</label>
@@ -12632,7 +12648,7 @@ window.loadProjectSpace = function() {
   api('/api/project/list').then(function(res) {
     _projList = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []);
     projRenderKpi();
-    projRenderList();
+    projApplyFilter();
   }).catch(function() {
     box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">加载失败，请重试</div>';
   });
@@ -12654,17 +12670,44 @@ function projRenderKpi() {
   box.innerHTML = projTile('项目总数', total) + projTile('活跃', active, '#52c41a')
     + projTile('已归档', archived, '#8c8c8c') + projTile('本月新增', month, '#1677ff');
 }
-function projRenderList() {
+window.projApplyFilter = function() {
+  var q = (document.getElementById('projSearch') || {}).value || '';
+  q = q.trim().toLowerCase();
+  var ft = (document.getElementById('projFilterType') || {}).value || '';
+  var fs = (document.getElementById('projFilterStatus') || {}).value || '';
+  var fe = (document.getElementById('projFilterEnv') || {}).value || '';
+  var sort = (document.getElementById('projSort') || {}).value || 'created_desc';
+  var list = _projList.filter(function(p) {
+    if (ft && p.projectType !== ft) return false;
+    if (fs && p.status !== fs) return false;
+    if (fe && p.env !== fe) return false;
+    if (q) {
+      var hay = ((p.projectName || '') + ' ' + (p.projectCode || '') + ' ' + (p.owner || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  list.sort(function(a, b) {
+    if (sort === 'name') return (a.projectName || '').localeCompare(b.projectName || '');
+    if (sort === 'created_asc') return (a.id || 0) - (b.id || 0);
+    return (b.id || 0) - (a.id || 0);
+  });
+  var cnt = document.getElementById('projFilterCount');
+  if (cnt) cnt.textContent = '共 ' + list.length + ' / ' + _projList.length;
+  projRenderList(list);
+};
+function projRenderList(list) {
   var box = document.getElementById('projListBox');
   if (!box) return;
-  if (!_projList.length) {
-    box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">暂无项目，点击右上角「新建项目」开始</div>';
+  var rows = list || _projList;
+  if (!rows.length) {
+    box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">' + (_projList.length ? '无匹配项目' : '暂无项目，点击右上角「新建项目」开始') + '</div>';
     return;
   }
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
     + '<th>项目名</th><th>编码</th><th>类型</th><th>环境</th><th>负责人</th><th>状态</th><th>创建时间</th><th style="width:180px;">操作</th>'
     + '</tr></thead><tbody>';
-  _projList.forEach(function(p) {
+  rows.forEach(function(p) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
     h += '<tr>'
       + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
@@ -12684,8 +12727,23 @@ function projRenderList() {
   box.innerHTML = h;
 }
 
+window.projApplyTemplate = function() {
+  var t = document.getElementById('projTemplate').value;
+  var presets = {
+    DATASYNC: { type: 'DATASYNC', env: 'PROD', tags: '数据同步' },
+    DEVSQL: { type: 'DEVSQL', env: 'DEV', tags: 'SQL开发' },
+    HYBRID: { type: 'HYBRID', env: 'MIXED', tags: '数仓' }
+  };
+  var p = presets[t];
+  if (!p) return;
+  document.getElementById('projType').value = p.type;
+  document.getElementById('projEnv').value = p.env;
+  if (!(document.getElementById('projTags').value || '').trim()) document.getElementById('projTags').value = p.tags;
+};
 window.projOpenCreate = function() {
   document.getElementById('projModalTitle').textContent = '新建项目';
+  document.getElementById('projTemplateRow').style.display = '';
+  document.getElementById('projTemplate').value = '';
   document.getElementById('projId').value = '';
   document.getElementById('projName').value = '';
   document.getElementById('projCode').value = '';
@@ -12701,6 +12759,7 @@ window.projOpenEdit = function(id) {
   var p = _projList.find(function(x) { return x.id === id; });
   if (!p) return;
   document.getElementById('projModalTitle').textContent = '编辑项目';
+  document.getElementById('projTemplateRow').style.display = 'none';
   document.getElementById('projId').value = p.id;
   document.getElementById('projName').value = p.projectName || '';
   document.getElementById('projCode').value = p.projectCode || '';
