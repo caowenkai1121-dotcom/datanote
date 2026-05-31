@@ -1108,7 +1108,7 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,.35);
-  z-index: 2000;
+  z-index: 2250;
   align-items: center;
   justify-content: center;
 }
@@ -12772,6 +12772,11 @@ function projRenderList(list) {
       var t = _projTagById(tid); if (!t) return '';
       return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:' + (t.tagColor || '#1677ff') + '22;color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span>';
     }).join('');
+    // 创建表单填写的自由标签(dn_project.tags) 一并以灰色 chip 展示，避免“填了却不显示”
+    tagChips += (p.tags || '').split(/[,，]/).map(function(s) {
+      s = s.trim(); if (!s) return '';
+      return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:var(--bg-hover);color:var(--text-muted);">' + escapeHtml(s) + '</span>';
+    }).join('');
     h += '<tr>'
       + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#faad14' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
       + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#faad14;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
@@ -13031,7 +13036,7 @@ window.projLoadInvites = function() {
       inv.forEach(function(v) {
         h += '<tr><td>' + escapeHtml(v.invitee || '（任意凭码）') + '</td><td>' + escapeHtml(projRoleLabel(v.projectRole)) + '</td>'
           + '<td>' + escapeHtml(IST[v.status] || v.status) + '</td>'
-          + '<td style="font-family:monospace;font-size:11px;">' + escapeHtml((v.token || '').slice(0, 8)) + '…</td>'
+          + '<td style="font-family:monospace;font-size:11px;">' + escapeHtml((v.token || '').slice(0, 8)) + '… <a href="#" onclick="projCopyInvite(\'' + v.token + '\');return false;" style="font-family:inherit;color:var(--primary);">复制</a></td>'
           + '<td>' + (v.status === 'PENDING' ? '<a href="#" onclick="projAcceptInvite(\'' + v.token + '\');return false;" style="color:#52c41a;margin-right:6px;">接受</a><a href="#" onclick="projCancelInvite(' + v.id + ');return false;" style="color:#ff4d4f;">取消</a>' : '-') + '</td></tr>';
       });
       h += '</tbody></table>';
@@ -13055,6 +13060,19 @@ window.projAcceptInvite = function(token) {
 window.projCancelInvite = function(inviteId) {
   apiPost('/api/project/' + _projDetail.id + '/invites/' + inviteId + '/status', { status: 'CANCELED' }).then(function() { projLoadInvites(); }).catch(function() { showToast('操作失败', 'error'); });
 };
+window.projCopyInvite = function(token) {
+  var done = function() { showToast('邀请码已复制', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(token).then(done).catch(function() { projFallbackCopy(token, done); });
+  } else { projFallbackCopy(token, done); }
+};
+function projFallbackCopy(text, cb) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); cb && cb(); } catch (e) { showToast('复制失败，请手动复制', 'error'); }
+  document.body.removeChild(ta);
+}
 window.projAddMember = function() {
   var u = (document.getElementById('projMemberUser').value || '').trim();
   if (!u) { showToast('请填写用户名', 'error'); return; }
@@ -13357,7 +13375,7 @@ window.projLoadHealthCard = function() {
     var bars = Object.keys(dimLabel).map(function(k) {
       var v = dims[k] || 0;
       return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0;"><span style="width:32px;color:var(--text-muted);">' + dimLabel[k] + '</span>'
-        + '<div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + (v * 5) + '%;height:100%;background:' + color + ';"></div></div><span style="width:24px;text-align:right;">' + v + '</span></div>';
+        + '<div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + (v * 5) + '%;height:100%;background:' + color + ';"></div></div><span style="width:38px;text-align:right;color:var(--text-muted);">' + v + '/20</span></div>';
     }).join('');
     card.innerHTML = '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;display:flex;gap:16px;align-items:center;">'
       + '<div style="text-align:center;min-width:90px;"><div style="font-size:30px;font-weight:700;color:' + color + ';">' + (d.total != null ? d.total : '-') + '</div><div style="font-size:12px;color:var(--text-muted);">健康分 · ' + escapeHtml(d.level || '') + '</div></div>'
@@ -13503,7 +13521,45 @@ function projSanitizeHtml(html) {
   });
   return tpl.innerHTML;
 }
-function projMd(c) { try { if (window.marked) { return projSanitizeHtml(marked.parse ? marked.parse(c || '') : marked(c || '')); } } catch (e) {} return '<pre style="white-space:pre-wrap;word-break:break-word;">' + escapeHtml(c || '') + '</pre>'; }
+// 轻量 Markdown 渲染：先整体转义(杜绝原始 HTML/XSS)，再对转义后文本套用 markdown 规则。无外部依赖。
+function projMdInline(s) {
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function(m, txt, url) {
+    var u = url.replace(/\s+/g, '').toLowerCase();
+    if (u.indexOf('javascript:') === 0 || u.indexOf('data:') === 0 || u.indexOf('vbscript:') === 0) return txt;
+    return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>';
+  });
+  return s;
+}
+function projMdLite(src) {
+  var esc = escapeHtml(src || '');
+  // 代码块 ``` 优先抽出，避免内部内容被行级规则误处理
+  var blocks = [];
+  esc = esc.replace(/```([\s\S]*?)```/g, function(m, code) {
+    blocks.push('<pre class="proj-code" style="background:var(--bg-hover);padding:10px 12px;border-radius:6px;overflow:auto;">' + code.replace(/^\n/, '') + '</pre>');
+    return ' B' + (blocks.length - 1) + ' ';
+  });
+  var lines = esc.split(/\r?\n/), html = [], inUl = false, inOl = false;
+  function closeLists() { if (inUl) { html.push('</ul>'); inUl = false; } if (inOl) { html.push('</ol>'); inOl = false; } }
+  for (var i = 0; i < lines.length; i++) {
+    var ln = lines[i];
+    var bm = ln.match(/^ B(\d+) $/);
+    if (bm) { closeLists(); html.push(blocks[+bm[1]]); continue; }
+    if (/^\s*$/.test(ln)) { closeLists(); continue; }
+    var h = ln.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { closeLists(); var lv = h[1].length; html.push('<h' + lv + ' style="margin:.6em 0 .3em;">' + projMdInline(h[2]) + '</h' + lv + '>'); continue; }
+    if (/^\s*([-*])\s+/.test(ln)) { if (!inUl) { closeLists(); html.push('<ul style="margin:.3em 0;padding-left:20px;">'); inUl = true; } html.push('<li>' + projMdInline(ln.replace(/^\s*[-*]\s+/, '')) + '</li>'); continue; }
+    if (/^\s*\d+\.\s+/.test(ln)) { if (!inOl) { closeLists(); html.push('<ol style="margin:.3em 0;padding-left:20px;">'); inOl = true; } html.push('<li>' + projMdInline(ln.replace(/^\s*\d+\.\s+/, '')) + '</li>'); continue; }
+    if (/^\s*&gt;\s?/.test(ln)) { closeLists(); html.push('<blockquote style="margin:.4em 0;padding:2px 10px;border-left:3px solid var(--border);color:var(--text-muted);">' + projMdInline(ln.replace(/^\s*&gt;\s?/, '')) + '</blockquote>'); continue; }
+    closeLists();
+    html.push('<p style="margin:.4em 0;">' + projMdInline(ln) + '</p>');
+  }
+  closeLists();
+  return html.join('');
+}
+function projMd(c) { try { if (window.marked) { return projSanitizeHtml(marked.parse ? marked.parse(c || '') : marked(c || '')); } } catch (e) {} return projMdLite(c); }
 window.projLoadWiki = function() {
   var pane = document.getElementById('projPane_wiki'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';

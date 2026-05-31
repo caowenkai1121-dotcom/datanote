@@ -62,6 +62,7 @@ public class ProjectHomeService {
         List<Map<String, Object>> approvals = new ArrayList<>();
         for (DnProjectRelease rel : pending) {
             DnProject p = byId.get(rel.getProjectId());
+            if (p == null) continue; // 项目已删，跳过
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("releaseId", rel.getId());
             m.put("projectId", rel.getProjectId());
@@ -79,6 +80,7 @@ public class ProjectHomeService {
         List<Map<String, Object>> myTasks = new ArrayList<>();
         for (DnProjectTask t : tasks) {
             DnProject p = byId.get(t.getProjectId());
+            if (p == null) continue; // 项目已删，跳过
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", t.getId());
             m.put("projectId", t.getProjectId());
