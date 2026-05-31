@@ -326,6 +326,16 @@
   function loadRuns(box) {
     DN.get(API + '/check/runs').then(function (runs) {
       box.innerHTML = '';
+      runs = runs || [];
+      // 落标率趋势(按 id 升序取时间序), >=2 次才有意义
+      var pts = runs.filter(function (r) { return r.passRate != null; })
+        .slice().sort(function (a, b) { return (a.id || 0) - (b.id || 0); })
+        .map(function (r) { return Number(r.passRate) || 0; });
+      if (pts.length >= 2) {
+        box.appendChild(DN.sectionTitle('落标率趋势 · 治理改善曲线'));
+        var avg = pts.reduce(function (x, y) { return x + y; }, 0) / pts.length;
+        box.appendChild(DN.line(pts, { height: 70, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+      }
       box.appendChild(DN.table({
         columns: [
           { key: 'id', label: 'ID', render: function (r) {
@@ -346,7 +356,7 @@
             } },
           { key: 'createdAt', label: '时间' }
         ],
-        rows: runs || [], searchKeys: ['scope'], searchPlaceholder: '搜索范围',
+        rows: runs, searchKeys: ['scope'], searchPlaceholder: '搜索范围',
         empty: '尚无稽核记录，点击上方执行', emptyIcon: 'clock'
       }));
     }).catch(function () { box.innerHTML = ''; box.appendChild(DN.empty('加载失败', 'alert')); });

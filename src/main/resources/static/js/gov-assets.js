@@ -29,6 +29,7 @@
     var quickSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:130px' });
     [['', '全部资产'], ['nodesc', '缺业务描述'], ['bigsize', '体量Top'], ['bigrow', '行数Top']].forEach(function (o) { quickSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     quickSel.onchange = function () { assetState.quick = quickSel.value; renderAssetTable(); };
+    quickSelEl = quickSel;
     // 把工具条（采集按钮 + 来源筛选 + 快捷视图）通过 DN.table 的 toolbar 注入，先缓存引用
     assetToolbar = [crawlBtn, srcSel, quickSel];
 
@@ -45,6 +46,7 @@
   var assetState = { src: '', quick: '' };
   var assetTbl = null;
   var assetToolbar = null;
+  var quickSelEl = null;      // 快捷视图下拉（供统计磁贴联动同步）
 
   function loadAssets() {
     // 统计 + 最近采集状态
@@ -75,6 +77,7 @@
       colCount += Number(t.columnCount) || 0;
       totalBytes += Number(t.sizeBytes) || 0;
     });
+    var noDescN = assetAll.filter(function (t) { return !t.tableComment; }).length;
     var statusText = '尚无记录', statusTone = 'muted', statusSub = '';
     if (lastLog) {
       var st = (lastLog.status || '').toUpperCase();
@@ -88,6 +91,12 @@
       { icon: 'layers', label: '字段数', value: fmtInt(colCount) },
       { icon: 'db', label: '库数', value: fmtInt(Object.keys(dbSet).length) },
       { icon: 'chart', label: '总体量', value: DN.fmtBytes(totalBytes) },
+      { icon: 'alert', label: '缺业务描述', value: fmtInt(noDescN), tone: noDescN ? 'warn' : 'ok', title: '点击只看缺业务描述的表', onClick: function () {
+          assetState.quick = assetState.quick === 'nodesc' ? '' : 'nodesc';
+          if (quickSelEl) quickSelEl.value = assetState.quick;
+          renderAssetTable();
+          DN.toast(assetState.quick === 'nodesc' ? '仅看缺业务描述' : '显示全部', 'info');
+        } },
       { icon: 'clock', label: '最近采集', value: statusText, sub: statusSub, tone: statusTone }
     ]));
   }

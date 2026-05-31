@@ -5,8 +5,9 @@
 
   var allRules = [];          // 全量规则
   var filterStatus = '';      // ''=全部 / '1'=启用 / '0'=停用
-  var filterDim = '', filterType = '', filterBlock = '';
+  var filterDim = '', filterType = '', filterBlock = '', filterScheduled = '';
   var tableEl = null;         // DN.table 实例（供筛选 reload）
+  var statusSelEl = null;     // 状态下拉（供磁贴联动同步）
   var trendBody = null;       // 趋势卡片 body
 
   window.GOV_RENDERERS.quality = function (c) {
@@ -58,10 +59,10 @@
       var blocked = allRules.filter(function (r) { return r.blockDownstream === 1; }).length;
       var scheduled = allRules.filter(function (r) { return r.scheduleCron; }).length;
       box.appendChild(DN.statRow([
-        { icon: 'list', label: '规则总数', value: allRules.length },
-        { icon: 'check', label: '已启用', value: enabled, tone: 'ok' },
+        { icon: 'list', label: '规则总数', value: allRules.length, title: '点击清空筛选', onClick: function () { filterStatus = ''; filterDim = ''; filterType = ''; filterBlock = ''; filterScheduled = ''; loadRules(box); DN.toast('已清空筛选', 'info'); } },
+        { icon: 'check', label: '已启用', value: enabled, tone: 'ok', title: '点击仅看已启用', onClick: function () { filterStatus = filterStatus === '1' ? '' : '1'; if (statusSelEl) statusSelEl.value = filterStatus; if (tableEl) tableEl.reload(filtered()); DN.toast(filterStatus === '1' ? '仅看已启用' : '显示全部', 'info'); } },
         { icon: 'shield', label: '强阻断', value: blocked, tone: blocked ? 'warn' : 'ok', title: '点击仅看强阻断', onClick: function () { filterBlock = filterBlock ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterBlock ? '仅看强阻断' : '显示全部', 'info'); } },
-        { icon: 'clock', label: '已配调度', value: scheduled }
+        { icon: 'clock', label: '已配调度', value: scheduled, title: '点击仅看已配调度', onClick: function () { filterScheduled = filterScheduled ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterScheduled ? '仅看已配调度' : '显示全部', 'info'); } }
       ]));
       box.appendChild(buildToolbarAndTable());
     }).catch(function (e) {
@@ -76,6 +77,7 @@
       if (filterDim && (r.dimension || '') !== filterDim) return false;
       if (filterType && (r.ruleType || '') !== filterType) return false;
       if (filterBlock && r.blockDownstream !== 1) return false;
+      if (filterScheduled && !r.scheduleCron) return false;
       return true;
     });
   }
@@ -88,6 +90,7 @@
       statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] }));
     });
     statusSel.value = filterStatus;
+    statusSelEl = statusSel;
     statusSel.onchange = function () { filterStatus = statusSel.value; if (tableEl) tableEl.reload(filtered()); };
     var dimSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
     dimSel.appendChild(DN.h('option', { value: '', text: '全部维度' }));
