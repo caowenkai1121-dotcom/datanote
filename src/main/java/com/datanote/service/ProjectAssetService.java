@@ -57,7 +57,11 @@ public class ProjectAssetService {
         return a;
     }
 
-    public void unbind(Long rowId) {
+    public void unbind(Long projectId, Long rowId) {
+        com.datanote.model.DnProjectAsset a = assetMapper.selectById(rowId);
+        if (a == null || (projectId != null && !projectId.equals(a.getProjectId()))) {
+            throw new IllegalArgumentException("资产不存在或不属于该项目");
+        }
         assetMapper.deleteById(rowId);
     }
 

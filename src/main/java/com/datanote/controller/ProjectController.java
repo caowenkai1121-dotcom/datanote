@@ -273,6 +273,7 @@ public class ProjectController {
                 try { ids.add(Long.valueOf(String.valueOf(o))); } catch (NumberFormatException ignore) {}
             }
         }
+        if (ids.size() > 50) return R.fail("最多对比 50 个项目");
         return R.ok(projectHomeService.compare(ids));
     }
 
@@ -466,7 +467,7 @@ public class ProjectController {
     public R<String> unbindAsset(@PathVariable Long id, @PathVariable Long rowId) {
         try {
             projectService.getById(id);
-            projectAssetService.unbind(rowId);
+            projectAssetService.unbind(id, rowId);
             return R.ok("已解绑");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());

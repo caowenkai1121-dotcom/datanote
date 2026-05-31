@@ -312,8 +312,9 @@ public class SyncJobController {
             if ("CDC".equalsIgnoreCase(job.getSyncMode())) {
                 try {
                     m.putAll(prefixCdc(cdcEngineManager.metrics(job.getId())));
-                } catch (Exception ignore) {
-                    // CDC 指标获取失败忽略，不影响整体大盘
+                } catch (Exception e) {
+                    log.warn("CDC指标获取失败 jobId={}: {}", job.getId(), e.getMessage()); // 不影响整体大盘但留痕
+                    m.put("cdcRunning", false);
                 }
             }
             list.add(m);

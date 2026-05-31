@@ -256,6 +256,9 @@ public class CdcEngineManager {
         if (job == null) {
             throw new IllegalArgumentException("任务不存在: " + jobId);
         }
+        if (sourceTables == null || sourceTables.isEmpty()) {
+            throw new IllegalArgumentException("增量快照源表列表不能为空");
+        }
         if (job.getIncrementalSnapshotEnabled() == null || job.getIncrementalSnapshotEnabled() != 1) {
             throw new IllegalStateException("该任务未开启增量快照");
         }

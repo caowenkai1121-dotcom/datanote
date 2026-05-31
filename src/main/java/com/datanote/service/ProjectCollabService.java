@@ -72,6 +72,7 @@ public class ProjectCollabService {
     }
 
     /** 接受邀请：被邀请人(或当前用户)按角色加入项目成员。 */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public synchronized void acceptInvite(String token) {
         DnProjectInvite inv = inviteMapper.selectOne(new LambdaQueryWrapper<DnProjectInvite>().eq(DnProjectInvite::getToken, token));
         if (inv == null) throw new IllegalArgumentException("邀请不存在");
