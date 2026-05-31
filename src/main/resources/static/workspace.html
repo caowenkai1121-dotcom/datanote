@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r30">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r1">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r30"></script>
-<script src="js/gov-assets.js?v=g2r30"></script>
-<script src="js/gov-lineage.js?v=g2r30"></script>
-<script src="js/gov-quality.js?v=g2r30"></script>
-<script src="js/gov-standard.js?v=g2r30"></script>
-<script src="js/gov-classification.js?v=g2r30"></script>
-<script src="js/gov-security.js?v=g2r30"></script>
-<script src="js/gov-health.js?v=g2r30"></script>
-<script src="js/gov-audit.js?v=g2r30"></script>
-<script src="js/gov-overview.js?v=g2r30"></script>
-<script src="js/gov-subject.js?v=g2r30"></script>
+<script src="js/dn-common.js?v=g3r1"></script>
+<script src="js/gov-assets.js?v=g3r1"></script>
+<script src="js/gov-lineage.js?v=g3r1"></script>
+<script src="js/gov-quality.js?v=g3r1"></script>
+<script src="js/gov-standard.js?v=g3r1"></script>
+<script src="js/gov-classification.js?v=g3r1"></script>
+<script src="js/gov-security.js?v=g3r1"></script>
+<script src="js/gov-health.js?v=g3r1"></script>
+<script src="js/gov-audit.js?v=g3r1"></script>
+<script src="js/gov-overview.js?v=g3r1"></script>
+<script src="js/gov-subject.js?v=g3r1"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13683,6 +13683,8 @@ var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中'
 var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
 var _projTaskFilter = { assignee: '', overdue: false, priority: '' };
 var _projTasksAll = [];
+var _projTaskView = (function() { try { return localStorage.getItem('proj.taskView') || 'list'; } catch (e) { return 'list'; } })();
+window.projSetTaskView = function(v) { _projTaskView = v; try { localStorage.setItem('proj.taskView', v); } catch (e) {} projLoadTasks(); };
 window.projLoadTasks = function() {
   var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
@@ -13705,14 +13707,25 @@ window.projLoadTasks = function() {
     var donePct = tasks.length ? Math.round(cnt.DONE * 100 / tasks.length) : 0;
     var asgSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.assignee=this.value;projLoadTasks();"><option value="">全部指派人</option>' + asgOpts.map(function(a) { return '<option value="' + escapeHtml(a) + '"' + (fAsg === a ? ' selected' : '') + '>' + escapeHtml(a) + '</option>'; }).join('') + '</select>';
     var prioSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.priority=this.value;projLoadTasks();"><option value="">全部优先级</option>' + Object.keys(TASK_PRIO).map(function(p) { return '<option value="' + p + '"' + (fPrio === p ? ' selected' : '') + '>' + TASK_PRIO[p].t + '</option>'; }).join('') + '</select>';
+    var viewToggle = '<span class="proj-view-toggle" style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
+      + '<a href="#" onclick="projSetTaskView(\'list\');return false;" title="列表视图" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projTaskView === 'list' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">列表</a>'
+      + '<a href="#" onclick="projSetTaskView(\'kanban\');return false;" title="看板视图" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'kanban' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">看板</a>'
+      + '<a href="#" onclick="projSetTaskView(\'calendar\');return false;" title="日历视图(按截止日)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a></span>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
+      + viewToggle
       + asgSel + prioSel
       + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
       + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
     if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
     if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">' + (tasksAll.length ? '无匹配筛选条件的任务，<a href="#" onclick="_projTaskFilter={assignee:\'\',overdue:false,priority:\'\'};projLoadTasks();return false;" style="color:var(--primary);">清除筛选</a>' : '暂无任务') + '</div>';
+    else if (_projTaskView === 'kanban') {
+      h += projKanbanHtml(tasks, msName, _today);
+    }
+    else if (_projTaskView === 'calendar') {
+      h += projCalendarHtml(tasks, _today);
+    }
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
         var group = tasks.filter(function(t) { return t.status === st; });
@@ -13737,6 +13750,97 @@ window.projLoadTasks = function() {
     pane.innerHTML = h;
     if (window.projSetTabBadge) projSetTabBadge('task', (cnt.TODO || 0) + (cnt.DOING || 0), '#1677ff');
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+// 看板视图：三列(待办/进行中/完成) + HTML5 拖拽改状态
+function projKanbanHtml(tasks, msName, today) {
+  var cols = ['TODO', 'DOING', 'DONE'];
+  var h = '<div class="proj-kanban" style="display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px;">';
+  cols.forEach(function(st) {
+    var group = tasks.filter(function(t) { return (t.status || 'TODO') === st; });
+    group.sort(function(a, b) { return (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'); });
+    var sc = TASK_STATUS[st];
+    h += '<div class="proj-kb-col" ondragover="projKbDragOver(event)" ondragleave="projKbDragLeave(event)" ondrop="projKbDrop(event,\'' + st + '\')" data-st="' + st + '" style="flex:1;min-width:240px;background:var(--bg-hover,#f6f7f9);border-radius:10px;padding:10px;transition:background .15s;">';
+    h += '<div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;margin-bottom:10px;color:' + sc.c + ';"><span style="width:8px;height:8px;border-radius:50%;background:' + sc.c + ';"></span>' + sc.t + ' <span style="color:var(--text-muted);font-weight:400;">' + group.length + '</span></div>';
+    h += '<div class="proj-kb-cards" style="display:flex;flex-direction:column;gap:8px;min-height:40px;">';
+    if (!group.length) h += '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:12px 0;border:1px dashed var(--border);border-radius:8px;">拖拽到此</div>';
+    group.forEach(function(t) {
+      var pr = TASK_PRIO[t.priority] || { t: t.priority || '', c: 'var(--text-muted)' };
+      var od = t.dueDate && t.status !== 'DONE' && t.dueDate < today;
+      h += '<div class="proj-kb-card" draggable="true" ondragstart="projKbDragStart(event,' + t.id + ')" ondragend="projKbDragEnd(event)" style="background:var(--bg-card,#fff);border:1px solid var(--border);border-left:3px solid ' + pr.c + ';border-radius:8px;padding:9px 10px;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.04);">'
+        + '<div style="font-size:13px;font-weight:500;line-height:1.4;margin-bottom:5px;word-break:break-word;">' + escapeHtml(t.title) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);">'
+        + (t.priority ? '<span style="color:' + pr.c + ';font-weight:600;">' + pr.t + '</span>' : '')
+        + (t.assignee ? '<span style="background:var(--bg-hover);padding:0 6px;border-radius:8px;">@' + escapeHtml(t.assignee) + '</span>' : '')
+        + (t.dueDate ? '<span style="' + (od ? 'color:#ff4d4f;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
+        + (msName[t.milestoneId] ? '<span>🎯' + escapeHtml(msName[t.milestoneId]) + '</span>' : '')
+        + '</div>'
+        + '<div style="margin-top:6px;text-align:right;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="font-size:11px;color:var(--primary);">编辑</a></div>'
+        + '</div>';
+    });
+    h += '</div></div>';
+  });
+  h += '</div><div style="font-size:11px;color:var(--text-muted);margin-top:8px;">提示：拖拽卡片到其他列即可改变任务状态</div>';
+  return h;
+}
+// 日历视图：按截止日把任务铺到月历格, 支持月份切换
+var _projCalYM = null; // {y,m} 当前显示月; null=本月
+window.projCalShift = function(delta) {
+  var base = _projCalYM || (function() { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
+  var m = base.m + delta, y = base.y;
+  while (m < 0) { m += 12; y--; } while (m > 11) { m -= 12; y++; }
+  _projCalYM = { y: y, m: m };
+  projLoadTasks();
+};
+window.projCalToday = function() { _projCalYM = null; projLoadTasks(); };
+function projCalendarHtml(tasks, today) {
+  var ym = _projCalYM || (function() { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
+  var y = ym.y, m = ym.m;
+  var first = new Date(y, m, 1), startDow = first.getDay();
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  // 按 dueDate(YYYY-MM-DD) 归集
+  var byDay = {};
+  tasks.forEach(function(t) { if (t.dueDate) { (byDay[t.dueDate] = byDay[t.dueDate] || []).push(t); } });
+  var noDue = tasks.filter(function(t) { return !t.dueDate; }).length;
+  var h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+    + '<button class="btn btn-sm" onclick="projCalShift(-1)">‹ 上月</button>'
+    + '<span style="font-weight:600;font-size:14px;">' + y + ' 年 ' + (m + 1) + ' 月</span>'
+    + '<button class="btn btn-sm" onclick="projCalShift(1)">下月 ›</button>'
+    + '<button class="btn btn-sm" onclick="projCalToday()">回到本月</button>'
+    + (noDue ? '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">另有 ' + noDue + ' 个无截止日任务未显示</span>' : '') + '</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">';
+  ['日', '一', '二', '三', '四', '五', '六'].forEach(function(d) { h += '<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:2px 0;font-weight:600;">' + d + '</div>'; });
+  for (var i = 0; i < startDow; i++) h += '<div></div>';
+  for (var day = 1; day <= daysInMonth; day++) {
+    var ds = y + '-' + pad2(m + 1) + '-' + pad2(day);
+    var list = byDay[ds] || [];
+    var isToday = ds === today;
+    h += '<div style="min-height:84px;border:1px solid ' + (isToday ? 'var(--primary)' : 'var(--divider)') + ';border-radius:6px;padding:4px;background:' + (isToday ? 'var(--primary-bg,#f0f6ff)' : 'var(--bg-card,#fff)') + ';overflow:hidden;">'
+      + '<div style="font-size:11px;color:' + (isToday ? 'var(--primary)' : 'var(--text-muted)') + ';font-weight:' + (isToday ? '700' : '400') + ';margin-bottom:3px;">' + day + '</div>';
+    list.slice(0, 4).forEach(function(t) {
+      var pr = TASK_PRIO[t.priority] || { c: 'var(--text-muted)' };
+      var done = t.status === 'DONE', od = !done && ds < today;
+      h += '<div onclick="projTaskModal(' + t.id + ')" title="' + escapeHtml(t.title) + (t.assignee ? ' · @' + escapeHtml(t.assignee) : '') + '" style="font-size:11px;line-height:1.5;cursor:pointer;border-left:3px solid ' + (od ? '#ff4d4f' : pr.c) + ';padding-left:5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (done ? 'text-decoration:line-through;color:var(--text-muted);' : '') + '">' + escapeHtml(t.title) + '</div>';
+    });
+    if (list.length > 4) h += '<div style="font-size:10px;color:var(--text-muted);">+' + (list.length - 4) + ' 更多</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+var _projKbDragId = null;
+window.projKbDragStart = function(ev, id) { _projKbDragId = id; ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', String(id)); } catch (e) {} var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = '0.5'; };
+window.projKbDragEnd = function(ev) { var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = ''; };
+window.projKbDragOver = function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; var col = ev.currentTarget; if (col) col.style.background = 'var(--primary-bg,#e6f0ff)'; };
+window.projKbDragLeave = function(ev) { var col = ev.currentTarget; if (col) col.style.background = ''; };
+window.projKbDrop = function(ev, status) {
+  ev.preventDefault();
+  var col = ev.currentTarget; if (col) col.style.background = '';
+  var id = _projKbDragId; _projKbDragId = null;
+  if (id == null) return;
+  var t = (_projTasksAll || []).find(function(x) { return x.id === id; });
+  if (!t || (t.status || 'TODO') === status) return;
+  projTaskStatus(id, status);
 };
 window.projTaskModal = function(taskId) {
   var t = taskId ? null : {};
