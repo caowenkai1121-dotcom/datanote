@@ -164,6 +164,36 @@
     }).catch(function (e) { DN.toast(e.message, 'error'); });
   }
 
+  // 工单分析概览(大功能): 状态分布环图 + 级别分布 + 维度Top
+  function buildIssueAnalytics(rows) {
+    var stMeta = { OPEN: ['待处理', '#ff4d4f'], FIXING: ['处理中', '#faad14'], RESOLVED: ['已解决', '#1890ff'], VERIFIED: ['已验证', '#13c2c2'], CLOSED: ['已关闭', '#52c41a'] };
+    var stCnt = {}, sevCnt = {}, dimCnt = {};
+    rows.forEach(function (r) {
+      var s = r.status || 'OPEN'; stCnt[s] = (stCnt[s] || 0) + 1;
+      var sv = r.severity || 'LOW'; sevCnt[sv] = (sevCnt[sv] || 0) + 1;
+      var d = r.dimension || '未分类'; dimCnt[d] = (dimCnt[d] || 0) + 1;
+    });
+    var segs = Object.keys(stCnt).map(function (s) { return { label: (stMeta[s] || [s])[0], value: stCnt[s], color: (stMeta[s] || [s, '#8c8c8c'])[1] }; });
+    var grid = DN.h('div', { class: 'gov-grid', style: 'margin-bottom:12px' });
+    // 状态环图
+    var c1 = DN.card({ title: '工单状态分布', icon: 'inbox' });
+    c1.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: rows.length, centerSub: '工单', legend: true }));
+    grid.appendChild(c1.el);
+    // 级别分布 bars
+    var c2 = DN.card({ title: '严重级别分布', icon: 'shield' });
+    var sevMeta = { HIGH: ['高', 'err'], MEDIUM: ['中', 'warn'], LOW: ['低', 'info'] };
+    c2.body.appendChild(DN.bars(['HIGH', 'MEDIUM', 'LOW'].filter(function (k) { return sevCnt[k]; }).map(function (k) {
+      return { label: (sevMeta[k] || [k])[0], value: sevCnt[k], tone: (sevMeta[k] || [k, 'info'])[1], display: String(sevCnt[k]) };
+    })));
+    grid.appendChild(c2.el);
+    // 维度 Top bars
+    var c3 = DN.card({ title: '问题维度 Top', icon: 'grid' });
+    var dimArr = Object.keys(dimCnt).map(function (k) { return { label: k, value: dimCnt[k] }; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 6);
+    c3.body.appendChild(DN.bars(dimArr.map(function (d) { return { label: d.label, value: d.value, tone: 'info', display: String(d.value) }; })));
+    grid.appendChild(c3.el);
+    return grid;
+  }
+
   function renderIssues(rows) {
     var box = document.getElementById('hsIssues');
     if (!box) return;
@@ -176,6 +206,7 @@
         DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '清除', onclick: function () { boardOwnerFilter = ''; loadIssues(); } })
       ]));
     }
+    if (rows && rows.length) box.appendChild(buildIssueAnalytics(rows));
     issueTable = DN.table({
       rows: rows,
       pageSize: 10,
