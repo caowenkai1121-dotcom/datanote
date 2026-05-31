@@ -50,8 +50,8 @@
 /* ---- 现代表格 ---- */
 #govModuleContent .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow:hidden; background:var(--bg-card,#fff); }
 #govModuleContent table.gov-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-#govModuleContent table.gov-tbl thead th { position:sticky; top:0; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:11px 14px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
-#govModuleContent table.gov-tbl tbody td { padding:11px 14px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); }
+#govModuleContent table.gov-tbl thead th { position:sticky; top:0; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
+#govModuleContent table.gov-tbl tbody td { padding:12px 16px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); line-height:1.55; }
 #govModuleContent table.gov-tbl tbody tr { transition:background .12s; }
 #govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
 #govModuleContent table.gov-tbl tbody tr:last-child td { border-bottom:none; }
@@ -159,6 +159,8 @@
 #govModuleContent .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }
 #govModuleContent .btn.btn-danger:hover { background:#ffccc7; }
 #govModuleContent .btn.btn-ghost { background:transparent; color:var(--primary,#1890ff); border-color:var(--border,#d4d7de); }
+#govModuleContent .btn:not(.btn-primary):not(.btn-danger):hover { border-color:var(--primary,#1890ff); color:var(--primary,#1890ff); }
+#govModuleContent .btn:active { transform:translateY(1px); }
 
 /* ---- 告警条 ---- */
 #govModuleContent .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
