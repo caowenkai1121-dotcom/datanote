@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r14">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r15">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r14"></script>
-<script src="js/gov-assets.js?v=g2r14"></script>
-<script src="js/gov-lineage.js?v=g2r14"></script>
-<script src="js/gov-quality.js?v=g2r14"></script>
-<script src="js/gov-standard.js?v=g2r14"></script>
-<script src="js/gov-classification.js?v=g2r14"></script>
-<script src="js/gov-security.js?v=g2r14"></script>
-<script src="js/gov-health.js?v=g2r14"></script>
-<script src="js/gov-audit.js?v=g2r14"></script>
-<script src="js/gov-overview.js?v=g2r14"></script>
-<script src="js/gov-subject.js?v=g2r14"></script>
+<script src="js/dn-common.js?v=g2r15"></script>
+<script src="js/gov-assets.js?v=g2r15"></script>
+<script src="js/gov-lineage.js?v=g2r15"></script>
+<script src="js/gov-quality.js?v=g2r15"></script>
+<script src="js/gov-standard.js?v=g2r15"></script>
+<script src="js/gov-classification.js?v=g2r15"></script>
+<script src="js/gov-security.js?v=g2r15"></script>
+<script src="js/gov-health.js?v=g2r15"></script>
+<script src="js/gov-audit.js?v=g2r15"></script>
+<script src="js/gov-overview.js?v=g2r15"></script>
+<script src="js/gov-subject.js?v=g2r15"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13324,17 +13324,36 @@ window.projLoadEnvParams = function() {
       + '<input id="pepProd" class="dbsync-form-input" style="width:120px;" placeholder="生产值">'
       + '<input id="pepRemark" class="dbsync-form-input" style="width:120px;" placeholder="说明">'
       + '<button class="btn btn-sm btn-primary" onclick="projAddEnvParam()">添加/更新</button></div>';
+    _projEnvParams = ps;
     if (!ps.length) h += '<div style="padding:14px;text-align:center;color:var(--text-muted);">暂无环境参数</div>';
     else {
-      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
+      h += '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;"><input id="pepSearch" class="dbsync-form-input" style="width:160px;" placeholder="搜索参数键/值" oninput="projFilterEnvParams()"><button class="btn btn-sm" style="margin-left:auto;" onclick="projExportEnvParams()">导出CSV</button></div>';
+      h += '<table class="dbsync-exec-table" id="projEnvTbl" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
       ps.forEach(function(p) {
-        h += '<tr><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td>' + escapeHtml(p.prodValue || '-') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
+        h += '<tr class="proj-env-row" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td>' + escapeHtml(p.devValue || '-') + '</td><td>' + escapeHtml(p.prodValue || '-') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
           + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
     card.innerHTML = h;
   }).catch(function() { card.innerHTML = '<div style="color:var(--error);">环境参数加载失败</div>'; });
+};
+var _projEnvParams = [];
+window.projFilterEnvParams = function() {
+  var kw = ((document.getElementById('pepSearch') || {}).value || '').trim().toLowerCase();
+  Array.prototype.slice.call(document.querySelectorAll('#projEnvTbl .proj-env-row')).forEach(function(tr) {
+    tr.style.display = (!kw || (tr.getAttribute('data-k') || '').indexOf(kw) >= 0) ? '' : 'none';
+  });
+};
+window.projExportEnvParams = function() {
+  var ps = _projEnvParams || []; if (!ps.length) { showToast('暂无参数', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['参数键', '开发值', '生产值', '说明'].map(cell).join(',')];
+  ps.forEach(function(p) { lines.push([p.paramKey, p.devValue, p.prodValue, p.remark].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), el = document.createElement('a');
+  el.href = url; el.download = 'env_params_' + (_projDetail ? _projDetail.id : '') + '.csv';
+  document.body.appendChild(el); el.click(); document.body.removeChild(el); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 };
 window.projAddEnvParam = function() {
   var key = (document.getElementById('pepKey').value || '').trim();
