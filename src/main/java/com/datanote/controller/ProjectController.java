@@ -30,6 +30,7 @@ public class ProjectController {
     private final com.datanote.service.ProjectActivityService projectActivityService;
     private final com.datanote.service.ProjectTaskService projectTaskService;
     private final com.datanote.service.ProjectCollabService projectCollabService;
+    private final com.datanote.service.ProjectWikiService projectWikiService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -221,6 +222,36 @@ public class ProjectController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    // ===== PM2-M5：文档 Wiki =====
+
+    @Operation(summary = "文档页面列表")
+    @GetMapping("/{id}/wiki/pages")
+    public R<List<com.datanote.model.DnProjectWikiPage>> wikiPages(@PathVariable Long id) {
+        try { return R.ok(projectWikiService.listPages(id)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "文档页面详情")
+    @GetMapping("/{id}/wiki/pages/{pageId}")
+    public R<com.datanote.model.DnProjectWikiPage> wikiPage(@PathVariable Long id, @PathVariable Long pageId) {
+        try { return R.ok(projectWikiService.getPage(id, pageId)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "保存文档页面")
+    @PostMapping("/{id}/wiki/pages")
+    public R<com.datanote.model.DnProjectWikiPage> saveWikiPage(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectWikiPage page) {
+        try { return R.ok(projectWikiService.savePage(id, page)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "删除文档页面")
+    @DeleteMapping("/{id}/wiki/pages/{pageId}")
+    public R<String> deleteWikiPage(@PathVariable Long id, @PathVariable Long pageId) {
+        try { projectWikiService.deletePage(id, pageId); return R.ok("已删除"); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     // ===== PM2-M4：公告 + 成员邀请 =====

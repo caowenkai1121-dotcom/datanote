@@ -4216,6 +4216,7 @@ html, body {
         <button data-ptab="member" onclick="projDetailTab(this,'member')">成员</button>
         <button data-ptab="task" onclick="projDetailTab(this,'task')">任务</button>
         <button data-ptab="release" onclick="projDetailTab(this,'release')">发布</button>
+        <button data-ptab="wiki" onclick="projDetailTab(this,'wiki')">文档</button>
         <button data-ptab="activity" onclick="projDetailTab(this,'activity')">活动</button>
         <button data-ptab="setting" onclick="projDetailTab(this,'setting')">设置</button>
       </div>
@@ -4225,6 +4226,7 @@ html, body {
         <div class="dbsync-detail-pane" id="projPane_member" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_task" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_release" style="display:none;"></div>
+        <div class="dbsync-detail-pane" id="projPane_wiki" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_activity" style="display:none;"></div>
         <div class="dbsync-detail-pane" id="projPane_setting" style="display:none;"></div>
       </div>
@@ -13466,6 +13468,65 @@ window.projDelMilestone = function(mid) {
   fetch('/api/project/' + _projDetail.id + '/milestones/' + mid, { method: 'DELETE' }).then(_handleResponse).then(function() {
     _projMilestones = _projMilestones.filter(function(m) { return m.id !== mid; }); projRenderMilestones();
   }).catch(function() { showToast('删除失败', 'error'); });
+};
+
+/* ===== PM2-M5：文档 Wiki ===== */
+var _projWikiPages = [], _projWikiCur = null;
+function projMd(c) { try { if (window.marked) { return marked.parse ? marked.parse(c || '') : marked(c || ''); } } catch (e) {} return '<pre style="white-space:pre-wrap;word-break:break-word;">' + escapeHtml(c || '') + '</pre>'; }
+window.projLoadWiki = function() {
+  var pane = document.getElementById('projPane_wiki'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/wiki/pages').then(function(res) {
+    _projWikiPages = _pdata(res);
+    pane.innerHTML = '<div style="display:flex;gap:12px;min-height:320px;">'
+      + '<div style="width:190px;border-right:1px solid var(--divider);padding-right:10px;"><button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:8px;" onclick="projWikiNew()">+ 新建页面</button><div id="projWikiTree"></div></div>'
+      + '<div style="flex:1;" id="projWikiContent"><div style="color:var(--text-muted);padding:20px;">选择左侧页面查看，或新建页面</div></div></div>';
+    projWikiRenderTree();
+    if (_projWikiPages.length) projWikiSelect((_projWikiCur && _projWikiPages.some(function(p) { return p.id === _projWikiCur; })) ? _projWikiCur : _projWikiPages[0].id);
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+function projWikiRenderTree() {
+  var box = document.getElementById('projWikiTree'); if (!box) return;
+  if (!_projWikiPages.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">暂无文档</div>'; return; }
+  var roots = _projWikiPages.filter(function(p) { return !p.parentId || p.parentId === 0; });
+  function item(p, indent) { return '<div style="padding:4px 0 4px ' + (indent * 12) + 'px;cursor:pointer;font-size:13px;' + (_projWikiCur === p.id ? 'color:var(--primary);font-weight:600;' : '') + '" onclick="projWikiSelect(' + p.id + ')">' + escapeHtml(p.title) + '</div>'; }
+  var h = '';
+  roots.forEach(function(r) { h += item(r, 0); _projWikiPages.filter(function(c) { return c.parentId === r.id; }).forEach(function(c) { h += item(c, 1); }); });
+  box.innerHTML = h;
+}
+window.projWikiSelect = function(pageId) {
+  _projWikiCur = pageId; projWikiRenderTree();
+  api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) {
+    var p = (res && res.code === 0) ? res.data : null; var c = document.getElementById('projWikiContent'); if (!p || !c) return;
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">' + escapeHtml(p.title) + '</b><span><button class="btn btn-sm" onclick="projWikiEdit(' + p.id + ')">编辑</button> <button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projWikiDelete(' + p.id + ')">删除</button></span></div>'
+      + '<div class="proj-md" style="font-size:13px;line-height:1.7;">' + projMd(p.content) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">更新人 ' + escapeHtml(p.updatedBy || '-') + ' · ' + escapeHtml((p.updatedAt || '').replace('T', ' ').slice(0, 16)) + '</div>';
+  });
+};
+window.projWikiNew = function() { projWikiEditForm({ title: '', content: '', parentId: 0 }); };
+window.projWikiEdit = function(pageId) { api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) { if (res && res.code === 0) projWikiEditForm(res.data); }); };
+function projWikiEditForm(p) {
+  var c = document.getElementById('projWikiContent'); if (!c) return;
+  var parentOpts = '<option value="0">（根）</option>' + _projWikiPages.filter(function(x) { return (!x.parentId || x.parentId === 0) && x.id !== p.id; }).map(function(x) { return '<option value="' + x.id + '"' + (p.parentId === x.id ? ' selected' : '') + '>' + escapeHtml(x.title) + '</option>'; }).join('');
+  c.innerHTML = '<input type="hidden" id="pwId" value="' + (p.id || '') + '">'
+    + '<div style="display:flex;gap:8px;margin-bottom:8px;"><input id="pwTitle" class="dbsync-form-input" style="flex:1;" placeholder="标题" value="' + escapeHtml(p.title || '') + '"><select id="pwParent" class="dbsync-form-select" style="width:140px;">' + parentOpts + '</select></div>'
+    + '<textarea id="pwContent" style="width:100%;min-height:240px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px;box-sizing:border-box;" placeholder="Markdown 内容">' + escapeHtml(p.content || '') + '</textarea>'
+    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="projWikiSave()">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
+}
+window.projWikiSave = function() {
+  var title = (document.getElementById('pwTitle').value || '').trim();
+  if (!title) { showToast('请填写标题', 'error'); return; }
+  var id = document.getElementById('pwId').value;
+  var body = { title: title, content: document.getElementById('pwContent').value || '', parentId: parseInt(document.getElementById('pwParent').value) || 0 };
+  if (id) body.id = parseInt(id);
+  apiPost('/api/project/' + _projDetail.id + '/wiki/pages', body).then(function(res) {
+    if (res && res.code === 0) { showToast('已保存', 'success'); _projWikiCur = res.data.id; projLoadWiki(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.projWikiDelete = function(pageId) {
+  if (!confirm('删除该文档页面？(子页面将提升为根)')) return;
+  fetch('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId, { method: 'DELETE' }).then(_handleResponse).then(function() { _projWikiCur = null; projLoadWiki(); }).catch(function() { showToast('删除失败', 'error'); });
 };
 
 /* ===== PM-M5：发布管理 ===== */
