@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r6">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r7">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r6"></script>
-<script src="js/gov-assets.js?v=g3r6"></script>
-<script src="js/gov-lineage.js?v=g3r6"></script>
-<script src="js/gov-quality.js?v=g3r6"></script>
-<script src="js/gov-standard.js?v=g3r6"></script>
-<script src="js/gov-classification.js?v=g3r6"></script>
-<script src="js/gov-security.js?v=g3r6"></script>
-<script src="js/gov-health.js?v=g3r6"></script>
-<script src="js/gov-audit.js?v=g3r6"></script>
-<script src="js/gov-overview.js?v=g3r6"></script>
-<script src="js/gov-subject.js?v=g3r6"></script>
+<script src="js/dn-common.js?v=g3r7"></script>
+<script src="js/gov-assets.js?v=g3r7"></script>
+<script src="js/gov-lineage.js?v=g3r7"></script>
+<script src="js/gov-quality.js?v=g3r7"></script>
+<script src="js/gov-standard.js?v=g3r7"></script>
+<script src="js/gov-classification.js?v=g3r7"></script>
+<script src="js/gov-security.js?v=g3r7"></script>
+<script src="js/gov-health.js?v=g3r7"></script>
+<script src="js/gov-audit.js?v=g3r7"></script>
+<script src="js/gov-overview.js?v=g3r7"></script>
+<script src="js/gov-subject.js?v=g3r7"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13712,7 +13712,8 @@ window.projLoadTasks = function() {
       + '<a href="#" onclick="projSetTaskView(\'kanban\');return false;" title="看板视图" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'kanban' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">看板</a>'
       + '<a href="#" onclick="projSetTaskView(\'calendar\');return false;" title="日历视图(按截止日)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a>'
       + '<a href="#" onclick="projSetTaskView(\'gantt\');return false;" title="甘特图(里程碑时间轴)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'gantt' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">甘特</a>'
-      + '<a href="#" onclick="projSetTaskView(\'burndown\');return false;" title="燃尽图(剩余任务趋势)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'burndown' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">燃尽</a></span>';
+      + '<a href="#" onclick="projSetTaskView(\'burndown\');return false;" title="燃尽图(剩余任务趋势)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'burndown' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">燃尽</a>'
+      + '<a href="#" onclick="projSetTaskView(\'workload\');return false;" title="成员负载(按指派人)" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'workload' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">负载</a></span>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
@@ -13733,6 +13734,9 @@ window.projLoadTasks = function() {
     }
     else if (_projTaskView === 'burndown') {
       h += projBurndownHtml(tasks, _today);
+    }
+    else if (_projTaskView === 'workload') {
+      h += projWorkloadHtml(tasks, _today);
     }
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
@@ -13834,6 +13838,39 @@ function projCalendarHtml(tasks, today) {
     h += '</div>';
   }
   h += '</div>';
+  return h;
+}
+// 成员负载视图：按指派人聚合, 堆叠条(待办/进行中/完成)+超期标记
+function projWorkloadHtml(tasks, today) {
+  if (!tasks.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无任务。</div>';
+  var byAsg = {};
+  tasks.forEach(function(t) {
+    var k = t.assignee || '（未指派）';
+    var g = byAsg[k] || (byAsg[k] = { TODO: 0, DOING: 0, DONE: 0, overdue: 0, total: 0 });
+    g[t.status] = (g[t.status] || 0) + 1; g.total++;
+    if (t.dueDate && t.status !== 'DONE' && t.dueDate < today) g.overdue++;
+  });
+  var rows = Object.keys(byAsg).map(function(k) { return { name: k, g: byAsg[k] }; }).sort(function(a, b) {
+    var au = (a.g.TODO + a.g.DOING), bu = (b.g.TODO + b.g.DONE === 0 ? 0 : b.g.TODO + b.g.DOING);
+    return (b.g.TODO + b.g.DOING) - (a.g.TODO + a.g.DOING) || b.g.total - a.g.total;
+  });
+  var maxTotal = rows.reduce(function(m, r) { return Math.max(m, r.g.total); }, 1);
+  var h = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--text-muted);">'
+    + '<span><span style="display:inline-block;width:10px;height:10px;background:#8c8c8c;border-radius:2px;"></span> 待办</span>'
+    + '<span><span style="display:inline-block;width:10px;height:10px;background:#1677ff;border-radius:2px;"></span> 进行中</span>'
+    + '<span><span style="display:inline-block;width:10px;height:10px;background:#52c41a;border-radius:2px;"></span> 完成</span>'
+    + '<span style="color:#ff4d4f;">● 超期</span></div>';
+  h += '<div style="display:flex;flex-direction:column;gap:8px;">';
+  rows.forEach(function(r) {
+    var g = r.g, active = g.TODO + g.DOING;
+    var seg = function(v, c) { return v > 0 ? '<div title="' + v + '" style="height:100%;width:' + (v / maxTotal * 100) + '%;background:' + c + ';"></div>' : ''; };
+    h += '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<div style="width:120px;flex-shrink:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</div>'
+      + '<div style="flex:1;display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--bg-hover,#f0f1f3);">' + seg(g.TODO, '#8c8c8c') + seg(g.DOING, '#1677ff') + seg(g.DONE, '#52c41a') + '</div>'
+      + '<div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;">进行中 ' + active + ' / 共 ' + g.total + (g.overdue ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + g.overdue + '</span>' : '') + '</div>'
+      + '</div>';
+  });
+  h += '</div><div style="font-size:11px;color:var(--text-muted);margin-top:8px;">共 ' + rows.length + ' 人(含未指派), 按未完成任务数排序; 条长按占最大负载比例。</div>';
   return h;
 }
 // 燃尽图：按天重建剩余任务曲线(实际) vs 理想匀速线(纯前端自绘)
