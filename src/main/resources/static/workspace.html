@@ -12917,6 +12917,40 @@ window.projUnbindAsset = function(rowId) {
     .catch(function() { showToast('解绑失败', 'error'); });
 };
 
+/* ===== PM-M4：概览大盘 ===== */
+window.projLoadOverview = function() {
+  var pane = document.getElementById('projPane_overview'); if (!pane || !_projDetail) return;
+  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  api('/api/project/' + _projDetail.id + '/overview').then(function(res) {
+    var d = (res && res.code === 0) ? (res.data || {}) : {};
+    var ac = d.assetCounts || {};
+    var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">'
+      + projTile('资产总数', d.assetTotal != null ? d.assetTotal : 0, '#1677ff')
+      + projTile('成员', d.memberCount != null ? d.memberCount : 0, '#52c41a')
+      + projTile('发布版本', d.releaseTotal != null ? d.releaseTotal : 0)
+      + projTile('待审批', d.releasePending != null ? d.releasePending : 0, (d.releasePending > 0 ? '#fa8c16' : ''))
+      + '</div>';
+    h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;margin-bottom:14px;">'
+      + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">资产分布</div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">'
+      + Object.keys(PROJ_ASSET_TYPE).map(function(k) { return '<span>' + PROJ_ASSET_TYPE[k] + '：<b>' + (ac[k] || 0) + '</b></span>'; }).join('')
+      + '</div></div>';
+    var acts = d.activity || [];
+    h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
+      + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">最近活动</div>';
+    if (!acts.length) h += '<div style="color:var(--text-muted);font-size:12px;">暂无活动</div>';
+    else {
+      h += '<div style="font-size:12px;line-height:1.9;">';
+      acts.forEach(function(a) {
+        var dot = a.kind === 'member' ? '#52c41a' : (a.kind === 'asset' ? '#1677ff' : '#fa8c16');
+        h += '<div style="display:flex;gap:8px;"><span style="color:' + dot + ';">●</span><span style="flex:1;">' + escapeHtml(a.text || '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((a.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+    pane.innerHTML = h;
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+
 // ===== 系统管理 tab 切换 =====
 function switchSettingsTab(el, tab) {
   el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });

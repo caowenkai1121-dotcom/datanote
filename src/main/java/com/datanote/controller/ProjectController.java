@@ -22,6 +22,7 @@ public class ProjectController {
     private final ProjectService projectService;
     private final com.datanote.service.ProjectMemberService projectMemberService;
     private final com.datanote.service.ProjectAssetService projectAssetService;
+    private final com.datanote.service.ProjectOverviewService projectOverviewService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -116,6 +117,16 @@ public class ProjectController {
         try {
             projectMemberService.remove(memberId);
             return R.ok("已移除");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "项目概览大盘")
+    @GetMapping("/{id}/overview")
+    public R<java.util.Map<String, Object>> overview(@PathVariable Long id) {
+        try {
+            return R.ok(projectOverviewService.overview(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
