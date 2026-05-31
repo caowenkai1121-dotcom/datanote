@@ -25,6 +25,8 @@ public class ProjectController {
     private final com.datanote.service.ProjectOverviewService projectOverviewService;
     private final com.datanote.service.ProjectReleaseService projectReleaseService;
     private final com.datanote.service.ProjectSettingService projectSettingService;
+    private final com.datanote.service.ProjectTagService projectTagService;
+    private final com.datanote.service.ProjectFavoriteService projectFavoriteService;
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -75,6 +77,90 @@ public class ProjectController {
     }
 
     // ===== PM-M2：成员与项目角色 =====
+
+    // ===== PM2-M1：标签 + 收藏/置顶/最近访问 =====
+
+    @Operation(summary = "标签列表")
+    @GetMapping("/tags")
+    public R<List<com.datanote.model.DnProjectTag>> tags() {
+        return R.ok(projectTagService.listTags());
+    }
+
+    @Operation(summary = "新建标签")
+    @PostMapping("/tags")
+    public R<com.datanote.model.DnProjectTag> createTag(@RequestBody java.util.Map<String, String> body) {
+        try {
+            return R.ok(projectTagService.createTag(body.get("tagName"), body.get("tagColor")));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "删除标签")
+    @DeleteMapping("/tags/{tagId}")
+    public R<String> deleteTag(@PathVariable Long tagId) {
+        projectTagService.deleteTag(tagId);
+        return R.ok("已删除");
+    }
+
+    @Operation(summary = "全部项目-标签关联")
+    @GetMapping("/tag-mappings")
+    public R<List<com.datanote.model.DnProjectTagMapping>> tagMappings() {
+        return R.ok(projectTagService.allMappings());
+    }
+
+    @Operation(summary = "设置项目标签")
+    @PostMapping("/{id}/tags")
+    public R<String> setProjectTags(@PathVariable Long id, @RequestBody java.util.Map<String, Object> body) {
+        try {
+            projectService.getById(id);
+            java.util.List<Long> ids = new java.util.ArrayList<>();
+            Object arr = body.get("tagIds");
+            if (arr instanceof java.util.List) {
+                for (Object o : (java.util.List<?>) arr) ids.add(Long.valueOf(String.valueOf(o)));
+            }
+            projectTagService.setProjectTags(id, ids);
+            return R.ok("已保存");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "切换收藏")
+    @PostMapping("/{id}/favorite")
+    public R<java.util.Map<String, Object>> toggleFavorite(@PathVariable Long id) {
+        boolean fav = projectFavoriteService.toggleFavorite(id);
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("favorited", fav);
+        return R.ok(m);
+    }
+
+    @Operation(summary = "置顶设置")
+    @PostMapping("/{id}/pin")
+    public R<String> setPin(@PathVariable Long id, @RequestBody java.util.Map<String, Object> body) {
+        boolean pinned = Boolean.TRUE.equals(body.get("pinned")) || "true".equals(String.valueOf(body.get("pinned")));
+        projectFavoriteService.setPinned(id, pinned);
+        return R.ok("已更新");
+    }
+
+    @Operation(summary = "我的收藏")
+    @GetMapping("/favorites")
+    public R<List<com.datanote.model.DnProjectFavorite>> favorites() {
+        return R.ok(projectFavoriteService.listFavorites());
+    }
+
+    @Operation(summary = "记录访问")
+    @PostMapping("/{id}/visit")
+    public R<String> visit(@PathVariable Long id) {
+        projectFavoriteService.recordAccess(id);
+        return R.ok("ok");
+    }
+
+    @Operation(summary = "最近访问")
+    @GetMapping("/recent")
+    public R<List<com.datanote.model.DnProjectAccess>> recent(@RequestParam(defaultValue = "10") int limit) {
+        return R.ok(projectFavoriteService.recent(limit));
+    }
 
     @Operation(summary = "项目角色权限矩阵")
     @GetMapping("/roles")

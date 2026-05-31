@@ -4102,7 +4102,10 @@ html, body {
               <select id="projFilterType" class="dbsync-form-select" style="width:110px;" onchange="projApplyFilter()"><option value="">全部类型</option><option value="GENERAL">通用</option><option value="DATASYNC">数据同步</option><option value="DEVSQL">SQL开发</option><option value="HYBRID">混合</option></select>
               <select id="projFilterStatus" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部状态</option><option value="ACTIVE">活跃</option><option value="ARCHIVED">已归档</option></select>
               <select id="projFilterEnv" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部环境</option><option value="DEV">开发</option><option value="PROD">生产</option><option value="MIXED">混合</option></select>
-              <select id="projSort" class="dbsync-form-select" style="width:120px;" onchange="projApplyFilter()"><option value="created_desc">最新创建</option><option value="created_asc">最早创建</option><option value="name">名称</option></select>
+              <select id="projFilterTag" class="dbsync-form-select" style="width:110px;" onchange="projApplyFilter()"><option value="">全部标签</option></select>
+              <select id="projSort" class="dbsync-form-select" style="width:120px;" onchange="projApplyFilter()"><option value="created_desc">最新创建</option><option value="created_asc">最早创建</option><option value="name">名称</option><option value="fav">收藏优先</option><option value="recent">最近访问</option></select>
+              <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="projOnlyFav" onchange="projApplyFilter()"> 仅收藏</label>
+              <button class="btn btn-sm" onclick="projManageTags()">标签管理</button>
               <span id="projFilterCount" style="font-size:12px;color:var(--text-muted);"></span>
             </div>
             <div id="projListBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
@@ -12642,17 +12645,37 @@ var PROJ_TYPE_LABEL = { GENERAL: '通用', DATASYNC: '数据同步', DEVSQL: 'SQ
 var PROJ_ENV_LABEL = { DEV: '开发', PROD: '生产', MIXED: '混合' };
 var PROJ_STATUS = { ACTIVE: { t: '活跃', c: '#52c41a' }, ARCHIVED: { t: '已归档', c: '#8c8c8c' }, DELETED: { t: '已删除', c: '#ff4d4f' } };
 
+var _projTags = [], _projTagMap = {}, _projFav = {}, _projRecent = {};
+function _pdata(res) { return (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []); }
 window.loadProjectSpace = function() {
   var box = document.getElementById('projListBox');
   if (!box) return;
-  api('/api/project/list').then(function(res) {
-    _projList = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []);
+  Promise.all([
+    api('/api/project/list'), api('/api/project/tags'), api('/api/project/tag-mappings'),
+    api('/api/project/favorites'), api('/api/project/recent?limit=50')
+  ]).then(function(a) {
+    _projList = _pdata(a[0]);
+    _projTags = _pdata(a[1]);
+    _projTagMap = {};
+    _pdata(a[2]).forEach(function(m) { (_projTagMap[m.projectId] = _projTagMap[m.projectId] || []).push(m.tagId); });
+    _projFav = {};
+    _pdata(a[3]).forEach(function(f) { _projFav[f.projectId] = { fav: true, pinned: f.pinned === 1 }; });
+    _projRecent = {};
+    _pdata(a[4]).forEach(function(r) { _projRecent[r.projectId] = r.accessAt; });
     projRenderKpi();
+    projFillTagFilter();
     projApplyFilter();
   }).catch(function() {
     box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">加载失败，请重试</div>';
   });
 };
+function _projTagById(id) { for (var i = 0; i < _projTags.length; i++) if (_projTags[i].id === id) return _projTags[i]; return null; }
+function projFillTagFilter() {
+  var sel = document.getElementById('projFilterTag'); if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">全部标签</option>' + _projTags.map(function(t) { return '<option value="' + t.id + '">' + escapeHtml(t.tagName) + '</option>'; }).join('');
+  sel.value = cur;
+}
 
 function projTile(label, value, color) {
   return '<div style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;">'
@@ -12677,10 +12700,14 @@ window.projApplyFilter = function() {
   var fs = (document.getElementById('projFilterStatus') || {}).value || '';
   var fe = (document.getElementById('projFilterEnv') || {}).value || '';
   var sort = (document.getElementById('projSort') || {}).value || 'created_desc';
+  var ftag = (document.getElementById('projFilterTag') || {}).value || '';
+  var onlyFav = (document.getElementById('projOnlyFav') || {}).checked;
   var list = _projList.filter(function(p) {
     if (ft && p.projectType !== ft) return false;
     if (fs && p.status !== fs) return false;
     if (fe && p.env !== fe) return false;
+    if (ftag && (_projTagMap[p.id] || []).indexOf(parseInt(ftag)) < 0) return false;
+    if (onlyFav && !(_projFav[p.id] && _projFav[p.id].fav)) return false;
     if (q) {
       var hay = ((p.projectName || '') + ' ' + (p.projectCode || '') + ' ' + (p.owner || '')).toLowerCase();
       if (hay.indexOf(q) < 0) return false;
@@ -12690,6 +12717,13 @@ window.projApplyFilter = function() {
   list.sort(function(a, b) {
     if (sort === 'name') return (a.projectName || '').localeCompare(b.projectName || '');
     if (sort === 'created_asc') return (a.id || 0) - (b.id || 0);
+    if (sort === 'recent') return String(_projRecent[b.id] || '').localeCompare(String(_projRecent[a.id] || ''));
+    if (sort === 'fav') {
+      var pa = (_projFav[a.id] && _projFav[a.id].pinned) ? 2 : ((_projFav[a.id] && _projFav[a.id].fav) ? 1 : 0);
+      var pb = (_projFav[b.id] && _projFav[b.id].pinned) ? 2 : ((_projFav[b.id] && _projFav[b.id].fav) ? 1 : 0);
+      if (pa !== pb) return pb - pa;
+      return (b.id || 0) - (a.id || 0);
+    }
     return (b.id || 0) - (a.id || 0);
   });
   var cnt = document.getElementById('projFilterCount');
@@ -12705,19 +12739,29 @@ function projRenderList(list) {
     return;
   }
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
-    + '<th>项目名</th><th>编码</th><th>类型</th><th>环境</th><th>负责人</th><th>状态</th><th>创建时间</th><th style="width:180px;">操作</th>'
+    + '<th style="width:30px;"></th><th>项目名</th><th>编码</th><th>类型</th><th>环境</th><th>标签</th><th>负责人</th><th>状态</th><th>创建时间</th><th style="width:210px;">操作</th>'
     + '</tr></thead><tbody>';
   rows.forEach(function(p) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
+    var fav = _projFav[p.id] && _projFav[p.id].fav;
+    var pinned = _projFav[p.id] && _projFav[p.id].pinned;
+    var tagChips = (_projTagMap[p.id] || []).map(function(tid) {
+      var t = _projTagById(tid); if (!t) return '';
+      return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:' + (t.tagColor || '#1677ff') + '22;color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span>';
+    }).join('');
     h += '<tr>'
-      + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#faad14' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
+      + '<td><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#faad14;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
       + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
+      + '<td>' + (tagChips || '<span style="color:var(--text-muted);">-</span>') + '</td>'
       + '<td>' + escapeHtml(p.owner || '-') + '</td>'
       + '<td><span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span></td>'
       + '<td style="white-space:nowrap;">' + escapeHtml((p.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="projOpenDetail(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>'
+      + '<a href="#" onclick="projSetTagsModal(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">标签</a>'
+      + '<a href="#" onclick="projTogglePin(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
       + '<a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">归档</a>' : '')
       + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#ff4d4f;">删除</a></td>'
@@ -12726,6 +12770,74 @@ function projRenderList(list) {
   h += '</tbody></table>';
   box.innerHTML = h;
 }
+
+/* ===== PM2-M1：收藏/置顶/标签 ===== */
+window.projToggleFav = function(id) {
+  apiPost('/api/project/' + id + '/favorite', {}).then(function(res) {
+    var f = (res && res.code === 0) ? res.data.favorited : false;
+    if (f) { _projFav[id] = _projFav[id] || {}; _projFav[id].fav = true; }
+    else if (_projFav[id]) { _projFav[id].fav = false; _projFav[id].pinned = false; }
+    projApplyFilter();
+  }).catch(function() { showToast('操作失败', 'error'); });
+};
+window.projTogglePin = function(id) {
+  var cur = _projFav[id] && _projFav[id].pinned;
+  apiPost('/api/project/' + id + '/pin', { pinned: !cur }).then(function() {
+    _projFav[id] = _projFav[id] || {}; _projFav[id].fav = true; _projFav[id].pinned = !cur;
+    showToast(!cur ? '已置顶' : '已取消置顶', 'success'); projApplyFilter();
+  }).catch(function() { showToast('操作失败', 'error'); });
+};
+window.projManageTags = function() {
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;"><input id="ptNewName" class="dbsync-form-input" style="width:140px;" placeholder="标签名"><input id="ptNewColor" type="color" value="#1677ff" style="width:40px;height:32px;padding:0;border:1px solid var(--border);border-radius:6px;"><button class="btn btn-sm btn-primary" onclick="projCreateTag()">新建</button></div><div id="ptList"></div>';
+  projShowModalBox('标签管理', h);
+  projRenderTagList();
+};
+function projRenderTagList() {
+  var box = document.getElementById('ptList'); if (!box) return;
+  if (!_projTags.length) { box.innerHTML = '<div style="color:var(--text-muted);">暂无标签</div>'; return; }
+  box.innerHTML = _projTags.map(function(t) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + (t.tagColor || '#1677ff') + ';"></span><span style="flex:1;">' + escapeHtml(t.tagName) + '</span><a href="#" onclick="projDeleteTag(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
+}
+window.projCreateTag = function() {
+  var name = (document.getElementById('ptNewName').value || '').trim();
+  if (!name) { showToast('请填写标签名', 'error'); return; }
+  apiPost('/api/project/tags', { tagName: name, tagColor: document.getElementById('ptNewColor').value || '#1677ff' }).then(function(res) {
+    if (res && res.code === 0) { _projTags.push(res.data); document.getElementById('ptNewName').value = ''; projRenderTagList(); projFillTagFilter(); }
+    else showToast((res && res.msg) || '新建失败', 'error');
+  }).catch(function() { showToast('新建失败', 'error'); });
+};
+window.projDeleteTag = function(tagId) {
+  if (!confirm('删除标签将移除其在所有项目的关联，确认？')) return;
+  fetch('/api/project/tags/' + tagId, { method: 'DELETE' }).then(_handleResponse).then(function() {
+    _projTags = _projTags.filter(function(t) { return t.id !== tagId; });
+    Object.keys(_projTagMap).forEach(function(pid) { _projTagMap[pid] = (_projTagMap[pid] || []).filter(function(x) { return x !== tagId; }); });
+    projRenderTagList(); projFillTagFilter(); projApplyFilter();
+  }).catch(function() { showToast('删除失败', 'error'); });
+};
+window.projSetTagsModal = function(pid) {
+  if (!_projTags.length) { showToast('请先在「标签管理」新建标签', 'info'); return; }
+  var cur = _projTagMap[pid] || [];
+  var h = _projTags.map(function(t) { var on = cur.indexOf(t.id) >= 0; return '<label style="display:block;padding:3px 0;cursor:pointer;"><input type="checkbox" class="ptSetChk" value="' + t.id + '"' + (on ? ' checked' : '') + '> <span style="color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span></label>'; }).join('');
+  h += '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTags(' + pid + ')">保存</button></div>';
+  projShowModalBox('设置项目标签', h);
+};
+window.projSaveTags = function(pid) {
+  var ids = []; document.querySelectorAll('.ptSetChk:checked').forEach(function(c) { ids.push(parseInt(c.value)); });
+  apiPost('/api/project/' + pid + '/tags', { tagIds: ids }).then(function(res) {
+    if (res && res.code === 0) { _projTagMap[pid] = ids; showToast('已保存', 'success'); projCloseModalBox(); projApplyFilter(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+function projShowModalBox(title, inner) {
+  var old = document.getElementById('projModalBox'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'projModalBox';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100000;display:flex;align-items:center;justify-content:center;';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;min-width:340px;max-width:80vw;max-height:80vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);"><b>' + escapeHtml(title) + '</b><span style="cursor:pointer;font-size:20px;color:var(--text-muted);" onclick="projCloseModalBox()">&times;</span></div><div style="padding:14px 16px;">' + inner + '</div>';
+  ov.appendChild(box); document.body.appendChild(ov);
+}
+window.projCloseModalBox = function() { var o = document.getElementById('projModalBox'); if (o) o.remove(); };
 
 window.projApplyTemplate = function() {
   var t = document.getElementById('projTemplate').value;
@@ -12811,6 +12923,7 @@ window.projOpenDetail = function(id) {
   var p = _projList.find(function(x) { return x.id === id; });
   if (!p) return;
   _projDetail = p;
+  apiPost('/api/project/' + id + '/visit', {}).catch(function() {});
   projRenderDetailHead(p);
   document.querySelectorAll('#projDetailTabs button').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-ptab') === 'overview'); });
   PROJ_ALL_TABS.forEach(function(t) { var el = document.getElementById('projPane_' + t); if (el) el.style.display = (t === 'overview') ? '' : 'none'; });
