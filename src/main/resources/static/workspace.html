@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r17">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r18">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r17"></script>
-<script src="js/gov-assets.js?v=g2r17"></script>
-<script src="js/gov-lineage.js?v=g2r17"></script>
-<script src="js/gov-quality.js?v=g2r17"></script>
-<script src="js/gov-standard.js?v=g2r17"></script>
-<script src="js/gov-classification.js?v=g2r17"></script>
-<script src="js/gov-security.js?v=g2r17"></script>
-<script src="js/gov-health.js?v=g2r17"></script>
-<script src="js/gov-audit.js?v=g2r17"></script>
-<script src="js/gov-overview.js?v=g2r17"></script>
-<script src="js/gov-subject.js?v=g2r17"></script>
+<script src="js/dn-common.js?v=g2r18"></script>
+<script src="js/gov-assets.js?v=g2r18"></script>
+<script src="js/gov-lineage.js?v=g2r18"></script>
+<script src="js/gov-quality.js?v=g2r18"></script>
+<script src="js/gov-standard.js?v=g2r18"></script>
+<script src="js/gov-classification.js?v=g2r18"></script>
+<script src="js/gov-security.js?v=g2r18"></script>
+<script src="js/gov-health.js?v=g2r18"></script>
+<script src="js/gov-audit.js?v=g2r18"></script>
+<script src="js/gov-overview.js?v=g2r18"></script>
+<script src="js/gov-subject.js?v=g2r18"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13134,12 +13134,12 @@ window.projLoadMembers = function() {
       // 角色分布徽标 + 搜索 + 导出
       var roleCnt = {}; ms.forEach(function(m) { var r = m.projectRole || ''; roleCnt[r] = (roleCnt[r] || 0) + 1; });
       h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-      Object.keys(roleCnt).forEach(function(r) { h += '<span style="font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(projRoleLabel(r)) + ' ' + roleCnt[r] + '</span>'; });
+      Object.keys(roleCnt).forEach(function(r) { var on = _projMemberRoleFilter === r; h += '<span onclick="projToggleRoleFilter(\'' + escapeHtml(r) + '\')" title="点击筛选该角色" style="cursor:pointer;font-size:11px;padding:1px 8px;border-radius:10px;background:' + (on ? 'var(--primary)' : 'var(--bg-hover)') + ';color:' + (on ? '#fff' : 'var(--text-regular)') + ';">' + escapeHtml(projRoleLabel(r)) + ' ' + roleCnt[r] + '</span>'; });
       h += '<input id="projMemberSearch" class="dbsync-form-input" style="width:140px;margin-left:auto;" placeholder="搜索成员" oninput="projFilterMembers()">';
       h += '<button class="btn btn-sm" onclick="projExportMembers()">导出CSV</button></div>';
       h += '<table class="dbsync-exec-table" id="projMemberTbl" style="width:100%;"><thead><tr><th>用户名</th><th>项目角色</th><th>加入时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
       ms.forEach(function(m) {
-        h += '<tr class="proj-member-row" data-uname="' + escapeHtml((m.username || '').toLowerCase()) + '"><td>' + escapeHtml(m.username) + '</td>'
+        h += '<tr class="proj-member-row" data-uname="' + escapeHtml((m.username || '').toLowerCase()) + '" data-role="' + escapeHtml(m.projectRole || '') + '"><td>' + escapeHtml(m.username) + '</td>'
           + '<td><select class="dbsync-form-select" style="width:110px;" onchange="projChangeRole(' + m.id + ',this.value)">' + projRoleOptions(m.projectRole) + '</select></td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((m.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
           + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:#ff4d4f;">移除</a></td></tr>';
@@ -13149,14 +13149,23 @@ window.projLoadMembers = function() {
     h += '<div id="projInviteBox" style="margin-top:18px;"></div>';
     pane.innerHTML = h;
     _projMembers = ms;
+    if (_projMemberRoleFilter) projFilterMembers();
     projLoadInvites();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 var _projMembers = [];
+var _projMemberRoleFilter = '';
+window.projToggleRoleFilter = function(r) {
+  _projMemberRoleFilter = (_projMemberRoleFilter === r) ? '' : r;
+  projLoadMembers();
+};
 window.projFilterMembers = function() {
   var kw = (document.getElementById('projMemberSearch') || {}).value || ''; kw = kw.trim().toLowerCase();
+  var rf = _projMemberRoleFilter;
   Array.prototype.slice.call(document.querySelectorAll('#projMemberTbl .proj-member-row')).forEach(function(tr) {
-    tr.style.display = (!kw || (tr.getAttribute('data-uname') || '').indexOf(kw) >= 0) ? '' : 'none';
+    var okKw = !kw || (tr.getAttribute('data-uname') || '').indexOf(kw) >= 0;
+    var okRole = !rf || (tr.getAttribute('data-role') || '') === rf;
+    tr.style.display = (okKw && okRole) ? '' : 'none';
   });
 };
 window.projExportMembers = function() {
@@ -13638,7 +13647,7 @@ window.projExportActs = function() {
 var _projMilestones = [];
 var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#52c41a' } };
 var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
-var _projTaskFilter = { assignee: '', overdue: false };
+var _projTaskFilter = { assignee: '', overdue: false, priority: '' };
 window.projLoadTasks = function() {
   var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
@@ -13647,10 +13656,11 @@ window.projLoadTasks = function() {
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
     var _td = new Date().toISOString().slice(0, 10);
     var asgOpts = []; (function() { var seen = {}; tasksAll.forEach(function(t) { if (t.assignee && !seen[t.assignee]) { seen[t.assignee] = 1; asgOpts.push(t.assignee); } }); })();
-    var fAsg = _projTaskFilter.assignee, fOver = _projTaskFilter.overdue;
+    var fAsg = _projTaskFilter.assignee, fOver = _projTaskFilter.overdue, fPrio = _projTaskFilter.priority;
     var tasks = tasksAll.filter(function(t) {
       if (fAsg && (t.assignee || '') !== fAsg) return false;
       if (fOver && !(t.dueDate && t.status !== 'DONE' && t.dueDate < _td)) return false;
+      if (fPrio && (t.priority || '') !== fPrio) return false;
       return true;
     });
     var cnt = { TODO: 0, DOING: 0, DONE: 0 };
@@ -13659,18 +13669,20 @@ window.projLoadTasks = function() {
     var overdueN = tasks.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _today; }).length;
     var donePct = tasks.length ? Math.round(cnt.DONE * 100 / tasks.length) : 0;
     var asgSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.assignee=this.value;projLoadTasks();"><option value="">全部指派人</option>' + asgOpts.map(function(a) { return '<option value="' + escapeHtml(a) + '"' + (fAsg === a ? ' selected' : '') + '>' + escapeHtml(a) + '</option>'; }).join('') + '</select>';
+    var prioSel = '<select class="dbsync-form-select" style="width:auto;" onchange="_projTaskFilter.priority=this.value;projLoadTasks();"><option value="">全部优先级</option>' + Object.keys(TASK_PRIO).map(function(p) { return '<option value="' + p + '"' + (fPrio === p ? ' selected' : '') + '>' + TASK_PRIO[p].t + '</option>'; }).join('') + '</select>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
       + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
-      + asgSel
+      + asgSel + prioSel
       + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
       + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
     if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
-    if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无任务</div>';
+    if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">' + (tasksAll.length ? '无匹配筛选条件的任务，<a href="#" onclick="_projTaskFilter={assignee:\'\',overdue:false,priority:\'\'};projLoadTasks();return false;" style="color:var(--primary);">清除筛选</a>' : '暂无任务') + '</div>';
     else {
       ['TODO', 'DOING', 'DONE'].forEach(function(st) {
         var group = tasks.filter(function(t) { return t.status === st; });
         if (!group.length) return;
+        group.sort(function(a, b) { return (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'); });
         h += '<div style="font-weight:600;font-size:13px;margin:10px 0 4px;color:' + TASK_STATUS[st].c + ';">' + TASK_STATUS[st].t + ' (' + group.length + ')</div>';
         h += '<table class="dbsync-exec-table" style="width:100%;"><tbody>';
         group.forEach(function(t) {
