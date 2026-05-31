@@ -306,13 +306,14 @@
       if (cols.length) {
         box.appendChild(DN.table({
           columns: [
-            { key: 'dstColumn', label: '目标列' },
-            { label: '来源', render: function (e) { return e.srcDb + '.' + e.srcTable + '.' + e.srcColumn; } },
-            { label: '变换', render: function (e) { return e.transformType ? DN.pill(e.transformType, 'info') : '-'; } }
+            { key: 'dstColumn', label: '目标列', copyable: true, exportValue: function (e) { return e.dstColumn || ''; } },
+            { label: '来源', copyable: true, render: function (e) { return e.srcDb + '.' + e.srcTable + '.' + e.srcColumn; }, exportValue: function (e) { return e.srcDb + '.' + e.srcTable + '.' + e.srcColumn; } },
+            { label: '变换', render: function (e) { return e.transformType ? DN.pill(e.transformType, 'info') : '-'; }, exportValue: function (e) { return e.transformType || ''; } }
           ],
           rows: cols,
           searchKeys: ['dstColumn', 'srcDb', 'srcTable', 'srcColumn', 'transformType'],
           searchPlaceholder: '搜索字段...',
+          exportName: '字段级血缘_' + db + '.' + table,
           empty: '无字段级血缘', emptyIcon: 'lineage'
         }));
       } else {

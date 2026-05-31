@@ -101,9 +101,20 @@
     ]));
   }
 
+  var _maxRow = 0, _maxSize = 0;
+  // 数值分档渐进色条：按占最大值比例渲染右对齐迷你条 + 数值
+  function magBar(v, max, label) {
+    var pct = max > 0 ? Math.max(2, Math.round(v * 100 / max)) : 0;
+    var color = pct >= 75 ? '#ff4d4f' : pct >= 50 ? '#fa8c16' : pct >= 25 ? '#faad14' : '#52c41a';
+    return '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">'
+      + '<span style="font-variant-numeric:tabular-nums;">' + label + '</span>'
+      + '<span style="display:inline-block;width:48px;height:6px;border-radius:3px;background:var(--bg-hover,#f0f1f3);overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';"></span></span></div>';
+  }
   function renderAssetTable() {
     var box = document.getElementById('assetTbl');
     if (!box) return;
+    _maxRow = assetAll.reduce(function (m, t) { return Math.max(m, Number(t.rowCount) || 0); }, 0);
+    _maxSize = assetAll.reduce(function (m, t) { return Math.max(m, Number(t.sizeBytes) || 0); }, 0);
     var rows = assetAll.filter(function (t) {
       if (assetState.src && (t.dbType || '') !== assetState.src) return false;
       if (assetState.quick === 'nodesc' && t.tableComment) return false;
@@ -118,8 +129,8 @@
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
         { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment || '-'; } },
-        { key: 'rowCount', label: '行数', align: 'right', sortable: true, render: function (r) { return r.rowCount == null ? '-' : fmtInt(r.rowCount); } },
-        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, render: function (r) { return DN.fmtBytes(r.sizeBytes); } },
+        { key: 'rowCount', label: '行数', align: 'right', sortable: true, html: true, render: function (r) { return r.rowCount == null ? '-' : magBar(Number(r.rowCount) || 0, _maxRow, fmtInt(r.rowCount)); } },
+        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, html: true, render: function (r) { return r.sizeBytes == null ? '-' : magBar(Number(r.sizeBytes) || 0, _maxSize, DN.fmtBytes(r.sizeBytes)); } },
         { key: '_op', label: '操作', render: function (r) {
             return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '详情',
               onclick: function () { openAssetDetail(r.databaseName || '', r.tableName || ''); } });
