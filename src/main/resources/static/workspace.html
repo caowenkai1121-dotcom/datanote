@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r7">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r8">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r7"></script>
-<script src="js/gov-assets.js?v=g3r7"></script>
-<script src="js/gov-lineage.js?v=g3r7"></script>
-<script src="js/gov-quality.js?v=g3r7"></script>
-<script src="js/gov-standard.js?v=g3r7"></script>
-<script src="js/gov-classification.js?v=g3r7"></script>
-<script src="js/gov-security.js?v=g3r7"></script>
-<script src="js/gov-health.js?v=g3r7"></script>
-<script src="js/gov-audit.js?v=g3r7"></script>
-<script src="js/gov-overview.js?v=g3r7"></script>
-<script src="js/gov-subject.js?v=g3r7"></script>
+<script src="js/dn-common.js?v=g3r8"></script>
+<script src="js/gov-assets.js?v=g3r8"></script>
+<script src="js/gov-lineage.js?v=g3r8"></script>
+<script src="js/gov-quality.js?v=g3r8"></script>
+<script src="js/gov-standard.js?v=g3r8"></script>
+<script src="js/gov-classification.js?v=g3r8"></script>
+<script src="js/gov-security.js?v=g3r8"></script>
+<script src="js/gov-health.js?v=g3r8"></script>
+<script src="js/gov-audit.js?v=g3r8"></script>
+<script src="js/gov-overview.js?v=g3r8"></script>
+<script src="js/gov-subject.js?v=g3r8"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17978,7 +17978,42 @@ window.dbsyncToggleEl = function(elId) {
   var el = document.getElementById(elId);
   if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
 };
-var _dbsyncHistAll = [], _dbsyncHistFilter = '';
+// 执行历史时间线：每次执行按开始时间定位、耗时定宽的横条(纯前端)
+function dbsyncHistTimeline(view) {
+  var items = view.map(function(ex) {
+    var st = ex.startTime || ex.createTime;
+    var s = st ? new Date(st).getTime() : 0;
+    var dur = (ex.duration != null ? Number(ex.duration) : 0) * 1000;
+    return { ex: ex, start: s, end: s + Math.max(dur, 0) };
+  }).filter(function(x) { return x.start > 0; });
+  if (!items.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">无可用时间信息绘制时间线。</div>';
+  var minT = Math.min.apply(null, items.map(function(x) { return x.start; }));
+  var maxT = Math.max.apply(null, items.map(function(x) { return x.end; }));
+  var span = Math.max(1, maxT - minT);
+  // 时间线从新到旧, 逐行
+  items.sort(function(a, b) { return b.start - a.start; });
+  var rows = items.slice(0, 60).map(function(x) {
+    var kind = dbsyncExecKind(x.ex.status);
+    var color = kind === 'ok' ? '#52c41a' : kind === 'err' ? '#ff4d4f' : 'var(--primary)';
+    var left = (x.start - minT) / span * 100;
+    var w = Math.max(1.2, (x.end - x.start) / span * 100);
+    if (left + w > 100) w = 100 - left;
+    var durSec = x.ex.duration != null ? x.ex.duration : '?';
+    var tip = dbsyncFmtTime(x.ex.startTime || x.ex.createTime) + ' · ' + dbsyncExecLabel(x.ex.status) + ' · 耗时' + durSec + 's · 读' + (x.ex.readCount || 0) + '/写' + (x.ex.writeCount || 0);
+    return '<div style="display:flex;align-items:center;gap:8px;height:24px;">'
+      + '<div style="width:120px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(dbsyncFmtTime(x.ex.startTime || x.ex.createTime)) + '</div>'
+      + '<div style="flex:1;position:relative;height:14px;background:var(--bg-hover,#f0f1f3);border-radius:3px;">'
+      + '<div title="' + escapeHtml(tip) + '" style="position:absolute;left:' + left.toFixed(2) + '%;width:' + w.toFixed(2) + '%;top:0;height:100%;background:' + color + ';border-radius:3px;min-width:3px;"></div></div>'
+      + '<div style="width:54px;flex-shrink:0;font-size:11px;color:var(--text-muted);text-align:right;">' + durSec + 's</div></div>';
+  }).join('');
+  var fmtRange = function(t) { return dbsyncFmtTime(new Date(t).toISOString()); };
+  return '<div style="border:1px solid var(--divider);border-radius:8px;padding:10px;">'
+    + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:6px;padding-left:128px;"><span>' + fmtRange(minT) + '</span><span>' + fmtRange(maxT) + '</span></div>'
+    + rows + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">横条=单次执行(位置按开始时间, 宽度按耗时), 颜色按状态; 最多展示最近60次。</div>';
+}
+var _dbsyncHistAll = [], _dbsyncHistFilter = '', _dbsyncHistView = 'table';
+window.dbsyncSetHistView = function(v) { _dbsyncHistView = v; dbsyncRenderHistory(); };
 function dbsyncRenderHistory(execs) {
   var pane = document.getElementById('dbsyncDetailPane_history');
   if (!pane) return;
@@ -17987,13 +18022,17 @@ function dbsyncRenderHistory(execs) {
     pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无执行记录</div>';
     return;
   }
-  // 状态筛选条 + 导出CSV
+  // 状态筛选条 + 视图切换 + 导出CSV
   var labels = {}; _dbsyncHistAll.forEach(function(ex) { var l = dbsyncExecLabel(ex.status); if (l) labels[l] = ex.status; });
   var opts = '<option value="">全部状态</option>' + Object.keys(labels).map(function(l) { return '<option value="' + escapeHtml(l) + '"' + (_dbsyncHistFilter === l ? ' selected' : '') + '>' + escapeHtml(l) + '</option>'; }).join('');
-  var bar = '<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:flex-end;">'
+  var vtog = '<span style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-right:auto;">'
+    + '<a href="#" onclick="dbsyncSetHistView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_dbsyncHistView === 'table' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">表格</a>'
+    + '<a href="#" onclick="dbsyncSetHistView(\'timeline\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_dbsyncHistView === 'timeline' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">时间线</a></span>';
+  var bar = '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">' + vtog
     + '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterHistory(this.value)">' + opts + '</select>'
     + '<button class="btn btn-sm" onclick="dbsyncExportHistory()">导出CSV</button></div>';
   var view = _dbsyncHistFilter ? _dbsyncHistAll.filter(function(ex) { return dbsyncExecLabel(ex.status) === _dbsyncHistFilter; }) : _dbsyncHistAll;
+  if (_dbsyncHistView === 'timeline') { pane.innerHTML = bar + dbsyncHistTimeline(view); return; }
   var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
     + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th style="width:60px;">日志</th>'
     + '</tr></thead><tbody>';
