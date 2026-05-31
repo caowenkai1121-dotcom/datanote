@@ -42,6 +42,22 @@
     }, 2600);
   };
 
+  /** 复制文本到剪贴板：优先 navigator.clipboard，降级 textarea+execCommand */
+  DN.copy = function (text) {
+    text = String(text == null ? '' : text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { DN.toast('已复制', 'ok'); }, function () { DN.toast('复制失败', 'err'); });
+        return;
+      }
+    } catch (e) {}
+    try {
+      var ta = document.createElement('textarea'); ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta); DN.toast('已复制', 'ok');
+    } catch (e2) { DN.toast('复制失败', 'err'); }
+  };
+
   /** DOM 简化器：DN.h('div', {class:'x', onclick:fn}, [child|text]) */
   DN.h = function (tag, attrs, children) {
     var el = document.createElement(tag);
@@ -307,6 +323,12 @@
           var td = document.createElement('td'); if (c.align) td.style.textAlign = c.align;
           var cell = c.render ? c.render(r) : (r[c.key] == null ? '' : r[c.key]);
           if (cell instanceof Node) td.appendChild(cell); else if (c.html) td.innerHTML = cell; else td.textContent = String(cell);
+          if (c.copyable) {
+            td.style.cursor = 'copy';
+            var cv = c.exportValue ? c.exportValue(r) : (r[c.key] == null ? td.textContent : r[c.key]);
+            td.title = '点击复制：' + String(cv);
+            td.addEventListener('click', function (e) { e.stopPropagation(); DN.copy(cv); });
+          }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);

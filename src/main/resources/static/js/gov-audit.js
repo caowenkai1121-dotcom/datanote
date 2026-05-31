@@ -24,7 +24,7 @@
         { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
         { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
         { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
-        { key: 'path', label: '路径', render: function (r) { return r.path || '-'; } },
+        { key: 'path', label: '路径', copyable: true, exportValue: function (r) { return r.path || ''; }, render: function (r) { return r.path || '-'; } },
         { key: 'ip', label: 'IP', render: function (r) { return r.ip || '-'; } },
         { key: 'status', label: '状态', render: function (r) { return r.status == null ? '-' : DN.pill(String(r.status), statusTone(r.status)); } },
         { key: 'detail', label: '详情', render: function (r) { return r.detail || '-'; } }

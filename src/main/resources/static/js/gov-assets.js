@@ -115,8 +115,8 @@
     assetTbl = DN.table({
       columns: [
         { key: 'dbType', label: '来源', render: function (r) { return DN.pill(r.dbType || '-', r.dbType === 'DORIS' ? 'info' : 'ok'); } },
-        { key: 'databaseName', label: '库' },
-        { key: 'tableName', label: '表' },
+        { key: 'databaseName', label: '库', copyable: true },
+        { key: 'tableName', label: '表', copyable: true },
         { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment || '-'; } },
         { key: 'rowCount', label: '行数', align: 'right', sortable: true, render: function (r) { return r.rowCount == null ? '-' : fmtInt(r.rowCount); } },
         { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, render: function (r) { return DN.fmtBytes(r.sizeBytes); } },
