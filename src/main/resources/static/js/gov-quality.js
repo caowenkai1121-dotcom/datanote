@@ -5,7 +5,7 @@
 
   var allRules = [];          // 全量规则
   var filterStatus = '';      // ''=全部 / '1'=启用 / '0'=停用
-  var filterDim = '', filterType = '';
+  var filterDim = '', filterType = '', filterBlock = '';
   var tableEl = null;         // DN.table 实例（供筛选 reload）
   var trendBody = null;       // 趋势卡片 body
 
@@ -53,6 +53,16 @@
     DN.get('/api/quality/rules').then(function (rules) {
       allRules = rules || [];
       box.innerHTML = '';
+      // 统计卡: 总数/启用/强阻断/已调度
+      var enabled = allRules.filter(function (r) { return r.status === 1; }).length;
+      var blocked = allRules.filter(function (r) { return r.blockDownstream === 1; }).length;
+      var scheduled = allRules.filter(function (r) { return r.scheduleCron; }).length;
+      box.appendChild(DN.statRow([
+        { icon: 'list', label: '规则总数', value: allRules.length },
+        { icon: 'check', label: '已启用', value: enabled, tone: 'ok' },
+        { icon: 'shield', label: '强阻断', value: blocked, tone: blocked ? 'warn' : 'ok', title: '点击仅看强阻断', onClick: function () { filterBlock = filterBlock ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterBlock ? '仅看强阻断' : '显示全部', 'info'); } },
+        { icon: 'clock', label: '已配调度', value: scheduled }
+      ]));
       box.appendChild(buildToolbarAndTable());
     }).catch(function (e) {
       box.innerHTML = '';
@@ -65,6 +75,7 @@
       if (filterStatus !== '' && String(r.status == null ? 1 : r.status) !== filterStatus) return false;
       if (filterDim && (r.dimension || '') !== filterDim) return false;
       if (filterType && (r.ruleType || '') !== filterType) return false;
+      if (filterBlock && r.blockDownstream !== 1) return false;
       return true;
     });
   }

@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r6">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r7">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r6"></script>
-<script src="js/gov-assets.js?v=g2r6"></script>
-<script src="js/gov-lineage.js?v=g2r6"></script>
-<script src="js/gov-quality.js?v=g2r6"></script>
-<script src="js/gov-standard.js?v=g2r6"></script>
-<script src="js/gov-classification.js?v=g2r6"></script>
-<script src="js/gov-security.js?v=g2r6"></script>
-<script src="js/gov-health.js?v=g2r6"></script>
-<script src="js/gov-audit.js?v=g2r6"></script>
-<script src="js/gov-overview.js?v=g2r6"></script>
-<script src="js/gov-subject.js?v=g2r6"></script>
+<script src="js/dn-common.js?v=g2r7"></script>
+<script src="js/gov-assets.js?v=g2r7"></script>
+<script src="js/gov-lineage.js?v=g2r7"></script>
+<script src="js/gov-quality.js?v=g2r7"></script>
+<script src="js/gov-standard.js?v=g2r7"></script>
+<script src="js/gov-classification.js?v=g2r7"></script>
+<script src="js/gov-security.js?v=g2r7"></script>
+<script src="js/gov-health.js?v=g2r7"></script>
+<script src="js/gov-audit.js?v=g2r7"></script>
+<script src="js/gov-overview.js?v=g2r7"></script>
+<script src="js/gov-subject.js?v=g2r7"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17778,6 +17778,7 @@ window.dbsyncLoadErrorRows = function(id) {
   api('/api/sync-job/' + id + '/error-rows?limit=200').then(function(res) {
     if (_dbsyncDetailJobId !== id) return;
     var rows = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []);
+    _dbsyncErrRowsAll = rows;
     dbsyncRenderErrorRows(pane, id, rows);
   }).catch(function() {
     if (_dbsyncDetailJobId !== id) return;
@@ -17786,10 +17787,15 @@ window.dbsyncLoadErrorRows = function(id) {
 };
 
 function dbsyncRenderErrorRows(pane, jobId, rows) {
-  var bar = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+  var srcOpts = '';
+  (function() { var seen = {}; (rows || []).forEach(function(r) { var s = r.sourceTable || ''; if (s && !seen[s]) { seen[s] = 1; srcOpts += '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>'; } }); })();
+  var bar = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;">'
     + '<span style="font-size:12px;color:var(--text-muted);">逐行写入失败的坏行（最多展示 200 条）。修复根因后，<b>重新运行任务</b>即可幂等重试这些行。</span>'
+    + '<span style="display:flex;gap:6px;">'
+    + (rows.length ? '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterErrorRows(' + jobId + ',this.value)"><option value="">全部源表</option>' + srcOpts + '</select>' : '')
+    + (rows.length ? '<button class="btn btn-sm" onclick="dbsyncExportErrorRows()">导出CSV</button>' : '')
     + (rows.length ? '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
-    + '</div>';
+    + '</span></div>';
   if (!rows || rows.length === 0) {
     pane.innerHTML = bar + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无坏行记录</div>';
     return;
@@ -17818,6 +17824,22 @@ function dbsyncRenderErrorRows(pane, jobId, rows) {
   pane.innerHTML = html;
 }
 
+var _dbsyncErrRowsAll = [];
+window.dbsyncFilterErrorRows = function(jobId, src) {
+  var pane = document.getElementById('dbsyncDetailPane_errors'); if (!pane) return;
+  var rows = src ? _dbsyncErrRowsAll.filter(function(r) { return (r.sourceTable || '') === src; }) : _dbsyncErrRowsAll;
+  dbsyncRenderErrorRows(pane, jobId, rows);
+};
+window.dbsyncExportErrorRows = function() {
+  var rows = _dbsyncErrRowsAll || []; if (!rows.length) { showToast('暂无数据', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['时间', '源表', '阶段', '错误信息', '原始行'].map(cell).join(',')];
+  rows.forEach(function(r) { lines.push([dbsyncFmtTime(r.createdAt), r.sourceTable, r.stage, r.errorMsg, r.rawRow].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'sync_error_rows_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+};
 window.dbsyncClearErrorRows = function(jobId) {
   if (!confirm('确认清空该任务的全部坏行记录？此操作不可恢复（仅删除 DLQ 记录，不影响目标数据）。')) return;
   fetch('/api/sync-job/' + jobId + '/error-rows', { method: 'DELETE' }).then(_handleResponse).then(function(res) {
