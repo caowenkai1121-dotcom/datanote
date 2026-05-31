@@ -3278,19 +3278,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r12">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r13">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r12"></script>
-<script src="js/gov-assets.js?v=g3r12"></script>
-<script src="js/gov-lineage.js?v=g3r12"></script>
-<script src="js/gov-quality.js?v=g3r12"></script>
-<script src="js/gov-standard.js?v=g3r12"></script>
-<script src="js/gov-classification.js?v=g3r12"></script>
-<script src="js/gov-security.js?v=g3r12"></script>
-<script src="js/gov-health.js?v=g3r12"></script>
-<script src="js/gov-audit.js?v=g3r12"></script>
-<script src="js/gov-overview.js?v=g3r12"></script>
-<script src="js/gov-subject.js?v=g3r12"></script>
+<script src="js/dn-common.js?v=g3r13"></script>
+<script src="js/gov-assets.js?v=g3r13"></script>
+<script src="js/gov-lineage.js?v=g3r13"></script>
+<script src="js/gov-quality.js?v=g3r13"></script>
+<script src="js/gov-standard.js?v=g3r13"></script>
+<script src="js/gov-classification.js?v=g3r13"></script>
+<script src="js/gov-security.js?v=g3r13"></script>
+<script src="js/gov-health.js?v=g3r13"></script>
+<script src="js/gov-audit.js?v=g3r13"></script>
+<script src="js/gov-overview.js?v=g3r13"></script>
+<script src="js/gov-subject.js?v=g3r13"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12760,6 +12760,65 @@ function switchProjectTab(el, tab) {
  * 项目管理 — PM-M1 项目空间(CRUD)
  * ============================================================ */
 var _projList = [];
+// 项目快速切换命令面板(大功能, Ctrl/Cmd+K): 输入即筛 + 键盘上下选 + Enter打开
+var _projQsIdx = 0, _projQsRows = [];
+window.projQuickSwitch = function() {
+  var old = document.getElementById('projQsOverlay'); if (old) { old.remove(); return; }
+  var ov = document.createElement('div');
+  ov.id = 'projQsOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:100000;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = '<div style="width:560px;max-width:92vw;background:var(--bg-card,#fff);border-radius:12px;box-shadow:0 12px 48px rgba(0,0,0,.24);overflow:hidden;">'
+    + '<input id="projQsInput" placeholder="搜索项目名 / 编码 / 负责人，↑↓ 选择，Enter 打开，Esc 关闭" autocomplete="off" style="width:100%;box-sizing:border-box;padding:14px 16px;border:0;border-bottom:1px solid var(--divider);font-size:14px;outline:none;background:transparent;color:var(--text-regular);">'
+    + '<div id="projQsList" style="max-height:50vh;overflow:auto;"></div></div>';
+  document.body.appendChild(ov);
+  var input = document.getElementById('projQsInput');
+  _projQsIdx = 0;
+  projQsRender('');
+  input.oninput = function() { _projQsIdx = 0; projQsRender(input.value); };
+  input.onkeydown = function(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); _projQsIdx = Math.min(_projQsRows.length - 1, _projQsIdx + 1); projQsHighlight(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _projQsIdx = Math.max(0, _projQsIdx - 1); projQsHighlight(); }
+    else if (e.key === 'Enter') { e.preventDefault(); var r = _projQsRows[_projQsIdx]; if (r) { ov.remove(); projOpenDetailById(r.id); } }
+    else if (e.key === 'Escape') { ov.remove(); }
+  };
+  setTimeout(function() { input.focus(); }, 30);
+};
+function projQsRender(kw) {
+  kw = (kw || '').trim().toLowerCase();
+  var list = (_projList || []).filter(function(p) {
+    if (!kw) return true;
+    return ((p.projectName || '') + ' ' + (p.projectCode || '') + ' ' + (p.owner || '')).toLowerCase().indexOf(kw) >= 0;
+  }).slice(0, 30);
+  _projQsRows = list;
+  var box = document.getElementById('projQsList'); if (!box) return;
+  if (!list.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">无匹配项目</div>'; return; }
+  box.innerHTML = list.map(function(p, i) {
+    var st = PROJ_STATUS[p.status] || { t: p.status, c: '' };
+    return '<div class="proj-qs-row" data-i="' + i + '" onclick="(function(){document.getElementById(\'projQsOverlay\').remove();projOpenDetailById(' + p.id + ');})()" style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--divider);">'
+      + '<span style="font-weight:500;font-size:13px;">' + escapeHtml(p.projectName || '-') + '</span>'
+      + '<span style="font-family:monospace;font-size:11px;color:var(--text-muted);">' + escapeHtml(p.projectCode || '') + '</span>'
+      + '<span style="font-size:11px;color:' + st.c + ';margin-left:auto;">' + escapeHtml(st.t) + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.owner || '') + '</span></div>';
+  }).join('');
+  projQsHighlight();
+}
+function projQsHighlight() {
+  Array.prototype.slice.call(document.querySelectorAll('#projQsList .proj-qs-row')).forEach(function(r, i) {
+    var on = i === _projQsIdx;
+    r.style.background = on ? 'var(--primary-bg,#e6f0ff)' : '';
+    if (on) r.scrollIntoView({ block: 'nearest' });
+  });
+}
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    // 仅在项目空间视图激活时拦截, 避免全局误触
+    var pv = document.getElementById('viewProject');
+    var active = pv && pv.offsetParent !== null;
+    if (active) { e.preventDefault(); projQuickSwitch(); }
+  }
+}, true);
 var PROJ_TYPE_LABEL = { GENERAL: '通用', DATASYNC: '数据同步', DEVSQL: 'SQL开发', HYBRID: '混合' };
 var PROJ_ENV_LABEL = { DEV: '开发', PROD: '生产', MIXED: '混合' };
 var PROJ_STATUS = { ACTIVE: { t: '活跃', c: '#52c41a' }, ARCHIVED: { t: '已归档', c: '#8c8c8c' }, DELETED: { t: '已删除', c: '#ff4d4f' } };
