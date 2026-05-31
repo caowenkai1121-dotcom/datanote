@@ -87,6 +87,13 @@ public class AuditService {
         if (s == null) {
             return "";
         }
+        // 防 CSV 公式注入：=、+、-、@、制表、回车开头的单元格前置单引号，避免 Excel/Sheets 当公式执行
+        if (!s.isEmpty()) {
+            char f = s.charAt(0);
+            if (f == '=' || f == '+' || f == '-' || f == '@' || f == '\t' || f == '\r') {
+                s = "'" + s;
+            }
+        }
         boolean needQuote = s.indexOf(',') >= 0 || s.indexOf('"') >= 0
                 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0;
         if (!needQuote) {

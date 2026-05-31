@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r18">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r19">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r18"></script>
-<script src="js/gov-assets.js?v=q100r18"></script>
-<script src="js/gov-lineage.js?v=q100r18"></script>
-<script src="js/gov-quality.js?v=q100r18"></script>
-<script src="js/gov-standard.js?v=q100r18"></script>
-<script src="js/gov-classification.js?v=q100r18"></script>
-<script src="js/gov-security.js?v=q100r18"></script>
-<script src="js/gov-health.js?v=q100r18"></script>
-<script src="js/gov-audit.js?v=q100r18"></script>
-<script src="js/gov-overview.js?v=q100r18"></script>
-<script src="js/gov-subject.js?v=q100r18"></script>
+<script src="js/dn-common.js?v=q100r19"></script>
+<script src="js/gov-assets.js?v=q100r19"></script>
+<script src="js/gov-lineage.js?v=q100r19"></script>
+<script src="js/gov-quality.js?v=q100r19"></script>
+<script src="js/gov-standard.js?v=q100r19"></script>
+<script src="js/gov-classification.js?v=q100r19"></script>
+<script src="js/gov-security.js?v=q100r19"></script>
+<script src="js/gov-health.js?v=q100r19"></script>
+<script src="js/gov-audit.js?v=q100r19"></script>
+<script src="js/gov-overview.js?v=q100r19"></script>
+<script src="js/gov-subject.js?v=q100r19"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13020,7 +13020,7 @@ window.projRestoreFilters = function() {
 };
 window.projExportCsv = function() {
   var rows = _projFiltered && _projFiltered.length ? _projFiltered : _projList;
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var head = ['项目名', '编码', '类型', '环境', '负责人', '状态', '标签', '描述', '创建时间'];
   var lines = [head.map(cell).join(',')];
   rows.forEach(function(p) {
@@ -13428,7 +13428,7 @@ window.projFilterMembers = function() {
 };
 window.projExportMembers = function() {
   var ms = _projMembers || []; if (!ms.length) { showToast('暂无成员', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var lines = [['用户名', '角色', '加入时间'].map(cell).join(',')];
   ms.forEach(function(m) { lines.push([m.username, projRoleLabel(m.projectRole), (m.createdAt || '').replace('T', ' ').slice(0, 16)].map(cell).join(',')); });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -13627,7 +13627,7 @@ window.projFilterEnvParams = function() {
 };
 window.projExportEnvParams = function() {
   var ps = _projEnvParams || []; if (!ps.length) { showToast('暂无参数', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var lines = [['参数键', '开发值', '生产值', '说明'].map(cell).join(',')];
   ps.forEach(function(p) { lines.push([p.paramKey, p.devValue, p.prodValue, p.remark].map(cell).join(',')); });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -18693,7 +18693,7 @@ window.dbsyncFilterHistory = function(v) { _dbsyncHistFilter = v; dbsyncRenderHi
 window.dbsyncExportHistory = function() {
   var view = _dbsyncHistFilter ? _dbsyncHistAll.filter(function(ex) { return dbsyncExecLabel(ex.status) === _dbsyncHistFilter; }) : _dbsyncHistAll;
   if (!view.length) { showToast('暂无记录', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var lines = [['执行时间', '状态', '读取', '写入', '错误', '耗时(秒)'].map(cell).join(',')];
   view.forEach(function(ex) {
     lines.push([dbsyncFmtTime(ex.startTime || ex.createTime), dbsyncExecLabel(ex.status), ex.readCount || 0, ex.writeCount || 0, ex.errorCount || 0, ex.duration != null ? ex.duration : ''].map(cell).join(','));
@@ -18720,7 +18720,7 @@ window.dbsyncFilterAudit = function(t) {
 };
 window.dbsyncExportAudit = function() {
   var rows = _dbsyncAuditAll || []; if (!rows.length) { showToast('暂无数据', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var lines = [['操作类型', '操作时间', '操作人', '变更详情'].map(cell).join(',')];
   rows.forEach(function(a) { lines.push([_dbsyncAuditOpLabel[a.operationType] || a.operationType, dbsyncFmtTime(a.createdAt), a.operator, a.changeDetail].map(cell).join(',')); });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -18964,7 +18964,7 @@ var _dbsyncDashLast = [];
 window.dbsyncExportDashCsv = function() {
   var rows = _dbsyncDashLast || [];
   if (!rows.length) { showToast('暂无数据可导出', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var head = ['任务名', '模式', '运行状态', '最近执行状态', '最近读取', '最近写入', '最近错误', 'CDC延迟ms'];
   var lines = [head.map(cell).join(',')];
   rows.forEach(function(j) { lines.push([j.jobName, j.syncMode, j.status, j.lastStatus, j.lastReadCount, j.lastWriteCount, j.lastErrorCount, j.cdcLagMs].map(cell).join(',')); });
@@ -19381,7 +19381,7 @@ window.dbsyncFilterErrorRows = function(jobId, src) {
 };
 window.dbsyncExportErrorRows = function() {
   var rows = _dbsyncErrRowsAll || []; if (!rows.length) { showToast('暂无数据', 'info'); return; }
-  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var cell = csvCell; // 复用全局加固版(防公式注入+去换行)
   var lines = [['时间', '源表', '阶段', '错误信息', '原始行'].map(cell).join(',')];
   rows.forEach(function(r) { lines.push([dbsyncFmtTime(r.createdAt), r.sourceTable, r.stage, r.errorMsg, r.rawRow].map(cell).join(',')); });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });

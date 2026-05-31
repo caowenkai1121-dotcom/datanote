@@ -299,7 +299,7 @@
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
-    function csvCell(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+    function csvCell(v) { var s = String(v == null ? '' : v).replace(/[\r\n]+/g, ' '); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }
     function draw() {
       var data = filt(), total = data.length, pages = Math.max(1, Math.ceil(total / pageSize));
       if (page > pages) page = pages;
