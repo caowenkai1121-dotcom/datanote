@@ -1868,6 +1868,15 @@ html, body {
 .btn:focus-visible, a:focus-visible, .dbsync-form-select:focus-visible, .dbsync-form-input:focus-visible { outline: 2px solid var(--primary, #1890ff); outline-offset: 1px; }
 /* 卡片网格统一悬浮过渡 */
 .dbsync-job-card { transition: box-shadow .15s, transform .15s; }
+/* 禁用态按钮视觉统一(UX) */
+.btn:disabled, .btn[disabled] { opacity: .55; cursor: not-allowed; }
+/* 小屏响应式: 抽屉/弹窗近全宽, 命令面板更贴边(UX) */
+@media (max-width: 640px) {
+  .dbsync-drawer { width: 96vw !important; }
+  .g-modal, .dbsync-modal { width: 94vw !important; max-width: 94vw !important; }
+  #projQsOverlay > div, #dbsyncQsOverlay > div { width: 94vw !important; }
+  .dbsync-metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
 .dm-ai-error {
   border-color: rgba(239,68,68,.3) !important;
   background: rgba(239,68,68,.06) !important;
@@ -3297,19 +3306,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r48">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r49">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r48"></script>
-<script src="js/gov-assets.js?v=g3r48"></script>
-<script src="js/gov-lineage.js?v=g3r48"></script>
-<script src="js/gov-quality.js?v=g3r48"></script>
-<script src="js/gov-standard.js?v=g3r48"></script>
-<script src="js/gov-classification.js?v=g3r48"></script>
-<script src="js/gov-security.js?v=g3r48"></script>
-<script src="js/gov-health.js?v=g3r48"></script>
-<script src="js/gov-audit.js?v=g3r48"></script>
-<script src="js/gov-overview.js?v=g3r48"></script>
-<script src="js/gov-subject.js?v=g3r48"></script>
+<script src="js/dn-common.js?v=g3r49"></script>
+<script src="js/gov-assets.js?v=g3r49"></script>
+<script src="js/gov-lineage.js?v=g3r49"></script>
+<script src="js/gov-quality.js?v=g3r49"></script>
+<script src="js/gov-standard.js?v=g3r49"></script>
+<script src="js/gov-classification.js?v=g3r49"></script>
+<script src="js/gov-security.js?v=g3r49"></script>
+<script src="js/gov-health.js?v=g3r49"></script>
+<script src="js/gov-audit.js?v=g3r49"></script>
+<script src="js/gov-overview.js?v=g3r49"></script>
+<script src="js/gov-subject.js?v=g3r49"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
