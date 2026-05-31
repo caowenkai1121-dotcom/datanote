@@ -161,6 +161,42 @@
     var card = DN.card({ title: '本页操作类型分布', icon: 'chart' });
     card.body.appendChild(DN.bars(items));
     box.appendChild(card.el);
+    // 行为时段热力(时×星期)
+    box.appendChild(buildHourHeatCard(rows));
+  }
+
+  // 行为时段热力图(大功能): 7星期 × 24小时 操作密度
+  function buildHourHeatCard(rows) {
+    var card = DN.card({ title: '操作时段热力（星期 × 小时）', icon: 'clock' });
+    var grid = {}; var max = 0;
+    rows.forEach(function (r) {
+      var s = r.createdAt; if (!s) return;
+      var d = new Date(String(s).replace(' ', 'T'));
+      if (isNaN(d.getTime())) return;
+      var key = d.getDay() + '_' + d.getHours();
+      grid[key] = (grid[key] || 0) + 1; if (grid[key] > max) max = grid[key];
+    });
+    var dows = ['日', '一', '二', '三', '四', '五', '六'];
+    var colorOf = function (n) { if (!n) return '#f0f1f3'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+    var wrap = DN.h('div', { style: 'overflow-x:auto' });
+    var tbl = DN.h('div', { style: 'display:inline-block;min-width:100%' });
+    // 表头(小时)
+    var head = DN.h('div', { style: 'display:flex;gap:2px;margin-bottom:2px;padding-left:22px' });
+    for (var hH = 0; hH < 24; hH += 2) head.appendChild(DN.h('div', { style: 'width:26px;font-size:9px;color:#999;text-align:left', text: hH }));
+    tbl.appendChild(head);
+    for (var w = 0; w < 7; w++) {
+      var row = DN.h('div', { style: 'display:flex;gap:2px;align-items:center;margin-bottom:2px' });
+      row.appendChild(DN.h('div', { style: 'width:20px;font-size:10px;color:#999', text: dows[w] }));
+      for (var hr = 0; hr < 24; hr++) {
+        var n = grid[w + '_' + hr] || 0;
+        row.appendChild(DN.h('div', { title: dows[w] + ' ' + hr + ':00 · ' + n + ' 次', style: 'width:11px;height:11px;border-radius:2px;background:' + colorOf(n) }));
+      }
+      tbl.appendChild(row);
+    }
+    wrap.appendChild(tbl);
+    card.body.appendChild(wrap);
+    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '基于本页 ' + rows.length + ' 条审计记录, 颜色越深该时段操作越密集(峰值 ' + max + ' 次)' }));
+    return card.el;
   }
 
   // 服务端分页（总数由后端给出，单独追加在表格下方）
