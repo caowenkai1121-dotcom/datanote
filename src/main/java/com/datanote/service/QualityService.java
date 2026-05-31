@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.config.HiveConfig;
 import com.datanote.exception.BusinessException;
 import com.datanote.mapper.DnDatasourceMapper;
@@ -42,6 +43,41 @@ public class QualityService {
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
+
+    /**
+     * 质量失败根因分析：聚合近 100 次执行的状态分布 + 最近失败/错误样本(Top20)。
+     * ruleId 为空则跨全部规则。
+     */
+    public Map<String, Object> failureAnalysis(Long ruleId) {
+        QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
+        if (ruleId != null) qw.eq("rule_id", ruleId);
+        qw.orderByDesc("started_at").last("LIMIT 100");
+        List<DnQualityRun> runs = qualityRunMapper.selectList(qw);
+        Map<String, Integer> byStatus = new LinkedHashMap<>();
+        List<Map<String, Object>> failures = new ArrayList<>();
+        for (DnQualityRun r : runs) {
+            String st = r.getRunStatus() == null ? "UNKNOWN" : r.getRunStatus();
+            byStatus.merge(st, 1, Integer::sum);
+            if (("FAIL".equalsIgnoreCase(st) || "ERROR".equalsIgnoreCase(st)) && failures.size() < 20) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("ruleId", r.getRuleId());
+                m.put("startedAt", r.getStartedAt());
+                m.put("runStatus", st);
+                m.put("passRate", r.getPassRate());
+                m.put("failCount", r.getFailCount());
+                m.put("errorMsg", r.getErrorMsg());
+                m.put("errorSample", r.getErrorSample());
+                failures.add(m);
+            }
+        }
+        List<Map<String, Object>> statusList = new ArrayList<>();
+        byStatus.forEach((k, v) -> { Map<String, Object> m = new LinkedHashMap<>(); m.put("status", k); m.put("cnt", v); statusList.add(m); });
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("statusCounts", statusList);
+        out.put("recentFailures", failures);
+        out.put("totalRuns", runs.size());
+        return out;
+    }
 
     /**
      * 校验 SQL 标识符（表名、列名），防止 SQL 注入

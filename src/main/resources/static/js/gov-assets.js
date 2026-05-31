@@ -358,7 +358,15 @@
       var box = document.getElementById('unusedList');
       if (!box) return;
       var rows = list || [];
-      if (unusedTbl && box.contains(unusedTbl)) { unusedTbl.reload(rows); return; }
+      box.innerHTML = '';
+      // 回收成本汇总
+      var totalBytes = rows.reduce(function (a, u) { return a + (Number(u.sizeBytes) || 0); }, 0);
+      var noLineage = rows.filter(function (u) { return !u.hasDownstreamLineage; }).length;
+      box.appendChild(DN.statRow([
+        { icon: 'alert', label: '无用表候选', value: rows.length, tone: rows.length > 0 ? 'warn' : 'ok' },
+        { icon: 'db', label: '可回收体量', value: DN.fmtBytes(totalBytes), tone: 'info' },
+        { icon: 'lineage', label: '无下游血缘', value: noLineage, sub: '可安全回收' }
+      ]));
       unusedTbl = DN.table({
         columns: [
           { key: '_t', label: '库.表', render: function (u) { return (u.db || '') + '.' + (u.table || ''); } },
@@ -375,7 +383,6 @@
         rows: rows, pageSize: 15, searchKeys: ['db', 'table'], searchPlaceholder: '搜索库 / 表',
         empty: '暂无无用表候选（先采集资产快照）', emptyIcon: 'check'
       });
-      box.innerHTML = '';
       box.appendChild(unusedTbl);
     }).catch(function () {});
   }
@@ -417,7 +424,17 @@
       var box = document.getElementById('costList');
       if (!box) return;
       var rows = list || [];
-      if (costTbl && box.contains(costTbl)) { costTbl.reload(rows); return; }
+      box.innerHTML = '';
+      // 成本 Top10 热力
+      var top = rows.slice(0, 10).filter(function (s) { return (Number(s.costEstimate) || Number(s.sizeBytes) || 0) > 0; });
+      if (top.length) {
+        box.appendChild(DN.sectionTitle('成本 Top10（按月成本，无则按体量）'));
+        box.appendChild(DN.heat(top.map(function (s) {
+          var v = Number(s.costEstimate) || 0;
+          return { label: (s.db || '') + '.' + (s.table || ''), value: v || (Number(s.sizeBytes) || 0), display: v ? ('¥' + v) : DN.fmtBytes(s.sizeBytes) };
+        }), { rgb: [250, 173, 20] }));
+        box.appendChild(DN.sectionTitle('全部资产成本明细'));
+      }
       costTbl = DN.table({
         columns: [
           { key: '_t', label: '库.表', render: function (s) { return (s.db || '') + '.' + (s.table || ''); } },
@@ -427,7 +444,6 @@
         ],
         rows: rows, pageSize: 15, searchKeys: ['db', 'table'], searchPlaceholder: '搜索库 / 表', empty: '暂无成本数据（先采集资产快照）'
       });
-      box.innerHTML = '';
       box.appendChild(costTbl);
     }).catch(function () {});
   }

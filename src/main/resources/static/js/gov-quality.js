@@ -12,10 +12,11 @@
     // 顶部：质量分 gauge + 趋势 bars 两张卡片
     var grid = DN.h('div', { class: 'gov-grid' });
     var scoreCard = DN.card({ title: '整体质量分', icon: 'check' });
-    var trendCard = DN.card({ title: '规则通过率趋势', icon: 'chart' });
+    scoreCard.el.classList.add('primary');
+    var trendCard = DN.card({ title: '规则趋势 · 根因分析', icon: 'chart' });
     trendBody = trendCard.body;
     scoreCard.body.appendChild(DN.skeleton(2));
-    trendBody.appendChild(DN.empty('点击下方规则查看其通过率趋势', 'chart'));
+    trendBody.appendChild(DN.empty('点击下方规则查看其通过率趋势与失败根因', 'chart'));
     grid.appendChild(scoreCard.el);
     grid.appendChild(trendCard.el);
     c.appendChild(grid);
@@ -78,7 +79,7 @@
       columns: [
         { key: 'ruleName', label: '规则', render: function (r) {
             return DN.h('a', { href: 'javascript:void(0)', text: r.ruleName || '-',
-              style: 'color:var(--primary,#1890ff)', onclick: function () { loadTrend(r.id); } });
+              style: 'color:var(--primary,#1890ff)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
           } },
         { key: 'ruleType', label: '类型', render: function (r) { return r.ruleType || '-'; } },
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension || '-'; } },
@@ -111,25 +112,56 @@
     return tableEl;
   }
 
-  function loadTrend(ruleId) {
+  function loadRuleDetail(ruleId, ruleName) {
     if (!trendBody) return;
     trendBody.innerHTML = '';
     trendBody.appendChild(DN.skeleton(3));
-    DN.get('/api/quality/trend?ruleId=' + encodeURIComponent(ruleId)).then(function (points) {
+    Promise.all([
+      DN.get('/api/quality/trend?ruleId=' + encodeURIComponent(ruleId)),
+      DN.get('/api/quality/failure-analysis?ruleId=' + encodeURIComponent(ruleId)).catch(function () { return {}; })
+    ]).then(function (r) {
+      var points = r[0] || [], fa = r[1] || {};
       trendBody.innerHTML = '';
-      trendBody.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:10px',
-        text: '规则 #' + ruleId + ' · 近 ' + (points ? points.length : 0) + ' 次通过率' }));
-      if (!points || !points.length) {
-        trendBody.appendChild(DN.empty('该规则暂无执行记录', 'clock'));
-        return;
+      trendBody.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px', text: (ruleName || ('规则 #' + ruleId)) }));
+      if (!points.length) { trendBody.appendChild(DN.empty('该规则暂无执行记录', 'clock')); return; }
+      // 通过率折线 + 有效性
+      var rates = points.map(function (p) { return p.passRate == null ? 0 : Number(p.passRate); });
+      var avg = rates.reduce(function (a, b) { return a + b; }, 0) / rates.length;
+      var eff = avg >= 90 ? ['有效性高', 'ok'] : avg >= 70 ? ['有效性中', 'warn'] : ['有效性低', 'err'];
+      var head = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-bottom:6px' }, [
+        DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '近 ' + points.length + ' 次通过率均值 ' + (Math.round(avg * 10) / 10) + '%' }),
+        DN.pill(eff[0], eff[1])
+      ]);
+      trendBody.appendChild(head);
+      trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+      // 状态分布环 + 失败根因样本
+      var sc = (fa.statusCounts || []);
+      if (sc.length) {
+        trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
+        var colorOf = function (s) { return s === 'PASS' ? '#52c41a' : s === 'FAIL' ? '#faad14' : s === 'ERROR' ? '#ff4d4f' : '#8c8c8c'; };
+        var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
+        var dwrap = DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' });
+        dwrap.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次' }));
+        var lg = DN.h('div', { class: 'gov-legend' });
+        segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + s.color }), DN.h('span', { text: s.label + ' ' + s.value })])); });
+        dwrap.appendChild(lg);
+        trendBody.appendChild(dwrap);
       }
-      var bars = points.map(function (p, i) {
-        var rate = (p.passRate == null ? 0 : Number(p.passRate));
-        var ok = String(p.runStatus || '').toUpperCase();
-        var tone = rate >= 80 ? 'ok' : (rate >= 60 ? 'warn' : 'err');
-        return { label: '#' + (i + 1) + (ok ? ' ' + ok : ''), value: rate, max: 100, display: rate + '%', tone: tone };
-      });
-      trendBody.appendChild(DN.bars(bars));
+      var fails = (fa.recentFailures || []);
+      if (fails.length) {
+        trendBody.appendChild(DN.sectionTitle('最近失败/错误样本'));
+        var ul = DN.h('div', { style: 'font-size:12px;max-height:160px;overflow:auto' });
+        fails.slice(0, 8).forEach(function (f) {
+          var ts = String(f.startedAt || '').replace('T', ' ').slice(0, 19);
+          var reason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample).slice(0, 80)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
+          ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [
+            DN.pill(f.runStatus, f.runStatus === 'ERROR' ? 'err' : 'warn'),
+            DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: ts }),
+            DN.h('span', { text: reason })
+          ]));
+        });
+        trendBody.appendChild(ul);
+      }
     }).catch(function () {
       trendBody.innerHTML = '';
       trendBody.appendChild(DN.empty('趋势加载失败', 'alert'));

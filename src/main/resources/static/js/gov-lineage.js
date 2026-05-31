@@ -221,8 +221,32 @@
       });
     }
 
-    // 图谱外层包一层带横向滚动的容器，避免大图溢出卡片
-    return DN.h('div', { style: 'overflow:auto;max-width:100%' }, [s]);
+    // ---- 缩放 / 平移 / 导出 ----
+    var scale = 1;
+    function applyScale() { s.setAttribute('width', (width * scale).toFixed(0)); s.setAttribute('height', (height * scale).toFixed(0)); }
+    function zoom(d) { scale = Math.min(3, Math.max(0.4, Math.round((scale + d) * 10) / 10)); applyScale(); }
+    function exportSvg() {
+      try {
+        var xml = new XMLSerializer().serializeToString(s);
+        var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + xml], { type: 'image/svg+xml' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'lineage_' + centerId.replace(/[^\w]/g, '_') + '.svg';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      } catch (e) { DN.toast('导出失败', 'error'); }
+    }
+    var scroll = DN.h('div', { style: 'overflow:auto;max-width:100%;max-height:600px;border:1px solid var(--border,#eceef1);border-radius:10px' }, [s]);
+    scroll.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey) return; e.preventDefault(); zoom(e.deltaY < 0 ? 0.1 : -0.1);
+    }, { passive: false });
+    var tb = DN.h('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:8px' }, [
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋', title: '放大', onclick: function () { zoom(0.2); } }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '－', title: '缩小', onclick: function () { zoom(-0.2); } }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复位', onclick: function () { scale = 1; applyScale(); } }),
+      DN.h('a', { class: 'btn btn-sm btn-ghost', href: 'javascript:void(0)', text: '导出 SVG', onclick: exportSvg }),
+      DN.h('span', { style: 'font-size:11px;color:var(--text-muted)', text: 'Ctrl+滚轮缩放 · 拖动滚动条平移' })
+    ]);
+    return DN.h('div', {}, [tb, scroll]);
   }
 
   function queryFlow(kind) {

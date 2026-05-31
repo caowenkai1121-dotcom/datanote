@@ -204,4 +204,22 @@ public class AuditService {
                 .groupBy("user_name").orderByDesc("cnt").last("LIMIT 50");
         return auditMapper.selectMaps(qw);
     }
+
+    /** 按访问路径统计计数（Top 20）。 */
+    public List<Map<String, Object>> statByPath() {
+        QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
+        qw.select("path", "COUNT(*) AS cnt")
+                .groupBy("path").orderByDesc("cnt").last("LIMIT 20");
+        return auditMapper.selectMaps(qw);
+    }
+
+    /** 近 N 天审计量时序（按天计数）。 */
+    public List<Map<String, Object>> trend(int days) {
+        int d = days < 1 ? 7 : (days > 90 ? 90 : days);
+        QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
+        qw.select("DATE(created_at) AS day", "COUNT(*) AS cnt")
+                .ge("created_at", LocalDateTime.now().minusDays(d - 1).toLocalDate().atStartOfDay())
+                .groupBy("DATE(created_at)").orderByAsc("day");
+        return auditMapper.selectMaps(qw);
+    }
 }

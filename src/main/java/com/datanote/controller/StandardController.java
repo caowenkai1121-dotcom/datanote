@@ -185,6 +185,12 @@ public class StandardController {
         return R.ok(standardService.recentRuns(20));
     }
 
+    @Operation(summary = "规范违规Top库表(最近一次稽核)")
+    @GetMapping("/top-violations")
+    public R<List<java.util.Map<String, Object>>> topViolations(@RequestParam(defaultValue = "10") int limit) {
+        return R.ok(standardService.topViolations(limit));
+    }
+
     @Operation(summary = "稽核详情(含不合规清单)")
     @GetMapping("/check/run/{id}")
     public R<DnStandardCheckRun> checkRun(@PathVariable Long id) {

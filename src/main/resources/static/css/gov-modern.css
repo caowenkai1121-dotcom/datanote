@@ -98,3 +98,76 @@
 /* ---- 内联表单(替代弹窗手输) ---- */
 #govModuleContent .gov-form { background:#fafbfc; border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; margin-bottom:14px; }
 #govModuleContent .gov-form .ds-form-row { margin-bottom:12px; }
+
+/* ============================================================
+   GV2 升级：可视化组件 + UI/UX 美化（卡片分级/字体层级/斑马纹/响应式/按钮/告警）
+   ============================================================ */
+
+/* ---- 字体层级 ---- */
+#govModuleContent .gov-h1 { font-size:22px; font-weight:700; }
+#govModuleContent .gov-section-title { font-size:13px; font-weight:650; color:var(--text-regular,#1f2329); margin:6px 0 10px; padding-left:9px; border-left:3px solid var(--primary,#1890ff); }
+
+/* ---- 卡片阴影/层级 ---- */
+#govModuleContent .gov-card.primary { box-shadow:0 2px 6px rgba(0,0,0,.05),0 8px 28px rgba(24,144,255,.10); border-color:rgba(24,144,255,.22); }
+#govModuleContent .gov-card.primary .gov-card-hd { background:linear-gradient(90deg,rgba(24,144,255,.06),transparent); }
+#govModuleContent .gov-card.flat { box-shadow:none; }
+#govModuleContent .gov-card-bd.split { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
+@media (max-width:760px){ #govModuleContent .gov-card-bd.split { grid-template-columns:1fr; } }
+
+/* ---- 磁贴增强：图标渐变、可点击 ---- */
+#govModuleContent .gov-stat.clickable { cursor:pointer; }
+#govModuleContent .gov-stat .ic { transition:transform .15s; }
+#govModuleContent .gov-stat:hover .ic { transform:scale(1.08); }
+#govModuleContent .gov-stat.tone-ok .ic { background:linear-gradient(135deg,rgba(82,196,26,.16),rgba(82,196,26,.06)); }
+#govModuleContent .gov-stat.tone-warn .ic { background:linear-gradient(135deg,rgba(250,173,20,.18),rgba(250,173,20,.06)); }
+#govModuleContent .gov-stat.tone-err .ic { background:linear-gradient(135deg,rgba(255,77,79,.16),rgba(255,77,79,.06)); }
+
+/* ---- 药丸配色加强 ---- */
+#govModuleContent .gov-pill { font-weight:600; }
+#govModuleContent .gov-pill.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
+#govModuleContent .gov-pill.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
+#govModuleContent .gov-pill.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
+#govModuleContent .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+
+/* ---- 表格斑马纹 + hover 左标记 ---- */
+#govModuleContent table.gov-tbl tbody tr:nth-child(even) { background:#fafbfc; }
+#govModuleContent table.gov-tbl tbody tr { box-shadow:inset 3px 0 0 transparent; }
+#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); box-shadow:inset 3px 0 0 var(--primary,#1890ff); }
+
+/* ---- 响应式网格 ---- */
+@media (max-width:1200px){ #govModuleContent .gov-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }
+@media (max-width:768px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:520px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr; } }
+
+/* ---- 按钮分级 ---- */
+#govModuleContent .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }
+#govModuleContent .btn.btn-danger:hover { background:#ffccc7; }
+#govModuleContent .btn.btn-ghost { background:transparent; color:var(--primary,#1890ff); border-color:var(--border,#d4d7de); }
+
+/* ---- 告警条 ---- */
+#govModuleContent .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+#govModuleContent .gov-alert .ic svg { width:17px; height:17px; }
+#govModuleContent .gov-alert .m { flex:1; }
+#govModuleContent .gov-alert .x { border:0; background:none; cursor:pointer; font-size:17px; line-height:1; color:inherit; opacity:.6; }
+#govModuleContent .gov-alert .x:hover { opacity:1; }
+#govModuleContent .gov-alert.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
+#govModuleContent .gov-alert.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
+#govModuleContent .gov-alert.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
+#govModuleContent .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+
+/* ---- 可视化组件容器 ---- */
+#govModuleContent .gov-radar, #govModuleContent .gov-line { display:flex; justify-content:center; }
+#govModuleContent .gov-line { width:100%; }
+#govModuleContent .gov-delta { font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
+#govModuleContent .gov-delta.is-ok { color:#389e0d; }
+#govModuleContent .gov-delta.is-err { color:#cf1322; }
+#govModuleContent .gov-delta.is-muted { color:#8c8c8c; }
+#govModuleContent .gov-heat { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+#govModuleContent .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
+#govModuleContent .gov-heat-cell:hover { transform:translateY(-2px); }
+#govModuleContent .gov-heat-cell .hl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-regular,#1f2329); }
+#govModuleContent .gov-heat-cell .hv { font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
+
+/* ---- 图例 ---- */
+#govModuleContent .gov-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text-muted,#86909c); margin-top:10px; }
+#govModuleContent .gov-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }

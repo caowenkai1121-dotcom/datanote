@@ -17,6 +17,12 @@
     c.appendChild(lvCard.el);
     lvCard.body.appendChild(DN.h('div', { id: 'clLevels' }, [DN.skeleton(1)]));
 
+    // 敏感分布热力（按表敏感列数 Top30）
+    var heatCard = DN.card({ title: '敏感分布热力（按表敏感列数）', icon: 'tag' });
+    heatCard.el.classList.add('primary');
+    heatCard.body.appendChild(DN.h('div', { id: 'clHeat' }, [DN.skeleton(2)]));
+    c.appendChild(heatCard.el);
+
     // 2. 敏感规则管理
     var addRuleBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', onclick: toggleRuleForm });
     var ruleCard = DN.card({ title: '敏感识别规则', icon: 'shield', actions: addRuleBtn });
@@ -28,17 +34,62 @@
     // 3. 对表识别
     clPicker = DN.dbTablePicker({});
     var scanBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '识别', onclick: scanTable });
+    var trailBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '打标历史', onclick: function () {
+      var db = clPicker.db(), table = clPicker.table();
+      if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
+      showAuditTrail(db, table);
+    } });
     var scanCard = DN.card({ title: '对表采样识别', icon: 'search' });
     c.appendChild(scanCard.el);
     var q = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
     q.appendChild(clPicker.el);
     q.appendChild(scanBtn);
+    q.appendChild(trailBtn);
     scanCard.body.appendChild(q);
     scanCard.body.appendChild(DN.h('div', { id: 'clScan' }));
 
     loadLevels();
     loadRules();
+    loadHeatmap();
   };
+
+  function loadHeatmap() {
+    DN.get('/api/gov/classification/heatmap').then(function (rows) {
+      var box = document.getElementById('clHeat'); if (!box) return;
+      box.innerHTML = '';
+      if (!rows || !rows.length) { box.appendChild(DN.empty('暂无已标敏感列（先在下方采样识别并确认打标）', 'tag')); return; }
+      box.appendChild(DN.heat(rows.map(function (r) {
+        return { label: r.db + '.' + r.table, value: Number(r.count) || 0, _db: r.db, _table: r.table };
+      }), {
+        rgb: [255, 77, 79],
+        onClick: function (it) {
+          // 点击热力格 → 加载该表打标溯源
+          showAuditTrail(it._db, it._table);
+        }
+      }));
+    }).catch(function () { var box = document.getElementById('clHeat'); if (box) box.innerHTML = ''; });
+  }
+
+  function showAuditTrail(db, table) {
+    DN.get('/api/gov/classification/audit-trail?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).then(function (rows) {
+      var body = DN.h('div', {});
+      body.appendChild(DN.h('div', { class: 'gov-desc', text: db + '.' + table + ' · 共 ' + (rows ? rows.length : 0) + ' 条打标记录' }));
+      if (!rows || !rows.length) { body.appendChild(DN.empty('该表暂无打标历史', 'doc')); }
+      else body.appendChild(DN.table({
+        search: false, pageSize: 15,
+        columns: [
+          { key: 'columnName', label: '列' },
+          { label: '原密级', render: function (r) { return r.oldLevel || '-'; } },
+          { label: '新密级', render: function (r) { return DN.pill(r.newLevel || '-', 'info'); } },
+          { key: 'sensitiveType', label: '敏感类型', render: function (r) { return r.sensitiveType || '-'; } },
+          { key: 'operator', label: '操作人', render: function (r) { return r.operator || '-'; } },
+          { label: '时间', render: function (r) { return String(r.createdAt || '').replace('T', ' ').slice(0, 19); } }
+        ],
+        rows: rows
+      }));
+      DN.drawer('打标审计溯源 · ' + db + '.' + table, body);
+    }).catch(function (e) { DN.toast(e.message, 'error'); });
+  }
 
   function loadLevels() {
     var scheme = document.getElementById('clScheme').value;

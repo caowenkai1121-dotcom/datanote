@@ -64,6 +64,18 @@ public class ClassificationController {
         return R.ok("ok");
     }
 
+    @Operation(summary = "敏感分布热力(按表统计敏感列数Top30)")
+    @GetMapping("/heatmap")
+    public R<List<Map<String, Object>>> heatmap() {
+        return R.ok(classificationService.sensitiveHeatmap());
+    }
+
+    @Operation(summary = "打标审计溯源(按库.表)")
+    @GetMapping("/audit-trail")
+    public R<List<com.datanote.model.DnLabelAudit>> auditTrail(@RequestParam String db, @RequestParam String table) {
+        return R.ok(classificationService.auditTrail(db, table));
+    }
+
     @Operation(summary = "对表采样识别，返回敏感候选")
     @GetMapping("/scan")
     public R<List<Map<String, Object>>> scan(@RequestParam String db, @RequestParam String table) {

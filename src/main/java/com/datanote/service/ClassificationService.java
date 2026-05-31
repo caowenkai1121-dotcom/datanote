@@ -45,6 +45,37 @@ public class ClassificationService {
         return levelMapper.selectList(qw);
     }
 
+    /** 敏感分布热力：按表统计已标敏感列数(Top30，含库表名)。 */
+    public List<Map<String, Object>> sensitiveHeatmap() {
+        QueryWrapper<DnColumnMeta> qw = new QueryWrapper<>();
+        qw.select("table_meta_id AS tid", "COUNT(*) AS cnt")
+                .isNotNull("sensitive_type").ne("sensitive_type", "")
+                .groupBy("table_meta_id").orderByDesc("cnt").last("LIMIT 30");
+        List<Map<String, Object>> rows = columnMetaMapper.selectMaps(qw);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            Object tid = r.get("tid"); if (tid == null) continue;
+            DnTableMeta tm = tableMetaMapper.selectById(((Number) tid).longValue());
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("db", tm != null ? tm.getDatabaseName() : "?");
+            m.put("table", tm != null ? tm.getTableName() : ("#" + tid));
+            m.put("count", r.get("cnt"));
+            out.add(m);
+        }
+        return out;
+    }
+
+    /** 打标审计溯源：按 库.表 返回历次分级变更(最多100条)。 */
+    public List<DnLabelAudit> auditTrail(String db, String table) {
+        QueryWrapper<DnTableMeta> tq = new QueryWrapper<>();
+        tq.eq("database_name", db).eq("table_name", table).last("LIMIT 1");
+        DnTableMeta tm = tableMetaMapper.selectOne(tq);
+        if (tm == null) return new ArrayList<>();
+        QueryWrapper<DnLabelAudit> qw = new QueryWrapper<>();
+        qw.eq("table_meta_id", tm.getId()).orderByDesc("created_at").last("LIMIT 100");
+        return auditMapper.selectList(qw);
+    }
+
     // ========== 敏感规则 CRUD ==========
 
     public List<DnSensitiveRule> listRules() {

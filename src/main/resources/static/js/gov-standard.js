@@ -302,6 +302,20 @@
     runCard.body.appendChild(result);
     body.appendChild(runCard.el);
 
+    // 违规 Top 排行（最近一次稽核）
+    var topCard = DN.card({ title: '规范违规 Top 库表（最近一次稽核）', icon: 'alert' });
+    topCard.el.classList.add('primary');
+    var topBody = topCard.body;
+    topBody.appendChild(DN.skeleton(3));
+    body.appendChild(topCard.el);
+    DN.get(API + '/top-violations?limit=10').then(function (rows) {
+      topBody.innerHTML = '';
+      if (!rows || !rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
+      topBody.appendChild(DN.bars(rows.map(function (r) {
+        return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, tone: 'err', display: (r.violations || 0) + ' 列' };
+      })));
+    }).catch(function () { topBody.innerHTML = ''; topBody.appendChild(DN.empty('加载失败', 'alert')); });
+
     var historyCard = DN.card({ title: '稽核历史', icon: 'clock' });
     var historyBody = historyCard.body;
     historyBody.appendChild(DN.skeleton(3));

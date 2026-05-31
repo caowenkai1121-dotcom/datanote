@@ -78,6 +78,18 @@ public class AuditController {
         return R.ok(auditService.statByUser());
     }
 
+    @Operation(summary = "按访问路径统计(Top20)")
+    @GetMapping("/stat/path")
+    public R<List<Map<String, Object>>> statByPath() {
+        return R.ok(auditService.statByPath());
+    }
+
+    @Operation(summary = "近N天审计量时序")
+    @GetMapping("/trend")
+    public R<List<Map<String, Object>>> trend(@RequestParam(defaultValue = "7") int days) {
+        return R.ok(auditService.trend(days));
+    }
+
     @Operation(summary = "登录留痕(登录成功后由前端显式调用)")
     @PostMapping("/login-record")
     public R<String> loginRecord(HttpServletRequest request) {

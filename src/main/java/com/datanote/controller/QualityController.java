@@ -32,6 +32,12 @@ public class QualityController {
     private final DnQualityRunMapper runMapper;
     private final QualityService qualityService;
 
+    @Operation(summary = "质量失败根因分析(状态分布+失败样本)")
+    @GetMapping("/failure-analysis")
+    public R<java.util.Map<String, Object>> failureAnalysis(@RequestParam(required = false) Long ruleId) {
+        return R.ok(qualityService.failureAnalysis(ruleId));
+    }
+
     /**
      * 获取所有质量规则
      */

@@ -18,6 +18,11 @@
   window.GOV_RENDERERS.audit = function (c) {
     state.page = 1;
 
+    // 审计概览（7天时序 + 用户/路径行为分析）
+    var ovBox = DN.h('div', { id: 'auOverview' });
+    c.appendChild(ovBox);
+    renderOverview(ovBox);
+
     // 统计区（按类型分布）
     var statBox = DN.h('div', { id: 'auStats' });
     c.appendChild(statBox);
@@ -88,6 +93,40 @@
       renderStats(rows);
       renderServerPager(rows.length);
     }).catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  // 审计概览：近7天审计量折线 + Top操作人 + Top路径
+  function renderOverview(box) {
+    box.appendChild(DN.skeleton(3));
+    Promise.all([
+      DN.get('/api/gov/audit/trend?days=7').catch(function () { return []; }),
+      DN.get('/api/gov/audit/stat/user').catch(function () { return []; }),
+      DN.get('/api/gov/audit/stat/path').catch(function () { return []; })
+    ]).then(function (r) {
+      var trend = r[0] || [], users = r[1] || [], paths = r[2] || [];
+      box.innerHTML = '';
+      var grid = DN.h('div', { class: 'gov-grid' });
+      // 7天时序
+      var tc = DN.card({ title: '近 7 天审计量', icon: 'clock' });
+      tc.el.classList.add('primary');
+      if (trend.length) {
+        var vals = trend.map(function (x) { return Number(x.cnt) || 0; });
+        tc.body.appendChild(DN.line(vals, { height: 80, color: '#1890ff' }));
+        tc.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0;text-align:center', text: trend[0].day + ' ~ ' + trend[trend.length - 1].day + ' · 合计 ' + vals.reduce(function (a, b) { return a + b; }, 0) + ' 条' }));
+      } else { tc.body.appendChild(DN.empty('暂无审计数据', 'clock')); }
+      grid.appendChild(tc.el);
+      // Top 操作人
+      var uc = DN.card({ title: 'Top 活跃操作人', icon: 'user' });
+      if (users.length) uc.body.appendChild(DN.bars(users.slice(0, 8).map(function (u) { return { label: u.userName || '-', value: Number(u.cnt) || 0, tone: 'info', display: String(u.cnt) }; })));
+      else uc.body.appendChild(DN.empty('暂无数据', 'user'));
+      grid.appendChild(uc.el);
+      // Top 路径
+      var pc = DN.card({ title: 'Top 高频路径', icon: 'list' });
+      if (paths.length) pc.body.appendChild(DN.heat(paths.slice(0, 9).map(function (p) { return { label: p.path || '-', value: Number(p.cnt) || 0 }; })));
+      else pc.body.appendChild(DN.empty('暂无数据', 'list'));
+      grid.appendChild(pc.el);
+      box.appendChild(grid);
+    }).catch(function () { box.innerHTML = ''; });
   }
 
   // 按类型统计（本页数据）用 DN.bars

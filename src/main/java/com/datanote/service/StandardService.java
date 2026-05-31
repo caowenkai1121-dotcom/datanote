@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnColumnMetaMapper;
 import com.datanote.mapper.DnDataElementMapper;
 import com.datanote.mapper.DnStandardCheckRunMapper;
+import com.datanote.mapper.DnTableMetaMapper;
 import com.datanote.mapper.DnWordRootMapper;
 import com.datanote.model.DnColumnMeta;
 import com.datanote.model.DnDataElement;
 import com.datanote.model.DnStandardCheckRun;
+import com.datanote.model.DnTableMeta;
 import com.datanote.model.DnWordRoot;
+import java.util.LinkedHashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +40,7 @@ public class StandardService {
     private final DnDataElementMapper dataElementMapper;
     private final DnWordRootMapper wordRootMapper;
     private final DnStandardCheckRunMapper checkRunMapper;
+    private final DnTableMetaMapper tableMetaMapper;
 
     private static final ObjectMapper JSON = new ObjectMapper();
     /** 不合规清单写库上限，避免 detail 过大 */
@@ -214,6 +218,39 @@ public class StandardService {
             log.warn("稽核明细序列化失败", e);
             return "[]";
         }
+    }
+
+    /** 规范违规 Top：解析最近一次稽核明细，按表聚合违规列数降序 Top N。 */
+    public List<Map<String, Object>> topViolations(int limit) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        QueryWrapper<DnStandardCheckRun> qw = new QueryWrapper<>();
+        qw.orderByDesc("created_at").last("LIMIT 1");
+        DnStandardCheckRun latest = checkRunMapper.selectOne(qw);
+        if (latest == null || latest.getDetail() == null) return out;
+        try {
+            List<Map<String, Object>> items = JSON.readValue(latest.getDetail(),
+                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            Map<Long, Integer> byTable = new LinkedHashMap<>();
+            for (Map<String, Object> it : items) {
+                Object tid = it.get("tableMetaId"); if (tid == null) continue;
+                byTable.merge(((Number) tid).longValue(), 1, Integer::sum);
+            }
+            List<Map.Entry<Long, Integer>> entries = new ArrayList<>(byTable.entrySet());
+            entries.sort((a, b) -> b.getValue() - a.getValue());
+            int n = 0;
+            for (Map.Entry<Long, Integer> e : entries) {
+                if (n++ >= Math.max(1, Math.min(limit, 50))) break;
+                DnTableMeta tm = tableMetaMapper.selectById(e.getKey());
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("db", tm != null ? tm.getDatabaseName() : "?");
+                m.put("table", tm != null ? tm.getTableName() : ("#" + e.getKey()));
+                m.put("violations", e.getValue());
+                out.add(m);
+            }
+        } catch (Exception ex) {
+            log.warn("解析稽核明细失败", ex);
+        }
+        return out;
     }
 
     /** 稽核历史最近 N 条（不含 detail，列表轻量） */
