@@ -1846,6 +1846,9 @@ html, body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes wsShimmer { to { background-position: -135% 0; } }
+.ws-skel { height: 14px; border-radius: 6px; margin: 10px 0; background: linear-gradient(90deg, var(--bg-hover,#f0f1f3) 25%, var(--border,#e7e9ec) 37%, var(--bg-hover,#f0f1f3) 63%); background-size: 400% 100%; animation: wsShimmer 1.3s ease infinite; }
+.ws-skel-wrap { padding: 4px 0; }
 .dm-ai-error {
   border-color: rgba(239,68,68,.3) !important;
   background: rgba(239,68,68,.06) !important;
@@ -3275,19 +3278,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r8">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r9">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r8"></script>
-<script src="js/gov-assets.js?v=g3r8"></script>
-<script src="js/gov-lineage.js?v=g3r8"></script>
-<script src="js/gov-quality.js?v=g3r8"></script>
-<script src="js/gov-standard.js?v=g3r8"></script>
-<script src="js/gov-classification.js?v=g3r8"></script>
-<script src="js/gov-security.js?v=g3r8"></script>
-<script src="js/gov-health.js?v=g3r8"></script>
-<script src="js/gov-audit.js?v=g3r8"></script>
-<script src="js/gov-overview.js?v=g3r8"></script>
-<script src="js/gov-subject.js?v=g3r8"></script>
+<script src="js/dn-common.js?v=g3r9"></script>
+<script src="js/gov-assets.js?v=g3r9"></script>
+<script src="js/gov-lineage.js?v=g3r9"></script>
+<script src="js/gov-quality.js?v=g3r9"></script>
+<script src="js/gov-standard.js?v=g3r9"></script>
+<script src="js/gov-classification.js?v=g3r9"></script>
+<script src="js/gov-security.js?v=g3r9"></script>
+<script src="js/gov-health.js?v=g3r9"></script>
+<script src="js/gov-audit.js?v=g3r9"></script>
+<script src="js/gov-overview.js?v=g3r9"></script>
+<script src="js/gov-subject.js?v=g3r9"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -12307,6 +12310,13 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// 微光骨架屏(UX): 替代生硬的"加载中..."文本
+function wsSkeleton(rows) {
+  var n = rows || 4, h = '<div class="ws-skel-wrap">';
+  for (var i = 0; i < n; i++) h += '<div class="ws-skel" style="width:' + (100 - i * 8) + '%;"></div>';
+  return h + '</div>';
+}
+
 function showToast(msg, type) {
   var t = document.createElement('div');
   t.textContent = msg;
@@ -13129,7 +13139,7 @@ function projRoleOptions(sel) {
 }
 window.projLoadMembers = function() {
   var pane = document.getElementById('projPane_member'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/members').then(function(res) {
     var ms = (res && res.code === 0) ? (res.data || []) : [];
     var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
@@ -13415,7 +13425,7 @@ window.loadProjectRoleMatrix = function() {
 var PROJ_ASSET_TYPE = { SYNC_JOB: '同步任务', SCRIPT: '脚本', DATASOURCE: '数据源', QUALITY_RULE: '质量规则' };
 window.projLoadAssets = function() {
   var pane = document.getElementById('projPane_asset'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/assets').then(function(res) {
     var as = (res && res.code === 0) ? (res.data || []) : [];
     var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
@@ -13484,7 +13494,7 @@ window.projAssetProjects = function(type, assetId) {
 /* ===== PM-M4：概览大盘 ===== */
 window.projLoadOverview = function() {
   var pane = document.getElementById('projPane_overview'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/overview').then(function(res) {
     var d = (res && res.code === 0) ? (res.data || {}) : {};
     var ac = d.assetCounts || {};
@@ -13628,7 +13638,7 @@ window.projLoadHealthCard = function() {
 };
 window.projLoadActivities = function() {
   var pane = document.getElementById('projPane_activity'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/activities?limit=200').then(function(res) {
     var as = (res && res.code === 0) ? (res.data || []) : [];
     _projActs = as;
@@ -13687,7 +13697,7 @@ var _projTaskView = (function() { try { return localStorage.getItem('proj.taskVi
 window.projSetTaskView = function(v) { _projTaskView = v; try { localStorage.setItem('proj.taskView', v); } catch (e) {} projLoadTasks(); };
 window.projLoadTasks = function() {
   var pane = document.getElementById('projPane_task'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   Promise.all([api('/api/project/' + _projDetail.id + '/tasks'), api('/api/project/' + _projDetail.id + '/milestones')]).then(function(arr) {
     var tasksAll = _projTasksAll = _pdata(arr[0]); _projMilestones = _pdata(arr[1]);
     var msName = {}; _projMilestones.forEach(function(m) { msName[m.id] = m.name; });
@@ -14127,7 +14137,7 @@ function projMdLite(src) {
 function projMd(c) { try { if (window.marked) { return projSanitizeHtml(marked.parse ? marked.parse(c || '') : marked(c || '')); } } catch (e) {} return projMdLite(c); }
 window.projLoadWiki = function() {
   var pane = document.getElementById('projPane_wiki'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/wiki/pages').then(function(res) {
     _projWikiPages = _pdata(res);
     pane.innerHTML = '<div style="display:flex;gap:12px;min-height:320px;">'
@@ -14337,7 +14347,7 @@ function projRelActionLinks(r, scope) {
 }
 window.projLoadReleases = function() {
   var pane = document.getElementById('projPane_release'); if (!pane || !_projDetail) return;
-  pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
+  pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/releases').then(function(res) {
     var rs = (res && res.code === 0) ? (res.data || []) : [];
     _projReleases = rs;
