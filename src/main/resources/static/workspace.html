@@ -3289,19 +3289,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r37">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r38">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r37"></script>
-<script src="js/gov-assets.js?v=g3r37"></script>
-<script src="js/gov-lineage.js?v=g3r37"></script>
-<script src="js/gov-quality.js?v=g3r37"></script>
-<script src="js/gov-standard.js?v=g3r37"></script>
-<script src="js/gov-classification.js?v=g3r37"></script>
-<script src="js/gov-security.js?v=g3r37"></script>
-<script src="js/gov-health.js?v=g3r37"></script>
-<script src="js/gov-audit.js?v=g3r37"></script>
-<script src="js/gov-overview.js?v=g3r37"></script>
-<script src="js/gov-subject.js?v=g3r37"></script>
+<script src="js/dn-common.js?v=g3r38"></script>
+<script src="js/gov-assets.js?v=g3r38"></script>
+<script src="js/gov-lineage.js?v=g3r38"></script>
+<script src="js/gov-quality.js?v=g3r38"></script>
+<script src="js/gov-standard.js?v=g3r38"></script>
+<script src="js/gov-classification.js?v=g3r38"></script>
+<script src="js/gov-security.js?v=g3r38"></script>
+<script src="js/gov-health.js?v=g3r38"></script>
+<script src="js/gov-audit.js?v=g3r38"></script>
+<script src="js/gov-overview.js?v=g3r38"></script>
+<script src="js/gov-subject.js?v=g3r38"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14669,13 +14669,36 @@ function projRelActionLinks(r, scope) {
   else a = '<span style="color:var(--text-muted);">-</span>';
   return a;
 }
+var _projRelView = (function() { try { return localStorage.getItem('proj.relView') || 'table'; } catch (e) { return 'table'; } })();
+window.projSetRelView = function(v) { _projRelView = v; try { localStorage.setItem('proj.relView', v); } catch (e) {} projLoadReleases(); };
+// 发布流水线时间线(大功能): 按提交时间倒序的竖向时间线
+function projRelTimeline(rs) {
+  var ordered = rs.slice().sort(function(a, b) { return String(b.submittedAt || '').localeCompare(String(a.submittedAt || '')); });
+  var h = '<div style="position:relative;padding-left:20px;">';
+  h += '<div style="position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--divider);"></div>';
+  ordered.forEach(function(r) {
+    var st = REL_STATUS[r.status] || { t: r.status, c: '#8c8c8c' };
+    h += '<div style="position:relative;padding:0 0 16px 14px;">'
+      + '<div style="position:absolute;left:-19px;top:2px;width:11px;height:11px;border-radius:50%;background:' + st.c + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + st.c + ';"></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      + '<a href="#" onclick="projRelDetail(' + r.id + ');return false;" style="font-weight:600;font-size:13px;color:var(--text-regular);text-decoration:none;">v' + r.versionNo + ' · ' + escapeHtml(r.title || '-') + '</a>'
+      + '<span style="font-size:11px;color:' + st.c + ';border:1px solid ' + st.c + ';padding:0 6px;border-radius:8px;">' + escapeHtml(st.t) + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(r.targetEnv || '') + '</span></div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">' + escapeHtml(r.submittedBy || '-') + ' · ' + escapeHtml((r.submittedAt || '').replace('T', ' ').slice(0, 16)) + '　' + projRelActionLinks(r, 'detail') + '</div>'
+      + '</div>';
+  });
+  return h + '</div>';
+}
 window.projLoadReleases = function() {
   var pane = document.getElementById('projPane_release'); if (!pane || !_projDetail) return;
   pane.innerHTML = wsSkeleton(4);
   api('/api/project/' + _projDetail.id + '/releases').then(function(res) {
     var rs = (res && res.code === 0) ? (res.data || []) : [];
     _projReleases = rs;
-    var h = '<div style="margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button></div>';
+    var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button>'
+      + '<span style="margin-left:auto;display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">'
+      + '<a href="#" onclick="projSetRelView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projRelView === 'table' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">表格</a>'
+      + '<a href="#" onclick="projSetRelView(\'timeline\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projRelView === 'timeline' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">时间线</a></span></div>';
     if (!rs.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无发布版本</div>';
     else {
       // 状态统计条
@@ -14683,6 +14706,7 @@ window.projLoadReleases = function() {
       h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">';
       Object.keys(sc).forEach(function(s) { var st = REL_STATUS[s] || { t: s, c: 'var(--text-muted)' }; h += '<span style="font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid ' + st.c + ';color:' + st.c + ';">' + escapeHtml(st.t) + ' ' + sc[s] + '</span>'; });
       h += '</div>';
+      if (_projRelView === 'timeline') { h += projRelTimeline(rs); pane.innerHTML = h; return; }
       // 待审批(PENDING)置顶, 其余保持原序(稳定排序)
       var ordered = rs.map(function(r, i) { return { r: r, i: i }; }).sort(function(a, b) {
         var pa = a.r.status === 'PENDING' ? 0 : 1, pb = b.r.status === 'PENDING' ? 0 : 1;
