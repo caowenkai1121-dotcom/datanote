@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r1">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r2">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r1"></script>
-<script src="js/gov-assets.js?v=g2r1"></script>
-<script src="js/gov-lineage.js?v=g2r1"></script>
-<script src="js/gov-quality.js?v=g2r1"></script>
-<script src="js/gov-standard.js?v=g2r1"></script>
-<script src="js/gov-classification.js?v=g2r1"></script>
-<script src="js/gov-security.js?v=g2r1"></script>
-<script src="js/gov-health.js?v=g2r1"></script>
-<script src="js/gov-audit.js?v=g2r1"></script>
-<script src="js/gov-overview.js?v=g2r1"></script>
-<script src="js/gov-subject.js?v=g2r1"></script>
+<script src="js/dn-common.js?v=g2r2"></script>
+<script src="js/gov-assets.js?v=g2r2"></script>
+<script src="js/gov-lineage.js?v=g2r2"></script>
+<script src="js/gov-quality.js?v=g2r2"></script>
+<script src="js/gov-standard.js?v=g2r2"></script>
+<script src="js/gov-classification.js?v=g2r2"></script>
+<script src="js/gov-security.js?v=g2r2"></script>
+<script src="js/gov-health.js?v=g2r2"></script>
+<script src="js/gov-audit.js?v=g2r2"></script>
+<script src="js/gov-overview.js?v=g2r2"></script>
+<script src="js/gov-subject.js?v=g2r2"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4125,6 +4125,8 @@ html, body {
               <select id="projSort" class="dbsync-form-select" style="width:120px;" onchange="projApplyFilter()"><option value="created_desc">最新创建</option><option value="created_asc">最早创建</option><option value="name">名称</option><option value="fav">收藏优先</option><option value="recent">最近访问</option></select>
               <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="projOnlyFav" onchange="projApplyFilter()"> 仅收藏</label>
               <button class="btn btn-sm" onclick="projManageTags()">标签管理</button>
+              <button class="btn btn-sm" onclick="projResetFilters()">重置</button>
+              <button class="btn btn-sm" onclick="projExportCsv()">导出CSV</button>
               <span id="projFilterCount" style="font-size:12px;color:var(--text-muted);"></span>
             </div>
             <div id="projListBox"><div style="padding:24px;text-align:center;color:var(--text-muted);">加载中...</div></div>
@@ -12753,6 +12755,7 @@ window.loadProjectSpace = function() {
     _pdata(a[4]).forEach(function(r) { _projRecent[r.projectId] = r.accessAt; });
     projRenderKpi();
     projFillTagFilter();
+    if (window.projRestoreFilters) projRestoreFilters();
     projApplyFilter();
   }).catch(function() {
     box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">加载失败，请重试</div>';
@@ -12766,8 +12769,9 @@ function projFillTagFilter() {
   sel.value = cur;
 }
 
-function projTile(label, value, color) {
-  return '<div style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;">'
+function projTile(label, value, color, onclick) {
+  var clk = onclick ? ' style="cursor:pointer;" title="点击筛选" onclick="' + onclick + '"' : '';
+  return '<div' + clk + ' class="proj-kpi-tile" style="background:var(--bg-hover,#fafafa);border:1px solid var(--border-light,#eee);border-radius:8px;padding:10px 12px;' + (onclick ? 'cursor:pointer;' : '') + '">'
     + '<div style="font-size:20px;font-weight:600;' + (color ? 'color:' + color + ';' : '') + '">' + value + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>';
 }
@@ -12779,8 +12783,10 @@ function projRenderKpi() {
   var archived = _projList.filter(function(p) { return p.status === 'ARCHIVED'; }).length;
   var ym = new Date().toISOString().slice(0, 7);
   var month = _projList.filter(function(p) { return (p.createdAt || '').slice(0, 7) === ym; }).length;
-  box.innerHTML = projTile('项目总数', total) + projTile('活跃', active, '#52c41a')
-    + projTile('已归档', archived, '#8c8c8c') + projTile('本月新增', month, '#1677ff');
+  box.innerHTML = projTile('项目总数', total, '', "document.getElementById('projFilterStatus').value='';projApplyFilter()")
+    + projTile('活跃', active, '#52c41a', "document.getElementById('projFilterStatus').value='ACTIVE';projApplyFilter()")
+    + projTile('已归档', archived, '#8c8c8c', "document.getElementById('projFilterStatus').value='ARCHIVED';projApplyFilter()")
+    + projTile('本月新增', month, '#1677ff', "document.getElementById('projFilterStatus').value='';document.getElementById('projSort').value='created_desc';projApplyFilter()");
 }
 var _projSearchTimer = null;
 window.projSearchDebounced = function() { clearTimeout(_projSearchTimer); _projSearchTimer = setTimeout(function() { projApplyFilter(); }, 220); };
@@ -12819,7 +12825,39 @@ window.projApplyFilter = function() {
   });
   var cnt = document.getElementById('projFilterCount');
   if (cnt) cnt.textContent = '共 ' + list.length + ' / ' + _projList.length;
+  _projFiltered = list;
+  try { localStorage.setItem('projFilters', JSON.stringify({ q: (document.getElementById('projSearch') || {}).value || '', ft: ft, fs: fs, fe: fe, sort: sort, ftag: ftag, onlyFav: onlyFav })); } catch (e) {}
   projRenderList(list);
+};
+var _projFiltered = [];
+window.projResetFilters = function() {
+  ['projSearch', 'projFilterType', 'projFilterStatus', 'projFilterEnv', 'projFilterTag'].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  var so = document.getElementById('projSort'); if (so) so.value = 'created_desc';
+  var of = document.getElementById('projOnlyFav'); if (of) of.checked = false;
+  try { localStorage.removeItem('projFilters'); } catch (e) {}
+  projApplyFilter();
+};
+window.projRestoreFilters = function() {
+  try {
+    var f = JSON.parse(localStorage.getItem('projFilters') || 'null'); if (!f) return;
+    var set = function(id, v) { var el = document.getElementById(id); if (el && v != null) el.value = v; };
+    set('projSearch', f.q); set('projFilterType', f.ft); set('projFilterStatus', f.fs); set('projFilterEnv', f.fe); set('projSort', f.sort); set('projFilterTag', f.ftag);
+    var of = document.getElementById('projOnlyFav'); if (of) of.checked = !!f.onlyFav;
+  } catch (e) {}
+};
+window.projExportCsv = function() {
+  var rows = _projFiltered && _projFiltered.length ? _projFiltered : _projList;
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var head = ['项目名', '编码', '类型', '环境', '负责人', '状态', '标签', '创建时间'];
+  var lines = [head.map(cell).join(',')];
+  rows.forEach(function(p) {
+    var tags = (_projTagMap[p.id] || []).map(function(t) { var o = _projTagById(t); return o ? o.tagName : ''; }).filter(Boolean).join(' ');
+    lines.push([p.projectName, p.projectCode, PROJ_TYPE_LABEL[p.projectType] || p.projectType, PROJ_ENV_LABEL[p.env] || p.env, p.owner, (PROJ_STATUS[p.status] || {}).t || p.status, tags, (p.createdAt || '').replace('T', ' ').slice(0, 16)].map(cell).join(','));
+  });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'projects_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 };
 function projRenderList(list) {
   var box = document.getElementById('projListBox');

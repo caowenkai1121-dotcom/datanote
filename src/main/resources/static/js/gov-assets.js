@@ -25,8 +25,12 @@
     var listBody = listCard.body;
     listBody.appendChild(DN.h('div', { id: 'assetTbl' }, [DN.skeleton(4)]));
 
-    // 把工具条（采集按钮 + 来源筛选）通过 DN.table 的 toolbar 注入，先缓存引用
-    assetToolbar = [crawlBtn, srcSel];
+    // 快捷视图下拉
+    var quickSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:130px' });
+    [['', '全部资产'], ['nodesc', '缺业务描述'], ['bigsize', '体量Top'], ['bigrow', '行数Top']].forEach(function (o) { quickSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    quickSel.onchange = function () { assetState.quick = quickSel.value; renderAssetTable(); };
+    // 把工具条（采集按钮 + 来源筛选 + 快捷视图）通过 DN.table 的 toolbar 注入，先缓存引用
+    assetToolbar = [crawlBtn, srcSel, quickSel];
 
     loadAssets();
 
@@ -38,7 +42,7 @@
 
   // ===== 资产清单：统计 + 现代表格 =====
   var assetAll = [];
-  var assetState = { src: '' };
+  var assetState = { src: '', quick: '' };
   var assetTbl = null;
   var assetToolbar = null;
 
@@ -92,8 +96,12 @@
     var box = document.getElementById('assetTbl');
     if (!box) return;
     var rows = assetAll.filter(function (t) {
-      return !assetState.src || (t.dbType || '') === assetState.src;
+      if (assetState.src && (t.dbType || '') !== assetState.src) return false;
+      if (assetState.quick === 'nodesc' && t.tableComment) return false;
+      return true;
     });
+    if (assetState.quick === 'bigsize') rows = rows.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); });
+    else if (assetState.quick === 'bigrow') rows = rows.slice().sort(function (a, b) { return (b.rowCount || 0) - (a.rowCount || 0); });
     if (assetTbl) { assetTbl.reload(rows); return; }
     assetTbl = DN.table({
       columns: [
@@ -101,8 +109,8 @@
         { key: 'databaseName', label: '库' },
         { key: 'tableName', label: '表' },
         { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment || '-'; } },
-        { key: 'rowCount', label: '行数', align: 'right', render: function (r) { return r.rowCount == null ? '-' : fmtInt(r.rowCount); } },
-        { key: 'sizeBytes', label: '体量', align: 'right', render: function (r) { return DN.fmtBytes(r.sizeBytes); } },
+        { key: 'rowCount', label: '行数', align: 'right', sortable: true, render: function (r) { return r.rowCount == null ? '-' : fmtInt(r.rowCount); } },
+        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, render: function (r) { return DN.fmtBytes(r.sizeBytes); } },
         { key: '_op', label: '操作', render: function (r) {
             return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '详情',
               onclick: function () { openAssetDetail(r.databaseName || '', r.tableName || ''); } });
@@ -113,6 +121,7 @@
       searchKeys: ['databaseName', 'tableName', 'tableComment'],
       searchPlaceholder: '搜索库 / 表 / 描述',
       toolbar: assetToolbar,
+      exportName: '资产清单',
       empty: '暂无资产，点击“采集全部”按钮',
       emptyIcon: 'inbox'
     });
