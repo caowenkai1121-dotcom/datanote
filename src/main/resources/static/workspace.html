@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r7">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r8">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r7"></script>
-<script src="js/gov-assets.js?v=g2r7"></script>
-<script src="js/gov-lineage.js?v=g2r7"></script>
-<script src="js/gov-quality.js?v=g2r7"></script>
-<script src="js/gov-standard.js?v=g2r7"></script>
-<script src="js/gov-classification.js?v=g2r7"></script>
-<script src="js/gov-security.js?v=g2r7"></script>
-<script src="js/gov-health.js?v=g2r7"></script>
-<script src="js/gov-audit.js?v=g2r7"></script>
-<script src="js/gov-overview.js?v=g2r7"></script>
-<script src="js/gov-subject.js?v=g2r7"></script>
+<script src="js/dn-common.js?v=g2r8"></script>
+<script src="js/gov-assets.js?v=g2r8"></script>
+<script src="js/gov-lineage.js?v=g2r8"></script>
+<script src="js/gov-quality.js?v=g2r8"></script>
+<script src="js/gov-standard.js?v=g2r8"></script>
+<script src="js/gov-classification.js?v=g2r8"></script>
+<script src="js/gov-security.js?v=g2r8"></script>
+<script src="js/gov-health.js?v=g2r8"></script>
+<script src="js/gov-audit.js?v=g2r8"></script>
+<script src="js/gov-overview.js?v=g2r8"></script>
+<script src="js/gov-subject.js?v=g2r8"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13130,9 +13130,15 @@ window.projLoadMembers = function() {
       + '<a href="#" onclick="projPickUser();return false;" style="font-size:12px;color:var(--primary);margin-left:4px;">从用户列表选</a></div>';
     if (!ms.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无成员</div>';
     else {
-      h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>用户名</th><th>项目角色</th><th>加入时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
+      // 角色分布徽标 + 搜索 + 导出
+      var roleCnt = {}; ms.forEach(function(m) { var r = m.projectRole || ''; roleCnt[r] = (roleCnt[r] || 0) + 1; });
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
+      Object.keys(roleCnt).forEach(function(r) { h += '<span style="font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(projRoleLabel(r)) + ' ' + roleCnt[r] + '</span>'; });
+      h += '<input id="projMemberSearch" class="dbsync-form-input" style="width:140px;margin-left:auto;" placeholder="搜索成员" oninput="projFilterMembers()">';
+      h += '<button class="btn btn-sm" onclick="projExportMembers()">导出CSV</button></div>';
+      h += '<table class="dbsync-exec-table" id="projMemberTbl" style="width:100%;"><thead><tr><th>用户名</th><th>项目角色</th><th>加入时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
       ms.forEach(function(m) {
-        h += '<tr><td>' + escapeHtml(m.username) + '</td>'
+        h += '<tr class="proj-member-row" data-uname="' + escapeHtml((m.username || '').toLowerCase()) + '"><td>' + escapeHtml(m.username) + '</td>'
           + '<td><select class="dbsync-form-select" style="width:110px;" onchange="projChangeRole(' + m.id + ',this.value)">' + projRoleOptions(m.projectRole) + '</select></td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((m.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
           + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:#ff4d4f;">移除</a></td></tr>';
@@ -13141,8 +13147,26 @@ window.projLoadMembers = function() {
     }
     h += '<div id="projInviteBox" style="margin-top:18px;"></div>';
     pane.innerHTML = h;
+    _projMembers = ms;
     projLoadInvites();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+var _projMembers = [];
+window.projFilterMembers = function() {
+  var kw = (document.getElementById('projMemberSearch') || {}).value || ''; kw = kw.trim().toLowerCase();
+  Array.prototype.slice.call(document.querySelectorAll('#projMemberTbl .proj-member-row')).forEach(function(tr) {
+    tr.style.display = (!kw || (tr.getAttribute('data-uname') || '').indexOf(kw) >= 0) ? '' : 'none';
+  });
+};
+window.projExportMembers = function() {
+  var ms = _projMembers || []; if (!ms.length) { showToast('暂无成员', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['用户名', '角色', '加入时间'].map(cell).join(',')];
+  ms.forEach(function(m) { lines.push([m.username, projRoleLabel(m.projectRole), (m.createdAt || '').replace('T', ' ').slice(0, 16)].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'members_' + (_projDetail ? _projDetail.id : '') + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 };
 window.projLoadInvites = function() {
   var box = document.getElementById('projInviteBox'); if (!box || !_projDetail) return;
