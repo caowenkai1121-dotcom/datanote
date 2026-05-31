@@ -249,6 +249,37 @@
     return DN.h('div', {}, [tb, scroll]);
   }
 
+  // 影响面板(大功能): 受影响表数/库数/最大层级 统计 + 按层级分组芯片
+  function buildImpactPanel(list, kind, centerId) {
+    var dbs = {}, maxDepth = 0, byDepth = {};
+    list.forEach(function (n) {
+      dbs[n.db] = 1;
+      var d = Number(n.depth) || 1; if (d > maxDepth) maxDepth = d;
+      (byDepth[d] = byDepth[d] || []).push(n);
+    });
+    var wrap = DN.h('div', { style: 'margin-bottom:12px' });
+    var verb = kind === 'impact' ? '下游受影响' : '上游依赖';
+    wrap.appendChild(DN.statRow([
+      { icon: 'db', label: verb + '表数', value: list.length, tone: list.length > 10 ? 'warn' : 'info' },
+      { icon: 'layers', label: '涉及库数', value: Object.keys(dbs).length },
+      { icon: 'chart', label: '最大层级', value: '第 ' + maxDepth + ' 层' }
+    ]));
+    // 按层级分组芯片
+    var lvWrap = DN.h('div', { style: 'margin-top:8px' });
+    Object.keys(byDepth).map(Number).sort(function (a, b) { return a - b; }).forEach(function (d) {
+      var row = DN.h('div', { style: 'display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' });
+      row.appendChild(DN.h('span', { style: 'flex-shrink:0;font-size:11px;color:var(--text-muted);width:54px;padding-top:2px', text: '第 ' + d + ' 层' }));
+      var chips = DN.h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px' });
+      byDepth[d].forEach(function (n) { chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-regular)', text: n.db + '.' + n.table })); });
+      row.appendChild(chips);
+      lvWrap.appendChild(row);
+    });
+    var card = DN.card({ title: '影响面分析 · ' + centerId, icon: 'lineage' });
+    card.body.appendChild(wrap); card.body.appendChild(lvWrap);
+    if (kind === 'impact' && list.length > 10) card.body.appendChild(DN.alertNode ? DN.alertNode('该表变更将波及 ' + list.length + ' 张下游表, 建议变更前充分评估与通知。', 'warn') : DN.h('div', { class: 'gov-desc', style: 'color:#d48806;margin-top:8px', text: '⚠ 该表变更将波及 ' + list.length + ' 张下游表, 建议充分评估。' }));
+    return card.el;
+  }
+
   function queryFlow(kind) {
     var db = impPicker.db();
     var table = impPicker.table();
@@ -264,6 +295,8 @@
       if (!list.length) { box.appendChild(DN.empty('无' + title + '（先解析脚本SQL血缘或重建）', 'lineage')); return; }
       box.appendChild(DN.h('div', { style: 'font-size:13px;font-weight:600;margin-bottom:10px',
         text: title + '（共 ' + list.length + ' 个表）' }));
+      // 影响面统计 + 按层分组(大功能)
+      box.appendChild(buildImpactPanel(list, kind, db + '.' + table));
       box.appendChild(DN.table({
         columns: [
           { label: '表', copyable: true, render: function (n) { return n.db + '.' + n.table; }, exportValue: function (n) { return n.db + '.' + n.table; } },
