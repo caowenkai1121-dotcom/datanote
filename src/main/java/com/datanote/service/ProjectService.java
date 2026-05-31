@@ -126,6 +126,10 @@ public class ProjectService {
         while (codeExists(code, selfId)) {
             n++;
             code = base + "_" + n;
+            if (n > 1000) { // 兜底：避免极端同名下无限递增
+                code = base + "_" + System.currentTimeMillis();
+                break;
+            }
         }
         return code;
     }

@@ -108,8 +108,8 @@
         var payload = {
           elementCode: f.element_code.value.trim(), nameCn: f.name_cn.value.trim(),
           dataType: f.data_type.value.trim(), length: parseInt(f.length.value, 10) || null,
-          valueDomain: f.value_domain.value.trim(), sensitiveType: f.sensitive_type.value.trim(),
-          securityLevel: f.security_level.value.trim(), description: f.description.value.trim()
+          valueDomain: f.value_domain.value.trim(), sensitiveType: f.sensitive_type.value ? f.sensitive_type.value.trim() : null,
+          securityLevel: f.security_level.value ? f.security_level.value.trim() : null, description: f.description.value.trim()
         };
         if (!payload.elementCode) { DN.toast('编码必填', 'error'); return; }
         DN.post(API + '/element/save', payload).then(function () {
@@ -311,9 +311,9 @@
     DN.get(API + '/top-violations?limit=10').then(function (rows) {
       topBody.innerHTML = '';
       if (!rows || !rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
-      topBody.appendChild(DN.bars(rows.map(function (r) {
-        return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, tone: 'err', display: (r.violations || 0) + ' 列' };
-      })));
+      topBody.appendChild(DN.heat(rows.map(function (r) {
+        return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, display: (r.violations || 0) + ' 列' };
+      }), { rgb: [255, 77, 79] }));
     }).catch(function () { topBody.innerHTML = ''; topBody.appendChild(DN.empty('加载失败', 'alert')); });
 
     var historyCard = DN.card({ title: '稽核历史', icon: 'clock' });
@@ -363,7 +363,7 @@
       { icon: 'alert', label: '不合规', value: run.violationCount || 0, tone: 'err' }
     ]));
     var detail = [];
-    try { detail = run.detail ? JSON.parse(run.detail) : []; } catch (e) { detail = []; }
+    try { detail = run.detail ? JSON.parse(run.detail) : []; } catch (e) { detail = []; DN.toast('稽核明细解析失败', 'warn'); }
     box.appendChild(DN.table({
       columns: [
         { key: 'tableMetaId', label: '表ID', render: function (d) { return d.tableMetaId == null ? '' : d.tableMetaId; } },

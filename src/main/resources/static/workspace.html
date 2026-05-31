@@ -16911,6 +16911,9 @@ window.dbsyncCloseDetail = function() {
   _dbsyncDetailJobId = null;
   var drawer = document.getElementById('dbsyncDetailDrawer');
   var mask = document.getElementById('dbsyncDetailMask');
+  // 清空实时日志面板,避免下次打开他任务时旧日志残留
+  var lp = document.getElementById('dbsyncDetailLogPanel');
+  if (lp) lp.innerHTML = '<span style="color:var(--text-muted);">暂无日志，运行任务后将在此实时显示。</span>';
   if (drawer) { drawer.classList.remove('show'); drawer.setAttribute('aria-hidden', 'true'); }
   if (mask) mask.classList.remove('show');
 };
