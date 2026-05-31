@@ -160,6 +160,7 @@ public class LineageController {
     @Operation(summary = "以某表为中心的N跳血缘子图(双向BFS)")
     public R<Map<String, Object>> graph(@RequestParam String db, @RequestParam String table,
                                         @RequestParam(defaultValue = "2") int depth) {
-        return R.ok(lineageEdgeService.graph(db, table, depth));
+        int d = depth < 1 ? 1 : (depth > 6 ? 6 : depth); // 后端兜底限深,防直连API传超大depth致昂贵BFS
+        return R.ok(lineageEdgeService.graph(db, table, d));
     }
 }

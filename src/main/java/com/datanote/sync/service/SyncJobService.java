@@ -200,7 +200,8 @@ public class SyncJobService {
     }
 
     /** M2b：保存/更新 chunk 游标。 */
-    public void saveChunkCursor(Long jobId, String sourceTable, String cursorJson) {
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public synchronized void saveChunkCursor(Long jobId, String sourceTable, String cursorJson) {
         DnSyncChunkCheckpoint cp = chunkCheckpointMapper.selectOne(
             new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DnSyncChunkCheckpoint>()
                 .eq(DnSyncChunkCheckpoint::getSyncJobId, jobId)
@@ -327,7 +328,7 @@ public class SyncJobService {
             if ("CDC".equals(syncModeUpper)) {
                 try (Connection conn = src.getConnection()) {
                     // 1. log_bin
-                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW VARIABLES LIKE 'log_bin'")) {
+                    try (java.sql.Statement st = conn.createStatement(); java.sql.ResultSet rs = st.executeQuery("SHOW VARIABLES LIKE 'log_bin'")) {
                         if (rs.next()) {
                             String val = rs.getString(2);
                             boolean ok = "ON".equalsIgnoreCase(val);
@@ -342,7 +343,7 @@ public class SyncJobService {
                         allOk = false;
                     }
                     // 2. binlog_format
-                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW VARIABLES LIKE 'binlog_format'")) {
+                    try (java.sql.Statement st = conn.createStatement(); java.sql.ResultSet rs = st.executeQuery("SHOW VARIABLES LIKE 'binlog_format'")) {
                         if (rs.next()) {
                             String val = rs.getString(2);
                             boolean ok = "ROW".equalsIgnoreCase(val);
@@ -357,7 +358,7 @@ public class SyncJobService {
                         allOk = false;
                     }
                     // 3. REPLICATION 权限
-                    try (java.sql.ResultSet rs = conn.createStatement().executeQuery("SHOW GRANTS")) {
+                    try (java.sql.Statement st = conn.createStatement(); java.sql.ResultSet rs = st.executeQuery("SHOW GRANTS")) {
                         StringBuilder grants = new StringBuilder();
                         while (rs.next()) {
                             grants.append(rs.getString(1)).append(" ");

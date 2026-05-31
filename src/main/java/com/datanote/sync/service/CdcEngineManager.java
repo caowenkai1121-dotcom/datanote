@@ -199,7 +199,7 @@ public class CdcEngineManager {
     public synchronized void stop(Long jobId) {
         CdcSyncEngine engine = engines.remove(jobId);
         if (engine != null) {
-            engine.stop();
+            try { engine.stop(); } catch (Exception e) { log.warn("CDC 引擎停止异常,仍继续收尾 jobId={}", jobId, e); }
         }
         finalizeExecution(jobId, "STOPPED", engine);
         updateStatus(jobId, "STOPPED");
@@ -212,7 +212,10 @@ public class CdcEngineManager {
      */
     public synchronized void resetAndRestart(Long jobId, boolean restart) {
         CdcSyncEngine engine = engines.remove(jobId);
-        if (engine != null) { engine.stop(); finalizeExecution(jobId, "STOPPED", engine); }
+        if (engine != null) {
+            try { engine.stop(); } catch (Exception e) { log.warn("CDC 引擎停止异常,仍继续重置 jobId={}", jobId, e); }
+            finalizeExecution(jobId, "STOPPED", engine);
+        }
         offsetMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcOffset>()
                 .eq(com.datanote.model.DnCdcOffset::getJobId, jobId));
         historyMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcSchemaHistory>()

@@ -165,8 +165,9 @@ public class SyncJobController {
     public R<java.util.Map<String, Object>> ddlPreview(@RequestBody java.util.Map<String, Object> req) {
         try {
             Long srcDsId = Long.valueOf(String.valueOf(req.get("srcDsId")));
-            String srcDb = String.valueOf(req.get("srcDb"));
-            String srcTable = String.valueOf(req.get("srcTable"));
+            String srcDb = req.get("srcDb") == null ? "" : String.valueOf(req.get("srcDb"));
+            String srcTable = req.get("srcTable") == null ? "" : String.valueOf(req.get("srcTable"));
+            if (srcDb.isEmpty() || srcTable.isEmpty()) { return R.fail("srcDb/srcTable 不能为空"); }
             Long tgtDsId = Long.valueOf(String.valueOf(req.get("tgtDsId")));
             String tgtDb = req.get("tgtDb") == null || String.valueOf(req.get("tgtDb")).isEmpty()
                     ? srcDb : String.valueOf(req.get("tgtDb"));
