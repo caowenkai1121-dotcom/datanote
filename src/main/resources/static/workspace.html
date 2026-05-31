@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r13">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r14">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r13"></script>
-<script src="js/gov-assets.js?v=g2r13"></script>
-<script src="js/gov-lineage.js?v=g2r13"></script>
-<script src="js/gov-quality.js?v=g2r13"></script>
-<script src="js/gov-standard.js?v=g2r13"></script>
-<script src="js/gov-classification.js?v=g2r13"></script>
-<script src="js/gov-security.js?v=g2r13"></script>
-<script src="js/gov-health.js?v=g2r13"></script>
-<script src="js/gov-audit.js?v=g2r13"></script>
-<script src="js/gov-overview.js?v=g2r13"></script>
-<script src="js/gov-subject.js?v=g2r13"></script>
+<script src="js/dn-common.js?v=g2r14"></script>
+<script src="js/gov-assets.js?v=g2r14"></script>
+<script src="js/gov-lineage.js?v=g2r14"></script>
+<script src="js/gov-quality.js?v=g2r14"></script>
+<script src="js/gov-standard.js?v=g2r14"></script>
+<script src="js/gov-classification.js?v=g2r14"></script>
+<script src="js/gov-security.js?v=g2r14"></script>
+<script src="js/gov-health.js?v=g2r14"></script>
+<script src="js/gov-audit.js?v=g2r14"></script>
+<script src="js/gov-overview.js?v=g2r14"></script>
+<script src="js/gov-subject.js?v=g2r14"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13562,19 +13562,52 @@ window.projLoadHealthCard = function() {
 window.projLoadActivities = function() {
   var pane = document.getElementById('projPane_activity'); if (!pane || !_projDetail) return;
   pane.innerHTML = '<div style="color:var(--text-muted);">加载中...</div>';
-  api('/api/project/' + _projDetail.id + '/activities?limit=80').then(function(res) {
+  api('/api/project/' + _projDetail.id + '/activities?limit=200').then(function(res) {
     var as = (res && res.code === 0) ? (res.data || []) : [];
+    _projActs = as;
     if (!as.length) { pane.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无活动记录（成员/资产/发布/设置等写操作将在此留痕）</div>'; return; }
-    var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th></tr></thead><tbody>';
-    as.forEach(function(a) {
-      h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
-        + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
-        + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
-        + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td></tr>';
-    });
-    h += '</tbody></table>';
+    var h = '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
+      + '<select id="projActMethod" class="dbsync-form-select" style="width:auto;" onchange="projRenderActs()"><option value="">全部方法</option><option>POST</option><option>PUT</option><option>DELETE</option><option>GET</option></select>'
+      + '<select id="projActStatus" class="dbsync-form-select" style="width:auto;" onchange="projRenderActs()"><option value="">全部状态</option><option value="ok">成功(&lt;400)</option><option value="err">失败(≥400)</option></select>'
+      + '<input id="projActSearch" class="dbsync-form-input" style="width:160px;" placeholder="搜索路径/操作人" oninput="projRenderActs()">'
+      + '<button class="btn btn-sm" style="margin-left:auto;" onclick="projExportActs()">导出CSV</button></div>'
+      + '<div id="projActTblBox"></div>';
     pane.innerHTML = h;
+    projRenderActs();
   }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+var _projActs = [];
+window.projRenderActs = function() {
+  var box = document.getElementById('projActTblBox'); if (!box) return;
+  var fm = (document.getElementById('projActMethod') || {}).value || '';
+  var fs = (document.getElementById('projActStatus') || {}).value || '';
+  var kw = ((document.getElementById('projActSearch') || {}).value || '').trim().toLowerCase();
+  var as = _projActs.filter(function(a) {
+    if (fm && (a.method || '') !== fm) return false;
+    if (fs === 'ok' && !(a.status != null && a.status < 400)) return false;
+    if (fs === 'err' && !(a.status != null && a.status >= 400)) return false;
+    if (kw && ((a.path || '') + ' ' + (a.userName || '')).toLowerCase().indexOf(kw) < 0) return false;
+    return true;
+  });
+  if (!as.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">无匹配记录</div>'; return; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th></tr></thead><tbody>';
+  as.forEach(function(a) {
+    h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
+      + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
+      + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
+      + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td></tr>';
+  });
+  box.innerHTML = h + '</tbody></table><div style="font-size:11px;color:var(--text-muted);margin-top:6px;">共 ' + as.length + ' / ' + _projActs.length + ' 条</div>';
+};
+window.projExportActs = function() {
+  var as = _projActs || []; if (!as.length) { showToast('暂无活动', 'info'); return; }
+  var cell = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [['时间', '操作人', '方法', '路径', '状态'].map(cell).join(',')];
+  as.forEach(function(a) { lines.push([(a.createdAt || '').replace('T', ' ').slice(0, 19), a.userName, a.method, a.path, a.status].map(cell).join(',')); });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob), el = document.createElement('a');
+  el.href = url; el.download = 'project_activities_' + (_projDetail ? _projDetail.id : '') + '.csv';
+  document.body.appendChild(el); el.click(); document.body.removeChild(el); setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 };
 
 /* ===== PM2-M3：任务待办 + 里程碑 ===== */
