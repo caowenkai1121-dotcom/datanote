@@ -3284,19 +3284,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g3r17">
+<link rel="stylesheet" href="css/gov-modern.css?v=g3r18">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g3r17"></script>
-<script src="js/gov-assets.js?v=g3r17"></script>
-<script src="js/gov-lineage.js?v=g3r17"></script>
-<script src="js/gov-quality.js?v=g3r17"></script>
-<script src="js/gov-standard.js?v=g3r17"></script>
-<script src="js/gov-classification.js?v=g3r17"></script>
-<script src="js/gov-security.js?v=g3r17"></script>
-<script src="js/gov-health.js?v=g3r17"></script>
-<script src="js/gov-audit.js?v=g3r17"></script>
-<script src="js/gov-overview.js?v=g3r17"></script>
-<script src="js/gov-subject.js?v=g3r17"></script>
+<script src="js/dn-common.js?v=g3r18"></script>
+<script src="js/gov-assets.js?v=g3r18"></script>
+<script src="js/gov-lineage.js?v=g3r18"></script>
+<script src="js/gov-quality.js?v=g3r18"></script>
+<script src="js/gov-standard.js?v=g3r18"></script>
+<script src="js/gov-classification.js?v=g3r18"></script>
+<script src="js/gov-security.js?v=g3r18"></script>
+<script src="js/gov-health.js?v=g3r18"></script>
+<script src="js/gov-audit.js?v=g3r18"></script>
+<script src="js/gov-overview.js?v=g3r18"></script>
+<script src="js/gov-subject.js?v=g3r18"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -18177,6 +18177,43 @@ window.dbsyncToggleEl = function(elId) {
   var el = document.getElementById(elId);
   if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
 };
+// 执行历史日历热力：近13周每日执行次数, 含失败标记(纯前端)
+function dbsyncHistCalendar(view) {
+  var WEEKS = 13;
+  var cnt = {}, fail = {};
+  view.forEach(function(ex) {
+    var t = ex.startTime || ex.createTime; if (!t) return;
+    var d = new Date(String(t).replace(' ', 'T')); if (isNaN(d.getTime())) return;
+    var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
+    var ds = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    cnt[ds] = (cnt[ds] || 0) + 1;
+    if (dbsyncExecKind(ex.status) === 'err') fail[ds] = (fail[ds] || 0) + 1;
+  });
+  if (!Object.keys(cnt).length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">无可用执行时间绘制日历。</div>';
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var end = new Date(today); end.setDate(end.getDate() + (6 - end.getDay()));
+  var start = new Date(end); start.setDate(start.getDate() - (WEEKS * 7 - 1));
+  var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  var fmt = function(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  var max = 0; Object.keys(cnt).forEach(function(k) { if (cnt[k] > max) max = cnt[k]; });
+  var colorOf = function(n) { if (!n) return 'var(--bg-hover,#ebedf0)'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+  var cells = '';
+  for (var wk = 0; wk < WEEKS; wk++) {
+    cells += '<div style="display:flex;flex-direction:column;gap:3px;">';
+    for (var dow = 0; dow < 7; dow++) {
+      var d = new Date(start); d.setDate(start.getDate() + wk * 7 + dow);
+      if (d > today) { cells += '<div style="width:13px;height:13px;"></div>'; continue; }
+      var ds = fmt(d), n = cnt[ds] || 0, f = fail[ds] || 0;
+      var border = f > 0 ? 'box-shadow:inset 0 0 0 2px #ff4d4f;' : '';
+      cells += '<div title="' + ds + ' · ' + n + ' 次执行' + (f ? ' (含' + f + '次失败)' : '') + '" style="width:13px;height:13px;border-radius:2px;background:' + colorOf(n) + ';' + border + '"></div>';
+    }
+    cells += '</div>';
+  }
+  return '<div style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
+    + '<div style="display:flex;align-items:center;font-size:12px;margin-bottom:8px;"><span style="font-weight:600;">执行日历 · 近 ' + WEEKS + ' 周</span>'
+    + '<span style="margin-left:auto;color:var(--text-muted);font-size:11px;">红框=当日有失败 · 峰值 ' + max + ' 次/日</span></div>'
+    + '<div style="display:flex;gap:3px;overflow-x:auto;">' + cells + '</div></div>';
+}
 // 执行历史时间线：每次执行按开始时间定位、耗时定宽的横条(纯前端)
 function dbsyncHistTimeline(view) {
   var items = view.map(function(ex) {
@@ -18226,12 +18263,14 @@ function dbsyncRenderHistory(execs) {
   var opts = '<option value="">全部状态</option>' + Object.keys(labels).map(function(l) { return '<option value="' + escapeHtml(l) + '"' + (_dbsyncHistFilter === l ? ' selected' : '') + '>' + escapeHtml(l) + '</option>'; }).join('');
   var vtog = '<span style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-right:auto;">'
     + '<a href="#" onclick="dbsyncSetHistView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_dbsyncHistView === 'table' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">表格</a>'
-    + '<a href="#" onclick="dbsyncSetHistView(\'timeline\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_dbsyncHistView === 'timeline' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">时间线</a></span>';
+    + '<a href="#" onclick="dbsyncSetHistView(\'timeline\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_dbsyncHistView === 'timeline' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">时间线</a>'
+    + '<a href="#" onclick="dbsyncSetHistView(\'calendar\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_dbsyncHistView === 'calendar' ? 'background:var(--primary);color:#fff;' : 'color:var(--text-regular);') + '">日历</a></span>';
   var bar = '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">' + vtog
     + '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterHistory(this.value)">' + opts + '</select>'
     + '<button class="btn btn-sm" onclick="dbsyncExportHistory()">导出CSV</button></div>';
   var view = _dbsyncHistFilter ? _dbsyncHistAll.filter(function(ex) { return dbsyncExecLabel(ex.status) === _dbsyncHistFilter; }) : _dbsyncHistAll;
   if (_dbsyncHistView === 'timeline') { pane.innerHTML = bar + dbsyncHistTimeline(view); return; }
+  if (_dbsyncHistView === 'calendar') { pane.innerHTML = bar + dbsyncHistCalendar(view); return; }
   var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
     + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th style="width:60px;">日志</th>'
     + '</tr></thead><tbody>';
