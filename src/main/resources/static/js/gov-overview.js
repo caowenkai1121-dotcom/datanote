@@ -9,8 +9,11 @@
 
   window.GOV_RENDERERS.overview = function (c) {
     var box = DN.h('div', { id: 'ovBox' });
-    box.appendChild(DN.skeleton(5));
     c.appendChild(box);
+    reload(box);
+  };
+  function reload(box) {
+    box.innerHTML = ''; box.appendChild(DN.skeleton(5));
     Promise.all([
       DN.get('/api/gov/overview'),
       DN.get('/api/gov/health/score/trend?days=14').catch(function () { return []; })
@@ -20,7 +23,7 @@
       box.innerHTML = '';
       box.appendChild(DN.empty('加载失败: ' + DN.esc(e.message), 'alert'));
     });
-  };
+  }
 
   function render(box, d, trend) {
     var health = d.health || {};
@@ -31,26 +34,26 @@
 
     box.innerHTML = '';
 
-    // ---- 顶部 KPI 磁贴 ----
+    // ---- 顶部工具条: 刷新 + 更新时间 ----
+    var bar = DN.h('div', { style: 'display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px' }, [
+      DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '更新于 ' + new Date().toLocaleTimeString() }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { reload(box); } })
+    ]);
+    box.appendChild(bar);
+
+    // ---- 顶部 KPI 磁贴(原生可点击跳转) ----
     var total = Number(health.total) || 0;
     var rate = Number(quality.recentPassRate) || 0;
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
-    var kpiRow = DN.statRow([
-      { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total), go: 'health' },
-      { icon: 'db', label: '表数', value: fmtInt(assets.tableCount), go: 'assets' },
-      { icon: 'list', label: '字段数', value: fmtInt(assets.columnCount), go: 'assets' },
-      { icon: 'layers', label: '库数', value: fmtInt(assets.dbCount), go: 'assets' },
-      { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate), go: 'quality' },
-      { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', go: 'health' }
-    ]);
-    // 磁贴点击跳转对应子模块(可发现性)
-    Array.prototype.slice.call(kpiRow.children).forEach(function (tile, i) {
-      var keys = ['health', 'assets', 'assets', 'assets', 'quality', 'health'];
-      tile.classList.add('clickable');
-      tile.title = '点击进入「' + ({ health: '治理健康分', assets: '资产目录', quality: '数据质量' }[keys[i]]) + '」';
-      tile.addEventListener('click', function () { if (window.govGoModule) govGoModule(keys[i]); });
-    });
-    box.appendChild(kpiRow);
+    function jump(k, lbl) { return function () { if (window.govGoModule) govGoModule(k); }; }
+    box.appendChild(DN.statRow([
+      { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total), title: '进入治理健康分', onClick: jump('health') },
+      { icon: 'db', label: '表数', value: fmtInt(assets.tableCount), title: '进入资产目录', onClick: jump('assets') },
+      { icon: 'list', label: '字段数', value: fmtInt(assets.columnCount), title: '进入资产目录', onClick: jump('assets') },
+      { icon: 'layers', label: '库数', value: fmtInt(assets.dbCount), title: '进入资产目录', onClick: jump('assets') },
+      { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate), title: '进入数据质量', onClick: jump('quality') },
+      { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', title: '进入治理健康分', onClick: jump('health') }
+    ]));
 
     // ---- 健康总分 + 五维雷达 ----
     var dims = health.dims || {};

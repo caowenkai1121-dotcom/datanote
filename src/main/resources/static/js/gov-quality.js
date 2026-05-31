@@ -5,6 +5,7 @@
 
   var allRules = [];          // 全量规则
   var filterStatus = '';      // ''=全部 / '1'=启用 / '0'=停用
+  var filterDim = '', filterType = '';
   var tableEl = null;         // DN.table 实例（供筛选 reload）
   var trendBody = null;       // 趋势卡片 body
 
@@ -62,9 +63,12 @@
   function filtered() {
     return allRules.filter(function (r) {
       if (filterStatus !== '' && String(r.status == null ? 1 : r.status) !== filterStatus) return false;
+      if (filterDim && (r.dimension || '') !== filterDim) return false;
+      if (filterType && (r.ruleType || '') !== filterType) return false;
       return true;
     });
   }
+  function uniq(arr) { var s = {}, o = []; arr.forEach(function (x) { if (x && !s[x]) { s[x] = 1; o.push(x); } }); return o; }
 
   function buildToolbarAndTable() {
     // 状态筛选下拉（放进 DN.table 工具条）
@@ -74,6 +78,16 @@
     });
     statusSel.value = filterStatus;
     statusSel.onchange = function () { filterStatus = statusSel.value; if (tableEl) tableEl.reload(filtered()); };
+    var dimSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+    dimSel.appendChild(DN.h('option', { value: '', text: '全部维度' }));
+    uniq(allRules.map(function (r) { return r.dimension; })).forEach(function (d) { dimSel.appendChild(DN.h('option', { value: d, text: d })); });
+    dimSel.value = filterDim;
+    dimSel.onchange = function () { filterDim = dimSel.value; if (tableEl) tableEl.reload(filtered()); };
+    var typeSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+    typeSel.appendChild(DN.h('option', { value: '', text: '全部类型' }));
+    uniq(allRules.map(function (r) { return r.ruleType; })).forEach(function (t) { typeSel.appendChild(DN.h('option', { value: t, text: t })); });
+    typeSel.value = filterType;
+    typeSel.onchange = function () { filterType = typeSel.value; if (tableEl) tableEl.reload(filtered()); };
 
     tableEl = DN.table({
       columns: [
@@ -104,7 +118,8 @@
       pageSize: 20,
       searchKeys: ['ruleName', 'ruleType', 'dimension'],
       searchPlaceholder: '搜索规则名/类型/维度',
-      toolbar: statusSel,
+      toolbar: [statusSel, dimSel, typeSel],
+      exportName: '质量规则',
       empty: '暂无质量规则，请前往工作台创建',
       emptyIcon: 'check'
     });

@@ -364,14 +364,25 @@
     ]));
     var detail = [];
     try { detail = run.detail ? JSON.parse(run.detail) : []; } catch (e) { detail = []; DN.toast('稽核明细解析失败', 'warn'); }
+    // 违规原因 Top 聚合(先看主要违规类型再下钻)
+    if (detail.length) {
+      var byReason = {};
+      detail.forEach(function (d) { var k = d.reason || '其他'; byReason[k] = (byReason[k] || 0) + 1; });
+      var items = Object.keys(byReason).sort(function (a, b) { return byReason[b] - byReason[a]; })
+        .map(function (k) { return { label: k, value: byReason[k], tone: 'err', display: byReason[k] + ' 列' }; });
+      box.appendChild(DN.sectionTitle('违规原因分布'));
+      box.appendChild(DN.bars(items));
+      box.appendChild(DN.sectionTitle('不合规明细'));
+    }
     box.appendChild(DN.table({
       columns: [
-        { key: 'tableMetaId', label: '表ID', render: function (d) { return d.tableMetaId == null ? '' : d.tableMetaId; } },
-        { key: 'columnName', label: '列名' },
-        { key: 'dataType', label: '类型' },
-        { key: 'reason', label: '原因' }
+        { key: 'tableMetaId', label: '表ID', align: 'right', sortable: true, render: function (d) { return d.tableMetaId == null ? '' : d.tableMetaId; } },
+        { key: 'columnName', label: '列名', sortable: true },
+        { key: 'dataType', label: '类型', sortable: true },
+        { key: 'reason', label: '原因', sortable: true }
       ],
-      rows: detail, search: false, empty: '无不合规项', emptyIcon: 'check'
+      rows: detail, searchKeys: ['columnName', 'reason'], searchPlaceholder: '搜索列名/原因',
+      exportName: '落标稽核明细', empty: '无不合规项', emptyIcon: 'check'
     }));
   }
 })();

@@ -166,8 +166,14 @@
       DN.h('div', { class: 'l', text: o.label || '' })
     ]);
     if (o.sub) meta.appendChild(DN.h('div', { class: 'sub', text: o.sub }));
-    return DN.h('div', { class: 'gov-stat' + (o.tone ? ' tone-' + o.tone : '') },
+    var tile = DN.h('div', { class: 'gov-stat' + (o.tone ? ' tone-' + o.tone : '') + (typeof o.onClick === 'function' ? ' clickable' : '') },
       [DN.h('div', { class: 'ic', html: DN.icon(o.icon || 'chart') }), meta]);
+    if (typeof o.onClick === 'function') {
+      tile.setAttribute('tabindex', '0'); if (o.title) tile.title = o.title;
+      tile.addEventListener('click', o.onClick);
+      tile.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onClick(); } });
+    }
+    return tile;
   };
   DN.statRow = function (tiles) { return DN.h('div', { class: 'gov-stats' }, (tiles || []).map(function (t) { return DN.statTile(t); })); };
 
@@ -227,31 +233,74 @@
    */
   DN.table = function (o) {
     o = o || {}; var cols = o.columns || [], all = o.rows || [], pageSize = o.pageSize || 20, page = 1, q = '';
+    var sortKey = null, sortDir = 1, inp = null, _t = null;
     var wrap = DN.h('div', {});
     if (o.search !== false) {
-      var inp = DN.h('input', { placeholder: o.searchPlaceholder || '搜索...', oninput: function () { q = inp.value.trim().toLowerCase(); page = 1; draw(); } });
-      var bar = DN.h('div', { class: 'gov-toolbar' }, [DN.h('div', { class: 'gov-search' }, [DN.h('span', { html: DN.icon('search') }), inp])]);
+      inp = DN.h('input', { placeholder: o.searchPlaceholder || '搜索...', oninput: function () { clearTimeout(_t); _t = setTimeout(function () { q = inp.value.trim().toLowerCase(); page = 1; draw(); }, 220); } });
+      var clr = DN.h('span', { class: 'gov-search-clr', text: '×', title: '清除', onclick: function () { inp.value = ''; q = ''; page = 1; draw(); inp.focus(); } });
+      var bar = DN.h('div', { class: 'gov-toolbar' }, [DN.h('div', { class: 'gov-search' }, [DN.h('span', { html: DN.icon('search') }), inp, clr])]);
+      if (o.exportName) bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: function () { exportCsv(); } }));
       if (o.toolbar) (Array.isArray(o.toolbar) ? o.toolbar : [o.toolbar]).forEach(function (t) { if (t) bar.appendChild(t); });
       wrap.appendChild(bar);
-    } else if (o.toolbar) {
-      var bar2 = DN.h('div', { class: 'gov-toolbar' }); (Array.isArray(o.toolbar) ? o.toolbar : [o.toolbar]).forEach(function (t) { if (t) bar2.appendChild(t); }); wrap.appendChild(bar2);
+    } else if (o.toolbar || o.exportName) {
+      var bar2 = DN.h('div', { class: 'gov-toolbar' });
+      if (o.exportName) bar2.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: function () { exportCsv(); } }));
+      if (o.toolbar) (Array.isArray(o.toolbar) ? o.toolbar : [o.toolbar]).forEach(function (t) { if (t) bar2.appendChild(t); }); wrap.appendChild(bar2);
     }
     var tw = DN.h('div', { class: 'gov-tbl-wrap' }), pager = DN.h('div', { class: 'gov-pager' });
     wrap.appendChild(tw); wrap.appendChild(pager);
     function filt() {
-      if (!q) return all;
-      return all.filter(function (r) {
+      var data = !q ? all.slice() : all.filter(function (r) {
         var s = (o.searchKeys || Object.keys(r)).map(function (k) { return r[k]; }).join(' ');
         return String(s).toLowerCase().indexOf(q) >= 0;
       });
+      if (sortKey) {
+        data.sort(function (a, b) {
+          var va = a[sortKey], vb = b[sortKey];
+          var na = Number(va), nb = Number(vb);
+          if (!isNaN(na) && !isNaN(nb) && va !== '' && vb !== '') return (na - nb) * sortDir;
+          return String(va == null ? '' : va).localeCompare(String(vb == null ? '' : vb)) * sortDir;
+        });
+      }
+      return data;
     }
+    function exportCsv() {
+      var data = filt();
+      var head = cols.filter(function (c) { return c.label; }).map(function (c) { return c.label; });
+      var lines = [head.map(csvCell).join(',')];
+      data.forEach(function (r) {
+        lines.push(cols.filter(function (c) { return c.label; }).map(function (c) {
+          var v = c.exportValue ? c.exportValue(r) : (r[c.key] == null ? '' : r[c.key]);
+          return csvCell(v);
+        }).join(','));
+      });
+      var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = (o.exportName || 'export') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+    function csvCell(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
     function draw() {
       var data = filt(), total = data.length, pages = Math.max(1, Math.ceil(total / pageSize));
       if (page > pages) page = pages;
       tw.innerHTML = '';
-      if (!total) { tw.appendChild(DN.empty(o.empty || '暂无数据', o.emptyIcon)); pager.innerHTML = ''; return; }
-      var thead = '<thead><tr>' + cols.map(function (c) { return '<th' + (c.align ? ' style="text-align:' + c.align + '"' : '') + '>' + DN.esc(c.label) + '</th>'; }).join('') + '</tr></thead>';
+      if (!total) {
+        if (q && all.length) {
+          var em = DN.empty('未找到匹配「' + (inp ? inp.value : q) + '」的记录', 'search');
+          em.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '清空搜索', style: 'color:var(--primary);font-size:12px', onclick: function () { if (inp) inp.value = ''; q = ''; page = 1; draw(); } }));
+          tw.appendChild(em);
+        } else tw.appendChild(DN.empty(o.empty || '暂无数据', o.emptyIcon));
+        pager.innerHTML = ''; return;
+      }
+      var thead = '<thead><tr>' + cols.map(function (c) {
+        var arrow = c.sortable ? (sortKey === c.key ? (sortDir > 0 ? ' ▲' : ' ▼') : ' ⇅') : '';
+        return '<th' + (c.align ? ' style="text-align:' + c.align + (c.sortable ? ';cursor:pointer' : '') + '"' : (c.sortable ? ' style="cursor:pointer"' : '')) + (c.sortable ? ' data-sk="' + DN.esc(c.key) + '"' : '') + '>' + DN.esc(c.label) + arrow + '</th>';
+      }).join('') + '</tr></thead>';
       var table = DN.h('table', { class: 'gov-tbl', html: thead }), tbody = document.createElement('tbody');
+      Array.prototype.slice.call(table.querySelectorAll('th[data-sk]')).forEach(function (th) {
+        th.addEventListener('click', function () { var k = th.getAttribute('data-sk'); if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; } page = 1; draw(); });
+      });
       data.slice((page - 1) * pageSize, page * pageSize).forEach(function (r) {
         var tr = document.createElement('tr');
         cols.forEach(function (c) {
@@ -264,7 +313,7 @@
       });
       table.appendChild(tbody); tw.appendChild(table);
       pager.innerHTML = '';
-      pager.appendChild(DN.h('span', { text: '共 ' + total + ' 条' + (pages > 1 ? ' · ' + page + '/' + pages : '') }));
+      pager.appendChild(DN.h('span', { text: (q ? '匹配 ' + total + '/' + all.length : '共 ' + total) + ' 条' + (pages > 1 ? ' · ' + page + '/' + pages : '') }));
       if (pages > 1) {
         pager.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上一页', onclick: function () { if (page > 1) { page--; draw(); } } }));
         pager.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下一页', onclick: function () { if (page < pages) { page++; draw(); } } }));
@@ -281,11 +330,13 @@
     var oldD = document.querySelector('.gov-drawer'); if (oldD) oldD.remove();
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
-    function close() { mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    function close() { document.removeEventListener('keydown', onKey); mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var dr = DN.h('div', { class: 'gov-drawer' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close })]), bd]);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);
-    requestAnimationFrame(function () { mask.classList.add('show'); dr.classList.add('show'); });
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(function () { mask.classList.add('show'); dr.classList.add('show'); var f = bd.querySelector('input,select,textarea,button'); if (f) try { f.focus(); } catch (e) {} });
     return { close: close, body: bd };
   };
 

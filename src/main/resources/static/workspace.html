@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=gv2r10">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r1">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=gv2r10"></script>
-<script src="js/gov-assets.js?v=gv2r10"></script>
-<script src="js/gov-lineage.js?v=gv2r10"></script>
-<script src="js/gov-quality.js?v=gv2r10"></script>
-<script src="js/gov-standard.js?v=gv2r10"></script>
-<script src="js/gov-classification.js?v=gv2r10"></script>
-<script src="js/gov-security.js?v=gv2r10"></script>
-<script src="js/gov-health.js?v=gv2r10"></script>
-<script src="js/gov-audit.js?v=gv2r10"></script>
-<script src="js/gov-overview.js?v=gv2r10"></script>
-<script src="js/gov-subject.js?v=gv2r10"></script>
+<script src="js/dn-common.js?v=g2r1"></script>
+<script src="js/gov-assets.js?v=g2r1"></script>
+<script src="js/gov-lineage.js?v=g2r1"></script>
+<script src="js/gov-quality.js?v=g2r1"></script>
+<script src="js/gov-standard.js?v=g2r1"></script>
+<script src="js/gov-classification.js?v=g2r1"></script>
+<script src="js/gov-security.js?v=g2r1"></script>
+<script src="js/gov-health.js?v=g2r1"></script>
+<script src="js/gov-audit.js?v=g2r1"></script>
+<script src="js/gov-overview.js?v=g2r1"></script>
+<script src="js/gov-subject.js?v=g2r1"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4117,7 +4117,7 @@ html, body {
             </div>
             <div id="projKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;"></div>
             <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
-              <input id="projSearch" class="dbsync-form-input" style="width:180px;" placeholder="搜索 名称/编码/负责人" oninput="projApplyFilter()">
+              <input id="projSearch" class="dbsync-form-input" style="width:180px;" placeholder="搜索 名称/编码/负责人 (/ 聚焦)" oninput="projSearchDebounced()">
               <select id="projFilterType" class="dbsync-form-select" style="width:110px;" onchange="projApplyFilter()"><option value="">全部类型</option><option value="GENERAL">通用</option><option value="DATASYNC">数据同步</option><option value="DEVSQL">SQL开发</option><option value="HYBRID">混合</option></select>
               <select id="projFilterStatus" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部状态</option><option value="ACTIVE">活跃</option><option value="ARCHIVED">已归档</option></select>
               <select id="projFilterEnv" class="dbsync-form-select" style="width:100px;" onchange="projApplyFilter()"><option value="">全部环境</option><option value="DEV">开发</option><option value="PROD">生产</option><option value="MIXED">混合</option></select>
@@ -4421,7 +4421,7 @@ html, body {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">数据同步任务</h2>
               <div style="display:flex;gap:8px;align-items:center;">
-                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名..." oninput="dbsyncFilterJobs()"
+                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobs()"
                   style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;width:180px;background:var(--bg-card);">
                 <button class="btn btn-primary btn-sm" onclick="dbsyncOpenCreateModal()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
@@ -12782,6 +12782,8 @@ function projRenderKpi() {
   box.innerHTML = projTile('项目总数', total) + projTile('活跃', active, '#52c41a')
     + projTile('已归档', archived, '#8c8c8c') + projTile('本月新增', month, '#1677ff');
 }
+var _projSearchTimer = null;
+window.projSearchDebounced = function() { clearTimeout(_projSearchTimer); _projSearchTimer = setTimeout(function() { projApplyFilter(); }, 220); };
 window.projApplyFilter = function() {
   var q = (document.getElementById('projSearch') || {}).value || '';
   q = q.trim().toLowerCase();
@@ -13178,10 +13180,24 @@ window.projRemoveMember = function(memberId) {
 window.projPickUser = function() {
   api('/api/rbac/users').then(function(res) {
     var users = (res && res.code === 0) ? (res.data || []) : [];
-    var names = users.map(function(u) { return u.username; }).filter(Boolean);
-    if (!names.length) { showToast('无可选用户', 'info'); return; }
-    var pick = prompt('输入用户名（可选：' + names.slice(0, 20).join(', ') + '）');
-    if (pick) document.getElementById('projMemberUser').value = pick.trim();
+    if (!users.length) { showToast('无可选用户', 'info'); return; }
+    var rows = function(kw) {
+      kw = (kw || '').toLowerCase();
+      return users.filter(function(u) { return !kw || (u.username || '').toLowerCase().indexOf(kw) >= 0 || (u.nickname || '').toLowerCase().indexOf(kw) >= 0; })
+        .map(function(u) { return '<div class="proj-pick-row" data-u="' + escapeHtml(u.username) + '" style="padding:7px 10px;cursor:pointer;border-radius:6px;">' + escapeHtml(u.username) + (u.nickname ? ' <span style="color:var(--text-muted);font-size:12px;">' + escapeHtml(u.nickname) + '</span>' : '') + '</div>'; }).join('') || '<div style="padding:10px;color:var(--text-muted);">无匹配</div>';
+    };
+    var h = '<input id="projPickSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索用户名/昵称">'
+      + '<div id="projPickList" style="max-height:280px;overflow:auto;">' + rows('') + '</div>';
+    projShowModalBox('选择用户', h);
+    var si = document.getElementById('projPickSearch'); if (si) { si.focus(); si.oninput = function() { document.getElementById('projPickList').innerHTML = rows(si.value); bind(); }; }
+    function bind() {
+      Array.prototype.slice.call(document.querySelectorAll('#projPickList .proj-pick-row')).forEach(function(el) {
+        el.onclick = function() { document.getElementById('projMemberUser').value = el.getAttribute('data-u'); projCloseModalBox(); };
+        el.onmouseenter = function() { el.style.background = 'var(--bg-hover,#f0f1f3)'; };
+        el.onmouseleave = function() { el.style.background = ''; };
+      });
+    }
+    bind();
   }).catch(function() { showToast('用户列表加载失败', 'error'); });
 };
 window.projLoadSetting = function() {
@@ -16387,7 +16403,10 @@ window.dbsyncFilterJobs = function() {
     return String(j.folderId || 0) === String(_dbsyncSelectedFolderId);
   });
   if (!kw) { dbsyncRenderJobs(base); return; }
-  dbsyncRenderJobs(base.filter(function(j) { return (j.jobName || '').toLowerCase().indexOf(kw) >= 0; }));
+  dbsyncRenderJobs(base.filter(function(j) {
+    var hay = ((j.jobName || '') + ' ' + (j.sourceDsName || '') + '.' + (j.sourceDb || '') + ' ' + (j.targetDsName || '') + '.' + (j.targetDb || '')).toLowerCase();
+    return hay.indexOf(kw) >= 0;
+  }));
 };
 
 window.dbsyncSetStatusFilter = function(k) {

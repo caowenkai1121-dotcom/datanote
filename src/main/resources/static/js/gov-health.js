@@ -46,6 +46,8 @@
       title: '治理工单', icon: 'inbox',
       actions: [fsel, batchSel,
         DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '应用批量', onclick: batchTransition }),
+        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '批量指派', onclick: batchAssign }),
+        DN.h('a', { class: 'btn btn-danger', href: 'javascript:void(0)', text: '批量删除', onclick: batchDelete }),
         DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建工单', onclick: addIssue })]
     });
     icCard.body.appendChild(DN.h('div', { id: 'hsIssues' }, DN.skeleton(4)));
@@ -211,6 +213,24 @@
       .catch(function (e) { DN.toast(e.message, 'error'); });
   }
 
+  function batchAssign() {
+    var ids = Object.keys(selectedIssues);
+    if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
+    drawerForm('批量指派 ' + ids.length + ' 个工单', [formRow('负责人', ownerInput)], function (close) {
+      var owner = ownerInput.value.trim();
+      if (!owner) { DN.toast('请填写负责人', 'error'); return; }
+      Promise.all(ids.map(function (id) { return DN.post('/api/gov/health/issues/' + id + '/assign', { owner: owner }).then(function () { return true; }).catch(function () { return false; }); }))
+        .then(function (res) { DN.toast('已指派 ' + res.filter(Boolean).length + '/' + ids.length + ' 项'); close(); loadIssues(); loadBoard(); });
+    });
+  }
+  function batchDelete() {
+    var ids = Object.keys(selectedIssues);
+    if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
+    if (!confirm('确认批量删除选中的 ' + ids.length + ' 个工单？')) return;
+    Promise.all(ids.map(function (id) { return DN.del('/api/gov/health/issues/' + id).then(function () { return true; }).catch(function () { return false; }); }))
+      .then(function (res) { DN.toast('已删除 ' + res.filter(Boolean).length + '/' + ids.length + ' 项'); loadIssues(); loadBoard(); });
+  }
   function batchTransition() {
     var to = (document.getElementById('hsBatchTo') || {}).value || '';
     if (!to) { DN.toast('请选择目标状态', 'error'); return; }
