@@ -3310,19 +3310,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r13">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r14">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r13"></script>
-<script src="js/gov-assets.js?v=q100r13"></script>
-<script src="js/gov-lineage.js?v=q100r13"></script>
-<script src="js/gov-quality.js?v=q100r13"></script>
-<script src="js/gov-standard.js?v=q100r13"></script>
-<script src="js/gov-classification.js?v=q100r13"></script>
-<script src="js/gov-security.js?v=q100r13"></script>
-<script src="js/gov-health.js?v=q100r13"></script>
-<script src="js/gov-audit.js?v=q100r13"></script>
-<script src="js/gov-overview.js?v=q100r13"></script>
-<script src="js/gov-subject.js?v=q100r13"></script>
+<script src="js/dn-common.js?v=q100r14"></script>
+<script src="js/gov-assets.js?v=q100r14"></script>
+<script src="js/gov-lineage.js?v=q100r14"></script>
+<script src="js/gov-quality.js?v=q100r14"></script>
+<script src="js/gov-standard.js?v=q100r14"></script>
+<script src="js/gov-classification.js?v=q100r14"></script>
+<script src="js/gov-security.js?v=q100r14"></script>
+<script src="js/gov-health.js?v=q100r14"></script>
+<script src="js/gov-audit.js?v=q100r14"></script>
+<script src="js/gov-overview.js?v=q100r14"></script>
+<script src="js/gov-subject.js?v=q100r14"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13110,6 +13110,7 @@ window.projToggleFav = function(id) {
     var f = (res && res.code === 0) ? res.data.favorited : false;
     if (f) { _projFav[id] = _projFav[id] || {}; _projFav[id].fav = true; }
     else if (_projFav[id]) { _projFav[id].fav = false; _projFav[id].pinned = false; }
+    showToast(f ? '已收藏' : '已取消收藏', 'success');
     projApplyFilter();
   }).catch(function() { showToast('操作失败', 'error'); });
 };
@@ -17264,13 +17265,21 @@ function dbsyncApplyFolderFilter() {
   }
 }
 
+function _dbsyncFolderCount(fid) {
+  var jobs = _dbsyncAllJobs || [];
+  if (fid === 0 || fid === '0') return jobs.length;
+  return jobs.filter(function(j) { return String(j.folderId || 0) === String(fid); }).length;
+}
+function _dbsyncCountBadge(n) {
+  return '<span style="margin-left:auto;font-size:10px;color:var(--text-muted,#86909c);background:var(--bg-hover,#f0f1f3);border-radius:9px;padding:0 6px;min-width:16px;text-align:center;">' + n + '</span>';
+}
 function dbsyncRenderFolderTabs() {
   var wrap = document.getElementById('dbsyncFolderTabs');
   if (!wrap) return;
   var html = '<div class="dbsync-folder-node">'
     + '<button class="dbsync-folder-nav-item' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">'
     + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>'
-    + '<span class="dbsync-folder-name">全部</span></button></div>';
+    + '<span class="dbsync-folder-name">全部</span>' + _dbsyncCountBadge(_dbsyncFolderCount(0)) + '</button></div>';
   html += dbsyncRenderFolderNodes(0, 0);
   wrap.innerHTML = html;
 }
@@ -17284,7 +17293,7 @@ function dbsyncRenderFolderNodes(parentId, depth) {
     return '<div class="dbsync-folder-node">'
       + '<button class="dbsync-folder-nav-item' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding-left:' + pad + 'px;">'
       + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3a1 1 0 011-1h2.6a1 1 0 01.7.3L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
-      + '<span class="dbsync-folder-name">' + escapeHtml(f.folderName || '') + '</span></button>'
+      + '<span class="dbsync-folder-name">' + escapeHtml(f.folderName || '') + '</span>' + _dbsyncCountBadge(_dbsyncFolderCount(f.id)) + '</button>'
       + '<div class="dbsync-folder-actions">'
       + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenCreateChildFolder(' + f.id + ')" title="新建子文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v8M2 6h8"/></svg></button>'
       + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenRenameFolder(' + f.id + ')" title="重命名"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 2.5l2 2L4.2 9.8H2.2V7.8z"/><path d="M6.8 3.2l2 2"/></svg></button>'
