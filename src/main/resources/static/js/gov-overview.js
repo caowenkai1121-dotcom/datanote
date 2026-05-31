@@ -51,6 +51,7 @@
     var bar = DN.h('div', { style: 'display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px' }, [
       DN.h('label', { class: 'gov-desc', style: 'margin:0;cursor:pointer;display:flex;align-items:center;gap:4px' }, [autoCb, DN.h('span', { text: '自动刷新(30s)' })]),
       DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '更新于 ' + new Date().toLocaleTimeString() }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '全屏大屏', onclick: function () { toggleBigScreen(box); } }),
       DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '生成体检报告', onclick: function () { buildReport(); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { reload(box); } })
     ]);
@@ -159,6 +160,29 @@
       return { label: k, value: v, tone: barTone, display: fmtInt(v), onClick: function () { if (window.govGoModule) govGoModule('classification'); } };
     })));
     return c.el;
+  }
+
+  // ========== 全屏大屏模式(大功能): 总览进入全屏展示 ==========
+  function toggleBigScreen(box) {
+    var target = box.parentNode || box; // #govModuleContent
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl) {
+      (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      return;
+    }
+    var req = target.requestFullscreen || target.webkitRequestFullscreen;
+    if (!req) { DN.toast('当前浏览器不支持全屏', 'warn'); return; }
+    target.classList.add('gov-bigscreen');
+    req.call(target).catch(function () { DN.toast('进入全屏失败', 'err'); target.classList.remove('gov-bigscreen'); });
+    var onChange = function () {
+      if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
+        target.classList.remove('gov-bigscreen');
+        document.removeEventListener('fullscreenchange', onChange);
+        document.removeEventListener('webkitfullscreenchange', onChange);
+      }
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
   }
 
   // ========== 治理体检报告(大功能): 汇编总览数据为可打印报告 ==========

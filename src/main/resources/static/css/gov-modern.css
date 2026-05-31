@@ -88,6 +88,12 @@
 #govModuleContent .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.3s ease infinite; margin:10px 0; }
 @keyframes govShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
 
+/* ---- 治理大屏全屏模式：放大留白, 适合投屏 ---- */
+.gov-bigscreen { background:var(--bg-body,#f5f6f8); overflow:auto; padding:28px 40px !important; }
+.gov-bigscreen .gov-card-hd { font-size:16px; }
+.gov-bigscreen .gov-stat-tile .v { font-size:1.18em; }
+.gov-bigscreen .gov-grid { gap:20px; }
+
 /* ---- 抽屉 ---- */
 #govDrawerMask { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:9000; opacity:0; transition:opacity .2s; }
 #govDrawerMask.show { opacity:1; }
