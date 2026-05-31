@@ -13,7 +13,7 @@ class DashboardControllerTest {
 
     @Test
     void servicesUsesConfiguredMysqlPortFromDatasourceUrl() {
-        DashboardController controller = new DashboardController(null, null, null);
+        DashboardController controller = new DashboardController(null, null, null, null);
         ReflectionTestUtils.setField(controller, "dataSourceUrl",
                 "jdbc:mysql://127.0.0.1:3307/datanote?useUnicode=true");
 

@@ -18,11 +18,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.datanote.util.SysMetricsUtil;
+
+import javax.sql.DataSource;
+import java.io.File;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
+import java.lang.management.RuntimeMXBean;
+import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -37,6 +49,7 @@ public class DashboardController {
     private final DnSyncTaskMapper syncTaskMapper;
     private final DnScriptMapper scriptMapper;
     private final DnSchedulerRunMapper schedulerRunMapper;
+    private final DataSource dataSource;
 
     @Value("${spring.datasource.url:jdbc:mysql://127.0.0.1:3306/datanote}")
     private String dataSourceUrl;
@@ -95,6 +108,81 @@ public class DashboardController {
         list.add(checkService("DolphinScheduler", "127.0.0.1", 12345, "Task scheduler"));
         list.add(checkService("MySQL", getMysqlHost(), getMysqlPort(), "DataNote metadata database"));
         return R.ok(list);
+    }
+
+    @Operation(summary = "系统运行指标(JVM/系统/DB)")
+    @GetMapping("/metrics")
+    public R<Map<String, Object>> metrics() {
+        Map<String, Object> data = new LinkedHashMap<>();
+
+        // JVM 内存/线程/启动时长/GC
+        MemoryMXBean memBean = ManagementFactory.getMemoryMXBean();
+        MemoryUsage heap = memBean.getHeapMemoryUsage();
+        MemoryUsage nonHeap = memBean.getNonHeapMemoryUsage();
+        long heapMax = heap.getMax() > 0 ? heap.getMax() : heap.getCommitted();
+        int heapPct = SysMetricsUtil.usagePct(heap.getUsed(), heapMax);
+        ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+        RuntimeMXBean rtBean = ManagementFactory.getRuntimeMXBean();
+        long gcCount = 0, gcTime = 0;
+        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+            if (gc.getCollectionCount() > 0) gcCount += gc.getCollectionCount();
+            if (gc.getCollectionTime() > 0) gcTime += gc.getCollectionTime();
+        }
+        Map<String, Object> jvm = new LinkedHashMap<>();
+        jvm.put("heapUsed", heap.getUsed());
+        jvm.put("heapMax", heapMax);
+        jvm.put("heapPct", heapPct);
+        jvm.put("heapLevel", SysMetricsUtil.usageLevel(heapPct));
+        jvm.put("nonHeapUsed", nonHeap.getUsed());
+        jvm.put("threadCount", threadBean.getThreadCount());
+        jvm.put("peakThreadCount", threadBean.getPeakThreadCount());
+        jvm.put("uptimeMs", rtBean.getUptime());
+        jvm.put("uptimeText", SysMetricsUtil.humanDuration(rtBean.getUptime()));
+        jvm.put("gcCount", gcCount);
+        jvm.put("gcTimeMs", gcTime);
+        jvm.put("jvmVersion", System.getProperty("java.version"));
+        data.put("jvm", jvm);
+
+        // 系统 CPU/磁盘
+        Map<String, Object> sys = new LinkedHashMap<>();
+        java.lang.management.OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+        sys.put("processors", osBean.getAvailableProcessors());
+        sys.put("osName", osBean.getName() + " " + osBean.getArch());
+        sys.put("loadAverage", osBean.getSystemLoadAverage());
+        double cpuLoad = -1;
+        try {
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+                cpuLoad = ((com.sun.management.OperatingSystemMXBean) osBean).getProcessCpuLoad();
+            }
+        } catch (Throwable ignored) {
+        }
+        int cpuPct = cpuLoad >= 0 ? (int) Math.round(cpuLoad * 100) : -1;
+        sys.put("cpuPct", cpuPct);
+        sys.put("cpuLevel", cpuPct >= 0 ? SysMetricsUtil.usageLevel(cpuPct) : "ok");
+        File root = new File("/").getTotalSpace() > 0 ? new File("/") : new File(".");
+        long diskTotal = root.getTotalSpace();
+        long diskFree = root.getUsableSpace();
+        int diskPct = SysMetricsUtil.usagePct(diskTotal - diskFree, diskTotal);
+        sys.put("diskTotal", diskTotal);
+        sys.put("diskFree", diskFree);
+        sys.put("diskUsedPct", diskPct);
+        sys.put("diskLevel", SysMetricsUtil.usageLevel(diskPct));
+        data.put("system", sys);
+
+        // 元数据库 ping 延迟
+        Map<String, Object> db = new LinkedHashMap<>();
+        long t0 = System.currentTimeMillis();
+        boolean dbOk = false;
+        try (Connection conn = dataSource.getConnection()) {
+            dbOk = conn.isValid(2);
+        } catch (Exception ignored) {
+        }
+        db.put("ok", dbOk);
+        db.put("pingMs", System.currentTimeMillis() - t0);
+        data.put("db", db);
+
+        data.put("serverTime", System.currentTimeMillis());
+        return R.ok(data);
     }
 
     private String getMysqlHost() {

@@ -4259,10 +4259,29 @@ html, body {
         </div>
         <div class="ops-main">
           <div class="ops-dashboard" id="settingsUserPanel">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">用户管理</h2>
+              <div id="umCurrentUser" style="font-size:12px;color:var(--text-muted);"></div>
             </div>
-            <div style="padding:24px;color:var(--text-muted);">管理平台用户、角色分配和操作权限</div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+              <button class="btn btn-sm btn-primary" id="umTabUserBtn" onclick="umSwitchTab('user')">用户</button>
+              <button class="btn btn-sm" id="umTabRoleBtn" onclick="umSwitchTab('role')">角色与权限</button>
+            </div>
+            <div id="umUserSection">
+              <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+                <input id="umUserSearch" class="dbsync-form-input" style="width:220px;" placeholder="搜索 用户名/昵称" oninput="umRenderUsers()">
+                <button class="btn btn-sm btn-primary" onclick="umUserModal()">+ 新建用户</button>
+                <span id="umUserCount" style="font-size:12px;color:var(--text-muted);margin-left:auto;"></span>
+              </div>
+              <div id="umUserBox"><div style="color:var(--text-muted);">加载中...</div></div>
+            </div>
+            <div id="umRoleSection" style="display:none;">
+              <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+                <button class="btn btn-sm btn-primary" onclick="umRoleModal()">+ 新建角色</button>
+                <span style="font-size:12px;color:var(--text-muted);">角色聚合权限点，分配给用户即获得对应权限（软控制，与登录认证联动）。</span>
+              </div>
+              <div id="umRoleBox"><div style="color:var(--text-muted);">加载中...</div></div>
+            </div>
           </div>
           <div class="ops-dashboard" id="settingsDatasourcePanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -4318,10 +4337,21 @@ html, body {
             <div style="padding:24px;"><button class="btn btn-primary btn-sm" onclick="openAiConfig()">打开 AI 配置</button></div>
           </div>
           <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">系统监控</h2>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span id="smUpdated" style="font-size:12px;color:var(--text-muted);"></span>
+                <label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="smAutoRefresh" checked onchange="smToggleAuto()"> 自动刷新(10s)</label>
+                <button class="btn btn-sm" onclick="smLoad()">刷新</button>
+              </div>
             </div>
-            <div style="padding:24px;color:var(--text-muted);">CPU、内存、磁盘使用率监控和服务健康检查</div>
+            <div id="smAlertBar" style="display:none;margin-bottom:12px;"></div>
+            <div id="smMetricsBox"><div style="color:var(--text-muted);">加载中...</div></div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;">
+              <div style="flex:1;min-width:320px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">服务状态</div><div id="smServiceBox"><div style="color:var(--text-muted);">加载中...</div></div></div>
+              <div style="flex:1;min-width:320px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">今日调度</div><div id="smScheduleBox"><div style="color:var(--text-muted);">加载中...</div></div></div>
+            </div>
+            <div style="margin-top:16px;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;">最近操作审计</div><div id="smAuditBox"><div style="color:var(--text-muted);">加载中...</div></div></div>
           </div>
         </div>
       </div>
@@ -9945,7 +9975,7 @@ var ROUTES = {
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },
-  'settings':    { view: 'viewSettings',            layout: 'editor', init: null },
+  'settings':    { view: 'viewSettings',            layout: 'editor', init: function(){ if(window.loadUserMgmt) loadUserMgmt(); } },
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
 };
 
@@ -13851,6 +13881,259 @@ function switchSettingsTab(el, tab) {
   // 切到数据源管理时自动加载配置
   if (tab === 'datasource') loadDatasourceConfig();
   if (tab === 'env') loadEnvConfig();
+  if (tab === 'user') loadUserMgmt();
+  if (tab === 'monitor') smInit(); else smStopAuto();
+}
+
+// ===== 系统管理：用户管理(RBAC) =====
+var _umUsers = [], _umRoles = [], _umTab = 'user';
+window.loadUserMgmt = function() {
+  umSwitchTab(_umTab);
+  api('/api/rbac/me').then(function(res) {
+    var d = (res && res.code === 0) ? (res.data || {}) : {};
+    var el = document.getElementById('umCurrentUser'); if (!el) return;
+    el.textContent = d.authenticated ? ('当前登录：' + d.username + ((d.perms && d.perms.indexOf('*') >= 0) ? '（超级管理员）' : '')) : '未启用登录认证（开放访问）';
+  }).catch(function() {});
+  Promise.all([api('/api/rbac/users'), api('/api/rbac/roles')]).then(function(r) {
+    _umUsers = (r[0] && r[0].code === 0) ? (r[0].data || []) : [];
+    _umRoles = (r[1] && r[1].code === 0) ? (r[1].data || []) : [];
+    umRenderUsers(); umRenderRoles();
+  }).catch(function() { var b = document.getElementById('umUserBox'); if (b) b.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+};
+window.umSwitchTab = function(t) {
+  _umTab = t;
+  document.getElementById('umUserSection').style.display = t === 'user' ? '' : 'none';
+  document.getElementById('umRoleSection').style.display = t === 'role' ? '' : 'none';
+  document.getElementById('umTabUserBtn').className = 'btn btn-sm' + (t === 'user' ? ' btn-primary' : '');
+  document.getElementById('umTabRoleBtn').className = 'btn btn-sm' + (t === 'role' ? ' btn-primary' : '');
+};
+function umRoleName(id) { var r = _umRoles.filter(function(x) { return x.id === id; })[0]; return r ? (r.roleName || r.roleCode) : ('#' + id); }
+window.umRenderUsers = function() {
+  var box = document.getElementById('umUserBox'); if (!box) return;
+  var kw = (document.getElementById('umUserSearch').value || '').trim().toLowerCase();
+  var list = _umUsers.filter(function(u) { return !kw || (u.username || '').toLowerCase().indexOf(kw) >= 0 || (u.nickname || '').toLowerCase().indexOf(kw) >= 0; });
+  document.getElementById('umUserCount').textContent = '共 ' + list.length + ' / ' + _umUsers.length;
+  if (!list.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">' + (_umUsers.length ? '无匹配用户' : '暂无用户') + '</div>'; return; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>用户名</th><th>昵称</th><th>状态</th><th>角色</th><th>创建时间</th><th style="width:230px;">操作</th></tr></thead><tbody>';
+  list.forEach(function(u) {
+    var on = u.status === 1 || u.status === '1';
+    var chips = (u.roleIds || []).map(function(id) { return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(umRoleName(id)) + '</span>'; }).join('') || '<span style="color:var(--text-muted);">-</span>';
+    h += '<tr><td><b>' + escapeHtml(u.username) + '</b></td><td>' + escapeHtml(u.nickname || '-') + '</td>'
+      + '<td><span style="color:' + (on ? '#52c41a' : '#8c8c8c') + ';font-weight:500;">' + (on ? '启用' : '停用') + '</span></td>'
+      + '<td>' + chips + '</td>'
+      + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
+      + '<td><a href="#" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<a href="#" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
+      + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:#d48806;margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
+      + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+  });
+  box.innerHTML = h + '</tbody></table>';
+};
+window.umUserModal = function(id) {
+  var u = id ? _umUsers.filter(function(x) { return x.id === id; })[0] : null;
+  var fi = 'class="dbsync-form-input" style="width:100%;"';
+  var roleChecks = _umRoles.map(function(r) { var c = (u && (u.roleIds || []).indexOf(r.id) >= 0) ? ' checked' : ''; return '<label style="display:inline-block;margin:2px 12px 2px 0;font-size:13px;"><input type="checkbox" class="umRoleChk" value="' + r.id + '"' + c + '> ' + escapeHtml(r.roleName || r.roleCode) + '</label>'; }).join('') || '<span style="color:var(--text-muted);font-size:12px;">暂无角色，请先到「角色与权限」创建</span>';
+  var lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
+  var h = '<div style="display:flex;flex-direction:column;gap:10px;min-width:400px;">'
+    + '<div><label ' + lab + '>用户名</label><input id="umfUser" ' + fi + ' ' + (u ? 'value="' + escapeHtml(u.username) + '" disabled' : 'placeholder="登录用户名"') + '></div>'
+    + '<div><label ' + lab + '>昵称</label><input id="umfNick" ' + fi + ' value="' + (u ? escapeHtml(u.nickname || '') : '') + '" placeholder="显示名"></div>'
+    + '<div><label ' + lab + '>密码' + (u ? '（留空不修改）' : '') + '</label><input id="umfPwd" type="password" ' + fi + ' placeholder="' + (u ? '留空保持原密码' : '登录密码') + '"></div>'
+    + '<div><label ' + lab + '>状态</label><select id="umfStatus" class="dbsync-form-select" style="width:100%;"><option value="1"' + ((!u || u.status === 1) ? ' selected' : '') + '>启用</option><option value="0"' + (u && u.status === 0 ? ' selected' : '') + '>停用</option></select></div>'
+    + '<div><label ' + lab + '>角色</label><div style="max-height:120px;overflow:auto;">' + roleChecks + '</div></div>'
+    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSaveUser(' + (id || 0) + ')">保存</button></div></div>';
+  projShowModalBox(id ? '编辑用户' : '新建用户', h);
+};
+window.umSaveUser = function(id) {
+  var nickname = (document.getElementById('umfNick').value || '').trim();
+  var pwd = document.getElementById('umfPwd').value || '';
+  var status = parseInt(document.getElementById('umfStatus').value);
+  var roleIds = []; document.querySelectorAll('.umRoleChk:checked').forEach(function(c) { roleIds.push(parseInt(c.value)); });
+  var req;
+  if (id) {
+    var body = { nickname: nickname, status: status };
+    if (pwd) body.password = pwd;
+    req = api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } else {
+    var username = (document.getElementById('umfUser').value || '').trim();
+    if (!username) { showToast('请填写用户名', 'error'); return; }
+    if (!pwd) { showToast('请填写密码', 'error'); return; }
+    req = apiPost('/api/rbac/users', { username: username, nickname: nickname, password: pwd, status: status });
+  }
+  req.then(function(res) {
+    if (!res || res.code !== 0) { showToast((res && res.msg) || '保存失败', 'error'); return; }
+    var uid = id || (res.data && res.data.id);
+    var done = function() { showToast('已保存', 'success'); projCloseModalBox(); loadUserMgmt(); };
+    if (uid) apiPost('/api/rbac/users/' + uid + '/roles', { roleIds: roleIds }).then(done).catch(done); else done();
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.umResetPwd = function(id) {
+  var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
+  var p = prompt('为用户 [' + u.username + '] 设置新密码：', '');
+  if (p == null) return;
+  if (!p.trim()) { showToast('密码不能为空', 'error'); return; }
+  api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p }) })
+    .then(function(res) { if (res && res.code === 0) showToast('密码已重置', 'success'); else showToast((res && res.msg) || '操作失败', 'error'); })
+    .catch(function() { showToast('操作失败', 'error'); });
+};
+window.umToggleStatus = function(id, on) {
+  api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: on ? 0 : 1 }) })
+    .then(function(res) { if (res && res.code === 0) { showToast(on ? '已停用' : '已启用', 'success'); loadUserMgmt(); } else showToast((res && res.msg) || '操作失败', 'error'); })
+    .catch(function() { showToast('操作失败', 'error'); });
+};
+window.umDeleteUser = function(id) {
+  var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
+  if (u.username === 'admin') { showToast('内置 admin 不可删除', 'error'); return; }
+  if (!confirm('确认删除用户 [' + u.username + ']？将同时移除其角色绑定。')) return;
+  api('/api/rbac/users/' + id, { method: 'DELETE' }).then(function(res) { if (res && res.code === 0) { showToast('已删除', 'success'); loadUserMgmt(); } else showToast((res && res.msg) || '删除失败', 'error'); }).catch(function() { showToast('删除失败', 'error'); });
+};
+// --- 角色与权限 ---
+window.umRenderRoles = function() {
+  var box = document.getElementById('umRoleBox'); if (!box) return;
+  if (!_umRoles.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无角色，点击「+ 新建角色」</div>'; return; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>角色编码</th><th>名称</th><th>描述</th><th>权限点</th><th style="width:200px;">操作</th></tr></thead><tbody>';
+  _umRoles.forEach(function(r) {
+    var perms = (r.perms || []);
+    var permChips = perms.length ? perms.map(function(p) { return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:' + (p === '*' ? 'rgba(82,196,26,.12);color:#52c41a' : 'var(--bg-hover);color:var(--text-regular)') + ';">' + escapeHtml(p === '*' ? '全部权限(*)' : p) + '</span>'; }).join('') : '<span style="color:var(--text-muted);">-</span>';
+    h += '<tr><td style="font-family:monospace;">' + escapeHtml(r.roleCode) + '</td><td><b>' + escapeHtml(r.roleName || '-') + '</b></td><td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.description || '-') + '</td><td>' + permChips + '</td>'
+      + '<td><a href="#" onclick="umRoleModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<a href="#" onclick="umPermModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
+      + '<a href="#" onclick="umDeleteRole(' + r.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+  });
+  box.innerHTML = h + '</tbody></table>';
+};
+window.umRoleModal = function(id) {
+  var r = id ? _umRoles.filter(function(x) { return x.id === id; })[0] : null;
+  var fi = 'class="dbsync-form-input" style="width:100%;"', lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
+  var h = '<div style="display:flex;flex-direction:column;gap:10px;min-width:380px;">'
+    + '<div><label ' + lab + '>角色编码</label><input id="umfRoleCode" ' + fi + ' ' + (r ? 'value="' + escapeHtml(r.roleCode) + '" disabled' : 'placeholder="如 DATA_DEV"') + '></div>'
+    + '<div><label ' + lab + '>角色名称</label><input id="umfRoleName" ' + fi + ' value="' + (r ? escapeHtml(r.roleName || '') : '') + '" placeholder="如 数据开发"></div>'
+    + '<div><label ' + lab + '>描述</label><input id="umfRoleDesc" ' + fi + ' value="' + (r ? escapeHtml(r.description || '') : '') + '" placeholder="可选"></div>'
+    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSaveRole(' + (id || 0) + ')">保存</button></div></div>';
+  projShowModalBox(id ? '编辑角色' : '新建角色', h);
+};
+window.umSaveRole = function(id) {
+  var roleName = (document.getElementById('umfRoleName').value || '').trim();
+  var description = (document.getElementById('umfRoleDesc').value || '').trim();
+  var req;
+  if (id) req = api('/api/rbac/roles/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roleName: roleName, description: description }) });
+  else {
+    var code = (document.getElementById('umfRoleCode').value || '').trim();
+    if (!code) { showToast('请填写角色编码', 'error'); return; }
+    req = apiPost('/api/rbac/roles', { roleCode: code, roleName: roleName, description: description });
+  }
+  req.then(function(res) { if (res && res.code === 0) { showToast('已保存', 'success'); projCloseModalBox(); loadUserMgmt(); } else showToast((res && res.msg) || '保存失败', 'error'); }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.umPermModal = function(id) {
+  var r = _umRoles.filter(function(x) { return x.id === id; })[0]; if (!r) return;
+  var perms = r.perms || [];
+  var hasAll = perms.indexOf('*') >= 0;
+  var codes = perms.filter(function(p) { return p !== '*'; }).join('\n');
+  var h = '<div style="min-width:380px;">'
+    + '<div style="margin-bottom:8px;"><label style="font-size:13px;cursor:pointer;"><input type="checkbox" id="umfPermAll"' + (hasAll ? ' checked' : '') + ' onchange="document.getElementById(\'umfPermCodes\').disabled=this.checked"> 全部权限（*，超级管理员）</label></div>'
+    + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">权限点（每行一个，如 develop:edit、dbsync:run、project:approve）</label>'
+    + '<textarea id="umfPermCodes" class="dbsync-form-input" style="width:100%;height:120px;font-family:monospace;"' + (hasAll ? ' disabled' : '') + '>' + escapeHtml(codes) + '</textarea></div>'
+    + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSavePerms(' + id + ')">保存</button></div></div>';
+  projShowModalBox('设置角色权限 · ' + (r.roleName || r.roleCode), h);
+};
+window.umSavePerms = function(id) {
+  var perms;
+  if (document.getElementById('umfPermAll').checked) perms = ['*'];
+  else perms = (document.getElementById('umfPermCodes').value || '').split(/[\n,，]/).map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+  apiPost('/api/rbac/roles/' + id + '/perms', { perms: perms }).then(function(res) { if (res && res.code === 0) { showToast('权限已保存', 'success'); projCloseModalBox(); loadUserMgmt(); } else showToast((res && res.msg) || '保存失败', 'error'); }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.umDeleteRole = function(id) {
+  var r = _umRoles.filter(function(x) { return x.id === id; })[0]; if (!r) return;
+  if (r.roleCode === 'ADMIN') { showToast('内置 ADMIN 角色不可删除', 'error'); return; }
+  if (!confirm('确认删除角色 [' + (r.roleName || r.roleCode) + ']？将解除其用户绑定与权限。')) return;
+  api('/api/rbac/roles/' + id, { method: 'DELETE' }).then(function(res) { if (res && res.code === 0) { showToast('已删除', 'success'); loadUserMgmt(); } else showToast((res && res.msg) || '删除失败', 'error'); }).catch(function() { showToast('删除失败', 'error'); });
+};
+
+// ===== 系统管理：系统监控 =====
+var _smTimer = null;
+window.smInit = function() { smLoad(); smToggleAuto(); };
+window.smStopAuto = function() { if (_smTimer) { clearInterval(_smTimer); _smTimer = null; } };
+window.smToggleAuto = function() {
+  smStopAuto();
+  var cb = document.getElementById('smAutoRefresh');
+  if (cb && cb.checked) _smTimer = setInterval(function() { if (document.getElementById('settingsMonitorPanel').style.display !== 'none') smLoad(); else smStopAuto(); }, 10000);
+};
+function smBar(pct, level) {
+  var color = level === 'danger' ? '#ff4d4f' : (level === 'warn' ? '#faad14' : '#52c41a');
+  return '<div style="height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="width:' + pct + '%;height:100%;background:' + color + ';"></div></div>';
+}
+function smTile(label, big, sub, pct, level) {
+  var color = level === 'danger' ? '#ff4d4f' : (level === 'warn' ? '#faad14' : 'var(--text-primary)');
+  return '<div style="flex:1;min-width:150px;border:1px solid var(--divider,#eee);border-radius:8px;padding:12px 14px;">'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + label + '</div>'
+    + '<div style="font-size:22px;font-weight:700;margin-top:4px;color:' + color + ';">' + big + '</div>'
+    + (sub ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + sub + '</div>' : '')
+    + (pct != null ? smBar(pct, level) : '') + '</div>';
+}
+function smMB(bytes) { return (bytes / 1048576).toFixed(0) + ' MB'; }
+function smGB(bytes) { return (bytes / 1073741824).toFixed(1) + ' GB'; }
+window.smLoad = function() {
+  Promise.all([
+    api('/api/dashboard/metrics'), api('/api/dashboard/services'), api('/api/dashboard/stats'),
+    api('/api/gov/audit/search?page=1&size=10').catch(function() { return null; })
+  ]).then(function(r) {
+    var m = (r[0] && r[0].code === 0) ? r[0].data : null;
+    smRenderMetrics(m);
+    smRenderServices((r[1] && r[1].code === 0) ? r[1].data || [] : []);
+    smRenderSchedule((r[2] && r[2].code === 0) ? r[2].data || {} : {});
+    smRenderAudit(r[3] && r[3].code === 0 ? (r[3].data && (r[3].data.records || r[3].data.list || r[3].data)) || [] : []);
+    var u = document.getElementById('smUpdated'); if (u) u.textContent = '更新于 ' + new Date().toLocaleTimeString();
+  }).catch(function() { var b = document.getElementById('smMetricsBox'); if (b) b.innerHTML = '<div style="color:var(--error);">指标加载失败</div>'; });
+};
+function smRenderMetrics(m) {
+  var box = document.getElementById('smMetricsBox'); if (!box) return;
+  if (!m) { box.innerHTML = '<div style="color:var(--text-muted);">无指标数据</div>'; return; }
+  var jvm = m.jvm || {}, sys = m.system || {}, db = m.db || {};
+  var tiles = '';
+  tiles += smTile('堆内存', jvm.heapPct + '%', smMB(jvm.heapUsed) + ' / ' + smMB(jvm.heapMax), jvm.heapPct, jvm.heapLevel);
+  tiles += smTile('CPU 使用', (sys.cpuPct >= 0 ? sys.cpuPct + '%' : 'N/A'), '负载 ' + (sys.loadAverage >= 0 ? sys.loadAverage.toFixed(2) : '-') + ' · ' + sys.processors + ' 核', (sys.cpuPct >= 0 ? sys.cpuPct : null), sys.cpuLevel);
+  tiles += smTile('磁盘', sys.diskUsedPct + '%', smGB(sys.diskTotal - sys.diskFree) + ' / ' + smGB(sys.diskTotal) + ' · 余 ' + smGB(sys.diskFree), sys.diskUsedPct, sys.diskLevel);
+  tiles += smTile('线程', jvm.threadCount, '峰值 ' + jvm.peakThreadCount, null, 'ok');
+  tiles += smTile('运行时长', jvm.uptimeText, 'GC ' + jvm.gcCount + ' 次 / ' + jvm.gcTimeMs + 'ms', null, 'ok');
+  tiles += smTile('元数据库', db.ok ? '正常' : '异常', 'ping ' + db.pingMs + 'ms', null, db.ok ? 'ok' : 'danger');
+  box.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;">' + tiles + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">JVM ' + escapeHtml(jvm.jvmVersion || '') + ' · ' + escapeHtml(sys.osName || '') + '</div>';
+  // 告警条
+  var alerts = [];
+  if (jvm.heapLevel === 'danger') alerts.push('堆内存使用 ' + jvm.heapPct + '%'); else if (jvm.heapLevel === 'warn') alerts.push('堆内存偏高 ' + jvm.heapPct + '%');
+  if (sys.diskLevel === 'danger') alerts.push('磁盘使用 ' + sys.diskUsedPct + '%'); else if (sys.diskLevel === 'warn') alerts.push('磁盘偏高 ' + sys.diskUsedPct + '%');
+  if (sys.cpuPct >= 0 && sys.cpuLevel === 'danger') alerts.push('CPU ' + sys.cpuPct + '%');
+  if (!db.ok) alerts.push('元数据库连接异常');
+  var bar = document.getElementById('smAlertBar');
+  if (bar) { if (alerts.length) { bar.style.display = ''; bar.innerHTML = '<div style="padding:8px 14px;border-radius:6px;background:rgba(255,77,79,.1);color:#ff4d4f;font-size:13px;">⚠ 告警：' + alerts.map(escapeHtml).join('；') + '</div>'; } else { bar.style.display = 'none'; } }
+}
+function smRenderServices(list) {
+  var box = document.getElementById('smServiceBox'); if (!box) return;
+  if (!list.length) { box.innerHTML = '<div style="color:var(--text-muted);">无服务</div>'; return; }
+  box.innerHTML = list.map(function(s) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--divider,#eee);border-radius:6px;margin-bottom:6px;">'
+      + '<span style="width:9px;height:9px;border-radius:50%;background:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';"></span>'
+      + '<div style="flex:1;"><div style="font-size:13px;font-weight:500;">' + escapeHtml(s.name) + '</div><div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(s.desc || '') + '</div></div>'
+      + '<span style="font-size:12px;color:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';">' + (s.alive ? '在线' : '离线') + '</span></div>';
+  }).join('');
+}
+function smRenderSchedule(d) {
+  var box = document.getElementById('smScheduleBox'); if (!box) return;
+  var total = d.todayExec || 0, suc = d.todaySuccess || 0, fail = d.todayFailed || 0, run = total - suc - fail;
+  var rate = total > 0 ? Math.round(suc * 100 / total) : 0;
+  function cell(n, l, c) { return '<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + c + ';">' + n + '</div><div style="font-size:11px;color:var(--text-muted);">' + l + '</div></div>'; }
+  box.innerHTML = '<div style="border:1px solid var(--divider,#eee);border-radius:8px;padding:14px;">'
+    + '<div style="display:flex;">' + cell(suc, '成功', '#52c41a') + cell(fail, '失败', '#ff4d4f') + cell(run < 0 ? 0 : run, '运行中', '#1677ff') + cell(total, '总计', 'var(--text-primary)') + '</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）</div></div>';
+}
+function smRenderAudit(rows) {
+  var box = document.getElementById('smAuditBox'); if (!box) return;
+  if (!rows || !rows.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">暂无审计记录</div>'; return; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>路径</th><th>状态</th></tr></thead><tbody>';
+  rows.slice(0, 10).forEach(function(a) {
+    var st = a.status || '';
+    h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td><td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.actionType || a.method || '-') + '</td><td style="font-size:12px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td><td style="color:' + (String(st).indexOf('4') === 0 || String(st).indexOf('5') === 0 ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(String(st)) + '</td></tr>';
+  });
+  box.innerHTML = h + '</tbody></table>';
 }
 
 // ===== 系统配置：数据源管理 =====
