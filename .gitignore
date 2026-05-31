@@ -1,5 +1,8 @@
 .DS_Store
 
+# Playwright MCP 临时快照
+.playwright-mcp/
+
 # Maven build output
 target/
 
