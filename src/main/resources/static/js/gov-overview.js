@@ -12,6 +12,15 @@
     c.appendChild(box);
     reload(box);
   };
+  var _ovAuto = false, _ovTimer = null;
+  function setupAuto(box) {
+    if (_ovTimer) { clearInterval(_ovTimer); _ovTimer = null; }
+    if (_ovAuto) _ovTimer = setInterval(function () {
+      // 面板已离开(被替换)则停
+      if (!document.body.contains(box)) { clearInterval(_ovTimer); _ovTimer = null; return; }
+      reload(box);
+    }, 30000);
+  }
   function reload(box) {
     box.innerHTML = ''; box.appendChild(DN.skeleton(5));
     Promise.all([
@@ -35,11 +44,15 @@
     box.innerHTML = '';
 
     // ---- 顶部工具条: 刷新 + 更新时间 ----
+    var autoCb = DN.h('input', { type: 'checkbox' }); autoCb.checked = _ovAuto;
+    autoCb.onchange = function () { _ovAuto = autoCb.checked; setupAuto(box); };
     var bar = DN.h('div', { style: 'display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px' }, [
+      DN.h('label', { class: 'gov-desc', style: 'margin:0;cursor:pointer;display:flex;align-items:center;gap:4px' }, [autoCb, DN.h('span', { text: '自动刷新(30s)' })]),
       DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '更新于 ' + new Date().toLocaleTimeString() }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { reload(box); } })
     ]);
     box.appendChild(bar);
+    setupAuto(box);
 
     // ---- 顶部 KPI 磁贴(原生可点击跳转) ----
     var total = Number(health.total) || 0;

@@ -317,6 +317,17 @@
           tableBox.appendChild(DN.empty('暂无自评，点击“录入自评”', 'layers'));
           return;
         }
+        // 等级分布环图 + 平均成熟度
+        var lvCnt = {}, sum = 0; rows.forEach(function (r) { var l = 'L' + (r.level || 0); lvCnt[l] = (lvCnt[l] || 0) + 1; sum += Number(r.score) || 0; });
+        var avg = rows.length ? (sum / rows.length) : 0;
+        var lvColor = { L1: '#ff4d4f', L2: '#fa8c16', L3: '#faad14', L4: '#1890ff', L5: '#52c41a' };
+        var segs = Object.keys(lvCnt).sort().map(function (l) { return { label: l, value: lvCnt[l], color: lvColor[l] || '#8c8c8c' }; });
+        var dwrap = DN.h('div', { style: 'display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px' });
+        dwrap.appendChild(DN.donut(segs, { size: 100, stroke: 13, centerLabel: avg.toFixed(0), centerSub: '平均分' }));
+        var lg = DN.h('div', { class: 'gov-legend' });
+        segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + s.color }), DN.h('span', { text: s.label + ' ' + s.value + ' 域' })])); });
+        dwrap.appendChild(lg);
+        tableBox.appendChild(dwrap);
         tableBox.appendChild(DN.table({
           search: false,
           columns: [
