@@ -30,8 +30,13 @@
     [['', '全部资产'], ['nodesc', '缺业务描述'], ['bigsize', '体量Top'], ['bigrow', '行数Top']].forEach(function (o) { quickSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     quickSel.onchange = function () { assetState.quick = quickSel.value; renderAssetTable(); };
     quickSelEl = quickSel;
-    // 把工具条（采集按钮 + 来源筛选 + 快捷视图）通过 DN.table 的 toolbar 注入，先缓存引用
-    assetToolbar = [crawlBtn, srcSel, quickSel];
+    // 视图切换：表格 / 目录树(库→表层级)
+    var viewSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:100px', title: '视图' });
+    [['table', '表格视图'], ['tree', '目录树']].forEach(function (o) { viewSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    viewSel.value = assetState.view;
+    viewSel.onchange = function () { assetState.view = viewSel.value; try { localStorage.setItem('gov.assetView', viewSel.value); } catch (e) {} assetTbl = null; renderAssetTable(); };
+    // 把工具条（采集按钮 + 来源筛选 + 快捷视图 + 视图切换）通过 DN.table 的 toolbar 注入，先缓存引用
+    assetToolbar = [crawlBtn, srcSel, quickSel, viewSel];
 
     loadAssets();
 
@@ -43,7 +48,7 @@
 
   // ===== 资产清单：统计 + 现代表格 =====
   var assetAll = [];
-  var assetState = { src: '', quick: '' };
+  var assetState = { src: '', quick: '', view: (function () { try { return localStorage.getItem('gov.assetView') || 'table'; } catch (e) { return 'table'; } })() };
   var assetTbl = null;
   var assetToolbar = null;
   var quickSelEl = null;      // 快捷视图下拉（供统计磁贴联动同步）
@@ -120,6 +125,7 @@
       if (assetState.quick === 'nodesc' && t.tableComment) return false;
       return true;
     });
+    if (assetState.view === 'tree') { renderAssetTree(rows); return; }
     if (assetState.quick === 'bigsize') rows = rows.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); });
     else if (assetState.quick === 'bigrow') rows = rows.slice().sort(function (a, b) { return (b.rowCount || 0) - (a.rowCount || 0); });
     if (assetTbl) { assetTbl.reload(rows); return; }
@@ -147,6 +153,54 @@
     });
     box.innerHTML = '';
     box.appendChild(assetTbl);
+  }
+
+  // ===== 资产目录树视图(大功能): 库→表 层级导航 =====
+  var _treeOpen = {}; // db -> bool 展开态
+  function renderAssetTree(rows) {
+    var box = document.getElementById('assetTbl'); if (!box) return;
+    // toolbar 还原(树视图下 DN.table 不渲染, 手工补工具条)
+    var bar = DN.h('div', { class: 'gov-tbl-tools', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px' });
+    (assetToolbar || []).forEach(function (el) { bar.appendChild(el); });
+    // 按 库 分组
+    var byDb = {};
+    rows.forEach(function (t) { var k = (t.dbType || '') + '|' + (t.databaseName || '(未命名库)'); (byDb[k] = byDb[k] || []).push(t); });
+    var keys = Object.keys(byDb).sort();
+    box.innerHTML = '';
+    box.appendChild(bar);
+    if (!keys.length) { box.appendChild(DN.empty('暂无资产', 'inbox')); return; }
+    var wrap = DN.h('div', { style: 'border:1px solid var(--border,#eceef1);border-radius:10px;overflow:hidden' });
+    keys.forEach(function (k) {
+      var parts = k.split('|'), dbType = parts[0], dbName = parts[1];
+      var tables = byDb[k];
+      var open = _treeOpen[k] !== false; // 默认展开
+      var totalBytes = tables.reduce(function (s, t) { return s + (Number(t.sizeBytes) || 0); }, 0);
+      var head = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:var(--bg-hover,#f6f7f9);border-bottom:1px solid var(--divider,#eee)' });
+      head.innerHTML = '<span style="font-size:11px;color:var(--text-muted);width:12px;display:inline-block;transition:transform .15s;transform:rotate(' + (open ? '90' : '0') + 'deg)">▶</span>'
+        + '<span style="font-weight:600;font-size:13px">' + DN.esc(dbName) + '</span>'
+        + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:8px;background:#e6f0ff;color:#1890ff">' + DN.esc(dbType || '-') + '</span>'
+        + '<span style="font-size:11px;color:var(--text-muted)">' + tables.length + ' 表 · ' + DN.fmtBytes(totalBytes) + '</span>';
+      var bodyWrap = DN.h('div', { style: 'display:' + (open ? 'block' : 'none') });
+      tables.sort(function (a, b) { return (a.tableName || '').localeCompare(b.tableName || ''); });
+      tables.forEach(function (t) {
+        var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:7px 12px 7px 34px;border-bottom:1px solid var(--divider,#f3f4f6);cursor:pointer;font-size:12.5px' });
+        row.onmouseenter = function () { row.style.background = 'var(--bg-hover,#f6f7f9)'; };
+        row.onmouseleave = function () { row.style.background = ''; };
+        row.innerHTML = '<span style="color:#1890ff">▦</span>'
+          + '<span style="font-weight:500">' + DN.esc(t.tableName || '-') + '</span>'
+          + '<span style="color:var(--text-muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + DN.esc(t.tableComment || '') + '</span>'
+          + '<span style="color:var(--text-muted);font-size:11px;white-space:nowrap">' + (t.rowCount == null ? '' : fmtInt(t.rowCount) + ' 行 · ') + DN.fmtBytes(t.sizeBytes) + '</span>';
+        row.addEventListener('click', function () { openAssetDetail(t.databaseName || '', t.tableName || ''); });
+        bodyWrap.appendChild(row);
+      });
+      head.addEventListener('click', function () {
+        _treeOpen[k] = !open;
+        renderAssetTree(rows);
+      });
+      wrap.appendChild(head); wrap.appendChild(bodyWrap);
+    });
+    box.appendChild(wrap);
+    box.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:6px', text: '共 ' + keys.length + ' 个库 · ' + rows.length + ' 张表 · 点击表名查看详情' }));
   }
 
   // ===== 资产详情抽屉（字段元数据 + Profiler + 术语表 + 血缘） =====
