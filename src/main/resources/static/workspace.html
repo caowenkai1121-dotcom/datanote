@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r29">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r30">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r29"></script>
-<script src="js/gov-assets.js?v=g2r29"></script>
-<script src="js/gov-lineage.js?v=g2r29"></script>
-<script src="js/gov-quality.js?v=g2r29"></script>
-<script src="js/gov-standard.js?v=g2r29"></script>
-<script src="js/gov-classification.js?v=g2r29"></script>
-<script src="js/gov-security.js?v=g2r29"></script>
-<script src="js/gov-health.js?v=g2r29"></script>
-<script src="js/gov-audit.js?v=g2r29"></script>
-<script src="js/gov-overview.js?v=g2r29"></script>
-<script src="js/gov-subject.js?v=g2r29"></script>
+<script src="js/dn-common.js?v=g2r30"></script>
+<script src="js/gov-assets.js?v=g2r30"></script>
+<script src="js/gov-lineage.js?v=g2r30"></script>
+<script src="js/gov-quality.js?v=g2r30"></script>
+<script src="js/gov-standard.js?v=g2r30"></script>
+<script src="js/gov-classification.js?v=g2r30"></script>
+<script src="js/gov-security.js?v=g2r30"></script>
+<script src="js/gov-health.js?v=g2r30"></script>
+<script src="js/gov-audit.js?v=g2r30"></script>
+<script src="js/gov-overview.js?v=g2r30"></script>
+<script src="js/gov-subject.js?v=g2r30"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4206,12 +4206,19 @@ html, body {
             <select id="projRelEnv" class="g-modal-input"><option value="PROD">生产</option><option value="DEV">开发</option></select>
           </div>
           <div class="ds-form-row" style="align-items:flex-start;"><label>发布内容</label>
-            <textarea id="projRelContent" style="flex:1;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;" placeholder="变更说明 / 资产快照（可选）"></textarea>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <a href="#" id="projRelPreviewBtn" onclick="projToggleRelPreview();return false;" style="font-size:12px;color:var(--primary);">预览</a>
+                <span id="projRelWordCount" style="font-size:11px;color:var(--text-muted);margin-left:auto;">0 字</span>
+              </div>
+              <textarea id="projRelContent" oninput="projRelContentChanged()" style="width:100%;min-height:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;box-sizing:border-box;" placeholder="变更说明 / 资产快照（支持 Markdown，可选）"></textarea>
+              <div id="projRelPreview" class="proj-md" style="display:none;min-height:80px;padding:8px 10px;border:1px solid var(--divider);border-radius:var(--radius);font-size:13px;line-height:1.7;background:var(--bg-hover);"></div>
+            </div>
           </div>
         </div>
         <div class="g-modal-footer">
           <button class="btn" onclick="projCloseReleaseModal()">取消</button>
-          <button class="btn btn-primary" onclick="projSubmitRelease()">提交</button>
+          <button class="btn btn-primary" id="projRelSubmitBtn" onclick="projSubmitRelease()">提交</button>
         </div>
       </div>
     </div>
@@ -14109,11 +14116,48 @@ window.projOpenReleaseModal = function() {
   document.getElementById('projRelTitle').value = '';
   document.getElementById('projRelEnv').value = 'PROD';
   document.getElementById('projRelContent').value = '';
+  // 复位 预览/字数/提交按钮态
+  var ta = document.getElementById('projRelContent'), pv = document.getElementById('projRelPreview'), pb = document.getElementById('projRelPreviewBtn'), sb = document.getElementById('projRelSubmitBtn'), wc = document.getElementById('projRelWordCount');
+  if (pv) pv.style.display = 'none';
+  if (ta) ta.style.display = '';
+  if (pb) pb.textContent = '预览';
+  if (sb) { sb.disabled = false; sb.textContent = '提交'; }
+  if (wc) wc.textContent = '0 字';
   document.getElementById('projReleaseModal').classList.add('show');
 };
 window.projCloseReleaseModal = function() { document.getElementById('projReleaseModal').classList.remove('show'); };
+window.projRelContentChanged = function() {
+  var v = (document.getElementById('projRelContent') || {}).value || '';
+  var wc = document.getElementById('projRelWordCount');
+  if (wc) wc.textContent = v.replace(/\s/g, '').length + ' 字';
+  // 预览区打开时实时刷新
+  var pv = document.getElementById('projRelPreview');
+  if (pv && pv.style.display !== 'none') pv.innerHTML = v ? projMd(v) : '<span style="color:var(--text-muted);">（无内容）</span>';
+};
+window.projToggleRelPreview = function() {
+  var ta = document.getElementById('projRelContent'), pv = document.getElementById('projRelPreview'), btn = document.getElementById('projRelPreviewBtn');
+  if (!ta || !pv) return;
+  var toPreview = pv.style.display === 'none';
+  if (toPreview) { pv.innerHTML = ta.value ? projMd(ta.value) : '<span style="color:var(--text-muted);">（无内容）</span>'; pv.style.display = ''; ta.style.display = 'none'; if (btn) btn.textContent = '编辑'; }
+  else { pv.style.display = 'none'; ta.style.display = ''; if (btn) btn.textContent = '预览'; }
+};
 window.projSubmitRelease = function() {
   if (!_projDetail) return;
+  var env = document.getElementById('projRelEnv').value;
+  var content = document.getElementById('projRelContent').value || '';
+  // 生产环境内容为空时软提示(非强制必填, 保留原可选语义)
+  if (env === 'PROD' && !content.trim()) {
+    msgConfirm('提交发布', '目标为生产环境但未填写发布内容，确认直接提交？', '仍然提交').then(function(ok) {
+      if (ok) projDoSubmitRelease();
+    });
+    return;
+  }
+  projDoSubmitRelease();
+};
+function projDoSubmitRelease() {
+  var btn = document.getElementById('projRelSubmitBtn');
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = '提交中…'; }
+  var done = function() { if (btn) { btn.disabled = false; btn.textContent = '提交'; } };
   var body = {
     title: (document.getElementById('projRelTitle').value || '').trim(),
     targetEnv: document.getElementById('projRelEnv').value,
@@ -14121,9 +14165,9 @@ window.projSubmitRelease = function() {
   };
   apiPost('/api/project/' + _projDetail.id + '/releases', body).then(function(res) {
     if (res && res.code === 0) { showToast('已提交发布', 'success'); projCloseReleaseModal(); projLoadReleases(); }
-    else showToast((res && res.msg) || '提交失败', 'error');
-  }).catch(function() { showToast('提交失败', 'error'); });
-};
+    else { showToast((res && res.msg) || '提交失败', 'error'); done(); }
+  }).catch(function() { showToast('提交失败', 'error'); done(); });
+}
 window.projRelAct = function(rid, action, scope) {
   var refresh = function() { if (scope === 'center') loadProjectReleaseCenter(); else projLoadReleases(); };
   if (action === 'approve' || action === 'reject') {
