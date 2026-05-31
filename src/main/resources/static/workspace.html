@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r27">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r28">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r27"></script>
-<script src="js/gov-assets.js?v=g2r27"></script>
-<script src="js/gov-lineage.js?v=g2r27"></script>
-<script src="js/gov-quality.js?v=g2r27"></script>
-<script src="js/gov-standard.js?v=g2r27"></script>
-<script src="js/gov-classification.js?v=g2r27"></script>
-<script src="js/gov-security.js?v=g2r27"></script>
-<script src="js/gov-health.js?v=g2r27"></script>
-<script src="js/gov-audit.js?v=g2r27"></script>
-<script src="js/gov-overview.js?v=g2r27"></script>
-<script src="js/gov-subject.js?v=g2r27"></script>
+<script src="js/dn-common.js?v=g2r28"></script>
+<script src="js/gov-assets.js?v=g2r28"></script>
+<script src="js/gov-lineage.js?v=g2r28"></script>
+<script src="js/gov-quality.js?v=g2r28"></script>
+<script src="js/gov-standard.js?v=g2r28"></script>
+<script src="js/gov-classification.js?v=g2r28"></script>
+<script src="js/gov-security.js?v=g2r28"></script>
+<script src="js/gov-health.js?v=g2r28"></script>
+<script src="js/gov-audit.js?v=g2r28"></script>
+<script src="js/gov-overview.js?v=g2r28"></script>
+<script src="js/gov-subject.js?v=g2r28"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -16747,7 +16747,7 @@ function dbsyncRenderJobs(list) {
     var tgtLabel = escapeHtml((job.targetDsName || ('ds#' + job.targetDsId)) + '.' + (job.targetDb || ''));
     html += '<tr>';
     html += '<td style="text-align:center;"><input type="checkbox" ' + (_dbsyncSelected[job.id] ? 'checked' : '') + ' onclick="dbsyncToggleSel(' + job.id + ',this)"></td>';
-    html += '<td style="font-weight:500;">' + escapeHtml(job.jobName || '') + '</td>';
+    html += '<td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(job.jobName || '') + '">' + escapeHtml(job.jobName || '') + '</td>';
     html += '<td><span class="dbsync-mode-badge ' + modeClass + '">' + modeLabel + '</span></td>';
     html += '<td>' + srcLabel + '</td>';
     html += '<td>' + tgtLabel + '</td>';
@@ -17226,17 +17226,24 @@ function dbsyncDetailLoading() {
 }
 var _dbsyncAllDetailTabs = ['overview', 'log', 'history', 'config', 'audit', 'checkpoint', 'errors'];
 function dbsyncDetailResetTab() {
+  // 还原上次停留的页签(localStorage记忆), 无记忆/非法则回到概览
+  var remembered = '';
+  try { remembered = localStorage.getItem('dbsync.detailTab') || ''; } catch (e) {}
+  var target = (_dbsyncAllDetailTabs.indexOf(remembered) >= 0 && document.querySelector('#dbsyncDetailTabs button[data-tab="' + remembered + '"]')) ? remembered : 'overview';
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) {
-    b.classList.toggle('active', b.getAttribute('data-tab') === 'overview');
+    b.classList.toggle('active', b.getAttribute('data-tab') === target);
   });
   _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
-    if (pane) pane.style.display = (t === 'overview') ? '' : 'none';
+    if (pane) pane.style.display = (t === target) ? '' : 'none';
   });
+  if (target === 'checkpoint' && _dbsyncDetailJobId != null) dbsyncLoadCheckpoints(_dbsyncDetailJobId);
+  if (target === 'errors' && _dbsyncDetailJobId != null) dbsyncLoadErrorRows(_dbsyncDetailJobId);
 }
 window.dbsyncDetailTab = function(btn, tab) {
   document.querySelectorAll('#dbsyncDetailTabs button').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
+  try { localStorage.setItem('dbsync.detailTab', tab); } catch (e) {}
   _dbsyncAllDetailTabs.forEach(function(t) {
     var pane = document.getElementById('dbsyncDetailPane_' + t);
     if (pane) pane.style.display = (t === tab) ? '' : 'none';
@@ -17615,7 +17622,7 @@ function dbsyncRenderHistory(execs) {
       + '<td>' + (ex.readCount || 0) + '</td>'
       + '<td>' + (ex.writeCount || 0) + '</td>'
       + '<td>' + (ex.errorCount || 0) + '</td>'
-      + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+      + '<td' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#d48806;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
       + '<td style="max-width:200px;">' + logCell + '</td>'
       + '</tr>';
   });
