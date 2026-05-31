@@ -3275,19 +3275,19 @@ html, body {
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=g2r16">
+<link rel="stylesheet" href="css/gov-modern.css?v=g2r17">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=g2r16"></script>
-<script src="js/gov-assets.js?v=g2r16"></script>
-<script src="js/gov-lineage.js?v=g2r16"></script>
-<script src="js/gov-quality.js?v=g2r16"></script>
-<script src="js/gov-standard.js?v=g2r16"></script>
-<script src="js/gov-classification.js?v=g2r16"></script>
-<script src="js/gov-security.js?v=g2r16"></script>
-<script src="js/gov-health.js?v=g2r16"></script>
-<script src="js/gov-audit.js?v=g2r16"></script>
-<script src="js/gov-overview.js?v=g2r16"></script>
-<script src="js/gov-subject.js?v=g2r16"></script>
+<script src="js/dn-common.js?v=g2r17"></script>
+<script src="js/gov-assets.js?v=g2r17"></script>
+<script src="js/gov-lineage.js?v=g2r17"></script>
+<script src="js/gov-quality.js?v=g2r17"></script>
+<script src="js/gov-standard.js?v=g2r17"></script>
+<script src="js/gov-classification.js?v=g2r17"></script>
+<script src="js/gov-security.js?v=g2r17"></script>
+<script src="js/gov-health.js?v=g2r17"></script>
+<script src="js/gov-audit.js?v=g2r17"></script>
+<script src="js/gov-overview.js?v=g2r17"></script>
+<script src="js/gov-subject.js?v=g2r17"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4423,7 +4423,7 @@ html, body {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">数据同步任务</h2>
               <div style="display:flex;gap:8px;align-items:center;">
-                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobs()"
+                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobsDebounced()"
                   style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;width:180px;background:var(--bg-card);">
                 <button class="btn btn-primary btn-sm" onclick="dbsyncOpenCreateModal()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
@@ -16586,6 +16586,11 @@ window.dbsyncLoadJobs = function() {
   });
 };
 
+var _dbsyncSearchTimer = null;
+window.dbsyncFilterJobsDebounced = function() {
+  if (_dbsyncSearchTimer) clearTimeout(_dbsyncSearchTimer);
+  _dbsyncSearchTimer = setTimeout(dbsyncFilterJobs, 200);
+};
 window.dbsyncFilterJobs = function() {
   var kw = (document.getElementById('dbsyncSearchInput').value || '').toLowerCase();
   var base = (_dbsyncSelectedFolderId === 0) ? _dbsyncAllJobs : (_dbsyncAllJobs || []).filter(function(j) {
@@ -16624,15 +16629,16 @@ function dbsyncRenderJobs(list) {
   });
   chips += '</div>';
   // KPI 概览磁贴
-  function kpi(label, val, color) {
-    return '<div style="flex:1;min-width:120px;background:var(--bg-card,#fff);border:1px solid var(--border,#eceef1);border-radius:10px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">'
+  function kpi(label, val, color, fk) {
+    var act = fk && _dbsyncStatusFilter === fk;
+    return '<div ' + (fk ? 'onclick="dbsyncSetStatusFilter(\'' + fk + '\')" title="点击筛选" ' : '') + 'style="flex:1;min-width:120px;background:var(--bg-card,#fff);border:1px solid ' + (act ? 'var(--primary)' : 'var(--border,#eceef1)') + ';border-radius:10px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04);' + (fk ? 'cursor:pointer;' : '') + '">'
       + '<div style="font-size:24px;font-weight:700;color:' + color + ';line-height:1.1;font-variant-numeric:tabular-nums;">' + val + '</div>'
       + '<div style="font-size:12px;color:var(--text-muted,#86909c);margin-top:3px;">' + label + '</div></div>';
   }
   var kpiHtml = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
-    + kpi('总任务', base.length, 'var(--text-regular,#1f2329)')
-    + kpi('运行中', cnt('RUNNING'), '#52c41a')
-    + kpi('失败', cnt('FAILED'), '#ff4d4f')
+    + kpi('总任务', base.length, 'var(--text-regular,#1f2329)', 'ALL')
+    + kpi('运行中', cnt('RUNNING'), '#52c41a', 'RUNNING')
+    + kpi('失败', cnt('FAILED'), '#ff4d4f', 'FAILED')
     + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#1890ff)')
     + '</div>';
   // 批量操作条(选中>0时显示)
@@ -16724,9 +16730,17 @@ function _dbsyncSelectedIds() { return Object.keys(_dbsyncSelected).filter(funct
 function _dbsyncBulk(path, title, ids) {
   msgConfirm(title, '确定对选中的 ' + ids.length + ' 个任务执行此操作？').then(function(ok) {
     if (!ok) return;
-    var done = 0;
-    function fin() { done++; if (done === ids.length) { showToast('已对 ' + ids.length + ' 个任务下发操作', 'success'); _dbsyncSelected = {}; dbsyncLoadJobs(); } }
-    ids.forEach(function(id) { api('/api/sync-job/' + id + path, { method: 'POST' }).then(fin, fin); });
+    var done = 0, ok = 0, fail = 0;
+    function fin(success) {
+      done++; if (success) ok++; else fail++;
+      if (done === ids.length) {
+        showToast(title + '完成：成功 ' + ok + (fail ? '，失败 ' + fail : ''), fail ? 'warning' : 'success');
+        _dbsyncSelected = {}; dbsyncLoadJobs();
+      }
+    }
+    ids.forEach(function(id) {
+      api('/api/sync-job/' + id + path, { method: 'POST' }).then(function(r) { fin(r && r.code === 0); }, function() { fin(false); });
+    });
   });
 }
 window.dbsyncBulkRun = function() { var ids = _dbsyncSelectedIds(); if (ids.length) _dbsyncBulk('/run', '批量运行', ids); };
