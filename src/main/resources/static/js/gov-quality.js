@@ -50,6 +50,42 @@
     });
   }
 
+  // 规则覆盖矩阵(大功能): 维度 × 规则类型 计数热力, 点格下钻筛选
+  function buildCoverageMatrix() {
+    if (!allRules.length) return null;
+    var dims = uniq(allRules.map(function (r) { return r.dimension || '未分类'; }));
+    var types = uniq(allRules.map(function (r) { return r.ruleType || '未分类'; }));
+    if (dims.length < 1 || types.length < 1) return null;
+    var grid = {}, max = 0;
+    allRules.forEach(function (r) { var k = (r.dimension || '未分类') + '||' + (r.ruleType || '未分类'); grid[k] = (grid[k] || 0) + 1; if (grid[k] > max) max = grid[k]; });
+    var card = DN.card({ title: '规则覆盖矩阵（维度 × 类型）', icon: 'grid' });
+    var colorOf = function (n) { if (!n) return 'var(--bg-hover,#f0f1f3)'; var rr = n / (max || 1); return rr > 0.66 ? '#1890ff' : rr > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+    var tbl = DN.h('table', { class: 'gov-tbl', style: 'width:auto' });
+    var thead = '<thead><tr><th></th>' + types.map(function (t) { return '<th style="font-size:11px;text-align:center">' + DN.esc(t) + '</th>'; }).join('') + '</tr></thead>';
+    var tb = '<tbody>';
+    dims.forEach(function (d) {
+      tb += '<tr><td style="font-size:12px;font-weight:500;white-space:nowrap">' + DN.esc(d) + '</td>';
+      types.forEach(function (t) {
+        var n = grid[d + '||' + t] || 0;
+        tb += '<td style="text-align:center;padding:2px"><div data-dim="' + DN.esc(d) + '" data-type="' + DN.esc(t) + '" title="' + DN.esc(d) + ' · ' + DN.esc(t) + ' · ' + n + ' 条规则" style="width:42px;height:28px;line-height:28px;border-radius:4px;margin:0 auto;background:' + colorOf(n) + ';color:' + (n ? '#fff' : 'var(--text-muted)') + ';font-size:12px;cursor:' + (n ? 'pointer' : 'default') + '">' + (n || '') + '</div></td>';
+      });
+      tb += '</tr>';
+    });
+    tbl.innerHTML = thead + tb + '</tbody>';
+    // 点格联动筛选
+    tbl.addEventListener('click', function (e) {
+      var cell = e.target.closest('[data-dim]'); if (!cell) return;
+      filterDim = cell.getAttribute('data-dim') === '未分类' ? '' : cell.getAttribute('data-dim');
+      filterType = cell.getAttribute('data-type') === '未分类' ? '' : cell.getAttribute('data-type');
+      if (tableEl) tableEl.reload(filtered());
+      DN.toast('已筛选: ' + cell.getAttribute('data-dim') + ' · ' + cell.getAttribute('data-type'), 'info');
+    });
+    var wrap = DN.h('div', { style: 'overflow-x:auto' }); wrap.appendChild(tbl);
+    card.body.appendChild(wrap);
+    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '色块深浅=该维度该类型规则数, 点击格子下钻筛选下方规则表' }));
+    return card.el;
+  }
+
   function loadRules(box) {
     DN.get('/api/quality/rules').then(function (rules) {
       allRules = rules || [];
@@ -64,6 +100,7 @@
         { icon: 'shield', label: '强阻断', value: blocked, tone: blocked ? 'warn' : 'ok', title: '点击仅看强阻断', onClick: function () { filterBlock = filterBlock ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterBlock ? '仅看强阻断' : '显示全部', 'info'); } },
         { icon: 'clock', label: '已配调度', value: scheduled, title: '点击仅看已配调度', onClick: function () { filterScheduled = filterScheduled ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterScheduled ? '仅看已配调度' : '显示全部', 'info'); } }
       ]));
+      var cov = buildCoverageMatrix(); if (cov) box.appendChild(cov);
       box.appendChild(buildToolbarAndTable());
     }).catch(function (e) {
       box.innerHTML = '';
