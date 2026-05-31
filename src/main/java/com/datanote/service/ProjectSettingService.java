@@ -48,7 +48,7 @@ public class ProjectSettingService {
                 .eq(DnProjectEnvParam::getProjectId, projectId).orderByAsc(DnProjectEnvParam::getId));
     }
 
-    public DnProjectEnvParam saveEnvParam(Long projectId, DnProjectEnvParam p) {
+    public synchronized DnProjectEnvParam saveEnvParam(Long projectId, DnProjectEnvParam p) {
         projectService.getById(projectId);
         if (p.getParamKey() == null || p.getParamKey().trim().isEmpty()) {
             throw new IllegalArgumentException("参数键不能为空");
@@ -67,7 +67,12 @@ public class ProjectSettingService {
         return p;
     }
 
-    public void deleteEnvParam(Long paramId) {
+    public void deleteEnvParam(Long projectId, Long paramId) {
+        DnProjectEnvParam p = envParamMapper.selectById(paramId);
+        if (p == null) return;
+        if (!p.getProjectId().equals(projectId)) {
+            throw new IllegalArgumentException("参数不属于该项目，拒绝删除");
+        }
         envParamMapper.deleteById(paramId);
     }
 }

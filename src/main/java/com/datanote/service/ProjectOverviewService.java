@@ -61,7 +61,7 @@ public class ProjectOverviewService {
     private Map<String, Object> boundJobRuns(Long projectId) {
         List<DnProjectAsset> jobs = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, "SYNC_JOB"));
-        long success = 0, failed = 0, running = 0, neverRun = 0;
+        long success = 0, failed = 0, running = 0, neverRun = 0, other = 0;
         List<Object[]> recents = new ArrayList<>(); // [time, name, status]
         for (DnProjectAsset job : jobs) {
             List<com.datanote.model.DnTaskExecution> ex = taskExecutionMapper.selectList(
@@ -78,6 +78,7 @@ public class ProjectOverviewService {
             if ("SUCCESS".equals(st)) success++;
             else if ("FAILED".equals(st)) failed++;
             else if ("RUNNING".equals(st)) running++;
+            else other++; // STOPPED 等其它状态，保证计数与 total 自洽
             recents.add(new Object[]{e.getStartTime(), job.getAssetName(), st});
         }
         recents.sort((x, y) -> {
@@ -101,6 +102,7 @@ public class ProjectOverviewService {
         out.put("success", success);
         out.put("failed", failed);
         out.put("running", running);
+        out.put("other", other);
         out.put("neverRun", neverRun);
         out.put("recent", recent);
         return out;

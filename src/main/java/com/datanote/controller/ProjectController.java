@@ -234,8 +234,13 @@ public class ProjectController {
     @Operation(summary = "删除环境参数")
     @DeleteMapping("/{id}/env-params/{paramId}")
     public R<String> deleteEnvParam(@PathVariable Long id, @PathVariable Long paramId) {
-        projectSettingService.deleteEnvParam(paramId);
-        return R.ok("已删除");
+        try {
+            projectService.getById(id);
+            projectSettingService.deleteEnvParam(id, paramId);
+            return R.ok("已删除");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     // ===== PM-M5：发布管理 =====
