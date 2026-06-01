@@ -76,6 +76,7 @@ public class ProjectTaskService {
         return m;
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void deleteMilestone(Long projectId, Long milestoneId) {
         DnProjectMilestone m = milestoneMapper.selectById(milestoneId);
         if (m == null) return;

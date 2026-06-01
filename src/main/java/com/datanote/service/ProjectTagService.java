@@ -35,6 +35,7 @@ public class ProjectTagService {
         return t;
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void deleteTag(Long tagId) {
         tagMapper.deleteById(tagId);
         mappingMapper.delete(new LambdaQueryWrapper<DnProjectTagMapping>().eq(DnProjectTagMapping::getTagId, tagId));

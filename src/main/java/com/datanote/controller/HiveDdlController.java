@@ -78,6 +78,14 @@ public class HiveDdlController {
         }
         if (newName == null || newName.isEmpty()) newName = oldName;
         if (newType == null || newType.isEmpty()) return R.fail("类型不能为空");
+        // 防 SQL 注入:库/表/列名直拼入 ALTER TABLE,仅允许标识符;类型仅允许类型定义字符
+        if (!db.matches("[a-zA-Z0-9_]+") || !table.matches("[a-zA-Z0-9_]+")
+                || !oldName.matches("[a-zA-Z0-9_]+") || !newName.matches("[a-zA-Z0-9_]+")) {
+            return R.fail("库名/表名/列名含非法字符");
+        }
+        if (!newType.matches("[a-zA-Z0-9_(), ]+")) {
+            return R.fail("字段类型含非法字符");
+        }
 
         try {
             // 构建 ALTER TABLE 语句
@@ -88,7 +96,7 @@ public class HiveDdlController {
             ddl.append(" ").append(newName);
             ddl.append(" ").append(newType);
             if (newComment != null && !newComment.isEmpty()) {
-                ddl.append(" COMMENT '").append(newComment.replace("'", "\\'")).append("'");
+                ddl.append(" COMMENT '").append(newComment.replace("\\", "\\\\").replace("'", "\\'")).append("'"); // 先转义反斜杠再转义引号,防越出
             }
 
             log.info("执行字段修改: {}", ddl);

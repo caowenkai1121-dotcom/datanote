@@ -55,6 +55,7 @@ public class ProjectWikiService {
         return p;
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void deletePage(Long projectId, Long pageId) {
         DnProjectWikiPage p = wikiMapper.selectById(pageId);
         if (p == null) return;
