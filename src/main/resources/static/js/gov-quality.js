@@ -24,7 +24,7 @@
     c.appendChild(grid);
 
     // 规则列表卡片
-    var actions = DN.h('a', { class: 'btn btn-primary', href: 'workspace.html#/quality', text: '前往工作台质量' });
+    var actions = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
     var rulesCard = DN.card({ title: '质量规则', icon: 'list', actions: actions });
     var rulesBody = rulesCard.body;
     rulesBody.appendChild(DN.skeleton(4));
@@ -103,7 +103,7 @@
       if (!targets.length) {
         resultBox.innerHTML = '';
         var emp = DN.empty('暂无已启用的规则可扫描，请在下方规则表启用规则或前往工作台创建', 'check');
-        emp.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'workspace.html#/quality', style: 'margin-top:10px', text: '前往工作台质量' }));
+        emp.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', style: 'margin-top:10px', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } }));
         resultBox.appendChild(emp);
         return;
       }
