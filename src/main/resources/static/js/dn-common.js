@@ -361,7 +361,18 @@
     var _prevFocus = document.activeElement; // 关闭后归还焦点(a11y)
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
-    function onKey(e) { if (e.key === 'Escape') close(); }
+    function onKey(e) {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'Tab') { // 焦点陷阱:Tab 在抽屉内循环(规范模态 a11y)
+        var fs = Array.prototype.filter.call(
+          dr.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])'),
+          function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!fs.length) return;
+        var first = fs[0], last = fs[fs.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
     var _closing = false;
     function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd]);
