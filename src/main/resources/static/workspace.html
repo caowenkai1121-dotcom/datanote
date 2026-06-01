@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r43">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r44">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r43"></script>
-<script src="js/gov-assets.js?v=q100r43"></script>
-<script src="js/gov-lineage.js?v=q100r43"></script>
-<script src="js/gov-quality.js?v=q100r43"></script>
-<script src="js/gov-standard.js?v=q100r43"></script>
-<script src="js/gov-classification.js?v=q100r43"></script>
-<script src="js/gov-security.js?v=q100r43"></script>
-<script src="js/gov-health.js?v=q100r43"></script>
-<script src="js/gov-audit.js?v=q100r43"></script>
-<script src="js/gov-overview.js?v=q100r43"></script>
-<script src="js/gov-subject.js?v=q100r43"></script>
+<script src="js/dn-common.js?v=q100r44"></script>
+<script src="js/gov-assets.js?v=q100r44"></script>
+<script src="js/gov-lineage.js?v=q100r44"></script>
+<script src="js/gov-quality.js?v=q100r44"></script>
+<script src="js/gov-standard.js?v=q100r44"></script>
+<script src="js/gov-classification.js?v=q100r44"></script>
+<script src="js/gov-security.js?v=q100r44"></script>
+<script src="js/gov-health.js?v=q100r44"></script>
+<script src="js/gov-audit.js?v=q100r44"></script>
+<script src="js/gov-overview.js?v=q100r44"></script>
+<script src="js/gov-subject.js?v=q100r44"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4961,7 +4961,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFolderModal()">取消</button>
-          <button class="btn btn-primary" onclick="dbsyncSubmitFolder()">保存</button>
+          <button class="btn btn-primary" onclick="dbsyncSubmitFolder(this)">保存</button>
         </div>
       </div>
     </div>
@@ -17441,7 +17441,7 @@ window.dbsyncCloseFolderModal = function() {
   if (modal) modal.classList.remove('show');
 };
 
-window.dbsyncSubmitFolder = function() {
+window.dbsyncSubmitFolder = function(btn) {
   var id = (document.getElementById('dbsyncFolderId') || {}).value || '';
   var parentId = parseInt((document.getElementById('dbsyncFolderParentId') || {}).value || '0', 10);
   var input = document.getElementById('dbsyncFolderNameInput');
@@ -17449,6 +17449,8 @@ window.dbsyncSubmitFolder = function() {
   if (!name) { showToast('请输入文件夹名称', 'error'); if (input) input.focus(); return; }
   var payload = { folderName: name, parentId: parentId || 0 };
   if (id) payload.id = parseInt(id, 10);
+  var _txt; if (btn) { _txt = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; } // loading 态防双提交
+  var _restore = function() { if (btn) { btn.disabled = false; btn.textContent = _txt; } };
   apiPost('/api/sync-folder/save', payload).then(function(res) {
     if (res.code === 0) {
       showToast(id ? '文件夹已重命名' : '文件夹创建成功', 'success');
@@ -17456,9 +17458,9 @@ window.dbsyncSubmitFolder = function() {
       dbsyncLoadFolders();
       dbsyncLoadJobs();
     } else {
-      showToast('保存失败: ' + (res.msg || ''), 'error');
+      showToast('保存失败: ' + (res.msg || ''), 'error'); _restore();
     }
-  }).catch(function() { showToast('保存请求失败', 'error'); });
+  }).catch(function() { showToast('保存请求失败', 'error'); _restore(); });
 };
 
 /* ---------- 删除文件夹 ---------- */
