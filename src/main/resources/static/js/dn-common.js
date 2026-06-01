@@ -358,11 +358,12 @@
     if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
     var old = document.getElementById('govDrawerMask'); if (old) old.remove();
     var oldD = document.querySelector('.gov-drawer'); if (oldD) oldD.remove();
+    var _prevFocus = document.activeElement; // 关闭后归还焦点(a11y)
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
     function onKey(e) { if (e.key === 'Escape') close(); }
     var _closing = false;
-    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd]);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);

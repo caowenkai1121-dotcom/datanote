@@ -43,6 +43,8 @@
 #govModuleContent .gov-search { position:relative; }
 #govModuleContent .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
 #govModuleContent .gov-search input:focus { border-color:var(--primary,#1890ff); box-shadow:0 0 0 3px var(--primary-light,rgba(24,144,255,.1)); }
+/* 键盘焦点环(仅键盘聚焦显示),覆盖所有 gov 交互元素 */
+#govModuleContent a:focus-visible, #govModuleContent button:focus-visible, #govModuleContent .btn:focus-visible, #govModuleContent [role="button"]:focus-visible, #govModuleContent th[data-sk]:focus-visible, #govModuleContent select:focus-visible, #govModuleContent input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#1890ff); outline-offset:2px; border-radius:4px; }
 #govModuleContent .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
 #govModuleContent .gov-search .gov-search-clr { position:absolute; right:8px; top:6px; cursor:pointer; color:var(--text-muted,#86909c); font-size:16px; line-height:20px; width:18px; text-align:center; border-radius:50%; }
 #govModuleContent .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
