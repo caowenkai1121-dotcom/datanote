@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r42">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r43">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r42"></script>
-<script src="js/gov-assets.js?v=q100r42"></script>
-<script src="js/gov-lineage.js?v=q100r42"></script>
-<script src="js/gov-quality.js?v=q100r42"></script>
-<script src="js/gov-standard.js?v=q100r42"></script>
-<script src="js/gov-classification.js?v=q100r42"></script>
-<script src="js/gov-security.js?v=q100r42"></script>
-<script src="js/gov-health.js?v=q100r42"></script>
-<script src="js/gov-audit.js?v=q100r42"></script>
-<script src="js/gov-overview.js?v=q100r42"></script>
-<script src="js/gov-subject.js?v=q100r42"></script>
+<script src="js/dn-common.js?v=q100r43"></script>
+<script src="js/gov-assets.js?v=q100r43"></script>
+<script src="js/gov-lineage.js?v=q100r43"></script>
+<script src="js/gov-quality.js?v=q100r43"></script>
+<script src="js/gov-standard.js?v=q100r43"></script>
+<script src="js/gov-classification.js?v=q100r43"></script>
+<script src="js/gov-security.js?v=q100r43"></script>
+<script src="js/gov-health.js?v=q100r43"></script>
+<script src="js/gov-audit.js?v=q100r43"></script>
+<script src="js/gov-overview.js?v=q100r43"></script>
+<script src="js/gov-subject.js?v=q100r43"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14402,21 +14402,24 @@ window.projTaskModal = function(taskId) {
       + '<div class="ds-form-row"><label>状态</label><select id="ptkStatus" class="g-modal-input">' + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + ((t.status || 'TODO') === s ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></div>'
       + '<div class="ds-form-row"><label>截止日期</label><input id="ptkDue" type="date" value="' + (t.dueDate || '') + '"></div>'
       + '<div class="ds-form-row"><label>里程碑</label><select id="ptkMilestone" class="g-modal-input">' + msOpts + '</select></div>'
-      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTask()">保存</button></div>';
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTask(this)">保存</button></div>';
     projShowModalBox(taskId ? '编辑任务' : '新建任务', h);
   });
 };
-window.projSaveTask = function() {
+window.projSaveTask = function(btn) {
   var title = (document.getElementById('ptkTitle').value || '').trim();
   if (!title) { showToast('请填写标题', 'error'); return; }
   var ms = document.getElementById('ptkMilestone').value;
   var body = { title: title, description: document.getElementById('ptkDesc').value || '', assignee: document.getElementById('ptkAssignee').value || '', priority: document.getElementById('ptkPriority').value, status: document.getElementById('ptkStatus').value, dueDate: document.getElementById('ptkDue').value || null, milestoneId: ms ? parseInt(ms) : null };
   var id = document.getElementById('ptkId').value;
   if (id) body.id = parseInt(id);
+  // loading 态防双提交(校验通过后才禁用;失败路径恢复,成功路径弹窗关闭无需恢复)
+  var _txt; if (btn) { _txt = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
+  var _restore = function() { if (btn) { btn.disabled = false; btn.textContent = _txt; } };
   apiPost('/api/project/' + _projDetail.id + '/tasks', body).then(function(res) {
     if (res && res.code === 0) { showToast('已保存', 'success'); projCloseModalBox(); projLoadTasks(); }
-    else showToast((res && res.msg) || '保存失败', 'error');
-  }).catch(function() { showToast('保存失败', 'error'); });
+    else { showToast((res && res.msg) || '保存失败', 'error'); _restore(); }
+  }).catch(function() { showToast('保存失败', 'error'); _restore(); });
 };
 window.projTaskStatus = function(taskId, status) {
   // 从本地缓存取整条任务, 避免二次全量 GET; 失败回退到拉取
