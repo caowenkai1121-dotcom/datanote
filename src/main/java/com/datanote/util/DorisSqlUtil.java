@@ -53,6 +53,7 @@ public final class DorisSqlUtil {
     }
 
     public static String escapeSqlLiteral(String value) {
-        return value == null ? "" : value.replace("'", "''");
+        // Doris/MySQL 协议反斜杠是转义符:先转义反斜杠再转义单引号,防尾部反斜杠越出字符串字面量
+        return value == null ? "" : value.replace("\\", "\\\\").replace("'", "''");
     }
 }

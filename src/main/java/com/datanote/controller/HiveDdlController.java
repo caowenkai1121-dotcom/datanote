@@ -96,7 +96,7 @@ public class HiveDdlController {
             ddl.append(" ").append(newName);
             ddl.append(" ").append(newType);
             if (newComment != null && !newComment.isEmpty()) {
-                ddl.append(" COMMENT '").append(newComment.replace("\\", "\\\\").replace("'", "\\'")).append("'"); // 先转义反斜杠再转义引号,防越出
+                ddl.append(" COMMENT '").append(com.datanote.util.DorisSqlUtil.escapeSqlLiteral(newComment)).append("'"); // 统一用加固转义工具
             }
 
             log.info("执行字段修改: {}", ddl);
