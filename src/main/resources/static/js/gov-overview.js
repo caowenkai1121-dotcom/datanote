@@ -112,6 +112,9 @@
       box.appendChild(tc.el);
     }
 
+    // ---- 健康分趋势研判(创新功能): 方向/均值/极值 + 研判结论 ----
+    box.appendChild(insightCard(trend));
+
     // ---- 数据资产 ----
     var ac = DN.card({ title: '数据资产', icon: 'db' });
     ac.body.appendChild(DN.statRow([
@@ -153,6 +156,63 @@
     DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
       renderHealthCalendar(hcCard.body, t || []);
     }).catch(function (e) { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.empty('健康分日历加载失败: ' + (e && e.message ? e.message : '请重试'), 'alert')); });
+  }
+
+  // 健康分趋势研判(创新功能): 前端计算趋势方向/近7天均值/极值, 复用已 fetch 的 trend 数据
+  function insightCard(trend) {
+    var c = DN.card({ title: '健康分趋势研判', icon: 'chart' });
+    // 归一: 取出 {date, score}, 过滤无效项, 按日期升序
+    var pts = (trend || []).map(function (t) {
+      return { date: (t.day || t.date || '').toString().slice(0, 10), score: Number(t.score || t.totalScore || 0) };
+    }).filter(function (p) { return p.date; });
+    if (pts.length < 2) {
+      c.body.appendChild(DN.empty('趋势数据不足, 暂无法研判（至少需 2 天健康分历史）', 'chart'));
+      return c.el;
+    }
+    var vals = pts.map(function (p) { return p.score; });
+    var n = vals.length;
+    // 线性斜率(最小二乘): x=0..n-1, 反映整体走向
+    var sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (var i = 0; i < n; i++) { sx += i; sy += vals[i]; sxx += i * i; sxy += i * vals[i]; }
+    var denom = (n * sxx - sx * sx) || 1; // 除零守卫
+    var slope = (n * sxy - sx * sy) / denom;
+    // 方向判定: 斜率阈值 ±0.2 分/天 视为持平
+    var dirLabel, dirTone, dirVerb;
+    if (slope > 0.2) { dirLabel = '上升'; dirTone = 'ok'; dirVerb = '稳步向好'; }
+    else if (slope < -0.2) { dirLabel = '下降'; dirTone = 'err'; dirVerb = '持续下滑'; }
+    else { dirLabel = '持平'; dirTone = 'info'; dirVerb = '基本平稳'; }
+    // 近7天均值
+    var recent = vals.slice(-7);
+    var recentAvg = recent.reduce(function (x, y) { return x + y; }, 0) / (recent.length || 1);
+    // 极值及其日期
+    var hi = pts[0], lo = pts[0];
+    pts.forEach(function (p) { if (p.score > hi.score) hi = p; if (p.score < lo.score) lo = p; });
+    // 全程变化幅度(首尾差)
+    var change = vals[n - 1] - vals[0];
+
+    c.body.appendChild(DN.statRow([
+      { icon: 'chart', label: '趋势方向', value: dirLabel, tone: dirTone, sub: (change >= 0 ? '+' : '') + round1(change) + ' 分(' + n + '天)' },
+      { icon: 'shield', label: '近 7 天均值', value: round1(recentAvg), tone: tone(recentAvg), sub: '满分 100' },
+      { icon: 'check', label: '最高分', value: round1(hi.score), tone: 'ok', sub: DN.esc(hi.date) },
+      { icon: 'alert', label: '最低分', value: round1(lo.score), tone: 'err', sub: DN.esc(lo.date) }
+    ]));
+    c.body.appendChild(DN.line(vals, { height: 60 }));
+    // 研判结论
+    c.body.appendChild(DN.h('div', {
+      class: 'gov-desc', style: 'margin:8px 0 0;line-height:1.6',
+      text: insightConclusion(dirLabel, dirVerb, recentAvg, lo, hi)
+    }));
+    return c.el;
+  }
+  function insightConclusion(dirLabel, dirVerb, recentAvg, lo, hi) {
+    var parts = [];
+    parts.push('近期健康分整体' + dirVerb + '（呈' + dirLabel + '态势）。');
+    if (dirLabel === '下降') parts.push('健康分持续下降，建议尽快排查质量/工单等下滑维度并干预。');
+    else if (dirLabel === '上升') parts.push('治理成效逐步显现，建议保持当前节奏并固化经验。');
+    else parts.push('健康分趋于平稳，可关注是否存在结构性瓶颈。');
+    parts.push('近 7 天均值 ' + round1(recentAvg) + '，' + level(recentAvg) + '；');
+    parts.push('最低 ' + round1(lo.score) + '（' + lo.date + '），最高 ' + round1(hi.score) + '（' + hi.date + '）。');
+    return parts.join('');
   }
 
   // 健康分日历热力：按天着色(>=85绿/>=60黄/其余红), GitHub风格

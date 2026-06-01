@@ -40,7 +40,71 @@
         { icon: 'grid', label: '码表', value: dicts.length },
         { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核' }
       ]));
+      box.appendChild(buildStdMaturity(els, roots, dicts, runs).el);
     });
+  }
+
+  // 创新功能"数据标准落地概览": 基于已加载数据前端聚合, 展示标准体系成熟度(不调新 API)
+  function buildStdMaturity(els, roots, dicts, runs) {
+    var card = DN.card({ title: '数据标准落地概览', icon: 'check' });
+    // —— 1) 数据元覆盖度: 已标敏感类型/已定密级 的占比, 反映元数据填充完整度 ——
+    var elTotal = els.length;
+    var sensCnt = els.filter(function (e) { return e.sensitiveType; }).length;
+    var secCnt = els.filter(function (e) { return e.securityLevel; }).length;
+    var sensRate = Math.round(sensCnt / (elTotal || 1) * 100);
+    var secRate = Math.round(secCnt / (elTotal || 1) * 100);
+    // —— 2) 词根复用度: 唯一缩写覆盖率, 衡量命名规范沉淀程度 ——
+    var rootTotal = roots.length;
+    var abbrSet = {};
+    roots.forEach(function (r) { var a = (r.abbr || r.wordEn || '').toLowerCase(); if (a) abbrSet[a] = 1; });
+    var uniqAbbr = Object.keys(abbrSet).length;
+    var reuseRate = Math.round(uniqAbbr / (rootTotal || 1) * 100);
+    // —— 3) 落标率: 最新一次 + 趋势(多次稽核) ——
+    var ratePts = runs.filter(function (r) { return r.passRate != null; })
+      .slice().sort(function (a, b) { return (a.id || 0) - (b.id || 0); })
+      .map(function (r) { return Number(r.passRate) || 0; });
+    var latestRate = ratePts.length ? ratePts[ratePts.length - 1] : null;
+
+    card.body.appendChild(DN.statRow([
+      { icon: 'list', label: '数据元敏感标注', value: sensRate + '%', tone: sensRate >= 50 ? 'ok' : 'warn', sub: sensCnt + '/' + elTotal + ' 已标' },
+      { icon: 'shield', label: '数据元定密率', value: secRate + '%', tone: secRate >= 60 ? 'ok' : 'warn', sub: secCnt + '/' + elTotal + ' 已定密' },
+      { icon: 'tag', label: '词根唯一复用度', value: reuseRate + '%', tone: reuseRate >= 80 ? 'ok' : 'info', sub: uniqAbbr + ' 个唯一缩写' },
+      { icon: 'grid', label: '码表沉淀', value: dicts.length, tone: dicts.length > 0 ? 'ok' : 'muted', sub: '套标准码表' }
+    ]));
+
+    // 标准体系成熟度构成(各维度归一到 0~100 用 DN.bars)
+    card.body.appendChild(DN.sectionTitle('标准体系成熟度构成'));
+    card.body.appendChild(DN.bars([
+      { label: '数据元敏感标注', value: sensRate, tone: sensRate >= 50 ? 'ok' : 'warn', display: sensRate + '%' },
+      { label: '数据元定密率', value: secRate, tone: secRate >= 60 ? 'ok' : 'warn', display: secRate + '%' },
+      { label: '词根唯一复用度', value: reuseRate, tone: reuseRate >= 80 ? 'ok' : 'info', display: reuseRate + '%' },
+      { label: '最新落标率', value: latestRate == null ? 0 : Math.round(latestRate), tone: latestRate == null ? 'muted' : (latestRate >= 80 ? 'ok' : latestRate >= 60 ? 'warn' : 'err'), display: fmtRate(latestRate) }
+    ]));
+
+    // 落标率趋势曲线(>=2 次稽核才有意义)
+    if (ratePts.length >= 2) {
+      card.body.appendChild(DN.sectionTitle('近期落标率趋势'));
+      var avg = ratePts.reduce(function (x, y) { return x + y; }, 0) / (ratePts.length || 1);
+      card.body.appendChild(DN.line(ratePts, { height: 60, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+    }
+
+    // —— 标准建设简评 ——
+    var notes = [];
+    if (elTotal === 0) notes.push('尚未录入数据元，建议先沉淀核心字段标准');
+    else if (sensRate < 50) notes.push('敏感字段标注偏低，建议补全敏感类型以支撑分级保护');
+    if (elTotal > 0 && secRate < 60) notes.push('数据元定密覆盖不足，建议完善密级以满足合规要求');
+    if (rootTotal === 0) notes.push('暂无命名词根，建议建立词根库统一英文命名');
+    else if (reuseRate >= 80) notes.push('命名词根复用规范，沉淀良好');
+    if (dicts.length === 0) notes.push('暂无标准码表，建议沉淀公共枚举值');
+    if (latestRate == null) notes.push('尚未执行落标稽核，建议运行稽核检验标准落地情况');
+    else if (latestRate >= 80) notes.push('最新落标率达标，标准落地情况良好');
+    else notes.push('落标率有待提升，可结合违规 Top 库表针对性整改');
+    if (!notes.length) notes.push('各项标准建设指标健康');
+    card.body.appendChild(DN.sectionTitle('标准建设简评'));
+    var ul = DN.h('ul', { class: 'gov-desc', style: 'margin:0;padding-left:18px;line-height:1.9' });
+    notes.forEach(function (t) { ul.appendChild(DN.h('li', { text: t })); });
+    card.body.appendChild(ul);
+    return card;
   }
 
   window.GOV_RENDERERS.standard = function (c) {

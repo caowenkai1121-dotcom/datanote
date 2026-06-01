@@ -129,6 +129,45 @@
     }));
     row.appendChild(tblBox);
     top.appendChild(row);
+    // 创新功能：短板维度改进优先级（复用维度分，前端升序排优先级）
+    top.appendChild(buildWeakPriority(dims));
+  }
+
+  // 各维度改进方向提示（按已加载维度数据，不调新 API）
+  var DIM_TIPS = {
+    '规范': '完善命名/标准落地，提升标准覆盖率',
+    '质量': '补充质量规则与稽核，处置异常坏行',
+    '安全': '梳理敏感分级与脱敏授权，收敛越权访问',
+    '生命周期': '建立归档/冷热分层与留存策略',
+    '血缘': '补全采集链路，提升血缘完整度'
+  };
+
+  /** 短板维度改进优先级：得分越低优先级越高，DN.bars 升序低分 warn/err 色 */
+  function buildWeakPriority(dims) {
+    var card = DN.card({ title: '短板维度改进优先级', icon: 'alert' });
+    card.body.style.marginTop = '14px';
+    var arr = DIMS.map(function (d) {
+      var dd = dims[d] || {};
+      return { dim: d, v: Number(dd.score) || 0, has: dd.score != null };
+    }).filter(function (x) { return x.has; });
+    if (!arr.length) {
+      card.body.appendChild(DN.empty('暂无维度健康分数据', 'alert'));
+      return card.el;
+    }
+    arr.sort(function (a, b) { return a.v - b.v; }); // 分越低越靠前 = 优先级越高
+    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px',
+      text: '按维度健康分升序排定改进优先级，得分越低越应优先治理。' }));
+    card.body.appendChild(DN.bars(arr.map(function (x, i) {
+      var tone = scoreTone(x.v); // <60 err / <85 warn / 否则 ok
+      var tip = DIM_TIPS[x.dim] || '针对性补齐该维度治理短板';
+      return {
+        label: 'P' + (i + 1) + ' · ' + x.dim,
+        value: x.v,
+        tone: tone,
+        display: (Math.round(x.v * 10) / 10) + ' 分 · ' + tip
+      };
+    })));
+    return card.el;
   }
 
   function refreshScore() {

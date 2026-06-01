@@ -95,6 +95,66 @@
       card.body.appendChild(DN.bars(keys.map(function (k) { return { label: k, value: byLayer[k], tone: 'info', display: String(byLayer[k]) }; })));
       box.appendChild(card.el);
     }
+    renderSubjectHealth(data, byId, depthOf, byLayer);
+  }
+
+  // 创新功能：主题域结构健康（复用树数据前端计算，不调新 API）
+  // 指标：空置主题域(叶子,可能未挂数据) / 层级是否过深(>4层) / 各分层分布是否均衡，并给出优化提示
+  function renderSubjectHealth(data, byId, depthOf, byLayer) {
+    var box = document.getElementById('subjectOverview'); if (!box) return;
+    if (!data.length) return;
+    // 叶子（空置）主题域：无任何子主题，可能尚未挂载数据
+    var childIds = {}; data.forEach(function (s) { if (s.parentId != null) childIds[s.parentId] = 1; });
+    var leaves = data.filter(function (s) { return !childIds[s.id]; });
+    var leafN = leaves.length;
+    var leafRate = Math.round(leafN / (data.length || 1) * 100);
+    // 层级过深（>4 层）的主题域数量
+    var maxDepth = data.reduce(function (m, s) { return Math.max(m, depthOf(s)); }, 1);
+    var deepN = data.filter(function (s) { return depthOf(s) > 4; }).length;
+    // 分层分布均衡度：变异系数越小越均衡，转为 0-100 的均衡分（仅统计已分层项）
+    var layerKeys = Object.keys(byLayer);
+    var counts = layerKeys.map(function (k) { return byLayer[k]; });
+    var sum = counts.reduce(function (a, b) { return a + b; }, 0);
+    var mean = sum / (counts.length || 1);
+    var variance = counts.reduce(function (a, v) { return a + Math.pow(v - mean, 2); }, 0) / (counts.length || 1);
+    var cv = mean > 0 ? Math.sqrt(variance) / mean : 0; // 变异系数
+    var balanceScore = Math.max(0, Math.min(100, Math.round((1 - cv) * 100)));
+
+    var card = DN.card({ title: '主题域结构健康', icon: 'shield' });
+    card.body.appendChild(DN.statRow([
+      { icon: 'doc', label: '空置主题域', value: leafN, tone: leafN ? 'warning' : 'success', sub: '叶子节点(可能未挂数据) 占比 ' + leafRate + '%' },
+      { icon: 'chart', label: '最大层级', value: maxDepth + ' 层', tone: maxDepth > 4 ? 'error' : 'success', sub: maxDepth > 4 ? '超过 4 层建议下沉拆分' : '层级合理' },
+      { icon: 'layers', label: '过深主题', value: deepN, tone: deepN ? 'error' : 'success', sub: '层级 > 4 的主题数' },
+      { icon: 'grid', label: '分层均衡分', value: balanceScore, tone: balanceScore >= 70 ? 'success' : (balanceScore >= 40 ? 'warning' : 'error'), sub: '越高分层越均衡' }
+    ]));
+
+    // 各分层分布（均衡度可视化）
+    if (layerKeys.length) {
+      var maxCnt = Math.max.apply(null, counts) || 1;
+      card.body.appendChild(DN.bars(layerKeys.map(function (k) {
+        var v = byLayer[k];
+        var tone = (v >= mean * 1.6) ? 'warning' : (v <= mean * 0.4 ? 'info' : 'success');
+        return { label: k, value: Math.round(v / maxCnt * 100), tone: tone, display: String(v) };
+      })));
+    }
+
+    // 结构优化提示
+    var tips = [];
+    if (deepN > 0) tips.push('有 ' + deepN + ' 个主题层级超过 4 层，层级过深会增加治理与检索成本，建议拆分或下沉重组。');
+    if (leafRate >= 60) tips.push('叶子主题占比 ' + leafRate + '%，存在较多末级主题域，请确认是否均已挂载数据资产，避免空置。');
+    if (balanceScore < 40 && layerKeys.length > 1) tips.push('各分层主题数量差异较大（均衡分 ' + balanceScore + '），建议补全偏少分层（如 DWS/ADS）的主题规划。');
+    if (!tips.length) tips.push('主题域结构总体健康：层级适中、分层较均衡，继续保持。');
+    var tipBox = DN.h('div', { style: 'margin-top:12px;display:flex;flex-direction:column;gap:8px' });
+    tips.forEach(function (t) {
+      tipBox.appendChild(DN.h('div', {
+        style: 'display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text-regular,#4e5969);line-height:1.5'
+      }, [
+        DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary,#1890ff);margin-top:2px;flex:none' }),
+        DN.h('span', { text: t, style: 'flex:1' })
+      ]));
+    });
+    card.body.appendChild(tipBox);
+    box.appendChild(card.el);
   }
 
   function fillParentOptions(sel, data) {
