@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r49">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r50">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r49"></script>
-<script src="js/gov-assets.js?v=q100r49"></script>
-<script src="js/gov-lineage.js?v=q100r49"></script>
-<script src="js/gov-quality.js?v=q100r49"></script>
-<script src="js/gov-standard.js?v=q100r49"></script>
-<script src="js/gov-classification.js?v=q100r49"></script>
-<script src="js/gov-security.js?v=q100r49"></script>
-<script src="js/gov-health.js?v=q100r49"></script>
-<script src="js/gov-audit.js?v=q100r49"></script>
-<script src="js/gov-overview.js?v=q100r49"></script>
-<script src="js/gov-subject.js?v=q100r49"></script>
+<script src="js/dn-common.js?v=q100r50"></script>
+<script src="js/gov-assets.js?v=q100r50"></script>
+<script src="js/gov-lineage.js?v=q100r50"></script>
+<script src="js/gov-quality.js?v=q100r50"></script>
+<script src="js/gov-standard.js?v=q100r50"></script>
+<script src="js/gov-classification.js?v=q100r50"></script>
+<script src="js/gov-security.js?v=q100r50"></script>
+<script src="js/gov-health.js?v=q100r50"></script>
+<script src="js/gov-audit.js?v=q100r50"></script>
+<script src="js/gov-overview.js?v=q100r50"></script>
+<script src="js/gov-subject.js?v=q100r50"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14049,6 +14049,30 @@ window.projLoadTasks = function() {
       + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
       + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
     if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
+    // 项目风险提示(创新): 基于全部任务+里程碑前端计算逾期/高优未完成/临近截止/滞后里程碑
+    if (tasksAll.length) {
+      var _d3 = (function() { var d = new Date(_today + 'T00:00:00'); d.setDate(d.getDate() + 3); var p = function(n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); })();
+      var rOver = tasksAll.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _today; }).length;
+      var rHigh = tasksAll.filter(function(t) { return t.priority === 'HIGH' && t.status !== 'DONE'; }).length;
+      var rNear = tasksAll.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate >= _today && t.dueDate <= _d3; }).length;
+      var rBehind = (_projMilestones || []).filter(function(m) {
+        if (!(m.endDate && m.endDate < _today)) return false;
+        var mt = tasksAll.filter(function(t) { return t.milestoneId === m.id; });
+        return mt.length > 0 && mt.filter(function(t) { return t.status === 'DONE'; }).length < mt.length;
+      }).length;
+      var rLvl = (rOver >= 3 || rHigh >= 5 || rBehind >= 2) ? 2 : (rOver >= 1 || rHigh >= 2 || rBehind >= 1 || rNear >= 3) ? 1 : (rNear > 0 ? 0 : -1);
+      if (rLvl >= 0) {
+        var rc = ['#1677ff', '#ad6800', '#cf1322'][rLvl], rtx = ['提示', '警告', '严重'][rLvl];
+        var rparts = [];
+        if (rOver) rparts.push('逾期 ' + rOver);
+        if (rHigh) rparts.push('高优先级未完成 ' + rHigh);
+        if (rNear) rparts.push('3天内截止 ' + rNear);
+        if (rBehind) rparts.push('滞后里程碑 ' + rBehind);
+        h += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 14px;margin-bottom:10px;border:1px solid var(--border);border-left:3px solid ' + rc + ';border-radius:8px;background:var(--bg-card,#fff);font-size:12px;">'
+          + '<b style="color:' + rc + ';">项目风险 · ' + rtx + '</b>'
+          + '<span style="color:var(--text-muted);">' + escapeHtml(rparts.join(' · ')) + '</span></div>';
+      }
+    }
     if (!tasks.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">' + (tasksAll.length ? '无匹配筛选条件的任务，<a href="#" onclick="_projTaskFilter={assignee:\'\',overdue:false,priority:\'\'};projLoadTasks();return false;" style="color:var(--primary);">清除筛选</a>' : '暂无任务') + '</div>';
     else if (_projTaskView === 'kanban') {
       h += projKanbanHtml(tasks, msName, _today);
@@ -17603,6 +17627,19 @@ function dbsyncRenderJobs(list) {
     + kpi('失败', cnt('FAILED'), '#ff4d4f', 'FAILED')
     + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#1890ff)')
     + '</div>';
+  // 同步任务风险概览(创新): 基于已加载 base 前端计算失败率与风险态, 精简单行风险条
+  (function() {
+    var failedN = cnt('FAILED'), stoppedN = cnt('STOPPED'), pausedN = cnt('PAUSED');
+    var rate = base.length ? Math.round(failedN * 1000 / base.length) / 10 : 0; // 失败率,除零守卫
+    var hc = rate > 20 ? '#cf1322' : rate > 10 ? '#ad6800' : '#389e0d';
+    var hs = rate > 20 ? '高风险' : rate > 10 ? '中风险' : '正常';
+    var seg = function(n, c, lbl) { return '<span style="margin-left:10px;"><b style="color:' + c + ';">' + n + '</b> <span style="color:var(--text-muted);">' + lbl + '</span></span>'; };
+    kpiHtml += '<div style="display:flex;align-items:center;flex-wrap:wrap;padding:8px 14px;margin-bottom:14px;border:1px solid var(--border,#eceef1);border-left:3px solid ' + hc + ';border-radius:8px;background:var(--bg-card,#fff);font-size:12px;">'
+      + '<b style="color:' + hc + ';">同步健康 · ' + hs + '</b>'
+      + '<span style="margin-left:10px;color:var(--text-muted);">失败率 ' + rate + '%</span>'
+      + seg(failedN, '#cf1322', '失败') + seg(stoppedN, '#ad6800', '停止') + seg(pausedN, '#722ed1', '暂停')
+      + '</div>';
+  })();
   // 批量操作条(选中>0时显示)
   var selIds = Object.keys(_dbsyncSelected).filter(function(id) { return _dbsyncSelected[id]; });
   var bulkHtml = '';
