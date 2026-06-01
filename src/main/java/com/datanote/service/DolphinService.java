@@ -114,18 +114,20 @@ public class DolphinService {
 
     private JSONObject readResponse(HttpURLConnection conn) throws Exception {
         int code = conn.getResponseCode();
-        InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
-        if (is == null) {
-            throw new RuntimeException("DS API 返回空响应, HTTP " + code);
-        }
-        BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
         StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) {
-            sb.append(line);
+        try (InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream()) {
+            if (is == null) {
+                throw new RuntimeException("DS API 返回空响应, HTTP " + code);
+            }
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+        } finally {
+            conn.disconnect(); // 确保任何路径都释放连接
         }
-        br.close();
-        conn.disconnect();
 
         String body = sb.toString();
         log.debug("DS API 响应: {}", body);

@@ -152,8 +152,7 @@ public final class StreamLoadWriter {
     }
 
     private static String readBody(HttpURLConnection conn, int code) {
-        try {
-            java.io.InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+        try (java.io.InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream()) {
             if (is == null) return "";
             java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
             byte[] buf = new byte[4096];

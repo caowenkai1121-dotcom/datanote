@@ -40,6 +40,9 @@ public class MetadataController {
     @Operation(summary = "获取Hive表列表")
     @GetMapping("/tables")
     public R<List<String>> tables(@RequestParam String db) {
+        if (db == null || !db.matches(NAME_PATTERN)) {
+            return R.fail("非法的库名");
+        }
         try {
             return R.ok(dataMapService.getHiveTables(db));
         } catch (Exception e) {
@@ -51,6 +54,9 @@ public class MetadataController {
     @Operation(summary = "获取Hive字段列表")
     @GetMapping("/columns")
     public R<List<ColumnInfo>> columns(@RequestParam String db, @RequestParam String table) {
+        if (db == null || !db.matches(NAME_PATTERN) || table == null || !table.matches(NAME_PATTERN)) {
+            return R.fail("非法的库名或表名");
+        }
         try {
             return R.ok(dataMapService.getHiveColumns(db, table));
         } catch (Exception e) {

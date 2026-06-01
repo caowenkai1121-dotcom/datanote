@@ -65,6 +65,9 @@ public class DataMapService {
      * 获取 Hive 指定库的表列表
      */
     public List<String> getHiveTables(String db) throws SQLException {
+        if (db == null || !db.matches("[a-zA-Z0-9_]+")) { // 底层防注入:库名拼入SHOW TABLES IN
+            throw new IllegalArgumentException("非法的库名");
+        }
         List<String> tables = new ArrayList<String>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
@@ -80,6 +83,9 @@ public class DataMapService {
      * 获取 Doris 指定表的字段信息。
      */
     public List<ColumnInfo> getHiveColumns(String db, String table) throws SQLException {
+        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
+            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入:拼入DESCRIBE/information_schema
+        }
         try {
             return getDorisColumns(db, table);
         } catch (SQLException e) {
