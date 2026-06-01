@@ -38,6 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public R<?> handleUnexpected(Exception e) {
         log.error("系统异常", e);
-        return R.fail("系统异常: " + e.getMessage());
+        // 未预期异常(NPE/SQLException等)不回显原始message,避免泄露SQL/路径/内部结构;完整堆栈已记日志供排查
+        return R.fail("系统异常，请稍后重试或联系管理员");
     }
 }

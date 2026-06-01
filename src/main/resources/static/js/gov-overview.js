@@ -237,7 +237,7 @@
       var v = round1(Number(dims[k]) || 0), w = weights[k];
       return '<tr><td>' + k + '</td><td>' + v + '</td><td>' + (w != null ? w : '-') + '</td><td>' + level(v) + '</td></tr>';
     }).join('');
-    var sensRows = Object.keys(sensitive.byLevel || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + (sensitive.byLevel[k]) + '</td></tr>'; }).join('') || '<tr><td colspan="2" style="color:#999">无敏感分布数据</td></tr>';
+    var sensRows = Object.keys(sensitive.byLevel || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + (Number(sensitive.byLevel[k]) || 0) + '</td></tr>'; }).join('') || '<tr><td colspan="2" style="color:#999">无敏感分布数据</td></tr>';
     var rate = round1(Number(quality.recentPassRate) || 0);
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
     var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>数据治理体检报告 ' + ts + '</title>'
