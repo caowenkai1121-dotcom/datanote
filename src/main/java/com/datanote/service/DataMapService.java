@@ -346,6 +346,9 @@ public class DataMapService {
     // ========== 数据预览 ==========
 
     public Map<String, Object> preview(String db, String table) throws SQLException {
+        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
+            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
+        }
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT * FROM " + db + "." + table + " LIMIT 20")) {
@@ -434,6 +437,9 @@ public class DataMapService {
     // ========== DDL / SQL 生成 ==========
 
     public Map<String, String> generateDdlAndSelect(String db, String table) throws SQLException {
+        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
+            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
+        }
         Map<String, String> result = new HashMap<String, String>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
@@ -582,6 +588,9 @@ public class DataMapService {
      * Doris 非分区表执行 SHOW PARTITIONS 会报错，此处捕获并返回空列表。
      */
     public List<Map<String, Object>> getPartitions(String db, String table) throws SQLException {
+        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
+            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
+        }
         List<Map<String, Object>> partitions = new ArrayList<Map<String, Object>>();
         String sql = "SHOW PARTITIONS FROM `" + db + "`.`" + table + "`";
         try (Connection conn = hiveConfig.getConnection();

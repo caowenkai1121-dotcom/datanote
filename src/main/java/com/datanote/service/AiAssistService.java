@@ -51,7 +51,7 @@ public class AiAssistService {
     public void reloadConfig() {
         String dbKey = getDbConfig("ai.api-key");
         if (dbKey != null && !dbKey.isEmpty()) {
-            String decrypted = CryptoUtil.decrypt(dbKey, cryptoKey);
+            String decrypted = CryptoUtil.decryptSafe(dbKey, cryptoKey); // Safe:解密失败回退原值,避免@PostConstruct抛异常致启动崩溃
             this.apiKey = decrypted != null ? decrypted : dbKey;
         } else {
             this.apiKey = envApiKey;

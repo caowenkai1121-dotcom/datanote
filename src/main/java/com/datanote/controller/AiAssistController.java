@@ -181,7 +181,7 @@ public class AiAssistController {
         if (cfg == null || cfg.getConfigValue() == null) return defaultValue;
         // API Key 需要解密
         if (key.equals("ai.api-key")) {
-            String decrypted = CryptoUtil.decrypt(cfg.getConfigValue(), cryptoKey);
+            String decrypted = CryptoUtil.decryptSafe(cfg.getConfigValue(), cryptoKey); // Safe:解密失败回退原值,避免抛异常
             return decrypted != null ? decrypted : cfg.getConfigValue();
         }
         return cfg.getConfigValue();
