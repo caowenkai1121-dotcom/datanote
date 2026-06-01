@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r45">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r46">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r45"></script>
-<script src="js/gov-assets.js?v=q100r45"></script>
-<script src="js/gov-lineage.js?v=q100r45"></script>
-<script src="js/gov-quality.js?v=q100r45"></script>
-<script src="js/gov-standard.js?v=q100r45"></script>
-<script src="js/gov-classification.js?v=q100r45"></script>
-<script src="js/gov-security.js?v=q100r45"></script>
-<script src="js/gov-health.js?v=q100r45"></script>
-<script src="js/gov-audit.js?v=q100r45"></script>
-<script src="js/gov-overview.js?v=q100r45"></script>
-<script src="js/gov-subject.js?v=q100r45"></script>
+<script src="js/dn-common.js?v=q100r46"></script>
+<script src="js/gov-assets.js?v=q100r46"></script>
+<script src="js/gov-lineage.js?v=q100r46"></script>
+<script src="js/gov-quality.js?v=q100r46"></script>
+<script src="js/gov-standard.js?v=q100r46"></script>
+<script src="js/gov-classification.js?v=q100r46"></script>
+<script src="js/gov-security.js?v=q100r46"></script>
+<script src="js/gov-health.js?v=q100r46"></script>
+<script src="js/gov-audit.js?v=q100r46"></script>
+<script src="js/gov-overview.js?v=q100r46"></script>
+<script src="js/gov-subject.js?v=q100r46"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13164,15 +13164,17 @@ window.projSetTagsModal = function(pid) {
   if (!_projTags.length) { showToast('请先在「标签管理」新建标签', 'info'); return; }
   var cur = _projTagMap[pid] || [];
   var h = _projTags.map(function(t) { var on = cur.indexOf(t.id) >= 0; return '<label style="display:block;padding:3px 0;cursor:pointer;"><input type="checkbox" class="ptSetChk" value="' + t.id + '"' + (on ? ' checked' : '') + '> <span style="color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span></label>'; }).join('');
-  h += '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTags(' + pid + ')">保存</button></div>';
+  h += '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTags(' + pid + ', this)">保存</button></div>';
   projShowModalBox('设置项目标签', h);
 };
-window.projSaveTags = function(pid) {
+window.projSaveTags = function(pid, btn) {
   var ids = []; document.querySelectorAll('.ptSetChk:checked').forEach(function(c) { ids.push(parseInt(c.value)); });
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
   apiPost('/api/project/' + pid + '/tags', { tagIds: ids }).then(function(res) {
     if (res && res.code === 0) { _projTagMap[pid] = ids; showToast('已保存', 'success'); projCloseModalBox(); projApplyFilter(); }
-    else showToast((res && res.msg) || '保存失败', 'error');
-  }).catch(function() { showToast('保存失败', 'error'); });
+    else { showToast((res && res.msg) || '保存失败', 'error'); _r(); }
+  }).catch(function() { showToast('保存失败', 'error'); _r(); });
 };
 function projShowModalBox(title, inner) {
   var old = document.getElementById('projModalBox'); if (old) old.remove();
@@ -13456,7 +13458,7 @@ window.projLoadInvites = function() {
       + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">'
       + '<input id="projInvUser" class="dbsync-form-input" style="width:140px;" placeholder="被邀请人(可空,凭码加入)">'
       + '<select id="projInvRole" class="dbsync-form-select" style="width:110px;">' + projRoleOptions('DEVELOPER') + '</select>'
-      + '<button class="btn btn-sm btn-primary" onclick="projCreateInvite()">创建邀请</button></div>';
+      + '<button class="btn btn-sm btn-primary" onclick="projCreateInvite(this)">创建邀请</button></div>';
     var IST = { PENDING: '待接受', ACCEPTED: '已加入', REJECTED: '已拒绝', CANCELED: '已取消' };
     if (!inv.length) h += '<div style="font-size:12px;color:var(--text-muted);">暂无邀请</div>';
     else {
@@ -13473,11 +13475,14 @@ window.projLoadInvites = function() {
   }).catch(function() { box.innerHTML = '<div style="font-size:12px;color:var(--error);">成员邀请加载失败</div>'; });
 };
 function projRoleLabel(r) { return ({ OWNER: '负责人', ADMIN: '管理员', DEVELOPER: '开发', OPS: '运维', VIEWER: '访客' })[r] || r; }
-window.projCreateInvite = function() {
+window.projCreateInvite = function(btn) {
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '创建中...'; }
   apiPost('/api/project/' + _projDetail.id + '/invites', { role: document.getElementById('projInvRole').value, invitee: (document.getElementById('projInvUser').value || '').trim() }).then(function(res) {
     if (res && res.code === 0) { showToast('邀请已创建', 'success'); projLoadInvites(); }
     else showToast((res && res.msg) || '创建失败', 'error');
-  }).catch(function() { showToast('创建失败', 'error'); });
+    _r();
+  }).catch(function() { showToast('创建失败', 'error'); _r(); });
 };
 window.projAcceptInvite = function(token) {
   apiPost('/api/project/invites/accept', { token: token }).then(function(res) {
@@ -13583,19 +13588,22 @@ window.projLoadQuota = function() {
       + '<label style="font-size:12px;">默认超时(秒,0不限) <input id="pqTimeout" type="number" min="0" placeholder="例如 300" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.timeoutDefault != null ? q.timeoutDefault : 0) + '"></label>'
       + '<label style="font-size:12px;">默认重试次 <input id="pqRetry" type="number" min="0" placeholder="例如 3" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.retryDefault != null ? q.retryDefault : 0) + '"></label>'
       + '<label style="font-size:12px;">存储配额GB(0不限) <input id="pqStorage" type="number" min="0" placeholder="例如 100" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.storageQuotaGb != null ? q.storageQuotaGb : 0) + '"></label>'
-      + '</div><div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="projSaveQuota()">保存配额</button></div>';
+      + '</div><div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="projSaveQuota(this)">保存配额</button></div>';
   }).catch(function() { card.innerHTML = '<div style="color:var(--error);">配额加载失败</div>'; });
 };
-window.projSaveQuota = function() {
+window.projSaveQuota = function(btn) {
   var body = {
     concurrentLimit: parseInt(document.getElementById('pqConcurrent').value, 10) || 0,
     timeoutDefault: parseInt(document.getElementById('pqTimeout').value, 10) || 0,
     retryDefault: parseInt(document.getElementById('pqRetry').value, 10) || 0,
     storageQuotaGb: parseInt(document.getElementById('pqStorage').value, 10) || 0
   };
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
   apiPost('/api/project/' + _projDetail.id + '/quota', body).then(function(res) {
     if (res && res.code === 0) { showToast('配额已保存', 'success'); if (window.projLoadQuota) projLoadQuota(); } else showToast((res && res.msg) || '保存失败', 'error');
-  }).catch(function() { showToast('保存失败', 'error'); });
+    _r();
+  }).catch(function() { showToast('保存失败', 'error'); _r(); });
 };
 window.projLoadEnvParams = function() {
   var card = document.getElementById('projEnvParamCard'); if (!card || !_projDetail) return;
