@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r44">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r45">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r44"></script>
-<script src="js/gov-assets.js?v=q100r44"></script>
-<script src="js/gov-lineage.js?v=q100r44"></script>
-<script src="js/gov-quality.js?v=q100r44"></script>
-<script src="js/gov-standard.js?v=q100r44"></script>
-<script src="js/gov-classification.js?v=q100r44"></script>
-<script src="js/gov-security.js?v=q100r44"></script>
-<script src="js/gov-health.js?v=q100r44"></script>
-<script src="js/gov-audit.js?v=q100r44"></script>
-<script src="js/gov-overview.js?v=q100r44"></script>
-<script src="js/gov-subject.js?v=q100r44"></script>
+<script src="js/dn-common.js?v=q100r45"></script>
+<script src="js/gov-assets.js?v=q100r45"></script>
+<script src="js/gov-lineage.js?v=q100r45"></script>
+<script src="js/gov-quality.js?v=q100r45"></script>
+<script src="js/gov-standard.js?v=q100r45"></script>
+<script src="js/gov-classification.js?v=q100r45"></script>
+<script src="js/gov-security.js?v=q100r45"></script>
+<script src="js/gov-health.js?v=q100r45"></script>
+<script src="js/gov-audit.js?v=q100r45"></script>
+<script src="js/gov-overview.js?v=q100r45"></script>
+<script src="js/gov-subject.js?v=q100r45"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4231,7 +4231,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
         </div>
         <div class="g-modal-footer">
           <button class="btn" onclick="projCloseModal()">取消</button>
-          <button class="btn btn-primary" onclick="projSave()">保存</button>
+          <button class="btn btn-primary" onclick="projSave(this)">保存</button>
         </div>
       </div>
     </div>
@@ -13249,7 +13249,7 @@ window.projOpenEdit = function(id) {
   document.getElementById('projModal').classList.add('show');
 };
 window.projCloseModal = function() { document.getElementById('projModal').classList.remove('show'); };
-window.projSave = function() {
+window.projSave = function(btn) {
   var name = (document.getElementById('projName').value || '').trim();
   if (!name) { showToast('请填写项目名称', 'error'); return; }
   var id = document.getElementById('projId').value;
@@ -13264,10 +13264,12 @@ window.projSave = function() {
     description: (document.getElementById('projDesc').value || '').trim()
   };
   if (id) body.id = parseInt(id);
+  var _t; if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
+  var _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
   apiPost('/api/project/save', body).then(function(res) {
     if (res && res.code === 0) { showToast('已保存', 'success'); projCloseModal(); loadProjectSpace(); }
-    else showToast((res && res.msg) || '保存失败', 'error');
-  }).catch(function() { showToast('保存失败', 'error'); });
+    else { showToast((res && res.msg) || '保存失败', 'error'); _r(); }
+  }).catch(function() { showToast('保存失败', 'error'); _r(); });
 };
 window.projArchive = function(id) {
   msgConfirm('归档项目', '确认归档该项目？归档后成员只读，可在状态筛选查看。', '确定归档').then(function(ok) {
@@ -13869,16 +13871,18 @@ window.projAnnounceModal = function() {
   var h = '<div class="ds-form-row"><label>标题</label><input id="paTitle"></div>'
     + '<div class="ds-form-row"><label>优先级</label><select id="paPriority" class="g-modal-input"><option value="NORMAL">普通</option><option value="HIGH">重要</option></select></div>'
     + '<div class="ds-form-row" style="align-items:flex-start;"><label>内容</label><textarea id="paContent" style="flex:1;min-height:70px;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;"></textarea></div>'
-    + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveAnnounce()">发布</button></div>';
+    + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveAnnounce(this)">发布</button></div>';
   projShowModalBox('发布公告', h);
 };
-window.projSaveAnnounce = function() {
+window.projSaveAnnounce = function(btn) {
   var title = (document.getElementById('paTitle').value || '').trim();
   if (!title) { showToast('请填写标题', 'error'); return; }
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
   apiPost('/api/project/' + _projDetail.id + '/announcements', { title: title, priority: document.getElementById('paPriority').value, content: document.getElementById('paContent').value || '' }).then(function(res) {
     if (res && res.code === 0) { showToast('已发布', 'success'); projCloseModalBox(); projLoadAnnounceCard(); }
-    else showToast((res && res.msg) || '发布失败', 'error');
-  }).catch(function() { showToast('发布失败', 'error'); });
+    else { showToast((res && res.msg) || '发布失败', 'error'); _r(); }
+  }).catch(function() { showToast('发布失败', 'error'); _r(); });
 };
 window.projDeleteAnnounce = function(annId) {
   msgConfirm('删除公告', '删除该公告？', '确定删除').then(function(ok) {
@@ -14446,7 +14450,7 @@ window.projDeleteTask = function(taskId) {
   });
 };
 window.projMilestoneManage = function() {
-  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" onclick="projSaveMilestone()">添加</button></div><div id="pmsList"></div>';
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" onclick="projSaveMilestone(this)">添加</button></div><div id="pmsList"></div>';
   projShowModalBox('里程碑管理', h);
   projRenderMilestones();
 };
@@ -14455,13 +14459,16 @@ function projRenderMilestones() {
   if (!_projMilestones.length) { box.innerHTML = '<div style="padding:36px 24px;text-align:center;color:var(--text-muted);"><div style="font-size:30px;margin-bottom:8px;opacity:.7;">🎯</div><div style="font-size:13px;">暂无里程碑</div><div style="font-size:12px;opacity:.7;margin-top:4px;">创建里程碑可在甘特图中追踪阶段进度</div></div>'; return; }
   box.innerHTML = _projMilestones.map(function(m) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span><a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
 }
-window.projSaveMilestone = function() {
+window.projSaveMilestone = function(btn) {
   var name = (document.getElementById('pmsName').value || '').trim();
   if (!name) { showToast('请填写名称', 'error'); return; }
+  var _t; if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
+  var _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
   apiPost('/api/project/' + _projDetail.id + '/milestones', { name: name, startDate: document.getElementById('pmsStart').value || null, endDate: document.getElementById('pmsEnd').value || null }).then(function(res) {
     if (res && res.code === 0) { _projMilestones.push(res.data); document.getElementById('pmsName').value = ''; projRenderMilestones(); }
     else showToast((res && res.msg) || '添加失败', 'error');
-  }).catch(function() { showToast('添加失败', 'error'); });
+    _r();
+  }).catch(function() { showToast('添加失败', 'error'); _r(); });
 };
 window.projDelMilestone = function(mid) {
   msgConfirm('删除里程碑', '删除里程碑？(其下任务将解除关联)', '确定删除').then(function(ok) {
@@ -14601,18 +14608,21 @@ function projWikiEditForm(p) {
   c.innerHTML = '<input type="hidden" id="pwId" value="' + (p.id || '') + '">'
     + '<div style="display:flex;gap:8px;margin-bottom:8px;"><input id="pwTitle" class="dbsync-form-input" style="flex:1;" placeholder="标题" value="' + escapeHtml(p.title || '') + '"><select id="pwParent" class="dbsync-form-select" style="width:140px;">' + parentOpts + '</select></div>'
     + '<textarea id="pwContent" style="width:100%;min-height:240px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:13px;box-sizing:border-box;" placeholder="Markdown 内容">' + escapeHtml(p.content || '') + '</textarea>'
-    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="projWikiSave()">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
+    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="projWikiSave(this)">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
 }
-window.projWikiSave = function() {
+window.projWikiSave = function(btn) {
   var title = (document.getElementById('pwTitle').value || '').trim();
   if (!title) { showToast('请填写标题', 'error'); return; }
   var id = document.getElementById('pwId').value;
   var body = { title: title, content: document.getElementById('pwContent').value || '', parentId: parseInt(document.getElementById('pwParent').value) || 0 };
   if (id) body.id = parseInt(id);
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
   apiPost('/api/project/' + _projDetail.id + '/wiki/pages', body).then(function(res) {
     if (res && res.code === 0) { showToast('已保存', 'success'); _projWikiCur = res.data.id; projLoadWiki(); }
     else showToast((res && res.msg) || '保存失败', 'error');
-  }).catch(function() { showToast('保存失败', 'error'); });
+    _r();
+  }).catch(function() { showToast('保存失败', 'error'); _r(); });
 };
 window.projWikiDelete = function(pageId) {
   msgConfirm('删除文档', '删除该文档页面？(子页面将提升为根)', '确定删除').then(function(ok) {
