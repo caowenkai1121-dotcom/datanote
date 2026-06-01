@@ -87,7 +87,7 @@
 #govModuleContent .gov-empty .et { font-size:13px; }
 
 /* ---- 骨架屏 ---- */
-#govModuleContent .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.3s ease infinite; margin:10px 0; }
+#govModuleContent .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.6s ease infinite; margin:10px 0; }
 @keyframes govShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
 
 /* ---- 治理大屏全屏模式：放大留白, 适合投屏 ---- */

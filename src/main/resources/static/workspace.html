@@ -3303,30 +3303,31 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 10px 12px; min-height: 120px; max-height: 260px; overflow-y: auto;
   font-family: 'SF Mono','Consolas',monospace; font-size: 11px;
-  line-height: 1.7; color: var(--text-regular); white-space: pre-wrap; word-break: break-all;
+  line-height: 1.85; color: var(--text-regular); white-space: pre-wrap; word-break: break-all;
 }
 .dbsync-log-line { display: block; }
 .dbsync-log-line.INFO  { color: var(--text-regular); }
-.dbsync-log-line.WARN  { color: #faad14; }
-.dbsync-log-line.ERROR { color: #ff4d4f; }
-.dbsync-log-line.OK    { color: #52c41a; }
+/* 浅底日志面板上加深级别色至 WCAG AA 可读 */
+.dbsync-log-line.WARN  { color: #ad6800; }
+.dbsync-log-line.ERROR { color: #cf1322; }
+.dbsync-log-line.OK    { color: #389e0d; }
 </style>
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r32">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r33">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r32"></script>
-<script src="js/gov-assets.js?v=q100r32"></script>
-<script src="js/gov-lineage.js?v=q100r32"></script>
-<script src="js/gov-quality.js?v=q100r32"></script>
-<script src="js/gov-standard.js?v=q100r32"></script>
-<script src="js/gov-classification.js?v=q100r32"></script>
-<script src="js/gov-security.js?v=q100r32"></script>
-<script src="js/gov-health.js?v=q100r32"></script>
-<script src="js/gov-audit.js?v=q100r32"></script>
-<script src="js/gov-overview.js?v=q100r32"></script>
-<script src="js/gov-subject.js?v=q100r32"></script>
+<script src="js/dn-common.js?v=q100r33"></script>
+<script src="js/gov-assets.js?v=q100r33"></script>
+<script src="js/gov-lineage.js?v=q100r33"></script>
+<script src="js/gov-quality.js?v=q100r33"></script>
+<script src="js/gov-standard.js?v=q100r33"></script>
+<script src="js/gov-classification.js?v=q100r33"></script>
+<script src="js/gov-security.js?v=q100r33"></script>
+<script src="js/gov-health.js?v=q100r33"></script>
+<script src="js/gov-audit.js?v=q100r33"></script>
+<script src="js/gov-overview.js?v=q100r33"></script>
+<script src="js/gov-subject.js?v=q100r33"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
