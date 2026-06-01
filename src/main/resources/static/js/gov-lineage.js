@@ -127,19 +127,56 @@
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('检测失败: ' + (e && e.message ? e.message : e), 'alert')); });
   }
 
+  /** 下钻：把孤儿表填入下方“血缘图谱”选择器并触发画图，便于人工核验是否确实无血缘。
+      复用现有 grPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。 */
+  function drillOrphanToGraph(db, table) {
+    if (!grPicker || !grPicker.el) { DN.toast('请到下方“血缘图谱”手动查询', 'info'); return; }
+    var sels = grPicker.el.querySelectorAll('select');
+    var dbSel = sels[0], tbSel = sels[1];
+    if (!dbSel || !tbSel) { DN.toast('请到下方“血缘图谱”手动查询', 'info'); return; }
+    dbSel.value = db;
+    // 选库后需触发级联加载表列表，再等待目标表选项出现后选中并画图
+    dbSel.dispatchEvent(new Event('change'));
+    var tries = 0;
+    (function waitTable() {
+      var hit = Array.prototype.some.call(tbSel.options, function (o) { return o.value === table; });
+      if (hit) {
+        tbSel.value = table;
+        tbSel.dispatchEvent(new Event('change'));
+        var gr = document.getElementById('graphResult');
+        if (gr && gr.scrollIntoView) gr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        queryGraph();
+      } else if (tries++ < 40) {
+        setTimeout(waitTable, 100); // 表列表为异步加载，轮询至多约 4 秒
+      } else {
+        DN.toast('已为你选择「' + db + '」库，请在下方“血缘图谱”手动选表查询', 'info');
+        if (grPicker.el.scrollIntoView) grPicker.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    })();
+  }
+
   function renderOrphans(box, db, total, stats) {
     box.innerHTML = '';
     var orphans = stats.filter(function (s) { return s.up === 0 && s.down === 0; });
-    var connected = total - orphans.length;
-    var pct = Math.round(connected * 100 / (total || 1));
+    var scanned = stats.length;                 // 实际成功取到边数据的表(排除请求失败)
+    var connected = Math.max(0, scanned - orphans.length);
+    var pct = scanned > 0 ? Math.round(connected * 100 / scanned) : 0;
+    if (pct < 0) pct = 0; else if (pct > 100) pct = 100;   // 占比夹取至 0–100
+    var failed = total - scanned;               // 检测失败的表数(若有)
     box.appendChild(DN.statRow([
       { icon: 'db', label: '库内表数', value: total },
       { icon: 'alert', label: '孤儿表数', value: orphans.length, tone: orphans.length > 0 ? 'warn' : 'ok',
         sub: orphans.length > 0 ? '疑似废弃/未接入' : '全部已接入血缘' },
-      { icon: 'check', label: '血缘覆盖率', value: pct + '%', tone: pct >= 80 ? 'ok' : 'info' }
+      { icon: 'check', label: '血缘覆盖率', value: pct + '%',
+        sub: failed > 0 ? '(' + failed + ' 张检测失败已排除)' : '已接入 ' + connected + '/' + scanned,
+        tone: pct >= 80 ? 'ok' : (pct >= 50 ? 'info' : 'warn') }
     ]));
     if (!orphans.length) {
-      box.appendChild(DN.empty('未发现孤儿表，' + DN.esc(db) + ' 库内表血缘覆盖良好', 'check'));
+      var ok = DN.empty('未发现孤儿表，' + DN.esc(db) + ' 库内 ' + scanned + ' 张表血缘覆盖良好', 'check');
+      ok.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '换个库继续检测',
+        style: 'color:var(--primary);font-size:12px',
+        onclick: function () { var sel = document.getElementById('orphanDb'); if (sel) sel.focus(); } }));
+      box.appendChild(ok);
       return;
     }
     box.appendChild(DN.table({
@@ -148,7 +185,12 @@
           exportValue: function (s) { return db + '.' + s.table; } },
         { label: '上游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
         { label: '下游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
-        { label: '判定', align: 'center', render: function () { return DN.pill('孤儿表', 'err'); }, exportValue: function () { return '孤儿表'; } }
+        { label: '判定', align: 'center', render: function () { return DN.pill('孤儿表', 'err'); }, exportValue: function () { return '孤儿表'; } },
+        { label: '操作', align: 'center', render: function (s) {
+            return DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '查血缘',
+              title: '在下方“血缘图谱”核验 ' + db + '.' + s.table + ' 是否确无血缘',
+              onclick: function (e) { e.stopPropagation(); drillOrphanToGraph(db, s.table); } });
+          } }
       ],
       rows: orphans,
       searchKeys: ['table'],

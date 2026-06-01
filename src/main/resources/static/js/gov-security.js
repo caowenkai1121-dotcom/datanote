@@ -26,12 +26,14 @@
     // 用户
     var userCard = DN.card({ title: '用户', icon: 'user',
       actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建用户', onclick: function () { openUserForm(null); } }) });
+    userCard.el.id = 'secCardUser';
     userTbl = DN.h('div'); userTbl.appendChild(DN.skeleton(3));
     userCard.body.appendChild(userTbl);
     c.appendChild(userCard.el);
 
     // 角色
     var roleCard = DN.card({ title: '角色', icon: 'shield' });
+    roleCard.el.id = 'secCardRole';
     roleTbl = DN.h('div'); roleTbl.appendChild(DN.skeleton(3));
     roleCard.body.appendChild(roleTbl);
     c.appendChild(roleCard.el);
@@ -39,6 +41,7 @@
     // M9：脱敏策略
     var maskCard = DN.card({ title: '脱敏策略', icon: 'lock',
       actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建脱敏策略', onclick: function () { openMaskingForm(); } }) });
+    maskCard.el.id = 'secCardMask';
     maskTbl = DN.h('div'); maskTbl.appendChild(DN.skeleton(3));
     maskCard.body.appendChild(maskTbl);
     c.appendChild(maskCard.el);
@@ -46,6 +49,7 @@
     // M9：行级权限
     var rowCard = DN.card({ title: '行级权限', icon: 'layers',
       actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建行策略', onclick: function () { openRowPolicyForm(); } }) });
+    rowCard.el.id = 'secCardRow';
     rowTbl = DN.h('div'); rowTbl.appendChild(DN.skeleton(3));
     rowCard.body.appendChild(rowTbl);
     c.appendChild(rowCard.el);
@@ -89,15 +93,62 @@
       var orphanRoles = roles.filter(function (r) { return !usedRoleIds[r.id]; }).length;
       var disabledMask = masks.filter(function (m) { return !(m.enabled === 1 || m.enabled === true || m.status === 1); }).length;
       var disabledRow = rowp.filter(function (p) { return !(p.enabled === 1 || p.enabled === true); }).length;
+      var totalRisk = noRoleUsers + orphanRoles + disabledMask + disabledRow;
       var riskCard = DN.card({ title: '权限风险概览', icon: 'alert' });
       riskCard.body.appendChild(DN.statRow([
-        { icon: 'user', label: '无角色用户', value: noRoleUsers, sub: '共 ' + users.length + ' 用户', tone: noRoleUsers ? 'warn' : 'ok' },
-        { icon: 'shield', label: '孤立角色', value: orphanRoles, sub: '无用户引用', tone: orphanRoles ? 'warn' : 'ok' },
-        { icon: 'lock', label: '未启用脱敏策略', value: disabledMask, sub: '共 ' + masks.length + ' 条', tone: disabledMask ? 'warn' : 'ok' },
-        { icon: 'layers', label: '未启用行级策略', value: disabledRow, sub: '共 ' + rowp.length + ' 条', tone: disabledRow ? 'warn' : 'ok' }
+        { icon: 'user', label: '无角色用户', value: noRoleUsers,
+          sub: pctSub(noRoleUsers, users.length, '占全部用户'),
+          tone: noRoleUsers ? 'warn' : 'ok',
+          title: noRoleUsers ? '点击定位到“用户”区域处理' : '无此类风险',
+          onClick: drillTo(noRoleUsers, 'secCardUser', '所有用户均已分配角色') },
+        { icon: 'shield', label: '孤立角色', value: orphanRoles,
+          sub: pctSub(orphanRoles, roles.length, '无任何用户引用'),
+          tone: orphanRoles ? 'warn' : 'ok',
+          title: orphanRoles ? '点击定位到“角色”区域处理' : '无此类风险',
+          onClick: drillTo(orphanRoles, 'secCardRole', '所有角色均已被用户引用') },
+        { icon: 'lock', label: '未启用脱敏策略', value: disabledMask,
+          sub: pctSub(disabledMask, masks.length, '占全部策略'),
+          tone: disabledMask ? 'warn' : 'ok',
+          title: disabledMask ? '点击定位到“脱敏策略”区域处理' : '无此类风险',
+          onClick: drillTo(disabledMask, 'secCardMask', '脱敏策略均已启用') },
+        { icon: 'layers', label: '未启用行级策略', value: disabledRow,
+          sub: pctSub(disabledRow, rowp.length, '占全部策略'),
+          tone: disabledRow ? 'warn' : 'ok',
+          title: disabledRow ? '点击定位到“行级权限”区域处理' : '无此类风险',
+          onClick: drillTo(disabledRow, 'secCardRow', '行级策略均已启用') }
       ]));
+      // 全部为 0 时给出友好、可操作的安全态势结论
+      if (!totalRisk) {
+        riskCard.body.appendChild(DN.h('div', {
+          class: 'gov-empty', style: 'padding:10px 0 2px',
+          html: DN.icon('check', 'style="color:var(--gov-ok,#52c41a)"') +
+            '<div class="et">权限态势良好，未发现上述风险项</div>'
+        }));
+      }
       box.appendChild(riskCard.el);
     });
+  }
+
+  /** 占比文案，带除零守卫：count/total 为 0 总数时退化为纯说明 */
+  function pctSub(count, total, suffix) {
+    if (!total) return '暂无数据';
+    if (!count) return suffix;
+    var pct = Math.round(count * 1000 / total) / 10; // 保留一位小数
+    return pct + '% · ' + suffix;
+  }
+
+  /** 风险指标下钻：值>0 滚动到目标卡片并临时高亮；值=0 给出友好提示 */
+  function drillTo(count, anchorId, okHint) {
+    return function () {
+      if (!count) { DN.toast(okHint, 'info'); return; }
+      var el = document.getElementById(anchorId);
+      if (!el) { DN.toast('未找到对应区域', 'error'); return; }
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var prev = el.style.boxShadow;
+      el.style.transition = 'box-shadow .3s';
+      el.style.boxShadow = '0 0 0 2px var(--primary,#1890ff)';
+      setTimeout(function () { el.style.boxShadow = prev; }, 1600);
+    };
   }
 
   // ============== M9 脱敏策略 ==============

@@ -188,10 +188,21 @@
       return card.el;
     }
     if (!uRes.items.length && !pRes.items.length) {
-      card.body.appendChild(DN.h('div', { class: 'gov-desc',
-        text: '未检测到异常活跃项：当前各操作人/路径的操作量均在正常区间内' }));
+      var ok = DN.h('div', { class: 'gov-desc',
+        text: '未检测到异常活跃项：当前各操作人/路径的操作量均在正常区间内' });
+      // 空态可操作：一键清空筛选回到全量审计，便于继续排查。
+      ok.appendChild(DN.h('a', { href: 'javascript:void(0)', style: 'margin-left:8px;color:var(--primary);font-size:12px',
+        text: '查看全部审计 →', onclick: resetAndLoad }));
+      card.body.appendChild(ok);
       return card.el;
     }
+
+    // 倍数文案：mean=0（全部样本同值/无均值）时不显示倍数，避免误导；并对极端值封顶展示。
+    var ratioText = function (it) {
+      if (uRes.mean <= 0 && pRes.mean <= 0) return it.value + ' 次';
+      var rd = it.ratio >= 99.5 ? '99+' : it.ratio.toFixed(1);
+      return it.value + ' 次 (≈' + rd + '×均值)';
+    };
 
     // 异常操作人：超均值越多色调越重（>3倍 err，否则 warn），点击可联动筛选。
     if (uRes.items.length) {
@@ -199,20 +210,80 @@
         text: '异常活跃操作人（均值 ' + uRes.mean.toFixed(1) + ' · 阈值 ' + uRes.threshold.toFixed(1) + '）' }));
       card.body.appendChild(DN.bars(uRes.items.map(function (it) {
         return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
-          display: it.value + ' 次 (≈' + it.ratio.toFixed(1) + '×均值)',
-          onClick: function () { if (els.user) { els.user.value = it.name === '-' ? '' : it.name; state.page = 1; load(); DN.toast('已按异常操作人 ' + it.name + ' 筛选'); } } };
+          display: ratioText(it),
+          onClick: function () { filterByUser(it.name); } };
       })));
     }
-    // 异常高频路径
+    // 异常高频路径（点击下钻：复制该路径，便于在检索框/外部排查时直接粘贴）
     if (pRes.items.length) {
       card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:12px 0 4px;font-weight:600',
         text: '异常高频路径（均值 ' + pRes.mean.toFixed(1) + ' · 阈值 ' + pRes.threshold.toFixed(1) + '）' }));
       card.body.appendChild(DN.bars(pRes.items.map(function (it) {
         return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
-          display: it.value + ' 次 (≈' + it.ratio.toFixed(1) + '×均值)' };
+          display: ratioText(it),
+          onClick: function () { if (it.name && it.name !== '-') DN.copy(it.name); } };
       })));
     }
+
+    // 异常明细汇总表：合并操作人/路径离群项，支持 CSV 导出 + 行下钻（操作人→筛选，路径→复制）。
+    var detailRows = uRes.items.map(function (it) {
+      return { dim: '操作人', name: it.name, cnt: it.value, ratio: it.ratio,
+        level: it.ratio >= 3 ? '高' : '中', mean: uRes.mean, threshold: uRes.threshold };
+    }).concat(pRes.items.map(function (it) {
+      return { dim: '路径', name: it.name, cnt: it.value, ratio: it.ratio,
+        level: it.ratio >= 3 ? '高' : '中', mean: pRes.mean, threshold: pRes.threshold };
+    }));
+    var anomalyTbl = DN.table({
+      columns: [
+        { key: 'dim', label: '维度', render: function (r) { return DN.pill(r.dim, r.dim === '操作人' ? 'info' : 'muted'); } },
+        { key: 'name', label: '名称', copyable: true, exportValue: function (r) { return r.name || ''; },
+          render: function (r) { return r.name || '-'; } },
+        { key: 'cnt', label: '操作量', align: 'right', sortable: true,
+          render: function (r) { return String(r.cnt); } },
+        { key: 'ratio', label: '×均值', align: 'right', sortable: true,
+          exportValue: function (r) { return r.ratio.toFixed(2); },
+          render: function (r) { return (uRes.mean <= 0 && pRes.mean <= 0) ? '-' : (r.ratio >= 99.5 ? '99+' : r.ratio.toFixed(1)) + '×'; } },
+        { key: 'level', label: '严重度', render: function (r) { return DN.pill(r.level, r.level === '高' ? 'err' : 'warn'); } }
+      ],
+      rows: detailRows,
+      search: false,
+      pageSize: 10,
+      exportName: 'gov_audit_anomaly',
+      empty: '无异常明细', emptyIcon: 'shield'
+    });
+    // 行点击下钻：操作人维度联动筛选，路径维度复制路径（名称列本身已支持点击复制）。
+    anomalyTbl.addEventListener('click', function (e) {
+      var tr = e.target && e.target.closest ? e.target.closest('tbody tr') : null;
+      if (!tr || (e.target.closest('td') && e.target.closest('td').style.cursor === 'copy')) return;
+      var idx = Array.prototype.indexOf.call(tr.parentNode.children, tr);
+      var row = detailRows[idx];
+      if (!row) return;
+      if (row.dim === '操作人') filterByUser(row.name);
+      else if (row.name && row.name !== '-') DN.copy(row.name);
+    });
+    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:12px 0 4px;font-weight:600', text: '异常明细（可导出 / 点击下钻）' }));
+    card.body.appendChild(anomalyTbl);
     return card.el;
+  }
+
+  // 按操作人联动筛选并刷新（异常卡片下钻复用）；空名回退为清空筛选。
+  function filterByUser(name) {
+    if (!els.user) return;
+    var v = (name && name !== '-') ? name : '';
+    els.user.value = v;
+    state.page = 1;
+    load();
+    DN.toast(v ? ('已按异常操作人 ' + v + ' 筛选') : '已清空操作人筛选');
+  }
+
+  // 清空所有筛选条件并重新加载（异常卡片空态可操作链接复用）。
+  function resetAndLoad() {
+    if (els.user) els.user.value = '';
+    if (els.type) els.type.value = '';
+    if (els.from) els.from.value = '';
+    if (els.to) els.to.value = '';
+    state.page = 1;
+    load();
   }
 
   // 按类型统计（本页数据）用 DN.bars

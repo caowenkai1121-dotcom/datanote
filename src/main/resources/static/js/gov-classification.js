@@ -333,7 +333,15 @@
   function loadPendingCols() {
     var box = document.getElementById('clPending'); if (!box) return;
     var tables = (_clHeatRows || []).filter(function (r) { return r && r.db && r.table; });
-    if (!tables.length) { box.innerHTML = ''; box.appendChild(DN.empty('暂无已标敏感表可供扫描（先在下方采样识别并确认打标）', 'tag')); return; }
+    if (!tables.length) {
+      box.innerHTML = '';
+      var em0 = DN.empty('暂无已标敏感表可供扫描', 'tag');
+      em0.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '前往「对表采样识别」打标',
+        style: 'color:var(--primary,#1890ff);font-size:12px;text-decoration:none',
+        onclick: function () { if (clPicker && clPicker.el && clPicker.el.closest) { var card = clPicker.el.closest('.gov-card'); if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }));
+      box.appendChild(em0);
+      return;
+    }
     var scanList = tables.slice(0, 30); // 上限守卫：仅扫描敏感列数最多的前 30 张表
     box.innerHTML = '';
     box.appendChild(DN.h('div', { class: 'gov-desc', text: '正在扫描 ' + scanList.length + ' 张表…' }));
@@ -365,29 +373,61 @@
     });
   }
 
+  // 定位到「对表采样识别」：回填库/表选择器并重新识别（picker 内部用原生 select，标准 DOM 回填）
+  function focusScanOnTable(db, table) {
+    if (!clPicker || !db || !table) { DN.toast('无法定位该表', 'error'); return; }
+    var sels = clPicker.el.querySelectorAll('select');
+    var dbSel = sels[0], tbSel = sels[1];
+    if (!dbSel || !tbSel) { showAuditTrail(db, table); return; }
+    // 回填库并触发其 onchange 异步加载表清单，轮询等待目标表选项出现后回填表并识别
+    if (dbSel.value !== db) { dbSel.value = db; if (typeof dbSel.onchange === 'function') dbSel.onchange(); }
+    var tries = 0;
+    (function waitTable() {
+      var hit = Array.prototype.some.call(tbSel.options, function (o) { return o.value === table; });
+      if (hit) {
+        tbSel.value = table; if (typeof tbSel.onchange === 'function') tbSel.onchange();
+        var card = clPicker.el.closest ? clPicker.el.closest('.gov-card') : null;
+        if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scanTable();
+      } else if (tries++ < 20) { setTimeout(waitTable, 100); }
+      else { DN.toast('已定位到库「' + db + '」，请手动选择表「' + table + '」后识别', 'info'); }
+    })();
+  }
+
   function renderPendingCols(box, rows, scanned, totalTables) {
     box.innerHTML = '';
     if (!rows.length) {
-      box.appendChild(DN.empty('已扫描 ' + scanned + ' 张表，未发现置信度中等待确认的列', 'check'));
+      var em = DN.empty('已扫描 ' + scanned + ' 张表，未发现置信度中等（50%~80%）待确认的列', 'check');
+      em.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-top:6px;font-size:12px',
+        text: '说明：识别结果均为高置信（≥80%，可直接打标）或低置信（<50%，可忽略）。如需复核，可在下方「对表采样识别」中逐表查看。' }));
+      box.appendChild(em);
       return;
     }
-    var tableSet = {}, typeSet = {};
-    rows.forEach(function (r) { tableSet[r.db + '.' + r.table] = 1; if (r.sensitiveType) typeSet[r.sensitiveType] = 1; });
+    var tableSet = {}, typeSet = {}, confSum = 0;
+    rows.forEach(function (r) { tableSet[r.db + '.' + r.table] = 1; if (r.sensitiveType) typeSet[r.sensitiveType] = 1; confSum += (Number(r.confidence) || 0); });
+    var avgConf = rows.length ? Math.round(confSum / rows.length) : 0; // 除零守卫
     box.appendChild(DN.statRow([
       { icon: 'alert', label: '待确认列', value: rows.length, tone: 'warn' },
       { icon: 'db', label: '涉及表数', value: Object.keys(tableSet).length, sub: '已扫描 ' + scanned + (totalTables > scanned ? '/' + totalTables : '') + ' 表' },
-      { icon: 'tag', label: '敏感类型数', value: Object.keys(typeSet).length }
+      { icon: 'tag', label: '敏感类型数', value: Object.keys(typeSet).length },
+      { icon: 'check', label: '平均置信度', value: avgConf + '%', tone: confTone(avgConf) }
     ]));
     box.appendChild(DN.table({
       exportName: '待确认敏感列',
       columns: [
-        { key: 'db', label: '库', exportValue: function (r) { return r.db; } },
-        { key: 'table', label: '表', exportValue: function (r) { return r.table; } },
-        { key: 'column', label: '列', exportValue: function (r) { return r.column; } },
-        { key: 'sensitiveType', label: '敏感类型', exportValue: function (r) { return r.sensitiveType; } },
-        { label: '置信度', exportValue: function (r) { return r.confidence + '%'; }, render: function (r) { return DN.pill(r.confidence + '%', confTone(r.confidence)); } },
+        { key: 'db', label: '库', sortable: true, copyable: true, exportValue: function (r) { return r.db; } },
+        { key: 'table', label: '表', sortable: true, exportValue: function (r) { return r.table; },
+          render: function (r) {
+            return DN.h('a', { href: 'javascript:void(0)', text: r.table || '-',
+              title: '定位到「对表采样识别」复核 ' + (r.db || '') + '.' + (r.table || '') + ' 后打标',
+              style: 'color:var(--primary,#1890ff);text-decoration:none',
+              onclick: function () { focusScanOnTable(r.db, r.table); } });
+          } },
+        { key: 'column', label: '列', sortable: true, copyable: true, exportValue: function (r) { return r.column; } },
+        { key: 'sensitiveType', label: '敏感类型', sortable: true, exportValue: function (r) { return r.sensitiveType; } },
+        { key: 'confidence', label: '置信度', align: 'center', sortable: true, exportValue: function (r) { return r.confidence + '%'; }, render: function (r) { return DN.pill(r.confidence + '%', confTone(r.confidence)); } },
         { label: '当前密级', exportValue: function (r) { return r.currentLevel || ''; }, render: function (r) { return r.currentLevel || '-'; } },
-        { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r.suggestLevel || '-'; } }
+        { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r.suggestLevel ? DN.pill(r.suggestLevel, 'info') : '-'; } }
       ],
       rows: rows,
       searchKeys: ['db', 'table', 'column', 'sensitiveType'],

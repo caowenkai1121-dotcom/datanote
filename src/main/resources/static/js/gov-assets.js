@@ -175,21 +175,27 @@
     }
     card.body.appendChild(DN.table({
       columns: [
-        { key: 'dbType', label: '来源', render: function (t) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(t.dbType || '-', cm[t.dbType] || 'muted'); } },
+        { key: 'dbType', label: '来源', exportValue: function (t) { return t.dbType || '-'; }, render: function (t) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(t.dbType || '-', cm[t.dbType] || 'muted'); } },
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
-        { key: 'rowCount', label: '行数', align: 'right', render: function (t) { return t.rowCount == null ? DN.pill('未知', 'muted') : DN.pill(fmtInt(t.rowCount), 'warn'); } },
-        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, render: function (t) { return DN.fmtBytes(t.sizeBytes); } },
-        { key: '_advice', label: '治理建议', render: function (t) { var a = adviceOf(t); return DN.pill(a.text, a.tone); } }
+        { key: 'rowCount', label: '行数', align: 'right', exportValue: function (t) { return t.rowCount == null ? '未知' : (Number(t.rowCount) || 0); }, render: function (t) { return t.rowCount == null ? DN.pill('未知', 'muted') : DN.pill(fmtInt(t.rowCount), 'warn'); } },
+        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, exportValue: function (t) { return Number(t.sizeBytes) || 0; }, render: function (t) { return DN.fmtBytes(t.sizeBytes); } },
+        { key: '_advice', label: '治理建议', exportValue: function (t) { return adviceOf(t).text; }, render: function (t) { var a = adviceOf(t); return DN.pill(a.text, a.tone); } },
+        { key: '_op', label: '操作', exportValue: function () { return ''; }, render: function (t) {
+            return DN.h('a', { class: 'btn', href: 'javascript:void(0)', title: '查看该表字段/画像/血缘',
+              text: '详情', onclick: function () { openAssetDetail(t.databaseName || '', t.tableName || ''); } });
+          } }
       ],
       rows: cold,
       pageSize: 10,
       searchKeys: ['databaseName', 'tableName'],
       searchPlaceholder: '搜索库 / 表',
-      empty: '暂无疑似冷数据'
+      exportName: '冷数据治理建议',
+      empty: '暂无疑似冷数据，可先到上方“采集全部”补全行数/体量后再分析',
+      emptyIcon: 'inbox'
     }));
     card.body.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:8px',
-      text: '判定: 占用体量 > 0 且 行数为 0 或未知(疑似空表/废弃表)。建议按体量优先归档至冷存储或配置 HOT_COLD 降冷策略, 此处仅为治理参考, 不执行任何操作。' }));
+      text: '判定: 占用体量 > 0 且 行数为 0 或未知(疑似空表/废弃表)。建议按体量优先归档至冷存储或配置 HOT_COLD 降冷策略, 点击行末「详情」可查看该表字段/画像/血缘后再决策, 此处仅为治理参考, 不执行任何操作。' }));
     box.appendChild(card.el);
   }
 

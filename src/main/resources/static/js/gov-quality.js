@@ -100,7 +100,13 @@
     btn.onclick = function () {
       // 仅扫描已启用规则, 上限 30 条以控制请求量
       var targets = allRules.filter(function (r) { return r.status === 1 && r.id != null; }).slice(0, 30);
-      if (!targets.length) { resultBox.innerHTML = ''; resultBox.appendChild(DN.empty('暂无可扫描的启用规则', 'check')); return; }
+      if (!targets.length) {
+        resultBox.innerHTML = '';
+        var emp = DN.empty('暂无已启用的规则可扫描，请在下方规则表启用规则或前往工作台创建', 'check');
+        emp.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'workspace.html#/quality', style: 'margin-top:10px', text: '前往工作台质量' }));
+        resultBox.appendChild(emp);
+        return;
+      }
       btn.disabled = true; btn.textContent = '扫描中…';
       resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
       // 顺序拉取每条规则最近执行(复用已有 /rule/{id}/runs 端点), 取首条(时间倒序)
@@ -127,40 +133,72 @@
 
   function renderFailFocus(resultBox, fails) {
     resultBox.innerHTML = '';
-    if (!fails.length) { resultBox.appendChild(DN.empty('所有已启用规则最近一次执行均通过', 'check')); return; }
+    if (!fails.length) {
+      var emp = DN.empty('所有已启用规则最近一次执行均通过，数据质量良好', 'check');
+      emp.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-top:10px',
+        text: '查看全部规则趋势', onclick: function () { var first = allRules.filter(function (r) { return r.status === 1 && r.id != null; })[0]; if (first) loadRuleDetail(first.id, first.ruleName); } }));
+      resultBox.appendChild(emp);
+      return;
+    }
     // 通过率升序(最差在前), null(异常无率)视为最差
     fails.sort(function (a, b) { return (a.rate == null ? -1 : a.rate) - (b.rate == null ? -1 : b.rate); });
     resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px',
-      text: '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示 Top ' + Math.min(fails.length, 8) }));
-    fails.slice(0, 8).forEach(function (f) {
+      text: '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示, 点规则名查看趋势根因' }));
+    // 扁平化为行数据(供 DN.table 渲染 + CSV 导出取 key)
+    var rows = fails.map(function (f) {
       var run = f.run, st = run.runStatus || '';
-      var tone = st === 'error' ? 'err' : 'warn';
-      var ts = String(run.startedAt || '').replace('T', ' ').slice(0, 19);
-      var rateText = f.rate == null ? '-' : (Math.round(f.rate * 100) / 100) + '%';
-      var reTone = st === 'error' ? '异常' : '未达标';
-      var meta = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px' }, [
-        DN.pill(reTone, tone),
-        DN.h('span', { style: 'font-weight:600', text: f.rule.ruleName || ('规则 #' + f.rule.id) }),
-        DN.h('span', { style: 'color:var(--text-muted)', text: '通过率 ' + rateText }),
-        DN.h('span', { style: 'color:var(--text-muted)', text: '失败 ' + (run.failCount == null ? '-' : run.failCount) + ' 条' }),
-        DN.h('span', { style: 'color:var(--text-muted)', text: ts })
-      ]);
-      var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑' });
-      rerunBtn.onclick = function () {
-        rerunBtn.disabled = true; rerunBtn.textContent = '复跑中…';
-        DN.post('/api/quality/rule/' + encodeURIComponent(f.rule.id) + '/run').then(function (nr) {
-          var nrate = (nr && nr.passRate != null) ? Number(nr.passRate) : null;
-          var ok = nr && nr.runStatus === 'success';
-          DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%'), ok ? 'ok' : 'warn');
-          rerunBtn.disabled = false; rerunBtn.textContent = ok ? '已通过' : '重新复跑';
-        }).catch(function (e) {
-          DN.toast('复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
-          rerunBtn.disabled = false; rerunBtn.textContent = '立即复跑';
-        });
+      return {
+        _f: f,
+        ruleName: f.rule.ruleName || ('规则 #' + f.rule.id),
+        ruleType: f.rule.ruleType || '-',
+        dimension: f.rule.dimension || '-',
+        status: st === 'error' ? '异常' : '未达标',
+        rateText: f.rate == null ? '-' : (Math.round(f.rate * 100) / 100) + '%',
+        failCount: run.failCount == null ? '-' : run.failCount,
+        startedAt: String(run.startedAt || '').replace('T', ' ').slice(0, 19)
       };
-      var row = DN.h('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [meta, rerunBtn]);
-      resultBox.appendChild(row);
     });
+    var tbl = DN.table({
+      columns: [
+        { key: 'status', label: '判定', render: function (r) {
+            return DN.pill(r.status, r.status === '异常' ? 'err' : 'warn');
+          } },
+        { key: 'ruleName', label: '规则', render: function (r) {
+            return DN.h('a', { href: 'javascript:void(0)', text: r.ruleName,
+              style: 'color:var(--primary,#1890ff)', title: '点击查看该规则趋势与失败根因',
+              onclick: function () { loadRuleDetail(r._f.rule.id, r._f.rule.ruleName); } });
+          } },
+        { key: 'dimension', label: '维度', render: function (r) { return r.dimension; } },
+        { key: 'rateText', label: '通过率', align: 'right', render: function (r) { return r.rateText; } },
+        { key: 'failCount', label: '失败数', align: 'right', render: function (r) { return String(r.failCount); } },
+        { key: 'startedAt', label: '执行时间', render: function (r) { return r.startedAt || '-'; } },
+        { key: '_op', label: '操作', render: function (r) {
+            var f = r._f;
+            var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑' });
+            rerunBtn.onclick = function () {
+              rerunBtn.disabled = true; rerunBtn.textContent = '复跑中…';
+              DN.post('/api/quality/rule/' + encodeURIComponent(f.rule.id) + '/run').then(function (nr) {
+                var nrate = (nr && nr.passRate != null) ? Number(nr.passRate) : null;
+                var ok = nr && nr.runStatus === 'success';
+                DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%'), ok ? 'ok' : 'warn');
+                rerunBtn.disabled = false; rerunBtn.textContent = ok ? '已通过' : '重新复跑';
+              }).catch(function (e) {
+                DN.toast('复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
+                rerunBtn.disabled = false; rerunBtn.textContent = '立即复跑';
+              });
+            };
+            return rerunBtn;
+          } }
+      ],
+      rows: rows,
+      pageSize: 8,
+      searchKeys: ['ruleName', 'ruleType', 'dimension'],
+      searchPlaceholder: '搜索规则名/类型/维度',
+      exportName: '失败规则聚焦',
+      empty: '无未通过规则',
+      emptyIcon: 'check'
+    });
+    resultBox.appendChild(tbl);
   }
 
   function loadRules(box) {
