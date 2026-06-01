@@ -352,6 +352,16 @@ public class QualityService {
             try (Statement stmt = conn.createStatement()) {
                 stmt.setQueryTimeout(60);
                 try (ResultSet rs = stmt.executeQuery(sql)) {
+                    java.sql.ResultSetMetaData md = rs.getMetaData();
+                    boolean hasTotal = false, hasFail = false;
+                    for (int i = 1; i <= md.getColumnCount(); i++) {
+                        String label = md.getColumnLabel(i);
+                        if ("total_count".equalsIgnoreCase(label)) hasTotal = true;
+                        else if ("fail_count".equalsIgnoreCase(label)) hasFail = true;
+                    }
+                    if (!hasTotal || !hasFail) {
+                        throw new BusinessException("自定义SQL结果集必须包含 total_count 和 fail_count 两列");
+                    }
                     if (rs.next()) {
                         long total = rs.getLong("total_count");
                         long fail = rs.getLong("fail_count");

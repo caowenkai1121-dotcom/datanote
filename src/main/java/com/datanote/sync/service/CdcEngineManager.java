@@ -323,8 +323,8 @@ public class CdcEngineManager {
                     updateExecutionRunning(jobId, engine);
                     // DS-M5：CDC 延迟超阈告警（AlertService 自带节流防刷屏）
                     if (cdcLagThresholdMs > 0) {
-                        long lag = engine.getStreamingLagMs();
-                        if (lag > cdcLagThresholdMs) {
+                        Long lag = engine.getStreamingLagMs(); // MBean 读不到时为 null,不可直接拆箱
+                        if (lag != null && lag > cdcLagThresholdMs) {
                             alertService.alert(jobId, null, "CDC_LAG",
                                     "CDC 延迟 " + lag + "ms 超阈值 " + cdcLagThresholdMs + "ms");
                         }

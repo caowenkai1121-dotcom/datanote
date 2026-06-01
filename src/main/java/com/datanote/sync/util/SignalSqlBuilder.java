@@ -22,7 +22,10 @@ public final class SignalSqlBuilder {
 
     /** execute-snapshot 信号的 data 列 JSON（INCREMENTAL 类型，含 data-collections 表清单）。 */
     public static String executeSnapshotData(List<String> dataCollections) {
-        String list = dataCollections.stream().map(c -> "\"" + c + "\"").collect(Collectors.joining(","));
+        // 转义反斜杠与双引号,避免表名含特殊字符破坏 JSON 结构
+        String list = dataCollections.stream()
+                .map(c -> "\"" + c.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
+                .collect(Collectors.joining(","));
         return "{\"data-collections\": [" + list + "], \"type\": \"INCREMENTAL\"}";
     }
 }

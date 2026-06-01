@@ -58,7 +58,9 @@ public class JdbcOffsetBackingStore extends MemoryOffsetBackingStore {
         for (DnCdcOffset row : rows) {
             ByteBuffer key = decode(row.getOffsetKey());
             ByteBuffer value = decode(row.getOffsetValue());
-            data.put(key, value);
+            if (key != null && value != null) { // ConcurrentHashMap 不允许 null 键/值,跳过损坏位点
+                data.put(key, value);
+            }
         }
         log.info("CDC offset 装载完成 jobId={} 条数={}", jobId, rows.size());
     }
@@ -96,6 +98,11 @@ public class JdbcOffsetBackingStore extends MemoryOffsetBackingStore {
         if (text == null || text.isEmpty()) {
             return null;
         }
-        return ByteBuffer.wrap(Base64.getDecoder().decode(text));
+        try {
+            return ByteBuffer.wrap(Base64.getDecoder().decode(text));
+        } catch (IllegalArgumentException e) {
+            log.warn("CDC offset Base64 解码失败,跳过该损坏位点: {}", text);
+            return null;
+        }
     }
 }
