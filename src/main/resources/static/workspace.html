@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r41">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r42">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r41"></script>
-<script src="js/gov-assets.js?v=q100r41"></script>
-<script src="js/gov-lineage.js?v=q100r41"></script>
-<script src="js/gov-quality.js?v=q100r41"></script>
-<script src="js/gov-standard.js?v=q100r41"></script>
-<script src="js/gov-classification.js?v=q100r41"></script>
-<script src="js/gov-security.js?v=q100r41"></script>
-<script src="js/gov-health.js?v=q100r41"></script>
-<script src="js/gov-audit.js?v=q100r41"></script>
-<script src="js/gov-overview.js?v=q100r41"></script>
-<script src="js/gov-subject.js?v=q100r41"></script>
+<script src="js/dn-common.js?v=q100r42"></script>
+<script src="js/gov-assets.js?v=q100r42"></script>
+<script src="js/gov-lineage.js?v=q100r42"></script>
+<script src="js/gov-quality.js?v=q100r42"></script>
+<script src="js/gov-standard.js?v=q100r42"></script>
+<script src="js/gov-classification.js?v=q100r42"></script>
+<script src="js/gov-security.js?v=q100r42"></script>
+<script src="js/gov-health.js?v=q100r42"></script>
+<script src="js/gov-audit.js?v=q100r42"></script>
+<script src="js/gov-overview.js?v=q100r42"></script>
+<script src="js/gov-subject.js?v=q100r42"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -16182,7 +16182,11 @@ function closeAiScriptNameModal() {
   // 初始路由跳转延后到全部内联脚本(含 dbsync 等后置定义的 window.* 函数)解析完成后，
   // 否则直链/刷新 #/dbsync 时路由 init 调用尚未定义的 window.dbsyncLoadFolders 会报错、列表卡死。
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { navigateTo(parseRoute()); });
+    document.addEventListener('DOMContentLoaded', function() {
+      navigateTo(parseRoute());
+      // a11y: 给所有图标关闭按钮(×)补无障碍名,屏幕阅读器可识别
+      document.querySelectorAll('.g-modal-close,.dbsync-drawer-close,.sched-log-modal-close').forEach(function(b){ if(!b.getAttribute('aria-label')) b.setAttribute('aria-label','关闭'); });
+    });
   } else {
     navigateTo(parseRoute());
   }
