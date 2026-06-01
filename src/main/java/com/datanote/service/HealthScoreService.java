@@ -117,7 +117,7 @@ public class HealthScoreService {
             qw.orderByDesc("created_at").last("LIMIT 1");
             DnStandardCheckRun run = standardMapper.selectOne(qw);
             if (run != null && run.getPassRate() != null) {
-                return dim(run.getPassRate().doubleValue() * 100.0, "落标稽核(M7)");
+                return dim(run.getPassRate().doubleValue(), "落标稽核(M7)"); // passRate 已是 0-100(见 StandardService),不可再×100
             }
         } catch (Exception e) {
             log.warn("规范维度取数失败: {}", e.getMessage());

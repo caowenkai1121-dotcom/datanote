@@ -236,7 +236,7 @@ public class StandardService {
                 byTable.merge(((Number) tid).longValue(), 1, Integer::sum);
             }
             List<Map.Entry<Long, Integer>> entries = new ArrayList<>(byTable.entrySet());
-            entries.sort((a, b) -> b.getValue() - a.getValue());
+            entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue())); // 避免 int 相减溢出
             int n = 0;
             for (Map.Entry<Long, Integer> e : entries) {
                 if (n++ >= Math.max(1, Math.min(limit, 50))) break;

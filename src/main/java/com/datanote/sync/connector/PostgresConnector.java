@@ -146,11 +146,11 @@ public class PostgresConnector implements DbConnector {
         }
         if (t.startsWith("numeric") || t.startsWith("decimal")) {
             int p = numPrec == null ? 38 : Math.min(numPrec, 38);
-            int s = numScale == null ? 0 : numScale;
+            int s = numScale == null ? 0 : Math.min(Math.max(numScale, 0), p); // scale 必须 0..precision,否则建表失败
             return "decimal(" + p + "," + s + ")";
         }
         if (t.equals("character varying") || t.equals("varchar")) {
-            return charLen == null ? "text" : "varchar(" + charLen + ")";
+            return (charLen == null || charLen <= 0) ? "text" : "varchar(" + Math.min(charLen, 65533) + ")"; // 封顶 Doris varchar 上限
         }
         if (t.startsWith("character") || t.equals("char") || t.equals("bpchar")) {
             return charLen == null ? "char(1)" : "char(" + charLen + ")";

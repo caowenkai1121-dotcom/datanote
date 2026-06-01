@@ -148,10 +148,10 @@ public class OracleConnector implements DbConnector {
         if (t.equals("binary_float")) return "float";
         if (t.startsWith("timestamp") || t.equals("date")) return "datetime";
         if (t.equals("char") || t.equals("nchar")) {
-            return dataLength == null ? "char(1)" : "char(" + Math.min(dataLength, 255) + ")";
+            return (dataLength == null || dataLength <= 0) ? "char(1)" : "char(" + Math.min(dataLength, 255) + ")";
         }
         if (t.equals("varchar2") || t.equals("nvarchar2") || t.equals("varchar")) {
-            return dataLength == null ? "text" : "varchar(" + dataLength + ")";
+            return (dataLength == null || dataLength <= 0) ? "text" : "varchar(" + Math.min(dataLength, 65533) + ")";
         }
         // clob/nclob/long/blob/raw/rowid/xmltype 等统一 text → Doris STRING
         return "text";

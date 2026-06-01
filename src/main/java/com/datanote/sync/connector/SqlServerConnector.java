@@ -153,12 +153,12 @@ public class SqlServerConnector implements DbConnector {
         }
         if (t.equals("decimal") || t.equals("numeric")) {
             int p = numPrec == null ? 38 : Math.min(numPrec, 38);
-            int s = numScale == null ? 0 : numScale;
+            int s = numScale == null ? 0 : Math.min(Math.max(numScale, 0), p); // scale 必须 0..precision
             return "decimal(" + p + "," + s + ")";
         }
         if (t.equals("varchar") || t.equals("nvarchar")) {
             // SQLServer max(-1) 或超大 → text
-            return (charLen == null || charLen < 0) ? "text" : "varchar(" + charLen + ")";
+            return (charLen == null || charLen < 0) ? "text" : "varchar(" + Math.min(charLen, 65533) + ")";
         }
         if (t.equals("char") || t.equals("nchar")) {
             return (charLen == null || charLen < 0) ? "char(1)" : "char(" + charLen + ")";
