@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r40">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r41">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r40"></script>
-<script src="js/gov-assets.js?v=q100r40"></script>
-<script src="js/gov-lineage.js?v=q100r40"></script>
-<script src="js/gov-quality.js?v=q100r40"></script>
-<script src="js/gov-standard.js?v=q100r40"></script>
-<script src="js/gov-classification.js?v=q100r40"></script>
-<script src="js/gov-security.js?v=q100r40"></script>
-<script src="js/gov-health.js?v=q100r40"></script>
-<script src="js/gov-audit.js?v=q100r40"></script>
-<script src="js/gov-overview.js?v=q100r40"></script>
-<script src="js/gov-subject.js?v=q100r40"></script>
+<script src="js/dn-common.js?v=q100r41"></script>
+<script src="js/gov-assets.js?v=q100r41"></script>
+<script src="js/gov-lineage.js?v=q100r41"></script>
+<script src="js/gov-quality.js?v=q100r41"></script>
+<script src="js/gov-standard.js?v=q100r41"></script>
+<script src="js/gov-classification.js?v=q100r41"></script>
+<script src="js/gov-security.js?v=q100r41"></script>
+<script src="js/gov-health.js?v=q100r41"></script>
+<script src="js/gov-audit.js?v=q100r41"></script>
+<script src="js/gov-overview.js?v=q100r41"></script>
+<script src="js/gov-subject.js?v=q100r41"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13180,8 +13180,13 @@ function projShowModalBox(title, inner) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100000;display:flex;align-items:center;justify-content:center;';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
   var box = document.createElement('div');
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', title || '对话框');
   box.style.cssText = 'background:var(--bg-card,#fff);border-radius:10px;min-width:min(340px,92vw);max-width:min(90vw,640px);max-height:85vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);';
-  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);"><b>' + escapeHtml(title) + '</b><span style="cursor:pointer;font-size:20px;color:var(--text-muted);" onclick="projCloseModalBox()">&times;</span></div><div style="padding:14px 16px;">' + inner + '</div>';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-light,#eee);"><b>' + escapeHtml(title) + '</b><span role="button" tabindex="0" aria-label="关闭" style="cursor:pointer;font-size:20px;color:var(--text-muted);line-height:1;padding:0 4px;" onclick="projCloseModalBox()">&times;</span></div><div style="padding:14px 16px;">' + inner + '</div>';
+  // 关闭按钮键盘可操作 + Esc 关闭(模态 a11y)
+  var _xb = box.querySelector('span[role="button"]');
+  if (_xb) _xb.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); projCloseModalBox(); } });
+  ov.addEventListener('keydown', function(e) { if (e.key === 'Escape') projCloseModalBox(); });
   ov.appendChild(box); document.body.appendChild(ov);
 }
 window.projCloseModalBox = function() { var o = document.getElementById('projModalBox'); if (o) o.remove(); };
