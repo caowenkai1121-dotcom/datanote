@@ -82,6 +82,21 @@
         card.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: masks.length, centerSub: '策略', legend: true }));
         box.appendChild(card.el);
       }
+      // 创新功能：权限风险概览（纯前端聚合已加载数据，不调新 API）
+      var noRoleUsers = users.filter(function (u) { return !(u.roleIds || []).length; }).length;
+      var usedRoleIds = {};
+      users.forEach(function (u) { (u.roleIds || []).forEach(function (rid) { usedRoleIds[rid] = true; }); });
+      var orphanRoles = roles.filter(function (r) { return !usedRoleIds[r.id]; }).length;
+      var disabledMask = masks.filter(function (m) { return !(m.enabled === 1 || m.enabled === true || m.status === 1); }).length;
+      var disabledRow = rowp.filter(function (p) { return !(p.enabled === 1 || p.enabled === true); }).length;
+      var riskCard = DN.card({ title: '权限风险概览', icon: 'alert' });
+      riskCard.body.appendChild(DN.statRow([
+        { icon: 'user', label: '无角色用户', value: noRoleUsers, sub: '共 ' + users.length + ' 用户', tone: noRoleUsers ? 'warn' : 'ok' },
+        { icon: 'shield', label: '孤立角色', value: orphanRoles, sub: '无用户引用', tone: orphanRoles ? 'warn' : 'ok' },
+        { icon: 'lock', label: '未启用脱敏策略', value: disabledMask, sub: '共 ' + masks.length + ' 条', tone: disabledMask ? 'warn' : 'ok' },
+        { icon: 'layers', label: '未启用行级策略', value: disabledRow, sub: '共 ' + rowp.length + ' 条', tone: disabledRow ? 'warn' : 'ok' }
+      ]));
+      box.appendChild(riskCard.el);
     });
   }
 

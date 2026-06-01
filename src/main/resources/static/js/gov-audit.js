@@ -143,7 +143,76 @@
       else pc.body.appendChild(DN.empty('暂无数据', 'list'));
       grid.appendChild(pc.el);
       box.appendChild(grid);
+      // 异常活跃检测（基于已加载的用户/路径统计，前端计算 均值+2σ 离群点）
+      box.appendChild(buildAnomalyCard(users, paths));
     }).catch(function () { box.innerHTML = ''; });
+  }
+
+  // 异常活跃检测（大功能）: 对操作人/路径的操作量做统计，标记显著高于均值
+  // (阈值 = 均值 + 2倍标准差；样本不足时降级为 均值×2) 的离群项作为异常活跃提示。
+  function buildAnomalyCard(users, paths) {
+    var card = DN.card({ title: '异常活跃检测', icon: 'shield' });
+    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px',
+      text: '基于近期操作量统计，自动标记操作量显著高于均值的操作人/路径（阈值 = 均值 + 2σ），作为异常活跃提示' }));
+
+    // 计算一组样本中超过 (均值 + 2σ) 的离群项；样本不足时回退到 均值×2。
+    var detect = function (list, getName, getVal) {
+      var vals = list.map(function (x) { return Number(getVal(x)) || 0; });
+      var n = vals.length;
+      if (!n) return { items: [], mean: 0, threshold: 0 };
+      var sum = vals.reduce(function (a, b) { return a + b; }, 0);
+      var mean = sum / (n || 1);
+      var variance = vals.reduce(function (a, v) { return a + (v - mean) * (v - mean); }, 0) / (n || 1);
+      var std = Math.sqrt(variance);
+      // 样本量过小时标准差不稳定，降级为简单的 均值×2 判定。
+      var threshold = n >= 3 ? (mean + 2 * std) : (mean * 2);
+      var items = [];
+      list.forEach(function (x) {
+        var v = Number(getVal(x)) || 0;
+        if (v > threshold && v > mean) {
+          var ratio = (v / (mean || 1));
+          items.push({ name: getName(x) || '-', value: v, ratio: ratio });
+        }
+      });
+      items.sort(function (a, b) { return b.value - a.value; });
+      return { items: items, mean: mean, threshold: threshold };
+    };
+
+    var uRes = detect(users || [], function (u) { return u.userName; }, function (u) { return u.cnt; });
+    var pRes = detect(paths || [], function (p) { return p.path; }, function (p) { return p.cnt; });
+
+    var hasUserData = (users || []).length > 0;
+    var hasPathData = (paths || []).length > 0;
+    if (!hasUserData && !hasPathData) {
+      card.body.appendChild(DN.empty('暂无可分析的统计数据', 'shield'));
+      return card.el;
+    }
+    if (!uRes.items.length && !pRes.items.length) {
+      card.body.appendChild(DN.h('div', { class: 'gov-desc',
+        text: '未检测到异常活跃项：当前各操作人/路径的操作量均在正常区间内' }));
+      return card.el;
+    }
+
+    // 异常操作人：超均值越多色调越重（>3倍 err，否则 warn），点击可联动筛选。
+    if (uRes.items.length) {
+      card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:4px 0 4px;font-weight:600',
+        text: '异常活跃操作人（均值 ' + uRes.mean.toFixed(1) + ' · 阈值 ' + uRes.threshold.toFixed(1) + '）' }));
+      card.body.appendChild(DN.bars(uRes.items.map(function (it) {
+        return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
+          display: it.value + ' 次 (≈' + it.ratio.toFixed(1) + '×均值)',
+          onClick: function () { if (els.user) { els.user.value = it.name === '-' ? '' : it.name; state.page = 1; load(); DN.toast('已按异常操作人 ' + it.name + ' 筛选'); } } };
+      })));
+    }
+    // 异常高频路径
+    if (pRes.items.length) {
+      card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:12px 0 4px;font-weight:600',
+        text: '异常高频路径（均值 ' + pRes.mean.toFixed(1) + ' · 阈值 ' + pRes.threshold.toFixed(1) + '）' }));
+      card.body.appendChild(DN.bars(pRes.items.map(function (it) {
+        return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
+          display: it.value + ' 次 (≈' + it.ratio.toFixed(1) + '×均值)' };
+      })));
+    }
+    return card.el;
   }
 
   // 按类型统计（本页数据）用 DN.bars

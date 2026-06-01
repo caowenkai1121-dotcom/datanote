@@ -67,7 +67,96 @@
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.up + ';vertical-align:middle;margin:0 4px 0 12px"></span>上游边 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 点节点高亮相邻，悬停边看来源/层级' }));
     gCard.body.appendChild(DN.h('div', { id: 'graphResult' }));
+
+    // 4. 孤儿表检测（创新功能）：基于已有血缘边数据，识别某库中“既无上游也无下游血缘边”的表（疑似废弃/未接入），供治理清理参考
+    var oCard = DN.card({ title: '孤儿表检测', icon: 'alert' });
+    c.appendChild(oCard.el);
+    oCard.body.appendChild(DN.h('div', { class: 'gov-desc',
+      style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:10px',
+      text: '扫描所选库下所有表的表级血缘，列出既无上游来源、也无下游去向的表（疑似废弃或未接入血缘），供治理清理参考。' }));
+    var oSel = DN.h('select', { id: 'orphanDb', class: 'iw-form-select', style: 'min-width:160px' });
+    oSel.innerHTML = '<option value="">选择库</option>';
+    DN.metaDatabases().then(function (dbs) {
+      (dbs || []).forEach(function (d) {
+        var o = document.createElement('option'); o.value = d; o.textContent = d; oSel.appendChild(o);
+      });
+    }).catch(function () {});
+    var oq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
+    oq.appendChild(DN.h('span', { text: '库', style: 'color:var(--text-muted,#86909c);font-size:13px' }));
+    oq.appendChild(oSel);
+    oq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检测孤儿表', onclick: detectOrphans }));
+    oCard.body.appendChild(oq);
+    oCard.body.appendChild(DN.h('div', { id: 'orphanResult' }));
   };
+
+  /** 并发受限地对一组表查询表级血缘，避免请求风暴。fn 返回 Promise，limit 为最大并发。 */
+  function mapLimit(items, limit, fn) {
+    return new Promise(function (resolve) {
+      var results = new Array(items.length), idx = 0, done = 0;
+      if (!items.length) { resolve(results); return; }
+      function next() {
+        if (idx >= items.length) return;
+        var cur = idx++;
+        fn(items[cur], cur).then(function (r) { results[cur] = r; }, function () { results[cur] = null; })
+          .then(function () { if (++done === items.length) resolve(results); else next(); });
+      }
+      for (var i = 0; i < Math.min(limit, items.length); i++) next();
+    });
+  }
+
+  // 孤儿表检测：取所选库全部表，逐表查表级上下游边，聚合出上下游皆空者
+  function detectOrphans() {
+    var db = document.getElementById('orphanDb').value;
+    if (!db) { DN.toast('请先选择库', 'error'); return; }
+    var box = document.getElementById('orphanResult');
+    box.innerHTML = '';
+    box.appendChild(DN.skeleton(4));
+    DN.metaTables(db).then(function (tables) {
+      tables = tables || [];
+      if (!tables.length) { box.innerHTML = ''; box.appendChild(DN.empty('该库下暂无表', 'db')); return; }
+      return mapLimit(tables, 6, function (t) {
+        var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(t);
+        return DN.get('/api/lineage/table-edges' + qs).then(function (nb) {
+          nb = nb || {};
+          var up = (nb.upstream || []).length, down = (nb.downstream || []).length;
+          return { table: t, up: up, down: down };
+        });
+      }).then(function (stats) {
+        renderOrphans(box, db, tables.length, stats.filter(function (s) { return s; }));
+      });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('检测失败: ' + (e && e.message ? e.message : e), 'alert')); });
+  }
+
+  function renderOrphans(box, db, total, stats) {
+    box.innerHTML = '';
+    var orphans = stats.filter(function (s) { return s.up === 0 && s.down === 0; });
+    var connected = total - orphans.length;
+    var pct = Math.round(connected * 100 / (total || 1));
+    box.appendChild(DN.statRow([
+      { icon: 'db', label: '库内表数', value: total },
+      { icon: 'alert', label: '孤儿表数', value: orphans.length, tone: orphans.length > 0 ? 'warn' : 'ok',
+        sub: orphans.length > 0 ? '疑似废弃/未接入' : '全部已接入血缘' },
+      { icon: 'check', label: '血缘覆盖率', value: pct + '%', tone: pct >= 80 ? 'ok' : 'info' }
+    ]));
+    if (!orphans.length) {
+      box.appendChild(DN.empty('未发现孤儿表，' + DN.esc(db) + ' 库内表血缘覆盖良好', 'check'));
+      return;
+    }
+    box.appendChild(DN.table({
+      columns: [
+        { label: '孤儿表', copyable: true, render: function (s) { return DN.esc(db) + '.' + DN.esc(s.table); },
+          exportValue: function (s) { return db + '.' + s.table; } },
+        { label: '上游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
+        { label: '下游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
+        { label: '判定', align: 'center', render: function () { return DN.pill('孤儿表', 'err'); }, exportValue: function () { return '孤儿表'; } }
+      ],
+      rows: orphans,
+      searchKeys: ['table'],
+      searchPlaceholder: '搜索孤儿表...',
+      exportName: '孤儿表清单_' + db,
+      empty: '未发现孤儿表', emptyIcon: 'check'
+    }));
+  }
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
   function svg(tag, attrs) {

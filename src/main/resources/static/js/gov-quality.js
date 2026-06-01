@@ -86,6 +86,83 @@
     return card.el;
   }
 
+  // 失败规则聚焦(创新功能): 扫描各规则最近一次执行, 聚合"未通过"清单(passRate<100 或非success), 提供立即复跑
+  function buildFailFocus() {
+    var card = DN.card({ title: '失败规则聚焦', icon: 'alert' });
+    var body = card.body;
+    var btn = DN.h('button', { class: 'btn btn-primary', type: 'button', text: '扫描最近执行' });
+    var resultBox = DN.h('div', { style: 'margin-top:10px' });
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0',
+      text: '逐条读取规则最近一次执行结果, 高亮通过率不足或失败/异常的规则, 支持一键复跑' }));
+    body.appendChild(btn);
+    body.appendChild(resultBox);
+
+    btn.onclick = function () {
+      // 仅扫描已启用规则, 上限 30 条以控制请求量
+      var targets = allRules.filter(function (r) { return r.status === 1 && r.id != null; }).slice(0, 30);
+      if (!targets.length) { resultBox.innerHTML = ''; resultBox.appendChild(DN.empty('暂无可扫描的启用规则', 'check')); return; }
+      btn.disabled = true; btn.textContent = '扫描中…';
+      resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
+      // 顺序拉取每条规则最近执行(复用已有 /rule/{id}/runs 端点), 取首条(时间倒序)
+      var fails = [];
+      var chain = Promise.resolve();
+      targets.forEach(function (r) {
+        chain = chain.then(function () {
+          return DN.get('/api/quality/rule/' + encodeURIComponent(r.id) + '/runs').then(function (runs) {
+            var last = (runs && runs.length) ? runs[0] : null;
+            if (!last) return;
+            var rate = last.passRate == null ? null : Number(last.passRate);
+            var notPass = (last.runStatus && last.runStatus !== 'success') || (rate != null && rate < 100);
+            if (notPass) fails.push({ rule: r, run: last, rate: rate });
+          }).catch(function () { /* 单条失败忽略, 不阻断整体扫描 */ });
+        });
+      });
+      chain.then(function () {
+        btn.disabled = false; btn.textContent = '重新扫描';
+        renderFailFocus(resultBox, fails);
+      });
+    };
+    return card.el;
+  }
+
+  function renderFailFocus(resultBox, fails) {
+    resultBox.innerHTML = '';
+    if (!fails.length) { resultBox.appendChild(DN.empty('所有已启用规则最近一次执行均通过', 'check')); return; }
+    // 通过率升序(最差在前), null(异常无率)视为最差
+    fails.sort(function (a, b) { return (a.rate == null ? -1 : a.rate) - (b.rate == null ? -1 : b.rate); });
+    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px',
+      text: '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示 Top ' + Math.min(fails.length, 8) }));
+    fails.slice(0, 8).forEach(function (f) {
+      var run = f.run, st = run.runStatus || '';
+      var tone = st === 'error' ? 'err' : 'warn';
+      var ts = String(run.startedAt || '').replace('T', ' ').slice(0, 19);
+      var rateText = f.rate == null ? '-' : (Math.round(f.rate * 100) / 100) + '%';
+      var reTone = st === 'error' ? '异常' : '未达标';
+      var meta = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px' }, [
+        DN.pill(reTone, tone),
+        DN.h('span', { style: 'font-weight:600', text: f.rule.ruleName || ('规则 #' + f.rule.id) }),
+        DN.h('span', { style: 'color:var(--text-muted)', text: '通过率 ' + rateText }),
+        DN.h('span', { style: 'color:var(--text-muted)', text: '失败 ' + (run.failCount == null ? '-' : run.failCount) + ' 条' }),
+        DN.h('span', { style: 'color:var(--text-muted)', text: ts })
+      ]);
+      var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑' });
+      rerunBtn.onclick = function () {
+        rerunBtn.disabled = true; rerunBtn.textContent = '复跑中…';
+        DN.post('/api/quality/rule/' + encodeURIComponent(f.rule.id) + '/run').then(function (nr) {
+          var nrate = (nr && nr.passRate != null) ? Number(nr.passRate) : null;
+          var ok = nr && nr.runStatus === 'success';
+          DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%'), ok ? 'ok' : 'warn');
+          rerunBtn.disabled = false; rerunBtn.textContent = ok ? '已通过' : '重新复跑';
+        }).catch(function (e) {
+          DN.toast('复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
+          rerunBtn.disabled = false; rerunBtn.textContent = '立即复跑';
+        });
+      };
+      var row = DN.h('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [meta, rerunBtn]);
+      resultBox.appendChild(row);
+    });
+  }
+
   function loadRules(box) {
     DN.get('/api/quality/rules').then(function (rules) {
       allRules = rules || [];
@@ -101,6 +178,7 @@
         { icon: 'clock', label: '已配调度', value: scheduled, title: '点击仅看已配调度', onClick: function () { filterScheduled = filterScheduled ? '' : '1'; if (tableEl) tableEl.reload(filtered()); DN.toast(filterScheduled ? '仅看已配调度' : '显示全部', 'info'); } }
       ]));
       var cov = buildCoverageMatrix(); if (cov) box.appendChild(cov);
+      box.appendChild(buildFailFocus());
       box.appendChild(buildToolbarAndTable());
     }).catch(function (e) {
       box.innerHTML = '';

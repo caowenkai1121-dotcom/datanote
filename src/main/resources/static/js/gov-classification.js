@@ -23,6 +23,13 @@
     heatCard.body.appendChild(DN.h('div', { id: 'clHeat' }, [DN.skeleton(2)]));
     c.appendChild(heatCard.el);
 
+    // 待确认敏感列提醒（基于热力涉及的表，扫描出置信度中等待人工确认的列）
+    var pendBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '扫描待确认列', onclick: loadPendingCols });
+    var pendCard = DN.card({ title: '待确认敏感列提醒（置信度中等）', icon: 'alert', actions: pendBtn });
+    c.appendChild(pendCard.el);
+    pendCard.body.appendChild(DN.h('div', { class: 'gov-desc', text: '聚合已识别出敏感特征但置信度处于中等区间（50%~80%）的列，需人工确认后到「对表采样识别」中打标。' }));
+    pendCard.body.appendChild(DN.h('div', { id: 'clPending' }, [DN.empty('点击右上角「扫描待确认列」开始聚合', 'alert')]));
+
     // 2. 敏感规则管理
     var addRuleBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', onclick: toggleRuleForm });
     var ruleCard = DN.card({ title: '敏感识别规则', icon: 'shield', actions: addRuleBtn });
@@ -320,5 +327,72 @@
     if (!tasks.length) { DN.toast('请先勾选要打标的列', 'error'); return; }
     Promise.all(tasks).then(function () { DN.toast('已打标 ' + tasks.length + ' 列'); scanTable(); })
       .catch(function (e) { DN.toast(e.message, 'error'); });
+  }
+
+  // 待确认敏感列：对热力涉及的表逐表采样识别，聚合置信度 50%~80% 的列（复用 scan 端点）
+  function loadPendingCols() {
+    var box = document.getElementById('clPending'); if (!box) return;
+    var tables = (_clHeatRows || []).filter(function (r) { return r && r.db && r.table; });
+    if (!tables.length) { box.innerHTML = ''; box.appendChild(DN.empty('暂无已标敏感表可供扫描（先在下方采样识别并确认打标）', 'tag')); return; }
+    var scanList = tables.slice(0, 30); // 上限守卫：仅扫描敏感列数最多的前 30 张表
+    box.innerHTML = '';
+    box.appendChild(DN.h('div', { class: 'gov-desc', text: '正在扫描 ' + scanList.length + ' 张表…' }));
+    box.appendChild(DN.skeleton(3));
+    var jobs = scanList.map(function (t) {
+      return DN.get('/api/gov/classification/scan?db=' + encodeURIComponent(t.db) + '&table=' + encodeURIComponent(t.table))
+        .then(function (cols) { return { db: t.db, table: t.table, cols: cols || [] }; })
+        .catch(function () { return { db: t.db, table: t.table, cols: [] }; });
+    });
+    Promise.all(jobs).then(function (results) {
+      var pending = [];
+      results.forEach(function (res) {
+        res.cols.forEach(function (col) {
+          var conf = Number(col.confidence) || 0;
+          if (conf >= 50 && conf < 80) {
+            pending.push({
+              db: res.db, table: res.table,
+              column: col.column || '',
+              sensitiveType: col.sensitiveType || '-',
+              confidence: conf,
+              currentLevel: col.currentLevel || '',
+              suggestLevel: col.suggestLevel || ''
+            });
+          }
+        });
+      });
+      pending.sort(function (a, b) { return b.confidence - a.confidence; }); // 高置信优先（更接近可确认）
+      renderPendingCols(box, pending, scanList.length, tables.length);
+    });
+  }
+
+  function renderPendingCols(box, rows, scanned, totalTables) {
+    box.innerHTML = '';
+    if (!rows.length) {
+      box.appendChild(DN.empty('已扫描 ' + scanned + ' 张表，未发现置信度中等待确认的列', 'check'));
+      return;
+    }
+    var tableSet = {}, typeSet = {};
+    rows.forEach(function (r) { tableSet[r.db + '.' + r.table] = 1; if (r.sensitiveType) typeSet[r.sensitiveType] = 1; });
+    box.appendChild(DN.statRow([
+      { icon: 'alert', label: '待确认列', value: rows.length, tone: 'warn' },
+      { icon: 'db', label: '涉及表数', value: Object.keys(tableSet).length, sub: '已扫描 ' + scanned + (totalTables > scanned ? '/' + totalTables : '') + ' 表' },
+      { icon: 'tag', label: '敏感类型数', value: Object.keys(typeSet).length }
+    ]));
+    box.appendChild(DN.table({
+      exportName: '待确认敏感列',
+      columns: [
+        { key: 'db', label: '库', exportValue: function (r) { return r.db; } },
+        { key: 'table', label: '表', exportValue: function (r) { return r.table; } },
+        { key: 'column', label: '列', exportValue: function (r) { return r.column; } },
+        { key: 'sensitiveType', label: '敏感类型', exportValue: function (r) { return r.sensitiveType; } },
+        { label: '置信度', exportValue: function (r) { return r.confidence + '%'; }, render: function (r) { return DN.pill(r.confidence + '%', confTone(r.confidence)); } },
+        { label: '当前密级', exportValue: function (r) { return r.currentLevel || ''; }, render: function (r) { return r.currentLevel || '-'; } },
+        { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r.suggestLevel || '-'; } }
+      ],
+      rows: rows,
+      searchKeys: ['db', 'table', 'column', 'sensitiveType'],
+      searchPlaceholder: '搜索库/表/列/类型...',
+      empty: '无待确认列', emptyIcon: 'check'
+    }));
   }
 })();

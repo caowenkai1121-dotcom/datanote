@@ -23,6 +23,9 @@
     var histBox = DN.h('div', { id: 'assetCollectHistory' });
     c.appendChild(histBox);
 
+    var coldBox = DN.h('div', { id: 'assetColdAdvice' });
+    c.appendChild(coldBox);
+
     var listCard = DN.card({ title: '资产清单', icon: 'list' });
     c.appendChild(listCard.el);
     var listBody = listCard.body;
@@ -70,6 +73,7 @@
       assetAll = tables || [];
       renderStats();
       renderAssetTable();
+      renderColdAdvice();
     }).catch(function (e) {
       var b = document.getElementById('assetTbl');
       if (b) { b.innerHTML = ''; b.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
@@ -132,6 +136,60 @@
       wrap.appendChild(row);
     });
     card.body.appendChild(wrap);
+    box.appendChild(card.el);
+  }
+
+  // ===== 冷数据治理建议(大功能): 体量大但疑似冷(行数为0/空)的表, 给出归档/降冷建议 =====
+  // 纯前端计算, 仅复用已加载的 assetAll, 不调用新 API, 不写后端, 仅展示建议
+  function renderColdAdvice() {
+    var box = document.getElementById('assetColdAdvice'); if (!box) return;
+    box.innerHTML = '';
+    // 筛选: 有体量(sizeBytes>0) 且 疑似冷(rowCount 为 0 或 空/未知)
+    var cold = (assetAll || []).filter(function (t) {
+      var sz = Number(t.sizeBytes) || 0;
+      if (sz <= 0) return false;
+      var rc = t.rowCount;
+      return rc == null || (Number(rc) || 0) === 0;
+    });
+    if (!cold.length) return; // 无冷数据则不渲染该区块, 避免占位空卡片
+    // 按体量降序取 Top20
+    cold = cold.slice().sort(function (a, b) { return (Number(b.sizeBytes) || 0) - (Number(a.sizeBytes) || 0); }).slice(0, 20);
+    var coldBytes = cold.reduce(function (s, t) { return s + (Number(t.sizeBytes) || 0); }, 0);
+    var totalBytes = (assetAll || []).reduce(function (s, t) { return s + (Number(t.sizeBytes) || 0); }, 0) || 1;
+    var ratio = Math.round(coldBytes * 100 / totalBytes);
+
+    var card = DN.card({ title: '冷数据治理建议（体量大但疑似冷的表 · 归档/降冷参考）', icon: 'alert' });
+    card.body.appendChild(DN.statRow([
+      { icon: 'alert', label: '疑似冷表', value: fmtInt(cold.length), tone: cold.length ? 'warn' : 'ok', sub: '行数为0/未知' },
+      { icon: 'db', label: '可治理体量', value: DN.fmtBytes(coldBytes), tone: 'info' },
+      { icon: 'chart', label: '占总体量', value: ratio + '%', tone: ratio >= 30 ? 'warn' : 'info' }
+    ]));
+    // 建议生成: 体量越大优先级越高
+    var maxCold = cold.reduce(function (m, t) { return Math.max(m, Number(t.sizeBytes) || 0); }, 1);
+    function adviceOf(t) {
+      var sz = Number(t.sizeBytes) || 0;
+      var r = sz / maxCold;
+      if (r > 0.5) return { text: '建议归档至冷存储', tone: 'err' };
+      if (r > 0.2) return { text: '建议降冷(HOT_COLD)', tone: 'warn' };
+      return { text: '建议核实后清理', tone: 'info' };
+    }
+    card.body.appendChild(DN.table({
+      columns: [
+        { key: 'dbType', label: '来源', render: function (t) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(t.dbType || '-', cm[t.dbType] || 'muted'); } },
+        { key: 'databaseName', label: '库', copyable: true },
+        { key: 'tableName', label: '表', copyable: true },
+        { key: 'rowCount', label: '行数', align: 'right', render: function (t) { return t.rowCount == null ? DN.pill('未知', 'muted') : DN.pill(fmtInt(t.rowCount), 'warn'); } },
+        { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, render: function (t) { return DN.fmtBytes(t.sizeBytes); } },
+        { key: '_advice', label: '治理建议', render: function (t) { var a = adviceOf(t); return DN.pill(a.text, a.tone); } }
+      ],
+      rows: cold,
+      pageSize: 10,
+      searchKeys: ['databaseName', 'tableName'],
+      searchPlaceholder: '搜索库 / 表',
+      empty: '暂无疑似冷数据'
+    }));
+    card.body.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:8px',
+      text: '判定: 占用体量 > 0 且 行数为 0 或未知(疑似空表/废弃表)。建议按体量优先归档至冷存储或配置 HOT_COLD 降冷策略, 此处仅为治理参考, 不执行任何操作。' }));
     box.appendChild(card.el);
   }
 

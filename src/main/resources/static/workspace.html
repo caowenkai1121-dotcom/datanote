@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r46">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r48">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r46"></script>
-<script src="js/gov-assets.js?v=q100r46"></script>
-<script src="js/gov-lineage.js?v=q100r46"></script>
-<script src="js/gov-quality.js?v=q100r46"></script>
-<script src="js/gov-standard.js?v=q100r46"></script>
-<script src="js/gov-classification.js?v=q100r46"></script>
-<script src="js/gov-security.js?v=q100r46"></script>
-<script src="js/gov-health.js?v=q100r46"></script>
-<script src="js/gov-audit.js?v=q100r46"></script>
-<script src="js/gov-overview.js?v=q100r46"></script>
-<script src="js/gov-subject.js?v=q100r46"></script>
+<script src="js/dn-common.js?v=q100r48"></script>
+<script src="js/gov-assets.js?v=q100r48"></script>
+<script src="js/gov-lineage.js?v=q100r48"></script>
+<script src="js/gov-quality.js?v=q100r48"></script>
+<script src="js/gov-standard.js?v=q100r48"></script>
+<script src="js/gov-classification.js?v=q100r48"></script>
+<script src="js/gov-security.js?v=q100r48"></script>
+<script src="js/gov-health.js?v=q100r48"></script>
+<script src="js/gov-audit.js?v=q100r48"></script>
+<script src="js/gov-overview.js?v=q100r48"></script>
+<script src="js/gov-subject.js?v=q100r48"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4065,7 +4065,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
           </div>
           <div class="quality-modal-footer">
             <button class="btn" onclick="closeRuleModal()">取消</button>
-            <button class="btn btn-primary" onclick="saveQualityRule()">保存</button>
+            <button class="btn btn-primary" onclick="saveQualityRule(this)">保存</button>
           </div>
         </div>
       </div>
@@ -4804,7 +4804,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">取消</button>
-          <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob()">确定移动</button>
+          <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob(this)">确定移动</button>
         </div>
       </div>
     </div>
@@ -11233,7 +11233,7 @@ function loadQualityColumns() {
     });
 }
 
-function saveQualityRule() {
+function saveQualityRule(btn) {
   var id = document.getElementById('qrId').value;
   var payload = {
     ruleName: document.getElementById('qrName').value,
@@ -11251,6 +11251,8 @@ function saveQualityRule() {
     msgBox('请填写完整的规则信息');
     return;
   }
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '保存中...'; }
   fetch('/api/quality/rule/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -11262,9 +11264,9 @@ function saveQualityRule() {
         closeRuleModal();
         loadQualityRules();
       } else {
-        msgBox('保存失败: ' + res.msg);
+        msgBox('保存失败: ' + res.msg); _r();
       }
-    });
+    }).catch(function() { msgBox('保存请求失败，请重试'); _r(); });
 }
 
 function editQualityRule(id) {
@@ -17752,20 +17754,22 @@ window.dbsyncOpenMoveJobDialog = function(id, name) {
   document.getElementById('dbsyncMoveJobModal').classList.add('show');
 };
 
-window.dbsyncConfirmMoveJob = function() {
+window.dbsyncConfirmMoveJob = function(btn) {
   var id = _dbsyncMoveJobId;
   if (!id) return;
   var sel = document.getElementById('dbsyncMoveJobFolderSel');
   var folderId = sel ? parseInt(sel.value || '0') : 0;
+  var _t, _r = function() { if (btn) { btn.disabled = false; btn.textContent = _t; } };
+  if (btn) { _t = btn.textContent; btn.disabled = true; btn.textContent = '移动中...'; }
   apiPost('/api/sync-job/' + id + '/move?folderId=' + folderId, {}).then(function(res) {
     if (res.code === 0) {
       showToast('移动成功', 'success');
       document.getElementById('dbsyncMoveJobModal').classList.remove('show');
       dbsyncLoadJobs();
     } else {
-      showToast('移动失败: ' + (res.msg || ''), 'error');
+      showToast('移动失败: ' + (res.msg || ''), 'error'); _r();
     }
-  }).catch(function() { showToast('移动请求失败', 'error'); });
+  }).catch(function() { showToast('移动请求失败', 'error'); _r(); });
 };
 
 /* ---------- 行内嵌历史展开/折叠 ---------- */
