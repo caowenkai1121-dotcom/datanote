@@ -35,6 +35,7 @@
   DN.toast = function (msg, type) {
     var t = document.createElement('div');
     t.className = 'dn-toast dn-toast-' + (type || 'info');
+    t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); // 屏幕阅读器播报提示
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(function () { t.classList.add('dn-toast-show'); }, 10);
@@ -314,11 +315,13 @@
       }
       var thead = '<thead><tr>' + cols.map(function (c) {
         var arrow = c.sortable ? (sortKey === c.key ? (sortDir > 0 ? ' ▲' : ' ▼') : ' ⇅') : '';
-        return '<th' + (c.align ? ' style="text-align:' + c.align + (c.sortable ? ';cursor:pointer' : '') + '"' : (c.sortable ? ' style="cursor:pointer"' : '')) + (c.sortable ? ' data-sk="' + DN.esc(c.key) + '"' : '') + '>' + DN.esc(c.label) + arrow + '</th>';
+        return '<th scope="col"' + (c.align ? ' style="text-align:' + c.align + (c.sortable ? ';cursor:pointer' : '') + '"' : (c.sortable ? ' style="cursor:pointer"' : '')) + (c.sortable ? ' data-sk="' + DN.esc(c.key) + '" role="button" tabindex="0"' : '') + '>' + DN.esc(c.label) + arrow + '</th>';
       }).join('') + '</tr></thead>';
       var table = DN.h('table', { class: 'gov-tbl', html: thead }), tbody = document.createElement('tbody');
       Array.prototype.slice.call(table.querySelectorAll('th[data-sk]')).forEach(function (th) {
-        th.addEventListener('click', function () { var k = th.getAttribute('data-sk'); if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; } page = 1; draw(); });
+        var doSort = function () { var k = th.getAttribute('data-sk'); if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; } page = 1; draw(); };
+        th.addEventListener('click', doSort);
+        th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doSort(); } }); // 键盘可排序
       });
       data.slice((page - 1) * pageSize, page * pageSize).forEach(function (r) {
         var tr = document.createElement('tr');
@@ -360,7 +363,7 @@
     function onKey(e) { if (e.key === 'Escape') close(); }
     var _closing = false;
     function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
-    var dr = DN.h('div', { class: 'gov-drawer' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close })]), bd]);
+    var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd]);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);
     DN._drawerKey = onKey; document.addEventListener('keydown', onKey);
