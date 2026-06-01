@@ -3289,7 +3289,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   border-top: 1px dashed var(--divider);
   display: none;
 }
-.dfs-field-map-area.open { display: block; }
+.dfs-field-map-area.open { display: block; animation: wsOverlayIn .2s ease; }
 .dfs-field-map-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
 .dfs-field-map-table th {
   text-align: left; padding: 4px 8px; font-weight: 600; color: var(--text-muted);
@@ -3297,6 +3297,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 }
 .dfs-field-map-table td { padding: 3px 8px; border-bottom: 1px solid var(--divider); vertical-align: middle; }
 .dfs-field-map-table tr:last-child td { border-bottom: none; }
+.dfs-field-map-table tbody tr:hover { background: rgba(0,0,0,.02); }
 /* 日志面板 */
 .dbsync-log-panel {
   background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
@@ -3313,19 +3314,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r30">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r32">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r30"></script>
-<script src="js/gov-assets.js?v=q100r30"></script>
-<script src="js/gov-lineage.js?v=q100r30"></script>
-<script src="js/gov-quality.js?v=q100r30"></script>
-<script src="js/gov-standard.js?v=q100r30"></script>
-<script src="js/gov-classification.js?v=q100r30"></script>
-<script src="js/gov-security.js?v=q100r30"></script>
-<script src="js/gov-health.js?v=q100r30"></script>
-<script src="js/gov-audit.js?v=q100r30"></script>
-<script src="js/gov-overview.js?v=q100r30"></script>
-<script src="js/gov-subject.js?v=q100r30"></script>
+<script src="js/dn-common.js?v=q100r32"></script>
+<script src="js/gov-assets.js?v=q100r32"></script>
+<script src="js/gov-lineage.js?v=q100r32"></script>
+<script src="js/gov-quality.js?v=q100r32"></script>
+<script src="js/gov-standard.js?v=q100r32"></script>
+<script src="js/gov-classification.js?v=q100r32"></script>
+<script src="js/gov-security.js?v=q100r32"></script>
+<script src="js/gov-health.js?v=q100r32"></script>
+<script src="js/gov-audit.js?v=q100r32"></script>
+<script src="js/gov-overview.js?v=q100r32"></script>
+<script src="js/gov-subject.js?v=q100r32"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13056,7 +13057,7 @@ function projListCards(rows) {
       + '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;">'
       + '<span style="padding:0 6px;border-radius:8px;background:var(--bg-hover);">' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</span>'
       + '<span style="padding:0 6px;border-radius:8px;background:var(--bg-hover);">' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</span>'
-      + '<span style="color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span>'
+      + '<span style="padding:0 7px;border-radius:8px;border:1px solid ' + st.c + ';color:' + st.c + ';font-weight:500;">' + escapeHtml(st.t) + '</span>'
       + '<span style="margin-left:auto;">' + escapeHtml(p.owner || '') + '</span></div>'
       + '</div>';
   });

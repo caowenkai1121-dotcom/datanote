@@ -19,8 +19,8 @@
 
 /* ---- KPI 磁贴 ---- */
 #govModuleContent .gov-stat { position:relative; display:flex; align-items:center; gap:14px; background:var(--bg-card,#fff);
-  border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; box-shadow:var(--gov-shadow); transition:transform .15s, box-shadow .15s; }
-#govModuleContent .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); }
+  border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; box-shadow:var(--gov-shadow); transition:transform .15s, box-shadow .15s, border-color .15s; }
+#govModuleContent .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,#1890ff); }
 #govModuleContent .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(24,144,255,.08)); color:var(--primary,#1890ff); }
 #govModuleContent .gov-stat .ic svg { width:22px; height:22px; }
 #govModuleContent .gov-stat.tone-ok .ic { background:rgba(82,196,26,.1); color:var(--gov-ok); }
@@ -62,11 +62,12 @@
 
 /* ---- 状态药丸 ---- */
 #govModuleContent .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
-#govModuleContent .gov-pill.is-ok { background:rgba(82,196,26,.12); color:var(--gov-ok); }
-#govModuleContent .gov-pill.is-warn { background:rgba(250,173,20,.14); color:#d48806; }
-#govModuleContent .gov-pill.is-err { background:rgba(255,77,79,.1); color:var(--gov-err); }
-#govModuleContent .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:var(--primary,#1890ff); }
-#govModuleContent .gov-pill.is-muted { background:rgba(140,140,140,.1); color:#8c8c8c; }
+/* 文字色加深至 WCAG AA(≥4.5:1),小字号药丸在浅底上可读 */
+#govModuleContent .gov-pill.is-ok { background:rgba(82,196,26,.14); color:#389e0d; }
+#govModuleContent .gov-pill.is-warn { background:rgba(250,173,20,.16); color:#ad6800; }
+#govModuleContent .gov-pill.is-err { background:rgba(255,77,79,.12); color:#cf1322; }
+#govModuleContent .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:#0958d9; }
+#govModuleContent .gov-pill.is-muted { background:rgba(140,140,140,.16); color:#595959; }
 
 /* ---- 横向条形图 ---- */
 #govModuleContent .gov-bar { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
