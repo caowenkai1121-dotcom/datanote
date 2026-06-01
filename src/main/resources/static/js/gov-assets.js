@@ -602,7 +602,7 @@
       var totalCost = rows.reduce(function (a, s) { return a + (Number(s.costEstimate) || 0); }, 0);
       if (totalCost > 0) {
         box.appendChild(DN.statRow([
-          { icon: 'chart', label: '总月成本', value: '¥' + totalCost.toFixed(0), tone: 'warn' },
+          { icon: 'chart', label: '总月成本', value: '¥' + fmtInt(Math.round(totalCost)), tone: 'warn' },
           { icon: 'chart', label: '平均/表', value: '¥' + (rows.length ? (totalCost / rows.length).toFixed(1) : 0), tone: 'info' },
           { icon: 'db', label: '统计表数', value: rows.length }
         ]));

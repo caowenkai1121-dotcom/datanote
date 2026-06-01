@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r34">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r35">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r34"></script>
-<script src="js/gov-assets.js?v=q100r34"></script>
-<script src="js/gov-lineage.js?v=q100r34"></script>
-<script src="js/gov-quality.js?v=q100r34"></script>
-<script src="js/gov-standard.js?v=q100r34"></script>
-<script src="js/gov-classification.js?v=q100r34"></script>
-<script src="js/gov-security.js?v=q100r34"></script>
-<script src="js/gov-health.js?v=q100r34"></script>
-<script src="js/gov-audit.js?v=q100r34"></script>
-<script src="js/gov-overview.js?v=q100r34"></script>
-<script src="js/gov-subject.js?v=q100r34"></script>
+<script src="js/dn-common.js?v=q100r35"></script>
+<script src="js/gov-assets.js?v=q100r35"></script>
+<script src="js/gov-lineage.js?v=q100r35"></script>
+<script src="js/gov-quality.js?v=q100r35"></script>
+<script src="js/gov-standard.js?v=q100r35"></script>
+<script src="js/gov-classification.js?v=q100r35"></script>
+<script src="js/gov-security.js?v=q100r35"></script>
+<script src="js/gov-health.js?v=q100r35"></script>
+<script src="js/gov-audit.js?v=q100r35"></script>
+<script src="js/gov-overview.js?v=q100r35"></script>
+<script src="js/gov-subject.js?v=q100r35"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17786,9 +17786,9 @@ window.dbsyncLoadInlineHistory = function(id) {
       html += '<tr>'
         + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
         + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
-        + '<td>' + (ex.readCount || 0) + '</td>'
-        + '<td>' + (ex.writeCount || 0) + '</td>'
-        + '<td>' + (ex.errorCount || 0) + '</td>'
+        + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+        + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+        + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
         + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
         + '<td style="max-width:220px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
@@ -17943,9 +17943,9 @@ window.dbsyncShowHistory = function(id, name) {
       html += '<tr>'
         + '<td style="white-space:nowrap;">' + escapeHtml(ex.startTime || ex.createTime || '') + '</td>'
         + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
-        + '<td>' + (ex.readCount || 0) + '</td>'
-        + '<td>' + (ex.writeCount || 0) + '</td>'
-        + '<td>' + (ex.errorCount || 0) + '</td>'
+        + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+        + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+        + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
         + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
         + '<td style="max-width:260px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
@@ -18337,7 +18337,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     recent.forEach(function(ex) {
       var k = dbsyncExecKind(ex.status);
       var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#1890ff';
-      var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (ex.readCount || 0) + '/写' + (ex.writeCount || 0) + '/错' + (ex.errorCount || 0);
+      var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (Number(ex.readCount) || 0).toLocaleString() + '/写' + (Number(ex.writeCount) || 0).toLocaleString() + '/错' + (Number(ex.errorCount) || 0).toLocaleString();
       html += '<span onclick="dbsyncGoTab(\'history\')" title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:pointer;"></span>';
     });
     html += '</div></div>';
@@ -18633,7 +18633,7 @@ function dbsyncHistTimeline(view) {
     var w = Math.max(1.2, (x.end - x.start) / span * 100);
     if (left + w > 100) w = 100 - left;
     var durSec = x.ex.duration != null ? x.ex.duration : '?';
-    var tip = dbsyncFmtTime(x.ex.startTime || x.ex.createTime) + ' · ' + dbsyncExecLabel(x.ex.status) + ' · 耗时' + durSec + 's · 读' + (x.ex.readCount || 0) + '/写' + (x.ex.writeCount || 0);
+    var tip = dbsyncFmtTime(x.ex.startTime || x.ex.createTime) + ' · ' + dbsyncExecLabel(x.ex.status) + ' · 耗时' + durSec + 's · 读' + (Number(x.ex.readCount) || 0).toLocaleString() + '/写' + (Number(x.ex.writeCount) || 0).toLocaleString();
     return '<div style="display:flex;align-items:center;gap:8px;height:24px;">'
       + '<div style="width:120px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(dbsyncFmtTime(x.ex.startTime || x.ex.createTime)) + '</div>'
       + '<div style="flex:1;position:relative;height:14px;background:var(--bg-hover,#f0f1f3);border-radius:3px;">'
@@ -18685,9 +18685,9 @@ function dbsyncRenderHistory(execs) {
     html += '<tr>'
       + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(ex.startTime || ex.createTime)) + '</td>'
       + '<td><span style="color:' + color + ';font-weight:500;">' + escapeHtml(label) + '</span></td>'
-      + '<td>' + (ex.readCount || 0) + '</td>'
-      + '<td>' + (ex.writeCount || 0) + '</td>'
-      + '<td>' + (ex.errorCount || 0) + '</td>'
+      + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+      + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+      + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
       + '<td' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#d48806;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
       + '<td style="max-width:200px;">' + logCell + '</td>'
       + '</tr>';
