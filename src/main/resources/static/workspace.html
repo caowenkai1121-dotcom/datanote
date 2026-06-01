@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r33">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r34">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r33"></script>
-<script src="js/gov-assets.js?v=q100r33"></script>
-<script src="js/gov-lineage.js?v=q100r33"></script>
-<script src="js/gov-quality.js?v=q100r33"></script>
-<script src="js/gov-standard.js?v=q100r33"></script>
-<script src="js/gov-classification.js?v=q100r33"></script>
-<script src="js/gov-security.js?v=q100r33"></script>
-<script src="js/gov-health.js?v=q100r33"></script>
-<script src="js/gov-audit.js?v=q100r33"></script>
-<script src="js/gov-overview.js?v=q100r33"></script>
-<script src="js/gov-subject.js?v=q100r33"></script>
+<script src="js/dn-common.js?v=q100r34"></script>
+<script src="js/gov-assets.js?v=q100r34"></script>
+<script src="js/gov-lineage.js?v=q100r34"></script>
+<script src="js/gov-quality.js?v=q100r34"></script>
+<script src="js/gov-standard.js?v=q100r34"></script>
+<script src="js/gov-classification.js?v=q100r34"></script>
+<script src="js/gov-security.js?v=q100r34"></script>
+<script src="js/gov-health.js?v=q100r34"></script>
+<script src="js/gov-audit.js?v=q100r34"></script>
+<script src="js/gov-overview.js?v=q100r34"></script>
+<script src="js/gov-subject.js?v=q100r34"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -8964,7 +8964,7 @@ function loadDsLogs() {
     allLogs.sort(function(a, b) { return b.sortTime.localeCompare(a.sortTime); });
 
     if (allLogs.length === 0) {
-      container.innerHTML = '<div style="color:var(--text-muted);">暂无执行记录。执行任务后，运行日志将显示在这里。</div>';
+      container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);"><div style="font-size:26px;margin-bottom:6px;opacity:.7;">📡</div><div style="font-size:13px;">暂无执行记录</div><div style="font-size:12px;opacity:.7;margin-top:4px;">执行任务后运行日志将实时显示在这里</div></div>';
       return;
     }
 
@@ -14170,7 +14170,7 @@ function projCalendarHtml(tasks, today) {
 }
 // 成员负载视图：按指派人聚合, 堆叠条(待办/进行中/完成)+超期标记
 function projWorkloadHtml(tasks, today) {
-  if (!tasks.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无任务。</div>';
+  if (!tasks.length) return '<div style="padding:40px 24px;text-align:center;color:var(--text-muted);"><div style="font-size:30px;margin-bottom:8px;opacity:.7;">📋</div><div style="font-size:13px;">暂无任务</div><div style="font-size:12px;opacity:.7;margin-top:4px;">创建任务后可按成员负载查看分布</div></div>';
   var byAsg = {};
   tasks.forEach(function(t) {
     var k = t.assignee || '（未指派）';
@@ -14202,7 +14202,7 @@ function projWorkloadHtml(tasks, today) {
 }
 // 燃尽图：按天重建剩余任务曲线(实际) vs 理想匀速线(纯前端自绘)
 function projBurndownHtml(tasks, today) {
-  if (!tasks.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无任务，无法绘制燃尽图。</div>';
+  if (!tasks.length) return '<div style="padding:40px 24px;text-align:center;color:var(--text-muted);"><div style="font-size:30px;margin-bottom:8px;opacity:.7;">📉</div><div style="font-size:13px;">暂无任务</div><div style="font-size:12px;opacity:.7;margin-top:4px;">创建带截止日的任务后可绘制燃尽图</div></div>';
   var dOf = function(s) { return s ? String(s).slice(0, 10) : null; };
   // 完成时点: DONE 任务取 updatedAt(回退 dueDate); 创建时点取 createdAt(回退最早)
   var createdDs = tasks.map(function(t) { return dOf(t.createdAt); }).filter(Boolean).sort();
@@ -14349,7 +14349,7 @@ window.projMilestoneDetail = function(msId) {
     + '周期 ' + escapeHtml(m.startDate || '?') + ' ~ ' + escapeHtml(m.endDate || '?')
     + ' · 任务 ' + mt.length + ' · 完成 ' + doneN + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</div>';
   if (mt.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#52c41a' : 'var(--primary)') + ';"></div></div></div>';
-  if (!mt.length) h += '<div style="padding:16px;text-align:center;color:var(--text-muted);">该里程碑暂无关联任务</div>';
+  if (!mt.length) h += '<div style="padding:28px 16px;text-align:center;color:var(--text-muted);"><div style="font-size:26px;margin-bottom:6px;opacity:.7;">🗂️</div><div style="font-size:13px;">该里程碑暂无关联任务</div><div style="font-size:12px;opacity:.7;margin-top:4px;">在任务中设置里程碑即可归集到此</div></div>';
   else {
     ['DOING', 'TODO', 'DONE'].forEach(function(st) {
       var g = mt.filter(function(t) { return t.status === st; });
@@ -14444,7 +14444,7 @@ window.projMilestoneManage = function() {
 };
 function projRenderMilestones() {
   var box = document.getElementById('pmsList'); if (!box) return;
-  if (!_projMilestones.length) { box.innerHTML = '<div style="color:var(--text-muted);">暂无里程碑</div>'; return; }
+  if (!_projMilestones.length) { box.innerHTML = '<div style="padding:36px 24px;text-align:center;color:var(--text-muted);"><div style="font-size:30px;margin-bottom:8px;opacity:.7;">🎯</div><div style="font-size:13px;">暂无里程碑</div><div style="font-size:12px;opacity:.7;margin-top:4px;">创建里程碑可在甘特图中追踪阶段进度</div></div>'; return; }
   box.innerHTML = _projMilestones.map(function(m) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span><a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
 }
 window.projSaveMilestone = function() {
@@ -14533,7 +14533,7 @@ window.projLoadWiki = function() {
 };
 function projWikiRenderTree() {
   var box = document.getElementById('projWikiTree'); if (!box) return;
-  if (!_projWikiPages.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">暂无文档</div>'; return; }
+  if (!_projWikiPages.length) { box.innerHTML = '<div style="padding:32px 16px;text-align:center;color:var(--text-muted);"><div style="font-size:28px;margin-bottom:8px;opacity:.7;">📖</div><div style="font-size:13px;">暂无文档</div><div style="font-size:12px;opacity:.7;margin-top:4px;">新建文档沉淀项目知识</div></div>'; return; }
   function item(p, indent) { return '<div style="padding:4px 0 4px ' + (4 + indent * 14) + 'px;cursor:pointer;font-size:13px;' + (_projWikiCur === p.id ? 'color:var(--primary);font-weight:600;' : '') + '" onclick="projWikiSelect(' + p.id + ')">' + (indent ? '• ' : '') + escapeHtml(p.title) + '</div>'; }
   // 搜索: 命中标题则平铺展示
   var kw = ((document.getElementById('projWikiSearch') || {}).value || '').trim().toLowerCase();
@@ -17918,7 +17918,7 @@ window.dbsyncShowHistory = function(id, name) {
     }
     var list = res.data || [];
     if (list.length === 0) {
-      document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无执行记录</div>';
+      document.getElementById('dbsyncHistoryContent').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);"><div style="font-size:26px;margin-bottom:6px;opacity:.7;">🗒️</div><div style="font-size:13px;">暂无执行记录</div></div>';
       return;
     }
     var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
@@ -18653,7 +18653,7 @@ function dbsyncRenderHistory(execs) {
   if (!pane) return;
   if (arguments.length) _dbsyncHistAll = execs || [];
   if (!_dbsyncHistAll.length) {
-    pane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无执行记录</div>';
+    pane.innerHTML = '<div style="padding:36px;text-align:center;color:var(--text-muted);"><div style="font-size:28px;margin-bottom:8px;opacity:.7;">🗒️</div><div style="font-size:13px;">暂无执行记录</div><div style="font-size:12px;opacity:.7;margin-top:4px;">任务运行后将在此列出每次执行</div></div>';
     return;
   }
   // 状态筛选条 + 视图切换 + 导出CSV

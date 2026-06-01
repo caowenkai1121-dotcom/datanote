@@ -82,8 +82,9 @@
 #govModuleContent .gov-gauge .gl { font-size:12px; color:var(--text-muted,#86909c); margin-top:2px; }
 
 /* ---- 空态 ---- */
-#govModuleContent .gov-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; color:var(--text-muted,#9aa0a6); text-align:center; }
-#govModuleContent .gov-empty svg { width:42px; height:42px; opacity:.45; }
+#govModuleContent .gov-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; color:var(--text-muted,#9aa0a6); text-align:center; animation:govEmptyIn .3s ease; }
+@keyframes govEmptyIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+#govModuleContent .gov-empty svg { width:44px; height:44px; opacity:.5; }
 #govModuleContent .gov-empty .et { font-size:13px; }
 
 /* ---- 骨架屏 ---- */
