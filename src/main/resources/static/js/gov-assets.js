@@ -211,6 +211,7 @@
       g.tables.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); }).forEach(function (t) {
         var w = (Number(t.sizeBytes) || 0) / (g.sum || 1) * 100;
         var cell = DN.h('div', { title: t.tableName + ' · ' + DN.fmtBytes(t.sizeBytes) + (t.rowCount != null ? ' · ' + fmtInt(t.rowCount) + ' 行' : ''),
+          'aria-label': t.tableName + ' 体量 ' + DN.fmtBytes(t.sizeBytes) + ',点击查看详情', role: 'button',
           style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.sizeBytes) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap;' });
         cell.textContent = w > 8 ? t.tableName : '';
         cell.addEventListener('click', function () { openAssetDetail(t.databaseName || '', t.tableName || ''); });

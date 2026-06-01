@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r35">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r36">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r35"></script>
-<script src="js/gov-assets.js?v=q100r35"></script>
-<script src="js/gov-lineage.js?v=q100r35"></script>
-<script src="js/gov-quality.js?v=q100r35"></script>
-<script src="js/gov-standard.js?v=q100r35"></script>
-<script src="js/gov-classification.js?v=q100r35"></script>
-<script src="js/gov-security.js?v=q100r35"></script>
-<script src="js/gov-health.js?v=q100r35"></script>
-<script src="js/gov-audit.js?v=q100r35"></script>
-<script src="js/gov-overview.js?v=q100r35"></script>
-<script src="js/gov-subject.js?v=q100r35"></script>
+<script src="js/dn-common.js?v=q100r36"></script>
+<script src="js/gov-assets.js?v=q100r36"></script>
+<script src="js/gov-lineage.js?v=q100r36"></script>
+<script src="js/gov-quality.js?v=q100r36"></script>
+<script src="js/gov-standard.js?v=q100r36"></script>
+<script src="js/gov-classification.js?v=q100r36"></script>
+<script src="js/gov-security.js?v=q100r36"></script>
+<script src="js/gov-health.js?v=q100r36"></script>
+<script src="js/gov-audit.js?v=q100r36"></script>
+<script src="js/gov-overview.js?v=q100r36"></script>
+<script src="js/gov-subject.js?v=q100r36"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14573,7 +14573,8 @@ function projWikiBuildToc() {
   if (!body || !tocBox) return;
   var hs = body.querySelectorAll('h1,h2,h3,h4');
   var words = (body.textContent || '').replace(/\s/g, '').length;
-  if (hs.length < 2) { tocBox.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">全文约 ' + words + ' 字</div>'; return; }
+  var wordsStr = words.toLocaleString();
+  if (hs.length < 2) { tocBox.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">全文约 ' + wordsStr + ' 字</div>'; return; }
   var items = '';
   Array.prototype.slice.call(hs).forEach(function(h, i) {
     var id = 'wikih_' + i; h.id = id;
@@ -14581,7 +14582,7 @@ function projWikiBuildToc() {
     items += '<a href="#" onclick="(function(){var e=document.getElementById(\'' + id + '\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'start\'});})();return false;" style="display:block;padding:2px 0 2px ' + ((lv - 1) * 14) + 'px;font-size:12px;color:var(--text-regular);text-decoration:none;border-left:2px solid transparent;" onmouseover="this.style.color=\'var(--primary)\'" onmouseout="this.style.color=\'var(--text-regular)\'">' + escapeHtml(h.textContent || '') + '</a>';
   });
   tocBox.innerHTML = '<div style="border:1px solid var(--divider);border-radius:8px;padding:10px 12px;margin-bottom:12px;background:var(--bg-hover,#f6f7f9);">'
-    + '<div style="display:flex;align-items:center;margin-bottom:6px;"><b style="font-size:12px;">目录</b><span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + hs.length + ' 节 · 约 ' + words + ' 字</span></div>'
+    + '<div style="display:flex;align-items:center;margin-bottom:6px;"><b style="font-size:12px;">目录</b><span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + hs.length + ' 节 · 约 ' + wordsStr + ' 字</span></div>'
     + items + '</div>';
 }
 window.projWikiNew = function() { projWikiEditForm({ title: '', content: '', parentId: 0 }); };
