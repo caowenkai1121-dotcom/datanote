@@ -34,6 +34,34 @@
     });
   }
 
+  // 治理待办行动中心: 聚合质量异常/落标违规/健康分偏低等待处理事项(各源独立 .catch 降级), 提供直达链接
+  function loadGovTodo(body, healthTotal) {
+    Promise.all([
+      DN.get('/api/quality/overview').catch(function () { return null; }),
+      DN.get('/api/gov/standard/top-violations?limit=50').catch(function () { return null; })
+    ]).then(function (r) {
+      body.innerHTML = '';
+      var q = r[0] || {}, viol = Array.isArray(r[1]) ? r[1] : [];
+      var items = [];
+      var qBad = (Number(q.failedRuns) || 0) + (Number(q.errorRuns) || 0);
+      if (qBad > 0) items.push({ icon: 'check', label: '近 24 小时质量检查失败/异常', n: qBad, unit: '次', key: 'quality', tone: 'err' });
+      if (viol.length > 0) items.push({ icon: 'doc', label: '数据标准落标违规库表', n: viol.length + (viol.length >= 50 ? '+' : ''), unit: '个', key: 'standard', tone: 'warn' });
+      // score>0 才判低分: total=0 多为"暂无评分数据"而非真得 0 分, 避免无数据误报
+      var score = (healthTotal != null) ? Number(healthTotal) : null;
+      if (score != null && score > 0 && score < 80) items.push({ icon: 'shield', label: '治理健康分偏低', n: round1(score), unit: '分', key: 'health', tone: score < 60 ? 'err' : 'warn' });
+      if (!items.length) { body.appendChild(DN.empty('暂无待处理的治理事项，治理状态良好', 'check')); return; }
+      body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px', text: '聚合各模块需关注的事项，点“前往”直达处理：' }));
+      items.forEach(function (it) {
+        body.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [
+          DN.h('span', { html: DN.icon(it.icon), style: 'color:' + toneColor(it.tone) + ';display:flex' }),
+          DN.h('span', { style: 'flex:1;font-size:13px', text: it.label }),
+          DN.pill(it.n + ' ' + it.unit, it.tone),
+          DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '前往', onclick: (function (k) { return function () { if (window.govGoModule) govGoModule(k); }; })(it.key) })
+        ]));
+      });
+    }).catch(function () { body.innerHTML = ''; body.appendChild(DN.empty('待办聚合加载失败', 'alert')); });
+  }
+
   var _lastData = null, _lastTrend = null;
   function render(box, d, trend) {
     _lastData = d; _lastTrend = trend;
@@ -71,6 +99,12 @@
       { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate), title: '进入数据质量', onClick: jump('quality') },
       { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', title: '进入治理健康分', onClick: jump('health') }
     ]));
+
+    // ---- 治理待办行动中心(创新功能): 聚合各模块需关注事项, 一处直达处理 ----
+    var todoCard = DN.card({ title: '治理待办行动中心', icon: 'inbox' });
+    todoCard.body.appendChild(DN.skeleton(2));
+    box.appendChild(todoCard.el);
+    loadGovTodo(todoCard.body, total);
 
     // ---- 健康总分 + 五维雷达 ----
     var dims = health.dims || {};
