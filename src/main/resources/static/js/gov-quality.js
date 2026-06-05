@@ -249,7 +249,7 @@
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension; } },
         { key: 'rateText', label: '通过率', align: 'right', render: function (r) { return r.rateText; } },
         { key: 'failCount', label: '失败数', align: 'right', render: function (r) { return String(r.failCount); } },
-        { key: 'startedAt', label: '执行时间', render: function (r) { return r.startedAt || '-'; } },
+        { key: 'startedAt', label: '执行时间', render: function (r) { return r.startedAt ? DN.timeAgo(r.startedAt) : '-'; } },
         { key: '_op', label: '操作', render: function (r) {
             var f = r._f;
             var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑' });
@@ -411,7 +411,7 @@
           var reason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample).slice(0, 80)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
           ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [
             DN.pill(f.runStatus, f.runStatus === 'ERROR' ? 'err' : 'warn'),
-            DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: ts }),
+            DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: DN.fmtAgo(f.startedAt), title: ts }),
             DN.h('span', { text: reason })
           ]));
         });

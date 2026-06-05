@@ -132,7 +132,7 @@
       row.innerHTML = '<div style="position:absolute;left:-16px;top:2px;width:9px;height:9px;border-radius:50%;background:' + color + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + color + '"></div>'
         + '<div style="font-size:12px"><b style="color:' + color + '">' + DN.esc(lg.status || '-') + '</b> '
         + '<span style="color:var(--text-muted)">' + DN.esc(lg.dbType || '') + (lg.tableCount != null ? ' · ' + lg.tableCount + ' 表' : '') + '</span></div>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + DN.esc((lg.startedAt || lg.createdAt || '').toString().replace('T', ' ').slice(0, 19)) + (lg.message ? ' · ' + DN.esc(String(lg.message).slice(0, 60)) : '') + '</div>';
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px" title="' + DN.esc((lg.startedAt || lg.createdAt || '').toString().replace('T', ' ').slice(0, 19)) + '">' + DN.esc(DN.fmtAgo(lg.startedAt || lg.createdAt)) + (lg.message ? ' · ' + DN.esc(String(lg.message).slice(0, 60)) : '') + '</div>';
       wrap.appendChild(row);
     });
     card.body.appendChild(wrap);

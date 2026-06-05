@@ -101,6 +101,29 @@
     return v.toFixed(1) + ' ' + u[i];
   };
 
+  // 友好相对时间："3分钟前"/"2小时前"/"昨天 14:30"，超 7 天回退绝对时间。无效/空返回 '-'。
+  DN.fmtAgo = function (ts) {
+    if (ts == null || ts === '') return '-';
+    var s = String(ts).replace('T', ' ').trim();
+    // 兼容 'YYYY-MM-DD HH:mm:ss' 与 ISO，统一按本地时间解析
+    var d = new Date(s.indexOf('-') > 0 ? s.replace(/-/g, '/').split('.')[0] : s);
+    if (isNaN(d.getTime())) return String(ts);
+    var diff = (Date.now() - d.getTime()) / 1000;       // 秒
+    if (diff < 0) return s.slice(0, 19);                 // 未来时间直接显示绝对
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+    if (diff < 172800) return '昨天 ' + s.slice(11, 16);
+    if (diff < 604800) return Math.floor(diff / 86400) + ' 天前';
+    return s.slice(0, 10);                               // 超 7 天显示日期
+  };
+
+  // 相对时间 <span>，title 挂完整绝对时间（鼠标悬停可见，审计可溯源）
+  DN.timeAgo = function (ts) {
+    var full = ts == null ? '' : String(ts).replace('T', ' ').slice(0, 19);
+    return DN.h('span', { text: DN.fmtAgo(ts), title: full, style: 'white-space:nowrap' });
+  };
+
   // ===== 元数据下拉数据源（数仓侧，复用工作台同款接口） =====
   DN.metaDatabases = function () { return DN.get('/api/metadata/databases'); };
   DN.metaTables = function (db) { return DN.get('/api/metadata/tables?db=' + encodeURIComponent(db)); };

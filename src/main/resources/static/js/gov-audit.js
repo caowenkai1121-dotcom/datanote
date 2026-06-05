@@ -20,7 +20,7 @@
   function buildTable() {
     return DN.table({
       columns: [
-        { key: 'createdAt', label: '时间', render: function (r) { return fmtTs(r.createdAt); } },
+        { key: 'createdAt', label: '时间', render: function (r) { return DN.timeAgo(r.createdAt); } },
         { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
         { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
         { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
@@ -384,11 +384,6 @@
   function exportCsv() {
     var p = qsParams();
     window.open('/api/gov/audit/export' + (p.length ? '?' + p.join('&') : ''), '_blank');
-  }
-
-  function fmtTs(s) {
-    if (!s) return '';
-    return String(s).replace('T', ' ').slice(0, 19);
   }
 
   // 供其它模块跳转的入口；直接渲染进 govContent 容器（保持原行为）。

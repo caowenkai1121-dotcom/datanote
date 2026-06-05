@@ -130,7 +130,7 @@
           { label: '新密级', render: function (r) { return DN.pill(r.newLevel || '-', 'info'); } },
           { key: 'sensitiveType', label: '敏感类型', render: function (r) { return r.sensitiveType || '-'; } },
           { key: 'operator', label: '操作人', render: function (r) { return r.operator || '-'; } },
-          { label: '时间', render: function (r) { return String(r.createdAt || '').replace('T', ' ').slice(0, 19); } }
+          { label: '时间', render: function (r) { return DN.timeAgo(r.createdAt); } }
         ],
         rows: rows
       }));
