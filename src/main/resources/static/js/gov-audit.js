@@ -210,7 +210,8 @@
         text: '异常活跃操作人（均值 ' + uRes.mean.toFixed(1) + ' · 阈值 ' + uRes.threshold.toFixed(1) + '）' }));
       card.body.appendChild(DN.bars(uRes.items.map(function (it) {
         return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
-          display: ratioText(it),
+          // 非色严重度提示(WCAG 1.4.1)：高=! 中=· ，避免仅靠 err红/warn黄 区分
+          display: (it.ratio >= 3 ? '! ' : '· ') + ratioText(it),
           onClick: function () { filterByUser(it.name); } };
       })));
     }
@@ -220,7 +221,8 @@
         text: '异常高频路径（均值 ' + pRes.mean.toFixed(1) + ' · 阈值 ' + pRes.threshold.toFixed(1) + '）' }));
       card.body.appendChild(DN.bars(pRes.items.map(function (it) {
         return { label: it.name, value: it.value, tone: it.ratio >= 3 ? 'err' : 'warn',
-          display: ratioText(it),
+          // 非色严重度提示(WCAG 1.4.1)：高=! 中=· ，避免仅靠 err红/warn黄 区分
+          display: (it.ratio >= 3 ? '! ' : '· ') + ratioText(it),
           onClick: function () { if (it.name && it.name !== '-') DN.copy(it.name); } };
       })));
     }

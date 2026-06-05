@@ -134,8 +134,11 @@
       var maxCnt = Math.max.apply(null, counts) || 1;
       card.body.appendChild(DN.bars(layerKeys.map(function (k) {
         var v = byLayer[k];
-        var tone = (v >= mean * 1.6) ? 'warning' : (v <= mean * 0.4 ? 'info' : 'success');
-        return { label: k, value: Math.round(v / maxCnt * 100), tone: tone, display: String(v) };
+        var over = v >= mean * 1.6, under = v <= mean * 0.4;
+        var tone = over ? 'warning' : (under ? 'info' : 'success');
+        // WCAG1.4.1：偏多/偏少不能仅靠色区分，display 前加 ▲/▼ 非色符号
+        var cue = over ? '▲ ' : (under ? '▼ ' : '');
+        return { label: k, value: Math.round(v / maxCnt * 100), tone: tone, display: cue + v };
       })));
     }
 

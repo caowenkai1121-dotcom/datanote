@@ -63,7 +63,7 @@
     gCard.body.appendChild(gq);
     // 图例
     gCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:8px',
-      html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:3px;vertical-align:middle;margin-right:4px"></span>中心表 ' +
+      html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:3px;vertical-align:middle;margin-right:4px"></span>★ 中心表 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.up + ';vertical-align:middle;margin:0 4px 0 12px"></span>上游边 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 点节点高亮相邻，悬停边看来源/层级' }));
     gCard.body.appendChild(DN.h('div', { id: 'graphResult' }));
@@ -316,9 +316,10 @@
         fill: isCenter ? C.primary : C.node,
         stroke: isCenter ? C.primary : C.nodeBorder, 'stroke-width': '1' });
       var label = n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
+      // 非色cue(WCAG 1.4.1)：中心表此前仅靠蓝色填充区分，色盲不可辨，前缀★标记
       var txt = svg('text', { x: p.x + NW / 2, y: p.y + NH / 2 + 4, 'text-anchor': 'middle',
         'font-size': '12', fill: isCenter ? '#fff' : C.text });
-      txt.textContent = label;
+      txt.textContent = isCenter ? '★ ' + label : label;
       var ttl = svg('title'); ttl.textContent = n.id; rect.appendChild(ttl);
       g.appendChild(rect); g.appendChild(txt);
       g.addEventListener('click', function () {
