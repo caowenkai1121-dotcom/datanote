@@ -23,14 +23,38 @@
     grid.appendChild(trendCard.el);
     c.appendChild(grid);
 
+    // 24 小时执行概览卡（复用 /overview，原前端未用）
+    var ovCard = DN.card({ title: '近 24 小时执行概览', icon: 'clock' });
+    ovCard.body.appendChild(DN.skeleton(2));
+    c.appendChild(ovCard.el);
+
     // 规则列表卡片
-    var actions = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
-    var rulesCard = DN.card({ title: '质量规则', icon: 'list', actions: actions });
+    var runAllBtn = DN.h('button', { class: 'btn', type: 'button', text: '一键全量复跑' });
+    var gotoBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
+    var rulesCard = DN.card({ title: '质量规则', icon: 'list', actions: [runAllBtn, gotoBtn] });
     var rulesBody = rulesCard.body;
     rulesBody.appendChild(DN.skeleton(4));
     c.appendChild(rulesCard.el);
 
+    runAllBtn.onclick = function () {
+      var enabledN = allRules.filter(function (r) { return r.status === 1; }).length;
+      if (enabledN === 0) { DN.toast('暂无已启用规则可复跑', 'warn'); return; }
+      if (!window.confirm('将执行全部 ' + enabledN + ' 条已启用规则的质量检查，可能耗时较久，确认继续？')) return;
+      runAllBtn.disabled = true; runAllBtn.textContent = '复跑中…';
+      DN.post('/api/quality/run-all').then(function (msg) {
+        DN.toast(typeof msg === 'string' ? msg : '批量复跑完成', 'ok');
+        runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
+        loadScore(scoreCard.body);            // 刷新质量分
+        loadOverview(ovCard.body);            // 刷新 24h 概览
+        loadRules(rulesBody);                 // 刷新规则与失败聚焦
+      }).catch(function (e) {
+        DN.toast('批量复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
+        runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
+      });
+    };
+
     loadScore(scoreCard.body);
+    loadOverview(ovCard.body);
     loadRules(rulesBody);
   };
 
@@ -47,6 +71,48 @@
     }).catch(function () {
       box.innerHTML = '';
       box.appendChild(DN.empty('质量分加载失败', 'alert'));
+    });
+  }
+
+  // 24 小时执行概览(创新功能): 复用 /overview, 环图展示成功/失败/异常占比 + 健康解读
+  function loadOverview(box) {
+    DN.get('/api/quality/overview').then(function (d) {
+      d = d || {};
+      box.innerHTML = '';
+      var total = Number(d.totalRuns) || 0;
+      var ok = Number(d.successRuns) || 0;
+      var failed = Number(d.failedRuns) || 0;
+      var err = Number(d.errorRuns) || 0;
+      if (total === 0) {
+        box.appendChild(DN.empty('近 24 小时暂无质量检查执行记录，可点上方“一键全量复跑”立即触发', 'clock'));
+        return;
+      }
+      var wrap = DN.h('div', { style: 'display:flex;align-items:center;gap:20px;flex-wrap:wrap' });
+      var segs = [
+        { label: '成功', value: ok, color: '#52c41a' },
+        { label: '失败', value: failed, color: '#faad14' },
+        { label: '异常', value: err, color: '#ff4d4f' }
+      ].filter(function (s) { return s.value > 0; });
+      wrap.appendChild(DN.donut(segs, { size: 104, stroke: 14, centerLabel: total, centerSub: '次', legend: true }));
+      // 成功率健康解读
+      var okRate = total ? Math.round(ok / total * 1000) / 10 : 0;
+      var band = okRate >= 95 ? ['健康', 'ok'] : okRate >= 80 ? ['关注', 'warn'] : ['告警', 'err'];
+      var advice = okRate >= 95 ? '执行成功率良好，质量管控稳定。'
+        : okRate >= 80 ? '存在少量失败/异常，建议关注下方“失败规则聚焦”。'
+        : '失败/异常占比偏高，建议尽快排查异常规则与数据源连通性。';
+      var info = DN.h('div', { style: 'min-width:180px' }, [
+        DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px' }, [
+          DN.h('span', { style: 'font-size:22px;font-weight:600', text: okRate + '%' }),
+          DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '成功率' }),
+          DN.pill(band[0], band[1])
+        ]),
+        DN.h('div', { class: 'gov-desc', style: 'margin:0', text: advice })
+      ]);
+      wrap.appendChild(info);
+      box.appendChild(wrap);
+    }).catch(function () {
+      box.innerHTML = '';
+      box.appendChild(DN.empty('执行概览加载失败', 'alert'));
     });
   }
 
@@ -140,10 +206,17 @@
       resultBox.appendChild(emp);
       return;
     }
-    // 通过率升序(最差在前), null(异常无率)视为最差
-    fails.sort(function (a, b) { return (a.rate == null ? -1 : a.rate) - (b.rate == null ? -1 : b.rate); });
-    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px',
-      text: '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示, 点规则名查看趋势根因' }));
+    // 强阻断失败优先(阻断下游=最高风险)置顶, 其次按通过率升序(最差在前), null(异常无率)视为最差
+    fails.sort(function (a, b) {
+      var ab = a.rule.blockDownstream === 1 ? 1 : 0, bb = b.rule.blockDownstream === 1 ? 1 : 0;
+      if (ab !== bb) return bb - ab;
+      return (a.rate == null ? -1 : a.rate) - (b.rate == null ? -1 : b.rate);
+    });
+    var blockedN = fails.filter(function (f) { return f.rule.blockDownstream === 1; }).length;
+    var summary = blockedN
+      ? '共 ' + fails.length + ' 条规则未通过，其中 ' + blockedN + ' 条为强阻断（已置顶，会阻断下游流程，请优先处理），点规则名查看趋势根因'
+      : '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示, 点规则名查看趋势根因';
+    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px' + (blockedN ? ';color:#ff4d4f;font-weight:500' : ''), text: summary }));
     // 扁平化为行数据(供 DN.table 渲染 + CSV 导出取 key)
     var rows = fails.map(function (f) {
       var run = f.run, st = run.runStatus || '';
@@ -164,9 +237,14 @@
             return DN.pill(r.status, r.status === '异常' ? 'err' : 'warn');
           } },
         { key: 'ruleName', label: '规则', render: function (r) {
-            return DN.h('a', { href: 'javascript:void(0)', text: r.ruleName,
+            var link = DN.h('a', { href: 'javascript:void(0)', text: r.ruleName,
               style: 'color:var(--primary,#1890ff)', title: '点击查看该规则趋势与失败根因',
               onclick: function () { loadRuleDetail(r._f.rule.id, r._f.rule.ruleName); } });
+            if (r._f.rule.blockDownstream !== 1) return link;
+            var wrap = DN.h('span', { style: 'display:inline-flex;align-items:center;gap:6px' });
+            wrap.appendChild(link);
+            wrap.appendChild(DN.pill('阻断下游', 'err'));
+            return wrap;
           } },
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension; } },
         { key: 'rateText', label: '通过率', align: 'right', render: function (r) { return r.rateText; } },
