@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r54">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r55">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r54"></script>
-<script src="js/gov-assets.js?v=q100r54"></script>
-<script src="js/gov-lineage.js?v=q100r54"></script>
-<script src="js/gov-quality.js?v=q100r54"></script>
-<script src="js/gov-standard.js?v=q100r54"></script>
-<script src="js/gov-classification.js?v=q100r54"></script>
-<script src="js/gov-security.js?v=q100r54"></script>
-<script src="js/gov-health.js?v=q100r54"></script>
-<script src="js/gov-audit.js?v=q100r54"></script>
-<script src="js/gov-overview.js?v=q100r54"></script>
-<script src="js/gov-subject.js?v=q100r54"></script>
+<script src="js/dn-common.js?v=q100r55"></script>
+<script src="js/gov-assets.js?v=q100r55"></script>
+<script src="js/gov-lineage.js?v=q100r55"></script>
+<script src="js/gov-quality.js?v=q100r55"></script>
+<script src="js/gov-standard.js?v=q100r55"></script>
+<script src="js/gov-classification.js?v=q100r55"></script>
+<script src="js/gov-security.js?v=q100r55"></script>
+<script src="js/gov-health.js?v=q100r55"></script>
+<script src="js/gov-audit.js?v=q100r55"></script>
+<script src="js/gov-overview.js?v=q100r55"></script>
+<script src="js/gov-subject.js?v=q100r55"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -4190,7 +4190,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 
     <!-- 项目 新建/编辑 弹窗 -->
     <div class="g-modal-overlay" id="projModal" onclick="if(event.target===this)projCloseModal()">
-      <div class="g-modal" style="width:520px;">
+      <div class="g-modal" style="width:520px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'){var b=this.querySelector('.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
         <div class="g-modal-header"><span id="projModalTitle">新建项目</span><button class="g-modal-close" onclick="projCloseModal()">&times;</button></div>
         <div class="g-modal-body">
           <input type="hidden" id="projId">
@@ -4238,7 +4238,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 
     <!-- 提交发布 弹窗 -->
     <div class="g-modal-overlay" id="projReleaseModal" onclick="if(event.target===this)projCloseReleaseModal()">
-      <div class="g-modal" style="width:520px;">
+      <div class="g-modal" style="width:520px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'){var b=this.querySelector('.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
         <div class="g-modal-header"><span>提交发布</span><button class="g-modal-close" onclick="projCloseReleaseModal()">&times;</button></div>
         <div class="g-modal-body">
           <div class="ds-form-row"><label>标题</label><input id="projRelTitle" placeholder="留空默认 发布 vN"></div>
@@ -4791,7 +4791,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 
     <!-- ===== 移动任务到文件夹弹窗 ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncMoveJobModal">
-      <div class="dbsync-modal" style="width:360px;">
+      <div class="dbsync-modal" style="width:360px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'){var b=this.querySelector('.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
         <div class="dbsync-modal-header">
           <span id="dbsyncMoveJobTitle">移动任务到文件夹</span>
           <button class="g-modal-close" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">&times;</button>
@@ -13206,6 +13206,14 @@ function projShowModalBox(title, inner) {
   var _xb = box.querySelector('span[role="button"]');
   if (_xb) _xb.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); projCloseModalBox(); } });
   ov.addEventListener('keydown', function(e) { if (e.key === 'Escape') projCloseModalBox(); });
+  // 表单回车提交:输入框按 Enter 点击首个主按钮(textarea/Shift+Enter 不触发,避免误提交)
+  box.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    var t = e.target, tag = t && t.tagName;
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
+    var btn = box.querySelector('.btn-primary');
+    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+  });
   ov.appendChild(box); document.body.appendChild(ov);
 }
 window.projCloseModalBox = function() { var o = document.getElementById('projModalBox'); if (o) o.remove(); };

@@ -441,6 +441,7 @@
     form.appendChild(row('分类', cat));
     form.appendChild(row('定义', def));
     form.appendChild(DN.h('div', { style: 'margin-top:6px;' }, [addBtn]));
+    DN.enterSubmit(form);
     panel.appendChild(form);
     var listBox = DN.h('div', {}, [DN.skeleton(2)]);
     panel.appendChild(listBox);

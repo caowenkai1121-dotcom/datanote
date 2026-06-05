@@ -239,6 +239,7 @@
       onclick: function () { box.innerHTML = ''; } }));
     panel.appendChild(actions);
     box.appendChild(panel);
+    DN.enterSubmit(panel);
   }
 
   // 置信度着色：>=80 绿，>=50 黄，否则红

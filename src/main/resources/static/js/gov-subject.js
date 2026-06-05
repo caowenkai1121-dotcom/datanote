@@ -50,6 +50,7 @@
     box.appendChild(layer);
     box.appendChild(sort);
     box.appendChild(add);
+    DN.enterSubmit(box);
     return { el: box, parentSel: parent };
   }
 

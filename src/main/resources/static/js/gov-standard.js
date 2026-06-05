@@ -212,6 +212,7 @@
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '数据元清单', icon: 'doc' });
     listCard.body.appendChild(form);
@@ -266,6 +267,7 @@
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '命名词根', icon: 'tag' });
     listCard.body.appendChild(form);
@@ -307,6 +309,7 @@
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '码表', icon: 'list' });
     listCard.body.appendChild(form);
@@ -358,6 +361,7 @@
         }
       });
       form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), add]));
+      DN.enterSubmit(form);
       box.appendChild(form);
       box.appendChild(DN.table({
         columns: [

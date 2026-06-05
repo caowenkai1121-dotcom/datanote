@@ -532,5 +532,6 @@
     footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: dr.close }));
     footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(dr.close); } }));
     form.appendChild(footer);
+    DN.enterSubmit(form);
   }
 })();

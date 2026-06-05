@@ -419,6 +419,7 @@
     footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: d.close }));
     footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(d.close); } }));
     d.body.appendChild(footer);
+    DN.enterSubmit(d.body);
   }
 
   function field(label, input) {

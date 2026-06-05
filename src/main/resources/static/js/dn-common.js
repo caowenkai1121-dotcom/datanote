@@ -124,6 +124,20 @@
     return DN.h('span', { text: DN.fmtAgo(ts), title: full, style: 'white-space:nowrap' });
   };
 
+  // 表单回车提交：在容器内输入框按 Enter 触发提交（textarea/Shift+Enter 不触发，避免误提交）。
+  // fn 省略时自动点击容器内首个 .btn-primary 按钮。
+  DN.enterSubmit = function (container, fn) {
+    if (!container || !container.addEventListener) return;
+    container.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+      var t = e.target, tag = t && t.tagName;
+      if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
+      if (typeof fn === 'function') { e.preventDefault(); fn(); return; }
+      var btn = container.querySelector('.btn-primary');
+      if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+    });
+  };
+
   // ===== 元数据下拉数据源（数仓侧，复用工作台同款接口） =====
   DN.metaDatabases = function () { return DN.get('/api/metadata/databases'); };
   DN.metaTables = function (db) { return DN.get('/api/metadata/tables?db=' + encodeURIComponent(db)); };
