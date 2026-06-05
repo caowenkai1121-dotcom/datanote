@@ -50,9 +50,9 @@
 #govModuleContent .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
 
 /* ---- 现代表格 ---- */
-#govModuleContent .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow-x:auto; overflow-y:hidden; background:var(--bg-card,#fff); }
+#govModuleContent .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow-x:auto; overflow-y:auto; max-height:68vh; background:var(--bg-card,#fff); }
 #govModuleContent table.gov-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-#govModuleContent table.gov-tbl thead th { position:sticky; top:0; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
+#govModuleContent table.gov-tbl thead th { position:sticky; top:0; z-index:3; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
 #govModuleContent table.gov-tbl tbody td { padding:12px 16px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); line-height:1.55; }
 #govModuleContent table.gov-tbl tbody tr { transition:background .12s; }
 #govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
