@@ -3317,19 +3317,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r60">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r61">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r60"></script>
-<script src="js/gov-assets.js?v=q100r60"></script>
-<script src="js/gov-lineage.js?v=q100r60"></script>
-<script src="js/gov-quality.js?v=q100r60"></script>
-<script src="js/gov-standard.js?v=q100r60"></script>
-<script src="js/gov-classification.js?v=q100r60"></script>
-<script src="js/gov-security.js?v=q100r60"></script>
-<script src="js/gov-health.js?v=q100r60"></script>
-<script src="js/gov-audit.js?v=q100r60"></script>
-<script src="js/gov-overview.js?v=q100r60"></script>
-<script src="js/gov-subject.js?v=q100r60"></script>
+<script src="js/dn-common.js?v=q100r61"></script>
+<script src="js/gov-assets.js?v=q100r61"></script>
+<script src="js/gov-lineage.js?v=q100r61"></script>
+<script src="js/gov-quality.js?v=q100r61"></script>
+<script src="js/gov-standard.js?v=q100r61"></script>
+<script src="js/gov-classification.js?v=q100r61"></script>
+<script src="js/gov-security.js?v=q100r61"></script>
+<script src="js/gov-health.js?v=q100r61"></script>
+<script src="js/gov-audit.js?v=q100r61"></script>
+<script src="js/gov-overview.js?v=q100r61"></script>
+<script src="js/gov-subject.js?v=q100r61"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14521,10 +14521,38 @@ window.projMilestoneManage = function() {
   projShowModalBox('里程碑管理', h);
   projRenderMilestones();
 };
+// 里程碑风险分类(创新): 对比计划周期与任务实际完成情况, 给出 已完成/已延期/延期风险/进展良好/进行中, 复用已加载 _projTasksAll
+function _projMsRisk(m, today) {
+  var mt = (_projTasksAll || []).filter(function(t) { return t.milestoneId === m.id; });
+  var total = mt.length, done = mt.filter(function(t) { return t.status === 'DONE'; }).length;
+  var pct = total ? Math.round(done * 100 / total) : 0;
+  var label = '进行中', tone = '#1677ff';
+  if (!total) { label = '无任务'; tone = '#8c8c8c'; }
+  else if (done === total) { label = '已完成'; tone = '#52c41a'; }
+  else if (m.endDate && m.endDate < today) { label = '已延期'; tone = '#cf1322'; }
+  else if (m.endDate) {
+    var d = Math.ceil((new Date(m.endDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+    if (d <= 7 && pct < 60) { label = '延期风险'; tone = '#ad6800'; }
+    else if (pct >= 80) { label = '进展良好'; tone = '#389e0d'; }
+  }
+  return { total: total, done: done, pct: pct, label: label, tone: tone };
+}
 function projRenderMilestones() {
   var box = document.getElementById('pmsList'); if (!box) return;
   if (!_projMilestones.length) { box.innerHTML = '<div style="padding:36px 24px;text-align:center;color:var(--text-muted);"><div style="font-size:30px;margin-bottom:8px;opacity:.7;">🎯</div><div style="font-size:13px;">暂无里程碑</div><div style="font-size:12px;opacity:.7;margin-top:4px;">创建里程碑可在甘特图中追踪阶段进度</div></div>'; return; }
-  box.innerHTML = _projMilestones.map(function(m) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span><a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
+  var today = wsLocalDate();
+  var risks = _projMilestones.map(function(m) { return _projMsRisk(m, today); });
+  var late = risks.filter(function(r) { return r.label === '已延期'; }).length;
+  var atRisk = risks.filter(function(r) { return r.label === '延期风险'; }).length;
+  var summary = (late || atRisk)
+    ? '<div style="padding:6px 10px;margin-bottom:8px;border-radius:6px;background:#fff7e6;border:1px solid #ffe7ba;font-size:12px;color:#ad6800;">里程碑风险：' + (late ? '已延期 ' + late + ' 个' : '') + (late && atRisk ? '，' : '') + (atRisk ? '延期风险 ' + atRisk + ' 个' : '') + '，建议优先协调</div>'
+    : '<div style="font-size:12px;color:#389e0d;margin-bottom:8px;">✓ 各里程碑进度正常</div>';
+  box.innerHTML = summary + _projMilestones.map(function(m, i) {
+    var r = risks[i];
+    var badge = '<span style="display:inline-block;font-size:11px;padding:1px 8px;border-radius:10px;background:' + r.tone + '1a;color:' + r.tone + ';font-weight:600;">' + r.label + '</span>';
+    var prog = r.total ? '<span style="color:var(--text-muted);font-size:11px;">' + r.done + '/' + r.total + ' 任务 · ' + r.pct + '%</span>' : '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border-light,#f0f0f0);"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span>' + badge + ' ' + prog + ' <a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>';
+  }).join('');
 }
 window.projSaveMilestone = function(btn) {
   var name = (document.getElementById('pmsName').value || '').trim();

@@ -265,7 +265,24 @@
                 rerunBtn.disabled = false; rerunBtn.textContent = '立即复跑';
               });
             };
-            return rerunBtn;
+            var db = f.rule.databaseName || f.rule.dbName, tbl = f.rule.tableName;
+            if (!db || !tbl) return rerunBtn;
+            // 影响面(创新功能): 按需查该失败规则目标表的下游受影响范围, 助按影响排序修复优先级(质量↔血缘联动)
+            var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
+            wrap.appendChild(rerunBtn);
+            var impBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--primary,#1890ff)', title: '查看该表下游受影响范围(评估修复优先级)', text: '影响面' });
+            impBtn.onclick = function () {
+              impBtn.textContent = '查询中…';
+              DN.get('/api/lineage/impact?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(tbl)).then(function (list) {
+                var n = (list || []).length;
+                impBtn.textContent = n > 0 ? ('下游 ' + n + ' 表') : '无下游';
+                impBtn.style.color = n > 5 ? '#cf1322' : n > 0 ? '#d48806' : 'var(--text-muted)';
+                impBtn.title = n > 0 ? ('该表异常将波及 ' + n + ' 张下游表，建议优先修复') : '该表无下游血缘';
+                impBtn.onclick = null; impBtn.style.cursor = 'default';
+              }).catch(function () { impBtn.textContent = '影响面'; DN.toast('影响面查询失败(可先在血缘模块解析脚本血缘)', 'warn'); });
+            };
+            wrap.appendChild(impBtn);
+            return wrap;
           } }
       ],
       rows: rows,
