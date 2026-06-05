@@ -3317,19 +3317,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r59">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r60">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r59"></script>
-<script src="js/gov-assets.js?v=q100r59"></script>
-<script src="js/gov-lineage.js?v=q100r59"></script>
-<script src="js/gov-quality.js?v=q100r59"></script>
-<script src="js/gov-standard.js?v=q100r59"></script>
-<script src="js/gov-classification.js?v=q100r59"></script>
-<script src="js/gov-security.js?v=q100r59"></script>
-<script src="js/gov-health.js?v=q100r59"></script>
-<script src="js/gov-audit.js?v=q100r59"></script>
-<script src="js/gov-overview.js?v=q100r59"></script>
-<script src="js/gov-subject.js?v=q100r59"></script>
+<script src="js/dn-common.js?v=q100r60"></script>
+<script src="js/gov-assets.js?v=q100r60"></script>
+<script src="js/gov-lineage.js?v=q100r60"></script>
+<script src="js/gov-quality.js?v=q100r60"></script>
+<script src="js/gov-standard.js?v=q100r60"></script>
+<script src="js/gov-classification.js?v=q100r60"></script>
+<script src="js/gov-security.js?v=q100r60"></script>
+<script src="js/gov-health.js?v=q100r60"></script>
+<script src="js/gov-audit.js?v=q100r60"></script>
+<script src="js/gov-overview.js?v=q100r60"></script>
+<script src="js/gov-subject.js?v=q100r60"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -14250,7 +14250,15 @@ function projWorkloadHtml(tasks, today) {
     return (b.g.TODO + b.g.DOING) - (a.g.TODO + a.g.DOING) || b.g.total - a.g.total;
   });
   var maxTotal = rows.reduce(function(m, r) { return Math.max(m, r.g.total); }, 1);
-  var h = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--text-muted);">'
+  // 过载预警(创新): 进行中+待办≥阈值的成员标记过载; 未指派的高优先级任务单列告警, 提示及时分配
+  var OVERLOAD = 6;
+  var overloaded = rows.filter(function(r) { return (r.g.TODO + r.g.DOING) >= OVERLOAD; });
+  var unassignedHigh = tasks.filter(function(t) { return (!t.assignee) && t.priority === 'HIGH' && t.status !== 'DONE'; }).length;
+  var wlAlerts = [];
+  if (overloaded.length) wlAlerts.push(overloaded.length + ' 名成员负载偏高(进行中+待办 ≥ ' + OVERLOAD + ')，建议重新均衡分配');
+  if (unassignedHigh) wlAlerts.push(unassignedHigh + ' 个高优先级任务尚未指派负责人，建议尽快分配');
+  var alertBar = wlAlerts.length ? '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 14px;margin-bottom:10px;border:1px solid var(--border);border-left:3px solid #ad6800;border-radius:8px;background:var(--bg-card,#fff);font-size:12px;line-height:1.8;"><b style="color:#ad6800;white-space:nowrap;">负载预警</b><span style="color:var(--text-muted);">' + wlAlerts.map(escapeHtml).join('；') + '</span></div>' : '';
+  var h = alertBar + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--text-muted);">'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#8c8c8c;border-radius:2px;"></span> 待办</span>'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#1677ff;border-radius:2px;"></span> 进行中</span>'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#52c41a;border-radius:2px;"></span> 完成</span>'
@@ -14260,7 +14268,7 @@ function projWorkloadHtml(tasks, today) {
     var g = r.g, active = g.TODO + g.DOING;
     var seg = function(v, c) { return v > 0 ? '<div title="' + v + '" style="height:100%;width:' + (v / maxTotal * 100) + '%;background:' + c + ';"></div>' : ''; };
     h += '<div style="display:flex;align-items:center;gap:10px;">'
-      + '<div style="width:120px;flex-shrink:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</div>'
+      + '<div style="width:120px;flex-shrink:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(r.name) + (active >= OVERLOAD ? ' · 负载偏高' : '') + '">' + escapeHtml(r.name) + (active >= OVERLOAD ? ' <span style="display:inline-block;font-size:10px;padding:0 5px;border-radius:8px;background:#fff1f0;color:#cf1322;font-weight:600;">过载</span>' : '') + '</div>'
       + '<div style="flex:1;display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--bg-hover,#f0f1f3);">' + seg(g.TODO, '#8c8c8c') + seg(g.DOING, '#1677ff') + seg(g.DONE, '#52c41a') + '</div>'
       + '<div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;">进行中 ' + active + ' / 共 ' + g.total + (g.overdue ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + g.overdue + '</span>' : '') + '</div>'
       + '</div>';
@@ -18440,6 +18448,35 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
       html += '<span onclick="dbsyncGoTab(\'history\')" title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:pointer;"></span>';
     });
     html += '</div></div>';
+  }
+  // 执行健康度分析(创新功能): 吞吐量(行/秒) + 错误率 + 与历史均值对比的异常标记, 复用已加载 execs 零新请求
+  if (total > 0 && latest) {
+    var lDur = Number(latest.duration) || 0, lWrite = Number(latest.writeCount) || 0, lRead = Number(latest.readCount) || 0, lErr = Number(latest.errorCount) || 0;
+    var lThroughput = lDur > 0 ? Math.round(lWrite / lDur) : null;
+    var avgThroughput = durSum > 0 ? Math.round(sumWrite / durSum) : null;   // 总体均值(展示用)
+    var lErrRate = (lRead + lErr) > 0 ? (lErr * 100 / (lRead + lErr)) : 0;
+    var avgErrRate = (sumRead + sumErr) > 0 ? (sumErr * 100 / (sumRead + sumErr)) : 0;
+    // 异常对比基线用"除最近一次外的历史"(避免最近样本污染基线), 单次执行时无基线不告警
+    var prior = sorted.slice(1), pW = 0, pD = 0, pR = 0, pE = 0;
+    prior.forEach(function(ex) { pW += Number(ex.writeCount) || 0; if (ex.duration != null) pD += Number(ex.duration) || 0; pR += Number(ex.readCount) || 0; pE += Number(ex.errorCount) || 0; });
+    var baseThroughput = pD > 0 ? Math.round(pW / pD) : null;
+    var baseErrRate = (pR + pE) > 0 ? (pE * 100 / (pR + pE)) : 0;
+    var hWarns = [];
+    if (lThroughput != null && baseThroughput != null && baseThroughput > 0 && lThroughput < baseThroughput * 0.6)
+      hWarns.push('最近吞吐量 ' + fmtN(lThroughput) + ' 行/秒 明显低于历史均值 ' + fmtN(baseThroughput) + ' 行/秒，关注性能下降');
+    if (lErrRate > 1 && lErrRate > baseErrRate * 2)
+      hWarns.push('最近错误率 ' + lErrRate.toFixed(2) + '% 显著高于历史均值 ' + baseErrRate.toFixed(2) + '%，关注数据质量');
+    html += '<div class="dbsync-detail-card" style="margin-top:10px;">'
+      + '<div class="dbsync-detail-card-title"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 9l3-4 3 3 3-5 3 4"/></svg> 执行健康度分析</div>'
+      + '<div class="dbsync-metric-grid">'
+      + card(lThroughput != null ? fmtN(lThroughput) + ' 行/秒' : '-', '最近吞吐量')
+      + card(avgThroughput != null ? fmtN(avgThroughput) + ' 行/秒' : '-', '平均吞吐量')
+      + card(lErrRate.toFixed(2) + '%', '最近错误率', lErrRate > 1 ? 'err' : '')
+      + card(avgErrRate.toFixed(2) + '%', '平均错误率', avgErrRate > 1 ? 'err' : '')
+      + '</div>';
+    if (hWarns.length) html += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:#fff7e6;border:1px solid #ffe7ba;font-size:12px;color:#d48806;line-height:1.7;">⚠ ' + hWarns.map(escapeHtml).join('<br>⚠ ') + '</div>';
+    else html += '<div style="margin-top:8px;font-size:12px;color:#389e0d;">✓ 吞吐量与错误率处于正常区间</div>';
+    html += '</div>';
   }
   // CDC 实时指标面板
   if (job.syncMode === 'CDC') {

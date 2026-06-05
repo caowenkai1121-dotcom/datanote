@@ -409,7 +409,21 @@
     });
     var card = DN.card({ title: '影响面分析 · ' + centerId, icon: 'lineage' });
     card.body.appendChild(wrap); card.body.appendChild(lvWrap);
-    if (kind === 'impact' && list.length > 10) card.body.appendChild(DN.alertNode ? DN.alertNode('该表变更将波及 ' + list.length + ' 张下游表, 建议变更前充分评估与通知。', 'warn') : DN.h('div', { class: 'gov-desc', style: 'color:#d48806;margin-top:8px', text: '⚠ 该表变更将波及 ' + list.length + ' 张下游表, 建议充分评估。' }));
+    // 变更风险评估 + 变更前检查清单(创新功能): 基于下游受影响表数 + 最大传播层级综合定级, 复用已加载数据零新请求
+    if (kind === 'impact') {
+      var n = list.length;
+      var risk = (n > 10 || maxDepth >= 4) ? ['高风险', 'err'] : (n > 3 || maxDepth >= 2) ? ['中风险', 'warn'] : ['低风险', 'ok'];
+      var rc = DN.h('div', { style: 'margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--bg-hover,#f7f8fa)' });
+      rc.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px' }, [
+        DN.h('span', { style: 'font-weight:600;font-size:13px', text: '变更风险评估' }), DN.pill(risk[0], risk[1])
+      ]));
+      rc.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px', text: '依据下游受影响 ' + n + ' 张表、最大传播 ' + maxDepth + ' 层综合评定。变更前建议核对：' }));
+      var checks = ['已通知所有下游表的负责人/使用方', '已确认下游 ETL/报表对字段或类型变更的兼容性', '已准备回滚方案与数据备份', maxDepth >= 3 ? '已评估跨多层链路的级联影响' : '已评估直接下游的影响范围'];
+      var ul = DN.h('ul', { style: 'margin:0;padding-left:18px;font-size:12px;color:var(--text-regular);line-height:1.9' });
+      checks.forEach(function (t) { ul.appendChild(DN.h('li', { text: t })); });
+      rc.appendChild(ul);
+      card.body.appendChild(rc);
+    }
     return card.el;
   }
 
