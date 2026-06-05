@@ -371,7 +371,7 @@
       data.slice((page - 1) * pageSize, page * pageSize).forEach(function (r) {
         var tr = document.createElement('tr');
         cols.forEach(function (c) {
-          var td = document.createElement('td'); if (c.align) td.style.textAlign = c.align;
+          var td = document.createElement('td'); if (c.align) { td.style.textAlign = c.align; if (c.align === 'right') td.style.fontVariantNumeric = 'tabular-nums'; }
           var cell = c.render ? c.render(r) : (r[c.key] == null ? '' : r[c.key]);
           if (cell instanceof Node) td.appendChild(cell); else if (c.html) td.innerHTML = cell; else td.textContent = String(cell);
           if (c.copyable) {

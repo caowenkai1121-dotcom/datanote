@@ -3278,6 +3278,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   border-bottom: 1px solid var(--divider);
 }
 .dbsync-exec-table td { padding: 7px 10px; border-bottom: 1px solid var(--divider); color: var(--text-regular); }
+.dbsync-exec-table td.num, .dbsync-exec-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .dbsync-exec-table tr:last-child td { border-bottom: none; }
 /* 字段映射区 */
 .dfs-row-wrapper { border-bottom: 1px solid var(--divider); }
@@ -3315,19 +3316,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r56">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r57">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r56"></script>
-<script src="js/gov-assets.js?v=q100r56"></script>
-<script src="js/gov-lineage.js?v=q100r56"></script>
-<script src="js/gov-quality.js?v=q100r56"></script>
-<script src="js/gov-standard.js?v=q100r56"></script>
-<script src="js/gov-classification.js?v=q100r56"></script>
-<script src="js/gov-security.js?v=q100r56"></script>
-<script src="js/gov-health.js?v=q100r56"></script>
-<script src="js/gov-audit.js?v=q100r56"></script>
-<script src="js/gov-overview.js?v=q100r56"></script>
-<script src="js/gov-subject.js?v=q100r56"></script>
+<script src="js/dn-common.js?v=q100r57"></script>
+<script src="js/gov-assets.js?v=q100r57"></script>
+<script src="js/gov-lineage.js?v=q100r57"></script>
+<script src="js/gov-quality.js?v=q100r57"></script>
+<script src="js/gov-standard.js?v=q100r57"></script>
+<script src="js/gov-classification.js?v=q100r57"></script>
+<script src="js/gov-security.js?v=q100r57"></script>
+<script src="js/gov-health.js?v=q100r57"></script>
+<script src="js/gov-audit.js?v=q100r57"></script>
+<script src="js/gov-overview.js?v=q100r57"></script>
+<script src="js/gov-subject.js?v=q100r57"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -17866,7 +17867,7 @@ window.dbsyncLoadInlineHistory = function(id) {
     }
     var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
     var html = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr>'
-      + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th>日志摘要</th>'
+      + '<th>执行时间</th><th>状态</th><th class="num">读取</th><th class="num">写入</th><th class="num">错误</th><th class="num">耗时(秒)</th><th>日志摘要</th>'
       + '</tr></thead><tbody>';
     list.forEach(function(ex, exIndex) {
       var st = ex.status !== undefined && ex.status !== null ? String(ex.status) : '';
@@ -17883,10 +17884,10 @@ window.dbsyncLoadInlineHistory = function(id) {
       html += '<tr>'
         + '<td style="white-space:nowrap;" title="' + escapeHtml((ex.startTime || ex.createTime || '').replace('T', ' ').slice(0, 19)) + '">' + escapeHtml(wsFmtAgo(ex.startTime || ex.createTime)) + '</td>'
         + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
-        + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+        + '<td class="num">' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (ex.duration != null ? ex.duration : '-') + '</td>'
         + '<td style="max-width:220px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
     });
@@ -18020,7 +18021,7 @@ window.dbsyncShowHistory = function(id, name) {
     }
     var statusLabel = { 1: '成功', 0: '运行中', '-1': '失败', 2: '成功', RUNNING: '运行中', SUCCESS: '成功', FAILED: '失败', FINISHED: '成功' };
     var html = '<table class="dbsync-exec-table"><thead><tr>'
-      + '<th>执行时间</th><th>状态</th><th>读取行数</th><th>写入行数</th><th>错误行数</th><th>耗时(秒)</th><th>日志摘要</th>'
+      + '<th>执行时间</th><th>状态</th><th class="num">读取行数</th><th class="num">写入行数</th><th class="num">错误行数</th><th class="num">耗时(秒)</th><th>日志摘要</th>'
       + '</tr></thead><tbody>';
     var exIndex = 0;
     list.forEach(function(ex) {
@@ -18040,10 +18041,10 @@ window.dbsyncShowHistory = function(id, name) {
       html += '<tr>'
         + '<td style="white-space:nowrap;" title="' + escapeHtml((ex.startTime || ex.createTime || '').replace('T', ' ').slice(0, 19)) + '">' + escapeHtml(wsFmtAgo(ex.startTime || ex.createTime)) + '</td>'
         + '<td><span style="color:' + stColor + ';font-weight:500;">' + escapeHtml(stLabel) + '</span></td>'
-        + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
-        + '<td>' + (ex.duration != null ? ex.duration : '-') + '</td>'
+        + '<td class="num">' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
+        + '<td class="num">' + (ex.duration != null ? ex.duration : '-') + '</td>'
         + '<td style="max-width:260px;word-break:break-all;">' + logCell + '</td>'
         + '</tr>';
     });
@@ -18767,7 +18768,7 @@ function dbsyncRenderHistory(execs) {
   if (_dbsyncHistView === 'timeline') { pane.innerHTML = bar + dbsyncHistTimeline(view); return; }
   if (_dbsyncHistView === 'calendar') { pane.innerHTML = bar + dbsyncHistCalendar(view); return; }
   var html = bar + '<table class="dbsync-exec-table"><thead><tr>'
-    + '<th>执行时间</th><th>状态</th><th>读取</th><th>写入</th><th>错误</th><th>耗时(秒)</th><th style="width:60px;">日志</th>'
+    + '<th>执行时间</th><th>状态</th><th class="num">读取</th><th class="num">写入</th><th class="num">错误</th><th class="num">耗时(秒)</th><th style="width:60px;">日志</th>'
     + '</tr></thead><tbody>';
   view.forEach(function(ex, i) {
     var kind = dbsyncExecKind(ex.status);
@@ -18782,10 +18783,10 @@ function dbsyncRenderHistory(execs) {
     html += '<tr>'
       + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(ex.startTime || ex.createTime)) + '</td>'
       + '<td><span style="color:' + color + ';font-weight:500;">' + escapeHtml(label) + '</span></td>'
-      + '<td>' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
-      + '<td>' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
-      + '<td>' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
-      + '<td' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#d48806;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
+      + '<td class="num">' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
+      + '<td class="num">' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
+      + '<td class="num">' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
+      + '<td class="num"' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#d48806;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
       + '<td style="max-width:200px;">' + logCell + '</td>'
       + '</tr>';
   });
