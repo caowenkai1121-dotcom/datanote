@@ -3315,19 +3315,19 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r55">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r56">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r55"></script>
-<script src="js/gov-assets.js?v=q100r55"></script>
-<script src="js/gov-lineage.js?v=q100r55"></script>
-<script src="js/gov-quality.js?v=q100r55"></script>
-<script src="js/gov-standard.js?v=q100r55"></script>
-<script src="js/gov-classification.js?v=q100r55"></script>
-<script src="js/gov-security.js?v=q100r55"></script>
-<script src="js/gov-health.js?v=q100r55"></script>
-<script src="js/gov-audit.js?v=q100r55"></script>
-<script src="js/gov-overview.js?v=q100r55"></script>
-<script src="js/gov-subject.js?v=q100r55"></script>
+<script src="js/dn-common.js?v=q100r56"></script>
+<script src="js/gov-assets.js?v=q100r56"></script>
+<script src="js/gov-lineage.js?v=q100r56"></script>
+<script src="js/gov-quality.js?v=q100r56"></script>
+<script src="js/gov-standard.js?v=q100r56"></script>
+<script src="js/gov-classification.js?v=q100r56"></script>
+<script src="js/gov-security.js?v=q100r56"></script>
+<script src="js/gov-health.js?v=q100r56"></script>
+<script src="js/gov-audit.js?v=q100r56"></script>
+<script src="js/gov-overview.js?v=q100r56"></script>
+<script src="js/gov-subject.js?v=q100r56"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -13497,7 +13497,7 @@ window.projLoadInvites = function() {
       h += '</tbody></table>';
     }
     box.innerHTML = h;
-  }).catch(function() { box.innerHTML = '<div style="font-size:12px;color:var(--error);">成员邀请加载失败</div>'; });
+  }).catch(function() { box.innerHTML = '<div style="font-size:12px;color:var(--error);">成员邀请加载失败 <a href="#" onclick="projLoadInvites();return false;" style="color:var(--primary);">重试</a></div>'; });
 };
 function projRoleLabel(r) { return ({ OWNER: '负责人', ADMIN: '管理员', DEVELOPER: '开发', OPS: '运维', VIEWER: '访客' })[r] || r; }
 window.projCreateInvite = function(btn) {
@@ -13614,7 +13614,7 @@ window.projLoadQuota = function() {
       + '<label style="font-size:12px;">默认重试次 <input id="pqRetry" type="number" min="0" placeholder="例如 3" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.retryDefault != null ? q.retryDefault : 0) + '"></label>'
       + '<label style="font-size:12px;">存储配额GB(0不限) <input id="pqStorage" type="number" min="0" placeholder="例如 100" onblur="this.value=Math.max(0,parseInt(this.value,10)||0)" class="dbsync-form-input" style="width:100%;" value="' + (q.storageQuotaGb != null ? q.storageQuotaGb : 0) + '"></label>'
       + '</div><div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="projSaveQuota(this)">保存配额</button></div>';
-  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">配额加载失败</div>'; });
+  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">配额加载失败 <a href="#" onclick="projLoadQuota();return false;" style="color:var(--primary);">重试</a></div>'; });
 };
 window.projSaveQuota = function(btn) {
   var body = {
@@ -13658,7 +13658,7 @@ window.projLoadEnvParams = function() {
       h += '</tbody></table>';
     }
     card.innerHTML = h;
-  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">环境参数加载失败</div>'; });
+  }).catch(function() { card.innerHTML = '<div style="color:var(--error);">环境参数加载失败 <a href="#" onclick="projLoadEnvParams();return false;" style="color:var(--primary);">重试</a></div>'; });
 };
 var _projEnvParams = [];
 window.projFilterEnvParams = function() {
@@ -13868,7 +13868,7 @@ window.projLoadOverview = function() {
         c.style.color = on ? '#fff' : (c.getAttribute('data-color') || 'var(--text-regular)');
       });
     };
-  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败 <a href="#" onclick="projLoadOverview();return false;" style="color:var(--primary);">重试</a></div>'; });
 };
 // 详情抽屉 tab 数量徽标
 window.projSetTabBadge = function(ptab, n, color) {
@@ -13956,7 +13956,7 @@ window.projLoadActivities = function() {
       + '<div id="projActTblBox"></div>';
     pane.innerHTML = h;
     projRenderActs();
-  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+  }).catch(function() { pane.innerHTML = '<div style="color:var(--error);">加载失败 <a href="#" onclick="projLoadActivities();return false;" style="color:var(--primary);">重试</a></div>'; });
 };
 // 活动贡献热力图(大功能): 近13周按天活动量, GitHub风格色块
 function projActHeatmap(acts) {
@@ -17561,7 +17561,7 @@ window.dbsyncLoadJobs = function() {
     if (_dbsyncDetailJobId != null) dbsyncRefreshDetailHeaderFromList();
   }).catch(function() {
     if (seq !== _dbsyncJobsSeq) return;
-    container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络</div>';
+    container.innerHTML = '<div style="padding:24px;color:var(--text-muted);">请求失败，请检查网络 <a href="#" onclick="dbsyncLoadJobs();return false;" style="color:var(--primary);">重试</a></div>';
   });
 };
 

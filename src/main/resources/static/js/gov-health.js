@@ -81,7 +81,10 @@
   function loadScore() {
     DN.get('/api/gov/health/dimensions').then(function (r) {
       renderTop(r);
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) {
+      var top = document.getElementById('hsTop');
+      if (top) { top.innerHTML = ''; top.appendChild(DN.errorBox('健康分加载失败：' + (e && e.message || ''), loadScore)); }
+    });
     loadTrend();
   }
 
@@ -200,7 +203,10 @@
     var status = (document.getElementById('hsIssueFilter') || {}).value || '';
     DN.get('/api/gov/health/issues' + (status ? '?status=' + encodeURIComponent(status) : '')).then(function (rows) {
       renderIssues(rows || []);
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) {
+      var box = document.getElementById('hsIssues');
+      if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('工单加载失败：' + (e && e.message || ''), loadIssues)); }
+    });
   }
 
   // 工单分析概览(大功能): 状态分布环图 + 级别分布 + 维度Top
@@ -418,7 +424,10 @@
           rows: domains.map(function (d) { return { domain: d, r: byDomain[d] || null }; })
         }));
       });
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) {
+      var tableBox = document.getElementById('hsMaturityTable');
+      if (tableBox) { tableBox.innerHTML = ''; tableBox.appendChild(DN.errorBox('成熟度自评加载失败：' + (e && e.message || ''), loadMaturity)); }
+    });
   }
 
   function addMaturity() {

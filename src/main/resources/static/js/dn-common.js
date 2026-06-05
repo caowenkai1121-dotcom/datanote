@@ -249,6 +249,14 @@
   DN.empty = function (text, icon) {
     return DN.h('div', { class: 'gov-empty' }, [DN.h('span', { html: DN.icon(icon || 'inbox') }), DN.h('div', { class: 'et', text: text || '暂无数据' })]);
   };
+  // 错误态 + 重试按钮：加载失败时展示原因 + 可点重试(重新执行 retryFn)，替代纯空态/纯 toast，让用户无需刷新整页即可恢复
+  DN.errorBox = function (text, retryFn) {
+    var box = DN.h('div', { class: 'gov-empty' }, [DN.h('span', { html: DN.icon('alert') }), DN.h('div', { class: 'et', text: text || '加载失败' })]);
+    if (typeof retryFn === 'function') {
+      box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-top:10px', text: '重试', onclick: function () { retryFn(); } }));
+    }
+    return box;
+  };
   DN.skeleton = function (rows) {
     var w = DN.h('div', {});
     for (var i = 0; i < (rows || 3); i++) w.appendChild(DN.h('div', { class: 'gov-skel', style: 'width:' + (100 - i * 7) + '%' }));

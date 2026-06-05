@@ -76,7 +76,7 @@
       renderColdAdvice();
     }).catch(function (e) {
       var b = document.getElementById('assetTbl');
-      if (b) { b.innerHTML = ''; b.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
+      if (b) { b.innerHTML = ''; b.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadAssets(); })); }
     });
   }
 
@@ -355,6 +355,8 @@
     var box = DN.h('div', {}, [DN.skeleton(3)]);
     panel.appendChild(box);
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+    (function load() {
+    box.innerHTML = ''; box.appendChild(DN.skeleton(3));
     DN.get('/api/gov/asset/detail' + qs).then(function (d) {
       var cols = (d && d.columns) || [];
       box.innerHTML = '';
@@ -387,8 +389,9 @@
         empty: '无字段元数据（请先采集）'
       }));
     }).catch(function (e) {
-      box.innerHTML = ''; box.appendChild(DN.empty('加载失败: ' + e.message, 'alert'));
+      box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { load(); }));
     });
+    })();
   }
 
   // Profiler 探查（下推数仓）
@@ -397,8 +400,9 @@
     var resultBox = DN.h('div', { class: 'gov-desc', style: 'margin-bottom:0' });
     var btn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-bottom:8px;', text: '执行探查（采样数仓）',
       onclick: function () {
-        resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
         var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        (function load() {
+        resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
         DN.get('/api/gov/asset/profile' + qs).then(function (p) {
           p = p || {};
           var fields = p.fields || [];
@@ -414,7 +418,8 @@
             ],
             rows: fields, pageSize: 50, search: false, empty: '无探查结果'
           }));
-        }).catch(function (e) { resultBox.innerHTML = ''; resultBox.appendChild(DN.empty(e.message, 'alert')); });
+        }).catch(function (e) { resultBox.innerHTML = ''; resultBox.appendChild(DN.errorBox(e.message, function () { load(); })); });
+        })();
       } });
     panel.appendChild(btn);
     panel.appendChild(resultBox);
@@ -476,15 +481,17 @@
     var box = DN.h('div', { class: 'gov-desc', style: 'margin-bottom:0' });
     var btn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-bottom:8px;', text: '查询上下游表',
       onclick: function () {
-        box.innerHTML = ''; box.appendChild(DN.skeleton(2));
         var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        (function load() {
+        box.innerHTML = ''; box.appendChild(DN.skeleton(2));
         DN.get('/api/lineage/table-edges' + qs).then(function (nb) {
           nb = nb || {};
           var up = (nb.upstream || []).map(function (e) { return e.srcDb + '.' + e.srcTable; });
           var down = (nb.downstream || []).map(function (e) { return e.dstDb + '.' + e.dstTable; });
           box.innerHTML = '<div class="gov-desc" style="margin-bottom:4px"><b>上游表:</b> ' + (up.length ? up.map(DN.esc).join(', ') : '无') +
             '</div><div class="gov-desc" style="margin-bottom:0"><b>下游表:</b> ' + (down.length ? down.map(DN.esc).join(', ') : '无') + '</div>';
-        }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('查询失败: ' + e.message, 'alert')); });
+        }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { load(); })); });
+        })();
       } });
     panel.appendChild(btn);
     panel.appendChild(box);

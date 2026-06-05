@@ -30,7 +30,7 @@
       render(box, r[0] || {}, r[1] || []);
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.empty('加载失败: ' + DN.esc(e.message), 'alert'));
+      box.appendChild(DN.errorBox('加载失败: ' + DN.esc(e.message), function () { reload(box); }));
     });
   }
 
@@ -151,11 +151,14 @@
 
     // ---- 健康分90天日历热力(大功能) ----
     var hcCard = DN.card({ title: '治理健康分 · 近 90 天日历', icon: 'clock' });
-    hcCard.body.appendChild(DN.skeleton(2));
     box.appendChild(hcCard.el);
-    DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
-      renderHealthCalendar(hcCard.body, t || []);
-    }).catch(function (e) { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.empty('健康分日历加载失败: ' + (e && e.message ? e.message : '请重试'), 'alert')); });
+    function loadHealthCalendar() {
+      hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.skeleton(2));
+      DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
+        renderHealthCalendar(hcCard.body, t || []);
+      }).catch(function (e) { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.errorBox('健康分日历加载失败: ' + (e && e.message ? e.message : '请重试'), loadHealthCalendar)); });
+    }
+    loadHealthCalendar();
   }
 
   // 健康分趋势研判(创新功能): 前端计算趋势方向/近7天均值/极值, 复用已 fetch 的 trend 数据

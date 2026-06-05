@@ -70,7 +70,7 @@
       box.appendChild(wrap);
     }).catch(function () {
       box.innerHTML = '';
-      box.appendChild(DN.empty('质量分加载失败', 'alert'));
+      box.appendChild(DN.errorBox('质量分加载失败', function () { loadScore(box); }));
     });
   }
 
@@ -112,7 +112,7 @@
       box.appendChild(wrap);
     }).catch(function () {
       box.innerHTML = '';
-      box.appendChild(DN.empty('执行概览加载失败', 'alert'));
+      box.appendChild(DN.errorBox('执行概览加载失败', function () { loadOverview(box); }));
     });
   }
 
@@ -298,7 +298,7 @@
       box.appendChild(buildToolbarAndTable());
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.empty('加载失败: ' + e.message, 'alert'));
+      box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRules(box); }));
     });
   }
 
@@ -419,7 +419,7 @@
       }
     }).catch(function () {
       trendBody.innerHTML = '';
-      trendBody.appendChild(DN.empty('趋势加载失败', 'alert'));
+      trendBody.appendChild(DN.errorBox('趋势加载失败', function () { loadRuleDetail(ruleId, ruleName); }));
     });
   }
 })();

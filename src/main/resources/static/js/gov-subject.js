@@ -68,7 +68,7 @@
       list.appendChild(ul);
     }).catch(function (e) {
       list.innerHTML = '';
-      list.appendChild(DN.empty('加载失败: ' + e.message, 'alert'));
+      list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { reload(list, form); }));
     });
   }
 

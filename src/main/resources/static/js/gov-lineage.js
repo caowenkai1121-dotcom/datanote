@@ -124,7 +124,7 @@
       }).then(function (stats) {
         renderOrphans(box, db, tables.length, stats.filter(function (s) { return s; }));
       });
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('检测失败: ' + (e && e.message ? e.message : e), 'alert')); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + (e && e.message ? e.message : e), function () { detectOrphans(); })); });
   }
 
   /** 下钻：把孤儿表填入下方“血缘图谱”选择器并触发画图，便于人工核验是否确实无血缘。
@@ -225,7 +225,7 @@
         box.appendChild(DN.empty('该表暂无血缘边（先点上方重建/解析）', 'lineage')); return;
       }
       box.appendChild(renderGraph(nodes, edges, db + '.' + table));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('查询失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryGraph(); })); });
   }
 
   /** 分层布局：以中心表为第 0 列，下游为正列(右)、上游为负列(左)，纯 SVG 绘制有向图。 */
@@ -441,7 +441,7 @@
         exportName: title,
         empty: '无' + title, emptyIcon: 'lineage'
       }));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('查询失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryFlow(kind); })); });
   }
 
   function queryLineage() {
@@ -484,7 +484,7 @@
       } else {
         box.appendChild(DN.empty('无字段级血缘（先点上方重建，或该表非同步目标）', 'lineage'));
       }
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('查询失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryLineage(); })); });
   }
 
   // 上/下游表的一行药丸罗列

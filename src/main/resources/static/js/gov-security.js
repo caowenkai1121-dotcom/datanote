@@ -181,7 +181,7 @@
         empty: '暂无脱敏策略，请先应用 sql/39_masking.sql 或点击新建', emptyIcon: 'lock'
       }));
     }).catch(function (e) {
-      if (maskTbl) { maskTbl.innerHTML = ''; maskTbl.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
+      if (maskTbl) { maskTbl.innerHTML = ''; maskTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadMaskingPolicies(); })); }
     });
   }
 
@@ -262,7 +262,7 @@
         empty: '暂无行级权限策略，点击新建', emptyIcon: 'layers'
       }));
     }).catch(function (e) {
-      if (rowTbl) { rowTbl.innerHTML = ''; rowTbl.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
+      if (rowTbl) { rowTbl.innerHTML = ''; rowTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRowPolicies(); })); }
     });
   }
 
@@ -317,7 +317,7 @@
         empty: '暂无角色，请先应用 sql/36_rbac.sql', emptyIcon: 'shield'
       }));
     }).catch(function (e) {
-      if (roleTbl) { roleTbl.innerHTML = ''; roleTbl.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
+      if (roleTbl) { roleTbl.innerHTML = ''; roleTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRoles(); })); }
     });
   }
 
@@ -347,7 +347,7 @@
         empty: '暂无用户，请先应用 sql/36_rbac.sql 或点击新建', emptyIcon: 'user'
       }));
     }).catch(function (e) {
-      if (userTbl) { userTbl.innerHTML = ''; userTbl.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); }
+      if (userTbl) { userTbl.innerHTML = ''; userTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadUsers(); })); }
     });
   }
 

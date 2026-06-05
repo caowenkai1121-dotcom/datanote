@@ -312,7 +312,7 @@
         box.appendChild(tbl);
       }).catch(function (e) {
         box.innerHTML = '';
-        box.appendChild(DN.empty('识别失败: ' + e.message, 'alert'));
+        box.appendChild(DN.errorBox('识别失败: ' + e.message, function () { scanTable(); }));
       });
   }
 

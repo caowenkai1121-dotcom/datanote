@@ -238,7 +238,7 @@
         rows: data || [], searchKeys: ['elementCode', 'nameCn'], searchPlaceholder: '搜索编码/中文名',
         empty: '暂无数据元，使用上方表单新增', emptyIcon: 'doc'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderElements(body); })); });
   }
 
   // ========== 命名词根 ==========
@@ -290,7 +290,7 @@
         rows: data || [], searchKeys: ['wordCn', 'wordEn', 'abbr'], searchPlaceholder: '搜索中文/英文/缩写',
         empty: '暂无词根，使用上方表单新增', emptyIcon: 'tag'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderRoots(body); })); });
   }
 
   // ========== 码表 ==========
@@ -334,7 +334,7 @@
         rows: data || [], searchKeys: ['dictCode', 'dictName'], searchPlaceholder: '搜索编码/名称',
         empty: '暂无码表，使用上方表单新增', emptyIcon: 'list'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderDicts(body); })); });
   }
 
   /** 码表明细项：用抽屉承载（表单 + 明细表） */
@@ -374,7 +374,7 @@
         ],
         rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增'
       }));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('加载失败: ' + e.message, 'alert')); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { refreshDictItems(box, dictId); })); });
   }
 
   // ========== 落标稽核 ==========
@@ -406,13 +406,18 @@
     var topBody = topCard.body;
     topBody.appendChild(DN.skeleton(3));
     body.appendChild(topCard.el);
-    DN.get(API + '/top-violations?limit=10').then(function (rows) {
+    function loadTop() {
       topBody.innerHTML = '';
-      if (!rows || !rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
-      topBody.appendChild(DN.heat(rows.map(function (r) {
-        return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, display: (r.violations || 0) + ' 列' };
-      }), { rgb: [255, 77, 79] }));
-    }).catch(function () { topBody.innerHTML = ''; topBody.appendChild(DN.empty('加载失败', 'alert')); });
+      topBody.appendChild(DN.skeleton(3));
+      DN.get(API + '/top-violations?limit=10').then(function (rows) {
+        topBody.innerHTML = '';
+        if (!rows || !rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
+        topBody.appendChild(DN.heat(rows.map(function (r) {
+          return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, display: (r.violations || 0) + ' 列' };
+        }), { rgb: [255, 77, 79] }));
+      }).catch(function () { topBody.innerHTML = ''; topBody.appendChild(DN.errorBox('加载失败', function () { loadTop(); })); });
+    }
+    loadTop();
 
     var historyCard = DN.card({ title: '稽核历史', icon: 'clock' });
     var historyBody = historyCard.body;
@@ -457,7 +462,7 @@
         rows: runs, searchKeys: ['scope'], searchPlaceholder: '搜索范围',
         empty: '尚无稽核记录，点击上方执行', emptyIcon: 'clock'
       }));
-    }).catch(function () { box.innerHTML = ''; box.appendChild(DN.empty('加载失败', 'alert')); });
+    }).catch(function () { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败', function () { loadRuns(box); })); });
   }
 
   function showRun(box, run) {
