@@ -27,7 +27,7 @@
         { icon: 'grid', label: '主数据域', value: d.domainCount || 0, sub: '已启用 ' + (d.enabledDomainCount || 0), title: '进入域与实体建模', onClick: function () { mdmGoModule('modeling'); } },
         { icon: 'layers', label: '实体', value: d.entityCount || 0, title: '进入域与实体建模', onClick: function () { mdmGoModule('modeling'); } },
         { icon: 'list', label: '属性', value: d.attributeCount || 0 },
-        { icon: 'shield', label: '黄金记录', value: '—', sub: '建设中', tone: 'muted' }
+        { icon: 'shield', label: '黄金记录', value: d.goldenCount || 0, sub: '已生效 ' + (d.goldenActiveCount || 0), tone: (d.goldenCount ? 'ok' : 'muted'), title: '进入黄金记录', onClick: function () { mdmGoModule('goldenrecord'); } }
       ]));
 
       // 按类别分布
@@ -336,5 +336,175 @@
     if (!window.confirm(msg)) return;
     DN.del(url).then(function () { DN.toast('已删除', 'ok'); renderModeling(c); })
       .catch(function (e) { DN.toast(e.message || '删除失败', 'err'); });
+  }
+
+  // ===================== 黄金记录（按实体 schema 动态生成表单） =====================
+  var _grEntity = null;   // 当前选中实体
+  var _grAttrs = [];      // 当前实体属性 schema
+  var _grFilter = '';     // 状态筛选
+
+  window.MDM_RENDERERS.goldenrecord = function (c) {
+    var bar = DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '黄金记录是某实体的单一可信版本，属性按实体建模 schema 动态录入；支持草稿/发布状态流转。' });
+    c.appendChild(bar);
+    var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
+    selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
+    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px' });
+    entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
+    selWrap.appendChild(entSel);
+    c.appendChild(selWrap);
+    var box = DN.h('div', { id: 'grBox' });
+    c.appendChild(box);
+
+    DN.get('/api/mdm/entities').then(function (ents) {
+      ents = ents || [];
+      entSel.innerHTML = '';
+      if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在“域与实体建模”创建)' })); box.appendChild(DN.empty('请先在“域与实体建模”创建实体', 'layers')); return; }
+      entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
+      ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
+      // 默认选第一个
+      entSel.value = String(ents[0].id);
+      _grEntity = ents[0];
+      loadGoldenForEntity(box);
+      entSel.onchange = function () {
+        _grEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null;
+        box.innerHTML = '';
+        if (_grEntity) loadGoldenForEntity(box);
+      };
+    }).catch(function (e) {
+      box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.goldenrecord(c); }));
+    });
+  };
+
+  function loadGoldenForEntity(box) {
+    if (!_grEntity) return;
+    box.innerHTML = '';
+    box.appendChild(DN.skeleton(3));
+    // 先加载该实体属性 schema，再加载记录与统计
+    Promise.all([
+      DN.get('/api/mdm/attributes?entityId=' + encodeURIComponent(_grEntity.id)),
+      DN.get('/api/mdm/golden/stats?entityId=' + encodeURIComponent(_grEntity.id))
+    ]).then(function (r) {
+      _grAttrs = r[0] || [];
+      var stats = r[1] || {};
+      box.innerHTML = '';
+      box.appendChild(DN.statRow([
+        { icon: 'shield', label: '黄金记录', value: stats.total || 0 },
+        { icon: 'check', label: '已生效', value: stats.active || 0, tone: 'ok' },
+        { icon: 'clock', label: '草稿', value: stats.draft || 0, tone: (stats.draft ? 'warn' : 'ok') },
+        { icon: 'alert', label: '已停用', value: stats.inactive || 0, tone: 'muted' }
+      ]));
+      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建黄金记录', onclick: function () { goldenForm(null, box); } });
+      var statusSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+      [['', '全部状态'], ['active', '已生效'], ['draft', '草稿'], ['inactive', '已停用']].forEach(function (o) { statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+      statusSel.value = _grFilter;
+      statusSel.onchange = function () { _grFilter = statusSel.value; loadGoldenList(listBox); };
+      var card = DN.card({ title: '黄金记录 · ' + _grEntity.entityName, icon: 'shield', actions: addBtn });
+      var listBox = DN.h('div', {});
+      card.body.appendChild(DN.h('div', { style: 'margin-bottom:10px' }, [statusSel]));
+      card.body.appendChild(listBox);
+      box.appendChild(card.el);
+      loadGoldenList(listBox);
+    }).catch(function (e) {
+      box.innerHTML = '';
+      box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadGoldenForEntity(box); }));
+    });
+  }
+
+  function loadGoldenList(listBox) {
+    listBox.innerHTML = ''; listBox.appendChild(DN.skeleton(3));
+    var qs = '?entityId=' + encodeURIComponent(_grEntity.id) + (_grFilter ? '&status=' + _grFilter : '');
+    DN.get('/api/mdm/golden/list' + qs).then(function (rows) {
+      rows = rows || [];
+      listBox.innerHTML = '';
+      if (!rows.length) { listBox.appendChild(DN.empty('暂无黄金记录，点右上角“新建黄金记录”录入', 'shield')); return; }
+      rows.forEach(function (r) { try { r._vals = JSON.parse(r.dataJson || '{}'); } catch (e) { r._vals = {}; } });
+      // 动态列：业务主键 + 前若干关键/普通属性 + 状态 + 版本 + 操作
+      var keyAttrs = _grAttrs.filter(function (a) { return a.isKey === 1 || a.isUnique === 1; });
+      var showAttrs = (keyAttrs.length ? keyAttrs : _grAttrs).slice(0, 4);
+      var cols = [];
+      showAttrs.forEach(function (a) {
+        cols.push({ key: 'a_' + a.attrCode, label: a.attrName, render: (function (code) { return function (r) { var v = r._vals[code]; return (v == null || v === '') ? '-' : String(v); }; })(a.attrCode) });
+      });
+      cols.push({ key: 'status', label: '状态', render: function (r) {
+          var s = r.status; return s === 'active' ? DN.pill('已生效', 'ok') : s === 'inactive' ? DN.pill('已停用', 'muted') : DN.pill('草稿', 'warn');
+        } });
+      cols.push({ key: 'sourceSystem', label: '来源', render: function (r) { return r.sourceSystem ? DN.pill(r.sourceSystem, 'info') : '-'; } });
+      cols.push({ key: 'version', label: '版本', align: 'right', render: function (r) { return 'v' + (r.version || 1); } });
+      cols.push({ key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } });
+      cols.push({ key: '_op', label: '操作', render: function (r) {
+          var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
+          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
+          if (r.status !== 'active') w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:#389e0d', onclick: function () { goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); } }));
+          if (r.status === 'active') w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:#ad6800', onclick: function () { goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); } }));
+          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(e.message || '删除失败', 'err'); }); } }));
+          return w;
+        } });
+      listBox.appendChild(DN.table({
+        columns: cols, rows: rows, pageSize: 15,
+        searchKeys: ['bizKey', 'sourceSystem'], searchPlaceholder: '搜索业务主键/来源', exportName: '黄金记录_' + _grEntity.entityCode,
+        exportValue: function (r, k) { return r._vals && r._vals[k.replace('a_', '')] != null ? r._vals[k.replace('a_', '')] : undefined; }
+      }));
+    }).catch(function (e) {
+      listBox.innerHTML = '';
+      listBox.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadGoldenList(listBox); }));
+    });
+  }
+
+  function reloadGolden() { var box = document.getElementById('grBox'); if (box) loadGoldenForEntity(box); }
+  function goldenAction(url, okMsg) {
+    DN.post(url).then(function () { DN.toast(okMsg, 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(e.message || '操作失败', 'err'); });
+  }
+
+  // 按属性类型生成输入控件
+  function grInput(attr, val) {
+    var t = (attr.dataType || 'STRING').toUpperCase();
+    if (t === 'ENUM') {
+      var opts = (attr.enumValues || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      return sel([['', '(请选择)']].concat(opts), val == null ? '' : val);
+    }
+    if (t === 'BOOLEAN') return sel([['', '(请选择)'], ['true', '是'], ['false', '否']], val == null ? '' : String(val));
+    if (t === 'DATE') return DN.h('input', { type: 'date', class: 'iw-form-select', style: 'width:100%', value: val || '' });
+    if (t === 'INT' || t === 'DECIMAL') return DN.h('input', { type: 'number', class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : val, step: t === 'DECIMAL' ? 'any' : '1' });
+    return inp(val, attr.description || '');
+  }
+
+  function goldenForm(row, box) {
+    if (!_grAttrs.length) { DN.toast('该实体尚无属性定义，请先在“域与实体建模”补充属性', 'warn'); return; }
+    var isEdit = !!row; row = row || {};
+    var vals = {};
+    try { vals = row.dataJson ? JSON.parse(row.dataJson) : (row._vals || {}); } catch (e) { vals = row._vals || {}; }
+    var inputs = {};   // attrCode -> input element
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '实体：' + _grEntity.entityName + '（按属性 schema 录入，标 * 为必填）' }));
+    _grAttrs.forEach(function (a) {
+      var input = grInput(a, vals[a.attrCode]);
+      inputs[a.attrCode] = input;
+      var label = a.attrName + (a.required === 1 ? ' *' : '') + (a.isKey === 1 ? '（关键）' : '');
+      body.appendChild(field(label, input, a.dataType + (a.lengthLimit ? '(' + a.lengthLimit + ')' : '')));
+    });
+    var srcInput = inp(row.sourceSystem, '如 CRM / ERP');
+    body.appendChild(field('来源系统', srcInput));
+    var statusSel = sel([['draft', '草稿'], ['active', '已生效'], ['inactive', '已停用']], row.status || 'draft');
+    body.appendChild(field('状态', statusSel));
+    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
+    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
+    footer.appendChild(save); body.appendChild(footer);
+    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '黄金记录', body);
+    save.onclick = function () {
+      var data = {};
+      var missing = null;
+      _grAttrs.forEach(function (a) {
+        var el = inputs[a.attrCode];
+        var v = (el.value != null ? String(el.value).trim() : '');
+        if (a.required === 1 && !v && !missing) missing = a.attrName;
+        if (v !== '') data[a.attrCode] = v;
+      });
+      if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
+      var payload = { id: row.id, entityId: _grEntity.id, dataJson: JSON.stringify(data), status: statusSel.value, sourceSystem: srcInput.value.trim() };
+      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      DN.post('/api/mdm/golden/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); reloadGolden(); })
+        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+    };
+    DN.enterSubmit(body);
   }
 })();

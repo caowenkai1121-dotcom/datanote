@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnMdmAttributeMapper;
 import com.datanote.mapper.DnMdmDomainMapper;
 import com.datanote.mapper.DnMdmEntityMapper;
+import com.datanote.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.model.DnMdmAttribute;
 import com.datanote.model.DnMdmDomain;
 import com.datanote.model.DnMdmEntity;
@@ -23,6 +24,7 @@ public class MdmService {
     private final DnMdmDomainMapper domainMapper;
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmAttributeMapper attributeMapper;
+    private final DnMdmGoldenRecordMapper goldenMapper;
 
     /** 主数据总览统计：域/实体/属性数量、按类别分布、各域实体数。 */
     public Map<String, Object> overview() {
@@ -36,6 +38,14 @@ public class MdmService {
         data.put("enabledDomainCount", enabledDomains);
         data.put("entityCount", entityTotal);
         data.put("attributeCount", attrTotal);
+
+        // 黄金记录统计
+        long goldenTotal = goldenMapper.selectCount(null);
+        QueryWrapper<com.datanote.model.DnMdmGoldenRecord> gqw = new QueryWrapper<>();
+        gqw.eq("status", "active");
+        long goldenActive = goldenMapper.selectCount(gqw);
+        data.put("goldenCount", goldenTotal);
+        data.put("goldenActiveCount", goldenActive);
 
         // 按业务类别分布
         Map<String, Integer> byCategory = new LinkedHashMap<>();
