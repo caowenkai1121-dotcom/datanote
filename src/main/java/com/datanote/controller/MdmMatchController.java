@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,18 +48,26 @@ public class MdmMatchController {
         if (survivor == null) throw new ResourceNotFoundException("存活记录");
         if (!(mObj instanceof List)) throw new BusinessException("请指定被合并记录");
 
-        int merged = 0;
+        // 收集被合并记录
+        List<DnMdmGoldenRecord> mergedRecs = new ArrayList<>();
         for (Object ido : (List<?>) mObj) {
             Long mid = Long.valueOf(String.valueOf(ido));
             if (mid.equals(survivorId)) continue;
             DnMdmGoldenRecord m = goldenMapper.selectById(mid);
-            if (m == null) continue;
+            if (m != null) mergedRecs.add(m);
+        }
+        // 应用存活性规则：存活记录 + 被合并记录全部参与字段级选优，组合最佳值写入存活记录
+        List<DnMdmGoldenRecord> all = new ArrayList<>();
+        all.add(survivor);
+        all.addAll(mergedRecs);
+        List<String> applied = matchService.applySurvivorship(survivor.getEntityId(), survivor, all);
+        // 停用被合并记录
+        for (DnMdmGoldenRecord m : mergedRecs) {
             m.setStatus("inactive");
             m.setUpdatedAt(LocalDateTime.now());
             goldenMapper.updateById(m);
-            merged++;
         }
-        // 存活记录置为生效并升版本
+        // 存活记录（已含存活性组合后的 data_json）置为生效并升版本
         survivor.setStatus("active");
         survivor.setVersion((survivor.getVersion() == null ? 1 : survivor.getVersion()) + 1);
         survivor.setUpdatedAt(LocalDateTime.now());
@@ -66,7 +75,8 @@ public class MdmMatchController {
 
         Map<String, Object> data = new HashMap<>();
         data.put("survivorId", survivorId);
-        data.put("mergedCount", merged);
+        data.put("mergedCount", mergedRecs.size());
+        data.put("survivorshipApplied", applied);
         return R.ok(data);
     }
 }

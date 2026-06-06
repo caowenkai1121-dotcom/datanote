@@ -3,12 +3,15 @@ package com.datanote.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnMdmAttributeMapper;
 import com.datanote.mapper.DnMdmGoldenRecordMapper;
+import com.datanote.mapper.DnMdmSurvivorshipRuleMapper;
 import com.datanote.model.DnMdmAttribute;
 import com.datanote.model.DnMdmGoldenRecord;
+import com.datanote.model.DnMdmSurvivorshipRule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -20,7 +23,74 @@ public class MdmMatchService {
 
     private final DnMdmGoldenRecordMapper goldenMapper;
     private final DnMdmAttributeMapper attributeMapper;
+    private final DnMdmSurvivorshipRuleMapper survivorshipMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 应用存活性规则：对有规则的属性，从簇内全部记录中按策略(最新/最完整/源优先)挑选最佳值，
+     * 组合写入存活记录的 data_json，实现字段级黄金记录生成。返回被改写的字段说明清单。
+     */
+    public List<String> applySurvivorship(Long entityId, DnMdmGoldenRecord survivor, List<DnMdmGoldenRecord> allRecords) {
+        QueryWrapper<DnMdmSurvivorshipRule> rqw = new QueryWrapper<>();
+        rqw.eq("entity_id", entityId).orderByAsc("priority");
+        List<DnMdmSurvivorshipRule> rules = survivorshipMapper.selectList(rqw);
+        if (rules.isEmpty()) return new ArrayList<>();
+
+        Map<String, Object> survivorVals = parse(survivor.getDataJson());
+        List<String> applied = new ArrayList<>();
+        for (DnMdmSurvivorshipRule rule : rules) {
+            String attr = rule.getAttrCode();
+            Object best = chooseValue(rule, allRecords, attr);
+            if (best != null && !String.valueOf(best).trim().isEmpty()) {
+                Object old = survivorVals.get(attr);
+                if (old == null || !String.valueOf(old).equals(String.valueOf(best))) {
+                    survivorVals.put(attr, best);
+                    applied.add((rule.getAttrName() != null ? rule.getAttrName() : attr) + "→" + best + "(" + rule.getStrategy() + ")");
+                }
+            }
+        }
+        if (!applied.isEmpty()) {
+            try { survivor.setDataJson(objectMapper.writeValueAsString(survivorVals)); } catch (Exception e) { /* 保持原值 */ }
+        }
+        return applied;
+    }
+
+    /** 按单条存活策略，从所有记录中挑选某属性的最佳值。 */
+    private Object chooseValue(DnMdmSurvivorshipRule rule, List<DnMdmGoldenRecord> records, String attr) {
+        String strategy = rule.getStrategy() == null ? "latest" : rule.getStrategy();
+        // 收集有非空值的候选(记录 + 解析后的属性值)
+        List<Object[]> cands = new ArrayList<>();   // [record, value]
+        for (DnMdmGoldenRecord r : records) {
+            Object v = parse(r.getDataJson()).get(attr);
+            if (v != null && !String.valueOf(v).trim().isEmpty()) cands.add(new Object[]{r, v});
+        }
+        if (cands.isEmpty()) return null;
+        if ("most_complete".equals(strategy)) {
+            Object[] win = cands.get(0);
+            for (Object[] c : cands) if (String.valueOf(c[1]).length() > String.valueOf(win[1]).length()) win = c;
+            return win[1];
+        }
+        if ("source_priority".equals(strategy)) {
+            String[] order = (rule.getSourcePriority() == null ? "" : rule.getSourcePriority()).split(",");
+            for (String sys : order) {
+                String s = sys.trim();
+                if (s.isEmpty()) continue;
+                for (Object[] c : cands) {
+                    String src = ((DnMdmGoldenRecord) c[0]).getSourceSystem();
+                    if (s.equalsIgnoreCase(src)) return c[1];
+                }
+            }
+            // 无匹配源 → 退化为最新
+        }
+        // latest（默认）：取 updatedAt 最新的候选
+        Object[] win = cands.get(0);
+        for (Object[] c : cands) {
+            LocalDateTime a = ((DnMdmGoldenRecord) c[0]).getUpdatedAt();
+            LocalDateTime b = ((DnMdmGoldenRecord) win[0]).getUpdatedAt();
+            if (a != null && (b == null || a.isAfter(b))) win = c;
+        }
+        return win[1];
+    }
 
     /** 检测某实体的重复黄金记录，返回统计 + 各重复簇。 */
     public Map<String, Object> detectDuplicates(Long entityId) {

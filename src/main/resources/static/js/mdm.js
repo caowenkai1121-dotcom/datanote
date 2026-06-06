@@ -597,7 +597,8 @@
       if (!window.confirm('确认合并？保留 1 条存活记录，其余 ' + mergedIds.length + ' 条将置为停用。')) return;
       mergeBtn.textContent = '合并中...'; mergeBtn.style.pointerEvents = 'none';
       DN.post('/api/mdm/match/merge', { survivorId: survivorId, mergedIds: mergedIds }).then(function (res) {
-        DN.toast('已合并：保留 1 条，停用 ' + ((res && res.mergedCount) || mergedIds.length) + ' 条', 'ok');
+        var ap = (res && res.survivorshipApplied) || [];
+        DN.toast('已合并：保留 1 条，停用 ' + ((res && res.mergedCount) || mergedIds.length) + ' 条' + (ap.length ? '；存活性规则组合 ' + ap.length + ' 个字段：' + ap.join('，') : ''), 'ok');
         loadDedup(box);
       }).catch(function (e) { DN.toast(e.message || '合并失败', 'err'); mergeBtn.textContent = '合并该簇'; mergeBtn.style.pointerEvents = ''; });
     };
