@@ -3318,19 +3318,20 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r63">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r65">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r63"></script>
-<script src="js/gov-assets.js?v=q100r63"></script>
-<script src="js/gov-lineage.js?v=q100r63"></script>
-<script src="js/gov-quality.js?v=q100r63"></script>
-<script src="js/gov-standard.js?v=q100r63"></script>
-<script src="js/gov-classification.js?v=q100r63"></script>
-<script src="js/gov-security.js?v=q100r63"></script>
-<script src="js/gov-health.js?v=q100r63"></script>
-<script src="js/gov-audit.js?v=q100r63"></script>
-<script src="js/gov-overview.js?v=q100r63"></script>
-<script src="js/gov-subject.js?v=q100r63"></script>
+<script src="js/dn-common.js?v=q100r65"></script>
+<script src="js/gov-assets.js?v=q100r65"></script>
+<script src="js/gov-lineage.js?v=q100r65"></script>
+<script src="js/gov-quality.js?v=q100r65"></script>
+<script src="js/gov-standard.js?v=q100r65"></script>
+<script src="js/gov-classification.js?v=q100r65"></script>
+<script src="js/gov-security.js?v=q100r65"></script>
+<script src="js/gov-health.js?v=q100r65"></script>
+<script src="js/gov-audit.js?v=q100r65"></script>
+<script src="js/gov-overview.js?v=q100r65"></script>
+<script src="js/gov-subject.js?v=q100r65"></script>
+<script src="js/mdm.js?v=q100r65"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -3374,6 +3375,10 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
     <a class="header-tab" href="#/governance" data-route="governance">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l7 4v5c0 3.5-3 6.5-7 7-4-.5-7-3.5-7-7V6l7-4z"/><path d="M6 8.5l1.5 1.5 3-3"/></svg>
       数据治理
+    </a>
+    <a class="header-tab" href="#/mdm" data-route="mdm">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="4" r="2.2"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/><circle cx="3" cy="6" r="1.3"/><circle cx="13" cy="6" r="1.3"/></svg>
+      主数据管理
     </a>
     <a class="header-tab" href="#/dbsync" data-route="dbsync">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="5" cy="5" rx="3" ry="1.5"/><path d="M2 5v6c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5V5"/><path d="M2 8c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5"/><path d="M10 7h4M12 5l2 2-2 2"/></svg>
@@ -5449,6 +5454,16 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
     <div class="ops-sidebar" id="govSidebar"></div>
     <div class="ops-main" style="flex:1; min-width:0; padding:24px 28px; overflow-y:auto;">
       <div id="govModuleContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 主数据管理(MDM) Page -->
+<div id="viewMdm" class="page-view" style="display:none; max-width:none; padding:0;">
+  <div class="ops-layout">
+    <div class="ops-sidebar" id="mdmSidebar"></div>
+    <div class="ops-main" style="flex:1; min-width:0; padding:24px 28px; overflow-y:auto;">
+      <div id="mdmModuleContent"></div>
     </div>
   </div>
 </div>
@@ -10059,6 +10074,52 @@ window.govGoModule = function(key) {
   if (idx >= 0 && items[idx]) switchGovModule(items[idx], key); else switchGovModule(null, key);
 };
 
+// ===== 主数据管理(MDM) 中心：侧栏 + 渲染器调度（复用治理同款范式与样式） =====
+var MDM_MODS = [
+  { key: 'overview',     label: '主数据总览',   desc: '主数据域/实体/属性规模与分布总览' },
+  { key: 'modeling',     label: '域与实体建模', desc: '主数据域、实体、属性的可视化建模（三级）' },
+  { key: 'goldenrecord', label: '黄金记录',     desc: '黄金记录管理与版本（建设中）' },
+  { key: 'steward',      label: '数据管家',     desc: '数据管家工作台与待办（建设中）' },
+  { key: 'xref',         label: '交叉引用',     desc: '跨系统 XREF 映射（建设中）' }
+];
+function initMdmCenter() {
+  var sb = document.getElementById('mdmSidebar'); if (!sb) return;
+  sb.innerHTML = '';
+  MDM_MODS.forEach(function(m, idx) {
+    var it = document.createElement('div');
+    it.className = 'ops-sidebar-item' + (idx === 0 ? ' active' : '');
+    it.textContent = m.label;
+    it.onclick = function() { switchMdmModule(it, m.key); };
+    sb.appendChild(it);
+  });
+  if (sb.firstChild) switchMdmModule(sb.firstChild, MDM_MODS[0].key);
+}
+function switchMdmModule(el, key) {
+  var sb = document.getElementById('mdmSidebar');
+  if (sb) sb.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var c = document.getElementById('mdmModuleContent'); if (!c) return;
+  c.innerHTML = '';
+  var meta = MDM_MODS.filter(function(m) { return m.key === key; })[0] || { label: key, desc: '' };
+  var h = document.createElement('div'); h.className = 'gov-h1'; h.textContent = meta.label; c.appendChild(h);
+  var d = document.createElement('div'); d.className = 'gov-desc'; d.textContent = meta.desc; c.appendChild(d);
+  var r = (window.MDM_RENDERERS || {})[key];
+  if (typeof r === 'function') {
+    try { r(c); } catch (e) {
+      var err = document.createElement('div'); err.className = 'gov-placeholder';
+      err.textContent = '模块加载失败: ' + (e && e.message ? e.message : e); c.appendChild(err);
+    }
+  } else {
+    var p = document.createElement('div'); p.className = 'gov-placeholder'; p.textContent = '该模块建设中'; c.appendChild(p);
+  }
+}
+window.mdmGoModule = function(key) {
+  var sb = document.getElementById('mdmSidebar'); if (!sb) return;
+  var idx = -1; for (var i = 0; i < MDM_MODS.length; i++) { if (MDM_MODS[i].key === key) { idx = i; break; } }
+  var items = sb.querySelectorAll('.ops-sidebar-item');
+  if (idx >= 0 && items[idx]) switchMdmModule(items[idx], key); else switchMdmModule(null, key);
+};
+
 var ROUTES = {
   'home':        { view: 'viewHome',               layout: 'page',   init: function() { loadDashboard(); } },
   'develop':     { view: null,                      layout: 'editor', init: null },
@@ -10073,6 +10134,7 @@ var ROUTES = {
   },
   'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData(); } },
   'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter(); } },
+  'mdm':         { view: 'viewMdm',                  layout: 'page',   init: function() { initMdmCenter(); } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
   'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },

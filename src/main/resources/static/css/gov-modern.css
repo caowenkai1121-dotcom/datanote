@@ -1,8 +1,8 @@
 /* ============================================================
    数据治理 现代设计套件 — 基于系统设计令牌(--primary 等)做现代化提升。
-   作用域限定 #govModuleContent，不影响工作台其它部分。
+   作用域限定 :is(#govModuleContent,#mdmModuleContent)，不影响工作台其它部分。
    ============================================================ */
-#govModuleContent {
+:is(#govModuleContent,#mdmModuleContent) {
   --gov-gap: 16px;
   --gov-radius: 10px;
   --gov-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
@@ -10,87 +10,87 @@
   --gov-ok: #52c41a; --gov-warn: #faad14; --gov-err: #ff4d4f; --gov-info: var(--primary,#1890ff);
   color: var(--text-regular,#1f2329);
 }
-#govModuleContent .gov-h1 { font-size:19px; font-weight:650; letter-spacing:.2px; margin-bottom:4px; }
-#govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:18px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-h1 { font-size:19px; font-weight:650; letter-spacing:.2px; margin-bottom:4px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:18px; }
 
 /* ---- 网格 ---- */
-#govModuleContent .gov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gov-gap); }
-#govModuleContent .gov-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:var(--gov-gap); }
+:is(#govModuleContent,#mdmModuleContent) .gov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gov-gap); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:var(--gov-gap); }
 
 /* ---- KPI 磁贴 ---- */
-#govModuleContent .gov-stat { position:relative; display:flex; align-items:center; gap:14px; background:var(--bg-card,#fff);
+:is(#govModuleContent,#mdmModuleContent) .gov-stat { position:relative; display:flex; align-items:center; gap:14px; background:var(--bg-card,#fff);
   border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; box-shadow:var(--gov-shadow); transition:transform .15s, box-shadow .15s, border-color .15s; }
-#govModuleContent .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,#1890ff); }
-#govModuleContent .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(24,144,255,.08)); color:var(--primary,#1890ff); }
-#govModuleContent .gov-stat .ic svg { width:22px; height:22px; }
-#govModuleContent .gov-stat.tone-ok .ic { background:rgba(82,196,26,.1); color:var(--gov-ok); }
-#govModuleContent .gov-stat.tone-warn .ic { background:rgba(250,173,20,.12); color:var(--gov-warn); }
-#govModuleContent .gov-stat.tone-err .ic { background:rgba(255,77,79,.1); color:var(--gov-err); }
-#govModuleContent .gov-stat .v { font-size:26px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
-#govModuleContent .gov-stat .l { font-size:12.5px; color:var(--text-muted,#86909c); margin-top:3px; }
-#govModuleContent .gov-stat .sub { font-size:11px; color:var(--text-muted,#86909c); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(24,144,255,.08)); color:var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .ic svg { width:22px; height:22px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-ok .ic { background:rgba(82,196,26,.1); color:var(--gov-ok); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-warn .ic { background:rgba(250,173,20,.12); color:var(--gov-warn); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-err .ic { background:rgba(255,77,79,.1); color:var(--gov-err); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .v { font-size:26px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .l { font-size:12.5px; color:var(--text-muted,#86909c); margin-top:3px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .sub { font-size:11px; color:var(--text-muted,#86909c); }
 
 /* ---- 卡片 ---- */
-#govModuleContent .gov-card { background:var(--bg-card,#fff); border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); box-shadow:var(--gov-shadow); margin-bottom:var(--gov-gap); overflow:hidden; }
-#govModuleContent .gov-card-hd { display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; font-size:14px; }
-#govModuleContent .gov-card-hd .ic { color:var(--primary,#1890ff); display:flex; }
-#govModuleContent .gov-card-hd .ic svg { width:18px; height:18px; }
-#govModuleContent .gov-card-hd .sp { flex:1; }
-#govModuleContent .gov-card-bd { padding:18px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card { background:var(--bg-card,#fff); border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); box-shadow:var(--gov-shadow); margin-bottom:var(--gov-gap); overflow:hidden; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-hd { display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; font-size:14px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-hd .ic { color:var(--primary,#1890ff); display:flex; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-hd .ic svg { width:18px; height:18px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-hd .sp { flex:1; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-bd { padding:18px; }
 
 /* ---- 工具条 ---- */
-#govModuleContent .gov-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-#govModuleContent .gov-search { position:relative; }
-#govModuleContent .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
-#govModuleContent .gov-search input:focus { border-color:var(--primary,#1890ff); box-shadow:0 0 0 3px var(--primary-light,rgba(24,144,255,.1)); }
+:is(#govModuleContent,#mdmModuleContent) .gov-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-search { position:relative; }
+:is(#govModuleContent,#mdmModuleContent) .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
+:is(#govModuleContent,#mdmModuleContent) .gov-search input:focus { border-color:var(--primary,#1890ff); box-shadow:0 0 0 3px var(--primary-light,rgba(24,144,255,.1)); }
 /* 键盘焦点环(仅键盘聚焦显示),覆盖所有 gov 交互元素 */
-#govModuleContent a:focus-visible, #govModuleContent button:focus-visible, #govModuleContent .btn:focus-visible, #govModuleContent [role="button"]:focus-visible, #govModuleContent th[data-sk]:focus-visible, #govModuleContent select:focus-visible, #govModuleContent input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#1890ff); outline-offset:2px; border-radius:4px; }
-#govModuleContent .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
-#govModuleContent .gov-search .gov-search-clr { position:absolute; right:8px; top:6px; cursor:pointer; color:var(--text-muted,#86909c); font-size:16px; line-height:20px; width:18px; text-align:center; border-radius:50%; }
-#govModuleContent .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
+:is(#govModuleContent,#mdmModuleContent) a:focus-visible, :is(#govModuleContent,#mdmModuleContent) button:focus-visible, :is(#govModuleContent,#mdmModuleContent) .btn:focus-visible, :is(#govModuleContent,#mdmModuleContent) [role="button"]:focus-visible, :is(#govModuleContent,#mdmModuleContent) th[data-sk]:focus-visible, :is(#govModuleContent,#mdmModuleContent) select:focus-visible, :is(#govModuleContent,#mdmModuleContent) input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#1890ff); outline-offset:2px; border-radius:4px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
+:is(#govModuleContent,#mdmModuleContent) .gov-search .gov-search-clr { position:absolute; right:8px; top:6px; cursor:pointer; color:var(--text-muted,#86909c); font-size:16px; line-height:20px; width:18px; text-align:center; border-radius:50%; }
+:is(#govModuleContent,#mdmModuleContent) .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
 
 /* ---- 现代表格 ---- */
-#govModuleContent .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow-x:auto; overflow-y:auto; max-height:68vh; background:var(--bg-card,#fff); }
-#govModuleContent table.gov-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-#govModuleContent table.gov-tbl thead th { position:sticky; top:0; z-index:3; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
-#govModuleContent table.gov-tbl tbody td { padding:12px 16px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); line-height:1.55; }
-#govModuleContent table.gov-tbl tbody tr { transition:background .12s; }
-#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
-#govModuleContent table.gov-tbl tbody tr:last-child td { border-bottom:none; }
+:is(#govModuleContent,#mdmModuleContent) .gov-tbl-wrap { border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); overflow-x:auto; overflow-y:auto; max-height:68vh; background:var(--bg-card,#fff); }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl thead th { position:sticky; top:0; z-index:3; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody td { padding:12px 16px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); line-height:1.55; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr { transition:background .12s; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr:last-child td { border-bottom:none; }
 
 /* ---- 分页(小屏换行不挤) ---- */
-#govModuleContent .gov-pager { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:10px 4px 0; font-size:12.5px; color:var(--text-muted,#86909c); }
-@media (max-width:480px) { #govModuleContent .gov-pager > span:first-child { flex-basis:100%; } }
+:is(#govModuleContent,#mdmModuleContent) .gov-pager { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:10px 4px 0; font-size:12.5px; color:var(--text-muted,#86909c); }
+@media (max-width:480px) { :is(#govModuleContent,#mdmModuleContent) .gov-pager > span:first-child { flex-basis:100%; } }
 
 /* ---- 状态药丸 ---- */
-#govModuleContent .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
 /* 文字色加深至 WCAG AA(≥4.5:1),小字号药丸在浅底上可读 */
-#govModuleContent .gov-pill.is-ok { background:rgba(82,196,26,.14); color:#389e0d; }
-#govModuleContent .gov-pill.is-warn { background:rgba(250,173,20,.16); color:#ad6800; }
-#govModuleContent .gov-pill.is-err { background:rgba(255,77,79,.12); color:#cf1322; }
-#govModuleContent .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:#0958d9; }
-#govModuleContent .gov-pill.is-muted { background:rgba(140,140,140,.16); color:#595959; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-ok { background:rgba(82,196,26,.14); color:#389e0d; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-warn { background:rgba(250,173,20,.16); color:#ad6800; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-err { background:rgba(255,77,79,.12); color:#cf1322; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:#0958d9; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-muted { background:rgba(140,140,140,.16); color:#595959; }
 
 /* ---- 横向条形图 ---- */
-#govModuleContent .gov-bar { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
-#govModuleContent .gov-bar .bl { width:96px; color:var(--text-regular,#1f2329); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#govModuleContent .gov-bar .bt { flex:1; height:8px; background:#f0f1f3; border-radius:5px; overflow:hidden; }
-#govModuleContent .gov-bar .bf { height:100%; border-radius:5px; background:var(--primary,#1890ff); transition:width .5s ease; }
-#govModuleContent .gov-bar .bv { width:54px; text-align:right; color:var(--text-muted,#86909c); font-variant-numeric:tabular-nums; flex-shrink:0; }
+:is(#govModuleContent,#mdmModuleContent) .gov-bar { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-bar .bl { width:96px; color:var(--text-regular,#1f2329); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:is(#govModuleContent,#mdmModuleContent) .gov-bar .bt { flex:1; height:8px; background:#f0f1f3; border-radius:5px; overflow:hidden; }
+:is(#govModuleContent,#mdmModuleContent) .gov-bar .bf { height:100%; border-radius:5px; background:var(--primary,#1890ff); transition:width .5s ease; }
+:is(#govModuleContent,#mdmModuleContent) .gov-bar .bv { width:54px; text-align:right; color:var(--text-muted,#86909c); font-variant-numeric:tabular-nums; flex-shrink:0; }
 
 /* ---- 环形仪表 ---- */
-#govModuleContent .gov-gauge { display:inline-flex; flex-direction:column; align-items:center; }
-#govModuleContent .gov-gauge .gv { font-size:30px; font-weight:750; font-variant-numeric:tabular-nums; }
-#govModuleContent .gov-gauge .gl { font-size:12px; color:var(--text-muted,#86909c); margin-top:2px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-gauge { display:inline-flex; flex-direction:column; align-items:center; }
+:is(#govModuleContent,#mdmModuleContent) .gov-gauge .gv { font-size:30px; font-weight:750; font-variant-numeric:tabular-nums; }
+:is(#govModuleContent,#mdmModuleContent) .gov-gauge .gl { font-size:12px; color:var(--text-muted,#86909c); margin-top:2px; }
 
 /* ---- 空态 ---- */
-#govModuleContent .gov-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; color:var(--text-muted,#9aa0a6); text-align:center; animation:govEmptyIn .3s ease; }
+:is(#govModuleContent,#mdmModuleContent) .gov-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; color:var(--text-muted,#9aa0a6); text-align:center; animation:govEmptyIn .3s ease; }
 @keyframes govEmptyIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
-#govModuleContent .gov-empty svg { width:44px; height:44px; opacity:.5; }
-#govModuleContent .gov-empty .et { font-size:13px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-empty svg { width:44px; height:44px; opacity:.5; }
+:is(#govModuleContent,#mdmModuleContent) .gov-empty .et { font-size:13px; }
 
 /* ---- 骨架屏 ---- */
-#govModuleContent .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.6s ease infinite; margin:10px 0; }
+:is(#govModuleContent,#mdmModuleContent) .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.6s ease infinite; margin:10px 0; }
 @keyframes govShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
 
 /* ---- 治理大屏全屏模式：放大留白, 适合投屏 ---- */
@@ -110,87 +110,87 @@
 .gov-drawer .db { padding:18px 20px; overflow-y:auto; flex:1; }
 
 /* ---- 内联表单(替代弹窗手输) ---- */
-#govModuleContent .gov-form { background:#fafbfc; border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; margin-bottom:14px; }
-#govModuleContent .gov-form .ds-form-row { margin-bottom:12px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-form { background:#fafbfc; border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; margin-bottom:14px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-form .ds-form-row { margin-bottom:12px; }
 
 /* ============================================================
    GV2 升级：可视化组件 + UI/UX 美化（卡片分级/字体层级/斑马纹/响应式/按钮/告警）
    ============================================================ */
 
 /* ---- 字体层级 ---- */
-#govModuleContent .gov-h1 { font-size:22px; font-weight:700; }
-#govModuleContent .gov-section-title { font-size:13px; font-weight:650; color:var(--text-regular,#1f2329); margin:6px 0 10px; padding-left:9px; border-left:3px solid var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent) .gov-h1 { font-size:22px; font-weight:700; }
+:is(#govModuleContent,#mdmModuleContent) .gov-section-title { font-size:13px; font-weight:650; color:var(--text-regular,#1f2329); margin:6px 0 10px; padding-left:9px; border-left:3px solid var(--primary,#1890ff); }
 
 /* ---- 卡片阴影/层级 ---- */
-#govModuleContent .gov-card.primary { box-shadow:0 2px 6px rgba(0,0,0,.05),0 8px 28px rgba(24,144,255,.10); border-color:rgba(24,144,255,.22); }
-#govModuleContent .gov-card.primary .gov-card-hd { background:linear-gradient(90deg,rgba(24,144,255,.06),transparent); }
-#govModuleContent .gov-card.flat { box-shadow:none; }
-#govModuleContent .gov-card-bd.split { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
-@media (max-width:760px){ #govModuleContent .gov-card-bd.split { grid-template-columns:1fr; } }
+:is(#govModuleContent,#mdmModuleContent) .gov-card.primary { box-shadow:0 2px 6px rgba(0,0,0,.05),0 8px 28px rgba(24,144,255,.10); border-color:rgba(24,144,255,.22); }
+:is(#govModuleContent,#mdmModuleContent) .gov-card.primary .gov-card-hd { background:linear-gradient(90deg,rgba(24,144,255,.06),transparent); }
+:is(#govModuleContent,#mdmModuleContent) .gov-card.flat { box-shadow:none; }
+:is(#govModuleContent,#mdmModuleContent) .gov-card-bd.split { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
+@media (max-width:760px){ :is(#govModuleContent,#mdmModuleContent) .gov-card-bd.split { grid-template-columns:1fr; } }
 
 /* ---- 磁贴增强：图标渐变、可点击 ---- */
-#govModuleContent .gov-stat.clickable { cursor:pointer; }
-#govModuleContent .gov-stat .ic { transition:transform .15s; }
-#govModuleContent .gov-stat:hover .ic { transform:scale(1.08); }
-#govModuleContent .gov-stat.tone-ok .ic { background:linear-gradient(135deg,rgba(82,196,26,.16),rgba(82,196,26,.06)); }
-#govModuleContent .gov-stat.tone-warn .ic { background:linear-gradient(135deg,rgba(250,173,20,.18),rgba(250,173,20,.06)); }
-#govModuleContent .gov-stat.tone-err .ic { background:linear-gradient(135deg,rgba(255,77,79,.16),rgba(255,77,79,.06)); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.clickable { cursor:pointer; }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat .ic { transition:transform .15s; }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat:hover .ic { transform:scale(1.08); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-ok .ic { background:linear-gradient(135deg,rgba(82,196,26,.16),rgba(82,196,26,.06)); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-warn .ic { background:linear-gradient(135deg,rgba(250,173,20,.18),rgba(250,173,20,.06)); }
+:is(#govModuleContent,#mdmModuleContent) .gov-stat.tone-err .ic { background:linear-gradient(135deg,rgba(255,77,79,.16),rgba(255,77,79,.06)); }
 
 /* ---- 药丸配色加强 ---- */
-#govModuleContent .gov-pill { font-weight:600; }
-#govModuleContent .gov-pill.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
-#govModuleContent .gov-pill.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
-#govModuleContent .gov-pill.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
-#govModuleContent .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill { font-weight:600; }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
 
 /* ---- 表格斑马纹 + hover 左标记 ---- */
-#govModuleContent table.gov-tbl tbody tr:nth-child(even) { background:#fafbfc; }
-#govModuleContent table.gov-tbl tbody tr { box-shadow:inset 3px 0 0 transparent; }
-#govModuleContent table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); box-shadow:inset 3px 0 0 var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr:nth-child(even) { background:#fafbfc; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr { box-shadow:inset 3px 0 0 transparent; }
+:is(#govModuleContent,#mdmModuleContent) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); box-shadow:inset 3px 0 0 var(--primary,#1890ff); }
 
 /* ---- 响应式网格 ---- */
-@media (max-width:1200px){ #govModuleContent .gov-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }
-@media (max-width:768px){ #govModuleContent .gov-grid, #govModuleContent .gov-stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:1200px){ :is(#govModuleContent,#mdmModuleContent) .gov-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }
+@media (max-width:768px){ :is(#govModuleContent,#mdmModuleContent) .gov-grid, :is(#govModuleContent,#mdmModuleContent) .gov-stats { grid-template-columns:1fr 1fr; } }
 @media (max-width:760px){
-  #govModuleContent .gov-radar svg text { font-size:9px; }
-  #govModuleContent .gov-radar { transform:scale(.88); transform-origin:center top; }
-  #govModuleContent .gov-card-hd { flex-wrap:wrap; gap:6px; }
+  :is(#govModuleContent,#mdmModuleContent) .gov-radar svg text { font-size:9px; }
+  :is(#govModuleContent,#mdmModuleContent) .gov-radar { transform:scale(.88); transform-origin:center top; }
+  :is(#govModuleContent,#mdmModuleContent) .gov-card-hd { flex-wrap:wrap; gap:6px; }
 }
-@media (max-width:520px){ #govModuleContent .gov-grid { grid-template-columns:1fr; } #govModuleContent .gov-stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:520px){ :is(#govModuleContent,#mdmModuleContent) .gov-grid { grid-template-columns:1fr; } :is(#govModuleContent,#mdmModuleContent) .gov-stats { grid-template-columns:1fr 1fr; } }
 /* 表单下拉最小宽度, 避免长选项(如 BANK_CARD)撑乱排版 */
-#govModuleContent .ds-form-row select, #govModuleContent .iw-form-select { min-width:120px; }
+:is(#govModuleContent,#mdmModuleContent) .ds-form-row select, :is(#govModuleContent,#mdmModuleContent) .iw-form-select { min-width:120px; }
 
 /* ---- 按钮分级 ---- */
-#govModuleContent .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }
-#govModuleContent .btn.btn-danger:hover { background:#ffccc7; }
-#govModuleContent .btn.btn-ghost { background:transparent; color:var(--primary,#1890ff); border-color:var(--border,#d4d7de); }
-#govModuleContent .btn:not(.btn-primary):not(.btn-danger):hover { border-color:var(--primary,#1890ff); color:var(--primary,#1890ff); }
-#govModuleContent .btn:active { transform:translateY(1px); }
+:is(#govModuleContent,#mdmModuleContent) .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }
+:is(#govModuleContent,#mdmModuleContent) .btn.btn-danger:hover { background:#ffccc7; }
+:is(#govModuleContent,#mdmModuleContent) .btn.btn-ghost { background:transparent; color:var(--primary,#1890ff); border-color:var(--border,#d4d7de); }
+:is(#govModuleContent,#mdmModuleContent) .btn:not(.btn-primary):not(.btn-danger):hover { border-color:var(--primary,#1890ff); color:var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent) .btn:active { transform:translateY(1px); }
 
 /* ---- 告警条 ---- */
-#govModuleContent .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
-#govModuleContent .gov-alert .ic svg { width:17px; height:17px; }
-#govModuleContent .gov-alert .m { flex:1; }
-#govModuleContent .gov-alert .x { border:0; background:none; cursor:pointer; font-size:17px; line-height:1; color:inherit; opacity:.6; }
-#govModuleContent .gov-alert .x:hover { opacity:1; }
-#govModuleContent .gov-alert.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
-#govModuleContent .gov-alert.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
-#govModuleContent .gov-alert.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
-#govModuleContent .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert .ic svg { width:17px; height:17px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert .m { flex:1; }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert .x { border:0; background:none; cursor:pointer; font-size:17px; line-height:1; color:inherit; opacity:.6; }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert .x:hover { opacity:1; }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
+:is(#govModuleContent,#mdmModuleContent) .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
 
 /* ---- 可视化组件容器 ---- */
-#govModuleContent .gov-radar, #govModuleContent .gov-line { display:flex; justify-content:center; }
-#govModuleContent .gov-line { width:100%; }
-#govModuleContent .gov-delta { font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
-#govModuleContent .gov-delta.is-ok { color:#389e0d; }
-#govModuleContent .gov-delta.is-err { color:#cf1322; }
-#govModuleContent .gov-delta.is-muted { color:#8c8c8c; }
-#govModuleContent .gov-heat { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
-#govModuleContent .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
-#govModuleContent .gov-heat-cell:hover { transform:translateY(-2px); }
-#govModuleContent .gov-heat-cell .hl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-regular,#1f2329); }
-#govModuleContent .gov-heat-cell .hv { font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
+:is(#govModuleContent,#mdmModuleContent) .gov-radar, :is(#govModuleContent,#mdmModuleContent) .gov-line { display:flex; justify-content:center; }
+:is(#govModuleContent,#mdmModuleContent) .gov-line { width:100%; }
+:is(#govModuleContent,#mdmModuleContent) .gov-delta { font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
+:is(#govModuleContent,#mdmModuleContent) .gov-delta.is-ok { color:#389e0d; }
+:is(#govModuleContent,#mdmModuleContent) .gov-delta.is-err { color:#cf1322; }
+:is(#govModuleContent,#mdmModuleContent) .gov-delta.is-muted { color:#8c8c8c; }
+:is(#govModuleContent,#mdmModuleContent) .gov-heat { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
+:is(#govModuleContent,#mdmModuleContent) .gov-heat-cell:hover { transform:translateY(-2px); }
+:is(#govModuleContent,#mdmModuleContent) .gov-heat-cell .hl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-regular,#1f2329); }
+:is(#govModuleContent,#mdmModuleContent) .gov-heat-cell .hv { font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
 
 /* ---- 图例 ---- */
-#govModuleContent .gov-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text-muted,#86909c); margin-top:10px; }
-#govModuleContent .gov-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }
+:is(#govModuleContent,#mdmModuleContent) .gov-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text-muted,#86909c); margin-top:10px; }
+:is(#govModuleContent,#mdmModuleContent) .gov-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }
