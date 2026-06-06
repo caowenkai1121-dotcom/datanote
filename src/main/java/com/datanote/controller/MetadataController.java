@@ -24,6 +24,19 @@ public class MetadataController {
 
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
 
+    /**
+     * 数据扫描类查询失败时，识别 Doris BE(计算/存储后端)不可用的情况，给出清晰可操作提示，
+     * 否则返回原有兜底文案。（BE 宕机会导致 SELECT/探查/分区等扫描查询失败，而元数据查询仍正常）
+     */
+    private static String dorisMsg(Exception e, String fallback) {
+        String m = (e == null || e.getMessage() == null) ? "" : e.getMessage();
+        if (m.contains("No backend available") || m.contains("not alive")
+                || m.contains("no queryable replicas") || m.contains("does not exist or not alive")) {
+            return "数据仓库后端(Doris BE)当前不可用，无法查询表数据，请联系管理员检查 Doris BE 服务状态";
+        }
+        return fallback;
+    }
+
     // ========== 基础元数据查询（Hive） ==========
 
     @Operation(summary = "获取Hive数据库列表")
@@ -223,7 +236,7 @@ public class MetadataController {
             return R.ok(dataMapService.preview(db, table));
         } catch (Exception e) {
             log.error("数据预览失败: {}.{}", db, table, e);
-            return R.fail("查询失败");
+            return R.fail(dorisMsg(e, "查询失败"));
         }
     }
 
@@ -239,7 +252,7 @@ public class MetadataController {
             return R.ok(dataMapService.profile(db, table));
         } catch (Exception e) {
             log.error("数据探查失败: {}.{}", db, table, e);
-            return R.fail("探查失败");
+            return R.fail(dorisMsg(e, "探查失败"));
         }
     }
 
@@ -287,7 +300,7 @@ public class MetadataController {
             return R.ok(dataMapService.getPartitions(db, table));
         } catch (Exception e) {
             log.error("获取分区信息失败: {}.{}", db, table, e);
-            return R.fail("获取分区信息失败");
+            return R.fail(dorisMsg(e, "获取分区信息失败"));
         }
     }
 }
