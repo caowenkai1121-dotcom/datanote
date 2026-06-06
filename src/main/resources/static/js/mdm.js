@@ -647,4 +647,124 @@
       card.body.appendChild(DN.errorBox('工作台加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.steward(c); }));
     });
   };
+
+  // ===================== 交叉引用(XREF) =====================
+  var _xrEntity = null, _xrGoldens = [];
+
+  window.MDM_RENDERERS.xref = function (c) {
+    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '维护黄金记录(MDM 全局ID)与各源系统业务ID的映射；支持按源系统ID反查唯一的黄金记录，保证跨系统一致。' }));
+    var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
+    selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
+    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px' });
+    entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
+    selWrap.appendChild(entSel);
+    c.appendChild(selWrap);
+    var box = DN.h('div', { id: 'xrBox' });
+    c.appendChild(box);
+
+    DN.get('/api/mdm/entities').then(function (ents) {
+      ents = ents || [];
+      entSel.innerHTML = '';
+      if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体)' })); box.appendChild(DN.empty('请先创建实体与黄金记录', 'layers')); return; }
+      entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
+      ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
+      entSel.value = String(ents[0].id); _xrEntity = ents[0];
+      loadXref(box);
+      entSel.onchange = function () { _xrEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_xrEntity) loadXref(box); };
+    }).catch(function (e) { box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.xref(c); })); });
+  };
+
+  function loadXref(box) {
+    if (!_xrEntity) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(3));
+    Promise.all([
+      DN.get('/api/mdm/xref/stats?entityId=' + encodeURIComponent(_xrEntity.id)),
+      DN.get('/api/mdm/xref/by-entity?entityId=' + encodeURIComponent(_xrEntity.id)),
+      DN.get('/api/mdm/golden/list?entityId=' + encodeURIComponent(_xrEntity.id))
+    ]).then(function (r) {
+      var stats = r[0] || {}, xrefs = r[1] || [];
+      _xrGoldens = r[2] || [];
+      box.innerHTML = '';
+      box.appendChild(DN.statRow([
+        { icon: 'list', label: '映射数', value: stats.xrefCount || 0 },
+        { icon: 'grid', label: '源系统数', value: stats.sourceSystemCount || 0, sub: (stats.sourceSystems || []).join(' / ') },
+        { icon: 'shield', label: '已映射黄金记录', value: stats.mappedGoldenCount || 0 }
+      ]));
+
+      // 反查工具
+      var resolveCard = DN.card({ title: '按源系统ID反查黄金记录', icon: 'search' });
+      var sysIn = DN.h('input', { class: 'iw-form-select', style: 'min-width:120px', placeholder: '源系统 如 CRM' });
+      var idIn = DN.h('input', { class: 'iw-form-select', style: 'min-width:160px', placeholder: '源系统业务ID' });
+      var rbtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '反查' });
+      var rout = DN.h('div', { style: 'margin-top:10px' });
+      rbtn.onclick = function () {
+        if (!sysIn.value.trim() || !idIn.value.trim()) { DN.toast('请填写源系统与源ID', 'warn'); return; }
+        rout.innerHTML = ''; rout.appendChild(DN.skeleton(1));
+        DN.get('/api/mdm/xref/resolve?sourceSystem=' + encodeURIComponent(sysIn.value.trim()) + '&sourceId=' + encodeURIComponent(idIn.value.trim())).then(function (d) {
+          rout.innerHTML = '';
+          if (!d || !d.found) { rout.appendChild(DN.empty('未找到该源标识对应的黄金记录', 'alert')); return; }
+          rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:8px;background:rgba(82,196,26,.08);border:1px solid rgba(82,196,26,.25);font-size:13px' }, [
+            DN.h('div', { style: 'font-weight:600;margin-bottom:4px' }, [DN.h('span', { text: '✓ 命中黄金记录：' + (d.bizKey || ('#' + d.goldenRecordId)) }), DN.h('span', { style: 'margin-left:8px' }, [DN.pill(d.status === 'active' ? '已生效' : (d.status === 'inactive' ? '已停用' : '草稿'), d.status === 'active' ? 'ok' : 'warn')])]),
+            DN.h('div', { class: 'gov-desc', style: 'margin:0', text: 'MDM ID: ' + d.goldenRecordId + ' · 属性: ' + (d.dataJson || '') })
+          ]));
+        }).catch(function (e) { rout.innerHTML = ''; rout.appendChild(DN.errorBox('反查失败: ' + e.message)); });
+      };
+      var rrow = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [sysIn, idIn, rbtn]);
+      resolveCard.body.appendChild(rrow);
+      resolveCard.body.appendChild(rout);
+      box.appendChild(resolveCard.el);
+
+      // 映射表
+      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增映射', onclick: function () { xrefForm(null, box); } });
+      var card = DN.card({ title: '交叉引用映射 · ' + _xrEntity.entityName, icon: 'list', actions: addBtn });
+      if (!xrefs.length) { card.body.appendChild(DN.empty('暂无交叉引用，点右上角“新增映射”为黄金记录关联源系统ID', 'list')); box.appendChild(card.el); return; }
+      card.body.appendChild(DN.table({
+        columns: [
+          { key: 'bizKey', label: '黄金记录', copyable: true, render: function (r) { return r.bizKey || ('#' + r.goldenRecordId); } },
+          { key: 'sourceSystem', label: '源系统', render: function (r) { return DN.pill(r.sourceSystem, 'info'); } },
+          { key: 'sourceId', label: '源系统ID', copyable: true, render: function (r) { return r.sourceId; } },
+          { key: 'isPrimary', label: '主源', render: function (r) { return r.isPrimary === 1 ? DN.pill('主源', 'ok') : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
+          { key: 'matchScore', label: '置信度', align: 'right', render: function (r) { return r.matchScore == null ? '-' : (r.matchScore + '%'); } },
+          { key: '_op', label: '操作', render: function (r) {
+              var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { xrefForm(r, box); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(e.message || '删除失败', 'err'); }); } }));
+              return w;
+            } }
+        ],
+        rows: xrefs, pageSize: 20, searchKeys: ['bizKey', 'sourceSystem', 'sourceId'], searchPlaceholder: '搜索黄金记录/源系统/源ID', exportName: '交叉引用_' + _xrEntity.entityCode
+      }));
+      box.appendChild(card.el);
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadXref(box); })); });
+  }
+
+  function xrefForm(row, box) {
+    if (!_xrGoldens.length) { DN.toast('该实体尚无黄金记录，请先创建黄金记录', 'warn'); return; }
+    var isEdit = !!row; row = row || {};
+    var gSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    _xrGoldens.forEach(function (g) { var op = DN.h('option', { value: g.id, text: (g.bizKey || ('#' + g.id)) + ' (' + g.status + ')' }); if (String(row.goldenRecordId) === String(g.id)) op.selected = true; gSel.appendChild(op); });
+    var fSys = inp(row.sourceSystem, '如 CRM / ERP');
+    var fId = inp(row.sourceId, '源系统业务ID');
+    var fScore = inp(row.matchScore, '置信度 0-100');
+    var cPrimary = chk('设为主源', row.isPrimary === 1);
+    var body = DN.h('div', {});
+    body.appendChild(field('黄金记录', gSel));
+    body.appendChild(field('源系统', fSys));
+    body.appendChild(field('源系统业务ID', fId, '源系统+源ID 全局唯一'));
+    body.appendChild(field('置信度(%)', fScore));
+    body.appendChild(field('主源', cPrimary));
+    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
+    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
+    footer.appendChild(save); body.appendChild(footer);
+    var dr = DN.drawer((isEdit ? '编辑' : '新增') + '交叉引用', body);
+    save.onclick = function () {
+      var payload = { id: row.id, goldenRecordId: Number(gSel.value), sourceSystem: fSys.value.trim(), sourceId: fId.value.trim(), matchScore: fScore.value.trim() ? parseFloat(fScore.value) : null, isPrimary: cPrimary._cb.checked ? 1 : 0 };
+      if (!payload.sourceSystem) { DN.toast('请填写源系统', 'err'); return; }
+      if (!payload.sourceId) { DN.toast('请填写源系统业务ID', 'err'); return; }
+      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      DN.post('/api/mdm/xref/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); loadXref(box); })
+        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+    };
+    DN.enterSubmit(body);
+  }
 })();
