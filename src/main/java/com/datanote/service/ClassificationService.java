@@ -35,6 +35,24 @@ public class ClassificationService {
 
     private static final int SAMPLE_LIMIT = 100;
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
+    /** 表级敏感标签（写入 dn_table_meta.tags，CSV 逗号分隔） */
+    static final String SENSITIVE_TAG = "含敏感字段";
+
+    /**
+     * 幂等增/删敏感标签：tags 为逗号/中文逗号分隔的 CSV。
+     * hasSensitive=true 确保含 SENSITIVE_TAG（去重），false 则移除；其余标签保序保留。
+     */
+    static String applySensitiveTag(String tags, boolean hasSensitive) {
+        List<String> kept = new ArrayList<>();
+        if (tags != null) {
+            for (String t : tags.split("[,，]")) {
+                String s = t.trim();
+                if (!s.isEmpty() && !s.equals(SENSITIVE_TAG)) kept.add(s);
+            }
+        }
+        if (hasSensitive) kept.add(SENSITIVE_TAG);
+        return String.join(",", kept);
+    }
 
     // ========== 分级模型 ==========
 
@@ -219,6 +237,29 @@ public class ClassificationService {
         audit.setReason(reason);
         audit.setCreatedAt(LocalDateTime.now());
         auditMapper.insert(audit);
+
+        // 治理闭环接点③：分类确认后回写表级敏感标签(自愈：按表是否仍有敏感列增/删"含敏感字段"标签)。
+        // 兜底不抛，保证分类主流程不因标签回写失败而回滚。
+        try {
+            syncTableSensitiveTag(tableMetaId);
+        } catch (Exception e) {
+            log.warn("表级敏感标签回写失败(不影响分类) tableMetaId={}: {}", tableMetaId, e.getMessage());
+        }
+    }
+
+    /** 按表当前是否仍有敏感列(sensitive_type 非空)，幂等增/删 dn_table_meta 的"含敏感字段"标签。 */
+    private void syncTableSensitiveTag(Long tableMetaId) {
+        QueryWrapper<DnColumnMeta> qw = new QueryWrapper<>();
+        qw.eq("table_meta_id", tableMetaId).isNotNull("sensitive_type").ne("sensitive_type", "");
+        boolean hasSensitive = columnMetaMapper.selectCount(qw) > 0;
+        DnTableMeta tm = tableMetaMapper.selectById(tableMetaId);
+        if (tm == null) return;
+        String newTags = applySensitiveTag(tm.getTags(), hasSensitive);
+        if (!newTags.equals(tm.getTags() == null ? "" : tm.getTags())) {
+            tm.setTags(newTags);
+            tm.setUpdatedAt(LocalDateTime.now());
+            tableMetaMapper.updateById(tm);
+        }
     }
 
     // ========== 内部 ==========
