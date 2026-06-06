@@ -605,4 +605,46 @@
     card.body.appendChild(footer);
     return card.el;
   }
+
+  // ===================== 数据管家工作台（待办聚合） =====================
+  window.MDM_RENDERERS.steward = function (c) {
+    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '聚合各实体需数据管家处理的事项：待复核的草稿黄金记录、待去重的重复簇，按待办量排序并提供直达入口。' }));
+    var statBox = DN.h('div', { id: 'stwStats' }); statBox.appendChild(DN.skeleton(2)); c.appendChild(statBox);
+    var card = DN.card({ title: '管家待办清单', icon: 'inbox' });
+    card.body.appendChild(DN.skeleton(3));
+    c.appendChild(card.el);
+
+    DN.get('/api/mdm/steward/overview').then(function (d) {
+      d = d || {};
+      statBox.innerHTML = '';
+      statBox.appendChild(DN.statRow([
+        { icon: 'clock', label: '待复核草稿', value: d.totalDraft || 0, tone: (d.totalDraft ? 'warn' : 'ok'), title: '进入黄金记录处理', onClick: function () { mdmGoModule('goldenrecord'); } },
+        { icon: 'alert', label: '待去重重复簇', value: d.totalDupClusters || 0, tone: (d.totalDupClusters ? 'warn' : 'ok'), title: '进入匹配去重处理', onClick: function () { mdmGoModule('dedup'); } },
+        { icon: 'check', label: '已生效记录', value: d.totalActive || 0, tone: 'ok' },
+        { icon: 'shield', label: '有待办实体', value: d.pendingEntityCount || 0, sub: '共 ' + (d.entityCount || 0) + ' 实体' }
+      ]));
+      card.body.innerHTML = '';
+      var todos = d.todos || [];
+      if (!todos.length) { card.body.appendChild(DN.empty('管家工作台清爽，暂无待处理事项 ✓', 'check')); return; }
+      card.body.appendChild(DN.table({
+        columns: [
+          { key: 'entityName', label: '实体', render: function (r) { return (r.domainName ? r.domainName + ' / ' : '') + r.entityName; } },
+          { key: 'draftCount', label: '待复核草稿', align: 'right', sortable: true, render: function (r) {
+              if (!r.draftCount) return DN.h('span', { text: '0', style: 'color:var(--text-muted)' });
+              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#ad6800;font-weight:600', text: String(r.draftCount) + ' 去复核', title: '前往黄金记录复核草稿', onclick: function () { mdmGoModule('goldenrecord'); } });
+            } },
+          { key: 'dupClusterCount', label: '待去重重复簇', align: 'right', sortable: true, render: function (r) {
+              if (!r.dupClusterCount) return DN.h('span', { text: '0', style: 'color:var(--text-muted)' });
+              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#cf1322;font-weight:600', text: r.dupClusterCount + ' 簇/' + r.dupRecordCount + ' 条 去去重', title: '前往匹配去重处理', onclick: function () { mdmGoModule('dedup'); } });
+            } },
+          { key: 'activeCount', label: '已生效', align: 'right', sortable: true, render: function (r) { return String(r.activeCount); } },
+          { key: 'pendingTotal', label: '待办合计', align: 'right', sortable: true, render: function (r) { return DN.pill(String(r.pendingTotal), r.pendingTotal > 0 ? 'warn' : 'ok'); } }
+        ],
+        rows: todos, pageSize: 20, searchKeys: ['entityName', 'domainName'], searchPlaceholder: '搜索实体/域', exportName: '管家待办'
+      }));
+    }).catch(function (e) {
+      statBox.innerHTML = ''; card.body.innerHTML = '';
+      card.body.appendChild(DN.errorBox('工作台加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.steward(c); }));
+    });
+  };
 })();
