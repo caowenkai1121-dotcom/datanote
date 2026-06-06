@@ -139,7 +139,11 @@ public class IssueService {
         try {
             if (rule == null || run == null) return;
             String st = run.getRunStatus();
-            if (!("failed".equalsIgnoreCase(st) || "error".equalsIgnoreCase(st))) return;
+            if (!("failed".equalsIgnoreCase(st) || "error".equalsIgnoreCase(st))) {
+                // 质量恢复达标 → 自动关闭未被人工介入的该规则工单(闭环另一半)
+                closeQualityIssueOnRecovery(rule);
+                return;
+            }
 
             String objectRef = qualityIssueObjectRef(rule.getId());
             String title = qualityIssueTitle(rule, run);
@@ -179,7 +183,31 @@ public class IssueService {
         }
     }
 
+    /**
+     * 质量恢复达标时，自动关闭仍处 OPEN（未被人工介入）的该规则质量工单，完成"发现→督办→恢复关单"闭环。
+     * 已被人工流转（FIXING/RESOLVED/...）的工单不自动关，尊重人工整改流程。
+     */
+    private void closeQualityIssueOnRecovery(DnQualityRule rule) {
+        if (rule == null || rule.getId() == null) return;
+        QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+        qw.eq("issue_type", QUALITY_ISSUE_TYPE).eq("object_ref", qualityIssueObjectRef(rule.getId()))
+          .ne("status", "CLOSED").orderByDesc("updated_at").last("LIMIT 1");
+        DnGovernanceIssue existing = issueMapper.selectOne(qw);
+        if (existing == null || !shouldAutoCloseOnRecovery(existing.getStatus())) return;
+        existing.setStatus("CLOSED");
+        String note = "\n[自动关单] 规则已恢复达标，系统自动关闭于 " + LocalDateTime.now();
+        existing.setDescription((existing.getDescription() == null ? "" : existing.getDescription()) + note);
+        existing.setUpdatedAt(LocalDateTime.now());
+        issueMapper.updateById(existing);
+        log.info("质量恢复自动关单 ruleId={} issueId={}", rule.getId(), existing.getId());
+    }
+
     // ---- 以下为纯函数，便于单测 ----
+
+    /** 仅自动关闭仍为 OPEN（无人工流转）的工单，尊重人工进行中的整改流程 */
+    static boolean shouldAutoCloseOnRecovery(String status) {
+        return "OPEN".equals(status);
+    }
 
     /** 工单对象引用键：以规则维度去重（同一规则一条未关闭工单） */
     static String qualityIssueObjectRef(Long ruleId) {

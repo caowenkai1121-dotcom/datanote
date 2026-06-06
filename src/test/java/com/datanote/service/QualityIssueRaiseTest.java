@@ -88,6 +88,16 @@ class QualityIssueRaiseTest {
     }
 
     @Test
+    void autoCloseOnlyWhenStillOpen() {
+        assertTrue(IssueService.shouldAutoCloseOnRecovery("OPEN"), "OPEN(无人工介入)恢复后应自动关单");
+        assertFalse(IssueService.shouldAutoCloseOnRecovery("FIXING"), "人工整改中不自动关");
+        assertFalse(IssueService.shouldAutoCloseOnRecovery("RESOLVED"));
+        assertFalse(IssueService.shouldAutoCloseOnRecovery("VERIFIED"));
+        assertFalse(IssueService.shouldAutoCloseOnRecovery("CLOSED"));
+        assertFalse(IssueService.shouldAutoCloseOnRecovery(null));
+    }
+
+    @Test
     void descriptionCarriesObjectAndSource() {
         String d = IssueService.qualityIssueDescription(rule("r", null, 0, BigDecimal.valueOf(95)), run("failed", BigDecimal.valueOf(80)));
         assertTrue(d.contains("ods.orders.amount"));
