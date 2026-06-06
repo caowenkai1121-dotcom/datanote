@@ -507,4 +507,102 @@
     };
     DN.enterSubmit(body);
   }
+
+  // ===================== 匹配去重（按关键/唯一属性检测重复 + 合并） =====================
+  var _ddEntity = null, _ddAttrs = [];
+
+  window.MDM_RENDERERS.dedup = function (c) {
+    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '基于实体的关键/唯一属性检测重复黄金记录，聚合为重复簇，支持选定存活记录后合并（其余置为停用）。' }));
+    var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
+    selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
+    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px' });
+    entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
+    selWrap.appendChild(entSel);
+    c.appendChild(selWrap);
+    var box = DN.h('div', { id: 'ddBox' });
+    c.appendChild(box);
+
+    DN.get('/api/mdm/entities').then(function (ents) {
+      ents = ents || [];
+      entSel.innerHTML = '';
+      if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体)' })); box.appendChild(DN.empty('请先创建实体与黄金记录', 'layers')); return; }
+      entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
+      ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
+      entSel.value = String(ents[0].id); _ddEntity = ents[0];
+      loadDedup(box);
+      entSel.onchange = function () { _ddEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_ddEntity) loadDedup(box); };
+    }).catch(function (e) { box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.dedup(c); })); });
+  };
+
+  function loadDedup(box) {
+    if (!_ddEntity) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(3));
+    Promise.all([
+      DN.get('/api/mdm/attributes?entityId=' + encodeURIComponent(_ddEntity.id)),
+      DN.get('/api/mdm/match/duplicates?entityId=' + encodeURIComponent(_ddEntity.id))
+    ]).then(function (r) {
+      _ddAttrs = r[0] || [];
+      var d = r[1] || {};
+      box.innerHTML = '';
+      box.appendChild(DN.statRow([
+        { icon: 'shield', label: '扫描记录', value: d.scannedCount || 0 },
+        { icon: 'grid', label: '匹配键', value: d.keyAttrCount || 0, sub: '关键/唯一属性' },
+        { icon: 'alert', label: '重复簇', value: d.clusterCount || 0, tone: (d.clusterCount ? 'warn' : 'ok') },
+        { icon: 'list', label: '涉及记录', value: d.duplicateRecordCount || 0, tone: (d.duplicateRecordCount ? 'warn' : 'ok') }
+      ]));
+      var clusters = d.clusters || [];
+      if (!(d.keyAttrCount > 0)) { box.appendChild(DN.empty('该实体未定义关键/唯一属性，无法匹配去重。请在“域与实体建模”将匹配字段标记为关键或唯一。', 'alert')); return; }
+      if (!clusters.length) { box.appendChild(DN.empty('未检测到重复记录，主数据干净 ✓', 'check')); return; }
+      clusters.forEach(function (cl, idx) { box.appendChild(buildClusterCard(cl, idx, box)); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + e.message, function () { loadDedup(box); })); });
+  }
+
+  function buildClusterCard(cl, idx, box) {
+    var card = DN.card({ title: '重复簇 · ' + cl.matchAttrName + ' = ' + cl.matchValue + ' （' + cl.size + ' 条）', icon: 'alert' });
+    card.el.classList.add('primary');
+    var recs = cl.records || [];
+    recs.forEach(function (r) { try { r._vals = JSON.parse(r.dataJson || '{}'); } catch (e) { r._vals = {}; } });
+    var showAttrs = (_ddAttrs.filter(function (a) { return a.isKey === 1 || a.isUnique === 1; }));
+    if (!showAttrs.length) showAttrs = _ddAttrs.slice(0, 4);
+
+    var radioName = 'survivor_' + idx;
+    var tbl = DN.h('table', { class: 'gov-tbl', style: 'width:100%' });
+    var thead = '<thead><tr><th>存活</th>' + showAttrs.map(function (a) { return '<th>' + DN.esc(a.attrName) + '</th>'; }).join('') + '<th>状态</th><th>来源</th><th>版本</th><th>更新</th></tr></thead>';
+    var tb = document.createElement('tbody');
+    recs.forEach(function (r, i) {
+      var tr = document.createElement('tr');
+      var rd = document.createElement('td');
+      var radio = DN.h('input', { type: 'radio', name: radioName, value: String(r.id) });
+      if (i === 0) radio.checked = true;   // 默认首条为存活
+      rd.appendChild(radio); tr.appendChild(rd);
+      showAttrs.forEach(function (a) { var td = document.createElement('td'); var v = r._vals[a.attrCode]; td.textContent = (v == null || v === '') ? '-' : String(v); tr.appendChild(td); });
+      var st = document.createElement('td'); st.appendChild(r.status === 'active' ? DN.pill('已生效', 'ok') : DN.pill('草稿', 'warn')); tr.appendChild(st);
+      var sc = document.createElement('td'); sc.textContent = r.sourceSystem || '-'; tr.appendChild(sc);
+      var ve = document.createElement('td'); ve.textContent = 'v' + (r.version || 1); tr.appendChild(ve);
+      var up = document.createElement('td'); up.appendChild(DN.timeAgo(r.updatedAt)); tr.appendChild(up);
+      tb.appendChild(tr);
+    });
+    tbl.innerHTML = thead; tbl.appendChild(tb);
+    var wrap = DN.h('div', { class: 'gov-tbl-wrap' }); wrap.appendChild(tbl);
+    card.body.appendChild(wrap);
+
+    var footer = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-top:12px' });
+    footer.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0;flex:1', text: '选定一条为存活记录，其余将被合并（置为停用）。' }));
+    var mergeBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '合并该簇' });
+    mergeBtn.onclick = function () {
+      var checked = card.el.querySelector('input[name="' + radioName + '"]:checked');
+      if (!checked) { DN.toast('请先选定存活记录', 'warn'); return; }
+      var survivorId = Number(checked.value);
+      var mergedIds = recs.map(function (r) { return r.id; }).filter(function (id) { return id !== survivorId; });
+      if (!window.confirm('确认合并？保留 1 条存活记录，其余 ' + mergedIds.length + ' 条将置为停用。')) return;
+      mergeBtn.textContent = '合并中...'; mergeBtn.style.pointerEvents = 'none';
+      DN.post('/api/mdm/match/merge', { survivorId: survivorId, mergedIds: mergedIds }).then(function (res) {
+        DN.toast('已合并：保留 1 条，停用 ' + ((res && res.mergedCount) || mergedIds.length) + ' 条', 'ok');
+        loadDedup(box);
+      }).catch(function (e) { DN.toast(e.message || '合并失败', 'err'); mergeBtn.textContent = '合并该簇'; mergeBtn.style.pointerEvents = ''; });
+    };
+    footer.appendChild(mergeBtn);
+    card.body.appendChild(footer);
+    return card.el;
+  }
 })();
