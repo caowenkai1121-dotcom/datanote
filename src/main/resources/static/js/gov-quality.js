@@ -30,7 +30,7 @@
 
     // 规则列表卡片
     var runAllBtn = DN.h('button', { class: 'btn', type: 'button', text: '一键全量复跑' });
-    var gotoBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
+    var gotoBtn = DN.h('a', { class: 'btn btn-primary', href: 'workspace.html#/quality', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
     var rulesCard = DN.card({ title: '质量规则', icon: 'list', actions: [runAllBtn, gotoBtn] });
     var rulesBody = rulesCard.body;
     rulesBody.appendChild(DN.skeleton(4));
@@ -258,7 +258,7 @@
               DN.post('/api/quality/rule/' + encodeURIComponent(f.rule.id) + '/run').then(function (nr) {
                 var nrate = (nr && nr.passRate != null) ? Number(nr.passRate) : null;
                 var ok = nr && nr.runStatus === 'success';
-                DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%'), ok ? 'ok' : 'warn');
+                DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%') + (ok ? '' : '，已自动生成治理工单'), ok ? 'ok' : 'warn');
                 rerunBtn.disabled = false; rerunBtn.textContent = ok ? '已通过' : '重新复跑';
               }).catch(function (e) {
                 DN.toast('复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');

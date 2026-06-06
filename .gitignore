@@ -22,6 +22,8 @@ src/main/resources/application-local.yml
 .env
 .env.local
 .env.*.local
+# 部署凭据（含服务器密码，严禁提交）
+deploy.env
 
 # Claude
 .claude/

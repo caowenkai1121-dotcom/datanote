@@ -37,6 +37,7 @@ public class QualityService {
     private final DnQualityRunMapper qualityRunMapper;
     private final ObjectMapper objectMapper;
     private final HiveConfig hiveConfig;
+    private final IssueService issueService;
 
     /** 合法标识符：字母/数字/下划线/中文，1-128 字符 */
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("^[\\w\\u4e00-\\u9fa5]{1,128}$");
@@ -128,6 +129,8 @@ public class QualityService {
         run.setDurationMs(elapsed);
         run.setFinishedAt(LocalDateTime.now());
         qualityRunMapper.insert(run);
+        // 治理闭环接点①：失败/异常自动生成治理工单(内部兜底，不影响本执行结果)
+        issueService.raiseQualityIssue(rule, run);
         return run;
     }
 

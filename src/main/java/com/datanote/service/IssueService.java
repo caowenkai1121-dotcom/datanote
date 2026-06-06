@@ -3,6 +3,8 @@ package com.datanote.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnGovernanceIssueMapper;
 import com.datanote.model.DnGovernanceIssue;
+import com.datanote.model.DnQualityRule;
+import com.datanote.model.DnQualityRun;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -123,4 +125,126 @@ public class IssueService {
     private boolean notBlank(String s) {
         return s != null && !s.trim().isEmpty();
     }
+
+    // ========== 质量 → 工单 自动联动（治理闭环接点①） ==========
+
+    /** 质量问题工单类型，与 dn_governance_issue.issue_type 约定一致 */
+    static final String QUALITY_ISSUE_TYPE = "QUALITY";
+
+    /**
+     * 质量规则执行失败/异常时，自动生成（或刷新）治理工单 —— 打通"发现问题→督办整改"闭环。
+     * 同一规则未关闭的工单只刷新不重复建单（去重）；本方法内部兜底，绝不抛异常影响质量执行主流程。
+     */
+    public void raiseQualityIssue(DnQualityRule rule, DnQualityRun run) {
+        try {
+            if (rule == null || run == null) return;
+            String st = run.getRunStatus();
+            if (!("failed".equalsIgnoreCase(st) || "error".equalsIgnoreCase(st))) return;
+
+            String objectRef = qualityIssueObjectRef(rule.getId());
+            String title = qualityIssueTitle(rule, run);
+            String desc = qualityIssueDescription(rule, run);
+            String severity = qualitySeverity(rule, run);
+
+            // 去重：同一规则存在未关闭(非 CLOSED)的质量工单则刷新，不重复建单
+            QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+            qw.eq("issue_type", QUALITY_ISSUE_TYPE).eq("object_ref", objectRef)
+              .ne("status", "CLOSED").orderByDesc("updated_at").last("LIMIT 1");
+            DnGovernanceIssue existing = issueMapper.selectOne(qw);
+            if (existing != null) {
+                existing.setTitle(title);
+                existing.setDescription(desc);
+                existing.setSeverity(severity);
+                existing.setUpdatedAt(LocalDateTime.now());
+                issueMapper.updateById(existing);
+                log.info("质量工单刷新(已存在未关闭工单) ruleId={} issueId={}", rule.getId(), existing.getId());
+                return;
+            }
+            DnGovernanceIssue issue = new DnGovernanceIssue();
+            issue.setIssueType(QUALITY_ISSUE_TYPE);
+            issue.setDimension(notBlank(rule.getDimension()) ? rule.getDimension() : "数据质量");
+            issue.setObjectRef(objectRef);
+            issue.setTitle(title);
+            issue.setDescription(desc);
+            issue.setSeverity(severity);
+            issue.setOwner(rule.getCreatedBy());
+            issue.setStatus("OPEN");
+            issue.setCreatedAt(LocalDateTime.now());
+            issue.setUpdatedAt(LocalDateTime.now());
+            issueMapper.insert(issue);
+            log.info("质量失败自动生成治理工单 ruleId={} severity={} issueId={}", rule.getId(), severity, issue.getId());
+        } catch (Exception e) {
+            log.warn("质量工单自动生成失败(不影响质量执行) ruleId={}: {}",
+                    rule != null ? rule.getId() : null, e.getMessage());
+        }
+    }
+
+    // ---- 以下为纯函数，便于单测 ----
+
+    /** 工单对象引用键：以规则维度去重（同一规则一条未关闭工单） */
+    static String qualityIssueObjectRef(Long ruleId) {
+        return "qrule:" + ruleId;
+    }
+
+    /** 规范化严重度，仅接受 HIGH/MEDIUM/LOW，否则返回 null */
+    static String normalizeSeverity(String s) {
+        if (s == null) return null;
+        String u = s.trim().toUpperCase();
+        return ("HIGH".equals(u) || "MEDIUM".equals(u) || "LOW".equals(u)) ? u : null;
+    }
+
+    /**
+     * 工单严重度判定：执行异常或强阻断规则=HIGH；规则已声明则用声明值；否则按通过率推断。
+     */
+    static String qualitySeverity(DnQualityRule rule, DnQualityRun run) {
+        if (run != null && "error".equalsIgnoreCase(run.getRunStatus())) return "HIGH";
+        boolean strong = rule != null && rule.getBlockDownstream() != null && rule.getBlockDownstream() == 1;
+        if (strong) return "HIGH";
+        String declared = normalizeSeverity(rule == null ? null : rule.getSeverity());
+        if (declared != null) return declared;
+        java.math.BigDecimal rate = run == null ? null : run.getPassRate();
+        if (rate == null) return "MEDIUM";
+        double v = rate.doubleValue();
+        if (v < 50) return "HIGH";
+        if (v < 90) return "MEDIUM";
+        return "LOW";
+    }
+
+    static String qualityIssueTitle(DnQualityRule rule, DnQualityRun run) {
+        String name = (rule != null && notBlankStatic(rule.getRuleName()))
+                ? rule.getRuleName() : ("#" + (rule == null ? "?" : rule.getId()));
+        String t;
+        if (run != null && "error".equalsIgnoreCase(run.getRunStatus())) {
+            t = "[质量异常] 规则「" + name + "」执行失败";
+        } else {
+            String rate = (run != null && run.getPassRate() != null) ? run.getPassRate().toPlainString() : "?";
+            String th = (rule != null && rule.getPassThreshold() != null) ? rule.getPassThreshold().toPlainString() : "100";
+            t = "[质量未达标] 规则「" + name + "」通过率 " + rate + "% < 阈值 " + th + "%";
+        }
+        return t.length() <= 200 ? t : t.substring(0, 200);
+    }
+
+    static String qualityIssueDescription(DnQualityRule rule, DnQualityRun run) {
+        StringBuilder sb = new StringBuilder();
+        String db = nvl(rule.getDatabaseName()), tbl = nvl(rule.getTableName()), col = nvl(rule.getColumnName());
+        sb.append("对象: ").append(db).append(".").append(tbl);
+        if (!col.isEmpty()) sb.append(".").append(col);
+        sb.append("\n规则类型: ").append(nvl(rule.getRuleType()));
+        if (run != null && "error".equalsIgnoreCase(run.getRunStatus())) {
+            sb.append("\n执行异常: ").append(nvl(run.getErrorMsg()));
+        } else if (run != null) {
+            String rate = run.getPassRate() != null ? run.getPassRate().toPlainString() : "?";
+            String th = rule.getPassThreshold() != null ? rule.getPassThreshold().toPlainString() : "100";
+            sb.append("\n通过率: ").append(rate).append("% (阈值 ").append(th).append("%)");
+            sb.append("\n失败行数: ").append(run.getFailCount() == null ? 0 : run.getFailCount())
+              .append(" / 共 ").append(run.getTotalCount() == null ? 0 : run.getTotalCount()).append(" 行");
+        }
+        if (run != null && run.getStartedAt() != null) sb.append("\n执行时间: ").append(run.getStartedAt());
+        sb.append("\n来源: 质量规则 #").append(rule.getId()).append(" 失败自动生成");
+        return sb.toString();
+    }
+
+    private static boolean notBlankStatic(String s) { return s != null && !s.trim().isEmpty(); }
+
+    private static String nvl(String s) { return s == null ? "" : s; }
 }
