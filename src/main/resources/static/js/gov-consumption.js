@@ -170,7 +170,60 @@
     wrap.appendChild(calc);
     var exp = DN.h('a', { href: '/api/consumption/metric/' + r.metricId + '/export?format=csv', text: '导出', style: 'color:var(--primary,#1890ff)' });
     wrap.appendChild(exp);
+    var al = DN.h('a', { href: 'javascript:void(0)', text: '预警', onclick: function () { alertRulesDrawer(r); } });
+    wrap.appendChild(al);
     return wrap;
+  }
+
+  // 指标预警规则管理(复用 R12 端点) —— 列表 + 新增 + 删除
+  function alertRulesDrawer(r) {
+    var body = DN.h('div');
+    var listBox = DN.h('div', { id: 'alRules' }, DN.skeleton(2));
+    body.appendChild(DN.h('div', { class: 'gov-desc', text: '指标「' + (r.metricName || r.metricCode) + '」越界自动生成治理工单' }));
+    body.appendChild(listBox);
+    // 新增表单
+    var opSel = selectOf(['GT', 'LT', 'GE', 'LE', 'NE', 'OUT', 'IN'], 'GT');
+    var minI = DN.h('input', { class: 'iw-form-input', placeholder: '阈值/区间下界' });
+    var maxI = DN.h('input', { class: 'iw-form-input', placeholder: '区间上界(OUT/IN用,可空)' });
+    var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
+    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', style: 'margin-top:8px' });
+    body.appendChild(DN.h('div', { class: 'gov-section-title', text: '新增规则' }));
+    body.appendChild(formRow('比较符', opSel));
+    body.appendChild(formRow('阈值下界', minI));
+    body.appendChild(formRow('区间上界', maxI));
+    body.appendChild(formRow('严重度', sevSel));
+    body.appendChild(addBtn);
+    DN.drawer('指标预警规则 · ' + (r.metricName || r.metricCode), body);
+    function reload() {
+      DN.get('/api/consumption/metric/' + r.metricId + '/alert-rules').then(function (rows) {
+        listBox.innerHTML = '';
+        if (!rows || !rows.length) { listBox.appendChild(DN.empty('暂无预警规则', 'shield')); return; }
+        rows.forEach(function (rule) {
+          var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
+          line.appendChild(DN.pill(rule.severity || 'MEDIUM', rule.severity === 'HIGH' ? 'err' : (rule.severity === 'LOW' ? 'info' : 'warn')));
+          line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px', text: rule.op + ' ' + (rule.thresholdMin != null ? rule.thresholdMin : '') + (rule.thresholdMax != null ? ('~' + rule.thresholdMax) : '') }));
+          var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)' });
+          del.onclick = function () { DN.del('/api/consumption/metric/alert-rule/' + rule.id).then(function () { DN.toast('已删除'); reload(); }); };
+          line.appendChild(del);
+          listBox.appendChild(line);
+        });
+      }).catch(function () { listBox.innerHTML = ''; listBox.appendChild(DN.empty('加载失败', 'shield')); });
+    }
+    addBtn.onclick = function () {
+      var body2 = { metricId: r.metricId, op: opSel.value, severity: sevSel.value };
+      if (minI.value.trim() !== '') body2.thresholdMin = Number(minI.value.trim());
+      if (maxI.value.trim() !== '') body2.thresholdMax = Number(maxI.value.trim());
+      DN.post('/api/consumption/metric/alert-rule/save', body2).then(function () {
+        DN.toast('规则已保存'); minI.value = ''; maxI.value = ''; reload();
+      }).catch(function (e) { DN.toast('保存失败：' + (e && e.message || ''), 'err'); });
+    };
+    reload();
+  }
+
+  function selectOf(opts, def) {
+    var s = DN.h('select', { class: 'iw-form-select' });
+    opts.forEach(function (o) { var op = DN.h('option', { value: o, text: o }); if (o === def) op.selected = true; s.appendChild(op); });
+    return s;
   }
 
   function loadHeat() {
