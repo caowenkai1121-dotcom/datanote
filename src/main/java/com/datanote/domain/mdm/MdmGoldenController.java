@@ -39,6 +39,7 @@ public class MdmGoldenController {
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmSurvivorshipRuleMapper ruleMapper;
     private final MdmMatchService matchService;
+    private final MdmPublishService mdmPublishService;   // R32 黄金记录发布→自动扇出订阅
 
     // ===== 源自 MdmGoldenController.java =====
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -135,6 +136,8 @@ public class MdmGoldenController {
         rec.setStatus("active");
         rec.setUpdatedAt(LocalDateTime.now());
         goldenMapper.updateById(rec);
+        // R32 闭环: 发布即自动向匹配订阅扇出(update 事件), 不再依赖手动 pubsub/publish
+        try { mdmPublishService.fanOut(rec, "update"); } catch (Exception ignore) {}
         return R.ok(rec);
     }
 

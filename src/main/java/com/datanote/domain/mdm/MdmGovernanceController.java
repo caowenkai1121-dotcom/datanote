@@ -36,6 +36,7 @@ public class MdmGovernanceController {
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmSubscriptionMapper subscriptionMapper;
     private final DnMdmPublishLogMapper publishLogMapper;
+    private final MdmPublishService mdmPublishService;   // R32 发布扇出(与黄金记录自动发布共用)
 
     // ===== 源自 MdmQualityController.java =====
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -266,7 +267,7 @@ public class MdmGovernanceController {
         }
         if (sub.getEntityId() == null) throw new BusinessException("请先选择订阅的实体");
         if (entityMapper.selectById(sub.getEntityId()) == null) throw new ResourceNotFoundException("订阅的实体");
-        String types = normalizeChangeTypes(sub.getChangeTypes());
+        String types = mdmPublishService.normalizeChangeTypes(sub.getChangeTypes());
         if (types.isEmpty()) throw new BusinessException("请至少订阅一种变更类型(create/update/delete)");
         if (sub.getEndpoint() == null || sub.getEndpoint().trim().isEmpty()) {
             throw new BusinessException("推送地址不能为空");
@@ -320,25 +321,8 @@ public class MdmGovernanceController {
         if (!"create".equals(type) && !"update".equals(type) && !"delete".equals(type)) {
             throw new BusinessException("变更类型须为 create/update/delete");
         }
-        // 取该实体下启用且订阅了该变更类型的订阅
-        QueryWrapper<DnMdmSubscription> qw = new QueryWrapper<>();
-        qw.eq("entity_id", g.getEntityId()).eq("status", 1);
-        List<DnMdmSubscription> subs = subscriptionMapper.selectList(qw);
-        int matched = 0;
-        for (DnMdmSubscription s : subs) {
-            Set<String> subscribed = new HashSet<>(Arrays.asList(normalizeChangeTypes(s.getChangeTypes()).split(",")));
-            if (!subscribed.contains(type)) continue;
-            DnMdmPublishLog log = new DnMdmPublishLog();
-            log.setSubscriptionId(s.getId());
-            log.setGoldenRecordId(g.getId());
-            log.setChangeType(type);
-            log.setBizKey(g.getBizKey());
-            log.setStatus("success");
-            log.setMessage("已推送至 " + s.getSubscriberSystem() + " (" + s.getEndpoint() + ")");
-            log.setPublishedAt(LocalDateTime.now());
-            publishLogMapper.insert(log);
-            matched++;
-        }
+        // 扇出到匹配订阅(复用 MdmPublishService, 与黄金记录自动发布共用同一逻辑)
+        int matched = mdmPublishService.fanOut(g, type);
         Map<String, Object> data = new HashMap<>();
         data.put("bizKey", g.getBizKey());
         data.put("changeType", type);
@@ -364,14 +348,5 @@ public class MdmGovernanceController {
 
     // ------- 工具 -------
     /** 规整变更类型逗号串：仅保留 create/update/delete，去重去空，按固定顺序输出 */
-    private String normalizeChangeTypes(String raw) {
-        if (raw == null || raw.trim().isEmpty()) return "";
-        Set<String> set = new HashSet<>();
-        for (String t : raw.split(",")) set.add(t.trim());
-        List<String> ordered = new ArrayList<>();
-        for (String t : new String[]{"create", "update", "delete"}) {
-            if (set.contains(t)) ordered.add(t);
-        }
-        return String.join(",", ordered);
-    }
+    // normalizeChangeTypes 已抽到 MdmPublishService(R32 去重)
 }
