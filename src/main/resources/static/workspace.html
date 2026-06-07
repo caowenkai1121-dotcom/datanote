@@ -10864,6 +10864,20 @@ function projActHeatmap(acts) {
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">窗口内共 ' + totalActs + ' 次活动, 单日峰值 ' + max + ' 次</div></div>';
 }
 var _projActs = [];
+// R38 活动审计下钻: 按审计路径识别所属模块, 提供"前往"
+function projActRouteOf(path) {
+  if (!path) return null;
+  if (path.indexOf('/api/sync-job') >= 0 || path.indexOf('/api/dbsync') >= 0) return { r: 'dbsync', l: '数据同步' };
+  if (path.indexOf('/api/quality') >= 0) return { r: 'quality', l: '数据质量' };
+  if (path.indexOf('/api/consumption') >= 0) return { r: 'governance', l: '数据消费' };
+  if (path.indexOf('/api/metric') >= 0) return { r: 'metrics', l: '指标管理' };
+  if (path.indexOf('/api/mdm') >= 0) return { r: 'mdm', l: '主数据' };
+  if (path.indexOf('/api/metadata') >= 0) return { r: 'catalog', l: '数据地图' };
+  if (path.indexOf('/api/scheduler') >= 0 || path.indexOf('/api/task-execution') >= 0) return { r: 'operations', l: '数据运维' };
+  if (path.indexOf('/api/gov') >= 0) return { r: 'governance', l: '数据治理' };
+  if (path.indexOf('/api/rbac') >= 0 || path.indexOf('/api/system') >= 0 || path.indexOf('/api/auth') >= 0) return { r: 'settings', l: '系统管理' };
+  return null;
+}
 window.projRenderActs = function() {
   var box = document.getElementById('projActTblBox'); if (!box) return;
   var fm = (document.getElementById('projActMethod') || {}).value || '';
@@ -10877,12 +10891,15 @@ window.projRenderActs = function() {
     return true;
   });
   if (!as.length) { box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">无匹配记录</div>'; return; }
-  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th></tr></thead><tbody>';
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th><th>前往</th></tr></thead><tbody>';
   as.forEach(function(a) {
+    var go = projActRouteOf(a.path || '');
+    var goCell = go ? '<a href="#" onclick="navigateTo(\'' + go.r + '\');return false;" style="color:var(--primary,#1890ff)" title="前往' + go.l + '">' + go.l + '</a>' : '-';
     h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
       + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
       + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
-      + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td></tr>';
+      + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td>'
+      + '<td>' + goCell + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table><div style="font-size:11px;color:var(--text-muted);margin-top:6px;">共 ' + as.length + ' / ' + _projActs.length + ' 条</div>';
 };
