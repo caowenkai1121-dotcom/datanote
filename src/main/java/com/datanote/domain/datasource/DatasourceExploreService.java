@@ -1,7 +1,7 @@
 package com.datanote.domain.datasource;
 
-import com.datanote.domain.metadata.model.DnTableMeta;
-import com.datanote.domain.metadata.DataMapService;
+import com.datanote.common.exception.BusinessException;
+import com.datanote.domain.integration.util.DorisSqlUtil;
 import com.datanote.platform.config.HiveConfig;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +30,30 @@ public class DatasourceExploreService {
             "default", "information_schema", "sys"
     ));
 
+    /** 合法标识符(库名/表名)：仅允许字母数字下划线，底层防 SQL 注入 */
+    private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
+
+    /** 校验库名合法，非法抛 BusinessException(中文具体提示) */
+    private static void requireValidDb(String db) {
+        if (db == null || db.trim().isEmpty()) {
+            throw new BusinessException("库名不能为空");
+        }
+        if (!db.matches(NAME_PATTERN)) {
+            throw new BusinessException("非法的库名(仅允许字母、数字、下划线)：" + db);
+        }
+    }
+
+    /** 校验库名+表名合法，非法抛 BusinessException(中文具体提示) */
+    private static void requireValidDbTable(String db, String table) {
+        requireValidDb(db);
+        if (table == null || table.trim().isEmpty()) {
+            throw new BusinessException("表名不能为空");
+        }
+        if (!table.matches(NAME_PATTERN)) {
+            throw new BusinessException("非法的表名(仅允许字母、数字、下划线)：" + table);
+        }
+    }
+
     // ========== 库/表/列 ==========
 
     /** 获取数据库列表（排除系统库） */
@@ -50,9 +74,7 @@ public class DatasourceExploreService {
 
     /** 获取指定库的表列表 */
     public List<String> getHiveTables(String db) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+")) { // 底层防注入:库名拼入SHOW TABLES IN
-            throw new IllegalArgumentException("非法的库名");
-        }
+        requireValidDb(db); // 底层防注入:库名拼入SHOW TABLES IN
         List<String> tables = new ArrayList<String>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
@@ -66,9 +88,7 @@ public class DatasourceExploreService {
 
     /** 获取 Doris 指定表的字段信息。 */
     public List<ColumnInfo> getHiveColumns(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入:拼入DESCRIBE/information_schema
-        }
+        requireValidDbTable(db, table); // 底层防注入:拼入DESCRIBE/information_schema
         try {
             return getDorisColumns(db, table);
         } catch (SQLException e) {
@@ -117,7 +137,8 @@ public class DatasourceExploreService {
                 if (colName.trim().startsWith("#")) break;
                 ColumnInfo col = new ColumnInfo();
                 col.setName(colName.trim());
-                col.setType(rs.getString(2) != null ? rs.getString(2).trim() : "string");
+                String typeVal = rs.getString(2); // 缓存一次,避免对同列重复读取(部分驱动不支持)
+                col.setType(typeVal != null ? typeVal.trim() : "string");
                 col.setComment(columnCount >= 7 && rs.getString(7) != null ? rs.getString(7).trim() : "");
                 col.setHiveType(col.getType());
                 col.setKey(columnCount >= 4 && rs.getString(4) != null ? rs.getString(4).trim() : "");
@@ -157,19 +178,17 @@ public class DatasourceExploreService {
     // ========== 预览 ==========
 
     public Map<String, Object> preview(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
+        requireValidDbTable(db, table); // 底层防注入
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table) + " LIMIT 20")) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM " + DorisSqlUtil.quoteQualified(db, table) + " LIMIT 20")) {
             ResultSetMetaData meta = rs.getMetaData();
             int colCount = meta.getColumnCount();
             List<String> headers = new ArrayList<String>();
             for (int i = 1; i <= colCount; i++) {
                 String colName = meta.getColumnName(i);
-                // Hive 返回的列名可能带 db.table 前缀，去掉
-                if (colName.contains(".")) {
+                // Hive 返回的列名可能带 db.table 前缀，去掉；列名理论上非空,防御性判空
+                if (colName != null && colName.contains(".")) {
                     colName = colName.substring(colName.lastIndexOf('.') + 1);
                 }
                 headers.add(colName);
@@ -194,14 +213,17 @@ public class DatasourceExploreService {
     // ========== 探查 ==========
 
     public Map<String, Object> profile(String db, String table) throws SQLException {
+        requireValidDbTable(db, table); // 显式前置校验:不依赖 getHiveColumns 间接校验,失败信息更明确
         List<ColumnInfo> columns = getHiveColumns(db, table);
         List<Map<String, Object>> fieldStats = new ArrayList<Map<String, Object>>();
+        // 库表限定名只算一次,避免循环内重复拼接(原每字段重算一次)
+        String qualified = DorisSqlUtil.quoteQualified(db, table);
 
         // Hive 聚合查询较慢，先查总行数
         long totalRows = 0;
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table))) {
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + qualified)) {
             if (rs.next()) totalRows = rs.getLong(1);
         }
 
@@ -217,12 +239,19 @@ public class DatasourceExploreService {
                 stat.put("comment", col.getComment());
                 stat.put("key", "");
                 stat.put("nullable", "YES");
+                String rawName = col.getName();
+                if (rawName == null || rawName.trim().isEmpty()) {
+                    // 列名缺失无法做字段级统计,记录原因而非抛出,保持单字段失败隔离语义
+                    stat.put("error", "字段名为空,无法统计");
+                    fieldStats.add(stat);
+                    continue;
+                }
                 try {
-                    String colName = "`" + col.getName() + "`";
+                    String colName = "`" + rawName + "`";
                     String sql = "SELECT COUNT(*) AS total, "
                             + "SUM(CASE WHEN " + colName + " IS NULL THEN 1 ELSE 0 END) AS null_count, "
                             + "COUNT(DISTINCT " + colName + ") AS distinct_count "
-                            + "FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table);
+                            + "FROM " + qualified;
                     try (ResultSet rs = stmt.executeQuery(sql)) {
                         if (rs.next()) {
                             long nullCount = rs.getLong("null_count");
@@ -232,6 +261,8 @@ public class DatasourceExploreService {
                         }
                     }
                 } catch (SQLException e) {
+                    // 单字段统计失败仅记录该字段错误,不影响其余字段(保持原容错语义)
+                    log.warn("字段统计失败: {}.{}.{}, {}", db, table, rawName, e.getMessage());
                     stat.put("error", e.getMessage());
                 }
                 fieldStats.add(stat);
@@ -248,16 +279,17 @@ public class DatasourceExploreService {
     // ========== DDL / SQL 生成 ==========
 
     public Map<String, String> generateDdlAndSelect(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
+        requireValidDbTable(db, table); // 底层防注入
         Map<String, String> result = new HashMap<String, String>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table))) {
+             ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + DorisSqlUtil.quoteQualified(db, table))) {
             StringBuilder ddl = new StringBuilder();
             while (rs.next()) {
-                ddl.append(rs.getString(1)).append("\n");
+                String line = rs.getString(1); // 防御性判空,避免把字面量 "null" 拼进 DDL
+                if (line != null) {
+                    ddl.append(line).append("\n");
+                }
             }
             result.put("ddl", ddl.toString().trim());
         }
@@ -281,6 +313,7 @@ public class DatasourceExploreService {
     // ========== 表基本信息（information_schema.TABLES） ==========
 
     public Map<String, Object> getDorisTableInfo(String db, String table) throws SQLException {
+        requireValidDbTable(db, table); // 与同类方法一致的前置校验,空/非法名快速失败
         Map<String, Object> info = new HashMap<String, Object>();
         info.put("db", db);
         info.put("table", table);
@@ -317,9 +350,7 @@ public class DatasourceExploreService {
      * Doris 非分区表执行 SHOW PARTITIONS 会报错，此处捕获并返回空列表。
      */
     public List<Map<String, Object>> getPartitions(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
+        requireValidDbTable(db, table); // 底层防注入
         List<Map<String, Object>> partitions = new ArrayList<Map<String, Object>>();
         String sql = "SHOW PARTITIONS FROM `" + db + "`.`" + table + "`";
         try (Connection conn = hiveConfig.getConnection();

@@ -17,6 +17,7 @@ import com.datanote.domain.integration.util.DorisSqlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -43,6 +44,13 @@ public class LifecycleService {
     private final DnSystemConfigMapper systemConfigMapper;
     private final HiveConfig hiveConfig;
 
+    /** 成本排行无显式上限时的默认条数。 */
+    private static final int DEFAULT_COST_LIMIT = 50;
+    /** 成本排行硬上限，防止超大结果集一次性返回压垮内存/前端。 */
+    private static final int MAX_COST_LIMIT = 1000;
+    /** 血缘键分隔符：控制字符，库/表名不可能含此字符，杜绝名含点时的键碰撞。 */
+    private static final char KEY_SEP = '';
+
     // ========== 可配项（dn_system_config 兜底默认） ==========
 
     private double unitPrice() {
@@ -63,7 +71,11 @@ public class LifecycleService {
             if (cfg != null && cfg.getConfigValue() != null && !cfg.getConfigValue().trim().isEmpty()) {
                 return Double.parseDouble(cfg.getConfigValue().trim());
             }
-        } catch (Exception ignore) {
+        } catch (NumberFormatException e) {
+            log.warn("生命周期配置项[{}]非法数值，回退默认值 {}: {}", key, dft, e.getMessage());
+        } catch (Exception e) {
+            // 配置读取异常不应影响主流程，降级为默认值
+            log.warn("读取生命周期配置项[{}]失败，回退默认值 {}: {}", key, dft, e.getMessage());
         }
         return dft;
     }
@@ -73,10 +85,19 @@ public class LifecycleService {
     public List<DnLifecyclePolicy> listPolicies() {
         QueryWrapper<DnLifecyclePolicy> qw = new QueryWrapper<>();
         qw.orderByDesc("updated_at");
-        return policyMapper.selectList(qw);
+        List<DnLifecyclePolicy> list = policyMapper.selectList(qw);
+        return list == null ? new ArrayList<>() : list;
     }
 
     public DnLifecyclePolicy savePolicy(DnLifecyclePolicy p) {
+        if (p == null) throw new BusinessException("策略对象不能为空");
+        if (p.getDbName() == null || p.getDbName().trim().isEmpty()
+                || p.getTableName() == null || p.getTableName().trim().isEmpty()) {
+            throw new BusinessException("库名/表名不能为空");
+        }
+        if (p.getPolicyType() == null || p.getPolicyType().trim().isEmpty()) {
+            throw new BusinessException("策略类型不能为空(HOT_COLD/TTL/ARCHIVE)");
+        }
         p.setUpdatedAt(LocalDateTime.now());
         if (p.getId() == null) {
             if (p.getEnabled() == null) p.setEnabled(1);
@@ -90,12 +111,14 @@ public class LifecycleService {
     }
 
     public void deletePolicy(Long id) {
+        if (id == null) throw new BusinessException("策略ID不能为空");
         policyMapper.deleteById(id);
     }
 
     public void togglePolicy(Long id) {
+        if (id == null) throw new BusinessException("策略ID不能为空");
         DnLifecyclePolicy p = policyMapper.selectById(id);
-        if (p == null) return;
+        if (p == null) return; // 策略不存在则静默忽略（行为保持）
         p.setEnabled(p.getEnabled() != null && p.getEnabled() == 1 ? 0 : 1);
         p.setUpdatedAt(LocalDateTime.now());
         policyMapper.updateById(p);
@@ -105,7 +128,9 @@ public class LifecycleService {
      * 应用策略：构造 Doris 原生 DDL 经 hiveConfig 连接执行。
      * 下发失败（如 Doris 未配对象存储冷后端）→ 捕获异常，status=PENDING + last_msg，绝不抛崩溃。
      */
+    @Transactional(rollbackFor = Exception.class)
     public DnLifecyclePolicy applyPolicy(Long id) {
+        if (id == null) throw new BusinessException("策略ID不能为空");
         DnLifecyclePolicy p = policyMapper.selectById(id);
         if (p == null) throw new BusinessException("策略不存在: " + id);
 
@@ -141,11 +166,14 @@ public class LifecycleService {
     // ========== 资产快照采集 ==========
 
     /** 遍历 dn_table_meta 生成 dn_asset_stat 快照（体量/行数复用元数据；成本=单价×体量）。返回采集条数。 */
+    @Transactional(rollbackFor = Exception.class)
     public int collectStats() {
         double price = unitPrice();
         List<DnTableMeta> metas = tableMetaMapper.selectList(null);
+        if (metas == null || metas.isEmpty()) return 0;
         int n = 0;
         for (DnTableMeta m : metas) {
+            if (m == null) continue;
             DnAssetStat s = new DnAssetStat();
             s.setTableMetaId(m.getId());
             s.setDbName(m.getDatabaseName());
@@ -173,15 +201,37 @@ public class LifecycleService {
         int idle = idleDays();
         List<DnTableMeta> metas = tableMetaMapper.selectList(null);
         List<Map<String, Object>> result = new ArrayList<>();
+        if (metas == null || metas.isEmpty()) return result;
         LocalDateTime now = LocalDateTime.now();
+        // 一次性加载全部血缘边构建内存映射，消除原先每表 2 次 selectCount 的 N+1 查询（语义等价）
+        List<DnLineageEdge> edges = lineageEdgeMapper.selectList(null);
+        Set<String> downstreamSrc = new HashSet<>();   // level_type=TABLE 的源端键（下游血缘判定面）
+        Set<String> taskRefKeys = new HashSet<>();      // job_id 非空时，源端键 + 目标端键
+        if (edges != null) {
+            for (DnLineageEdge e : edges) {
+                if (e == null) continue;
+                if ("TABLE".equals(e.getLevelType())) {
+                    String srcKey = lineageKey(e.getSrcDb(), e.getSrcTable());
+                    if (srcKey != null) downstreamSrc.add(srcKey);
+                }
+                if (e.getJobId() != null) {
+                    String srcKey = lineageKey(e.getSrcDb(), e.getSrcTable());
+                    if (srcKey != null) taskRefKeys.add(srcKey);
+                    String dstKey = lineageKey(e.getDstDb(), e.getDstTable());
+                    if (dstKey != null) taskRefKeys.add(dstKey);
+                }
+            }
+        }
         for (DnTableMeta m : metas) {
+            if (m == null) continue;
             String db = m.getDatabaseName();
             String table = m.getTableName();
+            String key = lineageKey(db, table);
             long lastAccessDays = m.getLastCollectedAt() == null
                     ? 36500 : ChronoUnit.DAYS.between(m.getLastCollectedAt(), now);
             long size = m.getSizeBytes() == null ? 0 : m.getSizeBytes();
-            boolean hasDownstream = hasDownstreamLineage(db, table);
-            boolean hasTaskRef = hasTaskRef(db, table);
+            boolean hasDownstream = key != null && downstreamSrc.contains(key);
+            boolean hasTaskRef = key != null && taskRefKeys.contains(key);
             LifecycleScorer.UnusedScore sc = LifecycleScorer.scoreUnusedTable(
                     lastAccessDays, size, hasDownstream, hasTaskRef);
             if (!sc.candidate) continue;
@@ -202,11 +252,18 @@ public class LifecycleService {
         return result;
     }
 
+    /** 血缘键：库+表（控制字符分隔）；任一为空返回 null（与原 eq null 永不匹配语义一致）。 */
+    private static String lineageKey(String db, String table) {
+        if (db == null || table == null) return null;
+        return db + KEY_SEP + table;
+    }
+
     /** 是否存在以该表为源的下游血缘边（销毁第一道护栏的判定面）。 */
     private boolean hasDownstreamLineage(String db, String table) {
         QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
         qw.eq("level_type", "TABLE").eq("src_db", db).eq("src_table", table);
-        return lineageEdgeMapper.selectCount(qw) > 0;
+        Long cnt = lineageEdgeMapper.selectCount(qw);
+        return cnt != null && cnt > 0;
     }
 
     /** 是否被任务引用：血缘边上带 job_id 即视为有任务引用（该表作为源或目标参与了同步任务）。 */
@@ -215,7 +272,8 @@ public class LifecycleService {
         qw.isNotNull("job_id")
                 .and(w -> w.and(x -> x.eq("src_db", db).eq("src_table", table))
                         .or(x -> x.eq("dst_db", db).eq("dst_table", table)));
-        return lineageEdgeMapper.selectCount(qw) > 0;
+        Long cnt = lineageEdgeMapper.selectCount(qw);
+        return cnt != null && cnt > 0;
     }
 
     // ========== 销毁三道护栏 ==========
@@ -224,6 +282,7 @@ public class LifecycleService {
      * 标记销毁（进入软删宽限期）。绝不物理删表。
      * 护栏：①血缘影响校验——有下游边则禁止；②软删宽限期 drop_due_at=now+grace；③审批留痕 approver/reason。
      */
+    @Transactional(rollbackFor = Exception.class)
     public DnLifecyclePolicy markForDrop(String db, String table, String approver, String reason) {
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("库名/表名不能为空");
@@ -262,12 +321,15 @@ public class LifecycleService {
      * 执行到期销毁：仅 status=DROP_PENDING 且 drop_due_at≤now 的才真正 DROP TABLE（经 hiveConfig）。
      * 执行前再次复核血缘护栏。返回 [{db,table,result}]。
      */
+    @Transactional(rollbackFor = Exception.class)
     public List<Map<String, Object>> executeDueDrops() {
         QueryWrapper<DnLifecyclePolicy> qw = new QueryWrapper<>();
         qw.eq("status", "DROP_PENDING").le("drop_due_at", LocalDateTime.now());
         List<DnLifecyclePolicy> due = policyMapper.selectList(qw);
         List<Map<String, Object>> out = new ArrayList<>();
+        if (due == null || due.isEmpty()) return out;
         for (DnLifecyclePolicy p : due) {
+            if (p == null) continue;
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("db", p.getDbName());
             r.put("table", p.getTableName());
@@ -323,15 +385,18 @@ public class LifecycleService {
         QueryWrapper<DnAssetStat> qw = new QueryWrapper<>();
         qw.orderByDesc("collected_at");
         List<DnAssetStat> all = assetStatMapper.selectList(qw);
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (all == null || all.isEmpty()) return out;
         Map<String, DnAssetStat> latest = new LinkedHashMap<>();
         for (DnAssetStat s : all) {
-            String k = s.getDbName() + "." + s.getTableName();
+            if (s == null) continue;
+            String k = s.getDbName() + KEY_SEP + s.getTableName();
             if (!latest.containsKey(k)) latest.put(k, s); // 已按 collected_at 倒序，首条即最新
         }
         List<DnAssetStat> list = new ArrayList<>(latest.values());
         list.sort((a, b) -> nz(b.getCostEstimate()).compareTo(nz(a.getCostEstimate())));
-        List<Map<String, Object>> out = new ArrayList<>();
-        int cap = limit > 0 ? limit : 50;
+        int cap = limit > 0 ? limit : DEFAULT_COST_LIMIT;
+        if (cap > MAX_COST_LIMIT) cap = MAX_COST_LIMIT; // 上限守卫，防超大结果集
         for (DnAssetStat s : list) {
             if (out.size() >= cap) break;
             Map<String, Object> row = new LinkedHashMap<>();

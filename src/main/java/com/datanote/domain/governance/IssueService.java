@@ -1,6 +1,7 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.governance.mapper.DnGovernanceIssueMapper;
 import com.datanote.domain.governance.model.DnGovernanceIssue;
 import com.datanote.domain.governance.model.DnQualityRule;
@@ -63,8 +64,10 @@ public class IssueService {
 
     /** 为工单列表注入 SLA 运营字段(存活小时 / 是否超期) */
     private List<DnGovernanceIssue> enrichSla(List<DnGovernanceIssue> rows) {
+        if (rows == null || rows.isEmpty()) return rows == null ? new ArrayList<>() : rows;
         LocalDateTime now = LocalDateTime.now();
         for (DnGovernanceIssue i : rows) {
+            if (i == null) continue;
             long age = ageHours(i.getCreatedAt(), now);
             i.setAgeHours(age);
             i.setOverdue(isOverdue(i.getStatus(), i.getSeverity(), age));
@@ -73,6 +76,9 @@ public class IssueService {
     }
 
     public DnGovernanceIssue create(DnGovernanceIssue issue) {
+        if (issue == null) throw new BusinessException("工单内容不能为空");
+        if (!notBlank(issue.getTitle())) throw new BusinessException("工单标题不能为空");
+        if (!notBlank(issue.getIssueType())) throw new BusinessException("工单类型不能为空");
         if (issue.getStatus() == null || issue.getStatus().isEmpty()) issue.setStatus("OPEN");
         if (issue.getSeverity() == null || issue.getSeverity().isEmpty()) issue.setSeverity("MEDIUM");
         issue.setId(null);
@@ -83,11 +89,14 @@ public class IssueService {
     }
 
     public void delete(Long id) {
+        if (id == null) throw new BusinessException("工单ID不能为空");
         issueMapper.deleteById(id);
     }
 
-    /** 状态流转：校验合法性，非法抛 IllegalStateException */
+    /** 状态流转：校验合法性，非法抛 IllegalStateException(由 controller 捕获转 R.fail) */
     public DnGovernanceIssue transition(Long id, String toStatus, String operator) {
+        if (id == null) throw new IllegalStateException("工单ID不能为空");
+        if (toStatus == null || toStatus.trim().isEmpty()) throw new IllegalStateException("目标状态不能为空");
         DnGovernanceIssue issue = issueMapper.selectById(id);
         if (issue == null) throw new IllegalStateException("工单不存在: " + id);
         if (!isLegalTransition(issue.getStatus(), toStatus)) {
@@ -101,6 +110,8 @@ public class IssueService {
 
     /** 按 owner 路由：指派负责人 */
     public DnGovernanceIssue assign(Long id, String owner) {
+        if (id == null) throw new IllegalStateException("工单ID不能为空");
+        if (owner == null || owner.trim().isEmpty()) throw new IllegalStateException("负责人不能为空");
         DnGovernanceIssue issue = issueMapper.selectById(id);
         if (issue == null) throw new IllegalStateException("工单不存在: " + id);
         issue.setOwner(owner);
@@ -113,7 +124,9 @@ public class IssueService {
     public List<Map<String, Object>> leaderboard() {
         List<DnGovernanceIssue> all = issueMapper.selectList(null);
         Map<String, long[]> agg = new LinkedHashMap<>(); // owner -> [total, open, closed]
+        if (all == null) all = Collections.emptyList();
         for (DnGovernanceIssue i : all) {
+            if (i == null) continue;
             String owner = notBlank(i.getOwner()) ? i.getOwner() : "未分配";
             long[] a = agg.computeIfAbsent(owner, k -> new long[3]);
             a[0]++;
@@ -265,6 +278,7 @@ public class IssueService {
 
     static String qualityIssueDescription(DnQualityRule rule, DnQualityRun run) {
         StringBuilder sb = new StringBuilder();
+        if (rule == null) return "对象: ?\n来源: 质量规则失败自动生成";
         String db = nvl(rule.getDatabaseName()), tbl = nvl(rule.getTableName()), col = nvl(rule.getColumnName());
         sb.append("对象: ").append(db).append(".").append(tbl);
         if (!col.isEmpty()) sb.append(".").append(col);
@@ -321,12 +335,14 @@ public class IssueService {
     /** 工单运营统计：多维分布 + 未关/超期 + 解决率 + 平均处理时长 + 近7日关闭数 */
     public Map<String, Object> stats() {
         List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        if (all == null) all = Collections.emptyList();
         LocalDateTime now = LocalDateTime.now();
         Map<String, Integer> byStatus = new LinkedHashMap<>(), bySeverity = new LinkedHashMap<>(),
                 byDimension = new LinkedHashMap<>(), byType = new LinkedHashMap<>();
         int open = 0, overdue = 0, resolvedCnt = 0, closed7d = 0;
         long resolveHoursSum = 0;
         for (DnGovernanceIssue i : all) {
+            if (i == null) continue;
             byStatus.merge(nvl(i.getStatus()), 1, Integer::sum);
             bySeverity.merge(nvl(i.getSeverity()), 1, Integer::sum);
             byDimension.merge(i.getDimension() == null ? "未分类" : i.getDimension(), 1, Integer::sum);
@@ -361,10 +377,12 @@ public class IssueService {
     public List<Map<String, Object>> trend(int days) {
         int d = days <= 0 ? 30 : Math.min(days, 365);
         List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        if (all == null) all = Collections.emptyList();
         Map<java.time.LocalDate, int[]> bucket = new LinkedHashMap<>();
         java.time.LocalDate today = java.time.LocalDate.now();
         for (int k = d - 1; k >= 0; k--) bucket.put(today.minusDays(k), new int[2]); // [created, closed]
         for (DnGovernanceIssue i : all) {
+            if (i == null) continue;
             if (i.getCreatedAt() != null) {
                 int[] b = bucket.get(i.getCreatedAt().toLocalDate());
                 if (b != null) b[0]++;
@@ -391,6 +409,7 @@ public class IssueService {
         StringBuilder sb = new StringBuilder();
         sb.append("ID,标题,类型,维度,级别,负责人,状态,超期,存活小时,对象,创建时间,更新时间\n");
         for (DnGovernanceIssue i : rows) {
+            if (i == null) continue;
             sb.append(csvCell(i.getId())).append(',')
               .append(csvCell(i.getTitle())).append(',')
               .append(csvCell(i.getIssueType())).append(',')
@@ -409,6 +428,7 @@ public class IssueService {
 
     /** 按质量规则反查其关联工单(objectRef=qrule:{ruleId}) */
     public List<DnGovernanceIssue> listByQualityRule(Long ruleId) {
+        if (ruleId == null) throw new BusinessException("质量规则ID不能为空");
         QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
         qw.eq("issue_type", QUALITY_ISSUE_TYPE).eq("object_ref", qualityIssueObjectRef(ruleId))
           .orderByDesc("updated_at");

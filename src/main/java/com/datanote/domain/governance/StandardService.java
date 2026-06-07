@@ -11,16 +11,19 @@ import com.datanote.domain.governance.model.DnDataElement;
 import com.datanote.domain.governance.model.DnStandardCheckRun;
 import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.domain.governance.model.DnWordRoot;
+import com.datanote.common.exception.BusinessException;
 import java.util.LinkedHashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -119,16 +122,23 @@ public class StandardService {
     // ========== 落标稽核 ==========
 
     /** 执行落标稽核：遍历 dn_column_meta，比对命名与类型，写结果表并返回。 */
+    @Transactional(rollbackFor = Exception.class)
     public DnStandardCheckRun runCheck(String scope) {
         Set<String> roots = loadRoots();
         Map<String, String> elementTypes = loadElementTypes();
 
         List<DnColumnMeta> columns = columnMetaMapper.selectList(null);
+        if (columns == null) {
+            columns = Collections.emptyList();
+        }
         int total = 0;
         int violation = 0;
         List<Map<String, Object>> detail = new ArrayList<>();
 
         for (DnColumnMeta col : columns) {
+            if (col == null) {
+                continue;
+            }
             total++;
             String colName = col.getColumnName();
             boolean bad = false;
@@ -187,7 +197,14 @@ public class StandardService {
     /** 加载词根集合：word_en 与 abbr 合并、小写、去空。 */
     private Set<String> loadRoots() {
         Set<String> roots = new HashSet<>();
-        for (DnWordRoot r : wordRootMapper.selectList(null)) {
+        List<DnWordRoot> list = wordRootMapper.selectList(null);
+        if (list == null) {
+            return roots;
+        }
+        for (DnWordRoot r : list) {
+            if (r == null) {
+                continue;
+            }
             addRoot(roots, r.getWordEn());
             addRoot(roots, r.getAbbr());
         }
@@ -203,8 +220,12 @@ public class StandardService {
     /** 加载数据元类型映射：element_code(小写) -> data_type。 */
     private Map<String, String> loadElementTypes() {
         Map<String, String> map = new HashMap<>();
-        for (DnDataElement e : dataElementMapper.selectList(null)) {
-            if (e.getElementCode() != null && !e.getElementCode().trim().isEmpty()) {
+        List<DnDataElement> list = dataElementMapper.selectList(null);
+        if (list == null) {
+            return map;
+        }
+        for (DnDataElement e : list) {
+            if (e != null && e.getElementCode() != null && !e.getElementCode().trim().isEmpty()) {
                 map.put(e.getElementCode().trim().toLowerCase(), e.getDataType());
             }
         }
@@ -223,6 +244,7 @@ public class StandardService {
     /** 规范违规 Top：解析最近一次稽核明细，按表聚合违规列数降序 Top N。 */
     public List<Map<String, Object>> topViolations(int limit) {
         List<Map<String, Object>> out = new ArrayList<>();
+        int topN = Math.max(1, Math.min(limit, 50)); // 守卫：限定 1-50，防越界/负数
         QueryWrapper<DnStandardCheckRun> qw = new QueryWrapper<>();
         qw.orderByDesc("created_at").last("LIMIT 1");
         DnStandardCheckRun latest = checkRunMapper.selectOne(qw);
@@ -230,25 +252,45 @@ public class StandardService {
         try {
             List<Map<String, Object>> items = JSON.readValue(latest.getDetail(),
                     new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            if (items == null) {
+                return out;
+            }
             Map<Long, Integer> byTable = new LinkedHashMap<>();
             for (Map<String, Object> it : items) {
-                Object tid = it.get("tableMetaId"); if (tid == null) continue;
+                if (it == null) continue;
+                Object tid = it.get("tableMetaId");
+                if (!(tid instanceof Number)) continue; // 非数值(含 null)跳过，避免 ClassCastException
                 byTable.merge(((Number) tid).longValue(), 1, Integer::sum);
             }
             List<Map.Entry<Long, Integer>> entries = new ArrayList<>(byTable.entrySet());
             entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue())); // 避免 int 相减溢出
-            int n = 0;
+            // 只取 Top N 的表 id，一次性批量查元数据，消除循环内 selectById(N+1)
+            List<Long> topIds = new ArrayList<>();
             for (Map.Entry<Long, Integer> e : entries) {
-                if (n++ >= Math.max(1, Math.min(limit, 50))) break;
-                DnTableMeta tm = tableMetaMapper.selectById(e.getKey());
+                if (topIds.size() >= topN) break;
+                topIds.add(e.getKey());
+            }
+            Map<Long, DnTableMeta> tableMap = new HashMap<>();
+            if (!topIds.isEmpty()) {
+                List<DnTableMeta> tables = tableMetaMapper.selectBatchIds(topIds);
+                if (tables != null) {
+                    for (DnTableMeta tm : tables) {
+                        if (tm != null && tm.getId() != null) {
+                            tableMap.put(tm.getId(), tm);
+                        }
+                    }
+                }
+            }
+            for (Long tid : topIds) {
+                DnTableMeta tm = tableMap.get(tid);
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("db", tm != null ? tm.getDatabaseName() : "?");
-                m.put("table", tm != null ? tm.getTableName() : ("#" + e.getKey()));
-                m.put("violations", e.getValue());
+                m.put("table", tm != null ? tm.getTableName() : ("#" + tid));
+                m.put("violations", byTable.get(tid));
                 out.add(m);
             }
         } catch (Exception ex) {
-            log.warn("解析稽核明细失败", ex);
+            log.warn("解析稽核明细失败: latestRunId={}", latest.getId(), ex);
         }
         return out;
     }
@@ -258,6 +300,7 @@ public class StandardService {
         QueryWrapper<DnStandardCheckRun> qw = new QueryWrapper<>();
         qw.select("id", "scope", "total_count", "violation_count", "pass_rate", "created_at")
                 .orderByDesc("created_at").last("LIMIT " + Math.max(1, Math.min(limit, 100)));
-        return checkRunMapper.selectList(qw);
+        List<DnStandardCheckRun> list = checkRunMapper.selectList(qw);
+        return list == null ? Collections.emptyList() : list;
     }
 }
