@@ -6,6 +6,8 @@
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   var DIMS = ['规范', '质量', '安全', '生命周期', '血缘'];
+  // R25 联动：健康分维度 → 对应治理子模块 key（生命周期归在资产模块内）
+  var DIM_MODULE = { '规范': 'standard', '质量': 'quality', '安全': 'security', '生命周期': 'assets', '血缘': 'lineage' };
 
   window.GOV_RENDERERS.overview = function (c) {
     var box = DN.h('div', { id: 'ovBox' });
@@ -147,7 +149,7 @@
     }
 
     // ---- 健康分趋势研判(创新功能): 方向/均值/极值 + 研判结论 ----
-    box.appendChild(insightCard(trend));
+    box.appendChild(insightCard(trend, dims));
 
     // ---- 数据资产 ----
     var ac = DN.card({ title: '数据资产', icon: 'db' });
@@ -196,7 +198,8 @@
   }
 
   // 健康分趋势研判(创新功能): 前端计算趋势方向/近7天均值/极值, 复用已 fetch 的 trend 数据
-  function insightCard(trend) {
+  // R25 联动: 额外传入五维得分 dims, 识别短板维度并提供"去改进"直达对应治理子模块
+  function insightCard(trend, dims) {
     var c = DN.card({ title: '健康分趋势研判', icon: 'chart' });
     // 归一: 取出 {date, score}, 过滤无效项, 按日期升序
     var pts = (trend || []).map(function (t) {
@@ -239,7 +242,26 @@
       class: 'gov-desc', style: 'margin:8px 0 0;line-height:1.6',
       text: insightConclusion(dirLabel, dirVerb, recentAvg, lo, hi)
     }));
+    // R25 联动: 识别五维中得分最低的短板维度, 提供"去改进"直达对应治理子模块, 消除纯展示死胡同
+    c.body.appendChild(weakDimAction(dims));
     return c.el;
+  }
+  // 短板维度行动：取五维中可跳转(有模块映射)且得分最低的维度，渲染"去改进"按钮
+  function weakDimAction(dims) {
+    dims = dims || {};
+    var weak = null;
+    DIMS.forEach(function (k) {
+      if (!DIM_MODULE[k]) return;
+      var v = Number(dims[k]) || 0;
+      if (!weak || v < weak.v) weak = { dim: k, v: v };
+    });
+    if (!weak) return DN.h('span');
+    var key = DIM_MODULE[weak.dim];
+    return DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--divider,#f0f1f3)' }, [
+      DN.h('span', { class: 'gov-desc', style: 'margin:0;flex:1', text: '当前短板维度：' }),
+      DN.pill(weak.dim + ' ' + round1(weak.v), tone(weak.v)),
+      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '去改进', onclick: function () { if (window.govGoModule) govGoModule(key, {}); } })
+    ]);
   }
   function insightConclusion(dirLabel, dirVerb, recentAvg, lo, hi) {
     var parts = [];
@@ -273,12 +295,17 @@
         var d = new Date(start); d.setDate(start.getDate() + wk * 7 + dow);
         if (d > today) { colEl.appendChild(DN.h('div', { style: 'width:13px;height:13px' })); continue; }
         var ds = fmt(d), v = byDay[ds];
-        colEl.appendChild(DN.h('div', { title: ds + (v != null ? ' · 健康分 ' + (Math.round(v * 10) / 10) : ' · 无数据'), style: 'width:13px;height:13px;border-radius:2px;background:' + colorOf(v) }));
+        // R25 联动: 点格 → 跳健康分并按该日定位趋势卡片, 消除日历纯展示死胡同
+        colEl.appendChild(DN.h('div', {
+          title: ds + (v != null ? ' · 健康分 ' + (Math.round(v * 10) / 10) + ' · 点击查看' : ' · 无数据 · 点击查看'),
+          style: 'width:13px;height:13px;border-radius:2px;cursor:pointer;background:' + colorOf(v),
+          onclick: (function (day) { return function () { if (window.govGoModule) govGoModule('health', { date: day }); }; })(ds)
+        }));
       }
       wrap.appendChild(colEl);
     }
     box.appendChild(wrap);
-    box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '绿≥85 优秀 · 黄≥60 一般 · 红<60 待完善（近13周每日健康分）' }));
+    box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '绿≥85 优秀 · 黄≥60 一般 · 红<60 待完善（近13周每日健康分，点格跳健康分并定位该日）' }));
   }
 
   function sensitiveCard(title, icon, map, barTone) {

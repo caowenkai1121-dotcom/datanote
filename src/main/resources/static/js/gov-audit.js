@@ -288,6 +288,28 @@
     load();
   }
 
+  // 下钻（消除"纯展示死胡同"）：状态码分布/操作时段热力是基于当前页 lastRows 计算的，
+  // 点击后用同一份数据在前端过滤并复用审计表格展示具体记录，给出下钻横幅 + 一键返回全部。
+  function applyDrill(predicate, label) {
+    if (!auditTbl) return;
+    var rows = (lastRows || []).filter(predicate);
+    auditTbl.reload(rows);
+    renderStats(rows);                 // 统计区随下钻子集刷新，保持联动
+    renderDrillBanner(label, rows.length);
+    DN.toast('已下钻：' + label + '（' + rows.length + ' 条）');
+  }
+
+  // 用下钻横幅替换服务端分页条；提供"返回全部"链接，调用 load() 恢复完整服务端结果与正常分页。
+  function renderDrillBanner(label, count) {
+    var existing = document.getElementById('auSrvPager');
+    if (existing) existing.remove();
+    var box = DN.h('div', { id: 'auSrvPager', class: 'gov-pager' });
+    box.appendChild(DN.h('span', { text: '下钻：' + label + ' · 当前页命中 ' + count + ' 条' }));
+    box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '返回全部',
+      onclick: function () { state.page = 1; load(); } }));
+    if (auditTbl && auditTbl.parentNode) auditTbl.parentNode.appendChild(box);
+  }
+
   // 按类型统计（本页数据）用 DN.bars
   function renderStats(rows) {
     var box = document.getElementById('auStats');
@@ -322,7 +344,19 @@
       else grp['其它']++;
     });
     var toneMap = { '2xx 成功': 'ok', '3xx 重定向': 'info', '4xx 客户端错误': 'warn', '5xx 服务端错误': 'err', '其它': 'muted' };
-    var items = Object.keys(grp).filter(function (k) { return grp[k] > 0; }).map(function (k) { return { label: k, value: grp[k], tone: toneMap[k] }; });
+    // 各状态码区间对应的命中判定（下钻用），与上面分组口径一致。
+    var matchOf = {
+      '2xx 成功': function (n) { return !isNaN(n) && n >= 200 && n < 300; },
+      '3xx 重定向': function (n) { return !isNaN(n) && n >= 300 && n < 400; },
+      '4xx 客户端错误': function (n) { return !isNaN(n) && n >= 400 && n < 500; },
+      '5xx 服务端错误': function (n) { return !isNaN(n) && n >= 500; },
+      '其它': function (n) { return isNaN(n); }
+    };
+    var items = Object.keys(grp).filter(function (k) { return grp[k] > 0; }).map(function (k) {
+      return { label: k, value: grp[k], tone: toneMap[k],
+        // 点击下钻：按该状态码区间过滤当前页审计记录并刷新表格
+        onClick: function () { applyDrill(function (r) { return matchOf[k](Number(r.status)); }, '状态码 ' + k); } };
+    });
     var card = DN.card({ title: '本页 HTTP 状态码分布', icon: 'shield' });
     if (!items.length) card.body.appendChild(DN.empty('无状态码数据', 'shield'));
     else card.body.appendChild(DN.bars(items));
@@ -353,7 +387,22 @@
       row.appendChild(DN.h('div', { style: 'width:20px;font-size:10px;color:#999', text: dows[w] }));
       for (var hr = 0; hr < 24; hr++) {
         var n = grid[w + '_' + hr] || 0;
-        row.appendChild(DN.h('div', { title: dows[w] + ' ' + hr + ':00 · ' + n + ' 次', style: 'width:11px;height:11px;border-radius:2px;background:' + colorOf(n) }));
+        var cell = DN.h('div', { title: dows[w] + ' ' + hr + ':00 · ' + n + ' 次' + (n ? '（点击下钻）' : ''), style: 'width:11px;height:11px;border-radius:2px;background:' + colorOf(n) });
+        // 点击下钻：按该时段(星期×小时)过滤当前页审计记录并刷新表格；空格不可点。
+        if (n) {
+          (function (dow, hour) {
+            cell.style.cursor = 'pointer';
+            cell.addEventListener('click', function () {
+              applyDrill(function (r) {
+                var s = r.createdAt; if (!s) return false;
+                var d = new Date(String(s).replace(' ', 'T'));
+                if (isNaN(d.getTime())) return false;
+                return d.getDay() === dow && d.getHours() === hour;
+              }, '周' + dows[dow] + ' ' + hour + ':00 时段');
+            });
+          })(w, hr);
+        }
+        row.appendChild(cell);
       }
       tbl.appendChild(row);
     }

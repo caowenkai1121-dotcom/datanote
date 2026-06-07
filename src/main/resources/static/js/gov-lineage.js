@@ -168,8 +168,29 @@
     })();
   }
 
-  /** 孤儿表下钻：复用 centerGraphOn，便于人工核验是否确实无血缘。 */
-  function drillOrphanToGraph(db, table) { centerGraphOn(db, table); }
+  /** R25 联动：把血缘结果里的某张表打通到其它治理子模块/资产目录，消除“看到了却去不了”的死胡同。
+      复用全局 navigateTo / govGoModule(与 gov-assets 一致的契约)，独立页面无路由时静默不渲染。 */
+  function tableActionMenu(db, table, opts) {
+    opts = opts || {};
+    var wrap = DN.h('span', { style: 'display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:center' });
+    var fqn = (db || '') + '.' + (table || '');
+    var acts = [];
+    // 自己已是图谱中心时无需再给“图谱”按钮(避免原地重绘的无效操作)
+    if (!opts.skipGraph) {
+      acts.push({ text: '图谱', title: '以 ' + fqn + ' 为中心画血缘图', go: function () { centerGraphOn(db, table); } });
+    }
+    // 仅在工作台(有路由)时给出跨模块下钻，独立页直接降级为“图谱”单项
+    if (window.navigateTo) {
+      acts.push({ text: '质量', title: '查看 ' + fqn + ' 的质量规则', go: function () { navigateTo('governance', { gov: 'quality', table: { db: db, table: table } }); } });
+      acts.push({ text: '工单', title: '查看 ' + fqn + ' 的相关工单', go: function () { navigateTo('governance', { gov: 'health', issueFilter: { relTable: fqn } }); } });
+      acts.push({ text: '目录', title: '在资产目录打开 ' + fqn, go: function () { navigateTo('catalog', { openTable: { db: db, table: table } }); } });
+    }
+    acts.forEach(function (a) {
+      wrap.appendChild(DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: a.text, title: a.title,
+        onclick: function (e) { e.stopPropagation(); a.go(); } }));
+    });
+    return wrap;
+  }
 
   function renderOrphans(box, db, total, stats) {
     box.innerHTML = '';
@@ -203,9 +224,8 @@
         { label: '下游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
         { label: '判定', align: 'center', render: function () { return DN.pill('孤儿表', 'err'); }, exportValue: function () { return '孤儿表'; } },
         { label: '操作', align: 'center', render: function (s) {
-            return DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '查血缘',
-              title: '在下方“血缘图谱”核验 ' + db + '.' + s.table + ' 是否确无血缘',
-              onclick: function (e) { e.stopPropagation(); drillOrphanToGraph(db, s.table); } });
+            // R25：孤儿表是治理清理的首要对象，除核验血缘外，直接提供质量/工单/目录下钻
+            return tableActionMenu(db, s.table);
           } }
       ],
       rows: orphans,
@@ -401,9 +421,19 @@
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '－', title: '缩小', onclick: function () { zoom(-0.2); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复位', onclick: function () { scale = 1; applyScale(); } }),
       DN.h('a', { class: 'btn btn-sm btn-ghost', href: 'javascript:void(0)', text: '导出 SVG', onclick: exportSvg }),
-      DN.h('span', { style: 'font-size:11px;color:var(--text-muted)', text: 'Ctrl+滚轮缩放 · 拖动滚动条平移' })
+      DN.h('span', { style: 'font-size:11px;color:var(--text-muted)', text: 'Ctrl+滚轮缩放 · 拖动滚动条平移 · 双击节点设为中心' })
     ]);
-    return DN.h('div', {}, [tb, scroll]);
+    var out = DN.h('div', {}, [tb, scroll]);
+    // R25：中心表的跨模块下钻条，让图谱不再是“看完即止”的死胡同
+    var dot = String(centerId || '').indexOf('.');
+    if (dot > 0 && window.navigateTo) {   // 独立页(无路由)中心表无跨模块去处, 不渲染空下钻条
+      var cdb = centerId.slice(0, dot), ctb = centerId.slice(dot + 1);
+      var drill = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
+      drill.appendChild(DN.h('span', { text: '中心表 ' + centerId + ' 下钻：', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c)' }));
+      drill.appendChild(tableActionMenu(cdb, ctb, { skipGraph: true }));
+      out.appendChild(drill);
+    }
+    return out;
   }
 
   // 影响面板(大功能): 受影响表数/库数/最大层级 统计 + 按层级分组芯片
@@ -472,7 +502,8 @@
         columns: [
           { label: '表', copyable: true, render: function (n) { return n.db + '.' + n.table; }, exportValue: function (n) { return n.db + '.' + n.table; } },
           { label: '层级', align: 'center', render: function (n) { return DN.pill('第 ' + n.depth + ' 层', 'info'); }, exportValue: function (n) { return '第 ' + n.depth + ' 层'; } },
-          { label: '来源', render: function (n) { return n.source ? DN.pill(n.source, 'muted') : '-'; }, exportValue: function (n) { return n.source || ''; } }
+          { label: '来源', render: function (n) { return n.source ? DN.pill(n.source, 'muted') : '-'; }, exportValue: function (n) { return n.source || ''; } },
+          { label: '下钻', align: 'center', render: function (n) { return tableActionMenu(n.db, n.table); } }
         ],
         rows: list,
         searchKeys: ['db', 'table', 'source'],
@@ -496,8 +527,8 @@
       DN.get('/api/lineage/column-edges' + qs)
     ]).then(function (res) {
       var nb = res[0] || {}, cols = res[1] || [];
-      var up = (nb.upstream || []).map(function (e) { return e.srcDb + '.' + e.srcTable; });
-      var down = (nb.downstream || []).map(function (e) { return e.dstDb + '.' + e.dstTable; });
+      var up = (nb.upstream || []).map(function (e) { return { db: e.srcDb, table: e.srcTable }; });
+      var down = (nb.downstream || []).map(function (e) { return { db: e.dstDb, table: e.dstTable }; });
       box.innerHTML = '';
 
       // 上下游表：用药丸罗列
@@ -526,13 +557,20 @@
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryLineage(); })); });
   }
 
-  // 上/下游表的一行药丸罗列
+  // 上/下游表的一行药丸罗列（R25：药丸可点 → 以该表为中心画图，消除“看到却去不了”的死胡同）
   function neighborLine(label, arr, dir) {
     var tone = dir === 'up' ? 'err' : 'ok';
     var row = DN.h('div', { style: 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px' });
     row.appendChild(DN.h('b', { text: label + '：', style: 'font-size:13px;flex:none' }));
     if (!arr.length) { row.appendChild(DN.h('span', { text: '无', style: 'color:var(--text-muted,#86909c);font-size:13px' })); return row; }
-    arr.forEach(function (t) { row.appendChild(DN.pill(t, tone)); });
+    arr.forEach(function (t) {
+      var fqn = t.db + '.' + t.table;
+      var p = DN.pill(fqn, tone);
+      p.style.cursor = 'pointer';
+      p.title = '点击以 ' + fqn + ' 为中心画血缘图';
+      p.addEventListener('click', function () { centerGraphOn(t.db, t.table); });
+      row.appendChild(p);
+    });
     return row;
   }
 })();

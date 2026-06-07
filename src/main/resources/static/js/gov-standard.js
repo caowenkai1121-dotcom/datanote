@@ -20,6 +20,11 @@
   // 落标率格式化：保留最多 1 位小数，避免后端浮点 83.33333% 难看
   function fmtRate(v) { if (v == null) return '-'; var n = Number(v); if (isNaN(n)) return '-'; return (Math.round(n * 10) / 10) + '%'; }
 
+  // R25 联动：概览磁贴/成熟度构成不再是纯展示死胡同 —— 点击切到本模块对应 Tab。
+  // 渲染器进入时把内部 Tab 切换函数挂到 _activeGoTab，供概览(buildStdOverview/buildStdMaturity)调用。
+  var _activeGoTab = null;
+  function goTab(key) { if (typeof _activeGoTab === 'function') _activeGoTab(key); }
+
   // 数据标准总览(大功能): 数据元/词根/码表/落标率 聚合磁贴
   function buildStdOverview(box) {
     Promise.all([
@@ -35,10 +40,10 @@
       var rTone = rate == null ? 'muted' : rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'err';
       box.innerHTML = '';
       box.appendChild(DN.statRow([
-        { icon: 'list', label: '数据元', value: els.length },
-        { icon: 'tag', label: '命名词根', value: roots.length },
-        { icon: 'grid', label: '码表', value: dicts.length },
-        { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核' }
+        { icon: 'list', label: '数据元', value: els.length, title: '查看数据元', onClick: function () { goTab('element'); } },
+        { icon: 'tag', label: '命名词根', value: roots.length, title: '查看命名词根', onClick: function () { goTab('root'); } },
+        { icon: 'grid', label: '码表', value: dicts.length, title: '查看码表', onClick: function () { goTab('dict'); } },
+        { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核', title: '查看落标稽核', onClick: function () { goTab('check'); } }
       ]));
       box.appendChild(buildStdMaturity(els, roots, dicts, runs).el);
     });
@@ -66,19 +71,19 @@
     var latestRate = ratePts.length ? ratePts[ratePts.length - 1] : null;
 
     card.body.appendChild(DN.statRow([
-      { icon: 'list', label: '数据元敏感标注', value: sensRate + '%', tone: sensRate >= 50 ? 'ok' : 'warn', sub: sensCnt + '/' + elTotal + ' 已标' },
-      { icon: 'shield', label: '数据元定密率', value: secRate + '%', tone: secRate >= 60 ? 'ok' : 'warn', sub: secCnt + '/' + elTotal + ' 已定密' },
-      { icon: 'tag', label: '词根唯一复用度', value: reuseRate + '%', tone: reuseRate >= 80 ? 'ok' : 'info', sub: uniqAbbr + ' 个唯一缩写' },
-      { icon: 'grid', label: '码表沉淀', value: dicts.length, tone: dicts.length > 0 ? 'ok' : 'muted', sub: '套标准码表' }
+      { icon: 'list', label: '数据元敏感标注', value: sensRate + '%', tone: sensRate >= 50 ? 'ok' : 'warn', sub: sensCnt + '/' + elTotal + ' 已标', title: '去数据元补全敏感标注', onClick: function () { goTab('element'); } },
+      { icon: 'shield', label: '数据元定密率', value: secRate + '%', tone: secRate >= 60 ? 'ok' : 'warn', sub: secCnt + '/' + elTotal + ' 已定密', title: '去数据元补全密级', onClick: function () { goTab('element'); } },
+      { icon: 'tag', label: '词根唯一复用度', value: reuseRate + '%', tone: reuseRate >= 80 ? 'ok' : 'info', sub: uniqAbbr + ' 个唯一缩写', title: '查看命名词根', onClick: function () { goTab('root'); } },
+      { icon: 'grid', label: '码表沉淀', value: dicts.length, tone: dicts.length > 0 ? 'ok' : 'muted', sub: '套标准码表', title: '查看码表', onClick: function () { goTab('dict'); } }
     ]));
 
     // 标准体系成熟度构成(各维度归一到 0~100 用 DN.bars)
     card.body.appendChild(DN.sectionTitle('标准体系成熟度构成'));
     card.body.appendChild(DN.bars([
-      { label: '数据元敏感标注', value: sensRate, tone: sensRate >= 50 ? 'ok' : 'warn', display: sensRate + '%' },
-      { label: '数据元定密率', value: secRate, tone: secRate >= 60 ? 'ok' : 'warn', display: secRate + '%' },
-      { label: '词根唯一复用度', value: reuseRate, tone: reuseRate >= 80 ? 'ok' : 'info', display: reuseRate + '%' },
-      { label: '最新落标率', value: latestRate == null ? 0 : Math.round(latestRate), tone: latestRate == null ? 'muted' : (latestRate >= 80 ? 'ok' : latestRate >= 60 ? 'warn' : 'err'), display: fmtRate(latestRate) }
+      { label: '数据元敏感标注', value: sensRate, tone: sensRate >= 50 ? 'ok' : 'warn', display: sensRate + '%', onClick: function () { goTab('element'); } },
+      { label: '数据元定密率', value: secRate, tone: secRate >= 60 ? 'ok' : 'warn', display: secRate + '%', onClick: function () { goTab('element'); } },
+      { label: '词根唯一复用度', value: reuseRate, tone: reuseRate >= 80 ? 'ok' : 'info', display: reuseRate + '%', onClick: function () { goTab('root'); } },
+      { label: '最新落标率', value: latestRate == null ? 0 : Math.round(latestRate), tone: latestRate == null ? 'muted' : (latestRate >= 80 ? 'ok' : latestRate >= 60 ? 'warn' : 'err'), display: fmtRate(latestRate), onClick: function () { goTab('check'); } }
     ]));
 
     // 落标率趋势曲线(>=2 次稽核才有意义)
@@ -108,6 +113,9 @@
   }
 
   window.GOV_RENDERERS.standard = function (c) {
+    // R25：每次进入读取联动上下文（ctx.tab 指定初始 Tab，供概览磁贴/外部深链下钻）
+    var ctx = window.__govCtx || {};
+
     // 预取密级方案（落标/数据元密级下拉用），失败保留兜底
     DN.get('/api/gov/classification/levels').then(function (rows) {
       if (rows && rows.length) securityLevels = rows.map(function (r) { return r.levelName; });
@@ -120,22 +128,26 @@
     var sub = DN.h('div', { class: 'gov-desc', id: 'stdSub', style: 'display:flex;gap:8px' });
     var body = DN.h('div', { id: 'stdBody' });
     var tabEls = {};
+    // Tab 切换：更新高亮 + 渲染对应子页；抽成函数供概览磁贴/深链调用
+    function switchTab(key) {
+      if (!tabEls[key]) key = 'element';
+      Object.keys(tabEls).forEach(function (k) { tabEls[k].className = 'btn'; });
+      tabEls[key].className = 'btn btn-primary';
+      renderSub(key, body);
+    }
     TABS.forEach(function (t) {
       var a = DN.h('a', {
         class: 'btn', href: 'javascript:void(0)', text: t.label,
-        onclick: function () {
-          Object.keys(tabEls).forEach(function (k) { tabEls[k].className = 'btn'; });
-          a.className = 'btn btn-primary';
-          renderSub(t.key, body);
-        }
+        onclick: function () { switchTab(t.key); }
       });
       tabEls[t.key] = a;
       sub.appendChild(a);
     });
     c.appendChild(sub);
     c.appendChild(body);
-    tabEls.element.className = 'btn btn-primary';
-    renderSub('element', body);
+    _activeGoTab = switchTab;   // 概览磁贴/成熟度构成点击经此切 Tab，消除纯展示死胡同
+    var initTab = (ctx.tab && tabEls[ctx.tab]) ? ctx.tab : 'element';
+    switchTab(initTab);
   };
 
   function renderSub(key, body) {

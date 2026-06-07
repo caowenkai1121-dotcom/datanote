@@ -122,11 +122,13 @@
     var balanceScore = Math.max(0, Math.min(100, Math.round((1 - cv) * 100)));
 
     var card = DN.card({ title: '主题域结构健康', icon: 'shield' });
+    // tone 须用 DN.pill/statTile 约定的 warn/ok/err（warning/success/error 无对应 CSS，会失色）
+    // 空置主题域 → 点击下钻到资产目录(暂不带 subjectId, 仅切模块查看全部资产以核对挂载情况)
     card.body.appendChild(DN.statRow([
-      { icon: 'doc', label: '空置主题域', value: leafN, tone: leafN ? 'warning' : 'success', sub: '叶子节点(可能未挂数据) 占比 ' + leafRate + '%' },
-      { icon: 'chart', label: '最大层级', value: maxDepth + ' 层', tone: maxDepth > 4 ? 'error' : 'success', sub: maxDepth > 4 ? '超过 4 层建议下沉拆分' : '层级合理' },
-      { icon: 'layers', label: '过深主题', value: deepN, tone: deepN ? 'error' : 'success', sub: '层级 > 4 的主题数' },
-      { icon: 'grid', label: '分层均衡分', value: balanceScore, tone: balanceScore >= 70 ? 'success' : (balanceScore >= 40 ? 'warning' : 'error'), sub: '越高分层越均衡' }
+      { icon: 'doc', label: '空置主题域', value: leafN, tone: leafN ? 'warn' : 'ok', sub: '叶子节点(可能未挂数据) 占比 ' + leafRate + '% · 点击查看资产', onClick: function () { if (window.govGoModule) govGoModule('assets', {}); }, title: '前往资产目录核对末级主题是否已挂载数据' },
+      { icon: 'chart', label: '最大层级', value: maxDepth + ' 层', tone: maxDepth > 4 ? 'err' : 'ok', sub: maxDepth > 4 ? '超过 4 层建议下沉拆分' : '层级合理' },
+      { icon: 'layers', label: '过深主题', value: deepN, tone: deepN ? 'err' : 'ok', sub: '层级 > 4 的主题数' },
+      { icon: 'grid', label: '分层均衡分', value: balanceScore, tone: balanceScore >= 70 ? 'ok' : (balanceScore >= 40 ? 'warn' : 'err'), sub: '越高分层越均衡' }
     ]));
 
     // 各分层分布（均衡度可视化）
@@ -135,26 +137,35 @@
       card.body.appendChild(DN.bars(layerKeys.map(function (k) {
         var v = byLayer[k];
         var over = v >= mean * 1.6, under = v <= mean * 0.4;
-        var tone = over ? 'warning' : (under ? 'info' : 'success');
+        var tone = over ? 'warn' : (under ? 'info' : 'ok');
         // WCAG1.4.1：偏多/偏少不能仅靠色区分，display 前加 ▲/▼ 非色符号
         var cue = over ? '▲ ' : (under ? '▼ ' : '');
         return { label: k, value: Math.round(v / maxCnt * 100), tone: tone, display: cue + v };
       })));
     }
 
-    // 结构优化提示
+    // 结构优化提示(每条 tip 可带 act 跳转, 消除纯展示死胡同 → 可点击去处理)
+    var scrollToTree = function () { var el = document.getElementById('subjectList'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
     var tips = [];
-    if (deepN > 0) tips.push('有 ' + deepN + ' 个主题层级超过 4 层，层级过深会增加治理与检索成本，建议拆分或下沉重组。');
-    if (leafRate >= 60) tips.push('叶子主题占比 ' + leafRate + '%，存在较多末级主题域，请确认是否均已挂载数据资产，避免空置。');
-    if (balanceScore < 40 && layerKeys.length > 1) tips.push('各分层主题数量差异较大（均衡分 ' + balanceScore + '），建议补全偏少分层（如 DWS/ADS）的主题规划。');
-    if (!tips.length) tips.push('主题域结构总体健康：层级适中、分层较均衡，继续保持。');
+    if (deepN > 0) tips.push({ t: '有 ' + deepN + ' 个主题层级超过 4 层，层级过深会增加治理与检索成本，建议拆分或下沉重组。', label: '查看主题树', go: scrollToTree });
+    if (leafRate >= 60) tips.push({ t: '叶子主题占比 ' + leafRate + '%，存在较多末级主题域，请确认是否均已挂载数据资产，避免空置。', label: '去资产目录核对', go: function () { if (window.govGoModule) govGoModule('assets', {}); } });
+    if (balanceScore < 40 && layerKeys.length > 1) tips.push({ t: '各分层主题数量差异较大（均衡分 ' + balanceScore + '），建议补全偏少分层（如 DWS/ADS）的主题规划。', label: '新增主题', go: scrollToTree });
+    if (!tips.length) tips.push({ t: '主题域结构总体健康：层级适中、分层较均衡，继续保持。' });
     var tipBox = DN.h('div', { style: 'margin-top:12px;display:flex;flex-direction:column;gap:8px' });
-    tips.forEach(function (t) {
+    tips.forEach(function (tip) {
+      var line = DN.h('span', { text: tip.t, style: 'flex:1' });
+      if (typeof tip.go === 'function') {
+        line.appendChild(DN.h('a', {
+          href: 'javascript:void(0)', text: ' ' + tip.label + ' →',
+          style: 'color:var(--primary,#1890ff);text-decoration:none;white-space:nowrap',
+          onclick: tip.go
+        }));
+      }
       tipBox.appendChild(DN.h('div', {
         style: 'display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text-regular,#4e5969);line-height:1.5'
       }, [
         DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary,#1890ff);margin-top:2px;flex:none' }),
-        DN.h('span', { text: t, style: 'flex:1' })
+        line
       ]));
     });
     card.body.appendChild(tipBox);
@@ -196,9 +207,13 @@
         class: 'subj-ic', html: DN.icon(hasChild ? 'layers' : 'doc'),
         style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#1890ff);margin-right:8px;flex:none'
       }));
-      row.appendChild(DN.h('span', {
-        text: n.name, style: 'flex:1;font-size:13px;color:var(--text-regular,#1f2329)'
-      }));
+      // 主题名 → 下钻到资产目录按该主题域筛资产(gov-assets 收 ctx.subjectId), 消除纯展示死胡同
+      var nameEl = DN.h('a', {
+        href: 'javascript:void(0)', text: n.name, title: '按此主题域查看资产',
+        style: 'flex:1;font-size:13px;color:var(--text-regular,#1f2329);text-decoration:none',
+        onclick: function () { if (window.govGoModule) govGoModule('assets', { subjectId: n.id }); }
+      });
+      row.appendChild(nameEl);
       row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
       var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
       ops.appendChild(DN.h('a', {
