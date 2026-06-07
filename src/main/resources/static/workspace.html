@@ -25,7 +25,7 @@
 <script src="js/gov-subject.js?v=q100r100"></script>
 <script src="js/gov-consumption.js?v=q100r99"></script>
 <script src="js/gov-govmap.js?v=q100r100"></script>
-<script src="js/home-dashboard.js?v=q100r86"></script>
+<script src="js/home-dashboard.js?v=q100r102"></script>
 <script src="js/mdm.js?v=q100r101"></script>
 <script src="js/mdm-survivorship.js?v=q100r101"></script>
 <script src="js/mdm-approval.js?v=q100r101"></script>
@@ -7050,26 +7050,48 @@ function formatNumber(n) {
 }
 
 /* --- 搜索 --- */
+// 搜索去抖 + 防重: 250ms 内的连续触发只发一次, 同时阻止上一请求结果回填
+var dmSearchTimer = null;
+var dmSearchReqSeq = 0;
 function doDatamapSearch() {
+  if (dmSearchTimer) clearTimeout(dmSearchTimer);
+  dmSearchTimer = setTimeout(doDatamapSearchNow, 250);
+}
+function doDatamapSearchNow() {
+  dmSearchTimer = null;
   var kw = (document.getElementById('datamapSearchInput') || {}).value || '';
   if (!kw.trim()) { loadDatamapData(); return; }
-  document.getElementById('datamapAiResult').style.display = 'none';
+  var aiResult = document.getElementById('datamapAiResult');
+  if (aiResult) aiResult.style.display = 'none';
+  var sectionsEl = document.getElementById('datamapSections');
+  if (sectionsEl) sectionsEl.innerHTML = '<div class="datamap-section"><div class="datamap-empty">搜索中...</div></div>';
+  var seq = ++dmSearchReqSeq;
   fetch('/api/metadata/search?keyword=' + encodeURIComponent(kw.trim()))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { msgBox('搜索失败: ' + res.msg); return; }
+      if (seq !== dmSearchReqSeq) return; // 已有更新的请求, 丢弃过期结果
+      if (!sectionsEl) return;
+      if (!res || res.code !== 0) {
+        sectionsEl.innerHTML = '<div class="datamap-section"><div class="datamap-empty">搜索失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div></div>';
+        return;
+      }
       var tables = res.data || [];
       var resultsHtml = '<div class="datamap-section"><div class="datamap-section-header"><div class="datamap-section-title">'
         + '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l4 4"/></svg>'
         + '<span>搜索结果</span>'
         + '<span class="dm-result-count">' + tables.length + ' 条</span>'
         + '</div></div><div id="dmSearchResults"></div></div>';
-      document.getElementById('datamapSections').innerHTML = resultsHtml;
+      sectionsEl.innerHTML = resultsHtml;
+      var resEl = document.getElementById('dmSearchResults');
+      if (!resEl) return;
       if (tables.length === 0) {
-        document.getElementById('dmSearchResults').innerHTML = '<div class="datamap-empty"><span class="dm-empty-icon">🔍</span>未找到匹配结果<br><small style="color:var(--text-muted);margin-top:4px;">试试 AI 搜索，它能理解你的需求</small></div>';
+        resEl.innerHTML = '<div class="datamap-empty"><span class="dm-empty-icon">🔍</span>未找到匹配结果<br><small style="color:var(--text-muted);margin-top:4px;">试试 AI 搜索，它能理解你的需求</small></div>';
       } else {
         renderDmTable('dmSearchResults', tables);
       }
+    }).catch(function(err){
+      if (seq !== dmSearchReqSeq) return;
+      if (sectionsEl) sectionsEl.innerHTML = '<div class="datamap-section"><div class="datamap-empty">网络异常: ' + escapeHtml((err && err.message) || '请检查网络后重试') + '</div></div>';
     });
 }
 
@@ -7117,13 +7139,16 @@ function doDatamapAiSearch() {
     }
     html += '</div></div>';
     aiDiv.innerHTML = html;
+  }).catch(function(err){
+    aiDiv.innerHTML = '<div class="datamap-ai-result dm-ai-error"><span class="dm-ai-error-icon">⚠</span>AI 搜索失败: ' + escapeHtml((err && err.message) || '请检查网络后重试') + '</div>';
   });
 }
 
 function clearSearchHistory() {
   fetch('/api/metadata/search-history', { method: 'DELETE' })
     .then(function(r){ return r.json(); })
-    .then(function(){ loadDmSearchHistory(); });
+    .then(function(){ loadDmSearchHistory(); })
+    .catch(function(){ if(window.msgBox) msgBox('清空失败，请稍后重试'); });
 }
 
 /* --- 语音输入 --- */
@@ -7158,41 +7183,56 @@ function toggleVoiceInput() {
 function dmOpenTable(db, table) {
   dmCurrentDb = db;
   dmCurrentTable = table;
-  // 记录搜索历史
+  // 记录搜索历史(失败静默, 不影响主流程)
   fetch('/api/metadata/search-history', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ databaseName: db, tableName: table })
-  });
+  }).catch(function(){});
   // 切换视图
   document.getElementById('datamapHome').style.display = 'none';
   document.getElementById('datamapDetail').classList.add('active');
+  // 详情区先给加载态, 避免残留上一张表内容
+  var detailBody = document.getElementById('dmDetailBody');
+  if (detailBody) detailBody.innerHTML = '<div class="datamap-empty">加载表详情...</div>';
   // 加载详情
   fetch('/api/metadata/table-detail?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { msgBox('加载失败: ' + res.msg); return; }
-      var d = res.data;
+      if (!res || res.code !== 0) {
+        msgBox('加载失败: ' + ((res && res.msg) || '请稍后重试'));
+        if (detailBody) detailBody.innerHTML = '<div class="datamap-empty">表详情加载失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>';
+        return;
+      }
+      var d = res.data || {};
       var info = d.tableInfo || {};
-      document.getElementById('dmDetailTitle').textContent = info.table || table;
+      var titleEl = document.getElementById('dmDetailTitle');
+      if (titleEl) titleEl.textContent = info.table || table;
       var sub = db;
       if (info.comment) sub += ' - ' + info.comment;
       if (info.rowCount != null) sub += ' | 约 ' + formatNumber(info.rowCount) + ' 行';
       if (info.engine) sub += ' | ' + info.engine;
       if (info.updateTime) sub += ' | 更新 ' + info.updateTime;
-      document.getElementById('dmDetailSub').textContent = sub;
+      var subEl = document.getElementById('dmDetailSub');
+      if (subEl) subEl.textContent = sub;
       // 收藏按钮
       var favBtn = document.getElementById('dmFavBtn');
-      favBtn.textContent = d.favorited ? '取消收藏' : '收藏';
-      favBtn.className = d.favorited ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+      if (favBtn) {
+        favBtn.textContent = d.favorited ? '取消收藏' : '收藏';
+        favBtn.className = d.favorited ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+      }
       // 评论数
       var badge = document.getElementById('dmCommentBadge');
-      badge.textContent = d.commentCount > 0 ? '(' + d.commentCount + ')' : '';
+      if (badge) badge.textContent = d.commentCount > 0 ? '(' + d.commentCount + ')' : '';
       // 默认展示字段
       dmRenderFields(d.columns || []);
       // 激活第一个 tab
-      var tabs = document.getElementById('dmDetailTabs').querySelectorAll('.datamap-detail-tab');
+      var tabsWrap = document.getElementById('dmDetailTabs');
+      var tabs = tabsWrap ? tabsWrap.querySelectorAll('.datamap-detail-tab') : [];
       tabs.forEach(function(t){ t.classList.remove('active'); });
       if (tabs[0]) tabs[0].classList.add('active');
+    }).catch(function(err){
+      msgBox('加载失败: ' + ((err && err.message) || '请检查网络'));
+      if (detailBody) detailBody.innerHTML = '<div class="datamap-empty">表详情加载失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7216,8 +7256,12 @@ function dmBackToHome() {
 }
 
 function dmSwitchTab(el, tab) {
-  el.parentElement.querySelectorAll('.datamap-detail-tab').forEach(function(t){ t.classList.remove('active'); });
-  el.classList.add('active');
+  if (el && el.parentElement) {
+    el.parentElement.querySelectorAll('.datamap-detail-tab').forEach(function(t){ t.classList.remove('active'); });
+    el.classList.add('active');
+  }
+  var body = document.getElementById('dmDetailBody');
+  if (body) body.innerHTML = '<div class="datamap-empty">加载中...</div>';
   if (tab === 'fields') dmLoadFields();
   else if (tab === 'partitions') dmLoadPartitions();
   else if (tab === 'preview') dmLoadPreview();
@@ -7234,7 +7278,7 @@ function dmLoadImpact() {
   fetch('/api/consumption/asset-impact?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
       var list = res.data || [];
       if (list.length === 0) {
         body.innerHTML = '<div class="datamap-empty">暂无指标消费此表 —— 改动此表对指标无已知影响</div>';
@@ -7258,7 +7302,7 @@ function dmLoadImpact() {
       html += '</tbody></table>';
       body.innerHTML = html;
     }).catch(function(err){
-      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(err.message) + '</div>';
+      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7267,12 +7311,13 @@ function dmToggleFavorite() {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ databaseName: dmCurrentDb, tableName: dmCurrentTable })
   }).then(function(r){ return r.json(); }).then(function(res){
-    if (res.code !== 0) return;
-    var fav = res.data.favorited;
+    if (!res || res.code !== 0) { msgBox('操作失败: ' + ((res && res.msg) || '请稍后重试')); return; }
+    var fav = res.data && res.data.favorited;
     var btn = document.getElementById('dmFavBtn');
+    if (!btn) return;
     btn.textContent = fav ? '取消收藏' : '收藏';
     btn.className = fav ? 'btn btn-sm btn-primary' : 'btn btn-sm';
-  });
+  }).catch(function(err){ msgBox('操作失败: ' + ((err && err.message) || '请检查网络')); });
 }
 
 /* --- Tab: 分区 --- */
@@ -7282,7 +7327,7 @@ function dmLoadPartitions() {
   fetch('/api/metadata/partitions?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
       var list = res.data || [];
       if (list.length === 0) {
         body.innerHTML = '<div class="datamap-empty">该表无分区</div>';
@@ -7304,24 +7349,32 @@ function dmLoadPartitions() {
       html += '</tbody></table>';
       body.innerHTML = html;
     }).catch(function(err){
-      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(err.message) + '</div>';
+      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
 /* --- Tab: 字段信息 --- */
 var dmFieldsData = [];
 function dmLoadFields() {
+  var body = document.getElementById('dmDetailBody');
+  if (body) body.innerHTML = '<div class="datamap-empty">加载字段信息...</div>';
   fetch('/api/metadata/columns?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) return;
+      if (!res || res.code !== 0) {
+        if (body) body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>';
+        return;
+      }
       dmRenderFields(res.data || []);
+    }).catch(function(err){
+      if (body) body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
 function dmRenderFields(columns) {
-  dmFieldsData = columns;
+  dmFieldsData = columns || [];
   var body = document.getElementById('dmDetailBody');
+  if (!body) return;
   if (!columns || columns.length === 0) {
     body.innerHTML = '<div class="datamap-empty">暂无字段信息</div>';
     return;
@@ -7337,12 +7390,13 @@ function dmRenderFields(columns) {
     + '<th style="width:100px;text-align:center;">操作</th>'
     + '</tr></thead><tbody>';
   columns.forEach(function(col, i) {
+    col = col || {};
     var chineseName = col.comment || '';
     html += '<tr>'
       + '<td class="dm-num">' + (i + 1) + '</td>'
-      + '<td class="dm-tname" id="dmFieldName_' + i + '">' + escapeHtml(col.name) + '</td>'
+      + '<td class="dm-tname" id="dmFieldName_' + i + '">' + escapeHtml(col.name || '') + '</td>'
       + '<td id="dmFieldCn_' + i + '" style="font-size:12px;">' + escapeHtml(chineseName) + '</td>'
-      + '<td id="dmFieldType_' + i + '" style="font-size:12px;color:var(--text-muted);">' + escapeHtml(col.type) + '</td>'
+      + '<td id="dmFieldType_' + i + '" style="font-size:12px;color:var(--text-muted);">' + escapeHtml(col.type || '') + '</td>'
       + '<td title="' + escapeHtml(col.comment || '') + '" style="font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(col.comment || '') + '</td>'
       + '<td style="text-align:center;">'
       + '<button class="btn btn-sm" onclick="dmEditField(' + i + ')" style="font-size:11px;padding:1px 6px;margin-right:2px;">编辑</button>'
@@ -7451,25 +7505,28 @@ function dmLoadPreview() {
   fetch('/api/metadata/preview?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">预览失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
-      var d = res.data;
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">预览失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
+      var d = res.data || {};
       var headers = d.headers || [];
       var rows = d.rows || [];
       if (rows.length === 0) { body.innerHTML = '<div class="datamap-empty">表中暂无数据</div>'; return; }
       var html = '<div style="overflow-x:auto;"><table class="dm-preview-table"><thead><tr>';
-      headers.forEach(function(h) { html += '<th>' + escapeHtml(h) + '</th>'; });
+      headers.forEach(function(h) { html += '<th>' + escapeHtml(h == null ? '' : h) + '</th>'; });
       html += '</tr></thead><tbody>';
       rows.forEach(function(row) {
         html += '<tr>';
-        row.forEach(function(val) {
-          var cls = val === 'NULL' ? 'style="color:var(--text-muted);font-style:italic;"' : '';
-          html += '<td ' + cls + '>' + escapeHtml(val) + '</td>';
+        (row || []).forEach(function(val) {
+          var sval = val == null ? 'NULL' : String(val);
+          var cls = sval === 'NULL' ? 'style="color:var(--text-muted);font-style:italic;"' : '';
+          html += '<td ' + cls + '>' + escapeHtml(sval) + '</td>';
         });
         html += '</tr>';
       });
       html += '</tbody></table></div>';
       html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);">显示前 ' + rows.length + ' 行</div>';
       body.innerHTML = html;
+    }).catch(function(err){
+      body.innerHTML = '<div class="datamap-empty">预览失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7480,17 +7537,19 @@ function dmLoadProfile() {
   fetch('/api/metadata/profile?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">探查失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
-      var d = res.data;
-      var html = '<div style="display:flex;gap:24px;margin-bottom:16px;">'
-        + '<div style="padding:12px 16px;background:var(--bg-body);border-radius:6px;border:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);">总行数</div><div style="font-size:18px;font-weight:600;">' + formatNumber(d.totalRows) + '</div></div>'
-        + '<div style="padding:12px 16px;background:var(--bg-body);border-radius:6px;border:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);">字段数</div><div style="font-size:18px;font-weight:600;">' + d.columnCount + '</div></div>'
-        + '</div>';
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">探查失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
+      var d = res.data || {};
       var fields = d.fields || [];
+      if (fields.length === 0 && d.totalRows == null) { body.innerHTML = '<div class="datamap-empty">暂无可探查的数据</div>'; return; }
+      var html = '<div style="display:flex;gap:24px;margin-bottom:16px;">'
+        + '<div style="padding:12px 16px;background:var(--bg-body);border-radius:6px;border:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);">总行数</div><div style="font-size:18px;font-weight:600;">' + (d.totalRows == null ? '-' : formatNumber(d.totalRows)) + '</div></div>'
+        + '<div style="padding:12px 16px;background:var(--bg-body);border-radius:6px;border:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);">字段数</div><div style="font-size:18px;font-weight:600;">' + (d.columnCount == null ? fields.length : d.columnCount) + '</div></div>'
+        + '</div>';
       html += '<table class="datamap-table"><thead><tr>'
         + '<th>字段名</th><th>类型</th><th>空值数</th><th>空值率</th><th>唯一值数</th><th>最小值</th><th>最大值</th><th>操作</th>'
         + '</tr></thead><tbody>';
       fields.forEach(function(f) {
+        f = f || {};
         var nullCls = '';
         var pct = f.nullRate ? parseFloat(f.nullRate) : 0;
         if (f.nullRate) {
@@ -7500,18 +7559,20 @@ function dmLoadProfile() {
         // 空值率高 → 建议完整性规则; 唯一值≈行数 → 建议唯一性规则
         var dim = pct > 0 ? 'completeness' : 'uniqueness';
         html += '<tr>'
-          + '<td class="dm-tname">' + escapeHtml(f.name) + '</td>'
-          + '<td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(f.type) + '</td>'
+          + '<td class="dm-tname">' + escapeHtml(f.name || '') + '</td>'
+          + '<td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(f.type || '') + '</td>'
           + '<td class="dm-num">' + (f.nullCount != null ? f.nullCount : '-') + '</td>'
           + '<td' + nullCls + ' style="text-align:right;font-size:12px;">' + escapeHtml(f.nullRate || '-') + '</td>'
           + '<td class="dm-num">' + (f.distinctCount != null ? f.distinctCount : '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.minVal || '') + '">' + escapeHtml(f.minVal || '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.maxVal || '') + '">' + escapeHtml(f.maxVal || '-') + '</td>'
-          + '<td><a href="javascript:void(0)" onclick="dmBuildRule(\'' + escapeHtml(f.name) + '\',\'' + dim + '\')" style="color:var(--primary,#1890ff);font-size:12px;" title="据此字段在质量模块建规则">建质量规则</a></td>'
+          + '<td><a href="javascript:void(0)" onclick="dmBuildRule(\'' + escapeHtml(f.name || '') + '\',\'' + dim + '\')" style="color:var(--primary,#1890ff);font-size:12px;" title="据此字段在质量模块建规则">建质量规则</a></td>'
           + '</tr>';
       });
       html += '</tbody></table>';
       body.innerHTML = html;
+    }).catch(function(err){
+      body.innerHTML = '<div class="datamap-empty">探查失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7522,8 +7583,8 @@ function dmLoadDDL() {
   fetch('/api/metadata/ddl?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">获取失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
-      var d = res.data;
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">获取失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
+      var d = res.data || {};
       var html = '';
       if (d.ddl) {
         html += '<div class="dm-code-block"><div class="dm-code-block-header"><span>建表语句 (DDL)</span>'
@@ -7536,7 +7597,10 @@ function dmLoadDDL() {
           + '<button class="dm-code-copy-btn" onclick="dmTableToDataset()" title="把此查询注册为受治理可复用数据集">存为数据集</button></span></div>'
           + '<pre>' + escapeHtml(d.selectSql) + '</pre></div>';
       }
+      if (!html) html = '<div class="datamap-empty">暂无可用的 DDL / SQL</div>';
       body.innerHTML = html;
+    }).catch(function(err){
+      body.innerHTML = '<div class="datamap-empty">获取失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7552,7 +7616,8 @@ function dmSetSubject() {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99990;display:flex;align-items:center;justify-content:center;';
     var opts = '<option value="">（不挂主题域）</option>' + subs.map(function(s){
-      return '<option value="' + s.id + '"' + (String(s.id)===String(cur)?' selected':'') + '>' + escapeHtml(s.name || s.subjectName || ('#'+s.id)) + '</option>';
+      s = s || {};
+      return '<option value="' + escapeHtml(String(s.id == null ? '' : s.id)) + '"' + (String(s.id)===String(cur)?' selected':'') + '>' + escapeHtml(s.name || s.subjectName || ('#'+s.id)) + '</option>';
     }).join('');
     ov.innerHTML = '<div style="background:var(--bg-card,#fff);border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.2);">'
       + '<div style="font-weight:600;margin-bottom:12px;">设置主题域 · ' + escapeHtml(dmCurrentTable) + '</div>'
@@ -7567,11 +7632,11 @@ function dmSetSubject() {
         body: JSON.stringify({ db: dmCurrentDb, table: dmCurrentTable, subjectId: sid || null }) })
         .then(function(r){return r.json();}).then(function(res){
           ov.remove();
-          if (res.code === 0) { if(window.msgBox) msgBox('主题域已设置'); }
-          else { if(window.msgBox) msgBox('设置失败: ' + (res.msg||'')); }
-        }).catch(function(e){ ov.remove(); if(window.msgBox) msgBox('设置失败'); });
+          if (res && res.code === 0) { if(window.msgBox) msgBox('主题域已设置'); }
+          else { if(window.msgBox) msgBox('设置失败: ' + ((res && res.msg)||'请稍后重试')); }
+        }).catch(function(e){ ov.remove(); if(window.msgBox) msgBox('设置失败: ' + ((e && e.message) || '请检查网络')); });
     };
-  });
+  }).catch(function(){ if(window.msgBox) msgBox('加载主题域失败，请稍后重试'); });
 }
 
 // R28 数据闭环: 数据地图表 → 注册为受治理数据集(消费层 newDataset 预填)
@@ -7581,20 +7646,25 @@ function dmTableToDataset() {
 }
 
 function dmCopyCode(btn) {
-  var pre = btn.closest('.dm-code-block').querySelector('pre');
+  var block = btn.closest('.dm-code-block');
+  var pre = block ? block.querySelector('pre') : null;
   if (!pre) return;
   var text = pre.textContent;
+  function fallbackCopy() {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    btn.textContent = '已复制';
+    setTimeout(function(){ btn.textContent = '复制'; }, 1500);
+  }
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(function(){
       btn.textContent = '已复制';
       setTimeout(function(){ btn.textContent = '复制'; }, 1500);
-    });
+    }).catch(fallbackCopy);
   } else {
-    var ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    btn.textContent = '已复制';
-    setTimeout(function(){ btn.textContent = '复制'; }, 1500);
+    fallbackCopy();
   }
 }
 
@@ -7627,18 +7697,22 @@ function dmLoadComments() {
   fetch('/api/metadata/comments?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败</div>'; return; }
+      if (!res || res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((res && res.msg) || '请稍后重试') + '</div>'; return; }
       var comments = res.data || [];
       var html = '<div id="dmCommentList">';
       if (comments.length === 0) {
         html += '<div class="datamap-empty">暂无评论，来分享你对这张表的看法吧</div>';
       } else {
         comments.forEach(function(c) {
+          c = c || {};
+          var delBtn = c.id != null
+            ? '<button class="dm-comment-delete" onclick="dmDeleteComment(' + c.id + ')">删除</button>'
+            : '';
           html += '<div class="dm-comment-item">'
             + '<div class="dm-comment-meta"><span>' + escapeHtml(c.createdBy || 'default') + '</span>'
-            + '<span>' + (c.createdAt || '') + '</span>'
-            + '<button class="dm-comment-delete" onclick="dmDeleteComment(' + c.id + ')">删除</button></div>'
-            + '<div class="dm-comment-content">' + escapeHtml(c.content) + '</div></div>';
+            + '<span>' + escapeHtml(c.createdAt || '') + '</span>'
+            + delBtn + '</div>'
+            + '<div class="dm-comment-content">' + escapeHtml(c.content || '') + '</div></div>';
         });
       }
       html += '</div>';
@@ -7646,6 +7720,8 @@ function dmLoadComments() {
         + '<textarea class="dm-comment-input" id="dmCommentInput" rows="2" placeholder="输入评论..."></textarea>'
         + '<button class="btn btn-primary btn-sm" onclick="dmAddComment()">发表</button></div>';
       body.innerHTML = html;
+    }).catch(function(err){
+      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
     });
 }
 
@@ -7653,20 +7729,28 @@ function dmAddComment() {
   var input = document.getElementById('dmCommentInput');
   var content = input ? input.value.trim() : '';
   if (!content) { msgBox('请输入评论内容'); return; }
+  if (input) input.disabled = true; // 防重复提交
   fetch('/api/metadata/comments', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ db: dmCurrentDb, table: dmCurrentTable, content: content })
   }).then(function(r){ return r.json(); }).then(function(res){
-    if (res.code === 0) { dmLoadComments(); }
-    else { msgBox('发表失败: ' + (res.msg || '')); }
+    if (res && res.code === 0) { dmLoadComments(); }
+    else { if (input) input.disabled = false; msgBox('发表失败: ' + ((res && res.msg) || '请稍后重试')); }
+  }).catch(function(err){
+    if (input) input.disabled = false;
+    msgBox('发表失败: ' + ((err && err.message) || '请检查网络'));
   });
 }
 
 function dmDeleteComment(id) {
+  if (id == null) return;
   fetch('/api/metadata/comments/' + id, { method: 'DELETE' })
     .then(function(r){ return r.json(); })
     .then(function(res){
-      if (res.code === 0) dmLoadComments();
+      if (res && res.code === 0) dmLoadComments();
+      else msgBox('删除失败: ' + ((res && res.msg) || '请稍后重试'));
+    }).catch(function(err){
+      msgBox('删除失败: ' + ((err && err.message) || '请检查网络'));
     });
 }
 

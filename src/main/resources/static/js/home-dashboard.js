@@ -7,14 +7,27 @@
 
   // ========== 本地工具（与 gov-overview.js 对齐） ==========
   // 分值映射磁贴/药丸色调：>=85 绿(ok) / >=60 黄(warn) / 其余红(err)
-  function tone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
+  // NaN/null 先归一化为数字，避免 undefined>=85 恒 false 把"无数据"误判成红色危险态
+  function tone(v) { var n = Number(v); if (!isFinite(n)) n = 0; return n >= 85 ? 'ok' : (n >= 60 ? 'warn' : 'err'); }
   function round1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
   function fmtInt(v) { return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function go(route) { return function () { if (window.navigateTo) navigateTo(route); }; }
-  function num(v) { return Number(v) || 0; }
+  function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+  // 超长文本截断 + 完整值挂 title（图表 label 防溢出）
+  function trunc(s, n) { s = String(s == null ? '' : s); n = n || 18; return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  // 兼容多字段取首个非空值（后端字段命名不统一时容错）
+  function pick() { for (var i = 0; i < arguments.length; i++) { if (arguments[i] != null && arguments[i] !== '') return arguments[i]; } return null; }
+  // 信封解包为数组：兼容直接数组 / {list|rows|records|data}，其余一律空数组（保证 .length/.filter 安全）
+  function unwrap(resp) {
+    if (Array.isArray(resp)) return resp;
+    var v = resp && (resp.list || resp.rows || resp.records || resp.data);
+    return Array.isArray(v) ? v : [];
+  }
 
   var _timer = null;     // 自动刷新定时器（离开首页自停）
   var _box = null;       // 当前挂载容器
+  var _ovCache = null;   // /api/gov/overview 单轮缓存：KPI 与 C1 复用，避免重复请求
+  var _refreshing = false; // 刷新进行中标记，避免重复点击
 
   // ========== 入口：路由 init 调用 ==========
   // container 可省略，默认取 #homeCockpit
@@ -22,6 +35,7 @@
     var box = container || document.getElementById('homeCockpit');
     if (!box) return;
     _box = box;
+    _ovCache = null;                                  // 每轮重建清缓存，保证刷新拿到新数据
     box.innerHTML = '';
     renderHero(box);                                  // 品牌英雄条 + 问候 + 更新时间 + 刷新按钮
 
@@ -33,9 +47,16 @@
     var grid = DN.h('div', { class: 'dash-grid' }); box.appendChild(grid);
 
     loadKpis(kpiSlot);                                // 8 KPI（多源并发，各源 .catch 降级）
-    mountCards(grid);                                 // 12 卡片各自挂载 + 独立加载
+    mountCards(grid);                                 // 12 卡片分批挂载 + 独立加载
     setupAuto(box);                                   // 60s 自动刷新，离开首页自停
+    _refreshing = false;
   };
+
+  // 单轮内复用 /api/gov/overview：首次发起请求并缓存 Promise，KPI 与 C1 共用
+  function getOverview() {
+    if (!_ovCache) _ovCache = DN.get('/api/gov/overview');
+    return _ovCache;
+  }
   // 向后兼容别名（蓝图里曾用 renderHomeCockpit）
   window.renderHomeCockpit = window.renderHomeDashboard;
 
@@ -46,7 +67,12 @@
     var refreshBtn = DN.h('a', {
       class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新',
       style: 'background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35)',
-      onclick: function () { window.renderHomeDashboard(_box); }
+      onclick: function () {
+        if (_refreshing) return;                       // 防抖：刷新进行中忽略重复点击
+        _refreshing = true;
+        refreshBtn.textContent = '刷新中…';
+        window.renderHomeDashboard(_box);              // 整页重载（内部会复位 _refreshing）
+      }
     });
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
       DN.h('div', { class: 'h-title', text: greet + '，欢迎回来' }),
@@ -61,8 +87,9 @@
 
   // ========== 8 KPI：多源并发，各源独立 .catch 降级为 {} ==========
   function loadKpis(slot) {
+    // 4 源并发，单源失败各自 .catch 降级为 {}，不拖垮整排；gov/overview 复用单轮缓存
     Promise.all([
-      DN.get('/api/gov/overview').catch(function () { return {}; }),
+      getOverview().catch(function () { return {}; }),
       DN.get('/api/quality/score').catch(function () { return {}; }),
       DN.get('/api/consumption/overview').catch(function () { return {}; }),
       DN.get('/api/sync-job/dashboard/summary').catch(function () { return {}; })
@@ -104,14 +131,24 @@
       { col: 6, title: '敏感字段最多的表', icon: 'lock', build: cardSensitive },               // C11
       { col: 6, title: '最近消费活动', icon: 'list', build: cardConsumeLog }                    // C12
     ];
+    // 先同步铺好 12 个卡壳 + 骨架（占位不抖动），再分批触发 fetch，避免一次性 12 并发卡顿
     defs.forEach(function (d) {
       var c = DN.card({ title: d.title, icon: d.icon });
       if (d.primary) c.el.classList.add('dash-primary');
       var col = DN.h('div', { class: 'dash-col-' + d.col });
       col.appendChild(c.el); grid.appendChild(col);
-      // 单卡独立 skeleton → fetch → render/errorBox，单卡失败不拖垮整屏
-      d.build(c, d);
+      loading(c, 3);
+      d._card = c;
     });
+    // 每批 4 张，分帧触发各自加载；单卡独立 skeleton → fetch → render/errorBox，互不拖累
+    var i = 0, BATCH = 4;
+    (function next() {
+      for (var k = 0; k < BATCH && i < defs.length; k++, i++) {
+        var d = defs[i];
+        try { d.build(d._card, d); } catch (e) { fail(d._card, d, e); }
+      }
+      if (i < defs.length) requestAnimationFrame(next);
+    })();
   }
 
   // 统一错误态：清空卡 body，挂错误盒 + 重试（重跑同一 build）
@@ -127,12 +164,14 @@
   var DIMS = ['规范', '质量', '安全', '生命周期', '血缘'];
   function cardHealth(c, d) {
     loading(c, 4);
-    DN.get('/api/gov/overview').then(function (data) {
+    // 复用单轮 gov/overview 缓存（与 KPI 共享一次请求）；retry 时缓存若已失效则重新拉
+    getOverview().then(function (data) {
       data = data || {};
       var hh = data.health || {}, dims = hh.dims || {};
       var total = num(hh.total);
       c.body.innerHTML = '';
-      if (!total && !Object.keys(dims).length) {
+      var hasDims = DIMS.some(function (k) { return num(dims[k]) > 0; });
+      if (!total && !hasDims) {
         c.body.appendChild(DN.empty('暂无健康评分数据', 'shield')); return;
       }
       var wrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:center' });
@@ -144,7 +183,7 @@
       right.appendChild(DN.radar(DIMS.map(function (k) { return { label: k, value: num(dims[k]) }; })));
       wrap.appendChild(right);
       c.body.appendChild(wrap);
-    }).catch(function (e) { fail(c, d, e); });
+    }).catch(function (e) { _ovCache = null; fail(c, d, e); });
   }
 
   // ---- C2 健康分趋势（近30天折线）----
@@ -152,7 +191,7 @@
     loading(c, 3);
     DN.get('/api/gov/health/score/trend?days=30').then(function (list) {
       c.body.innerHTML = '';
-      var pts = (list || []).map(function (t) { return num(t.totalScore != null ? t.totalScore : t.score); });
+      var pts = (Array.isArray(list) ? list : []).map(function (t) { return num(pick(t.totalScore, t.score)); });
       if (pts.length < 2) { c.body.appendChild(DN.empty('趋势数据不足（需≥2天历史）', 'chart')); return; }
       c.body.appendChild(DN.line(pts, { height: 120 }));
       c.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '近30天治理健康分走势' }));
@@ -164,15 +203,12 @@
     loading(c, 4);
     DN.get('/api/consumption/metric-ranking').then(function (list) {
       c.body.innerHTML = '';
-      list = (list || []).slice(0, 10);
+      list = (Array.isArray(list) ? list : []).slice(0, 10);
       if (!list.length) { c.body.appendChild(DN.empty('暂无指标消费记录', 'chart')); return; }
       c.body.appendChild(DN.bars(list.map(function (i) {
-        return {
-          label: i.metricName || i.target_code || i.targetCode || '-',
-          value: num(i.cnt != null ? i.cnt : i.count),
-          display: fmtInt(i.cnt != null ? i.cnt : i.count),
-          onClick: go('metrics')
-        };
+        var full = pick(i.metricName, i.target_code, i.targetCode) || '-';
+        var cnt = num(pick(i.cnt, i.count));
+        return { label: trunc(full, 16), value: cnt, display: fmtInt(cnt), onClick: go('metrics') };
       })));
     }).catch(function (e) { fail(c, d, e); });
   }
@@ -199,19 +235,17 @@
     loading(c, 3);
     DN.get('/api/metadata-center/tables').then(function (resp) {
       c.body.innerHTML = '';
-      // 兼容直接数组 / {list}/{rows}/{records} 信封
-      var rows = Array.isArray(resp) ? resp
-        : (resp && (resp.list || resp.rows || resp.records || resp.data)) || [];
+      var rows = unwrap(resp);
       if (!rows.length) { c.body.appendChild(DN.empty('暂无表元数据', 'db')); return; }
       var byDb = {};
       rows.forEach(function (t) {
-        var k = t.databaseName || t.dbName || t.dbType || '未知';
+        var k = pick(t.databaseName, t.dbName, t.dbType) || '未知';
         byDb[k] = (byDb[k] || 0) + 1;
       });
       var arr = Object.keys(byDb).map(function (k) { return { label: k, value: byDb[k] }; });
       arr.sort(function (x, y) { return y.value - x.value; });
       var palette = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#13c2c2', '#eb2f96'];
-      var segs = arr.slice(0, 6).map(function (s, i) { return { label: s.label, value: s.value, color: palette[i % palette.length] }; });
+      var segs = arr.slice(0, 6).map(function (s, i) { return { label: trunc(s.label, 14), value: s.value, color: palette[i % palette.length] }; });
       if (arr.length > 6) {
         var other = arr.slice(6).reduce(function (a, s) { return a + s.value; }, 0);
         segs.push({ label: '其他', value: other, color: '#bfbfbf' });
@@ -226,11 +260,11 @@
     loading(c, 4);
     DN.get('/api/consumption/metric/freshness').then(function (list) {
       c.body.innerHTML = '';
-      var stale = (list || []).filter(function (x) { return x.stale === true; });
-      if (!stale.length) { c.body.appendChild(DN.empty('全部指标新鲜，无陈旧 ✓', 'check')); return; }
+      var stale = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.stale === true; });
+      if (!stale.length) { c.body.appendChild(DN.empty('全部指标新鲜，无陈旧', 'check')); return; }
       c.body.appendChild(DN.table({
         columns: [
-          { key: 'metricName', label: '指标名称', render: function (r) { return r.metricName || r.metricCode || '-'; } },
+          { key: 'metricName', label: '指标名称', render: function (r) { return DN.h('span', { text: trunc(pick(r.metricName, r.metricCode) || '-', 24), title: pick(r.metricName, r.metricCode) || '' }); } },
           { key: 'lastValueAt', label: '最近取值', render: function (r) { return r.lastValueAt ? DN.timeAgo(r.lastValueAt) : '-'; } },
           { key: 'ageHours', label: '陈旧', align: 'right', render: function (r) { return DN.pill(round1(r.ageHours) + 'h', 'err'); } }
         ],
@@ -244,11 +278,11 @@
     loading(c, 4);
     DN.get('/api/consumption/metric/zombies').then(function (list) {
       c.body.innerHTML = '';
-      list = list || [];
-      if (!list.length) { c.body.appendChild(DN.empty('无僵尸指标，状态良好 ✓', 'check')); return; }
+      list = Array.isArray(list) ? list : [];
+      if (!list.length) { c.body.appendChild(DN.empty('无僵尸指标，状态良好', 'check')); return; }
       c.body.appendChild(DN.table({
         columns: [
-          { key: 'metricName', label: '指标名称', copyable: true, exportValue: function (r) { return r.metricCode || r.metricName; }, render: function (r) { return r.metricName || r.metricCode || '-'; } },
+          { key: 'metricName', label: '指标名称', copyable: true, exportValue: function (r) { return pick(r.metricCode, r.metricName) || ''; }, render: function (r) { return r.metricName || r.metricCode || '-'; } },
           { key: 'category', label: '分类', render: function (r) { return r.category || '-'; } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } }
         ],
@@ -273,8 +307,9 @@
         { label: '暂停', value: paused, color: '#faad14' },
         { label: '失败', value: failed, color: '#ff4d4f' }
       ], { legend: true }));
-      // successRate 为 0-1，gauge 前 *100
-      wrap.appendChild(DN.gauge(num(s.successRate) * 100, { label: '成功率', decimals: 1 }));
+      // successRate 约定为 0-1，gauge 前 *100；若后端已给百分数(>1)则原样用，避免被钳到 100
+      var sr = num(s.successRate); var srPct = sr > 1 ? sr : sr * 100;
+      wrap.appendChild(DN.gauge(srPct, { label: '成功率', decimals: 1 }));
       c.body.appendChild(wrap);
     }).catch(function (e) { fail(c, d, e); });
   }
@@ -284,11 +319,11 @@
     loading(c, 4);
     DN.get('/api/gov/health/issues?status=OPEN').then(function (resp) {
       c.body.innerHTML = '';
-      var rows = Array.isArray(resp) ? resp : (resp && (resp.list || resp.rows || resp.records)) || [];
-      if (!rows.length) { c.body.appendChild(DN.empty('暂无待处理工单 ✓', 'check')); return; }
+      var rows = unwrap(resp);
+      if (!rows.length) { c.body.appendChild(DN.empty('暂无待处理工单', 'check')); return; }
       c.body.appendChild(DN.table({
         columns: [
-          { key: 'title', label: '标题', render: function (r) { return r.title || '-'; } },
+          { key: 'title', label: '标题', render: function (r) { return DN.h('span', { text: trunc(r.title || '-', 28), title: r.title || '' }); } },
           { key: 'severity', label: '级别', render: function (r) { return DN.pill(r.severity || '-', sevTone(r.severity)); } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: 'overdue', label: '超期', align: 'center', render: function (r) { return r.overdue ? DN.pill('超期', 'err') : DN.h('span', { text: '-' }); } },
@@ -334,11 +369,13 @@
     loading(c, 4);
     DN.get('/api/gov/classification/heatmap').then(function (list) {
       c.body.innerHTML = '';
-      var items = (Array.isArray(list) ? list : (list && (list.list || list.rows)) || []).slice(0, 12);
+      var items = unwrap(list).slice(0, 12);
       if (!items.length) { c.body.appendChild(DN.empty('暂无敏感字段标注', 'lock')); return; }
       c.body.appendChild(DN.heat(items.map(function (i) {
-        var lbl = (i.db || i.database || '') + (i.table ? '.' + i.table : (i.tableName ? '.' + i.tableName : ''));
-        return { label: lbl || (i.table || '-'), value: num(i.count != null ? i.count : i.cnt) };
+        var tbl = pick(i.table, i.tableName);
+        var dbn = pick(i.db, i.database);
+        var lbl = (dbn ? dbn : '') + (tbl ? (dbn ? '.' : '') + tbl : '');
+        return { label: trunc(lbl || tbl || '-', 22), value: num(pick(i.count, i.cnt)) };
       }), { rgb: [255, 77, 79] }));
     }).catch(function (e) { fail(c, d, e); });
   }
@@ -348,7 +385,7 @@
     loading(c, 4);
     DN.get('/api/consumption/log/list').then(function (resp) {
       c.body.innerHTML = '';
-      var rows = Array.isArray(resp) ? resp : (resp && (resp.list || resp.rows || resp.records)) || [];
+      var rows = unwrap(resp);
       if (!rows.length) { c.body.appendChild(DN.empty('暂无消费活动', 'list')); return; }
       c.body.appendChild(DN.table({
         columns: [
