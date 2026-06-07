@@ -1,10 +1,11 @@
 package com.datanote.controller;
 
+import com.datanote.domain.metadata.MetadataController;
 import com.datanote.model.ColumnInfo;
 import com.datanote.model.DnTableComment;
 import com.datanote.model.R;
-import com.datanote.service.DataMapService;
-import com.datanote.service.DatasourceExploreService;
+import com.datanote.domain.metadata.DataMapService;
+import com.datanote.domain.datasource.DatasourceExploreService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

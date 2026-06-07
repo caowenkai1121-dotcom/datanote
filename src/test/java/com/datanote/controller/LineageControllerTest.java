@@ -1,11 +1,12 @@
 package com.datanote.controller;
 
+import com.datanote.domain.orchestration.LineageController;
 import com.datanote.model.DnScript;
 import com.datanote.model.DnTaskDependency;
 import com.datanote.model.R;
-import com.datanote.service.DolphinService;
-import com.datanote.service.ScriptService;
-import com.datanote.service.TaskDependencyService;
+import com.datanote.domain.orchestration.DolphinService;
+import com.datanote.domain.develop.ScriptService;
+import com.datanote.domain.orchestration.TaskDependencyService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

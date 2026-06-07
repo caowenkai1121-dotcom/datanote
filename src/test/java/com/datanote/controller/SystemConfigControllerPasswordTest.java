@@ -1,5 +1,6 @@
 package com.datanote.controller;
 
+import com.datanote.platform.config.SystemConfigController;
 import com.datanote.mapper.DnSystemConfigMapper;
 import com.datanote.model.DnSystemConfig;
 import com.datanote.util.CryptoUtil;

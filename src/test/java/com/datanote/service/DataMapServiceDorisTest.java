@@ -1,5 +1,8 @@
 package com.datanote.service;
 
+import com.datanote.domain.datasource.DatasourceExploreService;
+import com.datanote.domain.metadata.DataMapService;
+import com.datanote.platform.ai.AiAssistService;
 import com.datanote.config.HiveConfig;
 import com.datanote.mapper.DnSearchHistoryMapper;
 import com.datanote.mapper.DnTableCommentMapper;

@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.platform.iam.RbacService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 

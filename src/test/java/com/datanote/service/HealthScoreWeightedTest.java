@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.domain.governance.HealthScoreService;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;

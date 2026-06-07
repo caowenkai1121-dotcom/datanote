@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.domain.project.ProjectCodeGenerator;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

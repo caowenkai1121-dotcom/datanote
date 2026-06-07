@@ -10,7 +10,7 @@ import com.datanote.mapper.DnTaskExecutionMapper;
 import com.datanote.model.DnDatasource;
 import com.datanote.model.DnSyncJob;
 import com.datanote.model.DnTaskExecution;
-import com.datanote.service.LogBroadcastService;
+import com.datanote.common.LogBroadcastService;
 import com.datanote.sync.cdc.CdcStoreHolder;
 import com.datanote.sync.connector.ColumnDef;
 import com.datanote.sync.connector.ConnectionManager;

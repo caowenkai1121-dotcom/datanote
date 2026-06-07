@@ -1,6 +1,6 @@
 package com.datanote.filter;
 
-import com.datanote.service.AuditService;
+import com.datanote.platform.audit.AuditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;

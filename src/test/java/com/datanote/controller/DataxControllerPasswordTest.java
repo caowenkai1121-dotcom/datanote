@@ -1,5 +1,6 @@
 package com.datanote.controller;
 
+import com.datanote.domain.integration.DataxController;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnSyncTaskMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
@@ -9,9 +10,9 @@ import com.datanote.model.DnSyncTask;
 import com.datanote.model.R;
 import com.datanote.model.dto.DataxCreateAndSyncRequest;
 import com.datanote.model.dto.DataxGenerateJobRequest;
-import com.datanote.service.DataxService;
-import com.datanote.service.HiveService;
-import com.datanote.service.MetadataService;
+import com.datanote.domain.integration.DataxService;
+import com.datanote.domain.integration.HiveService;
+import com.datanote.domain.datasource.MetadataService;
 import com.datanote.util.CryptoUtil;
 import com.datanote.util.ProcessUtil;
 import org.junit.jupiter.api.Test;

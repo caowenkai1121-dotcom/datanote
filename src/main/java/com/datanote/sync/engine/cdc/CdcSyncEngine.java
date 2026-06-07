@@ -56,7 +56,7 @@ public class CdcSyncEngine {
     private final DnDatasource sourceDs;
     private final List<TableSyncConfig> tables;
     private final ConnectionManager connectionManager;
-    private final com.datanote.service.LogBroadcastService logBroadcastService;
+    private final com.datanote.common.LogBroadcastService logBroadcastService;
     private final String cryptoKey;
     private final String targetDatabaseType;
     /** database.server.id 基准值（可配置，避免与生产 slave 撞号）。 */
@@ -97,7 +97,7 @@ public class CdcSyncEngine {
                          DnDatasource sourceDs,
                          List<TableSyncConfig> tables,
                          ConnectionManager connectionManager,
-                         com.datanote.service.LogBroadcastService logBroadcastService,
+                         com.datanote.common.LogBroadcastService logBroadcastService,
                          String cryptoKey,
                          String targetDatabaseType,
                          long serverIdBase,

@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.domain.integration.HiveService;
 import com.datanote.model.ColumnInfo;
 import org.junit.jupiter.api.Test;
 

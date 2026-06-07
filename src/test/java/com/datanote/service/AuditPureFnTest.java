@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.platform.audit.AuditService;
 import com.datanote.model.DnAuditLog;
 import org.junit.jupiter.api.Test;
 

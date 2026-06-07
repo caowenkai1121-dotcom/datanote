@@ -1,5 +1,6 @@
 package com.datanote.service;
 
+import com.datanote.domain.project.ProjectHealthScorer;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

@@ -1,5 +1,6 @@
 package com.datanote.controller;
 
+import com.datanote.platform.portal.DashboardController;
 import com.datanote.model.R;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

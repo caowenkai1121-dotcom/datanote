@@ -1,8 +1,9 @@
 package com.datanote.service;
 
-import com.datanote.service.SqlMaskRewriter.ColumnMask;
-import com.datanote.service.SqlMaskRewriter.MaskRewriteException;
-import com.datanote.service.SqlMaskRewriter.RowFilter;
+import com.datanote.domain.governance.SqlMaskRewriter;
+import com.datanote.domain.governance.SqlMaskRewriter.ColumnMask;
+import com.datanote.domain.governance.SqlMaskRewriter.MaskRewriteException;
+import com.datanote.domain.governance.SqlMaskRewriter.RowFilter;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;

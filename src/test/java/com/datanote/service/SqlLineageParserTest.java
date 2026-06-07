@@ -1,8 +1,9 @@
 package com.datanote.service;
 
-import com.datanote.service.SqlLineageParser.ColumnMapping;
-import com.datanote.service.SqlLineageParser.ParseResult;
-import com.datanote.service.SqlLineageParser.TableRef;
+import com.datanote.domain.orchestration.SqlLineageParser;
+import com.datanote.domain.orchestration.SqlLineageParser.ColumnMapping;
+import com.datanote.domain.orchestration.SqlLineageParser.ParseResult;
+import com.datanote.domain.orchestration.SqlLineageParser.TableRef;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

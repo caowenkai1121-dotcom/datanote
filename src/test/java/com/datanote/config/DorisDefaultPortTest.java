@@ -1,7 +1,7 @@
 package com.datanote.config;
 
-import com.datanote.service.DataxService;
-import com.datanote.service.DolphinService;
+import com.datanote.domain.integration.DataxService;
+import com.datanote.domain.orchestration.DolphinService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 

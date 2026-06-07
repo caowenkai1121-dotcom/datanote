@@ -1,7 +1,8 @@
 package com.datanote.controller;
 
+import com.datanote.domain.develop.ScriptController;
 import com.datanote.model.*;
-import com.datanote.service.ScriptService;
+import com.datanote.domain.develop.ScriptService;
 import com.datanote.model.dto.MoveScriptRequest;
 import com.datanote.model.dto.RenameFolderRequest;
 import org.junit.jupiter.api.Test;
