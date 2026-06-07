@@ -115,26 +115,7 @@ public class MetadataController {
         }
     }
 
-    @Operation(summary = "获取所有表列表（带元数据）")
-    @GetMapping("/all-tables")
-    public R<List<Map<String, Object>>> allTables(@RequestParam(required = false) String db) {
-        try {
-            List<Map<String, Object>> tables = exploreService.getAllTablesSummary();
-            if (db != null && !db.isEmpty()) {
-                List<Map<String, Object>> filtered = new ArrayList<>();
-                for (Map<String, Object> t : tables) {
-                    if (db.equals(t.get("TABLE_SCHEMA"))) {
-                        filtered.add(t);
-                    }
-                }
-                return R.ok(filtered);
-            }
-            return R.ok(tables);
-        } catch (Exception e) {
-            log.error("获取表列表失败", e);
-            return R.fail("获取表列表失败");
-        }
-    }
+    // R34 伪需求清理: 删除 /all-tables 冗余 REST 出口(前端零调用, getAllTablesSummary 仍供内部复用)
 
     // ========== 搜索历史 ==========
 
@@ -179,13 +160,7 @@ public class MetadataController {
         return R.ok(result);
     }
 
-    @Operation(summary = "检查是否已收藏")
-    @GetMapping("/favorite/check")
-    public R<Map<String, Object>> checkFavorite(@RequestParam String db, @RequestParam String table) {
-        Map<String, Object> result = new HashMap<>();
-        result.put("favorited", dataMapService.isFavorited(db, table));
-        return R.ok(result);
-    }
+    // R34 伪需求清理: 删除 /favorite/check 冗余端点(前端零调用, 收藏态已由 table-detail 内联返回)
 
     // ========== 热门表 ==========
 

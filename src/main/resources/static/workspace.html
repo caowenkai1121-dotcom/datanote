@@ -7437,25 +7437,7 @@ function doAlterColumn(idx, col, newName, newType, newCn) {
   });
 }
 
-function dmSaveFieldMeta() {
-  var columns = [];
-  dmFieldsData.forEach(function(col, i) {
-    var input = document.getElementById('dmFieldBiz_' + i);
-    if (input && input.value.trim()) {
-      columns.push({
-        columnName: col.name,
-        businessName: input.value.trim()
-      });
-    }
-  });
-  if (columns.length === 0) { msgBox('没有需要保存的修改'); return; }
-  // 先获取或创建 tableMetaId
-  fetch('/api/metadata/table-detail?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      msgBox('字段信息已记录（' + columns.length + ' 个字段）');
-    });
-}
+// R34 伪需求清理: 删除死函数 dmSaveFieldMeta(无调用方 + 仅弹提示不落库)
 
 /* --- Tab: 数据预览 --- */
 function dmLoadPreview() {
