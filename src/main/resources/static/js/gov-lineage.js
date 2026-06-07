@@ -65,8 +65,20 @@
     gCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:8px',
       html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:3px;vertical-align:middle;margin-right:4px"></span>★ 中心表 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.up + ';vertical-align:middle;margin:0 4px 0 12px"></span>上游边 ' +
-        '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 点节点高亮相邻，悬停边看来源/层级' }));
+        '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 单击节点高亮相邻，双击节点设为中心，悬停边看来源/层级' }));
     gCard.body.appendChild(DN.h('div', { id: 'graphResult' }));
+
+    // R21 深链：接收 ctx.table({db,table}) → 自动以该表为中心加载并绘制血缘图谱
+    var ctx = window.__govCtx || {};
+    if (ctx.table && ctx.table.db && ctx.table.table) {
+      var cd = ctx.table.db, ct = ctx.table.table;
+      // 在“血缘图谱”卡片标题下提示当前聚焦中心
+      gCard.body.insertBefore(DN.h('div', { id: 'lnFocusHint',
+        style: 'color:var(--primary);font-size:12px;margin-bottom:8px',
+        text: '已按深链聚焦：以 ' + cd + '.' + ct + ' 为中心' }), gq);
+      // 复用 grPicker 填表 + 触发画图（与孤儿表下钻同一逻辑）
+      centerGraphOn(cd, ct);
+    }
 
     // 4. 孤儿表检测（创新功能）：基于已有血缘边数据，识别某库中“既无上游也无下游血缘边”的表（疑似废弃/未接入），供治理清理参考
     var oCard = DN.card({ title: '孤儿表检测', icon: 'alert' });
@@ -127,13 +139,14 @@
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + (e && e.message ? e.message : e), function () { detectOrphans(); })); });
   }
 
-  /** 下钻：把孤儿表填入下方“血缘图谱”选择器并触发画图，便于人工核验是否确实无血缘。
-      复用现有 grPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。 */
-  function drillOrphanToGraph(db, table) {
-    if (!grPicker || !grPicker.el) { DN.toast('请到下方“血缘图谱”手动查询', 'info'); return; }
+  /** 把指定库表填入“血缘图谱”选择器并触发画图（以该表为中心）。
+      复用现有 grPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。
+      用于：孤儿表下钻核验、R21 深链聚焦、图节点双击切换中心。 */
+  function centerGraphOn(db, table) {
+    if (!grPicker || !grPicker.el) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
     var sels = grPicker.el.querySelectorAll('select');
     var dbSel = sels[0], tbSel = sels[1];
-    if (!dbSel || !tbSel) { DN.toast('请到下方“血缘图谱”手动查询', 'info'); return; }
+    if (!dbSel || !tbSel) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
     dbSel.value = db;
     // 选库后需触发级联加载表列表，再等待目标表选项出现后选中并画图
     dbSel.dispatchEvent(new Event('change'));
@@ -149,11 +162,14 @@
       } else if (tries++ < 40) {
         setTimeout(waitTable, 100); // 表列表为异步加载，轮询至多约 4 秒
       } else {
-        DN.toast('已为你选择「' + db + '」库，请在下方“血缘图谱”手动选表查询', 'info');
+        DN.toast('已为你选择「' + db + '」库，请在“血缘图谱”手动选表查询', 'info');
         if (grPicker.el.scrollIntoView) grPicker.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     })();
   }
+
+  /** 孤儿表下钻：复用 centerGraphOn，便于人工核验是否确实无血缘。 */
+  function drillOrphanToGraph(db, table) { centerGraphOn(db, table); }
 
   function renderOrphans(box, db, total, stats) {
     box.innerHTML = '';
@@ -320,12 +336,20 @@
       var txt = svg('text', { x: p.x + NW / 2, y: p.y + NH / 2 + 4, 'text-anchor': 'middle',
         'font-size': '12', fill: isCenter ? '#fff' : C.text });
       txt.textContent = isCenter ? '★ ' + label : label;
-      var ttl = svg('title'); ttl.textContent = n.id; rect.appendChild(ttl);
+      var ttl = svg('title'); ttl.textContent = n.id + (isCenter ? '（当前中心）' : '（单击高亮 · 双击设为中心）'); rect.appendChild(ttl);
       g.appendChild(rect); g.appendChild(txt);
       g.addEventListener('click', function () {
         selected = (selected === n.id) ? null : n.id;
         highlight(selected);
       });
+      // 双击非中心节点 → 以该表为中心重新画图（图内下钻，n.id 形如 db.table）
+      if (!isCenter) {
+        g.addEventListener('dblclick', function () {
+          var dot = n.id.indexOf('.');
+          if (dot <= 0) return;
+          centerGraphOn(n.id.slice(0, dot), n.id.slice(dot + 1));
+        });
+      }
       s.appendChild(g);
       nodeEls[n.id] = { rect: rect, center: isCenter };
     });

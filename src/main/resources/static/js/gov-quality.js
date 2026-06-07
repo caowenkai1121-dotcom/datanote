@@ -6,11 +6,16 @@
   var allRules = [];          // 全量规则
   var filterStatus = '';      // ''=全部 / '1'=启用 / '0'=停用
   var filterDim = '', filterType = '', filterBlock = '', filterScheduled = '';
+  var ctxTableFilter = null;  // R21 深链: {db,table} 跨模块跳来时按库表过滤
   var tableEl = null;         // DN.table 实例（供筛选 reload）
   var statusSelEl = null;     // 状态下拉（供磁贴联动同步）
   var trendBody = null;       // 趋势卡片 body
 
   window.GOV_RENDERERS.quality = function (c) {
+    // R21 深链: 读取上下文(读完即用, 本次渲染据此聚焦/预填/过滤)
+    var ctx = window.__govCtx || {};
+    ctxTableFilter = (ctx.table && ctx.table.db && ctx.table.table)
+      ? { db: ctx.table.db, table: ctx.table.table } : null;
     // 顶部：质量分 gauge + 趋势 bars 两张卡片
     var grid = DN.h('div', { class: 'gov-grid' });
     var scoreCard = DN.card({ title: '整体质量分', icon: 'check' });
@@ -55,7 +60,8 @@
 
     loadScore(scoreCard.body);
     loadOverview(ovCard.body);
-    loadRules(rulesBody);
+    // R21 深链: 携带预填上下文, 规则加载完后自动弹"新建质量规则"并预填
+    loadRules(rulesBody, ctx.prefillRule);
   };
 
   function loadScore(box) {
@@ -296,10 +302,19 @@
     resultBox.appendChild(tbl);
   }
 
-  function loadRules(box) {
+  function loadRules(box, prefillRule) {
     DN.get('/api/quality/rules').then(function (rules) {
       allRules = rules || [];
       box.innerHTML = '';
+      // R21 深链: 按库表过滤时, 顶部提示 + 可清除
+      if (ctxTableFilter) {
+        var hint = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;color:var(--primary,#1890ff)' }, [
+          DN.h('span', { text: '按 ' + ctxTableFilter.db + '.' + ctxTableFilter.table + ' 过滤' }),
+          DN.h('a', { href: 'javascript:void(0)', style: 'margin-left:10px', text: '清除过滤',
+            onclick: function () { ctxTableFilter = null; hint.remove(); if (tableEl) tableEl.reload(filtered()); DN.toast('已清除库表过滤', 'info'); } })
+        ]);
+        box.appendChild(hint);
+      }
       // 统计卡: 总数/启用/强阻断/已调度
       var enabled = allRules.filter(function (r) { return r.status === 1; }).length;
       var blocked = allRules.filter(function (r) { return r.blockDownstream === 1; }).length;
@@ -313,6 +328,8 @@
       var cov = buildCoverageMatrix(); if (cov) box.appendChild(cov);
       box.appendChild(buildFailFocus());
       box.appendChild(buildToolbarAndTable());
+      // R21 深链: 携带 prefillRule 上下文时, 自动弹"新建质量规则"并预填库/表/列/维度/阈值
+      if (prefillRule) openPrefillRuleDrawer(prefillRule, box);
     }).catch(function (e) {
       box.innerHTML = '';
       box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRules(box); }));
@@ -321,6 +338,10 @@
 
   function filtered() {
     return allRules.filter(function (r) {
+      if (ctxTableFilter) { // R21 深链: 按跨模块跳来的库表过滤
+        if ((r.databaseName || r.dbName || '') !== ctxTableFilter.db) return false;
+        if ((r.tableName || '') !== ctxTableFilter.table) return false;
+      }
       if (filterStatus !== '' && String(r.status == null ? 1 : r.status) !== filterStatus) return false;
       if (filterDim && (r.dimension || '') !== filterDim) return false;
       if (filterType && (r.ruleType || '') !== filterType) return false;
@@ -330,6 +351,81 @@
     });
   }
   function uniq(arr) { var s = {}, o = []; arr.forEach(function (x) { if (x && !s[x]) { s[x] = 1; o.push(x); } }); return o; }
+
+  // R21 深链: 接收 ctx.prefillRule({db,table,column,dimension,threshold}) 自动弹"新建质量规则"并预填
+  // 后端 /api/quality/rule/save 接收 DnQualityRule(库/表/列/维度/阈值/类型/数据源/严重级), 与工作台同源
+  function openPrefillRuleDrawer(pf, rulesBox) {
+    pf = pf || {};
+    function formRow(label, input) {
+      var row = DN.h('div', { class: 'ds-form-row', style: 'margin-bottom:10px' });
+      row.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:4px', text: label }));
+      row.appendChild(input);
+      return row;
+    }
+    var nameIn = DN.h('input', { class: 'iw-form-input', placeholder: '如：订单表主键非空检查',
+      value: pf.db && pf.table ? ((pf.column ? pf.column + ' ' : '') + (pf.dimension || '') + '检查').trim() : '' });
+    var typeSel = DN.h('select', { class: 'iw-form-select' });
+    [['null_check', '空值检查'], ['unique_check', '唯一性检查'], ['value_range', '值域检查'], ['regex_check', '正则检查'], ['custom_sql', '自定义SQL']]
+      .forEach(function (o) { typeSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    var dsSel = DN.h('select', { class: 'iw-form-select' });
+    dsSel.appendChild(DN.h('option', { value: '0', text: 'Doris 数仓' }));
+    var dbIn = DN.h('input', { class: 'iw-form-input', value: pf.db || '', placeholder: '数据库名' });
+    var tblIn = DN.h('input', { class: 'iw-form-input', value: pf.table || '', placeholder: '表名' });
+    var colIn = DN.h('input', { class: 'iw-form-input', value: pf.column || '', placeholder: '字段名(可空)' });
+    var dimIn = DN.h('input', { class: 'iw-form-input', value: pf.dimension || '', placeholder: '如：完整性/唯一性/准确性' });
+    var thrIn = DN.h('input', { class: 'iw-form-input', type: 'number', value: pf.threshold != null ? pf.threshold : 100, placeholder: '通过率阈值 0-100' });
+    var sevSel = DN.h('select', { class: 'iw-form-select' });
+    [['info', '信息'], ['warning', '警告'], ['error', '错误']].forEach(function (o) { sevSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    sevSel.value = 'warning';
+
+    var body = DN.h('div');
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px',
+      text: '已自动预填来自来源模块的库/表/列/维度/阈值, 选择数据源后即可创建' }));
+    body.appendChild(formRow('规则名称', nameIn));
+    body.appendChild(formRow('规则类型', typeSel));
+    body.appendChild(formRow('数据源', dsSel));
+    body.appendChild(formRow('数据库', dbIn));
+    body.appendChild(formRow('表名', tblIn));
+    body.appendChild(formRow('字段', colIn));
+    body.appendChild(formRow('质量维度', dimIn));
+    body.appendChild(formRow('通过率阈值(%)', thrIn));
+    body.appendChild(formRow('严重级别', sevSel));
+    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '创建规则', style: 'margin-top:10px' });
+    body.appendChild(okBtn);
+
+    var dr = DN.drawer('新建质量规则', body);
+    // 拉取数据源列表填充下拉(失败则仅保留 Doris 数仓选项, 不阻断)
+    DN.get('/api/datasource/list').then(function (list) {
+      (list || []).forEach(function (d) { dsSel.appendChild(DN.h('option', { value: String(d.id), text: (d.name || ('数据源#' + d.id)) + (d.type ? ' (' + d.type + ')' : '') })); });
+    }).catch(function () {});
+
+    okBtn.onclick = function () {
+      var name = (nameIn.value || '').trim();
+      if (!name) { DN.toast('请填写规则名称', 'warn'); return; }
+      if (!(dbIn.value || '').trim() || !(tblIn.value || '').trim()) { DN.toast('请填写数据库与表名', 'warn'); return; }
+      var thrVal = thrIn.value === '' ? null : Number(thrIn.value);
+      var payload = {
+        ruleName: name,
+        ruleType: typeSel.value,
+        datasourceId: dsSel.value === '0' ? 0 : parseInt(dsSel.value, 10),
+        databaseName: (dbIn.value || '').trim(),
+        tableName: (tblIn.value || '').trim(),
+        columnName: (colIn.value || '').trim() || null,
+        dimension: (dimIn.value || '').trim() || null,
+        passThreshold: thrVal,
+        severity: sevSel.value
+      };
+      okBtn.style.pointerEvents = 'none'; okBtn.textContent = '创建中…';
+      DN.post('/api/quality/rule/save', payload).then(function () {
+        DN.toast('质量规则已创建', 'ok');
+        if (dr && dr.close) dr.close();
+        loadRules(rulesBox);   // 刷新规则列表(新规则即时可见)
+      }).catch(function (e) {
+        DN.toast('创建失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
+        okBtn.style.pointerEvents = ''; okBtn.textContent = '创建规则';
+      });
+    };
+  }
 
   function buildToolbarAndTable() {
     // 状态筛选下拉（放进 DN.table 工具条）
@@ -374,6 +470,12 @@
         { key: 'scheduleCron', label: '调度', render: function (r) { return r.scheduleCron || '-'; } },
         { key: 'status', label: '状态', render: function (r) {
             return r.status === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
+          } },
+        { key: '_op', label: '操作', render: function (r) {
+            // R21 深链下钻: 跳健康/工单, 按该规则 id 过滤其触发的治理工单(质量↔工单联动)
+            return DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
+              style: 'color:var(--primary,#1890ff)', title: '查看该规则触发生成的治理工单',
+              onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'health', issueFilter: { ruleId: r.id } }); } });
           } }
       ],
       rows: filtered(),

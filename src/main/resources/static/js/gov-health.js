@@ -23,8 +23,15 @@
   var issueTable = null; // DN.table 句柄，便于 reload
   var selectedIssues = {}; // 批量流转选中：id -> 当前状态
   var boardOwnerFilter = ''; // 排行榜点击联动：按负责人客户端过滤工单
+  var issueObjectFilter = null; // R21 深链：按关联对象过滤工单 {kind,ref,label}
 
   window.GOV_RENDERERS.health = function (c) {
+    // R21 跨模块深链上下文（读完即用，不清空）
+    var ctx = window.__govCtx || {};
+    // 接收 ctx.issueFilter：按关联对象(质量规则/关系表/指标)过滤工单
+    issueObjectFilter = parseIssueFilter(ctx.issueFilter);
+    boardOwnerFilter = '';
+
     // ---- 健康分 ----
     var hc = DN.card({
       title: '治理健康分', icon: 'shield',
@@ -74,7 +81,41 @@
     loadIssues();
     loadBoard();
     loadMaturity();
+
+    // R21：携带 dim/date 进入时，渲染后滚动定位到对应维度/趋势卡片
+    if (ctx.dim || ctx.date) {
+      setTimeout(function () { focusDimOrDate(c, ctx.dim, ctx.date); }, 360);
+    }
   };
+
+  // 解析深链工单过滤上下文 → 归一为 {kind,ref,label}（kind: qrule/metric/relTable）
+  function parseIssueFilter(f) {
+    if (!f) return null;
+    if (f.ruleId != null) return { kind: 'qrule', ref: 'qrule:' + f.ruleId, label: '质量规则 #' + f.ruleId };
+    if (f.relMetric != null) return { kind: 'metric', ref: 'metric:' + f.relMetric, label: '指标 ' + f.relMetric };
+    if (f.relTable) return { kind: 'relTable', ref: null, kw: String(f.relTable), label: '关系表 ' + f.relTable };
+    return null;
+  }
+
+  // 渲染后按维度名/日期滚动定位（维度命中明细卡片，日期命中趋势卡片）
+  function focusDimOrDate(c, dim, date) {
+    var target = null;
+    if (dim) {
+      var top = document.getElementById('hsTop');
+      if (top) target = top.closest('.card') || top;
+    } else if (date) {
+      var tr = document.getElementById('hsTrend');
+      if (tr) target = tr.closest('.card') || tr;
+    }
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 临时描边高亮，便于用户视觉锁定（结束后还原）
+    var prev = target.style.boxShadow;
+    target.style.transition = 'box-shadow .3s';
+    target.style.boxShadow = '0 0 0 2px var(--primary,#1890ff)';
+    setTimeout(function () { target.style.boxShadow = prev || ''; }, 1600);
+    DN.toast(dim ? ('已定位维度「' + dim + '」') : ('已定位日期 ' + date), 'info');
+  }
 
   // ========== 健康分 ==========
 
@@ -106,7 +147,10 @@
     if (weak.length) {
       var bt = DN.h('div', { style: 'flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
       bt.appendChild(DN.h('span', { style: 'font-size:12px;color:var(--text-muted)', text: '⚠ 拉低健康分的薄弱维度：' }));
-      weak.forEach(function (x) { bt.appendChild(DN.pill(x.dim + ' ' + (Math.round(x.v * 10) / 10), scoreTone(x.v))); });
+      weak.forEach(function (x) {
+        bt.appendChild(DN.pill(x.dim + ' ' + (Math.round(x.v * 10) / 10), scoreTone(x.v)));
+        if (DIM_MODULE[x.dim]) bt.appendChild(DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '去改进', onclick: (function (d) { return function () { gotoImprove(d); }; })(x.dim) }));
+      });
       row.appendChild(bt);
     }
     // 五维明细表
@@ -144,6 +188,16 @@
     '生命周期': '建立归档/冷热分层与留存策略',
     '血缘': '补全采集链路，提升血缘完整度'
   };
+  // R21：维度 → 对应治理子模块 key，供「去改进」深链跳转
+  var DIM_MODULE = {
+    '规范': 'standard', '质量': 'quality', '安全': 'security',
+    '生命周期': 'lifecycle', '血缘': 'lineage'
+  };
+  // 跳到维度对应的治理子模块去改进
+  function gotoImprove(dim) {
+    var key = DIM_MODULE[dim];
+    if (key && window.govGoModule) govGoModule(key, {});
+  }
 
   /** 短板维度改进优先级：得分越低优先级越高，DN.bars 升序低分 warn/err 色 */
   function buildWeakPriority(dims) {
@@ -159,7 +213,7 @@
     }
     arr.sort(function (a, b) { return a.v - b.v; }); // 分越低越靠前 = 优先级越高
     card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px',
-      text: '按维度健康分升序排定改进优先级，得分越低越应优先治理。' }));
+      text: '按维度健康分升序排定改进优先级，得分越低越应优先治理。点击条形跳转对应模块去改进。' }));
     card.body.appendChild(DN.bars(arr.map(function (x, i) {
       var tone = scoreTone(x.v); // <60 err / <85 warn / 否则 ok
       var tip = DIM_TIPS[x.dim] || '针对性补齐该维度治理短板';
@@ -167,7 +221,8 @@
         label: 'P' + (i + 1) + ' · ' + x.dim,
         value: x.v,
         tone: tone,
-        display: (Math.round(x.v * 10) / 10) + ' 分 · ' + tip
+        display: (Math.round(x.v * 10) / 10) + ' 分 · ' + tip,
+        onClick: DIM_MODULE[x.dim] ? (function (d) { return function () { gotoImprove(d); }; })(x.dim) : null
       };
     })));
     return card.el;
@@ -243,8 +298,24 @@
     var box = document.getElementById('hsIssues');
     if (!box) return;
     selectedIssues = {};
-    if (boardOwnerFilter) rows = (rows || []).filter(function (it) { return (it.owner || '未分配') === boardOwnerFilter; });
+    rows = rows || [];
+    // R21 深链：按关联对象过滤（qrule/metric 比对 objectRef，relTable 关键词命中标题/描述）
+    if (issueObjectFilter) {
+      var f = issueObjectFilter;
+      rows = rows.filter(function (it) {
+        if (f.ref) return it.objectRef === f.ref;
+        if (f.kw) { var s = (it.title || '') + ' ' + (it.description || '') + ' ' + (it.objectRef || ''); return s.indexOf(f.kw) >= 0; }
+        return true;
+      });
+    }
+    if (boardOwnerFilter) rows = rows.filter(function (it) { return (it.owner || '未分配') === boardOwnerFilter; });
     box.innerHTML = '';
+    if (issueObjectFilter) {
+      box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;display:flex;align-items:center;gap:8px' }, [
+        DN.h('span', { text: '已按关联对象「' + issueObjectFilter.label + '」过滤工单' }),
+        DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '清除', onclick: function () { issueObjectFilter = null; loadIssues(); } })
+      ]));
+    }
     if (boardOwnerFilter) {
       box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;display:flex;align-items:center;gap:8px' }, [
         DN.h('span', { text: '已按负责人「' + boardOwnerFilter + '」筛选' }),
@@ -286,9 +357,23 @@
         onclick: function () { transition(it.id, ns); }
       }));
     });
+    // R21：按 objectRef 前缀下钻到关联对象所在模块
+    if (it.objectRef && (/^qrule:/.test(it.objectRef) || /^metric:/.test(it.objectRef))) {
+      wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看对象', onclick: function () { gotoIssueObject(it.objectRef); } }));
+    }
     wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', onclick: function () { assignIssue(it.id); } }));
     wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)', onclick: function () { delIssue(it.id); } }));
     return wrap;
+  }
+
+  // 工单关联对象下钻：qrule:{ruleId}→治理质量(聚焦规则)；metric:{id}→数据消费(聚焦指标)
+  function gotoIssueObject(ref) {
+    var m;
+    if ((m = /^qrule:(\d+)/.exec(ref))) {
+      if (window.govGoModule) govGoModule('quality', { ruleId: Number(m[1]) });
+    } else if ((m = /^metric:(\d+)/.exec(ref))) {
+      if (window.navigateTo) navigateTo('governance', { gov: 'consumption', focusMetric: Number(m[1]) });
+    }
   }
 
   function transition(id, to) {

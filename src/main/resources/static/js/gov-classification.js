@@ -58,6 +58,14 @@
     loadLevels();
     loadRules();
     loadHeatmap();
+
+    // R21 深链：接收 ctx.table({db,table}) 时，自动定位到「对表采样识别」并识别该表的列密级
+    var ctx = window.__govCtx || {};
+    var t = ctx.table || (ctx.db && (ctx.tableName || ctx.table) ? { db: ctx.db, table: ctx.tableName || ctx.table } : null);
+    if (t && t.db && t.table) {
+      // 等待 picker 库清单异步就绪后再回填识别
+      setTimeout(function () { focusScanOnTable(t.db, t.table); }, 0);
+    }
   };
 
   var _clHeatRows = [], _clHeatView = 'heat';
@@ -283,7 +291,13 @@
             { key: 'sensitiveType', label: '敏感类型', exportValue: function (r) { return r.sensitiveType; } },
             { label: '置信度', exportValue: function (r) { return (r.confidence || 0) + '%'; }, render: function (r) { return DN.pill((r.confidence || 0) + '%', confTone(r.confidence)); } },
             { label: '当前密级', exportValue: function (r) { return r.currentLevel || ''; }, render: function (r) { return r.currentLevel || '-'; } },
-            { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r._levelSel; } }
+            { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r._levelSel; } },
+            { label: '操作', render: function (r) {
+              return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
+                title: '回到数据地图查看 ' + db + '.' + table + ' 的字段与血缘',
+                style: 'color:var(--primary,#1890ff);text-decoration:none',
+                onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: table } }); } });
+            } }
           ],
           rows: rows,
           empty: '未识别到敏感列', emptyIcon: 'check'
@@ -428,7 +442,13 @@
         { key: 'sensitiveType', label: '敏感类型', sortable: true, exportValue: function (r) { return r.sensitiveType; } },
         { key: 'confidence', label: '置信度', align: 'center', sortable: true, exportValue: function (r) { return r.confidence + '%'; }, render: function (r) { return DN.pill(r.confidence + '%', confTone(r.confidence)); } },
         { label: '当前密级', exportValue: function (r) { return r.currentLevel || ''; }, render: function (r) { return r.currentLevel || '-'; } },
-        { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r.suggestLevel ? DN.pill(r.suggestLevel, 'info') : '-'; } }
+        { label: '建议密级', exportValue: function (r) { return r.suggestLevel || ''; }, render: function (r) { return r.suggestLevel ? DN.pill(r.suggestLevel, 'info') : '-'; } },
+        { label: '操作', render: function (r) {
+          return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
+            title: '回到数据地图查看 ' + (r.db || '') + '.' + (r.table || '') + ' 的字段与血缘',
+            style: 'color:var(--primary,#1890ff);text-decoration:none',
+            onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: r.db, table: r.table } }); } });
+        } }
       ],
       rows: rows,
       searchKeys: ['db', 'table', 'column', 'sensitiveType'],

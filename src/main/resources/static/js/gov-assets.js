@@ -4,6 +4,10 @@
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   window.GOV_RENDERERS.assets = function (c) {
+    // R21 跨模块深链上下文: 接收 ctx.table({db,table}) 自动打开资产详情; ctx.subjectId 按主题域过滤
+    var ctx = window.__govCtx || {};
+    assetState.subjectId = (ctx.subjectId != null ? ctx.subjectId : '');
+
     // 顶部统计区
     var statBox = DN.h('div', { id: 'assetStats' });
     statBox.appendChild(DN.skeleton(2));
@@ -50,11 +54,17 @@
     renderLifecycle(c);
     renderUnused(c);
     renderCost(c);
+
+    // 深链聚焦: 若带 ctx.table 则直接打开该表资产详情抽屉
+    var tb = ctx.table;
+    if (tb && (tb.db || tb.table)) {
+      setTimeout(function () { openAssetDetail(tb.db || '', tb.table || ''); }, 0);
+    }
   };
 
   // ===== 资产清单：统计 + 现代表格 =====
   var assetAll = [];
-  var assetState = { src: '', quick: '', view: (function () { try { return localStorage.getItem('gov.assetView') || 'table'; } catch (e) { return 'table'; } })() };
+  var assetState = { src: '', quick: '', subjectId: '', view: (function () { try { return localStorage.getItem('gov.assetView') || 'table'; } catch (e) { return 'table'; } })() };
   var assetTbl = null;
   var assetToolbar = null;
   var quickSelEl = null;      // 快捷视图下拉（供统计磁贴联动同步）
@@ -216,6 +226,11 @@
     var rows = assetAll.filter(function (t) {
       if (assetState.src && (t.dbType || '') !== assetState.src) return false;
       if (assetState.quick === 'nodesc' && t.tableComment) return false;
+      // 深链主题域过滤(仅当资产数据带主题域字段时生效, 否则忽略)
+      if (assetState.subjectId !== '' && assetState.subjectId != null) {
+        var sid = t.subjectId != null ? t.subjectId : t.subjectArea;
+        if (sid != null && String(sid) !== String(assetState.subjectId)) return false;
+      }
       return true;
     });
     if (assetState.view === 'tree') { renderAssetTree(rows); return; }
@@ -499,12 +514,16 @@
 
   // ===== 生命周期策略（DN.card + DN.table） =====
   var policyTbl = null;
+  var _lifecycleCard = null;     // 生命周期卡片根元素(供成本排行下钻滚动定位)
+  var _lifecyclePicker = null;   // 生命周期库/表选择器(供下钻预填)
   function renderLifecycle(c) {
     var card = DN.card({ title: '生命周期策略（应用后自动下发 Doris DDL，失败降级 PENDING）', icon: 'clock' });
     c.appendChild(card.el);
+    _lifecycleCard = card.el;
     var bd = card.body;
 
     var picker = DN.dbTablePicker({});
+    _lifecyclePicker = picker;
     bd.appendChild(picker.el);
     var form = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;' });
     var type = DN.h('select', { class: 'iw-form-select', style: 'width:140px;' });
@@ -525,6 +544,30 @@
     bd.appendChild(form);
     bd.appendChild(DN.h('div', { id: 'policyList' }, [DN.skeleton(2)]));
     loadPolicies();
+  }
+
+  // 成本排行下钻: 滚动到生命周期策略卡片并预填库/表(选择器为异步加载, 库选完触发 onchange 拉表后再设表)
+  function gotoLifecycle(db, table) {
+    if (_lifecycleCard) {
+      try { _lifecycleCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { _lifecycleCard.scrollIntoView(); }
+    }
+    if (!_lifecyclePicker || !db) { DN.toast('已定位生命周期策略', 'info'); return; }
+    var sels = _lifecyclePicker.el.querySelectorAll('select');
+    var dbSel = sels[0], tbSel = sels[1];
+    if (!dbSel) return;
+    dbSel.value = db;
+    if (dbSel.value !== db) { DN.toast('请在生命周期手动选择 ' + db, 'info'); return; }
+    if (dbSel.onchange) dbSel.onchange();
+    if (table && tbSel) {
+      // 表选项随 onchange 异步加载, 轮询设置
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries++;
+        tbSel.value = table;
+        if (tbSel.value === table || tries > 20) { clearInterval(timer); }
+      }, 150);
+    }
+    DN.toast('已预填生命周期: ' + db + (table ? '.' + table : ''), 'info');
   }
 
   function policyStatusTone(s) {
@@ -695,7 +738,14 @@
           { key: '_t', label: '库.表', render: function (s) { return (s.db || '') + '.' + (s.table || ''); } },
           { key: 'sizeBytes', label: '体量', align: 'right', render: function (s) { return DN.fmtBytes(s.sizeBytes); } },
           { key: 'rowCount', label: '行数', align: 'right', render: function (s) { return s.rowCount == null ? '-' : fmtInt(s.rowCount); } },
-          { key: 'costEstimate', label: '月成本(元)', align: 'right', render: function (s) { return s.costEstimate == null ? '-' : s.costEstimate; } }
+          { key: 'costEstimate', label: '月成本(元)', align: 'right', render: function (s) { return s.costEstimate == null ? '-' : s.costEstimate; } },
+          { key: '_op', label: '操作', exportValue: function () { return ''; }, render: function (s) {
+              var detail = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '详情', title: '查看该表字段/画像/血缘',
+                onclick: function () { openAssetDetail(s.db || '', s.table || ''); } });
+              var policy = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '建生命周期策略', style: 'margin-left:6px;', title: '为该表配置 TTL/降冷/归档以降本',
+                onclick: function () { gotoLifecycle(s.db || '', s.table || ''); } });
+              return DN.h('span', {}, [detail, policy]);
+            } }
         ],
         rows: rows, pageSize: 15, searchKeys: ['db', 'table'], searchPlaceholder: '搜索库 / 表', empty: '暂无成本数据（先采集资产快照）'
       });

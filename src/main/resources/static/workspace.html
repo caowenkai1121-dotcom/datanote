@@ -13,17 +13,17 @@
 <link rel="stylesheet" href="css/redesign.css?v=q100r88">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
 <script src="js/dn-common.js?v=q100r80"></script>
-<script src="js/gov-assets.js?v=q100r80"></script>
-<script src="js/gov-lineage.js?v=q100r80"></script>
-<script src="js/gov-quality.js?v=q100r80"></script>
+<script src="js/gov-assets.js?v=q100r89"></script>
+<script src="js/gov-lineage.js?v=q100r89"></script>
+<script src="js/gov-quality.js?v=q100r89"></script>
 <script src="js/gov-standard.js?v=q100r80"></script>
-<script src="js/gov-classification.js?v=q100r80"></script>
+<script src="js/gov-classification.js?v=q100r89"></script>
 <script src="js/gov-security.js?v=q100r80"></script>
-<script src="js/gov-health.js?v=q100r80"></script>
+<script src="js/gov-health.js?v=q100r89"></script>
 <script src="js/gov-audit.js?v=q100r80"></script>
 <script src="js/gov-overview.js?v=q100r80"></script>
 <script src="js/gov-subject.js?v=q100r80"></script>
-<script src="js/gov-consumption.js?v=q100r85"></script>
+<script src="js/gov-consumption.js?v=q100r89"></script>
 <script src="js/home-dashboard.js?v=q100r86"></script>
 <script src="js/mdm.js?v=q100r80"></script>
 <script src="js/mdm-survivorship.js?v=q100r80"></script>
@@ -677,6 +677,11 @@
               <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">收藏</button>
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
               <button class="btn btn-sm" onclick="dmGenSelect()">生成查询语句</button>
+              <span style="width:1px;height:18px;background:var(--border);margin:0 2px;display:inline-block;vertical-align:middle;"></span>
+              <button class="btn btn-sm" onclick="dmGotoGov('lineage')" title="查看此表血缘图谱">血缘</button>
+              <button class="btn btn-sm" onclick="dmGotoGov('quality')" title="查看/新建此表质量规则">质量</button>
+              <button class="btn btn-sm" onclick="dmGotoGov('classification')" title="查看此表敏感分级">敏感</button>
+              <button class="btn btn-sm" onclick="dmGotoGov('assets')" title="在治理资产目录中查看">治理资产</button>
             </div>
           </div>
           <div class="datamap-detail-tabs" id="dmDetailTabs">
@@ -6677,7 +6682,8 @@ function initGovCenter() {
   });
   if (sb.firstChild) switchGovModule(sb.firstChild, GOV_MODS[0].key);
 }
-function switchGovModule(el, key) {
+function switchGovModule(el, key, ctx) {
+  window.__govCtx = ctx || null;   // R21 跨模块联动上下文, 渲染器读 window.__govCtx
   var sb = document.getElementById('govSidebar');
   if (sb) sb.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
@@ -6697,12 +6703,12 @@ function switchGovModule(el, key) {
     var p = document.createElement('div'); p.className = 'gov-placeholder'; p.textContent = '该模块建设中'; c.appendChild(p);
   }
 }
-// 供总览磁贴等按 key 跳转到对应治理子模块(并高亮侧栏项)
-window.govGoModule = function(key) {
+// 供总览磁贴等按 key 跳转到对应治理子模块(并高亮侧栏项), 可带联动上下文 ctx
+window.govGoModule = function(key, ctx) {
   var sb = document.getElementById('govSidebar'); if (!sb) return;
   var idx = -1; for (var i = 0; i < GOV_MODS.length; i++) { if (GOV_MODS[i].key === key) { idx = i; break; } }
   var items = sb.querySelectorAll('.ops-sidebar-item');
-  if (idx >= 0 && items[idx]) switchGovModule(items[idx], key); else switchGovModule(null, key);
+  if (idx >= 0 && items[idx]) switchGovModule(items[idx], key, ctx); else switchGovModule(null, key, ctx);
 };
 
 // ===== 主数据管理(MDM) 中心：侧栏 + 渲染器调度（复用治理同款范式与样式） =====
@@ -6732,7 +6738,8 @@ function initMdmCenter() {
   });
   if (sb.firstChild) switchMdmModule(sb.firstChild, MDM_MODS[0].key);
 }
-function switchMdmModule(el, key) {
+function switchMdmModule(el, key, ctx) {
+  window.__mdmCtx = ctx || null;   // R21 MDM 联动上下文
   var sb = document.getElementById('mdmSidebar');
   if (sb) sb.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
@@ -6751,11 +6758,11 @@ function switchMdmModule(el, key) {
     var p = document.createElement('div'); p.className = 'gov-placeholder'; p.textContent = '该模块建设中'; c.appendChild(p);
   }
 }
-window.mdmGoModule = function(key) {
+window.mdmGoModule = function(key, ctx) {
   var sb = document.getElementById('mdmSidebar'); if (!sb) return;
   var idx = -1; for (var i = 0; i < MDM_MODS.length; i++) { if (MDM_MODS[i].key === key) { idx = i; break; } }
   var items = sb.querySelectorAll('.ops-sidebar-item');
-  if (idx >= 0 && items[idx]) switchMdmModule(items[idx], key); else switchMdmModule(null, key);
+  if (idx >= 0 && items[idx]) switchMdmModule(items[idx], key, ctx); else switchMdmModule(null, key, ctx);
 };
 
 var ROUTES = {
@@ -6770,11 +6777,15 @@ var ROUTES = {
       loadOpsOverview();
     }
   },
-  'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData(); } },
-  'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter(); } },
-  'mdm':         { view: 'viewMdm',                  layout: 'page',   init: function() { initMdmCenter(); } },
+  'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData();
+      var x = window.__navCtx; if (x && x.openTable && x.openTable.db && x.openTable.table) { try { dmOpenTable(x.openTable.db, x.openTable.table); } catch(e){} } } },
+  'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter();
+      var x = window.__navCtx; if (x && x.gov) { try { govGoModule(x.gov, x); } catch(e){} } } },
+  'mdm':         { view: 'viewMdm',                  layout: 'page',   init: function() { initMdmCenter();
+      var x = window.__navCtx; if (x && x.mdm) { try { mdmGoModule(x.mdm, x); } catch(e){} } } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
-  'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories(); } },
+  'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories();
+      window.__metricsCtx = window.__navCtx || null; } },
   'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: function(){ if(window.loadUserMgmt) loadUserMgmt(); } },
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
@@ -6782,7 +6793,8 @@ var ROUTES = {
 
 var currentRoute = null;
 
-function navigateTo(route) {
+function navigateTo(route, ctx) {
+  window.__navCtx = ctx || null;   // R21 跨模块深链上下文, 各 view init 读取后置空
   var cfg = ROUTES[route];
   if (!cfg) { route = 'home'; cfg = ROUTES['home']; }
 
@@ -7164,15 +7176,17 @@ function dmLoadImpact() {
       }
       var html = '<div style="padding:12px 16px;font-size:12px;color:var(--text-muted);">共 ' + list.length + ' 个指标消费此表，改表前请评估下游影响</div>';
       html += '<table class="result-table" style="width:100%;">';
-      html += '<thead><tr><th>指标</th><th>编码</th><th>关联类型</th><th>最新值</th><th>取值时间</th></tr></thead><tbody>';
+      html += '<thead><tr><th>指标</th><th>编码</th><th>关联类型</th><th>最新值</th><th>取值时间</th><th>操作</th></tr></thead><tbody>';
       for (var i = 0; i < list.length; i++) {
         var m = list[i];
+        var code = m.metricCode || '';
         html += '<tr>';
         html += '<td style="font-weight:500;">' + escapeHtml(m.metricName || m.metricCode || '-') + '</td>';
         html += '<td>' + escapeHtml(m.metricCode || '-') + '</td>';
         html += '<td>' + escapeHtml(m.refType || 'SOURCE') + '</td>';
         html += '<td>' + (m.lastValue == null ? '-' : escapeHtml(String(m.lastValue))) + '</td>';
         html += '<td>' + escapeHtml(m.lastValueAt || '-') + '</td>';
+        html += '<td><a href="javascript:void(0)" onclick="dmGotoMetric(\'' + escapeHtml(code) + '\')" style="color:var(--primary,#1890ff)">查看指标</a></td>';
         html += '</tr>';
       }
       html += '</tbody></table>';
@@ -7497,6 +7511,16 @@ function dmGenDDL() {
 }
 function dmGenSelect() {
   dmSwitchTab(document.querySelectorAll('.datamap-detail-tab')[3], 'ddl');
+}
+// R21 联动: 数据地图表详情 → 治理子模块(血缘/质量/敏感/资产), 携带当前库表上下文
+function dmGotoGov(govKey) {
+  if (!dmCurrentDb || !dmCurrentTable) return;
+  navigateTo('governance', { gov: govKey, table: { db: dmCurrentDb, table: dmCurrentTable }, db: dmCurrentDb, tableName: dmCurrentTable });
+}
+// R21 联动: 资产影响面指标 → 消费驾驶舱聚焦该指标
+function dmGotoMetric(code) {
+  if (!code) return;
+  navigateTo('governance', { gov: 'consumption', focusMetric: code });
 }
 
 /* --- Tab: 评论 --- */

@@ -4,23 +4,32 @@
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
+  // R21 跨模块深链上下文：读取本次渲染的 ctx（focusMetric 高亮定位 / newDataset 预填）
+  var ctx = window.__govCtx || {};
+  ensureFlashStyle();
+
   window.GOV_RENDERERS.consumption = function (c) {
+    // 每次进入重新取 ctx（switchGovModule 会在调用渲染器前设好 window.__govCtx）
+    ctx = window.__govCtx || {};
     var ov = DN.h('div', { id: 'consOverview' }); c.appendChild(ov);
     var calcAll = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '一键计算全部指标' });
     var boardCard = DN.card({ title: '指标驾驶舱（最新值 / 新鲜度）', icon: 'chart', actions: [calcAll] });
+    boardCard.el.id = 'consBoardCard';
     boardCard.body.appendChild(DN.h('div', { id: 'consBoard' }, DN.skeleton(4)));
     c.appendChild(boardCard.el);
     var heatCard = DN.card({ title: '消费热度 Top（近30天调用）', icon: 'bars' });
+    heatCard.el.id = 'consHeatCard';
     heatCard.body.appendChild(DN.h('div', { id: 'consHeat' }, DN.skeleton(2)));
     c.appendChild(heatCard.el);
     var rankCard = DN.card({ title: '指标消费排行（按消费日志计数 Top20）', icon: 'bars' });
     rankCard.body.appendChild(DN.h('div', { id: 'consRank' }, DN.skeleton(2)));
     c.appendChild(rankCard.el);
     var zCard = DN.card({ title: '僵尸指标（启用但从未被消费取值）', icon: 'shield' });
+    zCard.el.id = 'consZombieCard';
     zCard.body.appendChild(DN.h('div', { id: 'consZombie' }, DN.skeleton(2)));
     c.appendChild(zCard.el);
 
-    var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', onclick: addDataset });
+    var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', onclick: function () { addDataset(); } });
     var dsCard = DN.card({ title: '数据集 / 数据产品（受治理可复用查询）', icon: 'list', actions: [newDs] });
     dsCard.body.appendChild(DN.h('div', { id: 'consDataset' }, DN.skeleton(3)));
     c.appendChild(dsCard.el);
@@ -39,6 +48,13 @@
     };
 
     loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies(); loadDatasets();
+
+    // R21 深链：从其他模块带 newDataset 进来 → 自动开「新建数据集」抽屉并预填 SQL
+    if (ctx.newDataset) {
+      var nd = ctx.newDataset;
+      var sql = nd.sql || (nd.db && nd.table ? 'SELECT * FROM ' + nd.db + '.' + nd.table + ' LIMIT 100' : '');
+      setTimeout(function () { addDataset({ defaultDb: nd.db || '', querySql: sql }); }, 60);
+    }
   };
 
   function loadRanking() {
@@ -47,7 +63,9 @@
       if (!rows || !rows.length) { box.appendChild(DN.empty('暂无消费排行', 'bars')); return; }
       box.appendChild(DN.bars(rows.map(function (x) {
         var n = Number(x.cnt || x.CNT || 0);
-        return { label: x.metricName || x.target_code || x.targetCode || '-', value: n, tone: 'primary', display: String(n) };
+        var code = x.target_code || x.targetCode || x.metricCode || '';
+        return { label: x.metricName || code || '-', value: n, tone: 'primary', display: String(n),
+          onClick: function () { focusBoardRow(code); } };
       })));
     }).catch(function () {});
   }
@@ -105,11 +123,13 @@
     DN.drawer('数据集结果 · ' + (r.datasetName || r.datasetCode), body);
   }
 
-  function addDataset() {
+  function addDataset(prefill) {
+    prefill = prefill || {};
     var nameI = DN.h('input', { class: 'iw-form-input', placeholder: '数据集名称' });
     var codeI = DN.h('input', { class: 'iw-form-input', placeholder: '编码(唯一,如 daily_gmv)' });
-    var dbI = DN.h('input', { class: 'iw-form-input', placeholder: '默认库(如 ods,可空)' });
+    var dbI = DN.h('input', { class: 'iw-form-input', placeholder: '默认库(如 ods,可空)', value: prefill.defaultDb || '' });
     var sqlI = DN.h('textarea', { class: 'iw-form-input', rows: '4', placeholder: '精选 SELECT 查询' });
+    if (prefill.querySql) sqlI.value = prefill.querySql; // R21 深链预填 SQL
     var ownerI = DN.h('input', { class: 'iw-form-input', placeholder: '负责人(可空)' });
     drawerForm('新建数据集', [
       formRow('名称', nameI), formRow('编码', codeI), formRow('默认库', dbI), formRow('查询SQL', sqlI), formRow('负责人', ownerI)
@@ -141,11 +161,11 @@
     DN.get('/api/consumption/overview').then(function (o) {
       var box = document.getElementById('consOverview'); if (!box) return; box.innerHTML = '';
       box.appendChild(DN.statRow([
-        { icon: 'list', label: '启用指标', value: o.enabledMetrics || 0 },
-        { icon: 'check', label: '指标值快照', value: o.totalValues || 0, tone: 'ok' },
-        { icon: 'clock', label: '陈旧指标', value: o.staleMetrics || 0, tone: (o.staleMetrics ? 'warn' : 'ok') },
-        { icon: 'shield', label: '僵尸指标', value: o.zombieMetrics || 0, tone: (o.zombieMetrics ? 'err' : 'ok') },
-        { icon: 'chart', label: '近7天消费', value: o.consume7d || 0 }
+        { icon: 'list', label: '启用指标', value: o.enabledMetrics || 0, title: '查看指标驾驶舱', onClick: function () { scrollToCard('consBoardCard'); } },
+        { icon: 'check', label: '指标值快照', value: o.totalValues || 0, tone: 'ok', title: '查看指标驾驶舱', onClick: function () { scrollToCard('consBoardCard'); } },
+        { icon: 'clock', label: '陈旧指标', value: o.staleMetrics || 0, tone: (o.staleMetrics ? 'warn' : 'ok'), title: '定位新鲜度看板', onClick: function () { scrollToCard('consBoardCard'); } },
+        { icon: 'shield', label: '僵尸指标', value: o.zombieMetrics || 0, tone: (o.zombieMetrics ? 'err' : 'ok'), title: '定位僵尸指标卡', onClick: function () { scrollToCard('consZombieCard'); } },
+        { icon: 'chart', label: '近7天消费', value: o.consume7d || 0, title: '定位消费热度卡', onClick: function () { scrollToCard('consHeatCard'); } }
       ]));
     }).catch(function () {});
   }
@@ -158,7 +178,8 @@
         rows: rows, pageSize: 10, searchKeys: ['metricCode', 'metricName'], searchPlaceholder: '搜索指标',
         empty: '暂无指标', emptyIcon: 'chart',
         columns: [
-          { key: 'metricName', label: '指标', render: function (r) { return r.metricName || r.metricCode; } },
+          // 名称单元标记 data-mcode，供 R21 深链/条形图下钻高亮定位本行
+          { key: 'metricName', label: '指标', render: function (r) { return DN.h('span', { 'data-mcode': r.metricCode || '', text: r.metricName || r.metricCode }); } },
           { key: 'metricCode', label: '编码', render: function (r) { return r.metricCode || '-'; } },
           { key: 'lastValue', label: '最新值', align: 'right', render: function (r) { return r.lastValue == null ? '—' : String(r.lastValue); } },
           { key: 'lastValueAt', label: '取值时间', render: function (r) { return r.lastValueAt ? DN.timeAgo(r.lastValueAt) : '从未'; } },
@@ -166,6 +187,8 @@
           { key: '_op', label: '操作', render: function (r) { return opCell(r); } }
         ]
       }));
+      // R21 深链：携带 focusMetric 进入 → 高亮并滚动定位该指标行
+      if (ctx.focusMetric) { setTimeout(function () { focusBoardRow(ctx.focusMetric); }, 80); }
     }).catch(function (e) {
       var box = document.getElementById('consBoard'); if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('看板加载失败：' + (e && e.message || ''), loadBoard)); }
     });
@@ -280,7 +303,9 @@
       var box = document.getElementById('consHeat'); if (!box) return; box.innerHTML = '';
       if (!rows || !rows.length) { box.appendChild(DN.empty('暂无消费记录', 'bars')); return; }
       box.appendChild(DN.bars(rows.map(function (x) {
-        return { label: x.target_code || x.targetCode || '-', value: Number(x.cnt || x.CNT || 0), tone: 'info', display: String(x.cnt || x.CNT || 0) };
+        var code = x.target_code || x.targetCode || '';
+        return { label: code || '-', value: Number(x.cnt || x.CNT || 0), tone: 'info', display: String(x.cnt || x.CNT || 0),
+          onClick: function () { focusBoardRow(code); } };
       })));
     }).catch(function () {});
   }
@@ -295,9 +320,61 @@
           { key: 'metricName', label: '指标', render: function (r) { return r.metricName || r.metricCode; } },
           { key: 'metricCode', label: '编码' },
           { key: 'category', label: '分类', render: function (r) { return r.category || '-'; } },
-          { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } }
+          { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
+          { key: '_op', label: '操作', render: function (r) { return zombieOps(r); } }
         ]
       }));
     }).catch(function () {});
+  }
+
+  // 僵尸指标行操作：立即计算（激活取值）/ 编辑（深链至指标管理）
+  function zombieOps(r) {
+    var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
+    var calc = DN.h('a', { href: 'javascript:void(0)', text: '立即计算' });
+    calc.onclick = function () {
+      calc.textContent = '…';
+      DN.post('/api/consumption/metric/' + r.id + '/calc?operator=ui').then(function (v) {
+        DN.toast((r.metricName || r.metricCode) + ' = ' + (v && v.metricValue != null ? v.metricValue : '—'), v && v.runStatus === 'success' ? 'ok' : 'warn');
+        loadZombies(); loadBoard(); loadOverview();
+      }).catch(function (e) { calc.textContent = '立即计算'; DN.toast('计算失败：' + (e && e.message || ''), 'err'); });
+    };
+    wrap.appendChild(calc);
+    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)' });
+    edit.onclick = function () { if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id }); };
+    wrap.appendChild(edit);
+    return wrap;
+  }
+
+  // 滚动定位某张卡片（消费层概览统计卡下钻用）
+  function scrollToCard(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('cons-flash'); setTimeout(function () { el.classList.remove('cons-flash'); }, 1500);
+  }
+
+  // 高亮并滚动定位驾驶舱中指定指标编码所在行（深链 focusMetric / 条形图下钻共用）
+  function focusBoardRow(code) {
+    if (!code) return;
+    var board = document.getElementById('consBoard'); if (!board) return;
+    var marks = board.querySelectorAll('[data-mcode]');
+    for (var i = 0; i < marks.length; i++) {
+      if (marks[i].getAttribute('data-mcode') === code) {
+        var tr = marks[i].closest ? marks[i].closest('tr') : marks[i].parentNode;
+        var target = tr || marks[i];
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('cons-flash'); (function (t) { setTimeout(function () { t.classList.remove('cons-flash'); }, 1500); })(target);
+        return;
+      }
+    }
+    DN.toast('指标「' + code + '」可能在其他页（已在驾驶舱搜索框输入编码可定位）', 'info');
+  }
+
+  // 一次性注入深链高亮动画样式（不污染全局 css 文件，模块自包含）
+  function ensureFlashStyle() {
+    if (document.getElementById('consFlashStyle')) return;
+    var st = document.createElement('style'); st.id = 'consFlashStyle';
+    st.textContent = '@keyframes consFlash{0%{background:rgba(24,144,255,.22)}100%{background:transparent}}'
+      + '.cons-flash{animation:consFlash 1.5s ease-out;border-radius:6px}';
+    document.head.appendChild(st);
   }
 })();
