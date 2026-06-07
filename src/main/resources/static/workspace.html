@@ -6798,8 +6798,42 @@ var ROUTES = {
 };
 
 var currentRoute = null;
+window.__navStack = [];   // R28 深链返回栈
+
+// R28 返回上一来源(深链下钻后)
+window.navBack = function() {
+  var prev = window.__navStack.pop();
+  if (!prev) { navigateTo('home'); return; }
+  navigateTo(prev.route, prev.ctx || null);
+  setTimeout(navRenderBack, 50);
+};
+// R28 渲染浮动「返回来源」chip(栈非空时显示)
+function navRenderBack() {
+  var chip = document.getElementById('navBackChip');
+  if (!chip) {
+    chip = document.createElement('div'); chip.id = 'navBackChip';
+    chip.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:9000;display:none;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:var(--primary,#1890ff);color:#fff;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);';
+    chip.onclick = window.navBack;
+    document.body.appendChild(chip);
+  }
+  var st = window.__navStack;
+  if (st.length) {
+    var top = st[st.length - 1];
+    var label = (ROUTES[top.route] && NAV_LABEL[top.route]) || top.route;
+    chip.innerHTML = '← 返回' + label + (st.length > 1 ? '（' + st.length + '）' : '');
+    chip.style.display = 'inline-flex';
+  } else { chip.style.display = 'none'; }
+}
+var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', governance:'数据治理', mdm:'主数据', dbsync:'数据同步', metrics:'指标管理', project:'项目管理', settings:'系统管理' };
 
 function navigateTo(route, ctx) {
+  // R28: 深链跳转(带 ctx)时把当前来源压栈, 供「返回来源」
+  if (ctx && currentRoute && currentRoute !== route) {
+    window.__navStack.push({ route: currentRoute, ctx: null });
+    if (window.__navStack.length > 12) window.__navStack.shift();
+  } else if (!ctx) {
+    window.__navStack = [];   // 普通导航(点顶部Tab)清空返回栈
+  }
   window.__navCtx = ctx || null;   // R21 跨模块深链上下文, 各 view init 读取后置空
   var cfg = ROUTES[route];
   if (!cfg) { route = 'home'; cfg = ROUTES['home']; }
@@ -6894,6 +6928,8 @@ function navigateTo(route, ctx) {
 
   // Call init function if provided
   if (cfg.init) cfg.init();
+
+  navRenderBack();   // R28 更新「返回来源」chip
 }
 
 /* ===== 数据地图 ===== */
@@ -7490,11 +7526,18 @@ function dmLoadDDL() {
       }
       if (d.selectSql) {
         html += '<div class="dm-code-block"><div class="dm-code-block-header"><span>查询语句 (SELECT)</span>'
-          + '<button class="dm-code-copy-btn" onclick="dmCopyCode(this)">复制</button></div>'
+          + '<span><button class="dm-code-copy-btn" onclick="dmCopyCode(this)">复制</button> '
+          + '<button class="dm-code-copy-btn" onclick="dmTableToDataset()" title="把此查询注册为受治理可复用数据集">存为数据集</button></span></div>'
           + '<pre>' + escapeHtml(d.selectSql) + '</pre></div>';
       }
       body.innerHTML = html;
     });
+}
+
+// R28 数据闭环: 数据地图表 → 注册为受治理数据集(消费层 newDataset 预填)
+function dmTableToDataset() {
+  if (!dmCurrentDb || !dmCurrentTable) return;
+  navigateTo('governance', { gov: 'consumption', newDataset: { db: dmCurrentDb, table: dmCurrentTable } });
 }
 
 function dmCopyCode(btn) {
