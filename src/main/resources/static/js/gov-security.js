@@ -15,8 +15,14 @@
   var SENSITIVE_TYPES = ['PHONE', 'EMAIL', 'ID_CARD', 'BANK_CARD', 'USCC'];
   var rolesCache = [];
   var userTbl = null, roleTbl = null, maskTbl = null, rowTbl = null;
+  var focusTable = null; // R21 深链: 入口 ctx.table 聚焦的目标表 {db,table}
 
   window.GOV_RENDERERS.security = function (c) {
+    // R21 跨模块深链: 入口读 ctx, 带 ctx.table 时聚焦该表的安全信息
+    var ctx = window.__govCtx || {};
+    focusTable = (ctx.table && ctx.table.table) ? { db: ctx.table.db || '', table: ctx.table.table } : null;
+    if (focusTable) c.appendChild(buildFocusBanner(focusTable));
+
     // 安全态势概览(大功能): 聚合 用户/角色/脱敏/行级 + 脱敏类型分布环图
     var ovBox = DN.h('div', { id: 'secOverview' });
     ovBox.appendChild(DN.skeleton(2));
@@ -69,6 +75,12 @@
       var users = r[0] || [], roles = r[1] || [], masks = r[2] || [], rowp = r[3] || [];
       var enabledMask = masks.filter(function (m) { return m.enabled === 1 || m.enabled === true || m.status === 1; }).length;
       box.innerHTML = '';
+      // R21 深链: 操作审计入口 —— 安全事件统一去审计中心追溯
+      var auditBar = DN.h('div', { style: 'text-align:right;margin-bottom:8px' });
+      auditBar.appendChild(DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)',
+        text: '查看全部审计', title: '前往审计中心追溯所有安全相关操作',
+        onclick: function () { if (window.govGoModule) govGoModule('audit', {}); } }));
+      box.appendChild(auditBar);
       box.appendChild(DN.statRow([
         { icon: 'user', label: '系统用户', value: users.length },
         { icon: 'shield', label: '角色', value: roles.length },
@@ -163,8 +175,9 @@
           { key: 'matchDim', label: '维度' },
           { key: 'sensitiveType', label: '敏感类型', render: function (p) { return p.sensitiveType || '-'; } },
           { key: '_loc', label: '库.表.列', render: function (p) {
-              return p.matchDim === 'COLUMN'
-                ? ((p.dbName || '') + '.' + (p.tableName || '') + '.' + (p.columnName || '')) : '-';
+              if (p.matchDim !== 'COLUMN') return '-';
+              var loc = (p.dbName || '') + '.' + (p.tableName || '') + '.' + (p.columnName || '');
+              return focusWrap(p.dbName, p.tableName, loc);
             } },
           { key: 'maskingFunc', label: '脱敏函数' },
           { key: 'enabled', label: '状态', render: function (p) {
@@ -174,7 +187,7 @@
               return ops([
                 link('编辑', function () { openMaskingForm(p); }),
                 delLink(function () { return DN.del('/api/gov/masking/policies/' + p.id); }, loadMaskingPolicies)
-              ]);
+              ].concat(tableDrill(p.dbName, p.tableName)));
             } }
         ],
         rows: list || [], searchKeys: ['policyName', 'sensitiveType', 'tableName'], searchPlaceholder: '搜索策略名/敏感类型',
@@ -246,7 +259,7 @@
         columns: [
           { key: 'roleCode', label: '角色编码' },
           { key: 'dbName', label: '库' },
-          { key: 'tableName', label: '表' },
+          { key: 'tableName', label: '表', render: function (p) { return focusWrap(p.dbName, p.tableName, p.tableName || '-'); } },
           { key: 'rowFilter', label: '行过滤条件' },
           { key: 'enabled', label: '状态', render: function (p) {
               return p.enabled === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
@@ -255,7 +268,7 @@
               return ops([
                 link('编辑', function () { openRowPolicyForm(p); }),
                 delLink(function () { return DN.del('/api/gov/masking/row-policies/' + p.id); }, loadRowPolicies)
-              ]);
+              ].concat(tableDrill(p.dbName, p.tableName)));
             } }
         ],
         rows: list || [], searchKeys: ['roleCode', 'dbName', 'tableName'], searchPlaceholder: '搜索角色/库/表',
@@ -431,6 +444,66 @@
   function link(text, fn) {
     return DN.h('a', { href: 'javascript:void(0)', text: text,
       style: 'margin-right:12px;color:var(--primary,#1890ff);font-size:13px', onclick: fn });
+  }
+
+  /** R21 深链: 命中入口 ctx.table 的行做聚焦标记(库可空, 仅比表名时忽略库) */
+  function isFocusRow(db, table) {
+    if (!focusTable || !table) return false;
+    if (table !== focusTable.table) return false;
+    return !focusTable.db || !db || db === focusTable.db;
+  }
+
+  /** 库表单元渲染: 命中聚焦表时前置高亮 pill, 否则返回纯文本 */
+  function focusWrap(db, table, text) {
+    if (!isFocusRow(db, table)) return text;
+    var span = DN.h('span', {});
+    span.appendChild(DN.pill('聚焦', 'ok'));
+    span.appendChild(DN.h('span', { text: ' ' + text }));
+    return span;
+  }
+
+  /** R21 深链: 由策略所属库.表生成跨模块下钻链接(无库表时返回空, 不渲染死链) */
+  function tableDrill(db, table) {
+    if (!table) return [];
+    var fqn = (db || '') + '.' + table;
+    var nodes = [];
+    if (window.govGoModule) {
+      nodes.push(link('敏感分级', function () {
+        govGoModule('classification', { table: { db: db || '', table: table } });
+      }));
+    }
+    if (window.navigateTo) {
+      nodes.push(link('数据地图', function () {
+        navigateTo('catalog', { openTable: { db: db || '', table: table } });
+      }));
+    }
+    if (nodes.length) nodes[0].title = '处理 ' + fqn + ' 的敏感信息';
+    return nodes;
+  }
+
+  /** R21 深链: 入口带 ctx.table 时, 顶部聚焦提示条 + 一键去敏感分级/数据地图 */
+  function buildFocusBanner(ft) {
+    var fqn = (ft.db ? ft.db + '.' : '') + ft.table;
+    var bar = DN.h('div', { class: 'gov-focus-banner',
+      style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;' +
+        'border:1px solid var(--primary,#1890ff);border-radius:8px;background:rgba(24,144,255,.06)' });
+    bar.appendChild(DN.h('span', { style: 'font-weight:600',
+      html: DN.icon('lock', 'style="margin-right:6px;color:var(--primary,#1890ff)"') + '安全聚焦：' + DN.esc(fqn) }));
+    bar.appendChild(DN.h('span', { style: 'color:var(--text-muted,#888);font-size:13px',
+      text: '下方脱敏/行级策略中涉及该表的策略已高亮' }));
+    var acts = DN.h('span', { style: 'margin-left:auto' });
+    if (window.govGoModule) {
+      acts.appendChild(link('去敏感分级', function () {
+        govGoModule('classification', { table: { db: ft.db || '', table: ft.table } });
+      }));
+    }
+    if (window.navigateTo) {
+      acts.appendChild(link('在数据地图打开', function () {
+        navigateTo('catalog', { openTable: { db: ft.db || '', table: ft.table } });
+      }));
+    }
+    bar.appendChild(acts);
+    return bar;
   }
 
   /** 内联确认删除链接，返回 Node */

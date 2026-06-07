@@ -18,7 +18,7 @@
 <script src="js/gov-quality.js?v=q100r90"></script>
 <script src="js/gov-standard.js?v=q100r92"></script>
 <script src="js/gov-classification.js?v=q100r89"></script>
-<script src="js/gov-security.js?v=q100r80"></script>
+<script src="js/gov-security.js?v=q100r94"></script>
 <script src="js/gov-health.js?v=q100r89"></script>
 <script src="js/gov-audit.js?v=q100r92"></script>
 <script src="js/gov-overview.js?v=q100r92"></script>
@@ -1358,7 +1358,8 @@
             </div>
             <div class="dbsync-form-row" id="dfsSchedRow">
               <label class="dbsync-form-label">调度 Cron <span style="font-size:11px;color:var(--text-muted);font-weight:400;">（全量/增量用）</span></label>
-              <input class="dbsync-form-input" id="dfsScheduleCron" placeholder="如: 0 0 2 * * ? 每天凌晨2点">
+              <input class="dbsync-form-input" id="dfsScheduleCron" placeholder="如: 0 0 2 * * ? 每天凌晨2点" onblur="dfsCronPreview()">
+              <div id="dfsCronPreview" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
             </div>
             <div class="dbsync-form-row">
               <label class="dbsync-form-label">任务状态</label>
@@ -5139,6 +5140,22 @@ function previewCron() {
       container.style.display = 'block';
     }
   });
+}
+
+// R29: dbsync 新建表单 Cron 实时预览下次执行(onblur)
+function dfsCronPreview() {
+  var el = document.getElementById('dfsScheduleCron'); if (!el) return;
+  var box = document.getElementById('dfsCronPreview'); if (!box) return;
+  var cron = (el.value || '').trim();
+  if (!cron) { box.innerHTML = ''; return; }
+  box.innerHTML = '计算中…';
+  apiPost('/api/scheduler/cron-preview', { cron: cron }).then(function(res) {
+    if (res.code === 0 && res.data && res.data.length) {
+      box.innerHTML = '<span style="color:var(--success,#52c41a);">下次执行：' + escapeHtml(res.data[0]) + (res.data[1] ? '，' + escapeHtml(res.data[1]) : '') + ' …</span>';
+    } else {
+      box.innerHTML = '<span style="color:var(--error,#ff4d4f);">' + escapeHtml((res && res.msg) || 'Cron 无效') + '</span>';
+    }
+  }).catch(function() { box.innerHTML = '<span style="color:var(--error,#ff4d4f);">Cron 校验失败</span>'; });
 }
 
 // 通用预览：根据当前调度配置生成 cron 并预览未来执行时间
