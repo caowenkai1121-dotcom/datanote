@@ -684,6 +684,7 @@
             <button class="datamap-detail-tab" onclick="dmSwitchTab(this,'profile')">数据探查</button>
             <button class="datamap-detail-tab" onclick="dmSwitchTab(this,'ddl')">DDL / SQL</button>
             <button class="datamap-detail-tab" onclick="dmSwitchTab(this,'comments')">评论 <span id="dmCommentBadge" style="font-size:11px;color:var(--text-muted);"></span></button>
+            <button class="datamap-detail-tab" onclick="dmSwitchTab(this,'impact')">消费指标</button>
           </div>
         </div>
         <div class="datamap-detail-body" id="dmDetailBody">
@@ -7214,6 +7215,40 @@ function dmSwitchTab(el, tab) {
   else if (tab === 'profile') dmLoadProfile();
   else if (tab === 'ddl') dmLoadDDL();
   else if (tab === 'comments') dmLoadComments();
+  else if (tab === 'impact') dmLoadImpact();
+}
+
+/* --- Tab: 消费指标(影响面联动: 哪些指标在消费此表) --- */
+function dmLoadImpact() {
+  var body = document.getElementById('dmDetailBody');
+  body.innerHTML = '<div style="padding:24px;color:var(--text-muted);text-align:center;">加载消费此表的指标...</div>';
+  fetch('/api/consumption/asset-impact?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable))
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.code !== 0) { body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(res.msg || '') + '</div>'; return; }
+      var list = res.data || [];
+      if (list.length === 0) {
+        body.innerHTML = '<div class="datamap-empty">暂无指标消费此表 —— 改动此表对指标无已知影响</div>';
+        return;
+      }
+      var html = '<div style="padding:12px 16px;font-size:12px;color:var(--text-muted);">共 ' + list.length + ' 个指标消费此表，改表前请评估下游影响</div>';
+      html += '<table class="result-table" style="width:100%;">';
+      html += '<thead><tr><th>指标</th><th>编码</th><th>关联类型</th><th>最新值</th><th>取值时间</th></tr></thead><tbody>';
+      for (var i = 0; i < list.length; i++) {
+        var m = list[i];
+        html += '<tr>';
+        html += '<td style="font-weight:500;">' + escapeHtml(m.metricName || m.metricCode || '-') + '</td>';
+        html += '<td>' + escapeHtml(m.metricCode || '-') + '</td>';
+        html += '<td>' + escapeHtml(m.refType || 'SOURCE') + '</td>';
+        html += '<td>' + (m.lastValue == null ? '-' : escapeHtml(String(m.lastValue))) + '</td>';
+        html += '<td>' + escapeHtml(m.lastValueAt || '-') + '</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    }).catch(function(err){
+      body.innerHTML = '<div class="datamap-empty">加载失败: ' + escapeHtml(err.message) + '</div>';
+    });
 }
 
 function dmToggleFavorite() {
