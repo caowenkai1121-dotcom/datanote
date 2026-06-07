@@ -10497,6 +10497,14 @@ window.loadProjectRoleMatrix = function() {
 
 /* ===== PM-M3：资产纳管 ===== */
 var PROJ_ASSET_TYPE = { SYNC_JOB: '同步任务', SCRIPT: '脚本', DATASOURCE: '数据源', QUALITY_RULE: '质量规则' };
+// R27 联动: 项目绑定资产 → 跳到该资产所在本体模块
+window.projAssetGoto = function(type, assetId) {
+  if (type === 'SYNC_JOB') navigateTo('dbsync', { openDetail: assetId });
+  else if (type === 'QUALITY_RULE') navigateTo('governance', { gov: 'quality' });
+  else if (type === 'DATASOURCE') navigateTo('settings', { sm: 'datasource' });
+  else if (type === 'SCRIPT') navigateTo('develop');
+  else navigateTo('catalog');
+};
 window.projLoadAssets = function() {
   var pane = document.getElementById('projPane_asset'); if (!pane || !_projDetail) return;
   pane.innerHTML = wsSkeleton(4);
@@ -10525,7 +10533,8 @@ window.projLoadAssets = function() {
         h += '<tr><td>' + escapeHtml(PROJ_ASSET_TYPE[a.assetType] || a.assetType) + '</td>'
           + '<td>' + escapeHtml(a.assetName || '-') + '</td><td>' + escapeHtml(String(a.assetId == null ? '-' : a.assetId)) + '</td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-          + '<td><a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
+          + '<td><a href="#" onclick="projAssetGoto(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;" title="跳到该资产所在模块">查看</a>'
+          + '<a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
           + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
       });
       h += '</tbody></table>';
@@ -11630,13 +11639,22 @@ window.projDoCompare = function() {
     };
     var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>项目</th><th>资产</th><th>成员</th><th>发布</th><th>待审批</th></tr></thead><tbody>';
     rows.forEach(function(r) {
-      h += '<tr><td><b>' + escapeHtml(r.projectName) + '</b></td>'
+      var pid = r.id || r.projectId;
+      var nameCell = pid
+        ? '<a href="#" onclick="projCmpGoDetail(' + pid + ');return false;" style="color:var(--primary);font-weight:600;" title="打开项目详情">' + escapeHtml(r.projectName) + '</a>'
+        : '<b>' + escapeHtml(r.projectName) + '</b>';
+      h += '<tr><td>' + nameCell + '</td>'
         + barCell(r.assetTotal, mAsset, '#1677ff') + barCell(r.memberCount, mMem, '#52c41a')
         + barCell(r.releaseTotal, mRel, '#722ed1') + barCell(r.releasePending, mPend, '#fa8c16') + '</tr>';
     });
     h += '</tbody></table>';
     box.innerHTML = h;
   }).catch(function() { showToast('对比失败', 'error'); });
+};
+// R27 联动: 多项目对比 → 打开项目详情(先关对比弹窗)
+window.projCmpGoDetail = function(pid) {
+  if (window.projCloseModalBox) projCloseModalBox();
+  if (window.projOpenDetail) projOpenDetail(pid); else if (window.projOpenDetailById) projOpenDetailById(pid);
 };
 window.projSaveAsTemplate = function(pid) {
   var name = prompt('模板名称：', (_projDetail ? _projDetail.projectName : '') + ' 模板');
