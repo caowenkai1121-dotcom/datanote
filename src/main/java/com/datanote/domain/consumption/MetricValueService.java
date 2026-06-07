@@ -31,6 +31,7 @@ public class MetricValueService {
     private final DnMetricValueMapper valueMapper;
     private final DnConsumptionLogMapper logMapper;
     private final HiveService hiveService;
+    private final MetricAlertService metricAlertService;
 
     /** 指标值新鲜度阈值（小时）：超过视为陈旧 */
     static final long FRESH_HOURS = 26;
@@ -47,10 +48,11 @@ public class MetricValueService {
         v.setMetricId(metricId); v.setMetricCode(m.getMetricCode()); v.setDims(m.getDimensions());
         v.setCalcSql(sql); v.setCreatedBy(operator); v.setCreatedAt(LocalDateTime.now());
         long start = System.currentTimeMillis();
+        BigDecimal num = null;
         try {
             Map<String, Object> r = hiveService.executeSQL(sql);
             Object firstCell = firstCell(r);
-            BigDecimal num = parseMetricValue(firstCell);
+            num = parseMetricValue(firstCell);
             if (num != null) v.setMetricValue(num);
             else v.setValueText(firstCell == null ? null : String.valueOf(firstCell));
             v.setRunStatus("success");
@@ -61,6 +63,10 @@ public class MetricValueService {
         }
         v.setDurationMs(System.currentTimeMillis() - start);
         valueMapper.insert(v);
+        // 闭合 消费→治理：成功取得数值后判定预警规则，越界自动建治理工单(内部兜底不抛)
+        if ("success".equals(v.getRunStatus()) && num != null) {
+            metricAlertService.checkAndAlert(m, num);
+        }
         logConsumption(operator, "CALC", m.getMetricCode(), "CALC", null, v.getDurationMs(),
                 "success".equals(v.getRunStatus()), "success".equals(v.getRunStatus()) ? "计算成功" : v.getErrorMsg());
         return v;

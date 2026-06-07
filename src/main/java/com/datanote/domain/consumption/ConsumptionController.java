@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
 import com.datanote.domain.consumption.mapper.DnConsumptionLogMapper;
+import com.datanote.domain.consumption.mapper.DnMetricAlertRuleMapper;
 import com.datanote.domain.consumption.mapper.DnMetricValueMapper;
 import com.datanote.domain.consumption.model.DnConsumptionLog;
+import com.datanote.domain.consumption.model.DnMetricAlertRule;
 import com.datanote.domain.consumption.model.DnMetricValue;
 import com.datanote.domain.governance.mapper.DnMetricMapper;
 import com.datanote.domain.governance.model.DnMetric;
@@ -35,6 +37,7 @@ public class ConsumptionController {
     private final DnMetricValueMapper valueMapper;
     private final DnConsumptionLogMapper logMapper;
     private final DnMetricMapper metricMapper;
+    private final DnMetricAlertRuleMapper alertRuleMapper;
 
     @Operation(summary = "计算指标当前值并落快照")
     @PostMapping("/metric/{id}/calc")
@@ -124,6 +127,36 @@ public class ConsumptionController {
           .isNotNull("target_code").ne("target_code", "")
           .groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
         return R.ok(logMapper.selectMaps(qw));
+    }
+
+    @Operation(summary = "指标预警规则列表")
+    @GetMapping("/metric/{id}/alert-rules")
+    public R<List<DnMetricAlertRule>> alertRules(@PathVariable Long id) {
+        return R.ok(alertRuleMapper.selectList(new QueryWrapper<DnMetricAlertRule>().eq("metric_id", id).orderByDesc("updated_at")));
+    }
+
+    @Operation(summary = "保存指标预警规则")
+    @PostMapping("/metric/alert-rule/save")
+    public R<DnMetricAlertRule> saveAlertRule(@RequestBody DnMetricAlertRule rule) {
+        if (rule.getMetricId() == null || rule.getOp() == null || rule.getOp().trim().isEmpty()) {
+            return R.fail("metricId 和 op 不能为空");
+        }
+        if (rule.getEnabled() == null) rule.setEnabled(1);
+        if (rule.getSeverity() == null) rule.setSeverity("MEDIUM");
+        DnMetric m = metricMapper.selectById(rule.getMetricId());
+        if (m != null) rule.setMetricCode(m.getMetricCode());
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        rule.setUpdatedAt(now);
+        if (rule.getId() == null) { rule.setCreatedAt(now); alertRuleMapper.insert(rule); }
+        else alertRuleMapper.updateById(rule);
+        return R.ok(rule);
+    }
+
+    @Operation(summary = "删除指标预警规则")
+    @DeleteMapping("/metric/alert-rule/{ruleId}")
+    public R<String> deleteAlertRule(@PathVariable Long ruleId) {
+        alertRuleMapper.deleteById(ruleId);
+        return R.ok("删除成功");
     }
 
     @Operation(summary = "导出指标值历史(CSV/JSON, 含审计)")
