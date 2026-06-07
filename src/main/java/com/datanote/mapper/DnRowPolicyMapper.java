@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnRowPolicy;
+import com.datanote.domain.governance.model.DnRowPolicy;
 
 /**
  * 行级权限策略 Mapper（M9）。

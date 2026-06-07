@@ -2,7 +2,7 @@ package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnMaturityAssessmentMapper;
-import com.datanote.model.DnMaturityAssessment;
+import com.datanote.domain.governance.model.DnMaturityAssessment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

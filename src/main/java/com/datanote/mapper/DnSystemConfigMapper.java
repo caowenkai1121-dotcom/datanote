@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSystemConfig;
+import com.datanote.platform.config.model.DnSystemConfig;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

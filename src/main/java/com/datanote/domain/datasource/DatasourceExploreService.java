@@ -1,8 +1,9 @@
 package com.datanote.domain.datasource;
 
+import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.domain.metadata.DataMapService;
 import com.datanote.config.HiveConfig;
-import com.datanote.model.ColumnInfo;
+import com.datanote.domain.metadata.model.ColumnInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -161,7 +162,7 @@ public class DatasourceExploreService {
         }
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table) + " LIMIT 20")) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table) + " LIMIT 20")) {
             ResultSetMetaData meta = rs.getMetaData();
             int colCount = meta.getColumnCount();
             List<String> headers = new ArrayList<String>();
@@ -200,7 +201,7 @@ public class DatasourceExploreService {
         long totalRows = 0;
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table))) {
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table))) {
             if (rs.next()) totalRows = rs.getLong(1);
         }
 
@@ -221,7 +222,7 @@ public class DatasourceExploreService {
                     String sql = "SELECT COUNT(*) AS total, "
                             + "SUM(CASE WHEN " + colName + " IS NULL THEN 1 ELSE 0 END) AS null_count, "
                             + "COUNT(DISTINCT " + colName + ") AS distinct_count "
-                            + "FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table);
+                            + "FROM " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table);
                     try (ResultSet rs = stmt.executeQuery(sql)) {
                         if (rs.next()) {
                             long nullCount = rs.getLong("null_count");
@@ -253,7 +254,7 @@ public class DatasourceExploreService {
         Map<String, String> result = new HashMap<String, String>();
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table))) {
+             ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + com.datanote.domain.integration.util.DorisSqlUtil.quoteQualified(db, table))) {
             StringBuilder ddl = new StringBuilder();
             while (rs.next()) {
                 ddl.append(rs.getString(1)).append("\n");

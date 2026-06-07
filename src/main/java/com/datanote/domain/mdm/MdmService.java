@@ -5,9 +5,9 @@ import com.datanote.mapper.DnMdmAttributeMapper;
 import com.datanote.mapper.DnMdmDomainMapper;
 import com.datanote.mapper.DnMdmEntityMapper;
 import com.datanote.mapper.DnMdmGoldenRecordMapper;
-import com.datanote.model.DnMdmAttribute;
-import com.datanote.model.DnMdmDomain;
-import com.datanote.model.DnMdmEntity;
+import com.datanote.domain.mdm.model.DnMdmAttribute;
+import com.datanote.domain.mdm.model.DnMdmDomain;
+import com.datanote.domain.mdm.model.DnMdmEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +41,7 @@ public class MdmService {
 
         // 黄金记录统计
         long goldenTotal = goldenMapper.selectCount(null);
-        QueryWrapper<com.datanote.model.DnMdmGoldenRecord> gqw = new QueryWrapper<>();
+        QueryWrapper<com.datanote.domain.mdm.model.DnMdmGoldenRecord> gqw = new QueryWrapper<>();
         gqw.eq("status", "active");
         long goldenActive = goldenMapper.selectCount(gqw);
         data.put("goldenCount", goldenTotal);

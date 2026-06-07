@@ -5,10 +5,10 @@ import com.datanote.mapper.DnSyncErrorRowMapper;
 import com.datanote.mapper.DnSyncFolderMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.DnSyncErrorRow;
-import com.datanote.model.DnSyncJob;
-import com.datanote.model.DnTaskExecution;
-import com.datanote.model.R;
+import com.datanote.domain.integration.model.DnSyncErrorRow;
+import com.datanote.domain.integration.model.DnSyncJob;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
+import com.datanote.common.model.R;
 import com.datanote.sync.service.SyncJobExecutor;
 import com.datanote.sync.service.SyncJobService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -239,10 +239,10 @@ public class SyncJobController {
 
     @Operation(summary = "操作审计历史")
     @GetMapping("/{id}/audit")
-    public R<List<com.datanote.model.DnSyncJobAudit>> audit(@PathVariable Long id) {
-        return R.ok(auditMapper.selectList(new LambdaQueryWrapper<com.datanote.model.DnSyncJobAudit>()
-            .eq(com.datanote.model.DnSyncJobAudit::getJobId, id)
-            .orderByDesc(com.datanote.model.DnSyncJobAudit::getId).last("LIMIT 100")));
+    public R<List<com.datanote.domain.integration.model.DnSyncJobAudit>> audit(@PathVariable Long id) {
+        return R.ok(auditMapper.selectList(new LambdaQueryWrapper<com.datanote.domain.integration.model.DnSyncJobAudit>()
+            .eq(com.datanote.domain.integration.model.DnSyncJobAudit::getJobId, id)
+            .orderByDesc(com.datanote.domain.integration.model.DnSyncJobAudit::getId).last("LIMIT 100")));
     }
 
     @Operation(summary = "启用定时调度")
@@ -428,7 +428,7 @@ public class SyncJobController {
 
     @Operation(summary = "查看上游依赖")
     @GetMapping("/{id}/dependencies")
-    public R<List<com.datanote.model.DnSyncJobDependency>> dependencies(@PathVariable Long id) {
+    public R<List<com.datanote.domain.integration.model.DnSyncJobDependency>> dependencies(@PathVariable Long id) {
         return R.ok(syncJobService.listDependencies(id));
     }
 

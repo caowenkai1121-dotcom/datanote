@@ -1,6 +1,6 @@
 package com.datanote.domain.datasource;
 
-import com.datanote.model.ColumnInfo;
+import com.datanote.domain.metadata.model.ColumnInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

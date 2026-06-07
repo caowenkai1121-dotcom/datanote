@@ -1,23 +1,23 @@
 package com.datanote.domain.integration;
 
-import com.datanote.exception.BusinessException;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnSyncTaskMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.ColumnInfo;
-import com.datanote.model.DnDatasource;
-import com.datanote.model.DnSyncTask;
-import com.datanote.model.DnTaskExecution;
-import com.datanote.model.R;
-import com.datanote.model.dto.HiveCreateTableRequest;
-import com.datanote.model.dto.HiveExecuteRequest;
+import com.datanote.domain.metadata.model.ColumnInfo;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
+import com.datanote.common.model.R;
+import com.datanote.domain.integration.dto.HiveCreateTableRequest;
+import com.datanote.domain.integration.dto.HiveExecuteRequest;
 import com.datanote.domain.integration.HiveService;
 import com.datanote.common.LogBroadcastService;
 import com.datanote.domain.governance.MaskingService;
 import com.datanote.domain.datasource.MetadataService;
 import com.datanote.platform.iam.RbacService;
 import com.datanote.domain.governance.SqlMaskRewriter;
-import com.datanote.util.CryptoUtil;
+import com.datanote.common.util.CryptoUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -96,7 +96,7 @@ public class HiveDdlController {
             ddl.append(" ").append(newName);
             ddl.append(" ").append(newType);
             if (newComment != null && !newComment.isEmpty()) {
-                ddl.append(" COMMENT '").append(com.datanote.util.DorisSqlUtil.escapeSqlLiteral(newComment)).append("'"); // 统一用加固转义工具
+                ddl.append(" COMMENT '").append(com.datanote.domain.integration.util.DorisSqlUtil.escapeSqlLiteral(newComment)).append("'"); // 统一用加固转义工具
             }
 
             log.info("执行字段修改: {}", ddl);

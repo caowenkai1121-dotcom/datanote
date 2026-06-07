@@ -2,8 +2,8 @@ package com.datanote.platform.ai;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSystemConfigMapper;
-import com.datanote.model.DnSystemConfig;
-import com.datanote.util.CryptoUtil;
+import com.datanote.platform.config.model.DnSystemConfig;
+import com.datanote.common.util.CryptoUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

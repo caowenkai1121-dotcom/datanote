@@ -3,8 +3,8 @@ package com.datanote.domain.project;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnProjectAccessMapper;
 import com.datanote.mapper.DnProjectFavoriteMapper;
-import com.datanote.model.DnProjectAccess;
-import com.datanote.model.DnProjectFavorite;
+import com.datanote.domain.project.model.DnProjectAccess;
+import com.datanote.domain.project.model.DnProjectFavorite;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

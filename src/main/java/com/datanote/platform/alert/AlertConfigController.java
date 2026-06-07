@@ -1,7 +1,7 @@
 package com.datanote.platform.alert;
 
-import com.datanote.model.DnAlertConfig;
-import com.datanote.model.R;
+import com.datanote.platform.alert.model.DnAlertConfig;
+import com.datanote.common.model.R;
 import com.datanote.platform.alert.AlertConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

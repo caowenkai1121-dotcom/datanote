@@ -12,11 +12,11 @@ import com.datanote.mapper.DnSchedulerRunMapper;
 import com.datanote.mapper.DnScriptMapper;
 import com.datanote.mapper.DnSyncTaskMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.ColumnInfo;
-import com.datanote.model.DnDatasource;
-import com.datanote.model.DnSyncTask;
-import com.datanote.util.CryptoUtil;
-import com.datanote.util.ProcessUtil;
+import com.datanote.domain.metadata.model.ColumnInfo;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.common.util.CryptoUtil;
+import com.datanote.domain.orchestration.util.ProcessUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 

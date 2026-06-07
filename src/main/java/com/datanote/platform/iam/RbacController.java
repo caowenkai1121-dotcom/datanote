@@ -1,8 +1,8 @@
 package com.datanote.platform.iam;
 
-import com.datanote.model.DnRole;
-import com.datanote.model.DnUser;
-import com.datanote.model.R;
+import com.datanote.platform.iam.model.DnRole;
+import com.datanote.platform.iam.model.DnUser;
+import com.datanote.common.model.R;
 import com.datanote.platform.iam.RbacService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,7 +1,7 @@
 package com.datanote.domain.governance;
 
 import com.datanote.domain.governance.QualityService;
-import com.datanote.model.DnQualityRule;
+import com.datanote.domain.governance.model.DnQualityRule;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

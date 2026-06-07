@@ -1,9 +1,9 @@
 package com.datanote.platform.portal;
 
-import com.datanote.model.DnGovernanceIssue;
-import com.datanote.model.DnGovernanceMetric;
-import com.datanote.model.DnMaturityAssessment;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnGovernanceIssue;
+import com.datanote.domain.governance.model.DnGovernanceMetric;
+import com.datanote.domain.governance.model.DnMaturityAssessment;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.HealthScoreService;
 import com.datanote.domain.governance.IssueService;
 import com.datanote.domain.governance.MaturityService;

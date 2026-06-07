@@ -2,9 +2,9 @@ package com.datanote.platform.config;
 
 import com.datanote.config.HiveConfig;
 import com.datanote.mapper.DnSystemConfigMapper;
-import com.datanote.model.DnSystemConfig;
-import com.datanote.model.R;
-import com.datanote.util.CryptoUtil;
+import com.datanote.platform.config.model.DnSystemConfig;
+import com.datanote.common.model.R;
+import com.datanote.common.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

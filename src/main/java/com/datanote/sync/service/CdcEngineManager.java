@@ -7,9 +7,9 @@ import com.datanote.mapper.DnCdcSchemaHistoryMapper;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.mapper.DnSyncJobMapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.DnDatasource;
-import com.datanote.model.DnSyncJob;
-import com.datanote.model.DnTaskExecution;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.domain.integration.model.DnSyncJob;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
 import com.datanote.common.LogBroadcastService;
 import com.datanote.sync.cdc.CdcStoreHolder;
 import com.datanote.sync.connector.ColumnDef;
@@ -216,10 +216,10 @@ public class CdcEngineManager {
             try { engine.stop(); } catch (Exception e) { log.warn("CDC 引擎停止异常,仍继续重置 jobId={}", jobId, e); }
             finalizeExecution(jobId, "STOPPED", engine);
         }
-        offsetMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcOffset>()
-                .eq(com.datanote.model.DnCdcOffset::getJobId, jobId));
-        historyMapper.delete(new LambdaQueryWrapper<com.datanote.model.DnCdcSchemaHistory>()
-                .eq(com.datanote.model.DnCdcSchemaHistory::getJobId, jobId));
+        offsetMapper.delete(new LambdaQueryWrapper<com.datanote.domain.integration.model.DnCdcOffset>()
+                .eq(com.datanote.domain.integration.model.DnCdcOffset::getJobId, jobId));
+        historyMapper.delete(new LambdaQueryWrapper<com.datanote.domain.integration.model.DnCdcSchemaHistory>()
+                .eq(com.datanote.domain.integration.model.DnCdcSchemaHistory::getJobId, jobId));
         log.warn("CDC 已重置 offset+schema_history jobId={}", jobId);
         DnSyncJob job = syncJobMapper.selectById(jobId);
         auditLogService.record(jobId, job == null ? null : job.getJobName(), "RESET", "restart=" + restart);
@@ -279,7 +279,7 @@ public class CdcEngineManager {
         String url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort() + "/" + job.getSourceDb()
                 + "?useSSL=false&allowPublicKeyRetrieval=true";
         try (java.sql.Connection c = java.sql.DriverManager.getConnection(url, ds.getUsername(),
-                com.datanote.util.CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
+                com.datanote.common.util.CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
              java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, java.util.UUID.randomUUID().toString());
             ps.setString(2, "execute-snapshot");

@@ -1,7 +1,7 @@
 package com.datanote.platform.iam;
 
 import com.datanote.config.AuthProperties;
-import com.datanote.model.R;
+import com.datanote.common.model.R;
 import com.datanote.platform.iam.RbacService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

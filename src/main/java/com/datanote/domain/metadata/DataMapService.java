@@ -1,5 +1,9 @@
 package com.datanote.domain.metadata;
 
+import com.datanote.domain.metadata.model.DnTableComment;
+import com.datanote.domain.metadata.model.DnTableFavorite;
+import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.platform.portal.model.DnSearchHistory;
 import com.datanote.domain.datasource.DatasourceExploreService;
 import com.datanote.platform.ai.AiAssistService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -7,7 +11,6 @@ import com.datanote.mapper.DnSearchHistoryMapper;
 import com.datanote.mapper.DnTableCommentMapper;
 import com.datanote.mapper.DnTableFavoriteMapper;
 import com.datanote.mapper.DnTableMetaMapper;
-import com.datanote.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

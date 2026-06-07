@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSyncChunkCheckpoint;
+import com.datanote.domain.integration.model.DnSyncChunkCheckpoint;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

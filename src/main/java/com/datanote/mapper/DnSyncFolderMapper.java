@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSyncFolder;
+import com.datanote.domain.integration.model.DnSyncFolder;
 
 /**
  * 关系库同步任务文件夹 Mapper 接口

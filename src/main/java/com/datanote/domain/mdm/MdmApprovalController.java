@@ -1,13 +1,13 @@
 package com.datanote.domain.mdm;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.exception.BusinessException;
-import com.datanote.exception.ResourceNotFoundException;
+import com.datanote.common.exception.BusinessException;
+import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnMdmChangeRequestMapper;
 import com.datanote.mapper.DnMdmEntityMapper;
-import com.datanote.model.DnMdmChangeRequest;
-import com.datanote.model.DnMdmEntity;
-import com.datanote.model.R;
+import com.datanote.domain.mdm.model.DnMdmChangeRequest;
+import com.datanote.domain.mdm.model.DnMdmEntity;
+import com.datanote.common.model.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

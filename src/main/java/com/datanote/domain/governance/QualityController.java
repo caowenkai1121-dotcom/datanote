@@ -1,13 +1,13 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.exception.ResourceNotFoundException;
+import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnQualityRuleMapper;
 import com.datanote.mapper.DnQualityRunMapper;
-import com.datanote.model.DnGovernanceIssue;
-import com.datanote.model.DnQualityRule;
-import com.datanote.model.DnQualityRun;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnGovernanceIssue;
+import com.datanote.domain.governance.model.DnQualityRule;
+import com.datanote.domain.governance.model.DnQualityRun;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.IssueService;
 import com.datanote.domain.governance.QualityService;
 import io.swagger.v3.oas.annotations.Operation;

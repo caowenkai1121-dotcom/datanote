@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnGovernanceScore;
+import com.datanote.domain.governance.model.DnGovernanceScore;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

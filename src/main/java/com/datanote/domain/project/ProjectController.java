@@ -1,7 +1,7 @@
 package com.datanote.domain.project;
 
-import com.datanote.model.DnProject;
-import com.datanote.model.R;
+import com.datanote.domain.project.model.DnProject;
+import com.datanote.common.model.R;
 import com.datanote.domain.project.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -88,13 +88,13 @@ public class ProjectController {
 
     @Operation(summary = "标签列表")
     @GetMapping("/tags")
-    public R<List<com.datanote.model.DnProjectTag>> tags() {
+    public R<List<com.datanote.domain.project.model.DnProjectTag>> tags() {
         return R.ok(projectTagService.listTags());
     }
 
     @Operation(summary = "新建标签")
     @PostMapping("/tags")
-    public R<com.datanote.model.DnProjectTag> createTag(@RequestBody java.util.Map<String, String> body) {
+    public R<com.datanote.domain.project.model.DnProjectTag> createTag(@RequestBody java.util.Map<String, String> body) {
         try {
             return R.ok(projectTagService.createTag(body.get("tagName"), body.get("tagColor")));
         } catch (IllegalArgumentException e) {
@@ -111,7 +111,7 @@ public class ProjectController {
 
     @Operation(summary = "全部项目-标签关联")
     @GetMapping("/tag-mappings")
-    public R<List<com.datanote.model.DnProjectTagMapping>> tagMappings() {
+    public R<List<com.datanote.domain.project.model.DnProjectTagMapping>> tagMappings() {
         return R.ok(projectTagService.allMappings());
     }
 
@@ -151,7 +151,7 @@ public class ProjectController {
 
     @Operation(summary = "我的收藏")
     @GetMapping("/favorites")
-    public R<List<com.datanote.model.DnProjectFavorite>> favorites() {
+    public R<List<com.datanote.domain.project.model.DnProjectFavorite>> favorites() {
         return R.ok(projectFavoriteService.listFavorites());
     }
 
@@ -164,7 +164,7 @@ public class ProjectController {
 
     @Operation(summary = "最近访问")
     @GetMapping("/recent")
-    public R<List<com.datanote.model.DnProjectAccess>> recent(@RequestParam(defaultValue = "10") int limit) {
+    public R<List<com.datanote.domain.project.model.DnProjectAccess>> recent(@RequestParam(defaultValue = "10") int limit) {
         return R.ok(projectFavoriteService.recent(limit));
     }
 
@@ -176,7 +176,7 @@ public class ProjectController {
 
     @Operation(summary = "项目成员列表")
     @GetMapping("/{id}/members")
-    public R<List<com.datanote.model.DnProjectMember>> members(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectMember>> members(@PathVariable Long id) {
         try {
             return R.ok(projectMemberService.list(id));
         } catch (IllegalArgumentException e) {
@@ -186,7 +186,7 @@ public class ProjectController {
 
     @Operation(summary = "添加成员")
     @PostMapping("/{id}/members")
-    public R<com.datanote.model.DnProjectMember> addMember(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+    public R<com.datanote.domain.project.model.DnProjectMember> addMember(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try {
             return R.ok(projectMemberService.add(id, body.get("username"), body.get("role")));
         } catch (IllegalArgumentException e) {
@@ -230,13 +230,13 @@ public class ProjectController {
 
     @Operation(summary = "模板列表")
     @GetMapping("/templates")
-    public R<List<com.datanote.model.DnProjectTemplate>> templates() {
+    public R<List<com.datanote.domain.project.model.DnProjectTemplate>> templates() {
         return R.ok(projectTemplateService.list());
     }
 
     @Operation(summary = "存为模板")
     @PostMapping("/{id}/save-as-template")
-    public R<com.datanote.model.DnProjectTemplate> saveAsTemplate(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+    public R<com.datanote.domain.project.model.DnProjectTemplate> saveAsTemplate(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try { return R.ok(projectTemplateService.saveAsTemplate(id, body.get("name"), body.get("description"))); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -281,21 +281,21 @@ public class ProjectController {
 
     @Operation(summary = "文档页面列表")
     @GetMapping("/{id}/wiki/pages")
-    public R<List<com.datanote.model.DnProjectWikiPage>> wikiPages(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectWikiPage>> wikiPages(@PathVariable Long id) {
         try { return R.ok(projectWikiService.listPages(id)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "文档页面详情")
     @GetMapping("/{id}/wiki/pages/{pageId}")
-    public R<com.datanote.model.DnProjectWikiPage> wikiPage(@PathVariable Long id, @PathVariable Long pageId) {
+    public R<com.datanote.domain.project.model.DnProjectWikiPage> wikiPage(@PathVariable Long id, @PathVariable Long pageId) {
         try { return R.ok(projectWikiService.getPage(id, pageId)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "保存文档页面")
     @PostMapping("/{id}/wiki/pages")
-    public R<com.datanote.model.DnProjectWikiPage> saveWikiPage(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectWikiPage page) {
+    public R<com.datanote.domain.project.model.DnProjectWikiPage> saveWikiPage(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectWikiPage page) {
         try { return R.ok(projectWikiService.savePage(id, page)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -311,14 +311,14 @@ public class ProjectController {
 
     @Operation(summary = "公告列表")
     @GetMapping("/{id}/announcements")
-    public R<List<com.datanote.model.DnProjectAnnouncement>> announcements(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectAnnouncement>> announcements(@PathVariable Long id) {
         try { return R.ok(projectCollabService.listAnnouncements(id)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "发布公告")
     @PostMapping("/{id}/announcements")
-    public R<com.datanote.model.DnProjectAnnouncement> createAnnouncement(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectAnnouncement a) {
+    public R<com.datanote.domain.project.model.DnProjectAnnouncement> createAnnouncement(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectAnnouncement a) {
         try { return R.ok(projectCollabService.createAnnouncement(id, a)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -332,14 +332,14 @@ public class ProjectController {
 
     @Operation(summary = "邀请列表")
     @GetMapping("/{id}/invites")
-    public R<List<com.datanote.model.DnProjectInvite>> invites(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectInvite>> invites(@PathVariable Long id) {
         try { return R.ok(projectCollabService.listInvites(id)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "创建邀请")
     @PostMapping("/{id}/invites")
-    public R<com.datanote.model.DnProjectInvite> createInvite(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+    public R<com.datanote.domain.project.model.DnProjectInvite> createInvite(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try { return R.ok(projectCollabService.createInvite(id, body.get("role"), body.get("invitee"))); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -362,14 +362,14 @@ public class ProjectController {
 
     @Operation(summary = "任务列表")
     @GetMapping("/{id}/tasks")
-    public R<List<com.datanote.model.DnProjectTask>> tasks(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectTask>> tasks(@PathVariable Long id) {
         try { return R.ok(projectTaskService.listTasks(id)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "保存任务")
     @PostMapping("/{id}/tasks")
-    public R<com.datanote.model.DnProjectTask> saveTask(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectTask task) {
+    public R<com.datanote.domain.project.model.DnProjectTask> saveTask(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectTask task) {
         try { return R.ok(projectTaskService.saveTask(id, task)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -383,14 +383,14 @@ public class ProjectController {
 
     @Operation(summary = "里程碑列表")
     @GetMapping("/{id}/milestones")
-    public R<List<com.datanote.model.DnProjectMilestone>> milestones(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectMilestone>> milestones(@PathVariable Long id) {
         try { return R.ok(projectTaskService.listMilestones(id)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
     @Operation(summary = "保存里程碑")
     @PostMapping("/{id}/milestones")
-    public R<com.datanote.model.DnProjectMilestone> saveMilestone(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectMilestone m) {
+    public R<com.datanote.domain.project.model.DnProjectMilestone> saveMilestone(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectMilestone m) {
         try { return R.ok(projectTaskService.saveMilestone(id, m)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
@@ -427,7 +427,7 @@ public class ProjectController {
 
     @Operation(summary = "项目活动审计")
     @GetMapping("/{id}/activities")
-    public R<List<com.datanote.model.DnAuditLog>> activities(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit) {
+    public R<List<com.datanote.platform.audit.model.DnAuditLog>> activities(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit) {
         try {
             return R.ok(projectActivityService.list(id, limit));
         } catch (IllegalArgumentException e) {
@@ -439,7 +439,7 @@ public class ProjectController {
 
     @Operation(summary = "项目资产列表")
     @GetMapping("/{id}/assets")
-    public R<List<com.datanote.model.DnProjectAsset>> assets(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectAsset>> assets(@PathVariable Long id) {
         try {
             return R.ok(projectAssetService.list(id));
         } catch (IllegalArgumentException e) {
@@ -449,7 +449,7 @@ public class ProjectController {
 
     @Operation(summary = "绑定资产")
     @PostMapping("/{id}/assets")
-    public R<com.datanote.model.DnProjectAsset> bindAsset(@PathVariable Long id, @RequestBody java.util.Map<String, Object> body) {
+    public R<com.datanote.domain.project.model.DnProjectAsset> bindAsset(@PathVariable Long id, @RequestBody java.util.Map<String, Object> body) {
         try {
             Object aid = body.get("assetId");
             Long assetId = aid == null ? null : Long.valueOf(String.valueOf(aid));
@@ -494,7 +494,7 @@ public class ProjectController {
 
     @Operation(summary = "项目资源配额")
     @GetMapping("/{id}/quota")
-    public R<com.datanote.model.DnProjectQuota> getQuota(@PathVariable Long id) {
+    public R<com.datanote.domain.project.model.DnProjectQuota> getQuota(@PathVariable Long id) {
         try {
             return R.ok(projectSettingService.getQuota(id));
         } catch (IllegalArgumentException e) {
@@ -504,7 +504,7 @@ public class ProjectController {
 
     @Operation(summary = "保存资源配额")
     @PostMapping("/{id}/quota")
-    public R<com.datanote.model.DnProjectQuota> saveQuota(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectQuota quota) {
+    public R<com.datanote.domain.project.model.DnProjectQuota> saveQuota(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectQuota quota) {
         try {
             return R.ok(projectSettingService.saveQuota(id, quota));
         } catch (IllegalArgumentException e) {
@@ -514,7 +514,7 @@ public class ProjectController {
 
     @Operation(summary = "环境参数列表")
     @GetMapping("/{id}/env-params")
-    public R<List<com.datanote.model.DnProjectEnvParam>> envParams(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectEnvParam>> envParams(@PathVariable Long id) {
         try {
             return R.ok(projectSettingService.listEnvParams(id));
         } catch (IllegalArgumentException e) {
@@ -524,7 +524,7 @@ public class ProjectController {
 
     @Operation(summary = "保存环境参数")
     @PostMapping("/{id}/env-params")
-    public R<com.datanote.model.DnProjectEnvParam> saveEnvParam(@PathVariable Long id, @RequestBody com.datanote.model.DnProjectEnvParam param) {
+    public R<com.datanote.domain.project.model.DnProjectEnvParam> saveEnvParam(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectEnvParam param) {
         try {
             return R.ok(projectSettingService.saveEnvParam(id, param));
         } catch (IllegalArgumentException e) {
@@ -548,7 +548,7 @@ public class ProjectController {
 
     @Operation(summary = "项目发布版本列表")
     @GetMapping("/{id}/releases")
-    public R<List<com.datanote.model.DnProjectRelease>> releases(@PathVariable Long id) {
+    public R<List<com.datanote.domain.project.model.DnProjectRelease>> releases(@PathVariable Long id) {
         try {
             return R.ok(projectReleaseService.list(id));
         } catch (IllegalArgumentException e) {
@@ -558,7 +558,7 @@ public class ProjectController {
 
     @Operation(summary = "提交发布")
     @PostMapping("/{id}/releases")
-    public R<com.datanote.model.DnProjectRelease> submitRelease(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+    public R<com.datanote.domain.project.model.DnProjectRelease> submitRelease(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try {
             return R.ok(projectReleaseService.submit(id, body.get("title"), body.get("content"), body.get("targetEnv")));
         } catch (IllegalArgumentException e) {
@@ -568,7 +568,7 @@ public class ProjectController {
 
     @Operation(summary = "跨项目发布中心")
     @GetMapping("/releases/all")
-    public R<List<com.datanote.model.DnProjectRelease>> allReleases(@RequestParam(required = false) String status) {
+    public R<List<com.datanote.domain.project.model.DnProjectRelease>> allReleases(@RequestParam(required = false) String status) {
         return R.ok(projectReleaseService.listAll(status));
     }
 

@@ -1,10 +1,14 @@
 package com.datanote.controller;
 
+import com.datanote.common.model.R;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.develop.model.DnScriptFolder;
+import com.datanote.domain.develop.model.DnScriptVersion;
+import com.datanote.domain.integration.model.DnSyncTask;
 import com.datanote.domain.develop.ScriptController;
-import com.datanote.model.*;
 import com.datanote.domain.develop.ScriptService;
-import com.datanote.model.dto.MoveScriptRequest;
-import com.datanote.model.dto.RenameFolderRequest;
+import com.datanote.domain.develop.dto.MoveScriptRequest;
+import com.datanote.domain.develop.dto.RenameFolderRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

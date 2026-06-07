@@ -1,8 +1,8 @@
 package com.datanote.domain.governance;
 
-import com.datanote.model.DnClassificationLevel;
-import com.datanote.model.DnSensitiveRule;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnClassificationLevel;
+import com.datanote.domain.governance.model.DnSensitiveRule;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.ClassificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -78,7 +78,7 @@ public class ClassificationController {
 
     @Operation(summary = "打标审计溯源(按库.表)")
     @GetMapping("/audit-trail")
-    public R<List<com.datanote.model.DnLabelAudit>> auditTrail(@RequestParam String db, @RequestParam String table) {
+    public R<List<com.datanote.platform.audit.model.DnLabelAudit>> auditTrail(@RequestParam String db, @RequestParam String table) {
         return R.ok(classificationService.auditTrail(db, table));
     }
 

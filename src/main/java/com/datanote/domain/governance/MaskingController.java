@@ -1,8 +1,8 @@
 package com.datanote.domain.governance;
 
-import com.datanote.model.DnMaskingPolicy;
-import com.datanote.model.DnRowPolicy;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnMaskingPolicy;
+import com.datanote.domain.governance.model.DnRowPolicy;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.MaskingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

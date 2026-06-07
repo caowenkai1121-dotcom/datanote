@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.integration.model.DnSyncJob;
 
 /**
  * 关系库同步任务 Mapper

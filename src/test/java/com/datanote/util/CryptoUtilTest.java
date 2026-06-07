@@ -1,5 +1,6 @@
 package com.datanote.util;
 
+import com.datanote.common.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

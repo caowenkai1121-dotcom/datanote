@@ -1,6 +1,6 @@
 package com.datanote.platform.audit;
 
-import com.datanote.model.R;
+import com.datanote.common.model.R;
 import com.datanote.platform.audit.AuditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

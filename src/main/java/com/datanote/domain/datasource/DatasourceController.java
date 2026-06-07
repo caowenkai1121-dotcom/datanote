@@ -1,14 +1,14 @@
 package com.datanote.domain.datasource;
 
 import com.datanote.common.Constants;
-import com.datanote.exception.ResourceNotFoundException;
-import com.datanote.model.ColumnInfo;
-import com.datanote.model.DnDatasource;
-import com.datanote.model.R;
+import com.datanote.common.exception.ResourceNotFoundException;
+import com.datanote.domain.metadata.model.ColumnInfo;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.common.model.R;
 import com.datanote.mapper.DnDatasourceMapper;
 import com.datanote.domain.datasource.MetadataService;
 import com.datanote.sync.connector.ConnectionManager;
-import com.datanote.util.CryptoUtil;
+import com.datanote.common.util.CryptoUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

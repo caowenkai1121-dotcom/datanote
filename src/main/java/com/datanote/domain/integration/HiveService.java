@@ -2,8 +2,8 @@ package com.datanote.domain.integration;
 
 import com.datanote.common.Constants;
 import com.datanote.config.HiveConfig;
-import com.datanote.model.ColumnInfo;
-import com.datanote.util.DorisSqlUtil;
+import com.datanote.domain.metadata.model.ColumnInfo;
+import com.datanote.domain.integration.util.DorisSqlUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

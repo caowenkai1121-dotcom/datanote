@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnProjectAssetMapper;
 import com.datanote.mapper.DnProjectMemberMapper;
 import com.datanote.mapper.DnProjectReleaseMapper;
-import com.datanote.model.DnProject;
-import com.datanote.model.DnProjectAsset;
-import com.datanote.model.DnProjectMember;
-import com.datanote.model.DnProjectRelease;
+import com.datanote.domain.project.model.DnProject;
+import com.datanote.domain.project.model.DnProjectAsset;
+import com.datanote.domain.project.model.DnProjectMember;
+import com.datanote.domain.project.model.DnProjectRelease;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -64,16 +64,16 @@ public class ProjectOverviewService {
         long success = 0, failed = 0, running = 0, neverRun = 0, other = 0;
         List<Object[]> recents = new ArrayList<>(); // [time, name, status]
         for (DnProjectAsset job : jobs) {
-            List<com.datanote.model.DnTaskExecution> ex = taskExecutionMapper.selectList(
-                    new LambdaQueryWrapper<com.datanote.model.DnTaskExecution>()
-                            .eq(com.datanote.model.DnTaskExecution::getSyncTaskId, job.getAssetId())
-                            .eq(com.datanote.model.DnTaskExecution::getTaskType, "DbSync")
-                            .orderByDesc(com.datanote.model.DnTaskExecution::getId).last("LIMIT 1"));
+            List<com.datanote.domain.orchestration.model.DnTaskExecution> ex = taskExecutionMapper.selectList(
+                    new LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnTaskExecution>()
+                            .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getSyncTaskId, job.getAssetId())
+                            .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getTaskType, "DbSync")
+                            .orderByDesc(com.datanote.domain.orchestration.model.DnTaskExecution::getId).last("LIMIT 1"));
             if (ex.isEmpty()) {
                 neverRun++;
                 continue;
             }
-            com.datanote.model.DnTaskExecution e = ex.get(0);
+            com.datanote.domain.orchestration.model.DnTaskExecution e = ex.get(0);
             String st = e.getStatus();
             if ("SUCCESS".equals(st)) success++;
             else if ("FAILED".equals(st)) failed++;

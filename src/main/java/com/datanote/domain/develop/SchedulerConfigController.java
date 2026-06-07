@@ -1,12 +1,12 @@
 package com.datanote.domain.develop;
 
-import com.datanote.dto.ScheduleConfigRequest;
-import com.datanote.exception.ResourceNotFoundException;
+import com.datanote.domain.orchestration.dto.ScheduleConfigRequest;
+import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnScriptMapper;
 import com.datanote.mapper.DnSyncTaskMapper;
-import com.datanote.model.DnScript;
-import com.datanote.model.DnSyncTask;
-import com.datanote.model.R;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.common.model.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

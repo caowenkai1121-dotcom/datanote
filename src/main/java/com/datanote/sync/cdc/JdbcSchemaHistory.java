@@ -2,7 +2,7 @@ package com.datanote.sync.cdc;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnCdcSchemaHistoryMapper;
-import com.datanote.model.DnCdcSchemaHistory;
+import com.datanote.domain.integration.model.DnCdcSchemaHistory;
 import io.debezium.config.Configuration;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;

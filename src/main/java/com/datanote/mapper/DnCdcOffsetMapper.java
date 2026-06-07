@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnCdcOffset;
+import com.datanote.domain.integration.model.DnCdcOffset;
 
 /**
  * CDC binlog 位点 Mapper。

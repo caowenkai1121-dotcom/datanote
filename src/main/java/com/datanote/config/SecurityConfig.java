@@ -1,7 +1,7 @@
 package com.datanote.config;
 
 import com.alibaba.fastjson.JSON;
-import com.datanote.model.R;
+import com.datanote.common.model.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

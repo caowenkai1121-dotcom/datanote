@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnTableMeta;
+import com.datanote.domain.metadata.model.DnTableMeta;
 
 /**
  * 表元数据 Mapper 接口

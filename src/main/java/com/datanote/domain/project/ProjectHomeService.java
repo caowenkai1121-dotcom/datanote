@@ -4,11 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnProjectMapper;
 import com.datanote.mapper.DnProjectReleaseMapper;
 import com.datanote.mapper.DnProjectTaskMapper;
-import com.datanote.model.DnProject;
-import com.datanote.model.DnProjectAccess;
-import com.datanote.model.DnProjectFavorite;
-import com.datanote.model.DnProjectRelease;
-import com.datanote.model.DnProjectTask;
+import com.datanote.domain.project.model.DnProject;
+import com.datanote.domain.project.model.DnProjectAccess;
+import com.datanote.domain.project.model.DnProjectFavorite;
+import com.datanote.domain.project.model.DnProjectRelease;
+import com.datanote.domain.project.model.DnProjectTask;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

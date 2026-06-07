@@ -1,6 +1,6 @@
 package com.datanote.sync.controller;
 
-import com.datanote.model.DnTaskExecution;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

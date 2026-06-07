@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnBackfillInstance;
+import com.datanote.domain.orchestration.model.DnBackfillInstance;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

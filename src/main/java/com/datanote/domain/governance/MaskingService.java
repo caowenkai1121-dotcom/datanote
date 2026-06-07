@@ -6,10 +6,10 @@ import com.datanote.mapper.DnColumnMetaMapper;
 import com.datanote.mapper.DnMaskingPolicyMapper;
 import com.datanote.mapper.DnRowPolicyMapper;
 import com.datanote.mapper.DnTableMetaMapper;
-import com.datanote.model.DnColumnMeta;
-import com.datanote.model.DnMaskingPolicy;
-import com.datanote.model.DnRowPolicy;
-import com.datanote.model.DnTableMeta;
+import com.datanote.domain.metadata.model.DnColumnMeta;
+import com.datanote.domain.governance.model.DnMaskingPolicy;
+import com.datanote.domain.governance.model.DnRowPolicy;
+import com.datanote.domain.metadata.model.DnTableMeta;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

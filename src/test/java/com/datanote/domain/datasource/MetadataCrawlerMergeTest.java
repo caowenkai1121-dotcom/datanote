@@ -1,8 +1,8 @@
 package com.datanote.domain.datasource;
 
 import com.datanote.domain.datasource.MetadataCrawlerService;
-import com.datanote.model.DnColumnMeta;
-import com.datanote.model.DnTableMeta;
+import com.datanote.domain.metadata.model.DnColumnMeta;
+import com.datanote.domain.metadata.model.DnTableMeta;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

@@ -1,6 +1,10 @@
 package com.datanote.domain.metadata;
 
-import com.datanote.model.*;
+import com.datanote.common.model.R;
+import com.datanote.domain.metadata.model.ColumnInfo;
+import com.datanote.domain.metadata.model.DnTableComment;
+import com.datanote.domain.metadata.model.DnTableFavorite;
+import com.datanote.platform.portal.model.DnSearchHistory;
 import com.datanote.domain.metadata.DataMapService;
 import com.datanote.domain.datasource.DatasourceExploreService;
 import io.swagger.v3.oas.annotations.Operation;

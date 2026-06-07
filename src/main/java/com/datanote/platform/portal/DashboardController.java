@@ -5,10 +5,10 @@ import com.datanote.common.Constants;
 import com.datanote.mapper.DnSchedulerRunMapper;
 import com.datanote.mapper.DnScriptMapper;
 import com.datanote.mapper.DnSyncTaskMapper;
-import com.datanote.model.DnSchedulerRun;
-import com.datanote.model.DnScript;
-import com.datanote.model.DnSyncTask;
-import com.datanote.model.R;
+import com.datanote.domain.orchestration.model.DnSchedulerRun;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.common.model.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.datanote.util.SysMetricsUtil;
+import com.datanote.platform.portal.util.SysMetricsUtil;
 
 import javax.sql.DataSource;
 import java.io.File;

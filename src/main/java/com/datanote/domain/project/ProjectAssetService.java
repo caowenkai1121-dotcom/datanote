@@ -1,8 +1,12 @@
 package com.datanote.domain.project;
 
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.governance.model.DnQualityRule;
+import com.datanote.domain.integration.model.DnSyncJob;
+import com.datanote.domain.project.model.DnProjectAsset;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.*;
-import com.datanote.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -58,7 +62,7 @@ public class ProjectAssetService {
     }
 
     public void unbind(Long projectId, Long rowId) {
-        com.datanote.model.DnProjectAsset a = assetMapper.selectById(rowId);
+        com.datanote.domain.project.model.DnProjectAsset a = assetMapper.selectById(rowId);
         if (a == null || projectId == null || !projectId.equals(a.getProjectId())) {
             throw new IllegalArgumentException("资产不存在或不属于该项目");
         }
@@ -108,7 +112,7 @@ public class ProjectAssetService {
         List<DnProjectAsset> bindings = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getAssetType, type).eq(DnProjectAsset::getAssetId, assetId));
         for (DnProjectAsset b : bindings) {
-            com.datanote.model.DnProject p = projectMapper.selectById(b.getProjectId());
+            com.datanote.domain.project.model.DnProject p = projectMapper.selectById(b.getProjectId());
             if (p == null || "DELETED".equals(p.getStatus())) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("projectId", p.getId());

@@ -1,6 +1,7 @@
 package com.datanote.util;
 
-import com.datanote.model.DnSensitiveRule;
+import com.datanote.domain.governance.util.SensitiveDetector;
+import com.datanote.domain.governance.model.DnSensitiveRule;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

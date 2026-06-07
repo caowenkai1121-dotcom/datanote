@@ -1,6 +1,6 @@
 package com.datanote.sync.service;
 
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.integration.model.DnSyncJob;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;

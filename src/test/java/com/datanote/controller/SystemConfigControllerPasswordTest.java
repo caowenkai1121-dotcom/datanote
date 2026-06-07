@@ -2,8 +2,8 @@ package com.datanote.controller;
 
 import com.datanote.platform.config.SystemConfigController;
 import com.datanote.mapper.DnSystemConfigMapper;
-import com.datanote.model.DnSystemConfig;
-import com.datanote.util.CryptoUtil;
+import com.datanote.platform.config.model.DnSystemConfig;
+import com.datanote.common.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 

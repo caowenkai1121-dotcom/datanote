@@ -1,12 +1,12 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.exception.ResourceNotFoundException;
+import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnMetricMapper;
 import com.datanote.mapper.DnMetricRefMapper;
-import com.datanote.model.DnMetric;
-import com.datanote.model.DnMetricRef;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnMetric;
+import com.datanote.domain.governance.model.DnMetricRef;
+import com.datanote.common.model.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

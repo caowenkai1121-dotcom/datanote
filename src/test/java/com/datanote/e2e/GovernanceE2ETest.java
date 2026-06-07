@@ -1,7 +1,8 @@
 package com.datanote.e2e;
 
+import com.datanote.common.model.R;
 import com.datanote.mapper.DnSyncJobMapper;
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.integration.model.DnSyncJob;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;

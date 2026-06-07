@@ -1,7 +1,7 @@
 package com.datanote.domain.governance;
 
-import com.datanote.model.DnGlossaryTerm;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnGlossaryTerm;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.AssetDetailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

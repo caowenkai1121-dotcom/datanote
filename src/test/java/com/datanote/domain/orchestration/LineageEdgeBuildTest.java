@@ -1,8 +1,8 @@
 package com.datanote.domain.orchestration;
 
 import com.datanote.domain.orchestration.LineageEdgeService;
-import com.datanote.model.DnLineageEdge;
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.orchestration.model.DnLineageEdge;
+import com.datanote.domain.integration.model.DnSyncJob;
 import com.datanote.sync.dto.FieldMapping;
 import com.datanote.sync.dto.TableSyncConfig;
 import org.junit.jupiter.api.Test;

@@ -3,8 +3,8 @@ package com.datanote.sync.controller;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.mapper.DnSyncFolderMapper;
 import com.datanote.mapper.DnSyncJobMapper;
-import com.datanote.model.DnSyncFolder;
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.integration.model.DnSyncFolder;
+import com.datanote.domain.integration.model.DnSyncJob;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

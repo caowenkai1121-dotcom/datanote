@@ -1,10 +1,10 @@
 package com.datanote.domain.orchestration;
 
 import com.datanote.common.Constants;
-import com.datanote.dto.BackfillRequest;
-import com.datanote.dto.PauseDownstreamRequest;
-import com.datanote.model.R;
-import com.datanote.model.dto.CronPreviewRequest;
+import com.datanote.domain.orchestration.dto.BackfillRequest;
+import com.datanote.domain.orchestration.dto.PauseDownstreamRequest;
+import com.datanote.common.model.R;
+import com.datanote.domain.develop.dto.CronPreviewRequest;
 import com.datanote.domain.orchestration.TaskDependencyService;
 import com.datanote.domain.orchestration.TaskExecutionService;
 import com.datanote.domain.orchestration.TaskSchedulerService;

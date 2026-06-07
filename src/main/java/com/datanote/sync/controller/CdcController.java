@@ -1,6 +1,6 @@
 package com.datanote.sync.controller;
 
-import com.datanote.model.R;
+import com.datanote.common.model.R;
 import com.datanote.sync.service.CdcEngineManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

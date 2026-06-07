@@ -1,5 +1,6 @@
 package com.datanote.sync.dto;
 
+import com.datanote.domain.integration.model.DnSyncJob;
 import lombok.Data;
 
 /**

@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSyncErrorRow;
+import com.datanote.domain.integration.model.DnSyncErrorRow;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

@@ -1,8 +1,8 @@
 package com.datanote.domain.governance;
 
 import com.datanote.domain.governance.IssueService;
-import com.datanote.model.DnQualityRule;
-import com.datanote.model.DnQualityRun;
+import com.datanote.domain.governance.model.DnQualityRule;
+import com.datanote.domain.governance.model.DnQualityRun;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

@@ -2,8 +2,8 @@ package com.datanote.domain.orchestration;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.DnTaskExecution;
-import com.datanote.model.R;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
+import com.datanote.common.model.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

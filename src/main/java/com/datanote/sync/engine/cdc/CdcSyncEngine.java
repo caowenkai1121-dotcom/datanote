@@ -2,14 +2,14 @@ package com.datanote.sync.engine.cdc;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.datanote.model.DnDatasource;
-import com.datanote.model.DnSyncJob;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.domain.integration.model.DnSyncJob;
 import com.datanote.sync.connector.ConnectionManager;
 import com.datanote.sync.connector.MysqlConnector;
 import com.datanote.sync.connector.TableMeta;
 import com.datanote.sync.dto.TableSyncConfig;
 import com.datanote.sync.util.WriteSqlBuilder;
-import com.datanote.util.CryptoUtil;
+import com.datanote.common.util.CryptoUtil;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
@@ -675,7 +675,7 @@ public class CdcSyncEngine {
     private void saveDeadLetter(String db, String table, String originValue, String reason, String type) {
         if (deadLetterMapper == null) return;
         try {
-            com.datanote.model.DnCdcDeadLetter dl = new com.datanote.model.DnCdcDeadLetter();
+            com.datanote.domain.integration.model.DnCdcDeadLetter dl = new com.datanote.domain.integration.model.DnCdcDeadLetter();
             dl.setJobId(job.getId());
             dl.setSourceDb(db); dl.setSourceTable(table);
             dl.setOriginValue(abbreviate(originValue));

@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnTaskExecution;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
 
 /**
  * 任务执行记录 Mapper 接口

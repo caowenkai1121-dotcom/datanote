@@ -2,9 +2,9 @@ package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnGovernanceIssueMapper;
-import com.datanote.model.DnGovernanceIssue;
-import com.datanote.model.DnQualityRule;
-import com.datanote.model.DnQualityRun;
+import com.datanote.domain.governance.model.DnGovernanceIssue;
+import com.datanote.domain.governance.model.DnQualityRule;
+import com.datanote.domain.governance.model.DnQualityRun;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

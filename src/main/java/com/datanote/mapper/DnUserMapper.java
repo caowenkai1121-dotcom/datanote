@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnUser;
+import com.datanote.platform.iam.model.DnUser;
 
 /**
  * RBAC 用户 Mapper

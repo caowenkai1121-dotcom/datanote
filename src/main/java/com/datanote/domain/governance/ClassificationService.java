@@ -1,10 +1,14 @@
 package com.datanote.domain.governance;
 
+import com.datanote.domain.governance.model.DnClassificationLevel;
+import com.datanote.domain.governance.model.DnSensitiveRule;
+import com.datanote.domain.metadata.model.DnColumnMeta;
+import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.platform.audit.model.DnLabelAudit;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.config.HiveConfig;
 import com.datanote.mapper.*;
-import com.datanote.model.*;
-import com.datanote.util.SensitiveDetector;
+import com.datanote.domain.governance.util.SensitiveDetector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
 package com.datanote.domain.governance;
 
-import com.datanote.util.DorisSqlUtil;
+import com.datanote.domain.integration.util.DorisSqlUtil;
 
 import java.time.LocalDateTime;
 

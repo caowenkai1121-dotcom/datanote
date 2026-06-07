@@ -2,7 +2,7 @@ package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnProjectMemberMapper;
-import com.datanote.model.DnProjectMember;
+import com.datanote.domain.project.model.DnProjectMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

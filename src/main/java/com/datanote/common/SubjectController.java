@@ -2,8 +2,8 @@ package com.datanote.common;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSubjectMapper;
-import com.datanote.model.DnSubject;
-import com.datanote.model.R;
+import com.datanote.domain.metadata.model.DnSubject;
+import com.datanote.common.model.R;
 import com.datanote.common.SubjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

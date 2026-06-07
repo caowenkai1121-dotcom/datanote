@@ -1,7 +1,7 @@
 package com.datanote.domain.orchestration;
 
-import com.datanote.exception.BusinessException;
-import com.datanote.model.R;
+import com.datanote.common.exception.BusinessException;
+import com.datanote.common.model.R;
 import com.datanote.domain.orchestration.ScheduleLifecycleService;
 import com.datanote.domain.orchestration.ScheduleTargetType;
 import io.swagger.v3.oas.annotations.Operation;

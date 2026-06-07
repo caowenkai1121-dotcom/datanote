@@ -3,7 +3,7 @@ package com.datanote.service;
 import com.datanote.domain.integration.DataxService;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.datanote.model.ColumnInfo;
+import com.datanote.domain.metadata.model.ColumnInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 

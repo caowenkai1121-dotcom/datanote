@@ -1,8 +1,8 @@
 package com.datanote.sync.connector;
 
 import com.datanote.mapper.DnDatasourceMapper;
-import com.datanote.model.DnDatasource;
-import com.datanote.util.CryptoUtil;
+import com.datanote.domain.datasource.model.DnDatasource;
+import com.datanote.common.util.CryptoUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnWordRoot;
+import com.datanote.domain.governance.model.DnWordRoot;
 
 /**
  * 命名词根 Mapper

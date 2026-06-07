@@ -1,5 +1,6 @@
 package com.datanote.model;
 
+import com.datanote.common.model.R;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

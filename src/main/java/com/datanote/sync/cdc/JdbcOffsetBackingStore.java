@@ -2,7 +2,7 @@ package com.datanote.sync.cdc;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnCdcOffsetMapper;
-import com.datanote.model.DnCdcOffset;
+import com.datanote.domain.integration.model.DnCdcOffset;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.slf4j.Logger;

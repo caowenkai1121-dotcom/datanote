@@ -1,7 +1,7 @@
 package com.datanote.domain.governance;
 
-import com.datanote.model.DnLifecyclePolicy;
-import com.datanote.model.R;
+import com.datanote.domain.governance.model.DnLifecyclePolicy;
+import com.datanote.common.model.R;
 import com.datanote.domain.governance.LifecycleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

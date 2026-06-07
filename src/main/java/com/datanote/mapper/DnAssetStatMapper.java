@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnAssetStat;
+import com.datanote.platform.portal.model.DnAssetStat;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

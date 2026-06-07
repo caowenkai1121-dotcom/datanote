@@ -8,7 +8,7 @@ import com.datanote.mapper.DnSearchHistoryMapper;
 import com.datanote.mapper.DnTableCommentMapper;
 import com.datanote.mapper.DnTableFavoriteMapper;
 import com.datanote.mapper.DnTableMetaMapper;
-import com.datanote.model.ColumnInfo;
+import com.datanote.domain.metadata.model.ColumnInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

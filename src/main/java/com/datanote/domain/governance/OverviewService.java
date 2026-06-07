@@ -5,9 +5,9 @@ import com.datanote.mapper.DnColumnMetaMapper;
 import com.datanote.mapper.DnGovernanceIssueMapper;
 import com.datanote.mapper.DnQualityRunMapper;
 import com.datanote.mapper.DnTableMetaMapper;
-import com.datanote.model.DnGovernanceIssue;
-import com.datanote.model.DnQualityRun;
-import com.datanote.model.DnTableMeta;
+import com.datanote.domain.governance.model.DnGovernanceIssue;
+import com.datanote.domain.governance.model.DnQualityRun;
+import com.datanote.domain.metadata.model.DnTableMeta;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -197,7 +197,7 @@ public class OverviewService {
     private Map<String, Long> groupCount(String column) {
         Map<String, Long> out = new LinkedHashMap<>();
         try {
-            QueryWrapper<com.datanote.model.DnColumnMeta> qw = new QueryWrapper<>();
+            QueryWrapper<com.datanote.domain.metadata.model.DnColumnMeta> qw = new QueryWrapper<>();
             qw.select(column + " AS k", "COUNT(*) AS cnt")
                     .isNotNull(column).ne(column, "")
                     .groupBy(column).orderByDesc("cnt");

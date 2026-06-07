@@ -1,7 +1,7 @@
 package com.datanote.sync.service;
 
 import com.datanote.mapper.DnSyncJobAuditMapper;
-import com.datanote.model.DnSyncJobAudit;
+import com.datanote.domain.integration.model.DnSyncJobAudit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

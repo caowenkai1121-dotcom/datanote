@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnTableComment;
+import com.datanote.domain.metadata.model.DnTableComment;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

@@ -1,8 +1,12 @@
 package com.datanote.domain.develop;
 
-import com.datanote.model.*;
-import com.datanote.model.dto.MoveScriptRequest;
-import com.datanote.model.dto.RenameFolderRequest;
+import com.datanote.common.model.R;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.develop.model.DnScriptFolder;
+import com.datanote.domain.develop.model.DnScriptVersion;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.domain.develop.dto.MoveScriptRequest;
+import com.datanote.domain.develop.dto.RenameFolderRequest;
 import com.datanote.domain.develop.ScriptService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

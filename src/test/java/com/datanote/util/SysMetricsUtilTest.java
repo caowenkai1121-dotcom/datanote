@@ -1,5 +1,6 @@
 package com.datanote.util;
 
+import com.datanote.platform.portal.util.SysMetricsUtil;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

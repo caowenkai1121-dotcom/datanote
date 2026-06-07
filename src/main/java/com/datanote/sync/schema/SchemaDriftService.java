@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnSyncSchemaSnapshotMapper;
-import com.datanote.model.DnSyncSchemaSnapshot;
+import com.datanote.domain.integration.model.DnSyncSchemaSnapshot;
 import com.datanote.sync.connector.ColumnDef;
 import com.datanote.sync.service.AlertService;
 import lombok.RequiredArgsConstructor;

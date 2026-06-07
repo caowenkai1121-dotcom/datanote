@@ -1,7 +1,7 @@
 package com.datanote.service;
 
 import com.datanote.platform.audit.AuditService;
-import com.datanote.model.DnAuditLog;
+import com.datanote.platform.audit.model.DnAuditLog;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

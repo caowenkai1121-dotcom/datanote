@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnScriptVersion;
+import com.datanote.domain.develop.model.DnScriptVersion;
 
 /**
  * 脚本版本 Mapper 接口

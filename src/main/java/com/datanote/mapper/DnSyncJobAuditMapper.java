@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnSyncJobAudit;
+import com.datanote.domain.integration.model.DnSyncJobAudit;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

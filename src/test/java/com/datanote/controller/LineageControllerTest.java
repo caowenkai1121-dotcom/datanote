@@ -1,9 +1,9 @@
 package com.datanote.controller;
 
 import com.datanote.domain.orchestration.LineageController;
-import com.datanote.model.DnScript;
-import com.datanote.model.DnTaskDependency;
-import com.datanote.model.R;
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.orchestration.model.DnTaskDependency;
+import com.datanote.common.model.R;
 import com.datanote.domain.orchestration.DolphinService;
 import com.datanote.domain.develop.ScriptService;
 import com.datanote.domain.orchestration.TaskDependencyService;
@@ -97,7 +97,7 @@ class LineageControllerTest {
     @Test
     void getLineage_scriptNotFound_throwsException() {
         when(scriptService.getById(999L)).thenReturn(null);
-        assertThrows(com.datanote.exception.ResourceNotFoundException.class,
+        assertThrows(com.datanote.common.exception.ResourceNotFoundException.class,
                 new org.junit.jupiter.api.function.Executable() {
                     public void execute() { controller.getLineage(999L); }
                 });

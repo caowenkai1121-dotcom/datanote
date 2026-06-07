@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnLabelAudit;
+import com.datanote.platform.audit.model.DnLabelAudit;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

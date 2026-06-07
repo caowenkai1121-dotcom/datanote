@@ -1,9 +1,11 @@
 package com.datanote.domain.orchestration;
 
+import com.datanote.domain.develop.model.DnScript;
+import com.datanote.domain.integration.model.DnSyncTask;
+import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.Constants;
 import com.datanote.mapper.*;
-import com.datanote.model.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -535,10 +537,10 @@ public class TaskSchedulerService {
     public void stopTask(Long runId) {
         DnSchedulerRun run = runMapper.selectById(runId);
         if (run == null) {
-            throw new com.datanote.exception.ResourceNotFoundException("调度记录");
+            throw new com.datanote.common.exception.ResourceNotFoundException("调度记录");
         }
         if (run.getStatus() != DnSchedulerRun.STATUS_RUNNING) {
-            throw new com.datanote.exception.BusinessException("任务不在运行中，无法停止");
+            throw new com.datanote.common.exception.BusinessException("任务不在运行中，无法停止");
         }
         // Mark as failed
         DnSchedulerRun update = new DnSchedulerRun();

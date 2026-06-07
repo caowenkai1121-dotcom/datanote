@@ -1,6 +1,6 @@
 package com.datanote.config;
 
-import com.datanote.model.DnUser;
+import com.datanote.platform.iam.model.DnUser;
 import com.datanote.platform.iam.RbacService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;

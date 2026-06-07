@@ -1,8 +1,8 @@
 package com.datanote.config;
 
 import com.datanote.mapper.DnSystemConfigMapper;
-import com.datanote.model.DnSystemConfig;
-import com.datanote.util.CryptoUtil;
+import com.datanote.platform.config.model.DnSystemConfig;
+import com.datanote.common.util.CryptoUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;

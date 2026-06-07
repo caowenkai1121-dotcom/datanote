@@ -2,8 +2,8 @@ package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnQualityRuleMapper;
-import com.datanote.model.DnQualityRule;
-import com.datanote.model.DnQualityRun;
+import com.datanote.domain.governance.model.DnQualityRule;
+import com.datanote.domain.governance.model.DnQualityRun;
 import com.datanote.sync.service.AlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -2,8 +2,8 @@ package com.datanote.sync.service;
 
 import com.alibaba.fastjson.JSON;
 import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.model.DnSyncJob;
-import com.datanote.model.DnTaskExecution;
+import com.datanote.domain.integration.model.DnSyncJob;
+import com.datanote.domain.orchestration.model.DnTaskExecution;
 import com.datanote.sync.connector.DbConnector;
 import com.datanote.sync.connector.MysqlConnector;
 import com.datanote.sync.dto.TableSyncConfig;

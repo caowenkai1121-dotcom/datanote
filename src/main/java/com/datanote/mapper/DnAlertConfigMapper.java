@@ -1,7 +1,7 @@
 package com.datanote.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.datanote.model.DnAlertConfig;
+import com.datanote.platform.alert.model.DnAlertConfig;
 
 /**
  * 告警配置 Mapper 接口

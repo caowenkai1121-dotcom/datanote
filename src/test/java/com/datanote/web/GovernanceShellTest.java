@@ -1,5 +1,6 @@
 package com.datanote.web;
 
+import com.datanote.common.model.R;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

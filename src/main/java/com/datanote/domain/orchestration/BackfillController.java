@@ -1,8 +1,8 @@
 package com.datanote.domain.orchestration;
 
-import com.datanote.model.DnBackfillInstance;
-import com.datanote.model.DnBackfillTask;
-import com.datanote.model.R;
+import com.datanote.domain.orchestration.model.DnBackfillInstance;
+import com.datanote.domain.orchestration.model.DnBackfillTask;
+import com.datanote.common.model.R;
 import com.datanote.domain.orchestration.BackfillService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

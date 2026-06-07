@@ -5,9 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.mapper.DnProjectMemberMapper;
 import com.datanote.mapper.DnProjectTemplateMapper;
-import com.datanote.model.DnProject;
-import com.datanote.model.DnProjectMember;
-import com.datanote.model.DnProjectTemplate;
+import com.datanote.domain.project.model.DnProject;
+import com.datanote.domain.project.model.DnProjectMember;
+import com.datanote.domain.project.model.DnProjectTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

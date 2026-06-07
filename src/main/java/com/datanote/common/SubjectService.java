@@ -2,7 +2,7 @@ package com.datanote.common;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.mapper.DnSubjectMapper;
-import com.datanote.model.DnSubject;
+import com.datanote.domain.metadata.model.DnSubject;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
