@@ -27,11 +27,10 @@ class WorkspaceDbSyncUiTest {
 
     @Test
     void taskActionButtonsUseCompactLayoutRules() throws Exception {
-        String html = readWorkspaceHtml();
-
-        assertTrue(html.contains(".dbsync-action-btns .btn"),
+        // CSS 已从 workspace.html 内联 <style> 外置到 css/app.css(R6 前端重构)
+        assertTrue(readAppCss().contains(".dbsync-action-btns .btn"),
                 "task action buttons should have dedicated compact sizing");
-        assertTrue(html.contains("dbsync-action-btns"),
+        assertTrue(readWorkspaceHtml().contains("dbsync-action-btns"),
                 "task rows should still render action buttons inside the compact container");
     }
 
@@ -239,6 +238,11 @@ class WorkspaceDbSyncUiTest {
 
     private static String readWorkspaceHtml() throws Exception {
         byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/workspace.html"));
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    private static String readAppCss() throws Exception {
+        byte[] bytes = Files.readAllBytes(Paths.get("src/main/resources/static/css/app.css"));
         return new String(bytes, StandardCharsets.UTF_8);
     }
 }
