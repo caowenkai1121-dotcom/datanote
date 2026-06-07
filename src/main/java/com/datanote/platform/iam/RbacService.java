@@ -3,6 +3,7 @@ package com.datanote.platform.iam;
 import com.datanote.platform.config.DbUserDetailsService;
 import com.datanote.platform.config.SecurityConfig;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.platform.iam.mapper.DnRoleMapper;
 import com.datanote.platform.iam.mapper.DnRolePermMapper;
 import com.datanote.platform.iam.mapper.DnUserMapper;
@@ -12,6 +13,7 @@ import com.datanote.platform.iam.model.DnRolePerm;
 import com.datanote.platform.iam.model.DnUser;
 import com.datanote.platform.iam.model.DnUserRole;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
  * RBAC 服务 — 用户/角色 CRUD、角色分配、权限集查询、权限校验。
  * 密码一律经 BCrypt 哈希入库，绝不存明文。
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RbacService {
@@ -58,12 +61,19 @@ public class RbacService {
         QueryWrapper<DnUser> qw = new QueryWrapper<>();
         qw.orderByAsc("id");
         List<DnUser> users = userMapper.selectList(qw);
+        if (users == null) {
+            return new ArrayList<>();
+        }
         // 不回传密码哈希
         users.forEach(u -> u.setPassword(null));
         return users;
     }
 
     public DnUser findByUsername(String username) {
+        // 用户名空白时无可查之据，直接返回 null（与"找不到用户"语义一致，避免无效全表 selectOne）
+        if (username == null || username.trim().isEmpty()) {
+            return null;
+        }
         QueryWrapper<DnUser> qw = new QueryWrapper<>();
         qw.eq("username", username);
         return userMapper.selectOne(qw);
@@ -73,6 +83,12 @@ public class RbacService {
      * 创建用户：密码 BCrypt 哈希后入库。
      */
     public DnUser createUser(DnUser user) {
+        if (user == null) {
+            throw new BusinessException("创建用户失败：用户对象不能为空");
+        }
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new BusinessException("创建用户失败：用户名不能为空");
+        }
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
@@ -91,6 +107,12 @@ public class RbacService {
      * 更新用户：仅当传入了非空 password 时才重新哈希，否则保留原密码不动。
      */
     public DnUser updateUser(DnUser user) {
+        if (user == null) {
+            throw new BusinessException("更新用户失败：用户对象不能为空");
+        }
+        if (user.getId() == null) {
+            throw new BusinessException("更新用户失败：用户ID不能为空");
+        }
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         } else {
@@ -108,6 +130,9 @@ public class RbacService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteUser(Long userId) {
+        if (userId == null) {
+            throw new BusinessException("删除用户失败：用户ID不能为空");
+        }
         QueryWrapper<DnUserRole> qw = new QueryWrapper<>();
         qw.eq("user_id", userId);
         userRoleMapper.delete(qw);
@@ -119,22 +144,38 @@ public class RbacService {
     public List<DnRole> listRoles() {
         QueryWrapper<DnRole> qw = new QueryWrapper<>();
         qw.orderByAsc("id");
-        return roleMapper.selectList(qw);
+        List<DnRole> roles = roleMapper.selectList(qw);
+        return roles != null ? roles : new ArrayList<>();
     }
 
     public DnRole createRole(DnRole role) {
+        if (role == null) {
+            throw new BusinessException("创建角色失败：角色对象不能为空");
+        }
+        if (role.getRoleCode() == null || role.getRoleCode().trim().isEmpty()) {
+            throw new BusinessException("创建角色失败：角色编码不能为空");
+        }
         role.setId(null);
         roleMapper.insert(role);
         return role;
     }
 
     public DnRole updateRole(DnRole role) {
+        if (role == null) {
+            throw new BusinessException("更新角色失败：角色对象不能为空");
+        }
+        if (role.getId() == null) {
+            throw new BusinessException("更新角色失败：角色ID不能为空");
+        }
         roleMapper.updateById(role);
         return role;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteRole(Long roleId) {
+        if (roleId == null) {
+            throw new BusinessException("删除角色失败：角色ID不能为空");
+        }
         QueryWrapper<DnUserRole> urQw = new QueryWrapper<>();
         urQw.eq("role_id", roleId);
         userRoleMapper.delete(urQw);
@@ -148,9 +189,16 @@ public class RbacService {
      * 查询角色的权限点列表。
      */
     public List<String> listRolePerms(Long roleId) {
+        if (roleId == null) {
+            return new ArrayList<>();
+        }
         QueryWrapper<DnRolePerm> qw = new QueryWrapper<>();
         qw.eq("role_id", roleId);
-        return rolePermMapper.selectList(qw).stream()
+        List<DnRolePerm> rows = rolePermMapper.selectList(qw);
+        if (rows == null || rows.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return rows.stream()
                 .map(DnRolePerm::getPermCode)
                 .collect(Collectors.toList());
     }
@@ -160,11 +208,15 @@ public class RbacService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void setRolePerms(Long roleId, List<String> permCodes) {
+        if (roleId == null) {
+            throw new BusinessException("设置角色权限失败：角色ID不能为空");
+        }
         QueryWrapper<DnRolePerm> qw = new QueryWrapper<>();
         qw.eq("role_id", roleId);
         rolePermMapper.delete(qw);
         if (permCodes != null) {
-            for (String code : new HashSet<>(permCodes)) {
+            // LinkedHashSet 去重并保留顺序，行为与原 HashSet 去重等价
+            for (String code : new LinkedHashSet<>(permCodes)) {
                 if (code == null || code.isEmpty()) {
                     continue;
                 }
@@ -183,11 +235,15 @@ public class RbacService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void assignRoles(Long userId, List<Long> roleIds) {
+        if (userId == null) {
+            throw new BusinessException("分配角色失败：用户ID不能为空");
+        }
         QueryWrapper<DnUserRole> qw = new QueryWrapper<>();
         qw.eq("user_id", userId);
         userRoleMapper.delete(qw);
         if (roleIds != null) {
-            for (Long roleId : new HashSet<>(roleIds)) {
+            // LinkedHashSet 去重并保留顺序，行为与原 HashSet 去重等价
+            for (Long roleId : new LinkedHashSet<>(roleIds)) {
                 if (roleId == null) {
                     continue;
                 }
@@ -203,9 +259,16 @@ public class RbacService {
      * 查询用户的角色 ID 列表。
      */
     public List<Long> getUserRoleIds(Long userId) {
+        if (userId == null) {
+            return new ArrayList<>();
+        }
         QueryWrapper<DnUserRole> qw = new QueryWrapper<>();
         qw.eq("user_id", userId);
-        return userRoleMapper.selectList(qw).stream()
+        List<DnUserRole> rows = userRoleMapper.selectList(qw);
+        if (rows == null || rows.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return rows.stream()
                 .map(DnUserRole::getRoleId)
                 .collect(Collectors.toList());
     }
@@ -214,13 +277,20 @@ public class RbacService {
      * 聚合用户所有角色的权限点为去重集合。
      */
     public Set<String> getUserPerms(Long userId) {
+        if (userId == null) {
+            return Collections.emptySet();
+        }
         List<Long> roleIds = getUserRoleIds(userId);
         if (roleIds.isEmpty()) {
             return Collections.emptySet();
         }
         QueryWrapper<DnRolePerm> qw = new QueryWrapper<>();
         qw.in("role_id", roleIds);
-        return rolePermMapper.selectList(qw).stream()
+        List<DnRolePerm> rows = rolePermMapper.selectList(qw);
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return rows.stream()
                 .map(DnRolePerm::getPermCode)
                 .collect(Collectors.toSet());
     }
@@ -248,7 +318,11 @@ public class RbacService {
         if (roleIds.isEmpty()) {
             return new ArrayList<>();
         }
-        return roleMapper.selectBatchIds(roleIds).stream()
+        List<DnRole> roles = roleMapper.selectBatchIds(roleIds);
+        if (roles == null || roles.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return roles.stream()
                 .map(DnRole::getRoleCode)
                 .collect(Collectors.toList());
     }

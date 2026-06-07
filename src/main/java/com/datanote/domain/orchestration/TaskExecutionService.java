@@ -12,6 +12,7 @@ import com.datanote.domain.metadata.model.ColumnInfo;
 import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.datanote.domain.orchestration.model.DnTaskExecution;
 import com.datanote.common.LogBroadcastService;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.datasource.MetadataService;
 import com.datanote.domain.integration.DataxService;
 import com.datanote.domain.integration.HiveService;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -70,6 +72,16 @@ public class TaskExecutionService {
      * 带超时的任务执行
      */
     public void executeTaskWithTimeout(DnSchedulerRun run) {
+        if (run == null) {
+            throw new BusinessException("执行任务失败：运行记录为空");
+        }
+        if (run.getTaskId() == null || run.getTaskType() == null) {
+            throw new BusinessException("执行任务失败：缺少 taskId 或 taskType");
+        }
+        if (run.getRunDate() == null) {
+            throw new BusinessException("执行任务失败：缺少运行日期 runDate");
+        }
+
         // 获取超时配置
         int timeoutSeconds = getTaskTimeout(run);
 
@@ -260,7 +272,11 @@ public class TaskExecutionService {
         logBuilder.append(result.getOutput());
 
         // 执行完删除含密码的临时文件
-        try { new java.io.File(jobFile).delete(); } catch (Exception ignored) {}
+        try {
+            new java.io.File(jobFile).delete();
+        } catch (Exception e) {
+            log.warn("删除 DataX 临时配置文件失败: {} - {}", jobFile, e.getMessage());
+        }
 
         if (result.getExitCode() != 0) {
             throw new RuntimeException("DataX 执行失败，退出码: " + result.getExitCode());
@@ -281,9 +297,12 @@ public class TaskExecutionService {
     }
 
     private DnDatasource resolveDatasource(DnSyncTask task) {
+        if (task.getSourceDsId() == null) {
+            throw new RuntimeException("同步任务未配置源数据源");
+        }
         DnDatasource ds = datasourceMapper.selectById(task.getSourceDsId());
         if (ds == null) {
-            throw new RuntimeException("鏁版嵁婧愪笉瀛樺湪: " + task.getSourceDsId());
+            throw new RuntimeException("数据源不存在: " + task.getSourceDsId());
         }
         ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
         return ds;
@@ -355,12 +374,15 @@ public class TaskExecutionService {
      *
      * @param runId 运行记录 ID
      */
+    @Transactional(rollbackFor = Exception.class)
     public void retryTask(Long runId) {
+        if (runId == null) throw new BusinessException("重试失败：运行记录 ID 不能为空");
         DnSchedulerRun run = runMapper.selectById(runId);
-        if (run == null) throw new RuntimeException("运行记录不存在");
-        if (run.getStatus() != DnSchedulerRun.STATUS_FAILED &&
-            run.getStatus() != DnSchedulerRun.STATUS_PAUSED) {
-            throw new RuntimeException("只能重试失败或暂停的任务，当前状态: " + run.getStatus());
+        if (run == null) throw new BusinessException("运行记录不存在");
+        Integer status = run.getStatus();
+        if (status == null ||
+            (status != DnSchedulerRun.STATUS_FAILED && status != DnSchedulerRun.STATUS_PAUSED)) {
+            throw new BusinessException("只能重试失败或暂停的任务，当前状态: " + status);
         }
 
         run.setStatus(DnSchedulerRun.STATUS_WAITING);
@@ -380,7 +402,10 @@ public class TaskExecutionService {
      * 指数退避 + Full Jitter
      */
     private long calculateRetryDelay(int attempt) {
-        long exponential = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * (1L << attempt));
+        // 限制移位次数，避免 attempt 过大导致 1L<<attempt 溢出为负值（进而使随机区间非法）
+        int shift = (attempt < 0) ? 0 : Math.min(attempt, 30);
+        long exponential = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * (1L << shift));
+        // exponential 恒 >= RETRY_BASE_MS，确保随机区间 origin < bound
         return ThreadLocalRandom.current().nextLong(RETRY_BASE_MS, exponential + 1);
     }
 
@@ -467,6 +492,7 @@ public class TaskExecutionService {
      * 从 DataX 日志中解析数值（如 "读出记录总数 : 12345"）
      */
     private long parseCountFromLog(String logText, String keyword) {
+        if (logText == null || keyword == null) return 0;
         int idx = logText.indexOf(keyword);
         if (idx < 0) return 0;
         String after = logText.substring(idx + keyword.length());

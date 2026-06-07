@@ -9,6 +9,8 @@ import com.datanote.domain.integration.model.DnSyncTask;
 import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.Constants;
+import com.datanote.common.exception.BusinessException;
+import com.datanote.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +104,9 @@ public class TaskSchedulerService {
             QueryWrapper<DnSchedulerRun> runningQw = new QueryWrapper<>();
             runningQw.eq("status", DnSchedulerRun.STATUS_RUNNING);
             List<DnSchedulerRun> stuckRuns = runMapper.selectList(runningQw);
+            if (stuckRuns == null) {
+                stuckRuns = Collections.emptyList();
+            }
             for (DnSchedulerRun run : stuckRuns) {
                 run.setStatus(DnSchedulerRun.STATUS_WAITING);
                 run.setLog((run.getLog() != null ? run.getLog() : "") + "\n[RECOVER] 服务重启，任务重置为等待状态");
@@ -112,10 +117,11 @@ public class TaskSchedulerService {
             QueryWrapper<DnSchedulerRun> waitingQw = new QueryWrapper<>();
             waitingQw.eq("status", DnSchedulerRun.STATUS_WAITING);
             Long waitingCount = runMapper.selectCount(waitingQw);
-            if (waitingCount > 0 || !stuckRuns.isEmpty()) {
+            long waiting = waitingCount != null ? waitingCount : 0L;
+            if (waiting > 0 || !stuckRuns.isEmpty()) {
                 schedulerEnabled = true;
                 log.info("调度引擎自动恢复：{} 个等待任务，{} 个中断任务已重置",
-                        waitingCount, stuckRuns.size());
+                        waiting, stuckRuns.size());
             }
         } catch (Exception e) {
             log.error("调度引擎恢复检查失败", e);
@@ -149,6 +155,9 @@ public class TaskSchedulerService {
      * @return 是否运行中
      */
     public boolean isTaskRunning(String taskKey) {
+        if (taskKey == null) {
+            return false;
+        }
         return runningTasks.contains(taskKey);
     }
 
@@ -164,7 +173,7 @@ public class TaskSchedulerService {
                 QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
                 qw.eq("run_date", runDate).eq("run_type", Constants.RUN_TYPE_DAILY);
                 Long count = runMapper.selectCount(qw);
-                if (count == 0) {
+                if (count == null || count == 0) {
                     log.info("发现 {} 缺失调度记录，自动补创建", runDate);
                     startDailyRun(runDate);
                 }
@@ -200,6 +209,9 @@ public class TaskSchedulerService {
             qw.eq("status", DnSchedulerRun.STATUS_WAITING)
               .select("DISTINCT run_date, run_type");
             List<DnSchedulerRun> waitingGroups = runMapper.selectList(qw);
+            if (waitingGroups == null || waitingGroups.isEmpty()) {
+                return;
+            }
 
             Set<String> processed = new HashSet<>();
             for (DnSchedulerRun g : waitingGroups) {
@@ -236,11 +248,14 @@ public class TaskSchedulerService {
      * 启动每日调度
      */
     public Map<String, Object> startDailyRun(LocalDate runDate) {
+        if (runDate == null) {
+            throw new BusinessException("运行日期不能为空");
+        }
         // 检查是否已有记录
         QueryWrapper<DnSchedulerRun> checkQw = new QueryWrapper<>();
         checkQw.eq("run_date", runDate).eq("run_type", Constants.RUN_TYPE_DAILY);
         Long existCount = runMapper.selectCount(checkQw);
-        if (existCount > 0) {
+        if (existCount != null && existCount > 0) {
             schedulerEnabled = true;
             processWaitingTasks(runDate, Constants.RUN_TYPE_DAILY);
             Map<String, Object> result = new HashMap<>();
@@ -300,11 +315,18 @@ public class TaskSchedulerService {
      * @param runType 运行类型（daily / backfill）
      */
     public void processWaitingTasks(LocalDate runDate, String runType) {
+        if (runDate == null || runType == null || runType.trim().isEmpty()) {
+            log.warn("processWaitingTasks 入参非法，跳过 (runDate={}, runType={})", runDate, runType);
+            return;
+        }
         QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
         qw.eq("run_date", runDate)
           .eq("run_type", runType)
           .eq("status", DnSchedulerRun.STATUS_WAITING);
         List<DnSchedulerRun> waitingRuns = runMapper.selectList(qw);
+        if (waitingRuns == null || waitingRuns.isEmpty()) {
+            return;
+        }
 
         for (DnSchedulerRun run : waitingRuns) {
             String taskKey = buildTaskKey(run);
@@ -335,6 +357,8 @@ public class TaskSchedulerService {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.warn("任务被中断: {}", taskKey);
+                    } catch (Exception e) {
+                        log.error("任务执行异常: {}", taskKey, e);
                     } finally {
                         runningTasks.remove(taskKey);
                     }
@@ -392,6 +416,15 @@ public class TaskSchedulerService {
      */
     public Map<String, Object> startBackfill(Long rootTaskId, String rootTaskType,
                                               LocalDate runDate, List<Map<String, Object>> selectedTasks) {
+        if (rootTaskId == null) {
+            throw new BusinessException("补数据根任务 ID 不能为空");
+        }
+        if (rootTaskType == null || rootTaskType.trim().isEmpty()) {
+            throw new BusinessException("补数据根任务类型不能为空");
+        }
+        if (runDate == null) {
+            throw new BusinessException("补数据日期不能为空");
+        }
         String batchId = "bf_" + System.currentTimeMillis();
 
         // 创建根任务记录
@@ -399,8 +432,20 @@ public class TaskSchedulerService {
 
         if (selectedTasks != null) {
             for (Map<String, Object> st : selectedTasks) {
-                Long taskId = Long.valueOf(st.get("taskId").toString());
+                if (st == null) {
+                    continue;
+                }
+                Object rawTaskId = st.get("taskId");
                 String taskType = (String) st.get("taskType");
+                if (rawTaskId == null || taskType == null || taskType.trim().isEmpty()) {
+                    throw new BusinessException("补数据下游任务缺少 taskId 或 taskType");
+                }
+                Long taskId;
+                try {
+                    taskId = Long.valueOf(rawTaskId.toString().trim());
+                } catch (NumberFormatException e) {
+                    throw new BusinessException("补数据下游任务 ID 非法: " + rawTaskId);
+                }
                 createBackfillRun(taskId, taskType, runDate, batchId);
             }
         }
@@ -442,10 +487,19 @@ public class TaskSchedulerService {
      * @return 恢复的任务数量
      */
     public int resumePaused(LocalDate runDate, String runType) {
+        if (runDate == null) {
+            throw new BusinessException("运行日期不能为空");
+        }
+        if (runType == null || runType.trim().isEmpty()) {
+            throw new BusinessException("运行类型不能为空");
+        }
         QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
         qw.eq("run_date", runDate).eq("run_type", runType)
           .eq("status", DnSchedulerRun.STATUS_PAUSED);
         List<DnSchedulerRun> pausedRuns = runMapper.selectList(qw);
+        if (pausedRuns == null || pausedRuns.isEmpty()) {
+            return 0;
+        }
 
         for (DnSchedulerRun run : pausedRuns) {
             run.setStatus(DnSchedulerRun.STATUS_WAITING);
@@ -467,26 +521,35 @@ public class TaskSchedulerService {
      * @return 状态概览（含任务列表和统计数据）
      */
     public Map<String, Object> getTodayStatus(LocalDate runDate) {
+        if (runDate == null) {
+            throw new BusinessException("运行日期不能为空");
+        }
         QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
         qw.eq("run_date", runDate).eq("run_type", Constants.RUN_TYPE_DAILY).orderByAsc("id");
         List<DnSchedulerRun> runs = runMapper.selectList(qw);
+        if (runs == null) {
+            runs = Collections.emptyList();
+        }
 
-        // 批量查询所有涉及的 script 和 syncTask，避免 N+1 查询
+        // 批量查询所有涉及的 script 和 syncTask，避免 N+1 查询（剔除 null taskId）
         Set<Long> scriptIds = new HashSet<>();
         Set<Long> syncTaskIds = new HashSet<>();
         for (DnSchedulerRun run : runs) {
+            if (run.getTaskId() == null) {
+                continue;
+            }
             if (Constants.TASK_TYPE_SCRIPT.equals(run.getTaskType())) {
                 scriptIds.add(run.getTaskId());
             } else {
                 syncTaskIds.add(run.getTaskId());
             }
         }
-        Map<Long, DnScript> scriptMap = scriptIds.isEmpty() ? Collections.emptyMap()
-                : scriptMapper.selectBatchIds(scriptIds).stream()
-                    .collect(Collectors.toMap(DnScript::getId, s -> s, (a, b) -> a));
-        Map<Long, DnSyncTask> syncTaskMap = syncTaskIds.isEmpty() ? Collections.emptyMap()
-                : syncTaskMapper.selectBatchIds(syncTaskIds).stream()
-                    .collect(Collectors.toMap(DnSyncTask::getId, t -> t, (a, b) -> a));
+        List<DnScript> scriptList = scriptIds.isEmpty() ? Collections.emptyList() : scriptMapper.selectBatchIds(scriptIds);
+        List<DnSyncTask> syncList = syncTaskIds.isEmpty() ? Collections.emptyList() : syncTaskMapper.selectBatchIds(syncTaskIds);
+        Map<Long, DnScript> scriptMap = (scriptList == null ? Collections.<DnScript>emptyList() : scriptList).stream()
+                .collect(Collectors.toMap(DnScript::getId, s -> s, (a, b) -> a));
+        Map<Long, DnSyncTask> syncTaskMap = (syncList == null ? Collections.<DnSyncTask>emptyList() : syncList).stream()
+                .collect(Collectors.toMap(DnSyncTask::getId, t -> t, (a, b) -> a));
 
         List<Map<String, Object>> runList = new ArrayList<>();
         for (DnSchedulerRun run : runs) {
@@ -514,11 +577,11 @@ public class TaskSchedulerService {
         Map<String, Object> result = new HashMap<>();
         result.put("runs", runList);
         result.put("total", runs.size());
-        result.put("success", runs.stream().filter(r -> r.getStatus() == DnSchedulerRun.STATUS_SUCCESS).count());
-        result.put("running", runs.stream().filter(r -> r.getStatus() == DnSchedulerRun.STATUS_RUNNING).count());
-        result.put("waiting", runs.stream().filter(r -> r.getStatus() == DnSchedulerRun.STATUS_WAITING).count());
-        result.put("failed", runs.stream().filter(r -> r.getStatus() == DnSchedulerRun.STATUS_FAILED).count());
-        result.put("paused", runs.stream().filter(r -> r.getStatus() == DnSchedulerRun.STATUS_PAUSED).count());
+        result.put("success", countByStatus(runs, DnSchedulerRun.STATUS_SUCCESS));
+        result.put("running", countByStatus(runs, DnSchedulerRun.STATUS_RUNNING));
+        result.put("waiting", countByStatus(runs, DnSchedulerRun.STATUS_WAITING));
+        result.put("failed", countByStatus(runs, DnSchedulerRun.STATUS_FAILED));
+        result.put("paused", countByStatus(runs, DnSchedulerRun.STATUS_PAUSED));
         result.put("schedulerEnabled", schedulerEnabled);
         return result;
     }
@@ -530,6 +593,9 @@ public class TaskSchedulerService {
      * @return 日志内容
      */
     public String getRunLog(Long runId) {
+        if (runId == null) {
+            throw new BusinessException("运行记录 ID 不能为空");
+        }
         DnSchedulerRun run = runMapper.selectById(runId);
         return run != null ? run.getLog() : null;
     }
@@ -538,12 +604,15 @@ public class TaskSchedulerService {
      * 停止运行中的任务
      */
     public void stopTask(Long runId) {
+        if (runId == null) {
+            throw new BusinessException("运行记录 ID 不能为空");
+        }
         DnSchedulerRun run = runMapper.selectById(runId);
         if (run == null) {
-            throw new com.datanote.common.exception.ResourceNotFoundException("调度记录");
+            throw new ResourceNotFoundException("调度记录");
         }
-        if (run.getStatus() != DnSchedulerRun.STATUS_RUNNING) {
-            throw new com.datanote.common.exception.BusinessException("任务不在运行中，无法停止");
+        if (run.getStatus() == null || run.getStatus() != DnSchedulerRun.STATUS_RUNNING) {
+            throw new BusinessException("任务不在运行中，无法停止");
         }
         // Mark as failed
         DnSchedulerRun update = new DnSchedulerRun();
@@ -566,24 +635,40 @@ public class TaskSchedulerService {
         List<DnSchedulerRun> toRetry;
 
         if (runIds != null && !runIds.isEmpty()) {
-            // 按选中的 ID 重跑
+            // 按选中的 ID 重跑（剔除 null id）
             List<Long> ids = new ArrayList<>();
-            for (Integer id : runIds) ids.add(id.longValue());
+            for (Integer id : runIds) {
+                if (id != null) ids.add(id.longValue());
+            }
+            if (ids.isEmpty()) {
+                return 0;
+            }
             toRetry = runMapper.selectBatchIds(ids);
         } else if (date != null && !date.isEmpty()) {
             // 未选中则重跑当天全部失败+暂停
+            LocalDate parsedDate;
+            try {
+                parsedDate = LocalDate.parse(date.trim());
+            } catch (java.time.format.DateTimeParseException e) {
+                throw new BusinessException("日期格式非法，应为 yyyy-MM-dd: " + date);
+            }
             QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
-            qw.eq("run_date", LocalDate.parse(date))
+            qw.eq("run_date", parsedDate)
               .eq("run_type", Constants.RUN_TYPE_DAILY)
               .in("status", DnSchedulerRun.STATUS_FAILED, DnSchedulerRun.STATUS_PAUSED);
             toRetry = runMapper.selectList(qw);
         } else {
             return 0;
         }
+        if (toRetry == null || toRetry.isEmpty()) {
+            return 0;
+        }
 
         int count = 0;
+        LocalDate triggerDate = null;
         for (DnSchedulerRun run : toRetry) {
-            if (run.getStatus() == DnSchedulerRun.STATUS_FAILED || run.getStatus() == DnSchedulerRun.STATUS_PAUSED) {
+            Integer st = run.getStatus();
+            if (st != null && (st == DnSchedulerRun.STATUS_FAILED || st == DnSchedulerRun.STATUS_PAUSED)) {
                 run.setStatus(DnSchedulerRun.STATUS_WAITING);
                 run.setRetryCount(0);
                 run.setLog(null);
@@ -591,14 +676,18 @@ public class TaskSchedulerService {
                 run.setEndTime(null);
                 runMapper.updateById(run);
                 count++;
+                if (triggerDate == null && run.getRunDate() != null) {
+                    triggerDate = run.getRunDate();
+                }
             }
         }
 
         if (count > 0) {
             schedulerEnabled = true;
-            // 触发调度引擎立即检查
-            LocalDate runDate = toRetry.get(0).getRunDate();
-            processWaitingTasks(runDate, Constants.RUN_TYPE_DAILY);
+            // 触发调度引擎立即检查（取一条已重置任务的运行日期，避免 null）
+            if (triggerDate != null) {
+                processWaitingTasks(triggerDate, Constants.RUN_TYPE_DAILY);
+            }
             log.info("批量重跑 {} 个任务，调度引擎已触发", count);
         }
         return count;
@@ -608,10 +697,21 @@ public class TaskSchedulerService {
      * 查询指定任务的本地运行记录（按时间倒序）
      */
     public List<Map<String, Object>> getTaskRuns(Long taskId, String taskType, int limit) {
+        if (taskId == null) {
+            throw new BusinessException("任务 ID 不能为空");
+        }
+        if (taskType == null || taskType.trim().isEmpty()) {
+            throw new BusinessException("任务类型不能为空");
+        }
+        // 限制 limit 为合法正整数，避免拼出非法 LIMIT 子句
+        int safeLimit = limit <= 0 ? 50 : Math.min(limit, 1000);
         QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
         qw.eq("task_id", taskId).eq("task_type", taskType)
-          .orderByDesc("id").last("LIMIT " + limit);
+          .orderByDesc("id").last("LIMIT " + safeLimit);
         List<DnSchedulerRun> runs = runMapper.selectList(qw);
+        if (runs == null || runs.isEmpty()) {
+            return new ArrayList<>();
+        }
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (DnSchedulerRun run : runs) {
@@ -636,6 +736,13 @@ public class TaskSchedulerService {
 
     // ======================== 工具方法 ========================
 
+    /** 按状态统计运行记录数量，null 状态视为不匹配，避免拆箱 NPE */
+    private long countByStatus(List<DnSchedulerRun> runs, int status) {
+        return runs.stream()
+                .filter(r -> r.getStatus() != null && r.getStatus() == status)
+                .count();
+    }
+
     private String buildTaskKey(DnSchedulerRun run) {
         String base = run.getTaskType() + ":" + run.getTaskId() + ":" + run.getRunDate() + ":" + run.getRunType();
         return run.getBatchId() != null ? base + ":" + run.getBatchId() : base;
@@ -644,12 +751,14 @@ public class TaskSchedulerService {
     private List<DnScript> getOnlineScripts() {
         QueryWrapper<DnScript> qw = new QueryWrapper<>();
         qw.eq("schedule_status", Constants.SCHEDULE_ONLINE);
-        return scriptMapper.selectList(qw);
+        List<DnScript> list = scriptMapper.selectList(qw);
+        return list != null ? list : Collections.emptyList();
     }
 
     private List<DnSyncTask> getOnlineSyncTasks() {
         QueryWrapper<DnSyncTask> qw = new QueryWrapper<>();
         qw.eq("schedule_status", Constants.SCHEDULE_ONLINE);
-        return syncTaskMapper.selectList(qw);
+        List<DnSyncTask> list = syncTaskMapper.selectList(qw);
+        return list != null ? list : Collections.emptyList();
     }
 }

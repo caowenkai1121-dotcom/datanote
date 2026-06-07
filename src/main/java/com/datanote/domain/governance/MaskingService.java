@@ -1,6 +1,7 @@
 package com.datanote.domain.governance;
 
 import com.datanote.platform.iam.RbacService;
+import com.datanote.common.exception.BusinessException;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
 import com.datanote.domain.governance.mapper.DnMaskingPolicyMapper;
@@ -11,13 +12,16 @@ import com.datanote.domain.governance.model.DnMaskingPolicy;
 import com.datanote.domain.governance.model.DnRowPolicy;
 import com.datanote.domain.metadata.model.DnTableMeta;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 脱敏 / 行级权限服务 — 策略 CRUD + 按当前用户装配「可见性」（列脱敏 + 行过滤），
@@ -29,6 +33,7 @@ import java.util.Map;
  *  - 行过滤：按当前用户角色 role_code 查启用的 dn_row_policy。
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MaskingService {
 
@@ -43,10 +48,13 @@ public class MaskingService {
     public List<DnMaskingPolicy> listMaskingPolicies() {
         QueryWrapper<DnMaskingPolicy> qw = new QueryWrapper<>();
         qw.orderByAsc("id");
-        return maskingPolicyMapper.selectList(qw);
+        List<DnMaskingPolicy> list = maskingPolicyMapper.selectList(qw);
+        return list == null ? new ArrayList<>() : list;
     }
 
     public DnMaskingPolicy saveMaskingPolicy(DnMaskingPolicy p) {
+        if (p == null) throw new BusinessException("脱敏策略不能为空");
+        if (!notBlank(p.getMatchDim())) throw new BusinessException("匹配维度(matchDim)不能为空");
         p.setUpdatedAt(LocalDateTime.now());
         if (p.getEnabled() == null) p.setEnabled(1);
         if (p.getMaskingFunc() == null || p.getMaskingFunc().isEmpty()) p.setMaskingFunc("MASK");
@@ -60,6 +68,7 @@ public class MaskingService {
     }
 
     public void deleteMaskingPolicy(Long id) {
+        if (id == null || id <= 0) throw new BusinessException("脱敏策略ID非法");
         maskingPolicyMapper.deleteById(id);
     }
 
@@ -68,10 +77,16 @@ public class MaskingService {
     public List<DnRowPolicy> listRowPolicies() {
         QueryWrapper<DnRowPolicy> qw = new QueryWrapper<>();
         qw.orderByAsc("id");
-        return rowPolicyMapper.selectList(qw);
+        List<DnRowPolicy> list = rowPolicyMapper.selectList(qw);
+        return list == null ? new ArrayList<>() : list;
     }
 
     public DnRowPolicy saveRowPolicy(DnRowPolicy p) {
+        if (p == null) throw new BusinessException("行策略不能为空");
+        if (!notBlank(p.getRoleCode())) throw new BusinessException("角色编码(roleCode)不能为空");
+        if (!notBlank(p.getDbName()) || !notBlank(p.getTableName()) || !notBlank(p.getRowFilter())) {
+            throw new BusinessException("库名/表名/行过滤条件不能为空");
+        }
         p.setUpdatedAt(LocalDateTime.now());
         if (p.getEnabled() == null) p.setEnabled(1);
         if (p.getId() == null) {
@@ -84,6 +99,7 @@ public class MaskingService {
     }
 
     public void deleteRowPolicy(Long id) {
+        if (id == null || id <= 0) throw new BusinessException("行策略ID非法");
         rowPolicyMapper.deleteById(id);
     }
 
@@ -95,11 +111,12 @@ public class MaskingService {
         QueryWrapper<DnMaskingPolicy> qw = new QueryWrapper<>();
         qw.eq("enabled", 1);
         List<DnMaskingPolicy> policies = maskingPolicyMapper.selectList(qw);
-        if (policies.isEmpty()) return masks;
+        if (policies == null || policies.isEmpty()) return masks;
 
         // sensitive_type → maskingFunc（多策略命中同类型时，后者覆盖）
         Map<String, String> typeFunc = new HashMap<>();
         for (DnMaskingPolicy p : policies) {
+            if (p == null) continue;
             if ("COLUMN".equalsIgnoreCase(p.getMatchDim())) {
                 if (notBlank(p.getDbName()) && notBlank(p.getTableName()) && notBlank(p.getColumnName())) {
                     masks.add(new SqlMaskRewriter.ColumnMask(
@@ -115,15 +132,34 @@ public class MaskingService {
             QueryWrapper<DnColumnMeta> cq = new QueryWrapper<>();
             cq.isNotNull("sensitive_type").ne("sensitive_type", "");
             List<DnColumnMeta> cols = columnMetaMapper.selectList(cq);
-            Map<Long, DnTableMeta> tableCache = new HashMap<>();
-            for (DnColumnMeta cm : cols) {
-                String st = cm.getSensitiveType() == null ? null : cm.getSensitiveType().toUpperCase();
-                if (st == null || !typeFunc.containsKey(st)) continue;
-                DnTableMeta tm = tableCache.computeIfAbsent(cm.getTableMetaId(), tableMetaMapper::selectById);
-                if (tm == null || tm.getDatabaseName() == null || tm.getTableName() == null
-                        || cm.getColumnName() == null || cm.getColumnName().isEmpty()) continue;
-                masks.add(new SqlMaskRewriter.ColumnMask(
-                        tm.getDatabaseName(), tm.getTableName(), cm.getColumnName(), typeFunc.get(st)));
+            if (cols != null && !cols.isEmpty()) {
+                // 先收集命中类型的列所属表ID，批量查表元数据，消除「每表一次 selectById」的 N+1
+                Set<Long> tableIds = new LinkedHashSet<>();
+                for (DnColumnMeta cm : cols) {
+                    if (cm == null) continue;
+                    String st = cm.getSensitiveType() == null ? null : cm.getSensitiveType().toUpperCase();
+                    if (st == null || !typeFunc.containsKey(st)) continue;
+                    if (cm.getTableMetaId() != null) tableIds.add(cm.getTableMetaId());
+                }
+                Map<Long, DnTableMeta> tableCache = new HashMap<>();
+                if (!tableIds.isEmpty()) {
+                    List<DnTableMeta> tables = tableMetaMapper.selectBatchIds(tableIds);
+                    if (tables != null) {
+                        for (DnTableMeta tm : tables) {
+                            if (tm != null && tm.getId() != null) tableCache.put(tm.getId(), tm);
+                        }
+                    }
+                }
+                for (DnColumnMeta cm : cols) {
+                    if (cm == null) continue;
+                    String st = cm.getSensitiveType() == null ? null : cm.getSensitiveType().toUpperCase();
+                    if (st == null || !typeFunc.containsKey(st)) continue;
+                    DnTableMeta tm = cm.getTableMetaId() == null ? null : tableCache.get(cm.getTableMetaId());
+                    if (tm == null || tm.getDatabaseName() == null || tm.getTableName() == null
+                            || cm.getColumnName() == null || cm.getColumnName().isEmpty()) continue;
+                    masks.add(new SqlMaskRewriter.ColumnMask(
+                            tm.getDatabaseName(), tm.getTableName(), cm.getColumnName(), typeFunc.get(st)));
+                }
             }
         }
         return masks;
@@ -137,13 +173,18 @@ public class MaskingService {
         try {
             roleCodes = rbacService.getUserRoleCodesByUsername(username);
         } catch (Exception e) {
-            roleCodes = new ArrayList<>();
+            // fail-closed：角色解析失败不可静默放行（否则受限用户将拿到无行过滤的全量数据）
+            log.error("行级权限角色解析失败,受限用户拒绝执行, username={}", username, e);
+            throw new BusinessException("行级权限解析失败，已拒绝执行(fail-closed)");
         }
-        if (roleCodes.isEmpty()) return filters;
+        if (roleCodes == null || roleCodes.isEmpty()) return filters;
 
         QueryWrapper<DnRowPolicy> qw = new QueryWrapper<>();
         qw.eq("enabled", 1).in("role_code", roleCodes);
-        for (DnRowPolicy rp : rowPolicyMapper.selectList(qw)) {
+        List<DnRowPolicy> rps = rowPolicyMapper.selectList(qw);
+        if (rps == null) return filters;
+        for (DnRowPolicy rp : rps) {
+            if (rp == null) continue;
             if (notBlank(rp.getDbName()) && notBlank(rp.getTableName()) && notBlank(rp.getRowFilter())) {
                 filters.add(new SqlMaskRewriter.RowFilter(rp.getDbName(), rp.getTableName(), rp.getRowFilter()));
             }

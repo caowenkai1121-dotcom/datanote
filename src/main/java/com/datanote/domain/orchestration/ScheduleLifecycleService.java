@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -44,6 +45,8 @@ public class ScheduleLifecycleService {
 
     /** DS 远程上线（脚本/同步统一），返回 dsResult 供前端。失败抛出由调用方按类型映射文案。 */
     public Map<String, Object> onlineRemote(Long id, ScheduleTargetType type) throws Exception {
+        requireId(id);
+        requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
             DnScript script = requireScript(id);
             requireNotEmpty(script.getContent(), "脚本内容为空，无法上线");
@@ -87,6 +90,8 @@ public class ScheduleLifecycleService {
 
     /** DS 远程下线（脚本/同步统一）。未上线过抛 BusinessException。 */
     public void offlineRemote(Long id, ScheduleTargetType type) throws Exception {
+        requireId(id);
+        requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
             DnScript script = requireScript(id);
             if (script.getDsWorkflowCode() == null || script.getDsWorkflowCode() == 0) {
@@ -104,8 +109,12 @@ public class ScheduleLifecycleService {
         }
     }
 
-    /** 本地上线（脚本含版本快照），统一置 ONLINE 并刷新依赖。 */
+    /** 本地上线（脚本含版本快照），统一置 ONLINE 并刷新依赖。
+     *  R47审查修复: 不加 @Transactional —— refreshAllDependencies() 跨 bean 默认 REQUIRED 会并入外层事务,
+     *  循环依赖时它抛异常将连带回滚"版本快照+置 ONLINE", 改变状态机语义。各步保持独立提交(与重构前一致)。 */
     public void onlineLocal(Long id, ScheduleTargetType type) {
+        requireId(id);
+        requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
             DnScript script = requireScript(id);
             requireNotEmpty(script.getContent(), "脚本内容为空，无法上线");
@@ -120,6 +129,8 @@ public class ScheduleLifecycleService {
 
     /** 本地下线（脚本/同步统一）：仅置 OFFLINE，不刷新依赖（与重构前一致）。 */
     public void offlineLocal(Long id, ScheduleTargetType type) {
+        requireId(id);
+        requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
             setScriptStatus(id, Constants.SCHEDULE_OFFLINE);
         } else {
@@ -131,24 +142,26 @@ public class ScheduleLifecycleService {
 
     /** 统一回写 DS 结果（dsProjectCode/WorkflowCode/TaskCode/ScheduleId）+ 置 ONLINE —— 脚本。 */
     private void applyDsResultScript(Long id, Map<String, Object> dsResult) {
+        requireDsResult(dsResult);
         DnScript update = new DnScript();
         update.setId(id);
-        update.setDsProjectCode((Long) dsResult.get("dsProjectCode"));
-        update.setDsWorkflowCode((Long) dsResult.get("dsWorkflowCode"));
-        update.setDsTaskCode((Long) dsResult.get("dsTaskCode"));
-        update.setDsScheduleId((Integer) dsResult.get("dsScheduleId"));
+        update.setDsProjectCode(asLong(dsResult.get("dsProjectCode")));
+        update.setDsWorkflowCode(asLong(dsResult.get("dsWorkflowCode")));
+        update.setDsTaskCode(asLong(dsResult.get("dsTaskCode")));
+        update.setDsScheduleId(asInteger(dsResult.get("dsScheduleId")));
         update.setScheduleStatus(Constants.SCHEDULE_ONLINE);
         scriptMapper.updateById(update);
     }
 
     /** 统一回写 DS 结果 + 置 ONLINE —— 同步任务。 */
     private void applyDsResultSync(Long id, Map<String, Object> dsResult) {
+        requireDsResult(dsResult);
         DnSyncTask update = new DnSyncTask();
         update.setId(id);
-        update.setDsProjectCode((Long) dsResult.get("dsProjectCode"));
-        update.setDsWorkflowCode((Long) dsResult.get("dsWorkflowCode"));
-        update.setDsTaskCode((Long) dsResult.get("dsTaskCode"));
-        update.setDsScheduleId((Integer) dsResult.get("dsScheduleId"));
+        update.setDsProjectCode(asLong(dsResult.get("dsProjectCode")));
+        update.setDsWorkflowCode(asLong(dsResult.get("dsWorkflowCode")));
+        update.setDsTaskCode(asLong(dsResult.get("dsTaskCode")));
+        update.setDsScheduleId(asInteger(dsResult.get("dsScheduleId")));
         update.setScheduleStatus(Constants.SCHEDULE_ONLINE);
         syncTaskMapper.updateById(update);
     }
@@ -169,6 +182,7 @@ public class ScheduleLifecycleService {
 
     /** 同步任务 DataX shell 脚本生成（自 LocalSchedulerController.syncOnline 整段迁入，逐字不变）。 */
     private String buildSyncShellScript(DnSyncTask task) {
+        requireNotEmpty(task.getTargetTable(), "同步任务未配置目标表(targetTable)，无法生成 DataX 作业");
         String jobFile = jobDir + "/" + task.getTargetTable() + ".json";
         return "#!/bin/bash\n"
                 + "# DataNote 同步任务: " + task.getTaskName() + "\n"
@@ -223,6 +237,39 @@ public class ScheduleLifecycleService {
         if (value == null || value.trim().isEmpty()) {
             throw new BusinessException(message);
         }
+    }
+
+    private void requireId(Long id) {
+        if (id == null) {
+            throw new BusinessException("调度目标 id 不能为空");
+        }
+    }
+
+    private void requireType(ScheduleTargetType type) {
+        if (type == null) {
+            throw new BusinessException("调度目标类型不能为空");
+        }
+    }
+
+    /** DS 上线返回结果不可为空，否则无法回写编排信息（视为远程上线异常）。 */
+    private void requireDsResult(Map<String, Object> dsResult) {
+        if (dsResult == null) {
+            throw new BusinessException("DS 远程上线未返回结果，无法回写调度信息");
+        }
+    }
+
+    /** 安全提取 Long：兼容 DS 返回的 Long/Integer 数字类型，缺失或 null 返回 null（保持原回写语义）。 */
+    private Long asLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).longValue();
+        throw new BusinessException("DS 返回的调度编码类型非法: " + value.getClass().getSimpleName());
+    }
+
+    /** 安全提取 Integer：兼容 Number 子类型，缺失或 null 返回 null（保持原回写语义）。 */
+    private Integer asInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).intValue();
+        throw new BusinessException("DS 返回的调度 id 类型非法: " + value.getClass().getSimpleName());
     }
 
     private int defaultInt(Integer value, int defaultVal) {
