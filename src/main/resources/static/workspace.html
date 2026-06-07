@@ -6787,8 +6787,14 @@ var ROUTES = {
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories();
       var x = window.__navCtx; if (x && x.editId) { setTimeout(function(){ try { editMetric(x.editId); } catch(e){} }, 300); } } },
   'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },
-  'settings':    { view: 'viewSettings',            layout: 'editor', init: function(){ if(window.loadUserMgmt) loadUserMgmt(); } },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
+  'settings':    { view: 'viewSettings',            layout: 'editor', init: function(){ if(window.loadUserMgmt) loadUserMgmt();
+      var x = window.__navCtx; if (x && x.sm) { setTimeout(function(){ try {
+        var items = document.querySelectorAll('#viewSettings .ops-sidebar-item');
+        for (var i=0;i<items.length;i++){ var oc=items[i].getAttribute('onclick')||''; if (oc.indexOf("'"+x.sm+"'")>=0){ switchSettingsTab(items[i], x.sm); break; } }
+      } catch(e){} }, 200); } } },
+  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { var x = window.__navCtx;
+      window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter();
+      if (x && x.openDetail) { setTimeout(function(){ try { window.dbsyncOpenDetail(x.openDetail); } catch(e){} }, 800); } } }
 };
 
 var currentRoute = null;
@@ -12072,10 +12078,12 @@ function smRenderServices(list) {
   var box = document.getElementById('smServiceBox'); if (!box) return;
   if (!list.length) { box.innerHTML = '<div style="color:var(--text-muted);">无服务</div>'; return; }
   box.innerHTML = list.map(function(s) {
-    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--divider,#eee);border-radius:6px;margin-bottom:6px;">'
+    var off = !s.alive;
+    var click = off ? ' style="cursor:pointer;" title="离线 — 点击去数据源/环境配置排查" onclick="navigateTo(\'settings\',{sm:\'datasource\'})"' : '';
+    return '<div' + click + ' style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid ' + (off ? 'rgba(255,77,79,.4)' : 'var(--divider,#eee)') + ';border-radius:6px;margin-bottom:6px;' + (off ? 'cursor:pointer;' : '') + '">'
       + '<span style="width:9px;height:9px;border-radius:50%;background:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';"></span>'
       + '<div style="flex:1;"><div style="font-size:13px;font-weight:500;">' + escapeHtml(s.name) + '</div><div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(s.desc || '') + '</div></div>'
-      + '<span style="font-size:12px;color:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';">' + (s.alive ? '在线' : '离线') + '</span></div>';
+      + '<span style="font-size:12px;color:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';">' + (s.alive ? '在线' : (off ? '离线 →' : '离线')) + '</span></div>';
   }).join('');
 }
 function smRenderSchedule(d) {
@@ -12083,9 +12091,9 @@ function smRenderSchedule(d) {
   var total = d.todayExec || 0, suc = d.todaySuccess || 0, fail = d.todayFailed || 0, run = total - suc - fail;
   var rate = total > 0 ? Math.round(suc * 100 / total) : 0;
   function cell(n, l, c) { return '<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + c + ';">' + n + '</div><div style="font-size:11px;color:var(--text-muted);">' + l + '</div></div>'; }
-  box.innerHTML = '<div style="border:1px solid var(--divider,#eee);border-radius:8px;padding:14px;">'
+  box.innerHTML = '<div style="border:1px solid var(--divider,#eee);border-radius:8px;padding:14px;cursor:pointer;" title="点击进入数据运维" onclick="navigateTo(\'operations\')">'
     + '<div style="display:flex;">' + cell(suc, '成功', '#52c41a') + cell(fail, '失败', '#ff4d4f') + cell(run < 0 ? 0 : run, '运行中', '#1677ff') + cell(total, '总计', 'var(--text-primary)') + '</div>'
-    + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）</div></div>';
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）· <span style="color:var(--primary,#1890ff)">点击进入运维 →</span></div></div>';
 }
 function smRenderAudit(rows) {
   var box = document.getElementById('smAuditBox'); if (!box) return;
@@ -12095,7 +12103,8 @@ function smRenderAudit(rows) {
     var st = a.status || '';
     h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td><td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.actionType || a.method || '-') + '</td><td style="font-size:12px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td><td style="color:' + (String(st).indexOf('4') === 0 || String(st).indexOf('5') === 0 ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(String(st)) + '</td></tr>';
   });
-  box.innerHTML = h + '</tbody></table>';
+  box.innerHTML = h + '</tbody></table>'
+    + '<div style="margin-top:8px;text-align:right;"><a href="javascript:void(0)" onclick="navigateTo(\'governance\',{gov:\'audit\'})" style="font-size:12px;color:var(--primary,#1890ff)">查看全部审计 →</a></div>';
 }
 
 // ===== 系统管理：安全设置(认证状态 + 操作审计) =====
@@ -12407,6 +12416,11 @@ function loadOpsManual() {
   });
 }
 
+// R24 联动: 数据集成统计 → 数据同步该任务详情
+function opsGotoSyncTask(id) {
+  if (!id) return;
+  navigateTo('dbsync', { openDetail: id });
+}
 // ===== 数据集成统计 =====
 function loadOpsIntegration() {
   var date = document.getElementById('opsIntgDate').value;
@@ -12432,8 +12446,12 @@ function loadOpsIntegration() {
     res.data.sort(function(a, b) { return (b.duration || 0) - (a.duration || 0); });
     res.data.forEach(function(r) {
       var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : 'color:#e74c3c';
+      var tid = r.syncTaskId || '';
+      var taskCell = tid
+        ? '<a href="javascript:void(0)" onclick="opsGotoSyncTask(' + tid + ')" style="color:var(--primary,#1890ff)" title="查看该同步任务详情">syncTask:' + tid + '</a>'
+        : 'syncTask:-';
       html += '<tr>'
-        + '<td>' + escapeHtml('syncTask:' + (r.syncTaskId || '')) + '</td>'
+        + '<td>' + taskCell + '</td>'
         + '<td>' + (r.triggerType || '') + '</td>'
         + '<td style="' + sc + ';font-weight:600;">' + r.status + '</td>'
         + '<td>' + (r.startTime || '').replace('T', ' ').substring(11, 19) + '</td>'
