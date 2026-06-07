@@ -211,7 +211,39 @@
     wrap.appendChild(al);
     var iq = DN.h('a', { href: 'javascript:void(0)', text: '输入质量', onclick: function () { inputQualityDrawer(r); } });
     wrap.appendChild(iq);
+    var tr = DN.h('a', { href: 'javascript:void(0)', text: '趋势', onclick: function () { metricTrendDrawer(r); } });
+    wrap.appendChild(tr);
     return wrap;
+  }
+
+  // 指标历史趋势(本轮) —— 折线图展示历史值 + 最近 N 条明细表
+  function metricTrendDrawer(r) {
+    try {
+      DN.get('/api/consumption/metric/' + r.metricId + '/history').then(function (rows) {
+        var list = (rows || []).slice();
+        // 兼容不同字段命名取值与时间，按时间升序
+        function valOf(x) { var v = (x.metricValue != null ? x.metricValue : x.value); return Number(v); }
+        function timeOf(x) { return x.createdAt || x.created_at || ''; }
+        list.sort(function (a, b) { return String(timeOf(a)).localeCompare(String(timeOf(b))); });
+        var pts = list.filter(function (x) { return !isNaN(valOf(x)); });
+        var body = DN.h('div');
+        body.appendChild(DN.h('div', { class: 'gov-desc', text: '指标「' + (r.metricName || r.metricCode) + '」历史取值变化' }));
+        if (!pts.length) { body.appendChild(DN.empty('暂无历史值，先计算几次该指标', 'chart')); DN.drawer('指标历史趋势 · ' + (r.metricName || r.metricCode), body); return; }
+        var vals = pts.map(function (x) { return valOf(x); });
+        body.appendChild(DN.line(vals, { height: 120 }));
+        // 最近 N 条明细（倒序，取最新在前）
+        var recent = pts.slice(-12).reverse();
+        body.appendChild(DN.h('div', { class: 'gov-section-title', text: '最近取值', style: 'margin-top:12px' }));
+        body.appendChild(DN.table({
+          rows: recent, pageSize: 12, empty: '无',
+          columns: [
+            { key: '_t', label: '时间', render: function (x) { var t = timeOf(x); return t ? DN.timeAgo(t) : '-'; } },
+            { key: '_v', label: '值', align: 'right', render: function (x) { return String(valOf(x)); } }
+          ]
+        }));
+        DN.drawer('指标历史趋势 · ' + (r.metricName || r.metricCode), body);
+      }).catch(function (e) { DN.toast('趋势加载失败：' + (e && e.message || ''), 'err'); });
+    } catch (e) { DN.toast('趋势加载失败：' + (e && e.message || ''), 'err'); }
   }
 
   // 指标输入质量联动(R18) —— 来源表质量规则 + 最新通过率 + 可信度信号

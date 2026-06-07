@@ -23,7 +23,7 @@
 <script src="js/gov-audit.js?v=q100r80"></script>
 <script src="js/gov-overview.js?v=q100r80"></script>
 <script src="js/gov-subject.js?v=q100r80"></script>
-<script src="js/gov-consumption.js?v=q100r90"></script>
+<script src="js/gov-consumption.js?v=q100r91"></script>
 <script src="js/home-dashboard.js?v=q100r86"></script>
 <script src="js/mdm.js?v=q100r80"></script>
 <script src="js/mdm-survivorship.js?v=q100r80"></script>
@@ -6785,7 +6785,7 @@ var ROUTES = {
       var x = window.__navCtx; if (x && x.mdm) { try { mdmGoModule(x.mdm, x); } catch(e){} } } },
   'quality':     { view: 'viewQuality',             layout: 'editor', init: function() { loadQualityOverview(); } },
   'metrics':     { view: 'viewMetrics',             layout: 'editor', init: function() { loadMetricList(); loadMetricCategories();
-      window.__metricsCtx = window.__navCtx || null; } },
+      var x = window.__navCtx; if (x && x.editId) { setTimeout(function(){ try { editMetric(x.editId); } catch(e){} }, 300); } } },
   'project':     { view: 'viewProject',             layout: 'editor', init: function(){ if(window.loadProjectSpace) loadProjectSpace(); } },
   'settings':    { view: 'viewSettings',            layout: 'editor', init: function(){ if(window.loadUserMgmt) loadUserMgmt(); } },
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); } }
@@ -7633,11 +7633,18 @@ function renderMetricList(metrics) {
       '<td>' + (m.status === 1 ? '<span class="quality-status-on">启用</span>' : '<span class="quality-status-off">废弃</span>') + '</td>' +
       '<td class="quality-actions">' +
         '<button class="btn btn-sm" onclick="editMetric(' + m.id + ')">编辑</button>' +
+        '<button class="btn btn-sm" onclick="metricGotoBoard(\'' + escapeHtml(m.metricCode || '') + '\')" title="在消费驾驶舱查看该指标值/新鲜度/输入质量">驾驶舱</button>' +
         '<button class="btn btn-sm btn-danger" onclick="deleteMetric(' + m.id + ')">删除</button>' +
       '</td></tr>';
   });
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+// R23 联动: 指标列表 → 消费驾驶舱聚焦该指标(三视图互通)
+function metricGotoBoard(code) {
+  if (!code) return;
+  navigateTo('governance', { gov: 'consumption', focusMetric: code });
 }
 
 function showAddMetricDialog() {
