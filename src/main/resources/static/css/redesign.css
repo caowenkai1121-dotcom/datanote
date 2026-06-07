@@ -1,0 +1,301 @@
+/* ============================================================================
+ * css/redesign.css — DataNote「数据资产驾驶舱」视觉升级层
+ * ----------------------------------------------------------------------------
+ * 加载顺序：app.css → gov-modern.css → redesign.css（本文件最后加载，叠加覆盖）
+ *
+ * 设计约束（硬性）：
+ *   1) 纯叠加层。不改 app.css 的全局 :root；只在 #homeCockpit 局部新增 --dash-* 令牌，
+ *      并对通用 .card / 卡片 / 按钮做「温和质感升级」，绝不改既有布局类的盒模型导致错位。
+ *   2) 复用 app.css 既有语义令牌：--primary/--success/--warning/--error/--border/
+ *      --bg-card/--bg-body/--text-x /--radius/--shadow（名称已与源码核对）。
+ *   3) 颜色语义与 gov-overview.js 的 tone() 完全对齐：
+ *      ok=#52c41a 健康/成功 · warn=#faad14 注意/处理中 · err=#ff4d4f 异常/超期。
+ *   4) 暗色：app.css 当前无暗色令牌，故文末提供「可选」prefers-color-scheme 兼容块，
+ *      仅作用于 #homeCockpit，存在则增强、不存在亦无副作用。
+ * ========================================================================== */
+
+
+/* ── 1) 品牌渐变令牌（局部新增，不覆盖全局 --primary，避免影响其它页） ──────── */
+#homeCockpit {
+  /* 品牌主色渐变：扁平 #1890ff 升级为蓝向渐变，仅用于 hero / 色条 / 主卡点缀 */
+  --dash-brand-grad:      linear-gradient(135deg, #1d6fff 0%, #3aa0ff 100%);
+  --dash-brand-grad-soft: linear-gradient(135deg, rgba(29,111,255,.10), rgba(58,160,255,.04));
+  --dash-brand:           #1d6fff;
+
+  /* 语义色（与 gov-modern / tone() 对齐，集中声明便于复用） */
+  --dash-ok:   var(--success, #52c41a);
+  --dash-warn: var(--warning, #faad14);
+  --dash-err:  var(--error,   #ff4d4f);
+
+  /* 圆角 / 阴影 / 间距（驾驶舱专用，比 app.css 更柔和现代） */
+  --dash-card-radius: 14px;
+  --dash-shadow:      0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.06);
+  --dash-shadow-h:    0 8px 28px rgba(29,111,255,.16);
+  --dash-gap:         16px;
+
+  /* 文字：统一走 app.css 既有 muted，避免引用未定义的 --text-secondary */
+  --dash-text-muted: var(--text-muted, rgb(118,124,130));
+}
+
+
+/* ── 2) 整页宽屏化：解除首页旧的 1100px 束缚（仅作用于 #viewHome 内层包裹器） ── */
+/* 说明：只放宽 max-width 与内边距，不改 display/position 等盒模型语义，避免错位 */
+#viewHome > div {
+  max-width: 1600px !important;
+  padding: 28px 28px 48px !important;
+}
+
+
+/* ── 3) 顶部品牌英雄条（问候区升级，替代旧 #homeGreeting 的平淡样式） ───────── */
+.dash-hero {
+  background: var(--dash-brand-grad);
+  border-radius: var(--dash-card-radius);
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(29,111,255,.22);
+}
+.dash-hero::after {                       /* 右上角柔光晕装饰 */
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%);
+  pointer-events: none;
+}
+.dash-hero .h-title { font-size: 24px; font-weight: 750; letter-spacing: .3px; line-height: 1.2; }
+.dash-hero .h-sub   { font-size: 13px; opacity: .9; margin-top: 6px; }
+.dash-hero .h-meta  { position: absolute; right: 30px; bottom: 22px; font-size: 12px; opacity: .85; }
+/* hero 内可放一个刷新按钮：白底玻璃质感，悬浮微亮 */
+.dash-hero .h-refresh {
+  position: absolute; right: 30px; top: 24px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; color: #fff;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.28);
+  transition: background .18s ease;
+}
+.dash-hero .h-refresh:hover { background: rgba(255,255,255,.28); }
+.dash-hero .h-refresh svg { width: 14px; height: 14px; }
+
+
+/* ── 4) 驾驶舱响应式栅格 ──────────────────────────────────────────────────── */
+/* 4a) 12 列栅格：卡片用 .dash-col-N 控制跨度（主卡跨 8，普通跨 4/6） */
+.dash-grid {
+  display: grid;
+  gap: var(--dash-gap);
+  grid-template-columns: repeat(12, 1fr);
+  align-items: start;
+}
+.dash-grid > .dash-col-3  { grid-column: span 3; }
+.dash-grid > .dash-col-4  { grid-column: span 4; }
+.dash-grid > .dash-col-6  { grid-column: span 6; }
+.dash-grid > .dash-col-8  { grid-column: span 8; }
+.dash-grid > .dash-col-12 { grid-column: span 12; }
+
+/* 4b) auto-fit 自适应栅格（KPI 一排数字卡 / 任意等宽卡片墙均可用） */
+.dash-grid-auto {
+  display: grid;
+  gap: var(--dash-gap);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* 响应式回退：窄屏逐级合并列，保证不溢出、不错位 */
+@media (max-width: 1200px) {
+  .dash-grid > [class*="dash-col-"] { grid-column: span 6; }
+}
+@media (max-width: 760px) {
+  .dash-grid > [class*="dash-col-"] { grid-column: span 12; }
+}
+
+
+/* ── 5) KPI 数字卡 ────────────────────────────────────────────────────────── */
+/* 两种用法：① DN.statRow 渲染出的 .gov-stat（在首页提升质感）；
+ *           ② 纯 redesign 的 .dash-kpi（独立可用，玻璃质感卡）。 */
+
+/* 5a) .dash-kpi —— 独立 KPI 卡（左色条 + 等宽数字 + 悬浮上浮） */
+.dash-kpi {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--bg-card, #fff);
+  border: 1px solid transparent;
+  border-radius: var(--dash-card-radius);
+  box-shadow: var(--dash-shadow);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.dash-kpi::before {                        /* 左侧品牌色条 */
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--dash-brand-grad);
+  opacity: .9;
+}
+.dash-kpi.tone-ok::before   { background: var(--dash-ok); }
+.dash-kpi.tone-warn::before { background: var(--dash-warn); }
+.dash-kpi.tone-err::before  { background: var(--dash-err); }
+.dash-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--dash-shadow-h);
+}
+.dash-kpi .dash-kpi-ic {                   /* 图标徽章 */
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  background: var(--dash-brand-grad-soft);
+  color: var(--dash-brand);
+}
+.dash-kpi .dash-kpi-ic svg { width: 20px; height: 20px; }
+.dash-kpi .dash-kpi-meta { min-width: 0; }
+.dash-kpi .dash-kpi-v {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;     /* 等宽数字，KPI 不抖动 */
+}
+.dash-kpi .dash-kpi-label {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dash-kpi .dash-kpi-sub { font-size: 11px; color: var(--dash-text-muted); opacity: .85; }
+
+/* 5b) 提升 gov-modern 的 .gov-stat 在首页（#homeCockpit 作用域内）的表现 */
+#homeCockpit .gov-stat {
+  border-radius: var(--dash-card-radius);
+  box-shadow: var(--dash-shadow);
+  border-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+#homeCockpit .gov-stat::before {           /* 左侧品牌色条 */
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--dash-brand-grad);
+  opacity: .9;
+}
+#homeCockpit .gov-stat.tone-ok::before   { background: var(--dash-ok); }
+#homeCockpit .gov-stat.tone-warn::before { background: var(--dash-warn); }
+#homeCockpit .gov-stat.tone-err::before  { background: var(--dash-err); }
+#homeCockpit .gov-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--dash-shadow-h);
+  border-color: transparent;
+}
+#homeCockpit .gov-stat .v {                /* 主数字：放大 + 等宽 */
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+#homeCockpit .gov-stat .ic { border-radius: 14px; }   /* 图标徽章圆角对齐 */
+
+
+/* ── 6) 图表卡（标题 / 主体）质感升级 ─────────────────────────────────────── */
+/* 6a) .dash-card —— 独立图表卡（redesign 自有，标题区 + 主体区） */
+.dash-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid transparent;
+  border-radius: var(--dash-card-radius);
+  box-shadow: var(--dash-shadow);
+  overflow: hidden;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.dash-card:hover { box-shadow: var(--dash-shadow-h); transform: translateY(-1px); }
+.dash-card .dash-card-hd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 18px;
+  font-size: 14.5px; font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--divider, #efeff5);
+}
+.dash-card .dash-card-hd svg { width: 16px; height: 16px; color: var(--dash-brand); }
+.dash-card .dash-card-bd { padding: 16px 18px; }
+/* 主卡高亮变体（健康总分卡）：柔渐变底 + 品牌描边 */
+.dash-card.dash-primary {
+  background: var(--dash-brand-grad-soft);
+  border: 1px solid rgba(29,111,255,.18);
+}
+
+/* 6b) 提升 gov-modern 的 .gov-card 在首页作用域内的表现 */
+#homeCockpit .gov-card {
+  border-radius: var(--dash-card-radius);
+  box-shadow: var(--dash-shadow);
+  border-color: transparent;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+#homeCockpit .gov-card:hover { box-shadow: var(--dash-shadow-h); transform: translateY(-1px); }
+#homeCockpit .gov-card-hd { font-size: 14.5px; }
+/* 主卡高亮变体（C1 健康总分卡，JS 中 c.el.classList.add('dash-primary')） */
+#homeCockpit .gov-card.dash-primary {
+  background: var(--dash-brand-grad-soft);
+  border: 1px solid rgba(29,111,255,.18);
+}
+
+
+/* ── 7) 区块标题 / 分隔（KPI 区、卡片区分组小标题） ───────────────────────── */
+.dash-section-title {
+  display: flex; align-items: center; gap: 8px;
+  margin: 24px 2px 12px;
+  font-size: 13px; font-weight: 600;
+  color: var(--dash-text-muted);
+  letter-spacing: .4px;
+  text-transform: none;
+}
+.dash-section-title::before {              /* 左侧品牌色短条 */
+  content: '';
+  width: 4px; height: 14px;
+  border-radius: 2px;
+  background: var(--dash-brand-grad);
+}
+
+
+/* ── 8) 通用 .card / 按钮 的「温和」质感升级（全站，不改盒模型） ───────────── */
+/* 仅微调圆角 / 阴影 / hover 过渡，不动 padding/margin/border-width/display 等布局属性，
+ * 因此不会引起既有页面错位。 */
+.card {
+  border-radius: var(--radius-lg, 6px);
+  box-shadow: var(--dash-shadow);
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.card:hover { box-shadow: var(--dash-shadow-h); }
+
+/* 主按钮：扁平蓝升级为品牌渐变（仅背景与阴影，尺寸/内边距不变） */
+.btn-primary {
+  background: var(--dash-brand-grad);
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(29,111,255,.22);
+  transition: filter .18s ease, box-shadow .18s ease, transform .12s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.04);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(29,111,255,.30);
+}
+.btn-primary:active { transform: translateY(1px); }
+
+
+/* ── 9) 暗色模式可选兼容（仅 #homeCockpit，存在则增强，不存在无副作用） ───── */
+/* app.css 当前无暗色令牌；此处仅在系统暗色偏好下，对驾驶舱局部令牌做安全降噪，
+ * 不引用任何未定义变量，不影响其它模块。 */
+@media (prefers-color-scheme: dark) {
+  #homeCockpit {
+    --dash-shadow:   0 1px 2px rgba(0,0,0,.40), 0 6px 20px rgba(0,0,0,.45);
+    --dash-shadow-h: 0 8px 28px rgba(29,111,255,.30);
+    --dash-brand-grad-soft: linear-gradient(135deg, rgba(29,111,255,.22), rgba(58,160,255,.08));
+  }
+  #homeCockpit .dash-kpi,
+  #homeCockpit .dash-card { border-color: rgba(255,255,255,.06); }
+}

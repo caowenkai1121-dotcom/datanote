@@ -9,7 +9,8 @@
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r80">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r86">
+<link rel="stylesheet" href="css/redesign.css?v=q100r87">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
 <script src="js/dn-common.js?v=q100r80"></script>
 <script src="js/gov-assets.js?v=q100r80"></script>
@@ -23,6 +24,7 @@
 <script src="js/gov-overview.js?v=q100r80"></script>
 <script src="js/gov-subject.js?v=q100r80"></script>
 <script src="js/gov-consumption.js?v=q100r85"></script>
+<script src="js/home-dashboard.js?v=q100r86"></script>
 <script src="js/mdm.js?v=q100r80"></script>
 <script src="js/mdm-survivorship.js?v=q100r80"></script>
 <script src="js/mdm-approval.js?v=q100r80"></script>
@@ -2071,79 +2073,8 @@
 
 <!-- Home Page -->
 <div id="viewHome" class="page-view" style="display:none">
-  <div style="max-width:1100px;margin:0 auto;padding:36px 24px;">
-
-    <!-- 问候区 -->
-    <div style="margin-bottom:32px;">
-      <div id="homeGreeting" style="font-size:22px;font-weight:700;color:var(--text-primary);"></div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">DataNote · 轻量级数据开发与治理平台</div>
-    </div>
-
-    <!-- 核心指标 -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
-      <div class="home-stat-card" onclick="navigateTo('develop')" style="cursor:pointer;">
-        <div class="home-stat-icon" style="background:rgba(24,144,255,.08);color:var(--primary);">
-          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2.5"/><path d="M7 8l3 3-3 3M12 14h3"/></svg>
-        </div>
-        <div class="home-stat-body">
-          <div class="home-stat-label">开发任务</div>
-          <div class="home-stat-value" id="homeStatScripts">-</div>
-        </div>
-      </div>
-      <div class="home-stat-card" onclick="navigateTo('operations')" style="cursor:pointer;">
-        <div class="home-stat-icon" style="background:rgba(82,196,26,.08);color:var(--success);">
-          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg>
-        </div>
-        <div class="home-stat-body">
-          <div class="home-stat-label">已上线</div>
-          <div class="home-stat-value" id="homeStatOnline">-</div>
-        </div>
-      </div>
-      <div class="home-stat-card">
-        <div class="home-stat-icon" style="background:rgba(250,173,20,.08);color:var(--warning);">
-          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3l8 5v5c0 4-3.5 7-8 7s-8-3-8-7V8l8-5z"/><path d="M8 11l1.5 1.5 3-3"/></svg>
-        </div>
-        <div class="home-stat-body">
-          <div class="home-stat-label">今日执行</div>
-          <div class="home-stat-value" id="homeStatTodayExec">-</div>
-        </div>
-      </div>
-      <div class="home-stat-card">
-        <div class="home-stat-icon" style="background:rgba(255,77,79,.06);color:var(--error);">
-          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 7v4M10 13.5h.01"/></svg>
-        </div>
-        <div class="home-stat-body">
-          <div class="home-stat-label">今日失败</div>
-          <div class="home-stat-value" id="homeStatTodayFailed">-</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 中间两栏：调度概览 + 服务状态 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px;">
-
-      <!-- 今日调度 -->
-      <div class="home-panel">
-        <div class="home-panel-header">
-          <span>今日调度</span>
-          <a style="font-size:12px;color:var(--primary);cursor:pointer;text-decoration:none;" onclick="navigateTo('operations')">查看详情</a>
-        </div>
-        <div class="home-panel-body" id="homeScheduleOverview">
-          <div style="color:var(--text-muted);font-size:12px;">加载中...</div>
-        </div>
-      </div>
-
-      <!-- 服务状态 -->
-      <div class="home-panel">
-        <div class="home-panel-header">
-          <span>服务状态</span>
-        </div>
-        <div class="home-panel-body" id="homeServiceStatus">
-          <div style="color:var(--text-muted);font-size:12px;">加载中...</div>
-        </div>
-      </div>
-    </div>
-
+  <div>
+    <div id="homeCockpit"></div>
   </div>
 </div>
 
@@ -12761,55 +12692,9 @@ window.addEventListener('hashchange', function() {
 
 // ===== Dashboard data loading =====
 function loadDashboard() {
-  // 问候语
-  var h = new Date().getHours();
-  var greet = h < 6 ? '夜深了' : h < 12 ? '上午好' : h < 18 ? '下午好' : '晚上好';
-  var el = document.getElementById('homeGreeting');
-  if (el) el.textContent = greet + '，欢迎回来';
-
-  // 指标
-  fetch('/api/dashboard/stats').then(function(r) { return r.json(); }).then(function(res) {
-    if (res.code !== 0 || !res.data) return;
-    var d = res.data;
-    setText('homeStatScripts', (d.scriptCount || 0) + (d.syncTaskCount || 0));
-    setText('homeStatOnline', d.onlineCount || 0);
-    var todayExec = d.todayExec || 0;
-    var todaySuccess = d.todaySuccess || 0;
-    var todayFailed = d.todayFailed || 0;
-    setText('homeStatTodayExec', todayExec);
-    setText('homeStatTodayFailed', todayFailed);
-
-    // 调度概览
-    var schedEl = document.getElementById('homeScheduleOverview');
-    if (schedEl) {
-      var running = todayExec - todaySuccess - todayFailed;
-      if (running < 0) running = 0;
-      var pct = todayExec > 0 ? Math.round(todaySuccess / todayExec * 100) : 0;
-      schedEl.innerHTML = '<div style="display:flex;gap:24px;margin-bottom:12px;">'
-        + '<div><span style="font-size:24px;font-weight:700;color:var(--success);">' + todaySuccess + '</span><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">成功</div></div>'
-        + '<div><span style="font-size:24px;font-weight:700;color:var(--error);">' + todayFailed + '</span><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">失败</div></div>'
-        + '<div><span style="font-size:24px;font-weight:700;color:var(--primary);">' + running + '</span><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">运行中</div></div>'
-        + '<div><span style="font-size:24px;font-weight:700;color:var(--text-primary);">' + todayExec + '</span><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">总计</div></div>'
-        + '</div>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">完成率 ' + pct + '%</div>'
-        + '<div class="home-sched-bar"><div class="home-sched-fill" style="width:' + pct + '%;background:var(--success);"></div></div>';
-    }
-  }).catch(function(){});
-
-  // 服务状态
-  fetch('/api/dashboard/services').then(function(r) { return r.json(); }).then(function(res) {
-    var el = document.getElementById('homeServiceStatus');
-    if (!el || res.code !== 0 || !res.data) return;
-    var html = '';
-    res.data.forEach(function(s) {
-      html += '<div class="home-svc-row">'
-        + '<div class="home-svc-dot" style="background:' + (s.alive ? 'var(--success)' : 'var(--error)') + ';"></div>'
-        + '<span class="home-svc-name">' + escapeHtml(s.name) + '</span>'
-        + '<span class="home-svc-desc">' + escapeHtml(s.desc) + '</span>'
-        + '</div>';
-    });
-    el.innerHTML = html;
-  }).catch(function(){});
+  // R19: 全新数据资产驾驶舱(home-dashboard.js)。容器 #homeCockpit, 内部并发拉取+各卡独立降级。
+  var box = document.getElementById('homeCockpit');
+  if (box && window.renderHomeDashboard) { window.renderHomeDashboard(box); }
 }
 
 function setText(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; }
