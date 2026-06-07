@@ -116,6 +116,10 @@
             { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
             { key: '_op', label: '操作', render: function (r) {
                 var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看子记录', style: 'color:var(--primary,#1890ff)', title: '在黄金记录中打开子节点记录', onclick: function () { goGolden(r.childRecordId); } }));
+                if (r.parentRecordId != null) {
+                  w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看父记录', style: 'color:var(--primary,#1890ff)', title: '在黄金记录中打开父节点记录', onclick: function () { goGolden(r.parentRecordId); } }));
+                }
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { saveDrawer(r, box); } }));
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delRel(r, box); } }));
                 return w;
@@ -145,10 +149,21 @@
     row.appendChild(DN.h('span', { text: hasChildren ? '▸' : '·', style: 'color:var(--text-muted);width:12px;display:inline-block;text-align:center' }));
     row.appendChild(DN.h('span', { text: node.bizKey || node.childBizKey || ('#' + node.childRecordId), style: 'font-weight:500' }));
     if (hasChildren) row.appendChild(DN.pill(node.children.length + ' 子', 'info'));
-    var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'margin-left:auto;color:#ff4d4f;font-size:12px', onclick: function () { delRel(node, box); } });
-    row.appendChild(del);
+    var ops = DN.h('span', { style: 'margin-left:auto;display:inline-flex;gap:12px;align-items:center' });
+    if (node.childRecordId != null) {
+      ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看黄金记录', style: 'color:var(--primary,#1890ff);font-size:12px', title: '在黄金记录中打开该节点对应记录', onclick: function () { goGolden(node.childRecordId); } }));
+    }
+    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f;font-size:12px', onclick: function () { delRel(node, box); } }));
+    row.appendChild(ops);
     wrap.appendChild(row);
     (node.children || []).forEach(function (ch) { renderNode(wrap, ch, depth + 1, box); });
+  }
+
+  // ---- 下钻：跳转黄金记录(自动打开该记录编辑 + 选中当前实体) ----
+  function goGolden(recordId) {
+    if (recordId == null) { DN.toast('该节点无对应黄金记录', 'err'); return; }
+    if (!window.mdmGoModule) { DN.toast('暂不支持跳转', 'err'); return; }
+    mdmGoModule('goldenrecord', { editId: recordId, entityId: (_ent ? _ent.id : null) });
   }
 
   function delRel(r, box) {

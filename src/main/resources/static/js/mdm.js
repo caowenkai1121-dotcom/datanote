@@ -560,6 +560,7 @@
   var _ddEntity = null, _ddAttrs = [];
 
   window.MDM_RENDERERS.dedup = function (c) {
+    var ctx = window.__mdmCtx || {};
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '基于实体的关键/唯一属性检测重复黄金记录，聚合为重复簇，支持选定存活记录后合并（其余置为停用）。' }));
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
@@ -576,7 +577,10 @@
       if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体)' })); box.appendChild(DN.empty('请先创建实体与黄金记录', 'layers')); return; }
       entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
       ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
-      entSel.value = String(ents[0].id); _ddEntity = ents[0];
+      // 深链：ctx.entityId 指定则选中该实体，否则默认第一个
+      var ctxEnt = ctx.entityId != null ? ents.filter(function (e) { return String(e.id) === String(ctx.entityId); })[0] : null;
+      var initEnt = ctxEnt || ents[0];
+      entSel.value = String(initEnt.id); _ddEntity = initEnt;
       loadDedup(box);
       entSel.onchange = function () { _ddEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_ddEntity) loadDedup(box); };
     }).catch(function (e) { box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.dedup(c); })); });
@@ -615,7 +619,7 @@
 
     var radioName = 'survivor_' + idx;
     var tbl = DN.h('table', { class: 'gov-tbl', style: 'width:100%' });
-    var thead = '<thead><tr><th>存活</th>' + showAttrs.map(function (a) { return '<th>' + DN.esc(a.attrName) + '</th>'; }).join('') + '<th>状态</th><th>来源</th><th>版本</th><th>更新</th></tr></thead>';
+    var thead = '<thead><tr><th>存活</th>' + showAttrs.map(function (a) { return '<th>' + DN.esc(a.attrName) + '</th>'; }).join('') + '<th>状态</th><th>来源</th><th>版本</th><th>更新</th><th>操作</th></tr></thead>';
     var tb = document.createElement('tbody');
     recs.forEach(function (r, i) {
       var tr = document.createElement('tr');
@@ -628,6 +632,10 @@
       var sc = document.createElement('td'); sc.textContent = r.sourceSystem || '-'; tr.appendChild(sc);
       var ve = document.createElement('td'); ve.textContent = 'v' + (r.version || 1); tr.appendChild(ve);
       var up = document.createElement('td'); up.appendChild(DN.timeAgo(r.updatedAt)); tr.appendChild(up);
+      // 下钻：查看该记录 → 黄金记录模块并自动打开其编辑（带选中实体）
+      var opTd = document.createElement('td');
+      opTd.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看记录', style: 'color:var(--primary,#1890ff)', title: '在黄金记录中打开该记录', onclick: (function (rec) { return function () { mdmGoModule('goldenrecord', { editId: rec.id, entityId: _ddEntity.id }); }; })(r) }));
+      tr.appendChild(opTd);
       tb.appendChild(tr);
     });
     tbl.innerHTML = thead; tbl.appendChild(tb);
@@ -680,11 +688,11 @@
           { key: 'entityName', label: '实体', render: function (r) { return (r.domainName ? r.domainName + ' / ' : '') + r.entityName; } },
           { key: 'draftCount', label: '待复核草稿', align: 'right', sortable: true, render: function (r) {
               if (!r.draftCount) return DN.h('span', { text: '0', style: 'color:var(--text-muted)' });
-              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#ad6800;font-weight:600', text: String(r.draftCount) + ' 去复核', title: '前往黄金记录复核草稿', onclick: function () { mdmGoModule('goldenrecord'); } });
+              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#ad6800;font-weight:600', text: String(r.draftCount) + ' 去复核', title: '前往黄金记录复核草稿', onclick: function () { mdmGoModule('goldenrecord', { entityId: r.entityId }); } });
             } },
           { key: 'dupClusterCount', label: '待去重重复簇', align: 'right', sortable: true, render: function (r) {
               if (!r.dupClusterCount) return DN.h('span', { text: '0', style: 'color:var(--text-muted)' });
-              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#cf1322;font-weight:600', text: r.dupClusterCount + ' 簇/' + r.dupRecordCount + ' 条 去去重', title: '前往匹配去重处理', onclick: function () { mdmGoModule('dedup'); } });
+              return DN.h('a', { href: 'javascript:void(0)', style: 'color:#cf1322;font-weight:600', text: r.dupClusterCount + ' 簇/' + r.dupRecordCount + ' 条 去去重', title: '前往匹配去重处理', onclick: function () { mdmGoModule('dedup', { entityId: r.entityId }); } });
             } },
           { key: 'activeCount', label: '已生效', align: 'right', sortable: true, render: function (r) { return String(r.activeCount); } },
           { key: 'pendingTotal', label: '待办合计', align: 'right', sortable: true, render: function (r) { return DN.pill(String(r.pendingTotal), r.pendingTotal > 0 ? 'warn' : 'ok'); } }

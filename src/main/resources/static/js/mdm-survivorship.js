@@ -93,7 +93,9 @@
 
   // ---- 属性列表 + 逐属性配置存活策略 ----
   function renderAttrConfigCard(box) {
-    var card = DN.card({ title: '属性存活策略 · ' + _svEntity.entityName, icon: 'list' });
+    // R37 深链：存活规则按实体配置 → 直达该实体黄金记录（合并后存活策略的最终落地处）
+    var goGolden = DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '查看该实体黄金记录', title: '前往黄金记录并选中该实体', onclick: function () { mdmGoModule('goldenrecord', { entityId: _svEntity.id }); } });
+    var card = DN.card({ title: '属性存活策略 · ' + _svEntity.entityName, icon: 'list', actions: goGolden });
     if (!_svAttrs.length) {
       card.body.appendChild(DN.empty('该实体暂无属性，请先在“域与实体建模”补充属性', 'list'));
       box.appendChild(card.el);
