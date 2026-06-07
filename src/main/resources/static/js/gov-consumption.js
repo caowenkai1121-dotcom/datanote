@@ -186,7 +186,42 @@
     wrap.appendChild(exp);
     var al = DN.h('a', { href: 'javascript:void(0)', text: '预警', onclick: function () { alertRulesDrawer(r); } });
     wrap.appendChild(al);
+    var iq = DN.h('a', { href: 'javascript:void(0)', text: '输入质量', onclick: function () { inputQualityDrawer(r); } });
+    wrap.appendChild(iq);
     return wrap;
+  }
+
+  // 指标输入质量联动(R18) —— 来源表质量规则 + 最新通过率 + 可信度信号
+  function inputQualityDrawer(r) {
+    var SIG = { HEALTHY: ['输入质量健康', 'ok'], AT_RISK: ['输入存在失败规则', 'err'],
+                NO_RESULT: ['规则未执行', 'warn'], NO_RULES: ['来源表无质量规则', 'info'] };
+    var body = DN.h('div');
+    body.appendChild(DN.h('div', { class: 'gov-desc', text: '指标「' + (r.metricName || r.metricCode) + '」来源表的数据质量，评估指标可信度' }));
+    var box = DN.h('div', { id: 'iqBox' }, DN.skeleton(2));
+    body.appendChild(box);
+    DN.drawer('指标输入质量 · ' + (r.metricName || r.metricCode), body);
+    DN.get('/api/consumption/metric/' + r.metricId + '/input-quality').then(function (d) {
+      box.innerHTML = '';
+      var sig = SIG[d.signal] || ['未知', 'info'];
+      var head = DN.h('div', { style: 'margin-bottom:10px' });
+      head.appendChild(DN.pill(sig[0], sig[1]));
+      head.appendChild(DN.h('span', { style: 'margin-left:8px;font-size:12px;color:var(--text-muted)', text: '规则 ' + (d.ruleTotal || 0) + ' · 失败 ' + (d.ruleFail || 0) }));
+      box.appendChild(head);
+      var tables = d.tables || [];
+      if (!tables.length) { box.appendChild(DN.empty('该指标无登记的来源表（先在治理→指标关联资产）', 'shield')); return; }
+      tables.forEach(function (t) {
+        box.appendChild(DN.h('div', { class: 'gov-section-title', text: t.db + '.' + t.table + ' （' + t.ruleCount + ' 条规则）' }));
+        if (!t.rules.length) { box.appendChild(DN.h('div', { class: 'gov-desc', text: '无启用质量规则' })); return; }
+        t.rules.forEach(function (ru) {
+          var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
+          var tone = ru.runStatus === 'no_result' ? 'info' : (ru.passRate != null && Number(ru.passRate) >= 100 ? 'ok' : 'err');
+          line.appendChild(DN.pill(ru.severity || 'warning', ru.severity === 'error' ? 'err' : (ru.severity === 'info' ? 'info' : 'warn')));
+          line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px', text: (ru.ruleName || ru.ruleType) + (ru.dimension ? ' · ' + ru.dimension : '') }));
+          line.appendChild(DN.pill(ru.passRate != null ? (ru.passRate + '%') : '未跑', tone));
+          box.appendChild(line);
+        });
+      });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.empty('加载失败：' + (e && e.message || ''), 'shield')); });
   }
 
   // 指标预警规则管理(复用 R12 端点) —— 列表 + 新增 + 删除

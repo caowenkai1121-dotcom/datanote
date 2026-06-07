@@ -122,6 +122,12 @@ public class ConsumptionController {
         return R.ok(valueService.metricRanking());
     }
 
+    @Operation(summary = "指标输入质量: 来源表质量规则+最新通过率, 给指标可信度信号")
+    @GetMapping("/metric/{id}/input-quality")
+    public R<Map<String, Object>> inputQuality(@PathVariable Long id) {
+        return R.ok(valueService.inputQuality(id));
+    }
+
     @Operation(summary = "消费审计流水(近100, 可按 targetCode 过滤)")
     @GetMapping("/log/list")
     public R<List<DnConsumptionLog>> logList(@RequestParam(required = false) String targetCode) {

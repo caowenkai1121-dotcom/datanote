@@ -33,6 +33,8 @@ public class MetricValueService {
     private final HiveService hiveService;
     private final MetricAlertService metricAlertService;
     private final com.datanote.domain.governance.mapper.DnMetricRefMapper metricRefMapper;
+    private final com.datanote.domain.governance.mapper.DnQualityRuleMapper qualityRuleMapper;
+    private final com.datanote.domain.governance.mapper.DnQualityRunMapper qualityRunMapper;
 
     /** 指标值新鲜度阈值（小时）：超过视为陈旧 */
     static final long FRESH_HOURS = 26;
@@ -192,6 +194,57 @@ public class MetricValueService {
             row.put("lastValueAt", v == null ? null : v.getCreatedAt());
             out.add(row);
         }
+        return out;
+    }
+
+    /** 指标输入质量联动：指标来源表(DnMetricRef)上的质量规则 + 各规则最新通过率，给指标可信度信号。 */
+    public Map<String, Object> inputQuality(Long metricId) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        List<Map<String, Object>> tables = new ArrayList<>();
+        int total = 0, fail = 0, noResult = 0;
+        // 来源表去重
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.domain.governance.model.DnMetricRef> rq =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        rq.eq("metric_id", metricId);
+        Set<String> seen = new LinkedHashSet<>();
+        for (com.datanote.domain.governance.model.DnMetricRef ref : metricRefMapper.selectList(rq)) {
+            if (ref.getDbName() == null || ref.getTableName() == null) continue;
+            seen.add(ref.getDbName() + "::" + ref.getTableName());
+        }
+        for (String key : seen) {
+            String[] dt = key.split("::", 2);
+            QueryWrapper<com.datanote.domain.governance.model.DnQualityRule> qq = new QueryWrapper<>();
+            qq.eq("database_name", dt[0]).eq("table_name", dt[1]).eq("status", 1);
+            List<com.datanote.domain.governance.model.DnQualityRule> rules = qualityRuleMapper.selectList(qq);
+            List<Map<String, Object>> ruleRows = new ArrayList<>();
+            for (com.datanote.domain.governance.model.DnQualityRule rule : rules) {
+                total++;
+                com.datanote.domain.governance.model.DnQualityRun run = qualityRunMapper.selectOne(
+                        new QueryWrapper<com.datanote.domain.governance.model.DnQualityRun>()
+                                .eq("rule_id", rule.getId()).orderByDesc("started_at").last("LIMIT 1"));
+                Map<String, Object> rr = new LinkedHashMap<>();
+                rr.put("ruleName", rule.getRuleName()); rr.put("ruleType", rule.getRuleType());
+                rr.put("severity", rule.getSeverity()); rr.put("dimension", rule.getDimension());
+                if (run == null) { rr.put("passRate", null); rr.put("runStatus", "no_result"); rr.put("lastRunAt", null); noResult++; }
+                else {
+                    rr.put("passRate", run.getPassRate()); rr.put("runStatus", run.getRunStatus());
+                    rr.put("lastRunAt", run.getFinishedAt());
+                    if (run.getFailCount() != null && run.getFailCount() > 0) fail++;
+                }
+                ruleRows.add(rr);
+            }
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("db", dt[0]); t.put("table", dt[1]); t.put("ruleCount", rules.size()); t.put("rules", ruleRows);
+            tables.add(t);
+        }
+        // 整体可信度信号
+        String signal;
+        if (total == 0) signal = "NO_RULES";
+        else if (fail > 0) signal = "AT_RISK";
+        else if (noResult == total) signal = "NO_RESULT";
+        else signal = "HEALTHY";
+        out.put("metricId", metricId); out.put("signal", signal);
+        out.put("ruleTotal", total); out.put("ruleFail", fail); out.put("tables", tables);
         return out;
     }
 
