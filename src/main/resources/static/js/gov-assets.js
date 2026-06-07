@@ -79,7 +79,9 @@
       renderCollectHistory();
     }).catch(function () { lastLog = null; });
 
-    DN.get('/api/metadata-center/tables').then(function (tables) {
+    // R39 主题域深链: 带 subjectId 服务端筛选(assetState.subjectId 来自主题树下钻 ctx.subjectId)
+    var tablesUrl = '/api/metadata-center/tables' + (assetState.subjectId ? ('?subjectId=' + encodeURIComponent(assetState.subjectId)) : '');
+    DN.get(tablesUrl).then(function (tables) {
       assetAll = tables || [];
       renderStats();
       renderAssetTable();

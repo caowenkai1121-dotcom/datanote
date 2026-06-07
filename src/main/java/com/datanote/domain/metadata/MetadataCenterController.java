@@ -42,10 +42,14 @@ public class MetadataCenterController {
     public R<List<DnTableMeta>> searchTables(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long datasourceId,
+            @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) String tag) {
         QueryWrapper<DnTableMeta> qw = new QueryWrapper<>();
         if (datasourceId != null) {
             qw.eq("datasource_id", datasourceId);
+        }
+        if (subjectId != null) {   // R39 按主题域筛选资产(完成主题域→资产链服务端)
+            qw.eq("subject_id", subjectId);
         }
         if (keyword != null && !keyword.isEmpty()) {
             qw.and(w -> w.like("table_name", keyword)
