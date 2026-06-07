@@ -138,15 +138,53 @@
     logs.slice(0, 10).forEach(function (lg) {
       var st = (lg.status || '').toUpperCase();
       var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#52c41a' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#ff4d4f' : '#1890ff';
-      var row = DN.h('div', { style: 'position:relative;padding:0 0 12px 14px' });
+      var row = DN.h('div', { style: 'position:relative;padding:0 0 12px 14px;cursor:pointer', title: '点击查看本次采集明细' });
       row.innerHTML = '<div style="position:absolute;left:-16px;top:2px;width:9px;height:9px;border-radius:50%;background:' + color + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + color + '"></div>'
         + '<div style="font-size:12px"><b style="color:' + color + '">' + DN.esc(lg.status || '-') + '</b> '
         + '<span style="color:var(--text-muted)">' + DN.esc(lg.dbType || '') + (lg.tableCount != null ? ' · ' + lg.tableCount + ' 表' : '') + '</span></div>'
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px" title="' + DN.esc((lg.startedAt || lg.createdAt || '').toString().replace('T', ' ').slice(0, 19)) + '">' + DN.esc(DN.fmtAgo(lg.startedAt || lg.createdAt)) + (lg.message ? ' · ' + DN.esc(String(lg.message).slice(0, 60)) : '') + '</div>';
+      row.addEventListener('click', function () { openCollectLogDetail(lg); });
       wrap.appendChild(row);
     });
     card.body.appendChild(wrap);
     box.appendChild(card.el);
+  }
+
+  // 采集历史下钻: 单次采集明细抽屉(无专用明细端点, 展示该次日志已有字段; 若带库名可一键跳资产清单按库筛查)
+  function openCollectLogDetail(lg) {
+    lg = lg || {};
+    var body = DN.h('div', {});
+    var title = '采集明细 · ' + (lg.dbType || '-') + ((lg.startedAt || lg.createdAt) ? ' · ' + String(lg.startedAt || lg.createdAt).replace('T', ' ').slice(0, 19) : '');
+    var dr = DN.drawer(title, body);
+    var st = (lg.status || '').toUpperCase();
+    var tone = (st.indexOf('SUCC') >= 0 || st === 'OK') ? 'ok' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? 'err' : 'info';
+    body.appendChild(DN.statRow([
+      { icon: 'clock', label: '状态', value: lg.status || '-', tone: tone },
+      { icon: 'db', label: '来源', value: lg.dbType || '-' },
+      { icon: 'list', label: '采集表数', value: lg.tableCount != null ? fmtInt(lg.tableCount) : '-' }
+    ]));
+    // 该次日志全部已有字段, 逐项罗列(不臆造端点)
+    var rows = Object.keys(lg).map(function (k) { return { _k: k, _v: lg[k] }; });
+    body.appendChild(DN.table({
+      columns: [
+        { key: '_k', label: '字段' },
+        { key: '_v', label: '值', render: function (r) { return r._v == null ? '-' : String(r._v); } }
+      ],
+      rows: rows, pageSize: 50, search: false, empty: '该次采集无更多字段'
+    }));
+    if (lg.dbName || lg.databaseName) {
+      var db = lg.dbName || lg.databaseName;
+      body.appendChild(DN.h('div', { style: 'margin-top:10px' }, [
+        DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '在资产清单按「' + db + '」筛查',
+          onclick: function () {
+            assetState.src = lg.dbType || assetState.src;
+            assetTbl = null; renderAssetTable();
+            dr.close();
+            var b = document.getElementById('assetTbl'); if (b) { try { b.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
+            DN.toast('已按来源筛查资产清单, 可搜索库 ' + db, 'info');
+          } })
+      ]));
+    }
   }
 
   // ===== 冷数据治理建议(大功能): 体量大但疑似冷(行数为0/空)的表, 给出归档/降冷建议 =====
@@ -192,8 +230,11 @@
         { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, exportValue: function (t) { return Number(t.sizeBytes) || 0; }, render: function (t) { return DN.fmtBytes(t.sizeBytes); } },
         { key: '_advice', label: '治理建议', exportValue: function (t) { return adviceOf(t).text; }, render: function (t) { var a = adviceOf(t); return DN.pill(a.text, a.tone); } },
         { key: '_op', label: '操作', exportValue: function () { return ''; }, render: function (t) {
-            return DN.h('a', { class: 'btn', href: 'javascript:void(0)', title: '查看该表字段/画像/血缘',
-              text: '详情', onclick: function () { openAssetDetail(t.databaseName || '', t.tableName || ''); } });
+            var detail = DN.h('a', { class: 'btn', href: 'javascript:void(0)', title: '查看该表字段/画像/血缘',
+              text: '资产详情', onclick: function () { openAssetDetail(t.databaseName || '', t.tableName || ''); } });
+            var policy = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '建生命周期策略', style: 'margin-left:6px;', title: '为该表配置 TTL/降冷/归档以治理冷数据',
+              onclick: function () { gotoLifecycle(t.databaseName || '', t.tableName || ''); } });
+            return DN.h('span', {}, [detail, policy]);
           } }
       ],
       rows: cold,
@@ -685,8 +726,16 @@
           { key: '_down', label: '下游血缘', render: function (u) { return u.hasDownstreamLineage ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },
           { key: '_ref', label: '任务引用', render: function (u) { return u.hasTaskRef ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },
           { key: '_op', label: '操作', render: function (u) {
-              return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '标记销毁',
+              var detail = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '资产详情', title: '查看该表字段/画像/血缘',
+                onclick: function () { openAssetDetail(u.db || '', u.table || ''); } });
+              var lineage = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '查血缘', style: 'margin-left:6px;', title: '画血缘图确认是否真无下游',
+                onclick: function () {
+                  if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: u.db, table: u.table } });
+                  else DN.toast('当前页面无路由,请到资产详情查看血缘', 'info');
+                } });
+              var drop = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '标记销毁', style: 'margin-left:6px;',
                 onclick: function () { openDropConfirm(u); } });
+              return DN.h('span', {}, [detail, lineage, drop]);
             } }
         ],
         rows: rows, pageSize: 15, searchKeys: ['db', 'table'], searchPlaceholder: '搜索库 / 表',
