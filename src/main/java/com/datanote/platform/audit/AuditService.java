@@ -1,7 +1,7 @@
 package com.datanote.platform.audit;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnAuditLogMapper;
+import com.datanote.platform.audit.mapper.DnAuditLogMapper;
 import com.datanote.platform.audit.model.DnAuditLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

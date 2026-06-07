@@ -1,8 +1,8 @@
 package com.datanote.platform.ai;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnScriptMapper;
-import com.datanote.mapper.DnSystemConfigMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.platform.config.model.DnSystemConfig;
 import com.datanote.common.model.R;

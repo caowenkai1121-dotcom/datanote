@@ -2,7 +2,7 @@ package com.datanote.domain.mdm;
 
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.mapper.DnMdmGoldenRecordMapper;
+import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
 import com.datanote.common.model.R;
 import com.datanote.domain.mdm.MdmMatchService;

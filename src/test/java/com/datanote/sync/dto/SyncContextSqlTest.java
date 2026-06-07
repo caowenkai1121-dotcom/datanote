@@ -1,4 +1,4 @@
-package com.datanote.sync.dto;
+package com.datanote.domain.integration.dto;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;

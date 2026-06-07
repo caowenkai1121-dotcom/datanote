@@ -1,6 +1,6 @@
-package com.datanote.sync.util;
+package com.datanote.domain.integration.util;
 
-import com.datanote.sync.dto.FieldMapping;
+import com.datanote.domain.integration.dto.FieldMapping;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -1,8 +1,8 @@
 package com.datanote.domain.orchestration;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnLineageEdgeMapper;
-import com.datanote.mapper.DnScriptMapper;
+import com.datanote.domain.orchestration.mapper.DnLineageEdgeMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.orchestration.model.DnLineageEdge;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.domain.orchestration.SqlLineageParser.ColumnMapping;

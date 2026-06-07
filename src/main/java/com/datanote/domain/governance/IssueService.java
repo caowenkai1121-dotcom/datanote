@@ -1,7 +1,7 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnGovernanceIssueMapper;
+import com.datanote.domain.governance.mapper.DnGovernanceIssueMapper;
 import com.datanote.domain.governance.model.DnGovernanceIssue;
 import com.datanote.domain.governance.model.DnQualityRule;
 import com.datanote.domain.governance.model.DnQualityRun;

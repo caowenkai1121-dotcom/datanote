@@ -1,9 +1,9 @@
 package com.datanote.common;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnSchedulerRunMapper;
-import com.datanote.mapper.DnTaskExecutionMapper;
-import com.datanote.mapper.DnSyncErrorRowMapper;
+import com.datanote.domain.orchestration.mapper.DnSchedulerRunMapper;
+import com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper;
+import com.datanote.domain.integration.mapper.DnSyncErrorRowMapper;
 import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.datanote.domain.orchestration.model.DnTaskExecution;
 import com.datanote.domain.integration.model.DnSyncErrorRow;

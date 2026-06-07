@@ -1,0 +1,9 @@
+package com.datanote.platform.config.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.datanote.platform.config.model.DnSystemConfig;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface DnSystemConfigMapper extends BaseMapper<DnSystemConfig> {
+}

@@ -1,0 +1,10 @@
+package com.datanote.domain.develop.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.datanote.domain.develop.model.DnScript;
+
+/**
+ * 脚本 Mapper 接口
+ */
+public interface DnScriptMapper extends BaseMapper<DnScript> {
+}

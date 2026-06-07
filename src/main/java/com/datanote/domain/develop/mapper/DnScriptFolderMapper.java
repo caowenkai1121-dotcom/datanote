@@ -1,0 +1,10 @@
+package com.datanote.domain.develop.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.datanote.domain.develop.model.DnScriptFolder;
+
+/**
+ * 脚本文件夹 Mapper 接口
+ */
+public interface DnScriptFolderMapper extends BaseMapper<DnScriptFolder> {
+}

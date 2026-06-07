@@ -1,9 +1,9 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.datanote.mapper.DnProjectAnnouncementMapper;
-import com.datanote.mapper.DnProjectInviteMapper;
-import com.datanote.mapper.DnProjectMemberMapper;
+import com.datanote.domain.project.mapper.DnProjectAnnouncementMapper;
+import com.datanote.domain.project.mapper.DnProjectInviteMapper;
+import com.datanote.domain.project.mapper.DnProjectMemberMapper;
 import com.datanote.domain.project.model.DnProjectAnnouncement;
 import com.datanote.domain.project.model.DnProjectInvite;
 import com.datanote.domain.project.model.DnProjectMember;

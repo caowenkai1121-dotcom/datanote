@@ -1,9 +1,9 @@
 package com.datanote.domain.metadata;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnColumnMetaMapper;
-import com.datanote.mapper.DnMetaCollectLogMapper;
-import com.datanote.mapper.DnTableMetaMapper;
+import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
+import com.datanote.domain.metadata.mapper.DnMetaCollectLogMapper;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.metadata.model.DnMetaCollectLog;
 import com.datanote.domain.metadata.model.DnTableMeta;

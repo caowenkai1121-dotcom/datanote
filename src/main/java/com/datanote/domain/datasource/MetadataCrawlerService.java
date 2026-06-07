@@ -1,11 +1,11 @@
 package com.datanote.domain.datasource;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.config.HiveConfig;
-import com.datanote.mapper.DnColumnMetaMapper;
-import com.datanote.mapper.DnDatasourceMapper;
-import com.datanote.mapper.DnMetaCollectLogMapper;
-import com.datanote.mapper.DnTableMetaMapper;
+import com.datanote.platform.config.HiveConfig;
+import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
+import com.datanote.domain.datasource.mapper.DnDatasourceMapper;
+import com.datanote.domain.metadata.mapper.DnMetaCollectLogMapper;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.datasource.model.DnDatasource;
 import com.datanote.domain.metadata.model.DnMetaCollectLog;

@@ -2,9 +2,9 @@ package com.datanote.domain.orchestration;
 
 import com.datanote.domain.integration.HiveService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnBackfillInstanceMapper;
-import com.datanote.mapper.DnBackfillTaskMapper;
-import com.datanote.mapper.DnScriptMapper;
+import com.datanote.domain.orchestration.mapper.DnBackfillInstanceMapper;
+import com.datanote.domain.orchestration.mapper.DnBackfillTaskMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.orchestration.model.DnBackfillInstance;
 import com.datanote.domain.orchestration.model.DnBackfillTask;
 import com.datanote.domain.develop.model.DnScript;

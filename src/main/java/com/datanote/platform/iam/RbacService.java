@@ -1,10 +1,12 @@
 package com.datanote.platform.iam;
 
+import com.datanote.platform.config.DbUserDetailsService;
+import com.datanote.platform.config.SecurityConfig;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnRoleMapper;
-import com.datanote.mapper.DnRolePermMapper;
-import com.datanote.mapper.DnUserMapper;
-import com.datanote.mapper.DnUserRoleMapper;
+import com.datanote.platform.iam.mapper.DnRoleMapper;
+import com.datanote.platform.iam.mapper.DnRolePermMapper;
+import com.datanote.platform.iam.mapper.DnUserMapper;
+import com.datanote.platform.iam.mapper.DnUserRoleMapper;
 import com.datanote.platform.iam.model.DnRole;
 import com.datanote.platform.iam.model.DnRolePerm;
 import com.datanote.platform.iam.model.DnUser;

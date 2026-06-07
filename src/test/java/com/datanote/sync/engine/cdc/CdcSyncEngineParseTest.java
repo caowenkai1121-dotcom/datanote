@@ -1,4 +1,4 @@
-package com.datanote.sync.engine.cdc;
+package com.datanote.domain.integration.engine.cdc;
 
 import org.junit.jupiter.api.Test;
 

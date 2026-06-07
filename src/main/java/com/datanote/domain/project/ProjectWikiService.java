@@ -1,7 +1,7 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.datanote.mapper.DnProjectWikiPageMapper;
+import com.datanote.domain.project.mapper.DnProjectWikiPageMapper;
 import com.datanote.domain.project.model.DnProjectWikiPage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

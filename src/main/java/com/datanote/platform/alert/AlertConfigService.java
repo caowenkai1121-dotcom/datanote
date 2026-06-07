@@ -1,8 +1,8 @@
 package com.datanote.platform.alert;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnAlertConfigMapper;
-import com.datanote.mapper.DnSchedulerRunMapper;
+import com.datanote.platform.alert.mapper.DnAlertConfigMapper;
+import com.datanote.domain.orchestration.mapper.DnSchedulerRunMapper;
 import com.datanote.platform.alert.model.DnAlertConfig;
 import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.datanote.sync.service;
+package com.datanote.domain.integration.service;
 
 import org.junit.jupiter.api.Test;
 

@@ -3,8 +3,8 @@ package com.datanote.domain.orchestration;
 import com.datanote.domain.orchestration.LineageEdgeService;
 import com.datanote.domain.orchestration.model.DnLineageEdge;
 import com.datanote.domain.integration.model.DnSyncJob;
-import com.datanote.sync.dto.FieldMapping;
-import com.datanote.sync.dto.TableSyncConfig;
+import com.datanote.domain.integration.dto.FieldMapping;
+import com.datanote.domain.integration.dto.TableSyncConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

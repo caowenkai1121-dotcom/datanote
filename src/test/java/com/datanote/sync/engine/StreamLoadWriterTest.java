@@ -1,6 +1,6 @@
-package com.datanote.sync.engine;
+package com.datanote.domain.integration.engine;
 
-import com.datanote.sync.connector.ConnectionManager;
+import com.datanote.domain.integration.connector.ConnectionManager;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

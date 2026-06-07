@@ -3,7 +3,7 @@ package com.datanote.domain.mdm;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.mapper.DnMdmReferenceMapper;
+import com.datanote.domain.mdm.mapper.DnMdmReferenceMapper;
 import com.datanote.domain.mdm.model.DnMdmReference;
 import com.datanote.common.model.R;
 import io.swagger.v3.oas.annotations.Operation;

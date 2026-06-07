@@ -1,9 +1,9 @@
-package com.datanote.sync.engine.cdc;
+package com.datanote.domain.integration.engine.cdc;
 
 import com.datanote.domain.datasource.model.DnDatasource;
 import com.datanote.domain.integration.model.DnSyncJob;
-import com.datanote.sync.cdc.JdbcSchemaHistory;
-import com.datanote.sync.dto.TableSyncConfig;
+import com.datanote.domain.integration.cdc.JdbcSchemaHistory;
+import com.datanote.domain.integration.dto.TableSyncConfig;
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.DatabaseHistoryListener;
 import io.debezium.relational.history.HistoryRecordComparator;

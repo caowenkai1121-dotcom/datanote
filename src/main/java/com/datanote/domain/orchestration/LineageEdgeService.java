@@ -1,13 +1,13 @@
 package com.datanote.domain.orchestration;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnLineageEdgeMapper;
-import com.datanote.mapper.DnSyncJobMapper;
+import com.datanote.domain.orchestration.mapper.DnLineageEdgeMapper;
+import com.datanote.domain.integration.mapper.DnSyncJobMapper;
 import com.datanote.domain.orchestration.model.DnLineageEdge;
 import com.datanote.domain.integration.model.DnSyncJob;
-import com.datanote.sync.dto.FieldMapping;
-import com.datanote.sync.dto.TableSyncConfig;
-import com.datanote.sync.service.SyncJobService;
+import com.datanote.domain.integration.dto.FieldMapping;
+import com.datanote.domain.integration.dto.TableSyncConfig;
+import com.datanote.domain.integration.service.SyncJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

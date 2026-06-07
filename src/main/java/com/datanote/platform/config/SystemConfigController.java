@@ -1,7 +1,7 @@
 package com.datanote.platform.config;
 
-import com.datanote.config.HiveConfig;
-import com.datanote.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.HiveConfig;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import com.datanote.common.model.R;
 import com.datanote.common.util.CryptoUtil;

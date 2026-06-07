@@ -1,7 +1,7 @@
 package com.datanote.platform.ai;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import com.datanote.common.util.CryptoUtil;
 import com.fasterxml.jackson.databind.JsonNode;

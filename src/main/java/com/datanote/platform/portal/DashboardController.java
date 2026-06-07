@@ -2,9 +2,9 @@ package com.datanote.platform.portal;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.Constants;
-import com.datanote.mapper.DnSchedulerRunMapper;
-import com.datanote.mapper.DnScriptMapper;
-import com.datanote.mapper.DnSyncTaskMapper;
+import com.datanote.domain.orchestration.mapper.DnSchedulerRunMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
+import com.datanote.domain.integration.mapper.DnSyncTaskMapper;
 import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.domain.integration.model.DnSyncTask;

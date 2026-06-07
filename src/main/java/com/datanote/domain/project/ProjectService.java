@@ -1,8 +1,8 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.datanote.mapper.DnProjectMapper;
-import com.datanote.mapper.DnProjectMemberMapper;
+import com.datanote.domain.project.mapper.DnProjectMapper;
+import com.datanote.domain.project.mapper.DnProjectMemberMapper;
 import com.datanote.domain.project.model.DnProject;
 import com.datanote.domain.project.model.DnProjectMember;
 import lombok.RequiredArgsConstructor;

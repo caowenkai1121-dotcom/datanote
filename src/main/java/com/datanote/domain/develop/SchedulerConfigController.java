@@ -2,8 +2,8 @@ package com.datanote.domain.develop;
 
 import com.datanote.domain.orchestration.dto.ScheduleConfigRequest;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.mapper.DnScriptMapper;
-import com.datanote.mapper.DnSyncTaskMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
+import com.datanote.domain.integration.mapper.DnSyncTaskMapper;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.domain.integration.model.DnSyncTask;
 import com.datanote.common.model.R;

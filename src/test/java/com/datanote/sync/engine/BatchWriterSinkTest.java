@@ -1,6 +1,6 @@
-package com.datanote.sync.engine;
+package com.datanote.domain.integration.engine;
 
-import com.datanote.sync.dto.SyncContext;
+import com.datanote.domain.integration.dto.SyncContext;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;

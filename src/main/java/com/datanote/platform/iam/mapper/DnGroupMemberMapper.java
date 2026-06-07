@@ -1,0 +1,10 @@
+package com.datanote.platform.iam.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.datanote.platform.iam.model.DnGroupMember;
+
+/**
+ * 分组成员 Mapper 接口
+ */
+public interface DnGroupMemberMapper extends BaseMapper<DnGroupMember> {
+}

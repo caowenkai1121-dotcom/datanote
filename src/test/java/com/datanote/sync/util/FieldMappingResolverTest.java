@@ -1,7 +1,7 @@
-package com.datanote.sync.util;
+package com.datanote.domain.integration.util;
 
-import com.datanote.sync.dto.FieldMapping;
-import com.datanote.sync.dto.TableSyncConfig;
+import com.datanote.domain.integration.dto.FieldMapping;
+import com.datanote.domain.integration.dto.TableSyncConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

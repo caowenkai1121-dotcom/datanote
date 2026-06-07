@@ -1,4 +1,4 @@
-package com.datanote.sync.engine.incremental;
+package com.datanote.domain.integration.engine.incremental;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;

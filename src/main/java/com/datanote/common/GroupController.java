@@ -1,8 +1,8 @@
 package com.datanote.common;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnGroupMapper;
-import com.datanote.mapper.DnGroupMemberMapper;
+import com.datanote.platform.iam.mapper.DnGroupMapper;
+import com.datanote.platform.iam.mapper.DnGroupMemberMapper;
 import com.datanote.platform.iam.model.DnGroup;
 import com.datanote.platform.iam.model.DnGroupMember;
 import com.datanote.common.model.R;

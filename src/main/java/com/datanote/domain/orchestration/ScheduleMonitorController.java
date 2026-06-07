@@ -2,7 +2,7 @@ package com.datanote.domain.orchestration;
 
 import com.alibaba.fastjson.JSONArray;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.mapper.DnScriptMapper;
+import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.common.model.R;
 import com.datanote.domain.orchestration.DolphinService;

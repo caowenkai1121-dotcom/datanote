@@ -1,7 +1,7 @@
 package com.datanote.domain.integration;
 
 import com.datanote.common.Constants;
-import com.datanote.config.HiveConfig;
+import com.datanote.platform.config.HiveConfig;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import com.datanote.domain.integration.util.DorisSqlUtil;
 import lombok.RequiredArgsConstructor;

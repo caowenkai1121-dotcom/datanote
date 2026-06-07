@@ -272,11 +272,11 @@ public class MetadataService {
                     ColumnInfo col = new ColumnInfo();
                     String name = rs.getString("column_name");
                     col.setName(name);
-                    col.setType(com.datanote.sync.connector.OracleConnector.oracleTypeToMysql(
+                    col.setType(com.datanote.domain.integration.connector.OracleConnector.oracleTypeToMysql(
                             rs.getString("data_type"),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("data_length")),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("data_precision")),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("data_scale"))));
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("data_length")),
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("data_precision")),
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("data_scale"))));
                     col.setComment("");
                     col.setKey(pks.contains(name) ? "PRI" : "");
                     col.setNullable("Y".equalsIgnoreCase(rs.getString("nullable")) ? "YES" : "NO");
@@ -316,10 +316,10 @@ public class MetadataService {
                     String name = rs.getString("column_name");
                     col.setName(name);
                     String dt = rs.getString("data_type");
-                    Integer cl = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length"));
-                    Integer np = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision"));
-                    Integer ns = com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"));
-                    col.setType(com.datanote.sync.connector.SqlServerConnector.sqlServerTypeToMysql(dt, cl, np, ns));
+                    Integer cl = com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length"));
+                    Integer np = com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision"));
+                    Integer ns = com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"));
+                    col.setType(com.datanote.domain.integration.connector.SqlServerConnector.sqlServerTypeToMysql(dt, cl, np, ns));
                     col.setComment("");
                     col.setKey(pks.contains(name) ? "PRI" : "");
                     col.setNullable(rs.getString("is_nullable"));
@@ -356,11 +356,11 @@ public class MetadataService {
                     ColumnInfo col = new ColumnInfo();
                     String name = rs.getString("column_name");
                     col.setName(name);
-                    col.setType(com.datanote.sync.connector.PostgresConnector.pgTypeToMysql(
+                    col.setType(com.datanote.domain.integration.connector.PostgresConnector.pgTypeToMysql(
                             rs.getString("data_type"),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length")),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision")),
-                            com.datanote.sync.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"))));
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("character_maximum_length")),
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("numeric_precision")),
+                            com.datanote.domain.integration.connector.SqlServerConnector.toInt(rs.getObject("numeric_scale"))));
                     col.setComment("");
                     col.setKey(pks.contains(name) ? "PRI" : "");
                     col.setNullable(rs.getString("is_nullable"));

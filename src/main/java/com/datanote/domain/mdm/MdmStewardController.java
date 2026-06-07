@@ -1,9 +1,9 @@
 package com.datanote.domain.mdm;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnMdmDomainMapper;
-import com.datanote.mapper.DnMdmEntityMapper;
-import com.datanote.mapper.DnMdmGoldenRecordMapper;
+import com.datanote.domain.mdm.mapper.DnMdmDomainMapper;
+import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
+import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.domain.mdm.model.DnMdmDomain;
 import com.datanote.domain.mdm.model.DnMdmEntity;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;

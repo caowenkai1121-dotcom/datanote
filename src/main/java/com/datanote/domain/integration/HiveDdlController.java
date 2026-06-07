@@ -1,9 +1,9 @@
 package com.datanote.domain.integration;
 
 import com.datanote.common.exception.BusinessException;
-import com.datanote.mapper.DnDatasourceMapper;
-import com.datanote.mapper.DnSyncTaskMapper;
-import com.datanote.mapper.DnTaskExecutionMapper;
+import com.datanote.domain.datasource.mapper.DnDatasourceMapper;
+import com.datanote.domain.integration.mapper.DnSyncTaskMapper;
+import com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import com.datanote.domain.datasource.model.DnDatasource;
 import com.datanote.domain.integration.model.DnSyncTask;

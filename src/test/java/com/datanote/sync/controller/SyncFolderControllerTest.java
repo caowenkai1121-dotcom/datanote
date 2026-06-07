@@ -1,8 +1,8 @@
-package com.datanote.sync.controller;
+package com.datanote.domain.integration.controller;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.datanote.mapper.DnSyncFolderMapper;
-import com.datanote.mapper.DnSyncJobMapper;
+import com.datanote.domain.integration.mapper.DnSyncFolderMapper;
+import com.datanote.domain.integration.mapper.DnSyncJobMapper;
 import com.datanote.domain.integration.model.DnSyncFolder;
 import com.datanote.domain.integration.model.DnSyncJob;
 import org.junit.jupiter.api.Test;

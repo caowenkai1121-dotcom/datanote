@@ -2,10 +2,10 @@ package com.datanote.domain.governance;
 
 import com.datanote.domain.metadata.DataMapService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.config.HiveConfig;
+import com.datanote.platform.config.HiveConfig;
 import com.datanote.common.exception.BusinessException;
-import com.datanote.mapper.DnDatasourceMapper;
-import com.datanote.mapper.DnQualityRunMapper;
+import com.datanote.domain.datasource.mapper.DnDatasourceMapper;
+import com.datanote.domain.governance.mapper.DnQualityRunMapper;
 import com.datanote.domain.datasource.model.DnDatasource;
 import com.datanote.domain.governance.model.DnQualityRule;
 import com.datanote.domain.governance.model.DnQualityRun;

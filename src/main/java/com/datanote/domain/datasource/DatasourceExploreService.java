@@ -2,7 +2,7 @@ package com.datanote.domain.datasource;
 
 import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.domain.metadata.DataMapService;
-import com.datanote.config.HiveConfig;
+import com.datanote.platform.config.HiveConfig;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

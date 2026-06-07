@@ -1,10 +1,10 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnQualityRuleMapper;
+import com.datanote.domain.governance.mapper.DnQualityRuleMapper;
 import com.datanote.domain.governance.model.DnQualityRule;
 import com.datanote.domain.governance.model.DnQualityRun;
-import com.datanote.sync.service.AlertService;
+import com.datanote.domain.integration.service.AlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

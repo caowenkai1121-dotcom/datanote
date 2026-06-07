@@ -1,6 +1,7 @@
 package com.datanote.config;
 
-import com.datanote.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.HiveConfig;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

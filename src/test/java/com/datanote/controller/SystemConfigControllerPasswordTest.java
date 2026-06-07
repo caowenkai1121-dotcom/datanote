@@ -1,7 +1,7 @@
 package com.datanote.controller;
 
 import com.datanote.platform.config.SystemConfigController;
-import com.datanote.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import com.datanote.common.util.CryptoUtil;
 import org.junit.jupiter.api.Test;

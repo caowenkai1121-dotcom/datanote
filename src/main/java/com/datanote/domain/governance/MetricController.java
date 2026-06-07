@@ -2,8 +2,8 @@ package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.mapper.DnMetricMapper;
-import com.datanote.mapper.DnMetricRefMapper;
+import com.datanote.domain.governance.mapper.DnMetricMapper;
+import com.datanote.domain.governance.mapper.DnMetricRefMapper;
 import com.datanote.domain.governance.model.DnMetric;
 import com.datanote.domain.governance.model.DnMetricRef;
 import com.datanote.common.model.R;

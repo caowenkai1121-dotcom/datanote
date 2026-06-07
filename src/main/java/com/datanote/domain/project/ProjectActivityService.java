@@ -1,7 +1,7 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.datanote.mapper.DnAuditLogMapper;
+import com.datanote.platform.audit.mapper.DnAuditLogMapper;
 import com.datanote.platform.audit.model.DnAuditLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

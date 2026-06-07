@@ -1,6 +1,6 @@
-package com.datanote.sync.schema;
+package com.datanote.domain.integration.schema;
 
-import com.datanote.sync.connector.ColumnDef;
+import com.datanote.domain.integration.connector.ColumnDef;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

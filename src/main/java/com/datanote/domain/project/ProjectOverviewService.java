@@ -1,9 +1,9 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.datanote.mapper.DnProjectAssetMapper;
-import com.datanote.mapper.DnProjectMemberMapper;
-import com.datanote.mapper.DnProjectReleaseMapper;
+import com.datanote.domain.project.mapper.DnProjectAssetMapper;
+import com.datanote.domain.project.mapper.DnProjectMemberMapper;
+import com.datanote.domain.project.mapper.DnProjectReleaseMapper;
 import com.datanote.domain.project.model.DnProject;
 import com.datanote.domain.project.model.DnProjectAsset;
 import com.datanote.domain.project.model.DnProjectMember;
@@ -24,7 +24,7 @@ public class ProjectOverviewService {
     private final DnProjectMemberMapper memberMapper;
     private final DnProjectAssetMapper assetMapper;
     private final DnProjectReleaseMapper releaseMapper;
-    private final com.datanote.mapper.DnTaskExecutionMapper taskExecutionMapper;
+    private final com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper taskExecutionMapper;
 
     public Map<String, Object> overview(Long projectId) {
         DnProject p = projectService.getById(projectId);

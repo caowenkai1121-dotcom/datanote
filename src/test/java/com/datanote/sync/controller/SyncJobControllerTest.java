@@ -1,12 +1,12 @@
-package com.datanote.sync.controller;
+package com.datanote.domain.integration.controller;
 
-import com.datanote.mapper.DnSyncFolderMapper;
-import com.datanote.mapper.DnSyncJobMapper;
-import com.datanote.mapper.DnTaskExecutionMapper;
+import com.datanote.domain.integration.mapper.DnSyncFolderMapper;
+import com.datanote.domain.integration.mapper.DnSyncJobMapper;
+import com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper;
 import com.datanote.domain.integration.model.DnSyncJob;
 import com.datanote.common.model.R;
-import com.datanote.sync.service.SyncJobExecutor;
-import com.datanote.sync.service.SyncJobService;
+import com.datanote.domain.integration.service.SyncJobExecutor;
+import com.datanote.domain.integration.service.SyncJobService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -28,12 +28,12 @@ class SyncJobControllerTest {
     private final SyncJobController controller = new SyncJobController(
             service, executor,
             mock(DnTaskExecutionMapper.class), mock(DnSyncJobMapper.class), mock(DnSyncFolderMapper.class),
-            mock(com.datanote.mapper.DnSyncJobAuditMapper.class),
-            mock(com.datanote.sync.service.DataReconciliationService.class),
-            mock(com.datanote.sync.service.CdcEngineManager.class),
-            mock(com.datanote.mapper.DnSyncErrorRowMapper.class),
-            mock(com.datanote.sync.schema.TableSchemaService.class),
-            mock(com.datanote.sync.schema.SchemaDriftService.class));
+            mock(com.datanote.domain.integration.mapper.DnSyncJobAuditMapper.class),
+            mock(com.datanote.domain.integration.service.DataReconciliationService.class),
+            mock(com.datanote.domain.integration.service.CdcEngineManager.class),
+            mock(com.datanote.domain.integration.mapper.DnSyncErrorRowMapper.class),
+            mock(com.datanote.domain.integration.schema.TableSchemaService.class),
+            mock(com.datanote.domain.integration.schema.SchemaDriftService.class));
 
     @Test
     void stop_hitRunningTask_returnsOk() {

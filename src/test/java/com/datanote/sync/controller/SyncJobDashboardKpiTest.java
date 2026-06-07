@@ -1,4 +1,4 @@
-package com.datanote.sync.controller;
+package com.datanote.domain.integration.controller;
 
 import com.datanote.domain.orchestration.model.DnTaskExecution;
 import org.junit.jupiter.api.Test;

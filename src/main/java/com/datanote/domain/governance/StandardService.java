@@ -1,11 +1,11 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnColumnMetaMapper;
-import com.datanote.mapper.DnDataElementMapper;
-import com.datanote.mapper.DnStandardCheckRunMapper;
-import com.datanote.mapper.DnTableMetaMapper;
-import com.datanote.mapper.DnWordRootMapper;
+import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
+import com.datanote.domain.governance.mapper.DnDataElementMapper;
+import com.datanote.domain.governance.mapper.DnStandardCheckRunMapper;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
+import com.datanote.domain.governance.mapper.DnWordRootMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.governance.model.DnDataElement;
 import com.datanote.domain.governance.model.DnStandardCheckRun;

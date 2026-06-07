@@ -2,10 +2,10 @@ package com.datanote.domain.governance;
 
 import com.datanote.platform.iam.RbacService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.mapper.DnColumnMetaMapper;
-import com.datanote.mapper.DnMaskingPolicyMapper;
-import com.datanote.mapper.DnRowPolicyMapper;
-import com.datanote.mapper.DnTableMetaMapper;
+import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
+import com.datanote.domain.governance.mapper.DnMaskingPolicyMapper;
+import com.datanote.domain.governance.mapper.DnRowPolicyMapper;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.governance.model.DnMaskingPolicy;
 import com.datanote.domain.governance.model.DnRowPolicy;
