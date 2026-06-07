@@ -233,7 +233,11 @@
       var tables = d.tables || [];
       if (!tables.length) { box.appendChild(DN.empty('该指标无登记的来源表（先在治理→指标关联资产）', 'shield')); return; }
       tables.forEach(function (t) {
-        box.appendChild(DN.h('div', { class: 'gov-section-title', text: t.db + '.' + t.table + ' （' + t.ruleCount + ' 条规则）' }));
+        // R22 下钻：点来源表标题 → 跳质量模块并按该表过滤，输入质量从只读变为可处理
+        var title = DN.h('div', { class: 'gov-section-title', style: 'cursor:pointer', title: '查看该表质量规则（点击跳质量模块）',
+          text: t.db + '.' + t.table + ' （' + t.ruleCount + ' 条规则）→' });
+        title.onclick = function () { gotoQualityTable(t.db, t.table); };
+        box.appendChild(title);
         if (!t.rules.length) { box.appendChild(DN.h('div', { class: 'gov-desc', text: '无启用质量规则' })); return; }
         t.rules.forEach(function (ru) {
           var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
@@ -241,6 +245,12 @@
           line.appendChild(DN.pill(ru.severity || 'warning', ru.severity === 'error' ? 'err' : (ru.severity === 'info' ? 'info' : 'warn')));
           line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px', text: (ru.ruleName || ru.ruleType) + (ru.dimension ? ' · ' + ru.dimension : '') }));
           line.appendChild(DN.pill(ru.passRate != null ? (ru.passRate + '%') : '未跑', tone));
+          // R22 下钻：规则行能拿到 db/table（来自所属来源表 t）即可点击跳质量
+          if (t.db && t.table) {
+            line.style.cursor = 'pointer';
+            line.title = '到质量模块处理该表规则';
+            line.onclick = function () { gotoQualityTable(t.db, t.table); };
+          }
           box.appendChild(line);
         });
       });
@@ -367,6 +377,12 @@
       }
     }
     DN.toast('指标「' + code + '」可能在其他页（已在驾驶舱搜索框输入编码可定位）', 'info');
+  }
+
+  // R22 下钻：从输入质量跳质量模块并按来源表过滤（gov-quality 收 ctx.table 过滤）
+  function gotoQualityTable(db, table) {
+    if (!db || !table) return;
+    if (typeof navigateTo === 'function') navigateTo('governance', { gov: 'quality', table: { db: db, table: table } });
   }
 
   // 一次性注入深链高亮动画样式（不污染全局 css 文件，模块自包含）

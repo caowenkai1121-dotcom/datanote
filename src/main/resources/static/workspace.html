@@ -13,9 +13,9 @@
 <link rel="stylesheet" href="css/redesign.css?v=q100r88">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
 <script src="js/dn-common.js?v=q100r80"></script>
-<script src="js/gov-assets.js?v=q100r89"></script>
+<script src="js/gov-assets.js?v=q100r90"></script>
 <script src="js/gov-lineage.js?v=q100r89"></script>
-<script src="js/gov-quality.js?v=q100r89"></script>
+<script src="js/gov-quality.js?v=q100r90"></script>
 <script src="js/gov-standard.js?v=q100r80"></script>
 <script src="js/gov-classification.js?v=q100r89"></script>
 <script src="js/gov-security.js?v=q100r80"></script>
@@ -23,7 +23,7 @@
 <script src="js/gov-audit.js?v=q100r80"></script>
 <script src="js/gov-overview.js?v=q100r80"></script>
 <script src="js/gov-subject.js?v=q100r80"></script>
-<script src="js/gov-consumption.js?v=q100r89"></script>
+<script src="js/gov-consumption.js?v=q100r90"></script>
 <script src="js/home-dashboard.js?v=q100r86"></script>
 <script src="js/mdm.js?v=q100r80"></script>
 <script src="js/mdm-survivorship.js?v=q100r80"></script>
@@ -7440,15 +7440,17 @@ function dmLoadProfile() {
         + '</div>';
       var fields = d.fields || [];
       html += '<table class="datamap-table"><thead><tr>'
-        + '<th>字段名</th><th>类型</th><th>空值数</th><th>空值率</th><th>唯一值数</th><th>最小值</th><th>最大值</th>'
+        + '<th>字段名</th><th>类型</th><th>空值数</th><th>空值率</th><th>唯一值数</th><th>最小值</th><th>最大值</th><th>操作</th>'
         + '</tr></thead><tbody>';
       fields.forEach(function(f) {
         var nullCls = '';
+        var pct = f.nullRate ? parseFloat(f.nullRate) : 0;
         if (f.nullRate) {
-          var pct = parseFloat(f.nullRate);
           if (pct > 50) nullCls = ' class="dm-null-high"';
           else if (pct === 0) nullCls = ' class="dm-null-ok"';
         }
+        // 空值率高 → 建议完整性规则; 唯一值≈行数 → 建议唯一性规则
+        var dim = pct > 0 ? 'completeness' : 'uniqueness';
         html += '<tr>'
           + '<td class="dm-tname">' + escapeHtml(f.name) + '</td>'
           + '<td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(f.type) + '</td>'
@@ -7457,6 +7459,7 @@ function dmLoadProfile() {
           + '<td class="dm-num">' + (f.distinctCount != null ? f.distinctCount : '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.minVal || '') + '">' + escapeHtml(f.minVal || '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.maxVal || '') + '">' + escapeHtml(f.maxVal || '-') + '</td>'
+          + '<td><a href="javascript:void(0)" onclick="dmBuildRule(\'' + escapeHtml(f.name) + '\',\'' + dim + '\')" style="color:var(--primary,#1890ff);font-size:12px;" title="据此字段在质量模块建规则">建质量规则</a></td>'
           + '</tr>';
       });
       html += '</tbody></table>';
@@ -7521,6 +7524,11 @@ function dmGotoGov(govKey) {
 function dmGotoMetric(code) {
   if (!code) return;
   navigateTo('governance', { gov: 'consumption', focusMetric: code });
+}
+// R22 数据质量闭环: 数据探查字段 → 质量模块一键预填新建规则
+function dmBuildRule(column, dimension) {
+  if (!dmCurrentDb || !dmCurrentTable) return;
+  navigateTo('governance', { gov: 'quality', prefillRule: { db: dmCurrentDb, table: dmCurrentTable, column: column, dimension: dimension } });
 }
 
 /* --- Tab: 评论 --- */

@@ -472,10 +472,22 @@
             return r.status === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
           } },
         { key: '_op', label: '操作', render: function (r) {
+            var wrap = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap' });
             // R21 深链下钻: 跳健康/工单, 按该规则 id 过滤其触发的治理工单(质量↔工单联动)
-            return DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
+            wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
               style: 'color:var(--primary,#1890ff)', title: '查看该规则触发生成的治理工单',
-              onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'health', issueFilter: { ruleId: r.id } }); } });
+              onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'health', issueFilter: { ruleId: r.id } }); } }));
+            // R22 深链下钻: 规则↔血缘↔数据地图闭环(仅当规则含目标库表时提供)
+            var db = r.databaseName || r.dbName, tbl = r.tableName;
+            if (db && tbl) {
+              wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '看来源表血缘',
+                style: 'color:var(--primary,#1890ff)', title: '在血缘模块查看该来源表的血缘关系',
+                onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: db, table: tbl } }); } }));
+              wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '数据地图',
+                style: 'color:var(--primary,#1890ff)', title: '在数据地图中打开该来源表',
+                onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
+            }
+            return wrap;
           } }
       ],
       rows: filtered(),
