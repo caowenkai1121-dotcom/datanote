@@ -1,9 +1,12 @@
 package com.datanote.domain.metadata;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.model.R;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import com.datanote.domain.metadata.model.DnTableComment;
 import com.datanote.domain.metadata.model.DnTableFavorite;
+import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.platform.portal.model.DnSearchHistory;
 import com.datanote.domain.metadata.DataMapService;
 import com.datanote.domain.datasource.DatasourceExploreService;
@@ -27,6 +30,39 @@ public class MetadataController {
 
     private final DataMapService dataMapService;          // 离线目录：搜索/收藏/评论/历史/表详情
     private final DatasourceExploreService exploreService; // 在线探查：库/表/列/预览/探查/DDL/分区
+    private final DnTableMetaMapper tableMetaMapper;       // R35 表元数据(挂主题域)
+
+    @Operation(summary = "设置表所属主题域(R35)")
+    @PostMapping("/table/set-subject")
+    public R<String> setSubject(@RequestBody Map<String, Object> req) {
+        String db = req.get("db") == null ? null : String.valueOf(req.get("db"));
+        String table = req.get("table") == null ? null : String.valueOf(req.get("table"));
+        if (db == null || table == null) return R.fail("缺少 db/table");
+        Long sid = req.get("subjectId") == null || String.valueOf(req.get("subjectId")).isEmpty()
+                ? null : Long.valueOf(String.valueOf(req.get("subjectId")));
+        DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
+                .eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
+        if (tm == null) {
+            tm = new DnTableMeta();
+            tm.setDatasourceId(0L);   // 占位(离线挂主题域, 非绑定具体数据源); datasource_id NOT NULL
+            tm.setDatabaseName(db); tm.setTableName(table); tm.setSubjectId(sid);
+            tableMetaMapper.insert(tm);
+        } else {
+            tm.setSubjectId(sid);
+            tableMetaMapper.updateById(tm);
+        }
+        return R.ok("已设置主题域");
+    }
+
+    @Operation(summary = "查询表所属主题域(R35)")
+    @GetMapping("/table/subject")
+    public R<Map<String, Object>> getSubject(@RequestParam String db, @RequestParam String table) {
+        DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
+                .eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
+        Map<String, Object> m = new HashMap<>();
+        m.put("subjectId", tm == null ? null : tm.getSubjectId());
+        return R.ok(m);
+    }
 
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
 

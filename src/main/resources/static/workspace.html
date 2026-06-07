@@ -683,6 +683,7 @@
               <button class="btn btn-sm" onclick="dmGotoGov('quality')" title="查看/新建此表质量规则">质量</button>
               <button class="btn btn-sm" onclick="dmGotoGov('classification')" title="查看此表敏感分级">敏感</button>
               <button class="btn btn-sm" onclick="dmGotoGov('assets')" title="在治理资产目录中查看">治理资产</button>
+              <button class="btn btn-sm" onclick="dmSetSubject()" title="设置此表所属主题域">主题域</button>
             </div>
           </div>
           <div class="datamap-detail-tabs" id="dmDetailTabs">
@@ -7533,6 +7534,40 @@ function dmLoadDDL() {
       }
       body.innerHTML = html;
     });
+}
+
+// R35 主题域挂资产: 给当前表设置所属主题域(轻量 overlay 选择)
+function dmSetSubject() {
+  if (!dmCurrentDb || !dmCurrentTable) return;
+  Promise.all([
+    fetch('/api/gov/subject').then(function(r){return r.json();}).catch(function(){return {};}),
+    fetch('/api/metadata/table/subject?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable)).then(function(r){return r.json();}).catch(function(){return {};})
+  ]).then(function(rs){
+    var subs = (rs[0] && rs[0].data) || [];
+    var cur = (rs[1] && rs[1].data && rs[1].data.subjectId) || '';
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99990;display:flex;align-items:center;justify-content:center;';
+    var opts = '<option value="">（不挂主题域）</option>' + subs.map(function(s){
+      return '<option value="' + s.id + '"' + (String(s.id)===String(cur)?' selected':'') + '>' + escapeHtml(s.name || s.subjectName || ('#'+s.id)) + '</option>';
+    }).join('');
+    ov.innerHTML = '<div style="background:var(--bg-card,#fff);border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.2);">'
+      + '<div style="font-weight:600;margin-bottom:12px;">设置主题域 · ' + escapeHtml(dmCurrentTable) + '</div>'
+      + '<select id="dmSubjSel" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;">' + opts + '</select>'
+      + '<div style="text-align:right;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" id="dmSubjCancel">取消</button><button class="btn btn-sm btn-primary" id="dmSubjSave">保存</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#dmSubjCancel').onclick = function(){ ov.remove(); };
+    ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+    ov.querySelector('#dmSubjSave').onclick = function(){
+      var sid = ov.querySelector('#dmSubjSel').value;
+      fetch('/api/metadata/table/set-subject', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ db: dmCurrentDb, table: dmCurrentTable, subjectId: sid || null }) })
+        .then(function(r){return r.json();}).then(function(res){
+          ov.remove();
+          if (res.code === 0) { if(window.msgBox) msgBox('主题域已设置'); }
+          else { if(window.msgBox) msgBox('设置失败: ' + (res.msg||'')); }
+        }).catch(function(e){ ov.remove(); if(window.msgBox) msgBox('设置失败'); });
+    };
+  });
 }
 
 // R28 数据闭环: 数据地图表 → 注册为受治理数据集(消费层 newDataset 预填)

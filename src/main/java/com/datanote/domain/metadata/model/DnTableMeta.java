@@ -19,6 +19,7 @@ public class DnTableMeta {
     private String owner;
     private String tags;
     private String importance;
+    private Long subjectId;   // R35 所属主题域(dn_subject.id)
     private Integer viewCount;
     private Long rowCount;
     private String dbType;
