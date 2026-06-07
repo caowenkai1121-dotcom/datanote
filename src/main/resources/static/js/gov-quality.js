@@ -65,14 +65,17 @@
   };
 
   function loadScore(box) {
+    if (!box) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(2));
     DN.get('/api/quality/score').then(function (d) {
-      var score = (d && d.score != null) ? Number(d.score) : 100;
-      var n = (d && d.sampleRuns != null) ? d.sampleRuns : 0;
+      var rawScore = (d && d.score != null) ? Number(d.score) : 100;
+      var score = isNaN(rawScore) ? 0 : Math.max(0, Math.min(100, rawScore)); // 守卫: 非数/越界归一到 0-100
+      var n = (d && Number(d.sampleRuns) > 0) ? Number(d.sampleRuns) : 0;       // 守卫: 负值/非数归 0
       box.innerHTML = '';
       var wrap = DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' });
       wrap.appendChild(DN.gauge(score, { label: '满分 100', decimals: 1 }));
       wrap.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0',
-        text: '近 7 天 ' + n + ' 次检查均值' }));
+        text: n > 0 ? ('近 7 天 ' + n + ' 次检查均值') : '近 7 天暂无检查记录，默认满分' }));
       box.appendChild(wrap);
     }).catch(function () {
       box.innerHTML = '';
@@ -82,13 +85,15 @@
 
   // 24 小时执行概览(创新功能): 复用 /overview, 环图展示成功/失败/异常占比 + 健康解读
   function loadOverview(box) {
+    if (!box) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(2));
     DN.get('/api/quality/overview').then(function (d) {
       d = d || {};
       box.innerHTML = '';
-      var total = Number(d.totalRuns) || 0;
-      var ok = Number(d.successRuns) || 0;
-      var failed = Number(d.failedRuns) || 0;
-      var err = Number(d.errorRuns) || 0;
+      var total = Math.max(0, Number(d.totalRuns) || 0); // 守卫: 负值/非数归 0, 避免占比为负
+      var ok = Math.max(0, Number(d.successRuns) || 0);
+      var failed = Math.max(0, Number(d.failedRuns) || 0);
+      var err = Math.max(0, Number(d.errorRuns) || 0);
       if (total === 0) {
         box.appendChild(DN.empty('近 24 小时暂无质量检查执行记录，可点上方“一键全量复跑”立即触发', 'clock'));
         return;
@@ -170,8 +175,9 @@
     body.appendChild(resultBox);
 
     btn.onclick = function () {
+      if (btn.disabled) return; // 防重复提交(扫描进行中再点无效)
       // 仅扫描已启用规则, 上限 30 条以控制请求量
-      var targets = allRules.filter(function (r) { return r.status === 1 && r.id != null; }).slice(0, 30);
+      var targets = (Array.isArray(allRules) ? allRules : []).filter(function (r) { return r && r.status === 1 && r.id != null; }).slice(0, 30);
       if (!targets.length) {
         resultBox.innerHTML = '';
         var emp = DN.empty('暂无已启用的规则可扫描，请在下方规则表启用规则或前往工作台创建', 'check');
@@ -180,24 +186,31 @@
         return;
       }
       btn.disabled = true; btn.textContent = '扫描中…';
-      resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
+      resultBox.innerHTML = '';
+      // 进度提示(顺序扫描可能耗时, 给出 x/总数 反馈, 避免疑似卡死)
+      var prog = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px', text: '正在扫描 0/' + targets.length + ' 条规则…' });
+      resultBox.appendChild(prog); resultBox.appendChild(DN.skeleton(3));
       // 顺序拉取每条规则最近执行(复用已有 /rule/{id}/runs 端点), 取首条(时间倒序)
-      var fails = [];
+      var fails = [], done = 0;
       var chain = Promise.resolve();
       targets.forEach(function (r) {
         chain = chain.then(function () {
           return DN.get('/api/quality/rule/' + encodeURIComponent(r.id) + '/runs').then(function (runs) {
-            var last = (runs && runs.length) ? runs[0] : null;
-            if (!last) return;
-            var rate = last.passRate == null ? null : Number(last.passRate);
-            var notPass = (last.runStatus && last.runStatus !== 'success') || (rate != null && rate < 100);
-            if (notPass) fails.push({ rule: r, run: last, rate: rate });
-          }).catch(function () { /* 单条失败忽略, 不阻断整体扫描 */ });
+            var last = (Array.isArray(runs) && runs.length) ? runs[0] : null;
+            if (last) {
+              var rate = last.passRate == null ? null : Number(last.passRate);
+              if (rate != null && isNaN(rate)) rate = null; // 守卫: 非数通过率视作无率
+              var notPass = (last.runStatus && last.runStatus !== 'success') || (rate != null && rate < 100);
+              if (notPass) fails.push({ rule: r, run: last, rate: rate });
+            }
+          }).catch(function () { /* 单条失败忽略, 不阻断整体扫描 */ })
+            .then(function () { done++; prog.textContent = '正在扫描 ' + done + '/' + targets.length + ' 条规则…'; });
         });
       });
       chain.then(function () {
         btn.disabled = false; btn.textContent = '重新扫描';
         renderFailFocus(resultBox, fails);
+        DN.toast(fails.length ? ('扫描完成: ' + fails.length + ' 条规则未通过') : '扫描完成: 全部通过', fails.length ? 'warn' : 'ok');
       });
     };
     return card.el;
@@ -243,8 +256,8 @@
             return DN.pill(r.status, r.status === '异常' ? 'err' : 'warn');
           } },
         { key: 'ruleName', label: '规则', render: function (r) {
-            var link = DN.h('a', { href: 'javascript:void(0)', text: r.ruleName,
-              style: 'color:var(--primary,#1890ff)', title: '点击查看该规则趋势与失败根因',
+            var link = DN.h('a', { href: 'javascript:void(0)', text: trunc(r.ruleName, 36),
+              style: 'color:var(--primary,#1890ff)', title: r.ruleName + ' · 点击查看该规则趋势与失败根因',
               onclick: function () { loadRuleDetail(r._f.rule.id, r._f.rule.ruleName); } });
             if (r._f.rule.blockDownstream !== 1) return link;
             var wrap = DN.h('span', { style: 'display:inline-flex;align-items:center;gap:6px' });
@@ -303,8 +316,10 @@
   }
 
   function loadRules(box, prefillRule) {
+    if (!box) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(4)); // 重载/重试时先骨架, 避免残留旧内容
     DN.get('/api/quality/rules').then(function (rules) {
-      allRules = rules || [];
+      allRules = Array.isArray(rules) ? rules : []; // 守卫: 非数组(后端异常返回对象/null)时降级为空, 防 .filter 崩溃
       box.innerHTML = '';
       // R21 深链: 按库表过滤时, 顶部提示 + 可清除
       if (ctxTableFilter) {
@@ -332,7 +347,7 @@
       if (prefillRule) openPrefillRuleDrawer(prefillRule, box);
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRules(box); }));
+      box.appendChild(DN.errorBox('规则加载失败: ' + (e && e.message ? e.message : '未知错误'), function () { loadRules(box, prefillRule); }));
     });
   }
 
@@ -350,7 +365,8 @@
       return true;
     });
   }
-  function uniq(arr) { var s = {}, o = []; arr.forEach(function (x) { if (x && !s[x]) { s[x] = 1; o.push(x); } }); return o; }
+  function uniq(arr) { var s = {}, o = []; (arr || []).forEach(function (x) { if (x && !s[x]) { s[x] = 1; o.push(x); } }); return o; }
+  function trunc(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; } // 超长文本截断(配合 title 显示全文)
 
   // R21 深链: 接收 ctx.prefillRule({db,table,column,dimension,threshold}) 自动弹"新建质量规则"并预填
   // 后端 /api/quality/rule/save 接收 DnQualityRule(库/表/列/维度/阈值/类型/数据源/严重级), 与工作台同源
@@ -400,10 +416,21 @@
     }).catch(function () {});
 
     okBtn.onclick = function () {
+      if (okBtn.style.pointerEvents === 'none') return; // 防重复提交(创建进行中)
       var name = (nameIn.value || '').trim();
-      if (!name) { DN.toast('请填写规则名称', 'warn'); return; }
-      if (!(dbIn.value || '').trim() || !(tblIn.value || '').trim()) { DN.toast('请填写数据库与表名', 'warn'); return; }
-      var thrVal = thrIn.value === '' ? null : Number(thrIn.value);
+      if (!name) { DN.toast('请填写规则名称', 'warn'); nameIn.focus(); return; }
+      if (name.length > 100) { DN.toast('规则名称过长(请控制在 100 字以内)', 'warn'); nameIn.focus(); return; }
+      if (!(dbIn.value || '').trim()) { DN.toast('请填写数据库名', 'warn'); dbIn.focus(); return; }
+      if (!(tblIn.value || '').trim()) { DN.toast('请填写表名', 'warn'); tblIn.focus(); return; }
+      // 空值/唯一性/正则/值域类规则均针对字段, 缺字段提前拦截(避免后端建出无效规则)
+      if (typeSel.value !== 'custom_sql' && !(colIn.value || '').trim()) {
+        DN.toast('该规则类型需指定字段名', 'warn'); colIn.focus(); return;
+      }
+      var thrVal = null;
+      if ((thrIn.value || '') !== '') {
+        thrVal = Number(thrIn.value);
+        if (isNaN(thrVal) || thrVal < 0 || thrVal > 100) { DN.toast('通过率阈值需为 0-100 的数值', 'warn'); thrIn.focus(); return; }
+      }
       var payload = {
         ruleName: name,
         ruleType: typeSel.value,
@@ -450,7 +477,8 @@
     tableEl = DN.table({
       columns: [
         { key: 'ruleName', label: '规则', render: function (r) {
-            return DN.h('a', { href: 'javascript:void(0)', text: r.ruleName || '-',
+            var nm = r.ruleName || '-';
+            return DN.h('a', { href: 'javascript:void(0)', text: trunc(nm, 40), title: nm, // 超长规则名截断+title 防撑表
               style: 'color:var(--primary,#1890ff)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
           } },
         { key: 'ruleType', label: '类型', render: function (r) { return r.ruleType || '-'; } },
@@ -458,7 +486,8 @@
         { key: 'target', label: '目标库表', render: function (r) {
             var t = [(r.databaseName || r.dbName), r.tableName].filter(Boolean).join('.');
             if (r.columnName) t += '.' + r.columnName;
-            return t || '-';
+            if (!t) return '-';
+            return DN.h('span', { text: trunc(t, 40), title: t }); // 超长库表路径截断+title
           } },
         { key: 'severity', label: '严重级', render: function (r) {
             var on = (r.blockDownstream === 1);
@@ -505,19 +534,20 @@
 
   function loadRuleDetail(ruleId, ruleName) {
     if (!trendBody) return;
+    if (ruleId == null) { trendBody.innerHTML = ''; trendBody.appendChild(DN.empty('该规则缺少 ID，无法查看趋势', 'alert')); return; }
     trendBody.innerHTML = '';
     trendBody.appendChild(DN.skeleton(3));
     Promise.all([
       DN.get('/api/quality/trend?ruleId=' + encodeURIComponent(ruleId)),
       DN.get('/api/quality/failure-analysis?ruleId=' + encodeURIComponent(ruleId)).catch(function () { return {}; })
     ]).then(function (r) {
-      var points = r[0] || [], fa = r[1] || {};
+      var points = Array.isArray(r[0]) ? r[0] : [], fa = r[1] || {};
       trendBody.innerHTML = '';
       trendBody.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px', text: (ruleName || ('规则 #' + ruleId)) }));
       if (!points.length) { trendBody.appendChild(DN.empty('该规则暂无执行记录', 'clock')); return; }
       // 通过率折线 + 有效性
-      var rates = points.map(function (p) { return p.passRate == null ? 0 : Number(p.passRate); });
-      var avg = rates.reduce(function (a, b) { return a + b; }, 0) / rates.length;
+      var rates = points.map(function (p) { var v = p.passRate == null ? 0 : Number(p.passRate); return isNaN(v) ? 0 : v; }); // 守卫: 非数通过率归 0, 不污染均值
+      var avg = rates.length ? rates.reduce(function (a, b) { return a + b; }, 0) / rates.length : 0;
       var eff = avg >= 90 ? ['有效性高', 'ok'] : avg >= 70 ? ['有效性中', 'warn'] : ['有效性低', 'err'];
       var head = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-bottom:6px' }, [
         DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '近 ' + points.length + ' 次通过率均值 ' + (Math.round(avg * 10) / 10) + '%' }),
@@ -526,24 +556,25 @@
       trendBody.appendChild(head);
       trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
       // 状态分布环 + 失败根因样本
-      var sc = (fa.statusCounts || []);
+      var sc = Array.isArray(fa.statusCounts) ? fa.statusCounts : [];
       if (sc.length) {
         trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
         var colorOf = function (s) { return s === 'PASS' ? '#52c41a' : s === 'FAIL' ? '#faad14' : s === 'ERROR' ? '#ff4d4f' : '#8c8c8c'; };
         var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
         trendBody.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次', legend: true }));
       }
-      var fails = (fa.recentFailures || []);
+      var fails = Array.isArray(fa.recentFailures) ? fa.recentFailures : [];
       if (fails.length) {
         trendBody.appendChild(DN.sectionTitle('最近失败/错误样本'));
         var ul = DN.h('div', { style: 'font-size:12px;max-height:160px;overflow:auto' });
         fails.slice(0, 8).forEach(function (f) {
           var ts = String(f.startedAt || '').replace('T', ' ').slice(0, 19);
-          var reason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample).slice(0, 80)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
+          var rawReason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
+          var reason = rawReason.length > 80 ? rawReason.slice(0, 80) + '…' : rawReason; // 超长根因截断+title 兜底
           ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [
-            DN.pill(f.runStatus, f.runStatus === 'ERROR' ? 'err' : 'warn'),
+            DN.pill(f.runStatus || '未知', f.runStatus === 'ERROR' ? 'err' : 'warn'),
             DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: DN.fmtAgo(f.startedAt), title: ts }),
-            DN.h('span', { text: reason })
+            DN.h('span', { text: reason, title: rawReason })
           ]));
         });
         trendBody.appendChild(ul);

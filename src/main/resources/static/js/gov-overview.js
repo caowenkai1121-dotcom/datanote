@@ -23,25 +23,32 @@
       reload(box);
     }, 30000);
   }
+  var _reloading = null; // 防重复加载：记录正在加载中的 box（仅守卫同一 box 的重复触发，换面板不受影响）
   function reload(box) {
+    if (!box) return;
+    if (_reloading === box) return; // 同一面板已在加载中，忽略重复触发，避免并发渲染抖动
+    _reloading = box;
     box.innerHTML = ''; box.appendChild(DN.skeleton(5));
     Promise.all([
       DN.get('/api/gov/overview'),
       DN.get('/api/gov/health/score/trend?days=14').catch(function () { return []; })
     ]).then(function (r) {
-      render(box, r[0] || {}, r[1] || []);
+      render(box, r[0] || {}, Array.isArray(r[1]) ? r[1] : []);
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + DN.esc(e.message), function () { reload(box); }));
-    });
+      var msg = (e && e.message) ? e.message : '请稍后重试';
+      box.appendChild(DN.errorBox('治理总览加载失败：' + DN.esc(msg), function () { reload(box); }));
+    }).then(function () { if (_reloading === box) _reloading = null; }); // finally：释放本 box 的守卫
   }
 
   // 治理待办行动中心: 聚合质量异常/落标违规/健康分偏低等待处理事项(各源独立 .catch 降级), 提供直达链接
   function loadGovTodo(body, healthTotal) {
+    if (!body) return;
     Promise.all([
       DN.get('/api/quality/overview').catch(function () { return null; }),
       DN.get('/api/gov/standard/top-violations?limit=50').catch(function () { return null; })
     ]).then(function (r) {
+      if (!document.body.contains(body)) return; // 面板已被替换则放弃渲染，避免写入游离节点
       body.innerHTML = '';
       var q = r[0] || {}, viol = Array.isArray(r[1]) ? r[1] : [];
       var items = [];
@@ -58,10 +65,14 @@
           DN.h('span', { html: DN.icon(it.icon), style: 'color:' + toneColor(it.tone) + ';display:flex' }),
           DN.h('span', { style: 'flex:1;font-size:13px', text: it.label }),
           DN.pill(it.n + ' ' + it.unit, it.tone),
-          DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '前往', onclick: (function (k) { return function () { if (window.govGoModule) govGoModule(k); }; })(it.key) })
+          DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '前往', title: '前往处理：' + it.label, onclick: (function (k) { return function () { goModule(k); }; })(it.key) })
         ]));
       });
-    }).catch(function () { body.innerHTML = ''; body.appendChild(DN.empty('待办聚合加载失败', 'alert')); });
+    }).catch(function () {
+      if (!document.body.contains(body)) return;
+      body.innerHTML = '';
+      body.appendChild(DN.errorBox('治理待办聚合加载失败', function () { body.innerHTML = ''; body.appendChild(DN.skeleton(2)); loadGovTodo(body, healthTotal); }));
+    });
   }
 
   var _lastData = null, _lastTrend = null;
@@ -82,8 +93,8 @@
       DN.h('label', { class: 'gov-desc', style: 'margin:0;cursor:pointer;display:flex;align-items:center;gap:4px' }, [autoCb, DN.h('span', { text: '自动刷新(30s)' })]),
       DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '更新于 ' + new Date().toLocaleTimeString() }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '全屏大屏', onclick: function () { toggleBigScreen(box); } }),
-      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '生成体检报告', onclick: function () { buildReport(); } }),
-      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { reload(box); } })
+      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '生成体检报告', onclick: function (e) { buildReport(e && e.currentTarget); } }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新', onclick: function () { if (_reloading === box) { DN.toast('正在刷新中…', 'info'); return; } reload(box); } })
     ]);
     box.appendChild(bar);
     setupAuto(box);
@@ -92,7 +103,7 @@
     var total = Number(health.total) || 0;
     var rate = Number(quality.recentPassRate) || 0;
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
-    function jump(k, lbl) { return function () { if (window.govGoModule) govGoModule(k); }; }
+    function jump(k) { return function () { goModule(k); }; }
     box.appendChild(DN.statRow([
       { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total), title: '进入治理健康分', onClick: jump('health') },
       { icon: 'db', label: '表数', value: fmtInt(assets.tableCount), title: '进入资产目录', onClick: jump('assets') },
@@ -191,8 +202,13 @@
     function loadHealthCalendar() {
       hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.skeleton(2));
       DN.get('/api/gov/health/score/trend?days=90').then(function (t) {
-        renderHealthCalendar(hcCard.body, t || []);
-      }).catch(function (e) { hcCard.body.innerHTML = ''; hcCard.body.appendChild(DN.errorBox('健康分日历加载失败: ' + (e && e.message ? e.message : '请重试'), loadHealthCalendar)); });
+        if (!document.body.contains(hcCard.body)) return; // 面板已切换则放弃，避免写游离节点
+        renderHealthCalendar(hcCard.body, Array.isArray(t) ? t : []);
+      }).catch(function (e) {
+        if (!document.body.contains(hcCard.body)) return;
+        hcCard.body.innerHTML = '';
+        hcCard.body.appendChild(DN.errorBox('健康分日历加载失败：' + (e && e.message ? e.message : '请重试'), loadHealthCalendar));
+      });
     }
     loadHealthCalendar();
   }
@@ -260,7 +276,7 @@
     return DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--divider,#f0f1f3)' }, [
       DN.h('span', { class: 'gov-desc', style: 'margin:0;flex:1', text: '当前短板维度：' }),
       DN.pill(weak.dim + ' ' + round1(weak.v), tone(weak.v)),
-      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '去改进', onclick: function () { if (window.govGoModule) govGoModule(key, {}); } })
+      DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '去改进', title: '前往改进短板维度：' + weak.dim, onclick: function () { goModule(key, {}); } })
     ]);
   }
   function insightConclusion(dirLabel, dirVerb, recentAvg, lo, hi) {
@@ -299,7 +315,7 @@
         colEl.appendChild(DN.h('div', {
           title: ds + (v != null ? ' · 健康分 ' + (Math.round(v * 10) / 10) + ' · 点击查看' : ' · 无数据 · 点击查看'),
           style: 'width:13px;height:13px;border-radius:2px;cursor:pointer;background:' + colorOf(v),
-          onclick: (function (day) { return function () { if (window.govGoModule) govGoModule('health', { date: day }); }; })(ds)
+          onclick: (function (day) { return function () { goModule('health', { date: day }); }; })(ds)
         }));
       }
       wrap.appendChild(colEl);
@@ -308,18 +324,29 @@
     box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '绿≥85 优秀 · 黄≥60 一般 · 红<60 待完善（近13周每日健康分，点格跳健康分并定位该日）' }));
   }
 
+  var SENS_TOP = 12; // 敏感分布最多展示条目数，超出聚合为“其余 N 项”避免卡片无限拉长
   function sensitiveCard(title, icon, map, barTone) {
     var c = DN.card({ title: title, icon: icon });
-    map = map || {};
+    map = (map && typeof map === 'object') ? map : {};
     var keys = Object.keys(map);
     if (!keys.length) {
-      c.body.appendChild(DN.empty('暂无敏感分布数据', 'tag'));
+      c.body.appendChild(DN.empty('暂无' + title + '数据，可前往数据分级模块完善敏感标识', 'tag'));
       return c.el;
     }
-    c.body.appendChild(DN.bars(keys.map(function (k) {
-      var v = Number(map[k]) || 0;
-      return { label: k, value: v, tone: barTone, display: fmtInt(v), onClick: function () { if (window.govGoModule) govGoModule('classification'); } };
-    })));
+    // 按数量降序，仅取 Top N，其余合并为一条，杜绝超长列表
+    var sorted = keys.map(function (k) { return { k: k, v: Number(map[k]) || 0 }; })
+      .sort(function (a, b) { return b.v - a.v; });
+    var shown = sorted.slice(0, SENS_TOP);
+    var bars = shown.map(function (it) {
+      var label = it.k == null ? '' : String(it.k);
+      var short = label.length > 18 ? label.slice(0, 18) + '…' : label; // 超长标签截断显示，原文用于点击意图无歧义
+      return { label: short, value: it.v, tone: barTone, display: fmtInt(it.v), onClick: function () { goModule('classification'); } };
+    });
+    if (sorted.length > SENS_TOP) {
+      var restSum = sorted.slice(SENS_TOP).reduce(function (s, it) { return s + it.v; }, 0);
+      bars.push({ label: '其余 ' + (sorted.length - SENS_TOP) + ' 项', value: restSum, tone: 'muted', display: fmtInt(restSum), onClick: function () { goModule('classification'); } });
+    }
+    c.body.appendChild(DN.bars(bars));
     return c.el;
   }
 
@@ -333,23 +360,37 @@
     }
     var req = target.requestFullscreen || target.webkitRequestFullscreen;
     if (!req) { DN.toast('当前浏览器不支持全屏', 'warn'); return; }
+    // 防重复绑定：先移除上一次可能残留的监听（_fsOnChange 挂在 target 上），避免监听堆积
+    if (target._fsOnChange) {
+      document.removeEventListener('fullscreenchange', target._fsOnChange);
+      document.removeEventListener('webkitfullscreenchange', target._fsOnChange);
+    }
     target.classList.add('gov-bigscreen');
-    req.call(target).catch(function () { DN.toast('进入全屏失败', 'err'); target.classList.remove('gov-bigscreen'); });
+    var p = req.call(target);
+    if (p && p.catch) p.catch(function () { DN.toast('进入全屏失败', 'err'); target.classList.remove('gov-bigscreen'); });
     var onChange = function () {
       if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
         target.classList.remove('gov-bigscreen');
         document.removeEventListener('fullscreenchange', onChange);
         document.removeEventListener('webkitfullscreenchange', onChange);
+        target._fsOnChange = null;
       }
     };
+    target._fsOnChange = onChange;
     document.addEventListener('fullscreenchange', onChange);
     document.addEventListener('webkitfullscreenchange', onChange);
   }
 
   // ========== 治理体检报告(大功能): 汇编总览数据为可打印报告 ==========
-  function buildReport() {
+  function buildReport(btn) {
     var d = _lastData;
     if (!d) { DN.toast('数据未就绪, 请稍后重试', 'warn'); return; }
+    // 防重复提交：生成期间禁用按钮，0.8s 后恢复（弹窗为同步生成，足够覆盖）
+    if (btn && btn.classList) {
+      if (btn.classList.contains('is-disabled')) return;
+      btn.classList.add('is-disabled'); btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6';
+      setTimeout(function () { btn.classList.remove('is-disabled'); btn.style.pointerEvents = ''; btn.style.opacity = ''; }, 800);
+    }
     var health = d.health || {}, assets = d.assets || {}, quality = d.quality || {}, issues = d.issues || {}, sensitive = d.sensitive || {};
     var dims = health.dims || {}, weights = health.weights || {};
     var total = round1(Number(health.total) || 0);
@@ -385,6 +426,7 @@
     var w = window.open('', '_blank');
     if (!w) { DN.toast('弹窗被拦截, 请允许后重试', 'warn'); return; }
     w.document.open(); w.document.write(html); w.document.close();
+    DN.toast('体检报告已生成', 'ok');
   }
   function reportConclusion(total, rate, pending) {
     var parts = [];
@@ -395,6 +437,11 @@
   }
 
   // ========== 工具 ==========
+  // 统一深链跳转：保留既有 govGoModule 行为，仅在宿主导航函数缺失时降级提示，避免按钮点了无反应
+  function goModule(key, ctx) {
+    if (window.govGoModule) { govGoModule(key, ctx || {}); return; }
+    DN.toast('暂无法跳转该模块', 'warn');
+  }
   // 分值映射药丸/磁贴色调：>=85 绿 / >=60 黄 / 其余红
   function tone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
   function toneColor(t) { return t === 'ok' ? '#389e0d' : t === 'warn' ? '#d48806' : t === 'err' ? '#cf1322' : 'var(--primary,#1890ff)'; }

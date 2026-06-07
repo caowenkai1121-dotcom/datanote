@@ -16,9 +16,11 @@
     // 资产清单卡片
     var crawlBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集全部(源库+数仓)',
       onclick: function () {
+        if (!window.confirm('将对全部源库与数仓发起元数据采集，可能耗时较久，确认开始？')) return;
+        var done = lockBtn(crawlBtn);
         DN.post('/api/metadata-center/crawl/all').then(function (msg) {
-          DN.toast(msg || '采集已启动'); setTimeout(loadAssets, 1500);
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+          DN.toast(msg || '采集已启动', 'success'); setTimeout(function () { done(); loadAssets(); }, 1500);
+        }).catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     var srcSel = DN.h('select', { class: 'iw-form-select', style: 'height:34px;',
       onchange: function () { assetState.src = srcSel.value; renderAssetTable(); } });
@@ -73,22 +75,25 @@
   function loadAssets() {
     // 统计 + 最近采集状态 + 采集历史
     DN.get('/api/metadata-center/collect-logs').then(function (logs) {
-      _collectLogs = logs || [];
+      _collectLogs = Array.isArray(logs) ? logs : [];
       lastLog = _collectLogs[0] || null;
       renderStats();
       renderCollectHistory();
-    }).catch(function () { lastLog = null; });
+    }).catch(function () { _collectLogs = []; lastLog = null; renderStats(); renderCollectHistory(); });
 
     // R39 主题域深链: 带 subjectId 服务端筛选(assetState.subjectId 来自主题树下钻 ctx.subjectId)
     var tablesUrl = '/api/metadata-center/tables' + (assetState.subjectId ? ('?subjectId=' + encodeURIComponent(assetState.subjectId)) : '');
     DN.get(tablesUrl).then(function (tables) {
-      assetAll = tables || [];
+      assetAll = Array.isArray(tables) ? tables : [];
       renderStats();
       renderAssetTable();
       renderColdAdvice();
     }).catch(function (e) {
+      assetAll = [];
+      renderStats();
       var b = document.getElementById('assetTbl');
-      if (b) { b.innerHTML = ''; b.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadAssets(); })); }
+      if (b) { b.innerHTML = ''; b.appendChild(DN.errorBox('资产清单加载失败: ' + (e && e.message || e), function () { loadAssets(); })); }
+      var cb = document.getElementById('assetColdAdvice'); if (cb) cb.innerHTML = '';
     });
   }
 
@@ -97,6 +102,7 @@
   function renderStats() {
     var box = document.getElementById('assetStats');
     if (!box) return;
+    if (!Array.isArray(assetAll)) assetAll = [];
     var tableCount = assetAll.length;
     var dbSet = {}, colCount = 0, totalBytes = 0;
     assetAll.forEach(function (t) {
@@ -170,7 +176,11 @@
     body.appendChild(DN.table({
       columns: [
         { key: '_k', label: '字段' },
-        { key: '_v', label: '值', render: function (r) { return r._v == null ? '-' : String(r._v); } }
+        { key: '_v', label: '值', render: function (r) {
+            if (r._v == null) return '-';
+            var s = (typeof r._v === 'object') ? (function () { try { return JSON.stringify(r._v); } catch (e) { return String(r._v); } })() : String(r._v);
+            return clip(s, 120);
+          } }
       ],
       rows: rows, pageSize: 50, search: false, empty: '该次采集无更多字段'
     }));
@@ -264,6 +274,7 @@
   function renderAssetTable() {
     var box = document.getElementById('assetTbl');
     if (!box) return;
+    if (!Array.isArray(assetAll)) assetAll = [];
     _maxRow = assetAll.reduce(function (m, t) { return Math.max(m, Number(t.rowCount) || 0); }, 0);
     _maxSize = assetAll.reduce(function (m, t) { return Math.max(m, Number(t.sizeBytes) || 0); }, 0);
     var rows = assetAll.filter(function (t) {
@@ -286,7 +297,7 @@
         { key: 'dbType', label: '来源', render: function (r) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(r.dbType || '-', cm[r.dbType] || 'muted'); } },
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
-        { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment || '-'; } },
+        { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment ? clip(r.tableComment, 60) : '-'; } },
         { key: 'rowCount', label: '行数', align: 'right', sortable: true, html: true, render: function (r) { return r.rowCount == null ? '-' : magBar(Number(r.rowCount) || 0, _maxRow, fmtInt(r.rowCount)); } },
         { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, html: true, render: function (r) { return r.sizeBytes == null ? '-' : magBar(Number(r.sizeBytes) || 0, _maxSize, DN.fmtBytes(r.sizeBytes)); } },
         { key: '_op', label: '操作', render: function (r) {
@@ -310,6 +321,7 @@
   // ===== 资产体量矩形图(大功能): 库分带, 表按体量占比着色分块 =====
   function renderAssetTreemap(rows) {
     var box = document.getElementById('assetTbl'); if (!box) return;
+    rows = Array.isArray(rows) ? rows : [];
     var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px' });
     (assetToolbar || []).forEach(function (el) { bar.appendChild(el); });
     box.innerHTML = ''; box.appendChild(bar);
@@ -347,8 +359,10 @@
 
   // ===== 资产目录树视图(大功能): 库→表 层级导航 =====
   var _treeOpen = {}; // db -> bool 展开态
+  var TREE_ROW_CAP = 200;     // 单库展开时最多渲染的表行数, 避免超长库一次性同步渲染卡顿
   function renderAssetTree(rows) {
     var box = document.getElementById('assetTbl'); if (!box) return;
+    rows = Array.isArray(rows) ? rows : [];
     // toolbar 还原(树视图下 DN.table 不渲染, 手工补工具条)
     var bar = DN.h('div', { class: 'gov-tbl-tools', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px' });
     (assetToolbar || []).forEach(function (el) { bar.appendChild(el); });
@@ -360,10 +374,11 @@
     box.appendChild(bar);
     if (!keys.length) { box.appendChild(DN.empty('暂无资产', 'inbox')); return; }
     var wrap = DN.h('div', { style: 'border:1px solid var(--border,#eceef1);border-radius:10px;overflow:hidden' });
+    var manyDb = keys.length > 12;  // 库很多时默认折叠, 避免一次性展开全部库造成卡顿
     keys.forEach(function (k) {
       var parts = k.split('|'), dbType = parts[0], dbName = parts[1];
       var tables = byDb[k];
-      var open = _treeOpen[k] !== false; // 默认展开
+      var open = _treeOpen[k] != null ? _treeOpen[k] !== false : !manyDb; // 默认: 库少展开, 库多折叠; 用户手动态优先
       var totalBytes = tables.reduce(function (s, t) { return s + (Number(t.sizeBytes) || 0); }, 0);
       var head = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:var(--bg-hover,#f6f7f9);border-bottom:1px solid var(--divider,#eee)' });
       head.innerHTML = '<span style="font-size:11px;color:var(--text-muted);width:12px;display:inline-block;transition:transform .15s;transform:rotate(' + (open ? '90' : '0') + 'deg)">▶</span>'
@@ -371,18 +386,26 @@
         + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:8px;background:#e6f0ff;color:#1890ff">' + DN.esc(dbType || '-') + '</span>'
         + '<span style="font-size:11px;color:var(--text-muted)">' + tables.length + ' 表 · ' + DN.fmtBytes(totalBytes) + '</span>';
       var bodyWrap = DN.h('div', { style: 'display:' + (open ? 'block' : 'none') });
-      tables.sort(function (a, b) { return (a.tableName || '').localeCompare(b.tableName || ''); });
-      tables.forEach(function (t) {
-        var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:7px 12px 7px 34px;border-bottom:1px solid var(--divider,#f3f4f6);cursor:pointer;font-size:12.5px' });
-        row.onmouseenter = function () { row.style.background = 'var(--bg-hover,#f6f7f9)'; };
-        row.onmouseleave = function () { row.style.background = ''; };
-        row.innerHTML = '<span style="color:#1890ff">▦</span>'
-          + '<span style="font-weight:500">' + DN.esc(t.tableName || '-') + '</span>'
-          + '<span style="color:var(--text-muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + DN.esc(t.tableComment || '') + '</span>'
-          + '<span style="color:var(--text-muted);font-size:11px;white-space:nowrap">' + (t.rowCount == null ? '' : fmtInt(t.rowCount) + ' 行 · ') + DN.fmtBytes(t.sizeBytes) + '</span>';
-        row.addEventListener('click', function () { openAssetDetail(t.databaseName || '', t.tableName || ''); });
-        bodyWrap.appendChild(row);
-      });
+      // 仅在展开时才构建该库的行(节省折叠库的渲染开销)
+      if (open) {
+        tables.sort(function (a, b) { return (a.tableName || '').localeCompare(b.tableName || ''); });
+        var shown = tables.length > TREE_ROW_CAP ? tables.slice(0, TREE_ROW_CAP) : tables;
+        shown.forEach(function (t) {
+          var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:7px 12px 7px 34px;border-bottom:1px solid var(--divider,#f3f4f6);cursor:pointer;font-size:12.5px' });
+          row.onmouseenter = function () { row.style.background = 'var(--bg-hover,#f6f7f9)'; };
+          row.onmouseleave = function () { row.style.background = ''; };
+          row.innerHTML = '<span style="color:#1890ff">▦</span>'
+            + '<span style="font-weight:500">' + DN.esc(t.tableName || '-') + '</span>'
+            + '<span style="color:var(--text-muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + DN.esc(t.tableComment || '') + '">' + DN.esc(t.tableComment || '') + '</span>'
+            + '<span style="color:var(--text-muted);font-size:11px;white-space:nowrap">' + (t.rowCount == null ? '' : fmtInt(t.rowCount) + ' 行 · ') + DN.fmtBytes(t.sizeBytes) + '</span>';
+          row.addEventListener('click', function () { openAssetDetail(t.databaseName || '', t.tableName || ''); });
+          bodyWrap.appendChild(row);
+        });
+        if (tables.length > TREE_ROW_CAP) {
+          bodyWrap.appendChild(DN.h('div', { style: 'padding:7px 12px 7px 34px;font-size:11px;color:var(--text-muted)',
+            text: '仅显示前 ' + TREE_ROW_CAP + ' 张（共 ' + tables.length + ' 张），如需精确查找请切换「表格视图」搜索。' }));
+        }
+      }
       head.addEventListener('click', function () {
         _treeOpen[k] = !open;
         renderAssetTree(rows);
@@ -463,11 +486,11 @@
           save.classList.add('is-loading');
           DN.post('/api/metadata/table/set-subject', { db: db, table: table, subjectId: newId }).then(function () {
             curId = newId;
-            DN.toast('主题域已更新', 'ok');
+            DN.toast('主题域已更新', 'success');
             renderRow();
           }).catch(function (e) {
             save.classList.remove('is-loading');
-            DN.toast('设置失败: ' + (e && e.message || e), 'err');
+            DN.toast('设置失败: ' + (e && e.message || e), 'error');
           });
         };
         row.innerHTML = '';
@@ -511,9 +534,9 @@
     (function load() {
     box.innerHTML = ''; box.appendChild(DN.skeleton(3));
     DN.get('/api/gov/asset/detail' + qs).then(function (d) {
-      var cols = (d && d.columns) || [];
+      var cols = (d && Array.isArray(d.columns)) ? d.columns : [];
       box.innerHTML = '';
-      if (!cols.length) { box.appendChild(DN.empty('该表暂无字段元数据(可重新采集该库)', 'list')); return; }
+      if (!cols.length) { box.appendChild(DN.empty('该表暂无字段元数据，可点上方「采集全部」重新采集该库后再查看', 'list')); return; }
       // 敏感/密级摘要徽标条
       var secN = cols.filter(function (c) { return c.securityLevel; }).length;
       var senN = cols.filter(function (c) { return c.sensitiveType; }).length;
@@ -530,7 +553,7 @@
           { key: 'dataType', label: '类型', sortable: true },
           { key: 'columnKey', label: '键', render: function (r) { return r.columnKey || '-'; } },
           { key: 'isNullable', label: '可空', render: function (r) { return r.isNullable || '-'; } },
-          { key: 'businessDesc', label: '注释', render: function (r) { return r.businessDesc || '-'; } },
+          { key: 'businessDesc', label: '注释', render: function (r) { return r.businessDesc ? clip(r.businessDesc, 60) : '-'; } },
           { key: 'securityLevel', label: '密级', sortable: true, render: function (r) { return r.securityLevel ? DN.pill(r.securityLevel, 'err') : '-'; } },
           { key: 'sensitiveType', label: '敏感', sortable: true, render: function (r) { return r.sensitiveType ? DN.pill(r.sensitiveType, 'warn') : '-'; } }
         ],
@@ -554,24 +577,26 @@
     var btn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-bottom:8px;', text: '执行探查（采样数仓）',
       onclick: function () {
         var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        var done = lockBtn(btn);
         (function load() {
         resultBox.innerHTML = ''; resultBox.appendChild(DN.skeleton(3));
         DN.get('/api/gov/asset/profile' + qs).then(function (p) {
+          done();
           p = p || {};
-          var fields = p.fields || [];
+          var fields = Array.isArray(p.fields) ? p.fields : [];
           resultBox.innerHTML = '';
           resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:8px',
-            text: '总行数: ' + (p.totalRows == null ? '-' : p.totalRows) + '，字段数: ' + (p.columnCount == null ? '-' : p.columnCount) +
+            text: '总行数: ' + (p.totalRows == null ? '-' : fmtInt(p.totalRows)) + '，字段数: ' + (p.columnCount == null ? '-' : p.columnCount) +
               '，已探查 ' + (p.profiledCount == null ? '-' : p.profiledCount) + ' 个' }));
           resultBox.appendChild(DN.table({
             columns: [
               { key: 'name', label: '字段' },
               { key: 'nullRate', label: '空值率', align: 'right', render: function (f) { return f.nullRate == null ? (f.error ? '错误' : '-') : f.nullRate; } },
-              { key: 'distinctCount', label: 'distinct', align: 'right', render: function (f) { return f.distinctCount == null ? '-' : f.distinctCount; } }
+              { key: 'distinctCount', label: 'distinct', align: 'right', render: function (f) { return f.distinctCount == null ? '-' : fmtInt(f.distinctCount); } }
             ],
-            rows: fields, pageSize: 50, search: false, empty: '无探查结果'
+            rows: fields, pageSize: 50, search: false, empty: '无探查结果（该表可能为空或不可采样）'
           }));
-        }).catch(function (e) { resultBox.innerHTML = ''; resultBox.appendChild(DN.errorBox(e.message, function () { load(); })); });
+        }).catch(function (e) { done(); resultBox.innerHTML = ''; resultBox.appendChild(DN.errorBox('探查失败: ' + (e && e.message || e), function () { load(); })); });
         })();
       } });
     panel.appendChild(btn);
@@ -590,10 +615,15 @@
     }
     var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增术语',
       onclick: function () {
-        if (!term.value.trim()) { DN.toast('术语名必填', 'error'); return; }
-        DN.post('/api/gov/asset/glossary', { term: term.value.trim(), category: cat.value.trim(), definition: def.value.trim() })
-          .then(function () { DN.toast('已新增'); term.value = ''; cat.value = ''; def.value = ''; loadGlossary(listBox); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        var tv = term.value.trim(), cv = cat.value.trim(), dv = def.value.trim();
+        if (!tv) { DN.toast('术语名必填', 'error'); term.focus(); return; }
+        if (tv.length > 50) { DN.toast('术语名过长(请控制在 50 字以内)', 'error'); term.focus(); return; }
+        if (cv.length > 30) { DN.toast('分类过长(请控制在 30 字以内)', 'error'); cat.focus(); return; }
+        if (dv.length > 500) { DN.toast('定义过长(请控制在 500 字以内)', 'error'); def.focus(); return; }
+        var done = lockBtn(addBtn);
+        DN.post('/api/gov/asset/glossary', { term: tv, category: cv, definition: dv })
+          .then(function () { done(); DN.toast('已新增', 'success'); term.value = ''; cat.value = ''; def.value = ''; loadGlossary(listBox); })
+          .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     form.appendChild(row('术语', term));
     form.appendChild(row('分类', cat));
@@ -607,25 +637,29 @@
   }
 
   function loadGlossary(box) {
+    if (!box) return;
     DN.get('/api/gov/asset/glossary').then(function (list) {
       box.innerHTML = '';
       box.appendChild(DN.table({
         columns: [
-          { key: 'term', label: '术语' },
+          { key: 'term', label: '术语', render: function (g) { return clip(g.term, 40); } },
           { key: 'category', label: '分类', render: function (g) { return g.category || '-'; } },
-          { key: 'definition', label: '定义', render: function (g) { return g.definition || '-'; } },
+          { key: 'definition', label: '定义', render: function (g) { return clip(g.definition, 80) || '-'; } },
           { key: '_op', label: '操作', render: function (g) {
               return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删',
                 onclick: function () {
+                  if (!window.confirm('确认删除术语「' + (g.term || '') + '」？此操作不可撤销。')) return;
                   DN.del('/api/gov/asset/glossary/' + g.id)
-                    .then(function () { DN.toast('已删除'); loadGlossary(box); })
+                    .then(function () { DN.toast('已删除', 'success'); loadGlossary(box); })
                     .catch(function (e) { DN.toast(e.message, 'error'); });
                 } });
             } }
         ],
-        rows: list || [], pageSize: 10, search: false, empty: '暂无术语'
+        rows: Array.isArray(list) ? list : [], pageSize: 10, search: false, empty: '暂无术语，可在上方表单新增'
       }));
-    }).catch(function () {});
+    }).catch(function (e) {
+      box.innerHTML = ''; box.appendChild(DN.errorBox('术语表加载失败: ' + (e && e.message || e), function () { loadGlossary(box); }));
+    });
   }
 
   // 查看血缘（内联调用血缘端点，不跳转）
@@ -635,15 +669,17 @@
     var btn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-bottom:8px;', text: '查询上下游表',
       onclick: function () {
         var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+        var done = lockBtn(btn);
         (function load() {
         box.innerHTML = ''; box.appendChild(DN.skeleton(2));
         DN.get('/api/lineage/table-edges' + qs).then(function (nb) {
+          done();
           nb = nb || {};
-          var up = (nb.upstream || []).map(function (e) { return e.srcDb + '.' + e.srcTable; });
-          var down = (nb.downstream || []).map(function (e) { return e.dstDb + '.' + e.dstTable; });
-          box.innerHTML = '<div class="gov-desc" style="margin-bottom:4px"><b>上游表:</b> ' + (up.length ? up.map(DN.esc).join(', ') : '无') +
-            '</div><div class="gov-desc" style="margin-bottom:0"><b>下游表:</b> ' + (down.length ? down.map(DN.esc).join(', ') : '无') + '</div>';
-        }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { load(); })); });
+          var up = (Array.isArray(nb.upstream) ? nb.upstream : []).map(function (e) { return (e.srcDb || '') + '.' + (e.srcTable || ''); });
+          var down = (Array.isArray(nb.downstream) ? nb.downstream : []).map(function (e) { return (e.dstDb || '') + '.' + (e.dstTable || ''); });
+          box.innerHTML = '<div class="gov-desc" style="margin-bottom:4px"><b>上游表(' + up.length + '):</b> ' + (up.length ? up.map(DN.esc).join(', ') : '无') +
+            '</div><div class="gov-desc" style="margin-bottom:0"><b>下游表(' + down.length + '):</b> ' + (down.length ? down.map(DN.esc).join(', ') : '无') + '</div>';
+        }).catch(function (e) { done(); box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + (e && e.message || e), function () { load(); })); });
         })();
       } });
     panel.appendChild(btn);
@@ -672,11 +708,13 @@
         if (!picker.db() || !picker.table()) { DN.toast('请先选择库和表', 'error'); return; }
         var dv = days.value.trim();
         var d = parseInt(dv, 10);
-        if (dv && (isNaN(d) || d <= 0)) { DN.toast('天数需为正整数', 'error'); return; }
+        if (dv && (isNaN(d) || d <= 0)) { DN.toast('天数需为正整数', 'error'); days.focus(); return; }
+        if (!isNaN(d) && d > 36500) { DN.toast('天数过大(请≤36500天/100年)', 'error'); days.focus(); return; }
         var body = { dbName: picker.db(), tableName: picker.table(), policyType: type.value, enabled: 1 };
         if (type.value === 'HOT_COLD') body.coldDays = isNaN(d) ? null : d; else body.ttlDays = isNaN(d) ? null : d;
-        DN.post('/api/gov/lifecycle/policies', body).then(function () { DN.toast('已新增'); loadPolicies(); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        var done = lockBtn(addBtn);
+        DN.post('/api/gov/lifecycle/policies', body).then(function () { done(); DN.toast('已新增', 'success'); days.value = ''; loadPolicies(); })
+          .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     form.appendChild(type); form.appendChild(days); form.appendChild(addBtn);
     bd.appendChild(form);
@@ -726,21 +764,25 @@
         columns: [
           { key: '_t', label: '库.表', render: function (p) { return (p.dbName || '') + '.' + (p.tableName || ''); } },
           { key: 'policyType', label: '类型' },
-          { key: '_param', label: '参数', render: function (p) { return p.policyType === 'HOT_COLD' ? (p.coldDays || '-') + '天冷' : (p.ttlDays || '-') + '天TTL'; } },
+          { key: '_param', label: '参数', render: function (p) { return p.policyType === 'HOT_COLD' ? ((p.coldDays == null ? '-' : p.coldDays) + '天冷') : ((p.ttlDays == null ? '-' : p.ttlDays) + '天TTL'); } },
           { key: 'status', label: '状态', render: function (p) { return p.status ? DN.pill(p.status, policyStatusTone(p.status)) : '-'; } },
-          { key: 'lastMsg', label: '信息', render: function (p) { return p.lastMsg || '-'; } },
+          { key: 'lastMsg', label: '信息', render: function (p) { return p.lastMsg ? clip(p.lastMsg, 60) : '-'; } },
           { key: '_op', label: '操作', render: function (p) {
               var apply = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '应用',
                 onclick: function () {
+                  if (!window.confirm('将对 ' + (p.dbName || '') + '.' + (p.tableName || '') + ' 下发 ' + (p.policyType || '') + ' 策略(可能改动 Doris DDL)，确认应用？')) return;
+                  var done = lockBtn(apply);
                   DN.post('/api/gov/lifecycle/policies/' + p.id + '/apply')
-                    .then(function (r) { DN.toast('应用结果: ' + (r && r.status)); loadPolicies(); })
-                    .catch(function (e) { DN.toast(e.message, 'error'); });
+                    .then(function (r) { done(); DN.toast('应用结果: ' + (r && r.status || '完成'), 'success'); loadPolicies(); })
+                    .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                 } });
               var del = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', style: 'margin-left:6px;',
                 onclick: function () {
+                  if (!window.confirm('确认删除该生命周期策略？此操作不可撤销。')) return;
+                  var done = lockBtn(del);
                   DN.del('/api/gov/lifecycle/policies/' + p.id)
-                    .then(function () { DN.toast('已删除'); loadPolicies(); })
-                    .catch(function (e) { DN.toast(e.message, 'error'); });
+                    .then(function () { DN.toast('已删除', 'success'); loadPolicies(); })
+                    .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                 } });
               return DN.h('span', {}, [apply, del]);
             } }
@@ -749,7 +791,11 @@
       });
       box.innerHTML = '';
       box.appendChild(policyTbl);
-    }).catch(function () {});
+    }).catch(function (e) {
+      var box = document.getElementById('policyList'); if (!box) return;
+      policyTbl = null;
+      box.innerHTML = ''; box.appendChild(DN.errorBox('生命周期策略加载失败: ' + (e && e.message || e), function () { loadPolicies(); }));
+    });
   }
 
   // ===== 无用表识别（DN.card + DN.table，就近确认销毁） =====
@@ -757,14 +803,17 @@
   function renderUnused(c) {
     var collectBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集资产快照',
       onclick: function () {
-        DN.post('/api/gov/lifecycle/stats/collect').then(function (m) { DN.toast(m); loadUnused(); loadCost(); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        var done = lockBtn(collectBtn);
+        DN.post('/api/gov/lifecycle/stats/collect').then(function (m) { done(); DN.toast(m || '已采集快照', 'success'); loadUnused(); loadCost(); })
+          .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     var dropBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '执行到期销毁', style: 'margin-left:6px;',
       onclick: function () {
+        if (!window.confirm('将对所有已过宽限期的表执行销毁，此操作不可逆，确认执行？')) return;
+        var done = lockBtn(dropBtn);
         DN.post('/api/gov/lifecycle/drop/execute').then(function (r) {
-          DN.toast('到期销毁处理 ' + (r ? r.length : 0) + ' 张'); loadUnused();
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+          done(); DN.toast('到期销毁处理 ' + (Array.isArray(r) ? r.length : 0) + ' 张', 'success'); loadUnused();
+        }).catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     var card = DN.card({ title: '无用表识别（久未访问 + 体量 + 无下游血缘 + 无任务引用）', icon: 'alert', actions: [collectBtn, dropBtn] });
     c.appendChild(card.el);
@@ -798,7 +847,7 @@
         columns: [
           { key: '_t', label: '库.表', render: function (u) { return (u.db || '') + '.' + (u.table || ''); } },
           { key: 'score', label: '分数', align: 'right' },
-          { key: 'lastAccessDays', label: '未访问', align: 'right', render: function (u) { return u.lastAccessDays + '天'; } },
+          { key: 'lastAccessDays', label: '未访问', align: 'right', render: function (u) { return u.lastAccessDays == null ? '-' : (u.lastAccessDays + '天'); } },
           { key: 'sizeBytes', label: '体量', align: 'right', render: function (u) { return DN.fmtBytes(u.sizeBytes); } },
           { key: '_down', label: '下游血缘', render: function (u) { return u.hasDownstreamLineage ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },
           { key: '_ref', label: '任务引用', render: function (u) { return u.hasTaskRef ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },
@@ -819,7 +868,11 @@
         empty: '暂无无用表候选（先采集资产快照）', emptyIcon: 'check'
       });
       box.appendChild(unusedTbl);
-    }).catch(function () {});
+    }).catch(function (e) {
+      var box = document.getElementById('unusedList'); if (!box) return;
+      unusedTbl = null;
+      box.innerHTML = ''; box.appendChild(DN.errorBox('无用表识别加载失败: ' + (e && e.message || e), function () { loadUnused(); }));
+    });
   }
 
   // 就近确认（抽屉内）：审批人 + 原因 + 确认销毁
@@ -836,10 +889,13 @@
     body.appendChild(form);
     var ok = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认销毁',
       onclick: function () {
-        if (!approver.value.trim()) { DN.toast('审批人必填', 'error'); return; }
-        DN.post('/api/gov/lifecycle/drop', { db: u.db, table: u.table, approver: approver.value.trim(), reason: reason.value.trim() })
-          .then(function (p) { DN.toast('已进入宽限期，至 ' + (p && p.dropDueAt)); dr.close(); loadUnused(); loadPolicies(); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        var av = approver.value.trim(), rv = reason.value.trim();
+        if (!av) { DN.toast('审批人必填', 'error'); approver.focus(); return; }
+        if (rv.length > 200) { DN.toast('原因过长(请控制在 200 字以内)', 'error'); reason.focus(); return; }
+        var done = lockBtn(ok);
+        DN.post('/api/gov/lifecycle/drop', { db: u.db, table: u.table, approver: av, reason: rv })
+          .then(function (p) { DN.toast('已进入宽限期，至 ' + (p && p.dropDueAt || '-'), 'success'); dr.close(); loadUnused(); loadPolicies(); })
+          .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
     var cancel = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-left:8px;', onclick: function () { dr.close(); } });
     body.appendChild(DN.h('div', { style: 'margin-top:6px;' }, [ok, cancel]));
@@ -896,7 +952,11 @@
         rows: rows, pageSize: 15, searchKeys: ['db', 'table'], searchPlaceholder: '搜索库 / 表', empty: '暂无成本数据（先采集资产快照）'
       });
       box.appendChild(costTbl);
-    }).catch(function () {});
+    }).catch(function (e) {
+      var box = document.getElementById('costList'); if (!box) return;
+      costTbl = null;
+      box.innerHTML = ''; box.appendChild(DN.errorBox('成本排行加载失败: ' + (e && e.message || e), function () { loadCost(); }));
+    });
   }
 
   // ===== 工具 =====
@@ -904,5 +964,30 @@
     if (v == null) return '-';
     v = Number(v) || 0;
     return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  // 超长文本截断 + title 悬浮看全文(返回 DOM 节点, 安全转义)
+  function clip(s, max) {
+    s = s == null ? '' : String(s);
+    max = max || 60;
+    if (s.length <= max) return s === '' ? '' : DN.h('span', { text: s });
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s });
+  }
+  // 异步操作期间锁定按钮防重复提交: 加 is-loading + disabled, 完成后还原。返回 done() 还原函数。
+  function lockBtn(btn) {
+    if (!btn) return function () {};
+    var oldText = btn.textContent;
+    btn.classList.add('is-loading');
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.6';
+    btn.setAttribute('aria-busy', 'true');
+    var done = false;
+    return function () {
+      if (done) return; done = true;
+      btn.classList.remove('is-loading');
+      btn.style.pointerEvents = '';
+      btn.style.opacity = '';
+      btn.removeAttribute('aria-busy');
+      if (btn.textContent !== oldText) btn.textContent = oldText;
+    };
   }
 })();

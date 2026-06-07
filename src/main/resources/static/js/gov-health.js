@@ -22,6 +22,7 @@
 
   var issueTable = null; // DN.table 句柄，便于 reload
   var selectedIssues = {}; // 批量流转选中：id -> 当前状态
+  var batchBusy = false; // 批量操作进行中标志，防重复提交
   var boardOwnerFilter = ''; // 排行榜点击联动：按负责人客户端过滤工单
   var issueObjectFilter = null; // R21 深链：按关联对象过滤工单 {kind,ref,label}
 
@@ -132,6 +133,7 @@
   function renderTop(r) {
     var top = document.getElementById('hsTop');
     if (!top) return;
+    r = r || {};
     var total = r.totalScore != null ? r.totalScore : 0;
     var dims = r.dimensions || {};
     var weights = r.weights || {};
@@ -161,7 +163,7 @@
         { key: 'dim', label: '维度' },
         { key: 'score', label: '得分', align: 'right', render: function (x) { return DN.pill(x.score, scoreTone(x.scoreNum)); } },
         { key: 'weight', label: '权重', align: 'right' },
-        { key: 'source', label: '数据源' }
+        { key: 'source', label: '数据源', render: function (x) { return truncSpan(x.source, 36); } }
       ],
       rows: DIMS.map(function (d) {
         var dd = dims[d] || {};
@@ -228,36 +230,50 @@
     return card.el;
   }
 
-  function refreshScore() {
+  var scoreRefreshing = false; // 重算进行中标志，防重复提交
+  function refreshScore(ev) {
+    if (scoreRefreshing) { DN.toast('正在重算，请稍候', 'warn'); return; }
+    var btn = ev && ev.currentTarget; // 重算期间禁用按钮
+    scoreRefreshing = true;
+    if (btn) { btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6'; }
     DN.post('/api/gov/health/score/refresh').then(function (r) {
-      DN.toast('已重算并快照');
-      renderTop(r);
+      DN.toast('已重算并快照', 'success');
+      renderTop(r || {});
       loadTrend();
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) { DN.toast(errMsg(e), 'error'); })
+      .then(function () { scoreRefreshing = false; if (btn) { btn.style.pointerEvents = ''; btn.style.opacity = ''; } });
   }
 
   function loadTrend() {
+    var box0 = document.getElementById('hsTrend');
+    if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(2)); } // 加载骨架
     DN.get('/api/gov/health/score/trend?days=30').then(function (rows) {
       var box = document.getElementById('hsTrend');
       if (!box) return;
-      if (!rows || rows.length < 2) {
+      rows = Array.isArray(rows) ? rows : [];
+      if (rows.length < 2) {
         box.innerHTML = '';
-        box.appendChild(DN.empty('趋势数据不足（点击“重算并快照”积累时序）', 'clock'));
+        box.appendChild(DN.empty('趋势数据不足（至少需 2 个快照点，点击右上角“重算并快照”积累时序）', 'clock'));
         return;
       }
-      var vals = rows.map(function (x) { return Number(x.totalScore) || 0; });
+      var vals = rows.map(function (x) { return Number(x && x.totalScore) || 0; });
       box.innerHTML = '';
       box.appendChild(DN.sectionTitle('近 30 天健康分趋势'));
       box.appendChild(DN.line(vals, { height: 80, max: 100, min: 0 }));
-    }).catch(function () {});
+    }).catch(function (e) {
+      var box = document.getElementById('hsTrend');
+      if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('趋势加载失败：' + (e && e.message || ''), loadTrend)); }
+    });
   }
 
   // ========== 工单 ==========
 
   function loadIssues() {
+    var box0 = document.getElementById('hsIssues');
+    if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(4)); } // 重载时也回到骨架，避免旧数据残留误导
     var status = (document.getElementById('hsIssueFilter') || {}).value || '';
     DN.get('/api/gov/health/issues' + (status ? '?status=' + encodeURIComponent(status) : '')).then(function (rows) {
-      renderIssues(rows || []);
+      renderIssues(Array.isArray(rows) ? rows : []);
     }).catch(function (e) {
       var box = document.getElementById('hsIssues');
       if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('工单加载失败：' + (e && e.message || ''), loadIssues)); }
@@ -268,7 +284,8 @@
   function buildIssueAnalytics(rows) {
     var stMeta = { OPEN: ['待处理', '#ff4d4f'], FIXING: ['处理中', '#faad14'], RESOLVED: ['已解决', '#1890ff'], VERIFIED: ['已验证', '#13c2c2'], CLOSED: ['已关闭', '#52c41a'] };
     var stCnt = {}, sevCnt = {}, dimCnt = {};
-    rows.forEach(function (r) {
+    (rows || []).forEach(function (r) {
+      if (!r) return;
       var s = r.status || 'OPEN'; stCnt[s] = (stCnt[s] || 0) + 1;
       var sv = r.severity || 'LOW'; sevCnt[sv] = (sevCnt[sv] || 0) + 1;
       var d = r.dimension || '未分类'; dimCnt[d] = (dimCnt[d] || 0) + 1;
@@ -303,12 +320,14 @@
     if (issueObjectFilter) {
       var f = issueObjectFilter;
       rows = rows.filter(function (it) {
+        if (!it) return false;
         if (f.ref) return it.objectRef === f.ref;
         if (f.kw) { var s = (it.title || '') + ' ' + (it.description || '') + ' ' + (it.objectRef || ''); return s.indexOf(f.kw) >= 0; }
         return true;
       });
     }
-    if (boardOwnerFilter) rows = rows.filter(function (it) { return (it.owner || '未分配') === boardOwnerFilter; });
+    if (boardOwnerFilter) rows = rows.filter(function (it) { return it && (it.owner || '未分配') === boardOwnerFilter; });
+    rows = rows.filter(function (it) { return !!it; }); // 兜底剔除空行，避免渲染时 it.xxx 报错
     box.innerHTML = '';
     if (issueObjectFilter) {
       box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;display:flex;align-items:center;gap:8px' }, [
@@ -332,11 +351,11 @@
       columns: [
         { key: '_sel', label: '', render: function (it) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择工单 ' + (it.title || it.id) }); cb.checked = !!selectedIssues[it.id]; cb.onchange = function () { if (cb.checked) selectedIssues[it.id] = it.status; else delete selectedIssues[it.id]; }; return cb; } },
         { key: 'id', label: 'ID', align: 'right' },
-        { key: 'title', label: '标题' },
+        { key: 'title', label: '标题', render: function (it) { return truncSpan(it.title, 48); } },
         { key: 'dimension', label: '维度', render: function (it) { return it.dimension || '-'; } },
         { key: 'severity', label: '级别', render: function (it) { return severityPill(it.severity); } },
-        { key: 'owner', label: '负责人', render: function (it) { return it.owner || '未分配'; } },
-        { key: 'status', label: '状态', render: function (it) { return DN.pill(it.status, STATUS_TONE[it.status] || 'muted'); } },
+        { key: 'owner', label: '负责人', render: function (it) { return truncSpan(it.owner || '未分配', 24); } },
+        { key: 'status', label: '状态', render: function (it) { return DN.pill(it.status || 'OPEN', STATUS_TONE[it.status] || 'muted'); } },
         { key: 'ops', label: '操作', render: function (it) { return issueOps(it); } }
       ]
     });
@@ -376,31 +395,44 @@
     }
   }
 
+  var transitioning = {}; // 单条流转进行中标志，防同一工单重复点击
   function transition(id, to) {
+    if (transitioning[id]) { DN.toast('该工单正在流转，请稍候', 'warn'); return; }
+    transitioning[id] = true;
     DN.post('/api/gov/health/issues/' + id + '/transition', { status: to })
-      .then(function () { DN.toast('已流转'); loadIssues(); loadBoard(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+      .then(function () { DN.toast('已流转至 ' + to, 'success'); loadIssues(); loadBoard(); })
+      .catch(function (e) { DN.toast(errMsg(e), 'error'); })
+      .then(function () { delete transitioning[id]; });
   }
 
   function batchAssign() {
     var ids = Object.keys(selectedIssues);
     if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
-    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
-    drawerForm('批量指派 ' + ids.length + ' 个工单', [formRow('负责人', ownerInput)], function (close) {
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人', maxlength: '60' });
+    drawerForm('批量指派 ' + ids.length + ' 个工单', [formRow('负责人', ownerInput)], function (close, okBtn) {
       var owner = ownerInput.value.trim();
       if (!owner) { DN.toast('请填写负责人', 'error'); return; }
-      Promise.all(ids.map(function (id) { return DN.post('/api/gov/health/issues/' + id + '/assign', { owner: owner }).then(function () { return true; }).catch(function () { return false; }); }))
-        .then(function (res) { DN.toast('已指派 ' + res.filter(Boolean).length + '/' + ids.length + ' 项'); close(); loadIssues(); loadBoard(); });
+      submitGuard(okBtn, function () {
+        return Promise.all(ids.map(function (id) { return DN.post('/api/gov/health/issues/' + id + '/assign', { owner: owner }).then(function () { return true; }).catch(function () { return false; }); }))
+          .then(function (res) {
+            var ok = res.filter(Boolean).length;
+            DN.toast('已指派 ' + ok + '/' + ids.length + ' 项', ok ? 'success' : 'error'); close(); loadIssues(); loadBoard();
+          });
+      }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
     });
   }
   function batchDelete() {
+    if (batchBusy) { DN.toast('批量操作进行中，请稍候', 'warn'); return; }
     var ids = Object.keys(selectedIssues);
     if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
-    if (!confirm('确认批量删除选中的 ' + ids.length + ' 个工单？')) return;
+    if (!window.confirm('确认批量删除选中的 ' + ids.length + ' 个工单？删除后不可恢复。')) return;
+    batchBusy = true;
     Promise.all(ids.map(function (id) { return DN.del('/api/gov/health/issues/' + id).then(function () { return true; }).catch(function () { return false; }); }))
-      .then(function (res) { DN.toast('已删除 ' + res.filter(Boolean).length + '/' + ids.length + ' 项'); loadIssues(); loadBoard(); });
+      .then(function (res) { var ok = res.filter(Boolean).length; DN.toast('已删除 ' + ok + '/' + ids.length + ' 项', ok ? 'success' : 'error'); loadIssues(); loadBoard(); })
+      .then(function () { batchBusy = false; }, function () { batchBusy = false; });
   }
   function batchTransition() {
+    if (batchBusy) { DN.toast('批量操作进行中，请稍候', 'warn'); return; }
     var to = (document.getElementById('hsBatchTo') || {}).value || '';
     if (!to) { DN.toast('请选择目标状态', 'error'); return; }
     var ids = Object.keys(selectedIssues);
@@ -408,87 +440,106 @@
     // 仅对状态机允许的工单流转
     var valid = ids.filter(function (id) { return (FLOW[selectedIssues[id]] || []).indexOf(to) >= 0; });
     if (!valid.length) { DN.toast('所选工单当前状态均不能流转到 ' + to, 'error'); return; }
+    batchBusy = true;
     Promise.all(valid.map(function (id) {
       return DN.post('/api/gov/health/issues/' + id + '/transition', { status: to }).then(function () { return true; }).catch(function () { return false; });
     })).then(function (res) {
       var ok = res.filter(Boolean).length;
-      DN.toast('已批量流转 ' + ok + '/' + ids.length + ' 项' + (valid.length < ids.length ? '（' + (ids.length - valid.length) + ' 项状态不允许已跳过）' : ''));
+      DN.toast('已批量流转 ' + ok + '/' + ids.length + ' 项' + (valid.length < ids.length ? '（' + (ids.length - valid.length) + ' 项状态不允许已跳过）' : ''), ok ? 'success' : 'error');
       loadIssues(); loadBoard();
-    });
+    }).then(function () { batchBusy = false; }, function () { batchBusy = false; });
   }
 
   function delIssue(id) {
+    if (!window.confirm('确认删除工单 #' + id + '？删除后不可恢复。')) return; // 破坏性操作必确认
     DN.del('/api/gov/health/issues/' + id)
-      .then(function () { DN.toast('已删除'); loadIssues(); loadBoard(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+      .then(function () { DN.toast('已删除', 'success'); loadIssues(); loadBoard(); })
+      .catch(function (e) { DN.toast(errMsg(e), 'error'); });
   }
 
   function assignIssue(id) {
-    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人' });
-    drawerForm('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close) {
-      DN.post('/api/gov/health/issues/' + id + '/assign', { owner: ownerInput.value.trim() })
-        .then(function () { DN.toast('已指派'); close(); loadIssues(); loadBoard(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人', maxlength: '60' });
+    drawerForm('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close, okBtn) {
+      var owner = ownerInput.value.trim();
+      if (!owner) { DN.toast('请填写负责人', 'error'); return; }
+      submitGuard(okBtn, function () {
+        return DN.post('/api/gov/health/issues/' + id + '/assign', { owner: owner })
+          .then(function () { DN.toast('已指派'); close(); loadIssues(); loadBoard(); });
+      }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
     });
   }
 
   function addIssue() {
-    var titleInput = DN.h('input', { class: 'iw-form-input', placeholder: '工单标题' });
+    var titleInput = DN.h('input', { class: 'iw-form-input', placeholder: '工单标题', maxlength: '120' });
     var typeSel = selectOf(['STANDARD', 'QUALITY', 'SECURITY', 'LINEAGE', 'LIFECYCLE', 'OTHER'], 'OTHER');
     var dimSel = selectOf(DIMS, '', '（不限维度）');
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
-    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人（可空）' });
-    var descInput = DN.h('input', { class: 'iw-form-input', placeholder: '描述（可空）' });
+    var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人（可空）', maxlength: '60' });
+    var descInput = DN.h('input', { class: 'iw-form-input', placeholder: '描述（可空）', maxlength: '500' });
     drawerForm('新建工单', [
       formRow('标题', titleInput), formRow('问题类型', typeSel), formRow('所属维度', dimSel),
       formRow('级别', sevSel), formRow('负责人', ownerInput), formRow('描述', descInput)
-    ], function (close) {
+    ], function (close, okBtn) {
       var title = titleInput.value.trim();
       if (!title) { DN.toast('标题不能为空', 'error'); return; }
-      DN.post('/api/gov/health/issues', {
-        title: title, issueType: typeSel.value, dimension: dimSel.value,
-        severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
-      }).then(function () { DN.toast('已新建'); close(); loadIssues(); loadBoard(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      if (title.length > 120) { DN.toast('标题过长（不超过 120 字）', 'error'); return; }
+      submitGuard(okBtn, function () {
+        return DN.post('/api/gov/health/issues', {
+          title: title, issueType: typeSel.value, dimension: dimSel.value,
+          severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
+        }).then(function () { DN.toast('已新建'); close(); loadIssues(); loadBoard(); });
+      }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
     });
   }
 
   function loadBoard() {
+    var box0 = document.getElementById('hsBoard');
+    if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(3)); } // 加载骨架
     DN.get('/api/gov/health/issues/leaderboard').then(function (rows) {
       var box = document.getElementById('hsBoard');
       if (!box) return;
       box.innerHTML = '';
-      if (!rows || !rows.length) { box.appendChild(DN.empty('暂无数据', 'user')); return; }
+      rows = Array.isArray(rows) ? rows : [];
+      if (!rows.length) { box.appendChild(DN.empty('暂无工单分配记录，新建工单并指派负责人后这里会出现排行', 'user')); return; }
       box.appendChild(DN.bars(rows.map(function (r) {
+        r = r || {};
+        var owner = r.owner || '未分配';
         return {
-          label: r.owner, value: Number(r.total) || 0, tone: 'info',
-          display: '总' + (r.total || 0) + ' · 未关' + (r.open || 0) + ' · 已关' + (r.closed || 0),
-          onClick: function () { boardOwnerFilter = (boardOwnerFilter === r.owner) ? '' : r.owner; loadIssues(); DN.toast(boardOwnerFilter ? ('仅看负责人 ' + r.owner) : '显示全部工单', 'info'); }
+          label: owner, value: Number(r.total) || 0, tone: 'info',
+          display: '总' + (Number(r.total) || 0) + ' · 未关' + (Number(r.open) || 0) + ' · 已关' + (Number(r.closed) || 0),
+          onClick: (function (o) { return function () { boardOwnerFilter = (boardOwnerFilter === o) ? '' : o; loadIssues(); DN.toast(boardOwnerFilter ? ('仅看负责人 ' + o) : '显示全部工单', 'info'); }; })(owner)
         };
       })));
-    }).catch(function () {});
+    }).catch(function (e) {
+      var box = document.getElementById('hsBoard');
+      if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('排行榜加载失败：' + (e && e.message || ''), loadBoard)); }
+    });
   }
 
   // ========== 成熟度 ==========
 
   function loadMaturity() {
+    var tb0 = document.getElementById('hsMaturityTable');
+    if (tb0) { tb0.innerHTML = ''; tb0.appendChild(DN.skeleton(4)); } // 加载骨架
     DN.get('/api/gov/health/maturity').then(function (rows) {
       var radarBox = document.getElementById('hsMaturityRadar');
       var tableBox = document.getElementById('hsMaturityTable');
       if (!radarBox || !tableBox) return;
+      rows = Array.isArray(rows) ? rows : [];
       var byDomain = {};
-      (rows || []).forEach(function (r) { byDomain[r.domain] = r; });
+      rows.forEach(function (r) { if (r && r.domain != null) byDomain[r.domain] = r; });
       DN.get('/api/gov/health/maturity/domains').then(function (domains) {
-        domains = domains || [];
+        domains = Array.isArray(domains) ? domains : [];
         var vals = domains.map(function (d) { return byDomain[d] ? Number(byDomain[d].score) || 0 : 0; });
-        radarBox.innerHTML = drawRadar(domains, vals, 280, '#722ed1');
+        radarBox.innerHTML = domains.length ? drawRadar(domains, vals, 280, '#722ed1') : '';
         tableBox.innerHTML = '';
-        if (!rows || !rows.length) {
-          tableBox.appendChild(DN.empty('暂无自评，点击“录入自评”', 'layers'));
+        if (!domains.length) { tableBox.appendChild(DN.empty('未配置 DCMM 能力域，请联系管理员初始化能力域字典', 'layers')); return; }
+        if (!rows.length) {
+          tableBox.appendChild(DN.empty('暂无成熟度自评，点击右上角“录入自评”填写各能力域得分', 'layers'));
           return;
         }
         // 等级分布环图 + 平均成熟度
-        var lvCnt = {}, sum = 0; rows.forEach(function (r) { var l = 'L' + (r.level || 0); lvCnt[l] = (lvCnt[l] || 0) + 1; sum += Number(r.score) || 0; });
+        var lvCnt = {}, sum = 0; rows.forEach(function (r) { var l = 'L' + (Number(r.level) || 0); lvCnt[l] = (lvCnt[l] || 0) + 1; sum += Number(r.score) || 0; });
         var avg = rows.length ? (sum / rows.length) : 0;
         var lvColor = { L1: '#ff4d4f', L2: '#fa8c16', L3: '#faad14', L4: '#1890ff', L5: '#52c41a' };
         var segs = Object.keys(lvCnt).sort().map(function (l) { return { label: l, value: lvCnt[l], color: lvColor[l] || '#8c8c8c' }; });
@@ -504,10 +555,15 @@
             { key: 'domain', label: '能力域' },
             { key: 'score', label: '得分', align: 'right', render: function (x) { return x.r ? DN.pill(String(x.r.score), scoreTone(Number(x.r.score) || 0)) : '-'; } },
             { key: 'level', label: '等级', align: 'right', render: function (x) { return x.r ? 'L' + x.r.level : '-'; } },
-            { key: 'note', label: '备注', render: function (x) { return (x.r && x.r.note) ? x.r.note : '-'; } }
+            { key: 'note', label: '备注', render: function (x) { return (x.r && x.r.note) ? truncSpan(x.r.note, 40) : '-'; } }
           ],
           rows: domains.map(function (d) { return { domain: d, r: byDomain[d] || null }; })
         }));
+      }).catch(function (e) {
+        // 内层能力域字典加载失败也要给重试，否则雷达/表格永远卡在骨架
+        radarBox.innerHTML = '';
+        tableBox.innerHTML = '';
+        tableBox.appendChild(DN.errorBox('能力域字典加载失败：' + (e && e.message || ''), loadMaturity));
       });
     }).catch(function (e) {
       var tableBox = document.getElementById('hsMaturityTable');
@@ -517,22 +573,28 @@
 
   function addMaturity() {
     DN.get('/api/gov/health/maturity/domains').then(function (domains) {
-      var domainSel = selectOf(domains || [], (domains || [])[0] || '');
+      domains = Array.isArray(domains) ? domains : [];
+      if (!domains.length) { DN.toast('未配置能力域字典，无法录入自评', 'error'); return; }
+      var domainSel = selectOf(domains, domains[0] || '');
       var scoreInput = DN.h('input', { class: 'iw-form-input', type: 'number', min: '0', max: '100', value: '60' });
       var levelSel = selectOf(['1', '2', '3', '4', '5'], '3');
-      var noteInput = DN.h('input', { class: 'iw-form-input', placeholder: '备注（可空）' });
+      var noteInput = DN.h('input', { class: 'iw-form-input', placeholder: '备注（可空）', maxlength: '200' });
       drawerForm('录入 DCMM 自评', [
         formRow('能力域', domainSel), formRow('自评分', scoreInput),
         formRow('成熟度等级', levelSel), formRow('备注', noteInput)
-      ], function (close) {
+      ], function (close, okBtn) {
         if (!domainSel.value) { DN.toast('请选择能力域', 'error'); return; }
-        DN.post('/api/gov/health/maturity', {
-          domain: domainSel.value, score: Number(scoreInput.value),
-          level: Number(levelSel.value), note: noteInput.value.trim()
-        }).then(function () { DN.toast('已录入'); close(); loadMaturity(); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        var score = Number(scoreInput.value);
+        if (scoreInput.value === '' || isNaN(score)) { DN.toast('请填写自评分（数字）', 'error'); return; }
+        if (score < 0 || score > 100) { DN.toast('自评分需在 0–100 之间', 'error'); return; }
+        submitGuard(okBtn, function () {
+          return DN.post('/api/gov/health/maturity', {
+            domain: domainSel.value, score: score,
+            level: Number(levelSel.value), note: noteInput.value.trim()
+          }).then(function () { DN.toast('已录入'); close(); loadMaturity(); });
+        }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
       });
-    });
+    }).catch(function (e) { DN.toast('能力域加载失败：' + errMsg(e), 'error'); });
   }
 
   // ========== SVG 自绘（DCMM 雷达 + 趋势折线保留） ==========
@@ -617,15 +679,41 @@
     ]);
   }
 
-  /** 在右侧抽屉里渲染表单 + 操作按钮，onOk(close) */
+  /** 在右侧抽屉里渲染表单 + 操作按钮，onOk(close, okBtn) —— okBtn 传给 submitGuard 防重复提交 */
   function drawerForm(title, bodyNodes, onOk) {
     var form = DN.h('div', { class: 'gov-form' });
     bodyNodes.forEach(function (n) { form.appendChild(n); });
     var dr = DN.drawer(title, form);
     var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
+    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定' });
+    okBtn.addEventListener('click', function () { if (okBtn._busy) return; onOk(dr.close, okBtn); });
     footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: dr.close }));
-    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(dr.close); } }));
+    footer.appendChild(okBtn);
     form.appendChild(footer);
     DN.enterSubmit(form);
+  }
+
+  /** 提交防抖守卫：执行 promiseFn 期间禁用按钮(置忙+文案)，结束后恢复。返回原 promise 供链式。 */
+  function submitGuard(btn, promiseFn) {
+    if (btn && btn._busy) return Promise.reject(new Error('busy'));
+    var txt = btn ? btn.textContent : '';
+    if (btn) { btn._busy = true; btn.classList.add('is-loading'); btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6'; btn.textContent = '提交中…'; }
+    function done() { if (btn) { btn._busy = false; btn.classList.remove('is-loading'); btn.style.pointerEvents = ''; btn.style.opacity = ''; btn.textContent = txt; } }
+    var p;
+    try { p = promiseFn(); } catch (e) { done(); return Promise.reject(e); }
+    if (!p || typeof p.then !== 'function') { done(); return Promise.resolve(p); }
+    return p.then(function (v) { done(); return v; }, function (e) { done(); throw e; });
+  }
+
+  // 错误对象 → 友好文案（兼容非 Error / 无 message 情形）
+  function errMsg(e) { return (e && e.message) ? e.message : (typeof e === 'string' ? e : '操作失败'); }
+
+  // 超长文本截断 <span>，完整内容挂 title（鼠标悬停可见），空值返回 '-'
+  function truncSpan(text, max) {
+    var s = String(text == null ? '' : text);
+    if (!s) return '-';
+    max = max || 40;
+    if (s.length <= max) return DN.h('span', { text: s });
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s });
   }
 })();
