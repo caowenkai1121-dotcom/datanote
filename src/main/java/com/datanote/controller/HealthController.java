@@ -115,6 +115,32 @@ public class HealthController {
         return R.ok(issueService.leaderboard());
     }
 
+    @Operation(summary = "工单运营统计(多维分布+未关/超期+解决率+平均处理时长)")
+    @GetMapping("/issues/stats")
+    public R<Map<String, Object>> issueStats() {
+        return R.ok(issueService.stats());
+    }
+
+    @Operation(summary = "工单趋势(近 days 天每日新建/关闭)")
+    @GetMapping("/issues/trend")
+    public R<List<Map<String, Object>>> issueTrend(@RequestParam(defaultValue = "30") int days) {
+        return R.ok(issueService.trend(days));
+    }
+
+    @Operation(summary = "导出工单 CSV")
+    @GetMapping("/issues/export")
+    public org.springframework.http.ResponseEntity<byte[]> exportIssues(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String owner,
+            @RequestParam(required = false) String dimension) {
+        String csv = issueService.exportCsv(status, owner, dimension);
+        byte[] body = ("﻿" + csv).getBytes(java.nio.charset.StandardCharsets.UTF_8); // BOM 防 Excel 乱码
+        return org.springframework.http.ResponseEntity.ok()
+                .header("Content-Type", "text/csv; charset=UTF-8")
+                .header("Content-Disposition", "attachment; filename=\"governance_issues.csv\"")
+                .body(body);
+    }
+
     // ========== DCMM 成熟度自评 ==========
 
     @Operation(summary = "DCMM 八大域名称")

@@ -247,6 +247,28 @@ public class ClassificationService {
         }
     }
 
+    /** 敏感资产盘点(R4)：列出带"含敏感字段"标签的表 + 各表敏感列数，供治理资产盘点。 */
+    public List<Map<String, Object>> sensitiveTables() {
+        QueryWrapper<DnTableMeta> qw = new QueryWrapper<>();
+        qw.like("tags", SENSITIVE_TAG).orderByDesc("updated_at");
+        List<DnTableMeta> tables = tableMetaMapper.selectList(qw);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (DnTableMeta t : tables) {
+            QueryWrapper<DnColumnMeta> cq = new QueryWrapper<>();
+            cq.eq("table_meta_id", t.getId()).isNotNull("sensitive_type").ne("sensitive_type", "");
+            long sensCnt = columnMetaMapper.selectCount(cq);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("databaseName", t.getDatabaseName());
+            m.put("tableName", t.getTableName());
+            m.put("sensitiveColumns", sensCnt);
+            m.put("tags", t.getTags());
+            m.put("owner", t.getOwner());
+            m.put("lastCollectedAt", t.getLastCollectedAt());
+            out.add(m);
+        }
+        return out;
+    }
+
     /** 按表当前是否仍有敏感列(sensitive_type 非空)，幂等增/删 dn_table_meta 的"含敏感字段"标签。 */
     private void syncTableSensitiveTag(Long tableMetaId) {
         QueryWrapper<DnColumnMeta> qw = new QueryWrapper<>();

@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.exception.ResourceNotFoundException;
 import com.datanote.mapper.DnQualityRuleMapper;
 import com.datanote.mapper.DnQualityRunMapper;
+import com.datanote.model.DnGovernanceIssue;
 import com.datanote.model.DnQualityRule;
 import com.datanote.model.DnQualityRun;
 import com.datanote.model.R;
+import com.datanote.service.IssueService;
 import com.datanote.service.QualityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +33,7 @@ public class QualityController {
     private final DnQualityRuleMapper ruleMapper;
     private final DnQualityRunMapper runMapper;
     private final QualityService qualityService;
+    private final IssueService issueService;
 
     @Operation(summary = "质量失败根因分析(状态分布+失败样本)")
     @GetMapping("/failure-analysis")
@@ -122,6 +125,42 @@ public class QualityController {
             count++;
         }
         return R.ok("已执行 " + count + " 条规则");
+    }
+
+    /**
+     * 规则关联的治理工单(质量→工单反查)
+     */
+    @Operation(summary = "规则关联的治理工单")
+    @GetMapping("/rule/{id}/issues")
+    public R<List<DnGovernanceIssue>> ruleIssues(@PathVariable Long id) {
+        return R.ok(issueService.listByQualityRule(id));
+    }
+
+    /**
+     * 为最近一次执行失败/异常的启用规则补建治理工单(运营补单, 历史欠单补齐)
+     */
+    @Operation(summary = "为失败规则补建治理工单")
+    @PostMapping("/issues/sync")
+    public R<Map<String, Object>> syncIssues() {
+        QueryWrapper<DnQualityRule> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        List<DnQualityRule> rules = ruleMapper.selectList(qw);
+        int failing = 0;
+        for (DnQualityRule rule : rules) {
+            QueryWrapper<DnQualityRun> rq = new QueryWrapper<>();
+            rq.eq("rule_id", rule.getId()).orderByDesc("started_at").last("LIMIT 1");
+            DnQualityRun last = runMapper.selectOne(rq);
+            if (last != null && ("failed".equalsIgnoreCase(last.getRunStatus())
+                    || "error".equalsIgnoreCase(last.getRunStatus()))) {
+                issueService.raiseQualityIssue(rule, last);
+                failing++;
+            }
+        }
+        Map<String, Object> out = new HashMap<>();
+        out.put("rulesScanned", rules.size());
+        out.put("failingRules", failing);
+        out.put("issuesEnsured", failing);
+        return R.ok(out);
     }
 
     /**

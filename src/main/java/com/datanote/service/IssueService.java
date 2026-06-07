@@ -58,7 +58,18 @@ public class IssueService {
         if (notBlank(owner)) qw.eq("owner", owner);
         if (notBlank(dimension)) qw.eq("dimension", dimension);
         qw.orderByDesc("updated_at");
-        return issueMapper.selectList(qw);
+        return enrichSla(issueMapper.selectList(qw));
+    }
+
+    /** 为工单列表注入 SLA 运营字段(存活小时 / 是否超期) */
+    private List<DnGovernanceIssue> enrichSla(List<DnGovernanceIssue> rows) {
+        LocalDateTime now = LocalDateTime.now();
+        for (DnGovernanceIssue i : rows) {
+            long age = ageHours(i.getCreatedAt(), now);
+            i.setAgeHours(age);
+            i.setOverdue(isOverdue(i.getStatus(), i.getSeverity(), age));
+        }
+        return rows;
     }
 
     public DnGovernanceIssue create(DnGovernanceIssue issue) {
@@ -275,4 +286,132 @@ public class IssueService {
     private static boolean notBlankStatic(String s) { return s != null && !s.trim().isEmpty(); }
 
     private static String nvl(String s) { return s == null ? "" : s; }
+
+    // ========== R4 工单运营中心：SLA / 统计 / 趋势 / 导出 / 反查 ==========
+
+    /** SLA 阈值(小时)：HIGH 24 / MEDIUM 72 / LOW 168 */
+    static long slaHours(String severity) {
+        if ("HIGH".equalsIgnoreCase(severity)) return 24L;
+        if ("LOW".equalsIgnoreCase(severity)) return 168L;
+        return 72L;
+    }
+
+    /** 仅未闭环(OPEN/FIXING)且存活≥SLA 视为超期 */
+    static boolean isOverdue(String status, String severity, long ageHours) {
+        if (!("OPEN".equals(status) || "FIXING".equals(status))) return false;
+        return ageHours >= slaHours(severity);
+    }
+
+    private static long ageHours(LocalDateTime from, LocalDateTime now) {
+        if (from == null) return 0L;
+        long h = java.time.Duration.between(from, now).toHours();
+        return h < 0 ? 0L : h;
+    }
+
+    /** CSV 单元格：防注入(=,+,-,@ 开头前缀单引号) + 转义逗号/引号/换行 */
+    static String csvCell(Object v) {
+        String s = v == null ? "" : String.valueOf(v);
+        if (!s.isEmpty() && "=+-@".indexOf(s.charAt(0)) >= 0) s = "'" + s;
+        if (s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
+            s = "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    /** 工单运营统计：多维分布 + 未关/超期 + 解决率 + 平均处理时长 + 近7日关闭数 */
+    public Map<String, Object> stats() {
+        List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        LocalDateTime now = LocalDateTime.now();
+        Map<String, Integer> byStatus = new LinkedHashMap<>(), bySeverity = new LinkedHashMap<>(),
+                byDimension = new LinkedHashMap<>(), byType = new LinkedHashMap<>();
+        int open = 0, overdue = 0, resolvedCnt = 0, closed7d = 0;
+        long resolveHoursSum = 0;
+        for (DnGovernanceIssue i : all) {
+            byStatus.merge(nvl(i.getStatus()), 1, Integer::sum);
+            bySeverity.merge(nvl(i.getSeverity()), 1, Integer::sum);
+            byDimension.merge(i.getDimension() == null ? "未分类" : i.getDimension(), 1, Integer::sum);
+            byType.merge(nvl(i.getIssueType()), 1, Integer::sum);
+            boolean unresolved = "OPEN".equals(i.getStatus()) || "FIXING".equals(i.getStatus());
+            if (unresolved) open++;
+            long age = ageHours(i.getCreatedAt(), now);
+            if (isOverdue(i.getStatus(), i.getSeverity(), age)) overdue++;
+            if ("CLOSED".equals(i.getStatus())) {
+                resolvedCnt++;
+                resolveHoursSum += ageHours(i.getCreatedAt(), i.getUpdatedAt() == null ? now : i.getUpdatedAt());
+                if (i.getUpdatedAt() != null && i.getUpdatedAt().isAfter(now.minusDays(7))) closed7d++;
+            }
+        }
+        int total = all.size();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", total);
+        out.put("open", open);
+        out.put("overdue", overdue);
+        out.put("closed", resolvedCnt);
+        out.put("closed7d", closed7d);
+        out.put("resolveRate", total == 0 ? 0 : Math.round(resolvedCnt * 1000.0 / total) / 10.0);
+        out.put("avgResolveHours", resolvedCnt == 0 ? 0 : resolveHoursSum / resolvedCnt);
+        out.put("byStatus", byStatus);
+        out.put("bySeverity", bySeverity);
+        out.put("byDimension", byDimension);
+        out.put("byType", byType);
+        return out;
+    }
+
+    /** 工单趋势：近 days 天每日新建数 / 关闭数(关闭以 CLOSED 工单 updated_at 计) */
+    public List<Map<String, Object>> trend(int days) {
+        int d = days <= 0 ? 30 : Math.min(days, 365);
+        List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        Map<java.time.LocalDate, int[]> bucket = new LinkedHashMap<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        for (int k = d - 1; k >= 0; k--) bucket.put(today.minusDays(k), new int[2]); // [created, closed]
+        for (DnGovernanceIssue i : all) {
+            if (i.getCreatedAt() != null) {
+                int[] b = bucket.get(i.getCreatedAt().toLocalDate());
+                if (b != null) b[0]++;
+            }
+            if ("CLOSED".equals(i.getStatus()) && i.getUpdatedAt() != null) {
+                int[] b = bucket.get(i.getUpdatedAt().toLocalDate());
+                if (b != null) b[1]++;
+            }
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        bucket.forEach((date, cnt) -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", date.toString());
+            m.put("created", cnt[0]);
+            m.put("closed", cnt[1]);
+            out.add(m);
+        });
+        return out;
+    }
+
+    /** 导出工单为 CSV(含 SLA 字段, 防注入) */
+    public String exportCsv(String status, String owner, String dimension) {
+        List<DnGovernanceIssue> rows = list(status, owner, dimension);
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID,标题,类型,维度,级别,负责人,状态,超期,存活小时,对象,创建时间,更新时间\n");
+        for (DnGovernanceIssue i : rows) {
+            sb.append(csvCell(i.getId())).append(',')
+              .append(csvCell(i.getTitle())).append(',')
+              .append(csvCell(i.getIssueType())).append(',')
+              .append(csvCell(i.getDimension())).append(',')
+              .append(csvCell(i.getSeverity())).append(',')
+              .append(csvCell(i.getOwner())).append(',')
+              .append(csvCell(i.getStatus())).append(',')
+              .append(csvCell(Boolean.TRUE.equals(i.getOverdue()) ? "是" : "否")).append(',')
+              .append(csvCell(i.getAgeHours())).append(',')
+              .append(csvCell(i.getObjectRef())).append(',')
+              .append(csvCell(i.getCreatedAt())).append(',')
+              .append(csvCell(i.getUpdatedAt())).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** 按质量规则反查其关联工单(objectRef=qrule:{ruleId}) */
+    public List<DnGovernanceIssue> listByQualityRule(Long ruleId) {
+        QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+        qw.eq("issue_type", QUALITY_ISSUE_TYPE).eq("object_ref", qualityIssueObjectRef(ruleId))
+          .orderByDesc("updated_at");
+        return enrichSla(issueMapper.selectList(qw));
+    }
 }

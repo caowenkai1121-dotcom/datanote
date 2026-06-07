@@ -23,4 +23,10 @@ public class DnGovernanceIssue {
     private String status;       // OPEN/FIXING/RESOLVED/VERIFIED/CLOSED
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // ===== 运营态计算字段(非持久列, R4) =====
+    @TableField(exist = false)
+    private Long ageHours;       // 自创建至今存活小时
+    @TableField(exist = false)
+    private Boolean overdue;     // 是否超 SLA(仅 OPEN/FIXING)
 }

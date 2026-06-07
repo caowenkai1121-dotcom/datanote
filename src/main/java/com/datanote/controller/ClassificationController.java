@@ -31,6 +31,12 @@ public class ClassificationController {
         return R.ok(classificationService.levels(scheme));
     }
 
+    @Operation(summary = "敏感资产盘点(带含敏感字段标签的表+敏感列数)")
+    @GetMapping("/sensitive-tables")
+    public R<List<Map<String, Object>>> sensitiveTables() {
+        return R.ok(classificationService.sensitiveTables());
+    }
+
     @Operation(summary = "敏感规则列表")
     @GetMapping("/rules")
     public R<List<DnSensitiveRule>> rules() {
