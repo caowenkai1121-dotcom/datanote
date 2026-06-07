@@ -6,11 +6,29 @@
   window.MDM_RENDERERS = window.MDM_RENDERERS || {};
 
   var _filter = '';   // 状态筛选
+  var _loading = false; // 加载中标记，防并发重复请求
 
   var TYPE_LABEL = { create: '新增', update: '修改', delete: '删除' };
   var TYPE_TONE = { create: 'ok', update: 'info', delete: 'err' };
 
+  // 超长文本截断（列表内展示），完整内容挂 title
+  function truncate(s, n) {
+    s = (s == null ? '' : String(s));
+    n = n || 40;
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
+
+  // 业务主键展示：优先 bizKey，回退黄金记录ID/请求ID，全空则 '-'（避免 #undefined）
+  function bizKeyOf(r) {
+    if (!r) return '-';
+    if (r.bizKey) return r.bizKey;
+    var fb = (r.goldenRecordId != null ? r.goldenRecordId : r.id);
+    return fb != null ? '#' + fb : '-';
+  }
+
   window.MDM_RENDERERS.approval = function (c) {
+    if (!c) return;
+    _loading = false; // 重新进入模块时清掉可能残留的加载锁（上次加载被切走未完成）
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '对黄金记录的变更（新增/修改/删除）发起审批请求；审批人可批准或驳回并填写意见，保证主数据变更可追溯、可管控。' }));
     var statBox = DN.h('div', { id: 'apStats' });
     statBox.appendChild(DN.skeleton(2));
@@ -21,13 +39,18 @@
   };
 
   function loadApproval(statBox, box) {
+    if (!statBox || !box) return;
+    if (_loading) return;            // 防并发：上一次请求未完成时忽略重复触发
+    _loading = true;
     statBox.innerHTML = ''; statBox.appendChild(DN.skeleton(2));
     box.innerHTML = ''; box.appendChild(DN.skeleton(3));
     Promise.all([
       DN.get('/api/mdm/approval/stats'),
       DN.get('/api/mdm/approval/list' + (_filter ? '?status=' + encodeURIComponent(_filter) : ''))
     ]).then(function (r) {
-      var stats = r[0] || {}, rows = r[1] || [];
+      _loading = false;
+      r = r || [];
+      var stats = r[0] || {}, rows = Array.isArray(r[1]) ? r[1] : [];
       statBox.innerHTML = '';
       statBox.appendChild(DN.statRow([
         { icon: 'clock', label: '待审批', value: stats.pending || 0, tone: (stats.pending ? 'warn' : 'ok') },
@@ -46,9 +69,14 @@
       card.body.appendChild(DN.table({
         columns: [
           { key: 'changeType', label: '类型', render: function (r) { return DN.pill(TYPE_LABEL[r.changeType] || r.changeType || '-', TYPE_TONE[r.changeType] || 'info'); } },
-          { key: 'entityName', label: '实体', render: function (r) { return r.entityName || ('#' + r.entityId); } },
-          { key: 'bizKey', label: '业务主键', copyable: true, render: function (r) { return r.bizKey || ('#' + (r.goldenRecordId || r.id)); } },
-          { key: 'reason', label: '变更原因', render: function (r) { return r.reason || '-'; } },
+          { key: 'entityName', label: '实体', render: function (r) { return r.entityName || (r.entityId != null ? '#' + r.entityId : '-'); } },
+          { key: 'bizKey', label: '业务主键', copyable: true, exportValue: bizKeyOf, render: function (r) { return bizKeyOf(r); } },
+          { key: 'reason', label: '变更原因', render: function (r) {
+              var txt = r.reason || '-';
+              var span = DN.h('span', { text: truncate(txt, 40) });
+              if (txt !== '-' && txt.length > 40) span.title = txt; // 超长原因截断+悬停看全文
+              return span;
+            } },
           { key: 'status', label: '状态', render: function (r) {
               var s = r.status;
               return s === 'approved' ? DN.pill('已批准', 'ok') : s === 'rejected' ? DN.pill('已驳回', 'err') : DN.pill('待审批', 'warn');
@@ -57,7 +85,7 @@
           { key: 'reviewer', label: '审批人', render: function (r) {
               if (!r.reviewer) return DN.h('span', { text: '-', style: 'color:var(--text-muted)' });
               var w = DN.h('span', {}, [DN.h('span', { text: r.reviewer })]);
-              if (r.reviewComment) w.title = '审批意见：' + r.reviewComment;
+              if (r.reviewComment) w.title = '审批意见：' + truncate(r.reviewComment, 200);
               return w;
             } },
           { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
@@ -75,6 +103,7 @@
       }));
       box.appendChild(card.el);
     }).catch(function (e) {
+      _loading = false;
       statBox.innerHTML = ''; box.innerHTML = '';
       box.appendChild(DN.errorBox('加载失败: ' + (e && e.message ? e.message : e), function () { loadApproval(statBox, box); }));
     });
@@ -82,10 +111,11 @@
 
   // ---- 变更详情抽屉 ----
   function detailDrawer(r) {
+    if (!r) { DN.toast('记录数据缺失，无法查看详情', 'err'); return; }
     var body = DN.h('div', {});
-    body.appendChild(kv('变更类型', DN.pill(TYPE_LABEL[r.changeType] || r.changeType, TYPE_TONE[r.changeType] || 'info')));
-    body.appendChild(kv('实体', DN.h('span', { text: r.entityName || ('#' + r.entityId) })));
-    body.appendChild(kv('业务主键', DN.h('span', { text: r.bizKey || ('#' + (r.goldenRecordId || r.id)) })));
+    body.appendChild(kv('变更类型', DN.pill(TYPE_LABEL[r.changeType] || r.changeType || '-', TYPE_TONE[r.changeType] || 'info')));
+    body.appendChild(kv('实体', DN.h('span', { text: r.entityName || (r.entityId != null ? '#' + r.entityId : '-') })));
+    body.appendChild(kv('业务主键', DN.h('span', { text: bizKeyOf(r) })));
     body.appendChild(kv('变更原因', DN.h('span', { text: r.reason || '-' })));
     body.appendChild(kv('申请人', DN.h('span', { text: r.requestedBy || '-' })));
     var st = r.status === 'approved' ? DN.pill('已批准', 'ok') : r.status === 'rejected' ? DN.pill('已驳回', 'err') : DN.pill('待审批', 'warn');
@@ -113,25 +143,39 @@
 
   // ---- 审批抽屉（批准/驳回，填写审批人 + 意见） ----
   function reviewDrawer(r, action, statBox, box) {
+    if (!r || r.id == null) { DN.toast('记录数据缺失，无法审批', 'err'); return; }
+    if (r.status !== 'pending') { DN.toast('仅待审批的请求可被审批', 'warn'); return; }
     var isApprove = action === 'approve';
+    var bizLabel = bizKeyOf(r);
+    var typeLabel = TYPE_LABEL[r.changeType] || r.changeType || '-';
+    var submitText = isApprove ? '确认批准' : '确认驳回';
     var body = DN.h('div', {});
-    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: (isApprove ? '批准' : '驳回') + '变更请求：' + (r.bizKey || ('#' + (r.goldenRecordId || r.id))) + '（' + (TYPE_LABEL[r.changeType] || r.changeType) + '）' }));
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: (isApprove ? '批准' : '驳回') + '变更请求：' + bizLabel + '（' + typeLabel + '）' }));
     var fReviewer = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: '审批人姓名/工号' });
     body.appendChild(field('审批人', fReviewer));
     var fComment = DN.h('textarea', { class: 'iw-form-select', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
     body.appendChild(field('审批意见', fComment));
     var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: isApprove ? '确认批准' : '确认驳回' });
+    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: submitText });
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isApprove ? '批准' : '驳回') + '变更请求', body);
+    var submitting = false;          // 防重复提交（按钮再入守卫）
     save.onclick = function () {
+      if (submitting) return;
       var reviewer = fReviewer.value.trim();
-      if (!reviewer) { DN.toast('请填写审批人', 'err'); return; }
+      if (!reviewer) { DN.toast('请填写审批人', 'err'); fReviewer.focus(); return; }
+      // 破坏性/不可逆操作（审批结果落库）二次确认
+      if (!window.confirm((isApprove ? '确认批准' : '确认驳回') + '该变更请求？\n' + bizLabel + '（' + typeLabel + '）\n审批人：' + reviewer)) return;
       var payload = { reviewer: reviewer, reviewComment: fComment.value.trim() };
-      save.textContent = '提交中...'; save.style.pointerEvents = 'none';
-      DN.post('/api/mdm/approval/' + r.id + '/' + action, payload).then(function () {
+      submitting = true;
+      save.textContent = '提交中...'; save.style.pointerEvents = 'none'; save.classList.add('is-disabled');
+      DN.post('/api/mdm/approval/' + encodeURIComponent(r.id) + '/' + action, payload).then(function () {
         DN.toast(isApprove ? '已批准' : '已驳回', 'ok'); dr.close(); loadApproval(statBox, box);
-      }).catch(function (e) { DN.toast(e.message || '操作失败', 'err'); save.textContent = isApprove ? '确认批准' : '确认驳回'; save.style.pointerEvents = ''; });
+      }).catch(function (e) {
+        submitting = false;
+        DN.toast((e && e.message) || '操作失败', 'err');
+        save.textContent = submitText; save.style.pointerEvents = ''; save.classList.remove('is-disabled');
+      });
     };
     DN.enterSubmit(body);
   }

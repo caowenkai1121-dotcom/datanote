@@ -6,6 +6,36 @@
   'use strict';
   window.MDM_RENDERERS = window.MDM_RENDERERS || {};
 
+  // ===================== 共用小工具（健壮性/性能/边界） =====================
+  // 统一从异常对象/字符串中提取可读信息，避免 e.message 在 e 为字符串时崩溃
+  function errMsg(e) { return (e && e.message) ? e.message : (e != null ? String(e) : '未知错误'); }
+  // 安全 JSON.parse：失败返回兜底值，杜绝未捕获异常
+  function safeParse(s, fallback) { try { return s ? JSON.parse(s) : (fallback || {}); } catch (e) { return fallback || {}; } }
+  // 超长文本截断展示：返回带 title 的元素，超出长度截断并加省略号
+  function clip(v, max) {
+    var s = (v == null || v === '') ? '-' : String(v);
+    max = max || 60;
+    if (s.length <= max) return s;
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s });
+  }
+  // 实体列表去重 fetch：黄金记录/去重/交叉引用三处共用，缓存复用避免重复请求
+  var _entCache = null;
+  function getEntities(force) {
+    if (_entCache && !force) return Promise.resolve(_entCache);
+    return DN.get('/api/mdm/entities').then(function (ents) { _entCache = ents || []; return _entCache; });
+  }
+  // 域/实体/属性变更后令实体缓存失效，避免下钻看到陈旧列表
+  function invalidateEntities() { _entCache = null; }
+  // 列表行内操作链接的防重提交：执行期间禁用并改字，完成/失败后恢复
+  function busyLink(a, busyText, fn) {
+    if (a._busy) return; a._busy = true;
+    var old = a.textContent, oldPe = a.style.pointerEvents, oldOp = a.style.opacity;
+    a.textContent = busyText || '处理中...'; a.style.pointerEvents = 'none'; a.style.opacity = '0.6';
+    function restore() { a._busy = false; a.textContent = old; a.style.pointerEvents = oldPe; a.style.opacity = oldOp; }
+    var p = fn();
+    if (p && typeof p.then === 'function') p.then(restore, restore); else restore();
+  }
+
   // ===================== 主数据总览 =====================
   window.MDM_RENDERERS.overview = function (c) {
     var statBox = DN.h('div', { id: 'mdmStats' });
@@ -50,14 +80,14 @@
           columns: [
             { key: 'domainName', label: '主数据域', render: function (r) { return r.domainName || '-'; } },
             { key: 'category', label: '类别', render: function (r) { return r.category ? DN.pill(r.category, 'info') : '-'; } },
-            { key: 'entityCount', label: '实体数', align: 'right', sortable: true, render: function (r) { return String(r.entityCount); } }
+            { key: 'entityCount', label: '实体数', align: 'right', sortable: true, render: function (r) { return String(r.entityCount == null ? 0 : r.entityCount); } }
           ],
           rows: scale, pageSize: 8, search: false, empty: '暂无数据'
         }));
       }
     }).catch(function (e) {
       statBox.innerHTML = '';
-      statBox.appendChild(DN.errorBox('总览加载失败: ' + (e && e.message ? e.message : e), function () {
+      statBox.appendChild(DN.errorBox('总览加载失败: ' + errMsg(e), function () {
         c.innerHTML = ''; MDM_RENDERERS.overview(c);
       }));
     });
@@ -66,6 +96,16 @@
   // ===================== 域与实体建模（域 → 实体 → 属性 三级） =====================
   var _selDomain = null;   // 当前选中的域
   var _selEntity = null;   // 当前选中的实体
+  var _domainRows = [];    // 当前已加载的域列表（供编码唯一性前置校验复用，免重复请求）
+  var _entityRows = [];    // 当前域下已加载的实体列表
+  var _attrRows = [];      // 当前实体下已加载的属性列表
+  // 在已加载列表里做编码唯一性前置校验：忽略大小写与首尾空白，排除自身
+  function codeTaken(rows, key, code, selfId) {
+    var lc = String(code || '').trim().toLowerCase();
+    return (rows || []).some(function (r) {
+      return String(r.id) !== String(selfId) && String(r[key] || '').trim().toLowerCase() === lc;
+    });
+  }
 
   window.MDM_RENDERERS.modeling = function (c) {
     _selDomain = null; _selEntity = null;
@@ -105,6 +145,7 @@
     c.appendChild(card.el);
     DN.get('/api/mdm/domains').then(function (rows) {
       rows = rows || [];
+      _domainRows = rows;
       card.body.innerHTML = '';
       if (!rows.length) { card.body.appendChild(DN.empty('暂无主数据域，点右上角“新建域”开始建模', 'grid')); return; }
       card.body.appendChild(DN.table({
@@ -129,7 +170,7 @@
       }));
     }).catch(function (e) {
       card.body.innerHTML = '';
-      card.body.appendChild(DN.errorBox('加载失败: ' + e.message, function () { renderModeling(c); }));
+      card.body.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { renderModeling(c); }));
     });
   }
 
@@ -141,6 +182,7 @@
     c.appendChild(card.el);
     DN.get('/api/mdm/entities?domainId=' + encodeURIComponent(_selDomain.id)).then(function (rows) {
       rows = rows || [];
+      _entityRows = rows;
       card.body.innerHTML = '';
       if (!rows.length) { card.body.appendChild(DN.empty('该域下暂无实体，点右上角“新建实体”创建', 'layers')); return; }
       card.body.appendChild(DN.table({
@@ -150,7 +192,7 @@
               return DN.h('a', { href: 'javascript:void(0)', text: r.entityName, style: 'color:var(--primary,#1890ff)', title: '管理该实体的属性', onclick: function () { _selEntity = r; renderModeling(c); } });
             } },
           { key: 'attrCount', label: '属性数', align: 'right', sortable: true, render: function (r) { return String(r.attrCount == null ? 0 : r.attrCount); } },
-          { key: 'description', label: '描述', render: function (r) { return r.description || '-'; } },
+          { key: 'description', label: '描述', render: function (r) { return r.description ? clip(r.description, 40) : '-'; } },
           { key: 'status', label: '状态', render: function (r) { return r.status === 0 ? DN.pill('停用', 'muted') : DN.pill('启用', 'ok'); } },
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
@@ -164,7 +206,7 @@
       }));
     }).catch(function (e) {
       card.body.innerHTML = '';
-      card.body.appendChild(DN.errorBox('加载失败: ' + e.message, function () { renderModeling(c); }));
+      card.body.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { renderModeling(c); }));
     });
   }
 
@@ -177,6 +219,7 @@
     c.appendChild(card.el);
     DN.get('/api/mdm/attributes?entityId=' + encodeURIComponent(_selEntity.id)).then(function (rows) {
       rows = rows || [];
+      _attrRows = rows;
       card.body.innerHTML = '';
       card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '关键字段(可用于匹配去重)、必填、唯一等属性元数据，是黄金记录生成的基础。' }));
       if (!rows.length) { card.body.appendChild(DN.empty('该实体下暂无属性，点右上角“新建属性”创建', 'list')); return; }
@@ -186,6 +229,7 @@
           { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName; } },
           { key: 'dataType', label: '数据类型', render: function (r) { return DN.pill(r.dataType || 'STRING', 'info'); } },
           { key: 'lengthLimit', label: '长度', align: 'right', render: function (r) { return r.lengthLimit == null ? '-' : String(r.lengthLimit); } },
+          { key: 'enumValues', label: '候选值', render: function (r) { return r.enumValues ? clip(r.enumValues, 30) : '-'; } },
           { key: '_flags', label: '约束', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:4px;flex-wrap:wrap' });
               if (r.isKey === 1) box.appendChild(DN.pill('关键', 'warn'));
@@ -194,7 +238,7 @@
               if (!box.childNodes.length) box.appendChild(DN.h('span', { text: '-', style: 'color:var(--text-muted)' }));
               return box;
             } },
-          { key: 'description', label: '描述', render: function (r) { return r.description || '-'; } },
+          { key: 'description', label: '描述', render: function (r) { return r.description ? clip(r.description, 40) : '-'; } },
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { attrForm(r, c); } }));
@@ -206,7 +250,7 @@
       }));
     }).catch(function (e) {
       card.body.innerHTML = '';
-      card.body.appendChild(DN.errorBox('加载失败: ' + e.message, function () { renderModeling(c); }));
+      card.body.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { renderModeling(c); }));
     });
   }
 
@@ -250,17 +294,20 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '新建') + '主数据域', body);
     save.onclick = function () {
+      if (save._busy) return;
       var payload = { id: row.id, domainCode: fCode.value.trim(), domainName: fName.value.trim(), category: fCat.value, owner: fOwner.value.trim(), description: fDesc.value.trim(), status: Number(fStatus.value) };
       if (!payload.domainCode) { DN.toast('请填写域编码', 'err'); return; }
       if (!payload.domainName) { DN.toast('请填写域名称', 'err'); return; }
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
-      DN.post('/api/mdm/domain/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+      if (codeTaken(_domainRows, 'domainCode', payload.domainCode, row.id)) { DN.toast('域编码「' + payload.domainCode + '」已存在，请改用唯一编码', 'err'); return; }
+      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      DN.post('/api/mdm/domain/save', payload).then(function () { invalidateEntities(); DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }
 
   function entityForm(row, c) {
+    if (!_selDomain) { DN.toast('请先选择主数据域', 'warn'); return; }
     var isEdit = !!row; row = row || {};
     var fCode = inp(row.entityCode, '如 customer');
     var fName = inp(row.entityName, '如 客户');
@@ -277,17 +324,20 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '新建') + '实体', body);
     save.onclick = function () {
+      if (save._busy) return;
       var payload = { id: row.id, domainId: _selDomain.id, entityCode: fCode.value.trim(), entityName: fName.value.trim(), description: fDesc.value.trim(), status: Number(fStatus.value) };
       if (!payload.entityCode) { DN.toast('请填写实体编码', 'err'); return; }
       if (!payload.entityName) { DN.toast('请填写实体名称', 'err'); return; }
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
-      DN.post('/api/mdm/entity/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+      if (codeTaken(_entityRows, 'entityCode', payload.entityCode, row.id)) { DN.toast('实体编码「' + payload.entityCode + '」在本域内已存在', 'err'); return; }
+      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      DN.post('/api/mdm/entity/save', payload).then(function () { invalidateEntities(); DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }
 
   function attrForm(row, c) {
+    if (!_selEntity) { DN.toast('请先选择实体', 'warn'); return; }
     var isEdit = !!row; row = row || {};
     var fCode = inp(row.attrCode, '如 cust_name');
     var fName = inp(row.attrName, '如 客户名称');
@@ -325,18 +375,28 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '新建') + '属性', body);
     save.onclick = function () {
+      if (save._busy) return;
+      var dataType = fType.value;
+      // 长度/排序按数值解析，非法（NaN/负数）即时拦截，避免脏数据落库
+      var lenStr = fLen.value.trim(), len = null;
+      if (lenStr) { len = parseInt(lenStr, 10); if (isNaN(len) || len <= 0) { DN.toast('长度限制需为正整数', 'err'); return; } }
+      var sortStr = fSort.value.trim(), sort = 0;
+      if (sortStr) { sort = parseInt(sortStr, 10); if (isNaN(sort)) { DN.toast('排序需为整数', 'err'); return; } }
       var payload = {
         id: row.id, entityId: _selEntity.id, attrCode: fCode.value.trim(), attrName: fName.value.trim(),
-        dataType: fType.value, lengthLimit: fLen.value.trim() ? parseInt(fLen.value, 10) : null,
+        dataType: dataType, lengthLimit: len,
         enumValues: fEnum.value.trim(), defaultValue: fDefault.value.trim(), description: fDesc.value.trim(),
-        sortOrder: fSort.value.trim() ? parseInt(fSort.value, 10) : 0,
+        sortOrder: sort,
         isKey: cKey._cb.checked ? 1 : 0, required: cReq._cb.checked ? 1 : 0, isUnique: cUniq._cb.checked ? 1 : 0
       };
       if (!payload.attrCode) { DN.toast('请填写属性编码', 'err'); return; }
       if (!payload.attrName) { DN.toast('请填写属性名称', 'err'); return; }
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      if (codeTaken(_attrRows, 'attrCode', payload.attrCode, row.id)) { DN.toast('属性编码「' + payload.attrCode + '」在本实体内已存在', 'err'); return; }
+      // ENUM/REFERENCE 类型必须提供候选值，否则黄金记录无法按枚举录入
+      if ((dataType === 'ENUM' || dataType === 'REFERENCE') && !payload.enumValues) { DN.toast(dataType + ' 类型需填写枚举候选值（可“引用码值”）', 'err'); return; }
+      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
       DN.post('/api/mdm/attribute/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }
@@ -366,15 +426,15 @@
         if (!vals.length) { DN.toast('该码表暂无启用码值', 'warn'); }
         else { fEnum.value = vals.join(','); DN.toast('已引用 ' + vals.length + ' 个码值', 'ok'); }
         pullBtn.textContent = '引用码值'; pullBtn.style.pointerEvents = '';
-      }).catch(function (e) { DN.toast(e.message || '拉取失败', 'err'); pullBtn.textContent = '引用码值'; pullBtn.style.pointerEvents = ''; });
+      }).catch(function (e) { DN.toast(errMsg(e) || '拉取失败', 'err'); pullBtn.textContent = '引用码值'; pullBtn.style.pointerEvents = ''; });
     };
     return { el: el };
   }
 
   function delConfirm(msg, url, c) {
     if (!window.confirm(msg)) return;
-    DN.del(url).then(function () { DN.toast('已删除', 'ok'); renderModeling(c); })
-      .catch(function (e) { DN.toast(e.message || '删除失败', 'err'); });
+    DN.del(url).then(function () { invalidateEntities(); DN.toast('已删除', 'ok'); renderModeling(c); })
+      .catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); });
   }
 
   // ===================== 黄金记录（按实体 schema 动态生成表单） =====================
@@ -395,7 +455,7 @@
     var box = DN.h('div', { id: 'grBox' });
     c.appendChild(box);
 
-    DN.get('/api/mdm/entities').then(function (ents) {
+    getEntities().then(function (ents) {
       ents = ents || [];
       entSel.innerHTML = '';
       if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在“域与实体建模”创建)' })); box.appendChild(DN.empty('请先在“域与实体建模”创建实体', 'layers')); return; }
@@ -411,9 +471,11 @@
         _grEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null;
         box.innerHTML = '';
         if (_grEntity) loadGoldenForEntity(box);
+        else box.appendChild(DN.empty('请选择一个实体以管理其黄金记录', 'shield'));
       };
     }).catch(function (e) {
-      box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.goldenrecord(c); }));
+      entSel.innerHTML = ''; entSel.appendChild(DN.h('option', { value: '', text: '(加载失败)' }));
+      box.appendChild(DN.errorBox('实体加载失败: ' + errMsg(e), function () { invalidateEntities(); c.innerHTML = ''; MDM_RENDERERS.goldenrecord(c); }));
     });
   };
 
@@ -448,18 +510,19 @@
       loadGoldenList(listBox, autoEditId);
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadGoldenForEntity(box); }));
+      box.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { loadGoldenForEntity(box); }));
     });
   }
 
   function loadGoldenList(listBox, autoEditId) {
+    if (!_grEntity) return;
     listBox.innerHTML = ''; listBox.appendChild(DN.skeleton(3));
     var qs = '?entityId=' + encodeURIComponent(_grEntity.id) + (_grFilter ? '&status=' + _grFilter : '');
     DN.get('/api/mdm/golden/list' + qs).then(function (rows) {
       rows = rows || [];
       listBox.innerHTML = '';
-      if (!rows.length) { listBox.appendChild(DN.empty('暂无黄金记录，点右上角“新建黄金记录”录入', 'shield')); return; }
-      rows.forEach(function (r) { try { r._vals = JSON.parse(r.dataJson || '{}'); } catch (e) { r._vals = {}; } });
+      if (!rows.length) { listBox.appendChild(DN.empty(_grFilter ? '当前筛选下暂无黄金记录' : '暂无黄金记录，点右上角“新建黄金记录”录入', 'shield')); return; }
+      rows.forEach(function (r) { r._vals = safeParse(r.dataJson, {}); });
       // 深链：autoEditId 命中则自动打开该记录编辑（只触发一次）
       if (autoEditId != null) {
         var hit = rows.filter(function (r) { return String(r.id) === String(autoEditId); })[0];
@@ -471,7 +534,7 @@
       var showAttrs = (keyAttrs.length ? keyAttrs : _grAttrs).slice(0, 4);
       var cols = [];
       showAttrs.forEach(function (a) {
-        cols.push({ key: 'a_' + a.attrCode, label: a.attrName, render: (function (code) { return function (r) { var v = r._vals[code]; return (v == null || v === '') ? '-' : String(v); }; })(a.attrCode) });
+        cols.push({ key: 'a_' + a.attrCode, label: a.attrName, render: (function (code) { return function (r) { return clip(r._vals ? r._vals[code] : null, 40); }; })(a.attrCode) });
       });
       cols.push({ key: 'status', label: '状态', render: function (r) {
           var s = r.status; return s === 'active' ? DN.pill('已生效', 'ok') : s === 'inactive' ? DN.pill('已停用', 'muted') : DN.pill('草稿', 'warn');
@@ -482,9 +545,10 @@
       cols.push({ key: '_op', label: '操作', render: function (r) {
           var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
           w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
-          if (r.status !== 'active') w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:#389e0d', onclick: function () { goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); } }));
-          if (r.status === 'active') w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:#ad6800', onclick: function () { goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); } }));
-          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(e.message || '删除失败', 'err'); }); } }));
+          if (r.status !== 'active') { var pubA = DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:#389e0d', onclick: function () { if (!window.confirm('发布黄金记录「' + (r.bizKey || r.id) + '」？发布后将作为单一可信版本生效。')) return; busyLink(pubA, '发布中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); }); } }); w.appendChild(pubA); }
+          if (r.status === 'active') { var deA = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:#ad6800', onclick: function () { if (!window.confirm('停用黄金记录「' + (r.bizKey || r.id) + '」？停用后将不再作为生效版本。')) return; busyLink(deA, '停用中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); }); } }); w.appendChild(deA); }
+          var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
+          w.appendChild(delA);
           return w;
         } });
       listBox.appendChild(DN.table({
@@ -494,13 +558,14 @@
       }));
     }).catch(function (e) {
       listBox.innerHTML = '';
-      listBox.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadGoldenList(listBox); }));
+      listBox.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { loadGoldenList(listBox); }));
     });
   }
 
   function reloadGolden() { var box = document.getElementById('grBox'); if (box) loadGoldenForEntity(box); }
+  // 返回 Promise 供 busyLink 跟踪按钮忙碌态，防重复提交
   function goldenAction(url, okMsg) {
-    DN.post(url).then(function () { DN.toast(okMsg, 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(e.message || '操作失败', 'err'); });
+    return DN.post(url).then(function () { DN.toast(okMsg, 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '操作失败', 'err'); });
   }
 
   // 按属性类型生成输入控件
@@ -517,10 +582,10 @@
   }
 
   function goldenForm(row, box) {
+    if (!_grEntity) { DN.toast('请先选择实体', 'warn'); return; }
     if (!_grAttrs.length) { DN.toast('该实体尚无属性定义，请先在“域与实体建模”补充属性', 'warn'); return; }
     var isEdit = !!row; row = row || {};
-    var vals = {};
-    try { vals = row.dataJson ? JSON.parse(row.dataJson) : (row._vals || {}); } catch (e) { vals = row._vals || {}; }
+    var vals = row.dataJson ? safeParse(row.dataJson, (row._vals || {})) : (row._vals || {});
     var inputs = {};   // attrCode -> input element
     var body = DN.h('div', {});
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '实体：' + _grEntity.entityName + '（按属性 schema 录入，标 * 为必填）' }));
@@ -539,19 +604,29 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '新建') + '黄金记录', body);
     save.onclick = function () {
+      if (save._busy) return;
       var data = {};
-      var missing = null;
+      var missing = null, invalid = null;
       _grAttrs.forEach(function (a) {
+        if (invalid) return;
         var el = inputs[a.attrCode];
-        var v = (el.value != null ? String(el.value).trim() : '');
+        var v = (el && el.value != null ? String(el.value).trim() : '');
         if (a.required === 1 && !v && !missing) missing = a.attrName;
-        if (v !== '') data[a.attrCode] = v;
+        if (v !== '') {
+          var t = (a.dataType || 'STRING').toUpperCase();
+          // 类型校验：数值类必须可解析为数字；超长按长度限制拦截
+          if ((t === 'INT' || t === 'DECIMAL') && isNaN(Number(v))) { invalid = a.attrName + ' 需为数字'; return; }
+          if (t === 'INT' && !/^-?\d+$/.test(v)) { invalid = a.attrName + ' 需为整数'; return; }
+          if (a.lengthLimit && v.length > a.lengthLimit) { invalid = a.attrName + ' 超出长度限制(' + a.lengthLimit + ')'; return; }
+          data[a.attrCode] = v;
+        }
       });
+      if (invalid) { DN.toast('属性校验失败：' + invalid, 'err'); return; }
       if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
       var payload = { id: row.id, entityId: _grEntity.id, dataJson: JSON.stringify(data), status: statusSel.value, sourceSystem: srcInput.value.trim() };
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
       DN.post('/api/mdm/golden/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); reloadGolden(); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }
@@ -571,7 +646,7 @@
     var box = DN.h('div', { id: 'ddBox' });
     c.appendChild(box);
 
-    DN.get('/api/mdm/entities').then(function (ents) {
+    getEntities().then(function (ents) {
       ents = ents || [];
       entSel.innerHTML = '';
       if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体)' })); box.appendChild(DN.empty('请先创建实体与黄金记录', 'layers')); return; }
@@ -582,8 +657,8 @@
       var initEnt = ctxEnt || ents[0];
       entSel.value = String(initEnt.id); _ddEntity = initEnt;
       loadDedup(box);
-      entSel.onchange = function () { _ddEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_ddEntity) loadDedup(box); };
-    }).catch(function (e) { box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.dedup(c); })); });
+      entSel.onchange = function () { _ddEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_ddEntity) loadDedup(box); else box.appendChild(DN.empty('请选择一个实体以检测重复', 'alert')); };
+    }).catch(function (e) { entSel.innerHTML = ''; entSel.appendChild(DN.h('option', { value: '', text: '(加载失败)' })); box.appendChild(DN.errorBox('实体加载失败: ' + errMsg(e), function () { invalidateEntities(); c.innerHTML = ''; MDM_RENDERERS.dedup(c); })); });
   };
 
   function loadDedup(box) {
@@ -606,14 +681,15 @@
       if (!(d.keyAttrCount > 0)) { box.appendChild(DN.empty('该实体未定义关键/唯一属性，无法匹配去重。请在“域与实体建模”将匹配字段标记为关键或唯一。', 'alert')); return; }
       if (!clusters.length) { box.appendChild(DN.empty('未检测到重复记录，主数据干净 ✓', 'check')); return; }
       clusters.forEach(function (cl, idx) { box.appendChild(buildClusterCard(cl, idx, box)); });
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + e.message, function () { loadDedup(box); })); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + errMsg(e), function () { loadDedup(box); })); });
   }
 
   function buildClusterCard(cl, idx, box) {
-    var card = DN.card({ title: '重复簇 · ' + cl.matchAttrName + ' = ' + cl.matchValue + ' （' + cl.size + ' 条）', icon: 'alert' });
+    cl = cl || {};
+    var card = DN.card({ title: '重复簇 · ' + (cl.matchAttrName || '') + ' = ' + (cl.matchValue == null ? '' : cl.matchValue) + ' （' + (cl.size || 0) + ' 条）', icon: 'alert' });
     card.el.classList.add('primary');
     var recs = cl.records || [];
-    recs.forEach(function (r) { try { r._vals = JSON.parse(r.dataJson || '{}'); } catch (e) { r._vals = {}; } });
+    recs.forEach(function (r) { r._vals = safeParse(r.dataJson, {}); });
     var showAttrs = (_ddAttrs.filter(function (a) { return a.isKey === 1 || a.isUnique === 1; }));
     if (!showAttrs.length) showAttrs = _ddAttrs.slice(0, 4);
 
@@ -627,7 +703,7 @@
       var radio = DN.h('input', { type: 'radio', name: radioName, value: String(r.id) });
       if (i === 0) radio.checked = true;   // 默认首条为存活
       rd.appendChild(radio); tr.appendChild(rd);
-      showAttrs.forEach(function (a) { var td = document.createElement('td'); var v = r._vals[a.attrCode]; td.textContent = (v == null || v === '') ? '-' : String(v); tr.appendChild(td); });
+      showAttrs.forEach(function (a) { var td = document.createElement('td'); var v = r._vals ? r._vals[a.attrCode] : null; var s = (v == null || v === '') ? '-' : String(v); if (s.length > 40) { td.textContent = s.slice(0, 40) + '…'; td.title = s; } else { td.textContent = s; } tr.appendChild(td); });
       var st = document.createElement('td'); st.appendChild(r.status === 'active' ? DN.pill('已生效', 'ok') : DN.pill('草稿', 'warn')); tr.appendChild(st);
       var sc = document.createElement('td'); sc.textContent = r.sourceSystem || '-'; tr.appendChild(sc);
       var ve = document.createElement('td'); ve.textContent = 'v' + (r.version || 1); tr.appendChild(ve);
@@ -646,17 +722,19 @@
     footer.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0;flex:1', text: '选定一条为存活记录，其余将被合并（置为停用）。' }));
     var mergeBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '合并该簇' });
     mergeBtn.onclick = function () {
+      if (mergeBtn._busy) return;
       var checked = card.el.querySelector('input[name="' + radioName + '"]:checked');
       if (!checked) { DN.toast('请先选定存活记录', 'warn'); return; }
       var survivorId = Number(checked.value);
       var mergedIds = recs.map(function (r) { return r.id; }).filter(function (id) { return id !== survivorId; });
+      if (!mergedIds.length) { DN.toast('该簇只有 1 条记录，无需合并', 'warn'); return; }
       if (!window.confirm('确认合并？保留 1 条存活记录，其余 ' + mergedIds.length + ' 条将置为停用。')) return;
-      mergeBtn.textContent = '合并中...'; mergeBtn.style.pointerEvents = 'none';
+      mergeBtn._busy = true; mergeBtn.textContent = '合并中...'; mergeBtn.style.pointerEvents = 'none';
       DN.post('/api/mdm/match/merge', { survivorId: survivorId, mergedIds: mergedIds }).then(function (res) {
         var ap = (res && res.survivorshipApplied) || [];
         DN.toast('已合并：保留 1 条，停用 ' + ((res && res.mergedCount) || mergedIds.length) + ' 条' + (ap.length ? '；存活性规则组合 ' + ap.length + ' 个字段：' + ap.join('，') : ''), 'ok');
         loadDedup(box);
-      }).catch(function (e) { DN.toast(e.message || '合并失败', 'err'); mergeBtn.textContent = '合并该簇'; mergeBtn.style.pointerEvents = ''; });
+      }).catch(function (e) { DN.toast(errMsg(e) || '合并失败', 'err'); mergeBtn._busy = false; mergeBtn.textContent = '合并该簇'; mergeBtn.style.pointerEvents = ''; });
     };
     footer.appendChild(mergeBtn);
     card.body.appendChild(footer);
@@ -701,7 +779,7 @@
       }));
     }).catch(function (e) {
       statBox.innerHTML = ''; card.body.innerHTML = '';
-      card.body.appendChild(DN.errorBox('工作台加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.steward(c); }));
+      card.body.appendChild(DN.errorBox('工作台加载失败: ' + errMsg(e), function () { c.innerHTML = ''; MDM_RENDERERS.steward(c); }));
     });
   };
 
@@ -709,6 +787,7 @@
   var _xrEntity = null, _xrGoldens = [];
 
   window.MDM_RENDERERS.xref = function (c) {
+    var ctx = window.__mdmCtx || {};
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '维护黄金记录(MDM 全局ID)与各源系统业务ID的映射；支持按源系统ID反查唯一的黄金记录，保证跨系统一致。' }));
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
@@ -719,16 +798,19 @@
     var box = DN.h('div', { id: 'xrBox' });
     c.appendChild(box);
 
-    DN.get('/api/mdm/entities').then(function (ents) {
+    getEntities().then(function (ents) {
       ents = ents || [];
       entSel.innerHTML = '';
       if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体)' })); box.appendChild(DN.empty('请先创建实体与黄金记录', 'layers')); return; }
       entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
       ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
-      entSel.value = String(ents[0].id); _xrEntity = ents[0];
+      // 深链：ctx.entityId 指定则选中该实体，否则默认第一个（与黄金记录/去重一致）
+      var ctxEnt = ctx.entityId != null ? ents.filter(function (e) { return String(e.id) === String(ctx.entityId); })[0] : null;
+      var initEnt = ctxEnt || ents[0];
+      entSel.value = String(initEnt.id); _xrEntity = initEnt;
       loadXref(box);
-      entSel.onchange = function () { _xrEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_xrEntity) loadXref(box); };
-    }).catch(function (e) { box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.xref(c); })); });
+      entSel.onchange = function () { _xrEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null; box.innerHTML = ''; if (_xrEntity) loadXref(box); else box.appendChild(DN.empty('请选择一个实体以管理交叉引用', 'list')); };
+    }).catch(function (e) { entSel.innerHTML = ''; entSel.appendChild(DN.h('option', { value: '', text: '(加载失败)' })); box.appendChild(DN.errorBox('实体加载失败: ' + errMsg(e), function () { invalidateEntities(); c.innerHTML = ''; MDM_RENDERERS.xref(c); })); });
   };
 
   function loadXref(box) {
@@ -755,16 +837,21 @@
       var rbtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '反查' });
       var rout = DN.h('div', { style: 'margin-top:10px' });
       rbtn.onclick = function () {
+        if (rbtn._busy) return;
         if (!sysIn.value.trim() || !idIn.value.trim()) { DN.toast('请填写源系统与源ID', 'warn'); return; }
+        rbtn._busy = true; rbtn.textContent = '反查中...'; rbtn.style.pointerEvents = 'none';
         rout.innerHTML = ''; rout.appendChild(DN.skeleton(1));
         DN.get('/api/mdm/xref/resolve?sourceSystem=' + encodeURIComponent(sysIn.value.trim()) + '&sourceId=' + encodeURIComponent(idIn.value.trim())).then(function (d) {
+          rbtn._busy = false; rbtn.textContent = '反查'; rbtn.style.pointerEvents = '';
           rout.innerHTML = '';
           if (!d || !d.found) { rout.appendChild(DN.empty('未找到该源标识对应的黄金记录', 'alert')); return; }
+          var dj = d.dataJson || '';
+          var djShow = dj.length > 120 ? dj.slice(0, 120) + '…' : dj;
           rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:8px;background:rgba(82,196,26,.08);border:1px solid rgba(82,196,26,.25);font-size:13px' }, [
             DN.h('div', { style: 'font-weight:600;margin-bottom:4px' }, [DN.h('span', { text: '✓ 命中黄金记录：' + (d.bizKey || ('#' + d.goldenRecordId)) }), DN.h('span', { style: 'margin-left:8px' }, [DN.pill(d.status === 'active' ? '已生效' : (d.status === 'inactive' ? '已停用' : '草稿'), d.status === 'active' ? 'ok' : 'warn')])]),
-            DN.h('div', { class: 'gov-desc', style: 'margin:0', text: 'MDM ID: ' + d.goldenRecordId + ' · 属性: ' + (d.dataJson || '') })
+            DN.h('div', { class: 'gov-desc', style: 'margin:0', text: 'MDM ID: ' + d.goldenRecordId + ' · 属性: ' + djShow, title: dj })
           ]));
-        }).catch(function (e) { rout.innerHTML = ''; rout.appendChild(DN.errorBox('反查失败: ' + e.message)); });
+        }).catch(function (e) { rbtn._busy = false; rbtn.textContent = '反查'; rbtn.style.pointerEvents = ''; rout.innerHTML = ''; rout.appendChild(DN.errorBox('反查失败: ' + errMsg(e))); });
       };
       var rrow = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [sysIn, idIn, rbtn]);
       resolveCard.body.appendChild(rrow);
@@ -785,14 +872,15 @@
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { xrefForm(r, box); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(e.message || '删除失败', 'err'); }); } }));
+              var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
+              w.appendChild(delA);
               return w;
             } }
         ],
         rows: xrefs, pageSize: 20, searchKeys: ['bizKey', 'sourceSystem', 'sourceId'], searchPlaceholder: '搜索黄金记录/源系统/源ID', exportName: '交叉引用_' + _xrEntity.entityCode
       }));
       box.appendChild(card.el);
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadXref(box); })); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + errMsg(e), function () { loadXref(box); })); });
   }
 
   function xrefForm(row, box) {
@@ -815,12 +903,20 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '新增') + '交叉引用', body);
     save.onclick = function () {
-      var payload = { id: row.id, goldenRecordId: Number(gSel.value), sourceSystem: fSys.value.trim(), sourceId: fId.value.trim(), matchScore: fScore.value.trim() ? parseFloat(fScore.value) : null, isPrimary: cPrimary._cb.checked ? 1 : 0 };
+      if (save._busy) return;
+      var goldenId = Number(gSel.value);
+      if (!goldenId) { DN.toast('请选择黄金记录', 'err'); return; }
+      var score = null;
+      if (fScore.value.trim()) {
+        score = parseFloat(fScore.value);
+        if (isNaN(score) || score < 0 || score > 100) { DN.toast('置信度需为 0-100 的数字', 'err'); return; }
+      }
+      var payload = { id: row.id, goldenRecordId: goldenId, sourceSystem: fSys.value.trim(), sourceId: fId.value.trim(), matchScore: score, isPrimary: cPrimary._cb.checked ? 1 : 0 };
       if (!payload.sourceSystem) { DN.toast('请填写源系统', 'err'); return; }
       if (!payload.sourceId) { DN.toast('请填写源系统业务ID', 'err'); return; }
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
       DN.post('/api/mdm/xref/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); loadXref(box); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }

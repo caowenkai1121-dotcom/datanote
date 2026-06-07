@@ -9,6 +9,7 @@
   var _svEntity = null;       // 当前选中实体
   var _svAttrs = [];          // 当前实体属性 schema
   var _svRules = {};          // attrCode -> rule（已配规则索引）
+  var _stratLoaded = false;   // 策略枚举是否已成功拉取（避免重复 fetch，该枚举为静态字典）
   var _strategies = [         // 策略枚举（来自后端，含兜底默认）
     { value: 'latest', label: '最新值', desc: '取更新时间最新的来源值' },
     { value: 'most_complete', label: '最完整', desc: '取非空且长度最长（信息最完整）的值' },
@@ -22,56 +23,84 @@
   function strategyTone(v) {
     return v === 'source_priority' ? 'warn' : (v === 'most_complete' ? 'info' : 'ok');
   }
+  // 超长文本截断展示：超过 max 字符截断并以 title 挂全文（避免表格被撑爆）
+  function truncCell(text, max) {
+    var s = text == null ? '' : String(text);
+    max = max || 40;
+    if (s.length <= max) return DN.h('span', { text: s });
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s });
+  }
 
   window.MDM_RENDERERS.survivorship = function (c) {
+    // 深链上下文：mdmGoModule('survivorship', { entityId }) 进入时自动选中该实体（与其他 MDM 模块一致）
+    var ctx = window.__mdmCtx || {};
+    var wantEntityId = ctx.entityId != null ? String(ctx.entityId) : '';
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '存活性规则定义某实体每个属性在黄金记录合并时的存活策略，用于多源冲突时自动选最佳值。最新值/最完整/源系统优先三选一，源系统优先可指定优先级清单。' }));
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px' });
+    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px', disabled: 'disabled' });
     entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
     selWrap.appendChild(entSel);
     c.appendChild(selWrap);
     var box = DN.h('div', { id: 'svBox' });
+    box.appendChild(DN.skeleton(3));
     c.appendChild(box);
 
-    // 并行拉策略枚举（失败用兜底）与实体列表
-    DN.get('/api/mdm/survivorship/strategies').then(function (s) { if (s && s.length) _strategies = s; }).catch(function () {});
+    // 策略枚举：仅首次拉取（失败用兜底），避免每次进模块重复 fetch
+    if (!_stratLoaded) {
+      DN.get('/api/mdm/survivorship/strategies').then(function (s) {
+        if (s && s.length) { _strategies = s; _stratLoaded = true; }
+      }).catch(function () {});
+    }
 
-    DN.get('/api/mdm/entities').then(function (ents) {
+    // 实体列表：拉一次后在本次渲染生命周期内复用（onchange/重试不再打接口，避免重复 fetch）；
+    // 每次重新进入模块都会重新执行本渲染函数并刷新列表，规避在建模处新建实体后的列表过期。
+    function applyEntities(ents) {
       ents = ents || [];
       entSel.innerHTML = '';
+      entSel.disabled = false;
       if (!ents.length) {
         entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在“域与实体建模”创建)' }));
+        entSel.disabled = true;
+        box.innerHTML = '';
         box.appendChild(DN.empty('请先在“域与实体建模”创建实体与属性', 'layers'));
         return;
       }
       entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
       ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
-      entSel.value = String(ents[0].id);
-      _svEntity = ents[0];
+      // 优先按深链 entityId 选中，命中则用之，否则回退第一个
+      var initial = (wantEntityId && ents.filter(function (e) { return String(e.id) === wantEntityId; })[0]) || ents[0];
+      entSel.value = String(initial.id);
+      _svEntity = initial;
       loadSurvivorship(box);
       entSel.onchange = function () {
         _svEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null;
         box.innerHTML = '';
         if (_svEntity) loadSurvivorship(box);
+        else box.appendChild(DN.empty('请先在上方选择一个实体', 'layers'));  // 空选择明确提示
       };
-    }).catch(function (e) {
-      box.appendChild(DN.errorBox('实体加载失败: ' + e.message, function () { c.innerHTML = ''; MDM_RENDERERS.survivorship(c); }));
+    }
+
+    DN.get('/api/mdm/entities').then(applyEntities).catch(function (e) {
+      entSel.innerHTML = ''; entSel.appendChild(DN.h('option', { value: '', text: '(加载失败)' }));
+      box.innerHTML = '';
+      box.appendChild(DN.errorBox('实体加载失败: ' + ((e && e.message) || e), function () { c.innerHTML = ''; MDM_RENDERERS.survivorship(c); }));
     });
   };
 
   function loadSurvivorship(box) {
-    if (!_svEntity) return;
+    if (!_svEntity || _svEntity.id == null) { box.innerHTML = ''; box.appendChild(DN.empty('请先在上方选择一个实体', 'layers')); return; }
     box.innerHTML = '';
     box.appendChild(DN.skeleton(3));
     Promise.all([
       DN.get('/api/mdm/attributes?entityId=' + encodeURIComponent(_svEntity.id)),
       DN.get('/api/mdm/survivorship/list?entityId=' + encodeURIComponent(_svEntity.id))
     ]).then(function (r) {
-      _svAttrs = r[0] || [];
-      var rules = r[1] || [];
+      r = r || [];
+      _svAttrs = Array.isArray(r[0]) ? r[0] : [];
+      var rules = Array.isArray(r[1]) ? r[1] : [];
       _svRules = {};
-      rules.forEach(function (ru) { _svRules[ru.attrCode] = ru; });
+      rules.forEach(function (ru) { if (ru && ru.attrCode != null) _svRules[ru.attrCode] = ru; });
       box.innerHTML = '';
 
       var configured = rules.length;
@@ -87,14 +116,17 @@
       renderRuleTableCard(box, rules);
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadSurvivorship(box); }));
+      box.appendChild(DN.errorBox('加载失败: ' + ((e && e.message) || e), function () { loadSurvivorship(box); }));
     });
   }
 
   // ---- 属性列表 + 逐属性配置存活策略 ----
   function renderAttrConfigCard(box) {
     // R37 深链：存活规则按实体配置 → 直达该实体黄金记录（合并后存活策略的最终落地处）
-    var goGolden = DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '查看该实体黄金记录', title: '前往黄金记录并选中该实体', onclick: function () { mdmGoModule('goldenrecord', { entityId: _svEntity.id }); } });
+    var goGolden = DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '查看该实体黄金记录', title: '前往黄金记录并选中该实体', onclick: function () {
+      if (!window.mdmGoModule) { DN.toast('暂不支持跳转', 'err'); return; }
+      mdmGoModule('goldenrecord', { entityId: _svEntity.id });
+    } });
     var card = DN.card({ title: '属性存活策略 · ' + _svEntity.entityName, icon: 'list', actions: goGolden });
     if (!_svAttrs.length) {
       card.body.appendChild(DN.empty('该实体暂无属性，请先在“域与实体建模”补充属性', 'list'));
@@ -104,8 +136,8 @@
     card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '为每个属性选择合并时的存活策略，点“保存”落库；已配规则会回填。' }));
     card.body.appendChild(DN.table({
       columns: [
-        { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode; } },
-        { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName; } },
+        { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode || '-'; } },
+        { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName || '-'; } },
         { key: 'dataType', label: '类型', render: function (r) { return DN.pill(r.dataType || 'STRING', 'info'); } },
         { key: '_strategy', label: '存活策略', render: function (r) {
             var ru = _svRules[r.attrCode];
@@ -135,10 +167,10 @@
     card.body.appendChild(DN.table({
       columns: [
         { key: 'priority', label: '优先级', align: 'right', sortable: true, render: function (r) { return String(r.priority == null ? 0 : r.priority); } },
-        { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode; } },
+        { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode || '-'; } },
         { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName || '-'; } },
         { key: 'strategy', label: '存活策略', render: function (r) { return DN.pill(strategyLabel(r.strategy), strategyTone(r.strategy)); } },
-        { key: 'sourcePriority', label: '源系统优先级', render: function (r) { return r.sourcePriority ? r.sourcePriority : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
+        { key: 'sourcePriority', label: '源系统优先级', render: function (r) { return r.sourcePriority ? truncCell(r.sourcePriority, 48) : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
         { key: '_op', label: '操作', render: function (r) {
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
             w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () {
@@ -149,7 +181,7 @@
             return w;
           } }
       ],
-      rows: rules, pageSize: 20, searchKeys: ['attrCode', 'attrName', 'strategy', 'sourcePriority'], searchPlaceholder: '搜索属性/策略/源系统', exportName: '存活规则_' + _svEntity.entityCode
+      rows: rules, pageSize: 20, searchKeys: ['attrCode', 'attrName', 'strategy', 'sourcePriority'], searchPlaceholder: '搜索属性/策略/源系统', exportName: '存活规则_' + (_svEntity.entityCode || _svEntity.entityName || _svEntity.id)
     }));
     box.appendChild(card.el);
   }
@@ -165,6 +197,9 @@
   function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
 
   function ruleForm(attr, rule, box) {
+    attr = attr || {};
+    if (!_svEntity || _svEntity.id == null) { DN.toast('请先选择实体', 'err'); return; }
+    if (!attr.attrCode) { DN.toast('该属性缺少编码，无法配置规则', 'err'); return; }
     var isEdit = !!rule; rule = rule || {};
     var stratSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     _strategies.forEach(function (s) {
@@ -198,24 +233,46 @@
     footer.appendChild(save); body.appendChild(footer);
     var dr = DN.drawer((isEdit ? '编辑' : '配置') + '存活规则', body);
     save.onclick = function () {
+      if (save.dataset.busy === '1') return;                 // 防重复提交
       var strategy = stratSel.value;
+      // 校验：策略必须为已知枚举值（防脏数据落库）
+      var known = _strategies.some(function (s) { return s.value === strategy; });
+      if (!strategy || !known) { DN.toast('请选择有效的存活策略', 'err'); return; }
       var srcVal = fSrc.value.trim();
-      if (strategy === 'source_priority' && !srcVal) { DN.toast('「源系统优先」策略需填写源系统优先级清单', 'err'); return; }
+      if (strategy === 'source_priority') {
+        if (!srcVal) { DN.toast('「源系统优先」策略需填写源系统优先级清单', 'err'); return; }
+        // 规整清单：去空段、去首尾空格，按逗号回拼
+        var srcList = srcVal.split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+        if (!srcList.length) { DN.toast('源系统优先级清单无有效项', 'err'); return; }
+        srcVal = srcList.join(',');
+      } else {
+        srcVal = '';                                          // 非源优先策略不应携带清单
+      }
+      // 校验：规则优先级须为非负整数
+      var prTxt = fPriority.value.trim(), priority = 0;
+      if (prTxt) {
+        if (!/^\d+$/.test(prTxt)) { DN.toast('规则优先级须为非负整数', 'err'); return; }
+        priority = parseInt(prTxt, 10);
+      }
       var payload = {
         id: rule.id, entityId: _svEntity.id, attrCode: attr.attrCode, attrName: attr.attrName || rule.attrName,
         strategy: strategy, sourcePriority: srcVal,
-        priority: fPriority.value.trim() ? parseInt(fPriority.value, 10) : 0
+        priority: priority
       };
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      save.dataset.busy = '1'; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
       DN.post('/api/mdm/survivorship/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); loadSurvivorship(box); })
-        .catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast((e && e.message) || '保存失败', 'err'); save.dataset.busy = ''; save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
   }
 
+  var _delBusy = false;       // 删除中互斥，防同一规则被重复提交
   function delRule(rule, box) {
+    if (!rule || rule.id == null) { DN.toast('该规则缺少 id，无法删除', 'err'); return; }
+    if (_delBusy) return;
     if (!window.confirm('删除属性「' + (rule.attrName || rule.attrCode) + '」的存活规则？')) return;
-    DN.del('/api/mdm/survivorship/' + rule.id).then(function () { DN.toast('已删除', 'ok'); loadSurvivorship(box); })
-      .catch(function (e) { DN.toast(e.message || '删除失败', 'err'); });
+    _delBusy = true;
+    DN.del('/api/mdm/survivorship/' + encodeURIComponent(rule.id)).then(function () { _delBusy = false; DN.toast('已删除', 'ok'); loadSurvivorship(box); })
+      .catch(function (e) { _delBusy = false; DN.toast((e && e.message) || '删除失败', 'err'); });
   }
 })();
