@@ -8,7 +8,9 @@
   var _cats = [];          // 所有类别 [{category,itemCount,enabledCount}]
 
   window.MDM_RENDERERS.refdata = function (c) {
-    _selCategory = '';
+    // R26 深链：mdmGoModule('refdata', {category}) 可定位到指定码表类别
+    var ctx = window.__mdmCtx || {};
+    _selCategory = ctx.category ? String(ctx.category) : '';
     c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '参考数据是系统级枚举与码表（客户类型/地区/行业分类等），支持 parent_code 树形结构，供主数据属性引用以保证取值一致。' }));
     var tileBox = DN.h('div', { id: 'rdTiles' });
     tileBox.appendChild(DN.skeleton(1));
@@ -58,8 +60,12 @@
       // 父级码值 → 名称映射（树形展示用）
       var nameByCode = {};
       rows.forEach(function (r) { nameByCode[r.code] = r.name; });
-      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } });
-      var card = DN.card({ title: '码表 · ' + _selCategory, icon: 'list', actions: addBtn });
+      // 头部动作：在建模中引用（指引到属性建模，复制 REFERENCE 引用令牌）+ 新建码值
+      var refBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '在建模中引用', title: '在主数据建模中将属性设为 REFERENCE 并引用该码表类别', onclick: function () { refInModeling(_selCategory); } });
+      var actBar = DN.h('span', { style: 'display:inline-flex;gap:8px' }, [refBtn, DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } })]);
+      var card = DN.card({ title: '码表 · ' + _selCategory, icon: 'list', actions: actBar });
+      // 引用指引：码表类别即为建模属性的引用令牌
+      card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '在「域与实体建模」中将属性数据类型设为 REFERENCE、引用值填「' + _selCategory + '」，即可复用本类别码值，保证取值一致。' }));
       if (!rows.length) {
         card.body.appendChild(DN.empty('该类别下暂无码值，点右上角“新建码值”创建', 'list'));
         box.appendChild(card.el);
@@ -79,6 +85,7 @@
           { key: 'description', label: '描述', render: function (r) { return r.description || '-'; } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary,#1890ff)', onclick: function () { detailDrawer(r, nameByCode); } }));
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { codeForm(r, tileBox, box); } }));
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () {
                   if (!window.confirm('删除码值「' + r.name + '（' + r.code + '）」？')) return;
@@ -159,5 +166,26 @@
       }).catch(function (e) { DN.toast(e.message || '保存失败', 'err'); save.textContent = '保存'; save.style.pointerEvents = ''; });
     };
     DN.enterSubmit(body);
+  }
+
+  // R26: 「在建模中引用」—— 跳到域与实体建模, 提示用 REFERENCE 引用该码表类别
+  function refInModeling(category) {
+    if (window.mdmGoModule) { mdmGoModule('modeling', { refCategory: category || _selCategory }); }
+    DN.toast('在建模中将属性数据类型设为 REFERENCE, 引用值填「' + (category || _selCategory) + '」', 'info');
+  }
+
+  // R26: 码值明细抽屉(含父级名称)
+  function detailDrawer(r, nameByCode) {
+    var body = DN.h('div');
+    function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--divider,#eee);font-size:13px' }, [
+      DN.h('span', { style: 'width:90px;color:var(--text-muted)', text: k }), DN.h('span', { style: 'flex:1', text: (v == null || v === '') ? '-' : String(v) }) ]); }
+    body.appendChild(row('类别', r.category));
+    body.appendChild(row('码值', r.code));
+    body.appendChild(row('名称', r.name));
+    body.appendChild(row('父级', r.parentCode ? (r.parentCode + (nameByCode && nameByCode[r.parentCode] ? '（' + nameByCode[r.parentCode] + '）' : '')) : '-'));
+    body.appendChild(row('排序', r.sortOrder));
+    body.appendChild(row('状态', r.status === 1 ? '启用' : '停用'));
+    body.appendChild(row('描述', r.description));
+    DN.drawer('码值明细 · ' + (r.name || r.code), body);
   }
 })();

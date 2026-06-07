@@ -116,6 +116,12 @@
             var w = DN.h('span', { style: 'display:inline-flex;gap:6px;flex-wrap:wrap' });
             (r.issues || []).forEach(function (iss) { w.appendChild(DN.pill(iss, issueTone(iss))); });
             return w;
+          } },
+        { key: '_fix', label: '操作', render: function (r) {
+            // R26 闭环：检测→修复。跳回黄金记录处理，直接打开该不合规记录编辑
+            return DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '修复', title: '前往黄金记录处理并打开该记录修复', onclick: function () {
+              mdmGoModule('goldenrecord', { editId: r.id, entityId: (_qEntity ? _qEntity.id : null) });
+            } });
           } }
       ],
       rows: bad, pageSize: 15, searchKeys: ['bizKey'], searchPlaceholder: '搜索业务主键', exportName: '质量不合规记录'

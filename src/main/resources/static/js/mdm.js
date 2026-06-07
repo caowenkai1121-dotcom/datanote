@@ -293,7 +293,7 @@
     var fName = inp(row.attrName, '如 客户名称');
     var fType = sel(DATA_TYPES, row.dataType || 'STRING');
     var fLen = inp(row.lengthLimit, '如 128');
-    var fEnum = inp(row.enumValues, 'ENUM 候选值，逗号分隔');
+    var fEnum = inp(row.enumValues, 'ENUM/REFERENCE 候选值，逗号分隔（可“选码表”引用参考数据）');
     var fDefault = inp(row.defaultValue, '默认值');
     var fDesc = inp(row.description, '描述');
     var fSort = inp(row.sortOrder == null ? '' : row.sortOrder, '排序');
@@ -306,7 +306,16 @@
     body.appendChild(field('属性名称', fName));
     body.appendChild(field('数据类型', fType));
     body.appendChild(field('长度限制', fLen));
-    body.appendChild(field('枚举候选值', fEnum, '仅 ENUM 类型时填写'));
+    body.appendChild(field('枚举候选值', fEnum, '仅 ENUM/REFERENCE 类型时填写'));
+    // “选码表”辅助：ENUM/REFERENCE 时可从参考数据码表引用，避免纯手填
+    var refRow = buildRefPicker(fEnum);
+    body.appendChild(refRow.el);
+    function syncRefRow() {
+      var t = (fType.value || '').toUpperCase();
+      refRow.el.style.display = (t === 'ENUM' || t === 'REFERENCE') ? '' : 'none';
+    }
+    fType.addEventListener('change', syncRefRow);
+    syncRefRow();
     body.appendChild(field('默认值', fDefault));
     body.appendChild(field('约束', DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center' }, [cKey, cReq, cUniq])));
     body.appendChild(field('描述', fDesc));
@@ -332,6 +341,36 @@
     DN.enterSubmit(body);
   }
 
+  // “选码表”辅助控件：选参考数据类别 → 拉取其码值填入枚举候选值输入框
+  function buildRefPicker(fEnum) {
+    var catSel = DN.h('select', { class: 'iw-form-select', style: 'flex:1;min-width:140px' });
+    catSel.appendChild(DN.h('option', { value: '', text: '加载码表类别…' }));
+    var pullBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '引用码值', style: 'white-space:nowrap' });
+    var modeSel = sel([['name', '用名称'], ['code', '用码值']], 'name');
+    var wrap = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [catSel, modeSel, pullBtn]);
+    var el = field('选码表（参考数据）', wrap, '从参考数据码表引用候选值，覆盖填入上方“枚举候选值”');
+    DN.get('/api/mdm/refdata/categories').then(function (cats) {
+      cats = cats || [];
+      catSel.innerHTML = '';
+      if (!cats.length) { catSel.appendChild(DN.h('option', { value: '', text: '(暂无码表，请先在“参考数据”创建)' })); return; }
+      catSel.appendChild(DN.h('option', { value: '', text: '(请选择码表类别)' }));
+      cats.forEach(function (ct) { catSel.appendChild(DN.h('option', { value: ct.category, text: ct.category + '（' + (ct.itemCount || 0) + '）' })); });
+    }).catch(function () { catSel.innerHTML = ''; catSel.appendChild(DN.h('option', { value: '', text: '(码表加载失败)' })); });
+    pullBtn.onclick = function () {
+      var cat = catSel.value;
+      if (!cat) { DN.toast('请先选择码表类别', 'warn'); return; }
+      pullBtn.textContent = '拉取中...'; pullBtn.style.pointerEvents = 'none';
+      DN.get('/api/mdm/refdata/list?category=' + encodeURIComponent(cat)).then(function (rows) {
+        rows = (rows || []).filter(function (r) { return r.status == null || r.status === 1; });
+        var vals = rows.map(function (r) { return modeSel.value === 'code' ? r.code : (r.name || r.code); }).filter(Boolean);
+        if (!vals.length) { DN.toast('该码表暂无启用码值', 'warn'); }
+        else { fEnum.value = vals.join(','); DN.toast('已引用 ' + vals.length + ' 个码值', 'ok'); }
+        pullBtn.textContent = '引用码值'; pullBtn.style.pointerEvents = '';
+      }).catch(function (e) { DN.toast(e.message || '拉取失败', 'err'); pullBtn.textContent = '引用码值'; pullBtn.style.pointerEvents = ''; });
+    };
+    return { el: el };
+  }
+
   function delConfirm(msg, url, c) {
     if (!window.confirm(msg)) return;
     DN.del(url).then(function () { DN.toast('已删除', 'ok'); renderModeling(c); })
@@ -344,6 +383,7 @@
   var _grFilter = '';     // 状态筛选
 
   window.MDM_RENDERERS.goldenrecord = function (c) {
+    var ctx = window.__mdmCtx || {};
     var bar = DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '黄金记录是某实体的单一可信版本，属性按实体建模 schema 动态录入；支持草稿/发布状态流转。' });
     c.appendChild(bar);
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
@@ -361,10 +401,12 @@
       if (!ents.length) { entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在“域与实体建模”创建)' })); box.appendChild(DN.empty('请先在“域与实体建模”创建实体', 'layers')); return; }
       entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
       ents.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
-      // 默认选第一个
-      entSel.value = String(ents[0].id);
-      _grEntity = ents[0];
-      loadGoldenForEntity(box);
+      // 深链：ctx.entityId 指定则选中该实体，否则默认第一个
+      var ctxEnt = ctx.entityId != null ? ents.filter(function (e) { return String(e.id) === String(ctx.entityId); })[0] : null;
+      var initEnt = ctxEnt || ents[0];
+      entSel.value = String(initEnt.id);
+      _grEntity = initEnt;
+      loadGoldenForEntity(box, (ctx.editId != null ? ctx.editId : null));
       entSel.onchange = function () {
         _grEntity = ents.filter(function (e) { return String(e.id) === entSel.value; })[0] || null;
         box.innerHTML = '';
@@ -375,7 +417,7 @@
     });
   };
 
-  function loadGoldenForEntity(box) {
+  function loadGoldenForEntity(box, autoEditId) {
     if (!_grEntity) return;
     box.innerHTML = '';
     box.appendChild(DN.skeleton(3));
@@ -403,14 +445,14 @@
       card.body.appendChild(DN.h('div', { style: 'margin-bottom:10px' }, [statusSel]));
       card.body.appendChild(listBox);
       box.appendChild(card.el);
-      loadGoldenList(listBox);
+      loadGoldenList(listBox, autoEditId);
     }).catch(function (e) {
       box.innerHTML = '';
       box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadGoldenForEntity(box); }));
     });
   }
 
-  function loadGoldenList(listBox) {
+  function loadGoldenList(listBox, autoEditId) {
     listBox.innerHTML = ''; listBox.appendChild(DN.skeleton(3));
     var qs = '?entityId=' + encodeURIComponent(_grEntity.id) + (_grFilter ? '&status=' + _grFilter : '');
     DN.get('/api/mdm/golden/list' + qs).then(function (rows) {
@@ -418,6 +460,12 @@
       listBox.innerHTML = '';
       if (!rows.length) { listBox.appendChild(DN.empty('暂无黄金记录，点右上角“新建黄金记录”录入', 'shield')); return; }
       rows.forEach(function (r) { try { r._vals = JSON.parse(r.dataJson || '{}'); } catch (e) { r._vals = {}; } });
+      // 深链：autoEditId 命中则自动打开该记录编辑（只触发一次）
+      if (autoEditId != null) {
+        var hit = rows.filter(function (r) { return String(r.id) === String(autoEditId); })[0];
+        if (hit) goldenForm(hit, document.getElementById('grBox'));
+        else DN.toast('未找到指定黄金记录(可能已删除)', 'warn');
+      }
       // 动态列：业务主键 + 前若干关键/普通属性 + 状态 + 版本 + 操作
       var keyAttrs = _grAttrs.filter(function (a) { return a.isKey === 1 || a.isUnique === 1; });
       var showAttrs = (keyAttrs.length ? keyAttrs : _grAttrs).slice(0, 4);
