@@ -110,6 +110,18 @@ public class ConsumptionController {
         return R.ok(valueService.overview());
     }
 
+    @Operation(summary = "资产影响联动: 给定库.表反查消费它的指标(改表前评估影响面)")
+    @GetMapping("/asset-impact")
+    public R<List<Map<String, Object>>> assetImpact(@RequestParam String db, @RequestParam String table) {
+        return R.ok(valueService.assetImpact(db, table));
+    }
+
+    @Operation(summary = "指标消费排行(按消费日志计数 Top20)")
+    @GetMapping("/metric-ranking")
+    public R<List<Map<String, Object>>> metricRanking() {
+        return R.ok(valueService.metricRanking());
+    }
+
     @Operation(summary = "消费审计流水(近100, 可按 targetCode 过滤)")
     @GetMapping("/log/list")
     public R<List<DnConsumptionLog>> logList(@RequestParam(required = false) String targetCode) {

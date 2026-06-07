@@ -32,6 +32,7 @@ public class MetricValueService {
     private final DnConsumptionLogMapper logMapper;
     private final HiveService hiveService;
     private final MetricAlertService metricAlertService;
+    private final com.datanote.domain.governance.mapper.DnMetricRefMapper metricRefMapper;
 
     /** 指标值新鲜度阈值（小时）：超过视为陈旧 */
     static final long FRESH_HOURS = 26;
@@ -168,6 +169,48 @@ public class MetricValueService {
         } catch (Exception e) {
             log.warn("消费审计写入失败(不影响主流程): {}", e.getMessage());
         }
+    }
+
+    /** 资产影响联动：给定库.表，反查哪些指标消费它(经 DnMetricRef)+ 最新值。改表前评估影响面。 */
+    public List<Map<String, Object>> assetImpact(String db, String table) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (db == null || table == null) return out;
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.domain.governance.model.DnMetricRef> qw =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        qw.eq("db_name", db).eq("table_name", table);
+        List<com.datanote.domain.governance.model.DnMetricRef> refs = metricRefMapper.selectList(qw);
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (com.datanote.domain.governance.model.DnMetricRef ref : refs) {
+            if (ref.getMetricId() == null || !seen.add(ref.getMetricId())) continue;
+            DnMetric m = metricMapper.selectById(ref.getMetricId());
+            if (m == null) continue;
+            DnMetricValue v = latest(m.getId());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("metricId", m.getId()); row.put("metricCode", m.getMetricCode());
+            row.put("metricName", m.getMetricName()); row.put("refType", ref.getRefType());
+            row.put("lastValue", v == null ? null : v.getMetricValue());
+            row.put("lastValueAt", v == null ? null : v.getCreatedAt());
+            out.add(row);
+        }
+        return out;
+    }
+
+    /** 指标消费排行：按消费日志计数，Top 指标(含名称)。 */
+    public List<Map<String, Object>> metricRanking() {
+        QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
+        qw.select("target_code", "COUNT(*) AS cnt")
+          .in("target_type", java.util.Arrays.asList("METRIC_VALUE", "METRIC_HISTORY", "CALC"))
+          .isNotNull("target_code").ne("target_code", "")
+          .groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
+        List<Map<String, Object>> rows = logMapper.selectMaps(qw);
+        for (Map<String, Object> r : rows) {
+            Object code = r.get("target_code");
+            if (code != null) {
+                DnMetric m = metricMapper.selectOne(new QueryWrapper<DnMetric>().eq("metric_code", code).last("LIMIT 1"));
+                r.put("metricName", m == null ? null : m.getMetricName());
+            }
+        }
+        return rows;
     }
 
     private List<DnMetric> enabledMetrics() {

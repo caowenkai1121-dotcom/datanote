@@ -13,6 +13,9 @@
     var heatCard = DN.card({ title: '消费热度 Top（近30天调用）', icon: 'bars' });
     heatCard.body.appendChild(DN.h('div', { id: 'consHeat' }, DN.skeleton(2)));
     c.appendChild(heatCard.el);
+    var rankCard = DN.card({ title: '指标消费排行（按消费日志计数 Top20）', icon: 'bars' });
+    rankCard.body.appendChild(DN.h('div', { id: 'consRank' }, DN.skeleton(2)));
+    c.appendChild(rankCard.el);
     var zCard = DN.card({ title: '僵尸指标（启用但从未被消费取值）', icon: 'shield' });
     zCard.body.appendChild(DN.h('div', { id: 'consZombie' }, DN.skeleton(2)));
     c.appendChild(zCard.el);
@@ -35,8 +38,19 @@
       });
     };
 
-    loadOverview(); loadBoard(); loadHeat(); loadZombies(); loadDatasets();
+    loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies(); loadDatasets();
   };
+
+  function loadRanking() {
+    DN.get('/api/consumption/metric-ranking').then(function (rows) {
+      var box = document.getElementById('consRank'); if (!box) return; box.innerHTML = '';
+      if (!rows || !rows.length) { box.appendChild(DN.empty('暂无消费排行', 'bars')); return; }
+      box.appendChild(DN.bars(rows.map(function (x) {
+        var n = Number(x.cnt || x.CNT || 0);
+        return { label: x.metricName || x.target_code || x.targetCode || '-', value: n, tone: 'primary', display: String(n) };
+      })));
+    }).catch(function () {});
+  }
 
   function loadDatasets() {
     DN.get('/api/consumption/dataset/list').then(function (rows) {
