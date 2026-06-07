@@ -5,6 +5,10 @@
 
   var API = '/api/subject';
   var LAYERS = ['DWD', 'DIM', 'DWS', 'ADS', 'ALL'];
+  var NAME_MAX = 60;        // 主题名称长度上限(与后端/库字段对齐,前端先拦)
+  var SORT_MIN = -9999, SORT_MAX = 9999;
+  var TREE_PAGE = 200;      // 超长主题树时每页渲染上限,避免一次性渲染海量 DOM 卡顿
+  var _reloading = false;   // reload 去重:防止快速连点(增/删/改后)触发并发重复请求
 
   window.GOV_RENDERERS.subject = function (c) {
     var card = DN.card({ title: '主题域', icon: 'layers' });
@@ -14,6 +18,9 @@
     card.body.appendChild(form.el);
     var ov = DN.h('div', { id: 'subjectOverview' });
     card.body.appendChild(ov);
+    // 树过滤搜索框(去抖 250ms):仅在主题较多时辅助定位,空态/全量逻辑不变
+    var filterBox = DN.h('div', { id: 'subjectFilterBox', style: 'display:none;margin:4px 0 10px' });
+    card.body.appendChild(filterBox);
     var list = DN.h('div', { id: 'subjectList' });
     card.body.appendChild(list);
     list.appendChild(DN.skeleton(4));
@@ -24,24 +31,40 @@
   function buildForm(onSaved) {
     var box = DN.h('div', { class: 'gov-form', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px' });
     var name = inp('主题名称');
+    name.setAttribute('maxlength', String(NAME_MAX));     // 超长输入硬截断,避免提交超限名称
     var parent = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
     var layer = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
     LAYERS.forEach(function (l) { layer.appendChild(DN.h('option', { value: l, text: l })); });
     var sort = inp('排序');
     sort.style.width = '70px';
+    sort.setAttribute('type', 'number');                  // 排序仅接受数字
+    sort.setAttribute('min', String(SORT_MIN)); sort.setAttribute('max', String(SORT_MAX));
 
     var add = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增主题', onclick: function () {
+        var nm = name.value.trim();
+        if (!nm) { DN.toast('主题名称必填', 'error'); name.focus(); return; }
+        if (nm.length > NAME_MAX) { DN.toast('主题名称不能超过 ' + NAME_MAX + ' 个字符', 'error'); name.focus(); return; }
+        var sortRaw = sort.value.trim();
+        var sortNum = 0;
+        if (sortRaw !== '') {
+          sortNum = parseInt(sortRaw, 10);
+          if (isNaN(sortNum)) { DN.toast('排序必须是整数', 'error'); sort.focus(); return; }
+          if (sortNum < SORT_MIN || sortNum > SORT_MAX) { DN.toast('排序需在 ' + SORT_MIN + ' ~ ' + SORT_MAX + ' 之间', 'error'); sort.focus(); return; }
+        }
         var payload = {
-          name: name.value.trim(),
+          name: nm,
           parentId: parent.value ? Number(parent.value) : null,
           layer: layer.value,
-          sortOrder: parseInt(sort.value, 10) || 0
+          sortOrder: sortNum
         };
-        if (!payload.name) { DN.toast('主题名称必填', 'error'); return; }
+        // 加载中禁用按钮防重复提交,完成/失败后恢复
+        if (add.classList.contains('is-loading')) return;
+        setBtnBusy(add, true, '新增中…');
         DN.post(API, payload).then(function () {
-          DN.toast('已新增'); name.value = ''; sort.value = ''; onSaved();
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+          DN.toast('已新增', 'success'); name.value = ''; sort.value = ''; onSaved();
+        }).catch(function (e) { DN.toast(e && e.message ? e.message : '新增失败', 'error'); })
+          .then(function () { setBtnBusy(add, false, '新增主题'); });
       }
     });
     box.appendChild(DN.h('span', { text: '父主题：', style: 'color:var(--text-muted,#86909c);margin-right:4px' }));
@@ -56,27 +79,108 @@
 
   // ========== 加载并渲染树 ==========
   function reload(list, form) {
+    if (_reloading) return;                 // 去重:并发期间忽略重复触发
+    _reloading = true;
+    if (!list.firstChild) list.appendChild(DN.skeleton(4)); // 首次或重载时给加载骨架
+    var reloadFn = function () { reload(list, form); };
     DN.get(API + '/list').then(function (data) {
-      data = data || [];
+      data = Array.isArray(data) ? data : [];
       fillParentOptions(form.parentSel, data);
       renderSubjectOverview(data);
       list.innerHTML = '';
-      if (!data.length) { list.appendChild(DN.empty('暂无主题域', 'layers')); return; }
-      var tree = buildTree(data, null);
-      var ul = DN.h('div', {});
-      renderNodes(tree, ul, 0, function () { reload(list, form); });
-      list.appendChild(ul);
+      var fbox = document.getElementById('subjectFilterBox');
+      if (!data.length) {
+        if (fbox) fbox.style.display = 'none';
+        list.appendChild(DN.empty('暂无主题域，请在上方表单新增', 'layers'));
+        return;
+      }
+      buildSubtreeIndex(data);              // 一次性建子节点索引(O(n)),供树/概览复用,不再递归扫描
+      // 主题较多时启用过滤搜索框(去抖),少量时隐藏避免干扰
+      var curQ = '';
+      if (fbox) curQ = setupFilter(fbox, data, list, reloadFn);
+      renderTree(data, curQ, list, reloadFn); // 保留当前搜索词,reload 后视图不跳变
     }).catch(function (e) {
       list.innerHTML = '';
-      list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { reload(list, form); }));
+      list.appendChild(DN.errorBox('加载失败: ' + (e && e.message ? e.message : '网络异常'), reloadFn));
+      var fbox2 = document.getElementById('subjectFilterBox'); if (fbox2) fbox2.style.display = 'none';
+    }).then(function () { _reloading = false; });
+  }
+
+  // 子节点索引:childMap[parentId] = [子节点...]，避免 buildTree 的 O(n²) 递归与对源对象的污染
+  var _childMap = null, _allNodes = null;
+  function buildSubtreeIndex(data) {
+    _allNodes = data;
+    _childMap = {};
+    data.forEach(function (s) {
+      var pid = s.parentId == null ? '__root__' : s.parentId;
+      (_childMap[pid] || (_childMap[pid] = [])).push(s);
     });
+    Object.keys(_childMap).forEach(function (k) {
+      _childMap[k].sort(function (a, b) { return (a.sortOrder || 0) - (b.sortOrder || 0) || (a.id || 0) - (b.id || 0); });
+    });
+  }
+
+  // 渲染树:q 为过滤关键字(空=全量)。命中节点及其祖先链一并展开显示,边界(空结果)给具体空态。
+  function renderTree(data, q, list, reloadFn) {
+    list.innerHTML = '';
+    q = (q || '').trim().toLowerCase();
+    var keep = null;
+    if (q) {
+      keep = {};
+      var byId = {}; data.forEach(function (s) { byId[s.id] = s; });
+      data.forEach(function (s) {
+        if (String(s.name || '').toLowerCase().indexOf(q) < 0) return;
+        var cur = s, guard = 0;
+        while (cur && guard++ < 50) { keep[cur.id] = 1; cur = cur.parentId == null ? null : byId[cur.parentId]; }
+      });
+      if (!Object.keys(keep).length) {
+        list.appendChild(DN.empty('未找到匹配「' + q + '」的主题', 'search'));
+        return;
+      }
+    }
+    var ul = DN.h('div', {});
+    var counter = { n: 0, truncated: false };
+    renderNodes(_childMap['__root__'] || [], ul, 0, reloadFn, keep, counter);
+    list.appendChild(ul);
+    if (counter.truncated) {
+      list.appendChild(DN.h('div', {
+        style: 'padding:10px 12px;font-size:12px;color:var(--text-muted,#86909c);text-align:center',
+        text: '主题较多，已显示前 ' + TREE_PAGE + ' 个节点，请使用上方搜索精确定位。'
+      }));
+    }
+  }
+
+  // 过滤搜索框(去抖 250ms)。仅在节点数较多(>12)时展示,避免少量主题时多余 UI。
+  // 返回当前搜索关键字,供 reload 重渲染时保持视图不跳变。
+  function setupFilter(fbox, data, list, reloadFn) {
+    if (data.length <= 12) { fbox.style.display = 'none'; fbox.innerHTML = ''; fbox.removeAttribute('data-bound'); return ''; }
+    if (fbox.getAttribute('data-bound') === '1') {       // 监听去重:已绑定则复用,仅返回当前词
+      fbox.style.display = '';
+      var exist = fbox.querySelector('input');
+      return exist ? exist.value : '';
+    }
+    fbox.style.display = '';
+    fbox.innerHTML = '';
+    var input = DN.h('input', { class: 'iw-form-input', placeholder: '搜索主题名称…', style: 'width:240px;max-width:100%' });
+    var clr = DN.h('a', { href: 'javascript:void(0)', text: '清除', style: 'margin-left:8px;color:var(--text-muted,#86909c);font-size:12px;display:none', onclick: function () { input.value = ''; trigger(); input.focus(); } });
+    var _t = null;
+    function trigger() {
+      clr.style.display = input.value ? '' : 'none';
+      renderTree(_allNodes || data, input.value, list, reloadFn);
+    }
+    input.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(trigger, 250); });
+    fbox.appendChild(DN.h('span', { html: DN.icon('search'), style: 'display:inline-flex;width:15px;height:15px;color:var(--text-muted,#86909c);vertical-align:middle;margin-right:6px' }));
+    fbox.appendChild(input);
+    fbox.appendChild(clr);
+    fbox.setAttribute('data-bound', '1');
+    return '';
   }
 
   // 主题域分层统计概览(大功能): 总数/一级数/最大层级/叶子数 + 分层分布条
   function renderSubjectOverview(data) {
     var box = document.getElementById('subjectOverview'); if (!box) return;
     box.innerHTML = '';
-    if (!data.length) return;
+    if (!Array.isArray(data) || !data.length) return;
     var byId = {}; data.forEach(function (s) { byId[s.id] = s; });
     var depthOf = function (s) { var d = 1, cur = s, guard = 0; while (cur && cur.parentId != null && byId[cur.parentId] && guard++ < 20) { d++; cur = byId[cur.parentId]; } return d; };
     var rootN = data.filter(function (s) { return s.parentId == null; }).length;
@@ -103,7 +207,7 @@
   // 指标：空置主题域(叶子,可能未挂数据) / 层级是否过深(>4层) / 各分层分布是否均衡，并给出优化提示
   function renderSubjectHealth(data, byId, depthOf, byLayer) {
     var box = document.getElementById('subjectOverview'); if (!box) return;
-    if (!data.length) return;
+    if (!Array.isArray(data) || !data.length) return;
     // 叶子（空置）主题域：无任何子主题，可能尚未挂载数据
     var childIds = {}; data.forEach(function (s) { if (s.parentId != null) childIds[s.parentId] = 1; });
     var leaves = data.filter(function (s) { return !childIds[s.id]; });
@@ -173,31 +277,31 @@
   }
 
   function fillParentOptions(sel, data) {
+    if (!sel) return;
     var cur = sel.value;
     sel.innerHTML = '';
     sel.appendChild(DN.h('option', { value: '', text: '（一级主题）' }));
-    data.forEach(function (s) {
-      sel.appendChild(DN.h('option', { value: String(s.id), text: s.name }));
+    var exists = false;
+    (Array.isArray(data) ? data : []).forEach(function (s) {
+      if (String(s.id) === cur) exists = true;
+      var nm = s.name == null ? '' : String(s.name);
+      // 超长父主题名截断显示,完整名挂 title
+      sel.appendChild(DN.h('option', { value: String(s.id), text: nm.length > 24 ? nm.slice(0, 24) + '…' : nm, title: nm }));
     });
-    sel.value = cur;
+    sel.value = exists ? cur : '';   // 选中项已被删除则回落到「一级主题」,避免悬空 value
   }
 
-  function buildTree(list, parentId) {
-    var nodes = [];
-    list.forEach(function (s) {
-      var sp = s.parentId == null ? null : s.parentId;
-      if (sp === parentId) {
-        s.children = buildTree(list, s.id);
-        nodes.push(s);
-      }
-    });
-    nodes.sort(function (a, b) { return (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id; });
-    return nodes;
-  }
+  // 用 _childMap 取直接子节点(已排序),不再依赖污染源对象的 n.children
+  function childrenOf(n) { return (_childMap && _childMap[n.id]) || []; }
 
-  function renderNodes(nodes, container, depth, reloadFn) {
+  // keep 为过滤命中保留集(null=全量);counter 累计已渲染节点数,超 TREE_PAGE 截断防卡顿
+  function renderNodes(nodes, container, depth, reloadFn, keep, counter) {
     nodes.forEach(function (n) {
-      var hasChild = !!(n.children && n.children.length);
+      if (keep && !keep[n.id]) return;            // 过滤:不在命中链上的跳过
+      if (counter && counter.n >= TREE_PAGE) { counter.truncated = true; return; }
+      if (counter) counter.n++;
+      var kids = childrenOf(n);
+      var hasChild = kids.length > 0;
       var row = DN.h('div', {
         style: 'display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--divider,#f3f4f6);' +
           'padding-left:' + (12 + depth * 22) + 'px'
@@ -208,9 +312,12 @@
         style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#1890ff);margin-right:8px;flex:none'
       }));
       // 主题名 → 下钻到资产目录按该主题域筛资产(gov-assets 收 ctx.subjectId), 消除纯展示死胡同
+      // 超长名称用省略号+完整 title;无名兜底占位,避免链接空白不可点
+      var nm = (n.name == null || n.name === '') ? '(未命名)' : String(n.name);
       var nameEl = DN.h('a', {
-        href: 'javascript:void(0)', text: n.name, title: '按此主题域查看资产',
-        style: 'flex:1;font-size:13px;color:var(--text-regular,#1f2329);text-decoration:none',
+        href: 'javascript:void(0)', text: nm, title: nm + ' · 点击按此主题域查看资产',
+        style: 'flex:1;min-width:0;font-size:13px;color:var(--text-regular,#1f2329);text-decoration:none;' +
+          'overflow:hidden;text-overflow:ellipsis;white-space:nowrap',
         onclick: function () { if (window.govGoModule) govGoModule('assets', { subjectId: n.id }); }
       });
       row.appendChild(nameEl);
@@ -220,39 +327,49 @@
         href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff);font-size:13px;margin-right:12px',
         onclick: function () { editNode(n, reloadFn); }
       }));
-      ops.appendChild(DN.h('a', {
+      var delLink = DN.h('a', {
         href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#ff4d4f);font-size:13px',
         onclick: function () {
+          if (delLink.getAttribute('data-busy') === '1') return;   // 删除中防重复触发
           var tip = hasChild
-            ? '主题「' + n.name + '」含 ' + n.children.length + ' 个子主题，将一并级联删除，确认？'
-            : '确认删除主题「' + n.name + '」？';
+            ? '主题「' + nm + '」含 ' + kids.length + ' 个直接子主题，将连同其所有后代一并级联删除，且不可恢复，确认？'
+            : '确认删除主题「' + nm + '」？此操作不可恢复。';
           confirmModal(tip, function () {
-            DN.del(API + '/' + n.id).then(function () { DN.toast('已删除'); reloadFn(); })
-              .catch(function (e) { DN.toast(e.message, 'error'); });
+            delLink.setAttribute('data-busy', '1'); delLink.style.opacity = '0.5'; delLink.style.pointerEvents = 'none';
+            DN.del(API + '/' + n.id).then(function () { DN.toast('已删除', 'success'); reloadFn(); })
+              .catch(function (e) {
+                DN.toast(e && e.message ? e.message : '删除失败', 'error');
+                delLink.removeAttribute('data-busy'); delLink.style.opacity = ''; delLink.style.pointerEvents = '';
+              });
           });
         }
-      }));
+      });
+      ops.appendChild(delLink);
       row.appendChild(ops);
       container.appendChild(row);
-      if (hasChild) renderNodes(n.children, container, depth + 1, reloadFn);
+      if (hasChild) renderNodes(kids, container, depth + 1, reloadFn, keep, counter);
     });
   }
 
   // ========== 编辑（弹窗改名 + 分层下拉） ==========
   function editNode(n, reloadFn) {
-    var nameInput = DN.h('input', { class: 'iw-form-input', value: n.name || '', placeholder: '主题名称' });
+    var nameInput = DN.h('input', { class: 'iw-form-input', value: n.name || '', placeholder: '主题名称', maxlength: String(NAME_MAX) });
     var layerSel = DN.h('select', { class: 'iw-form-select' },
       LAYERS.map(function (l) { return DN.h('option', { value: l, text: l }); }));
-    layerSel.value = n.layer || 'ALL';
-    modal('编辑主题', [formRow('主题名称', nameInput), formRow('适用分层', layerSel)], function (close) {
+    layerSel.value = LAYERS.indexOf(n.layer) >= 0 ? n.layer : 'ALL';  // 历史脏分层值回落 ALL,避免下拉空选
+    modal('编辑主题', [formRow('主题名称', nameInput), formRow('适用分层', layerSel)], function (close, okBtn) {
+      if (okBtn && okBtn.classList.contains('is-loading')) return;     // 提交中忽略重复点击
       var newName = nameInput.value.trim();
-      if (!newName) { DN.toast('名称不能为空', 'error'); return; }
+      if (!newName) { DN.toast('名称不能为空', 'error'); nameInput.focus(); return; }
+      if (newName.length > NAME_MAX) { DN.toast('名称不能超过 ' + NAME_MAX + ' 个字符', 'error'); nameInput.focus(); return; }
+      if (newName === (n.name || '') && layerSel.value === (n.layer || 'ALL')) { DN.toast('未修改任何内容'); close(); return; }
+      setBtnBusy(okBtn, true, '保存中…');
       DN.api(API + '/' + n.id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, parentId: n.parentId == null ? null : n.parentId, layer: layerSel.value, sortOrder: n.sortOrder })
-      }).then(function () { DN.toast('已更新'); close(); reloadFn(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      }).then(function () { DN.toast('已更新', 'success'); close(); reloadFn(); })
+        .catch(function (e) { DN.toast(e && e.message ? e.message : '更新失败', 'error'); setBtnBusy(okBtn, false, '确定'); });
     });
   }
 
@@ -274,18 +391,48 @@
 
   function modal(title, bodyNodes, onOk) {
     var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
-    var box = DN.h('div', { style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
+    var box = DN.h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '对话框', style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
     box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
     bodyNodes.forEach(function (n) { box.appendChild(n); });
-    function close() { if (mask.parentNode) mask.parentNode.removeChild(mask); document.removeEventListener('keydown', onKey); }
+    var _closed = false;
+    function close() { if (_closed) return; _closed = true; if (mask.parentNode) mask.parentNode.removeChild(mask); document.removeEventListener('keydown', onKey); }
     function onKey(e) { if (e.key === 'Escape') close(); }
+    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定' });
+    function fireOk() { onOk(close, okBtn); }   // 第二参回传 okBtn,供调用方禁用防重复提交
+    okBtn.addEventListener('click', fireOk);
     var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
     footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: close }));
-    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(close); } }));
+    footer.appendChild(okBtn);
     box.appendChild(footer);
+    // 弹窗内输入框回车直接确定(textarea 除外),与表单交互一致
+    box.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+      var tag = e.target && e.target.tagName;
+      if (tag === 'TEXTAREA' || tag === 'A' || tag === 'BUTTON') return;
+      if (okBtn.classList.contains('is-loading')) return;
+      e.preventDefault(); fireOk();
+    });
     mask.appendChild(box);
     mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
     document.addEventListener('keydown', onKey);
     document.body.appendChild(mask);
+    // 打开后聚焦首个输入控件,便于直接键入
+    var f = box.querySelector('input,select,textarea'); if (f) { try { f.focus(); } catch (e) {} }
+  }
+
+  // 按钮忙碌态:禁用并改文案,防重复提交;done 时恢复。统一 add/编辑确认按钮使用。
+  function setBtnBusy(btn, busy, text) {
+    if (!btn) return;
+    if (busy) {
+      btn.classList.add('is-loading');
+      btn.setAttribute('aria-busy', 'true');
+      btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6';
+      if (text != null) btn.textContent = text;
+    } else {
+      btn.classList.remove('is-loading');
+      btn.removeAttribute('aria-busy');
+      btn.style.pointerEvents = ''; btn.style.opacity = '';
+      if (text != null) btn.textContent = text;
+    }
   }
 })();

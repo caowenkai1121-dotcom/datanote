@@ -3814,6 +3814,10 @@ html, body { background: var(--bg-body); color: var(--text-primary); }
 .dn-toast-success { background: var(--success-light); color: var(--success-text); border: 1px solid rgba(47,158,68,.4); }
 .dn-toast-warn { background: var(--warning-light); color: var(--warning-text); border: 1px solid rgba(232,147,12,.4); }
 .dn-toast-info { background: var(--primary-light); color: var(--info-text); border: 1px solid rgba(52,87,213,.4); }
+/* DN 治理层 tone 别名(ok/err/muted)，与 DN.toast 统一枚举对齐，避免回退到深色底 */
+.dn-toast-ok { background: var(--success-light); color: var(--success-text); border: 1px solid rgba(47,158,68,.4); }
+.dn-toast-err { background: var(--error-light); color: var(--error-text); border: 1px solid rgba(224,49,49,.4); }
+.dn-toast-muted { background: var(--bg-2, #f4f5f7); color: var(--text-secondary, #4e5969); border: 1px solid rgba(0,0,0,.12); }
 
 /* ============================================================
    11. 历史 / 版本表 / 其它通用

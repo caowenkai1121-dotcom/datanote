@@ -5,10 +5,19 @@
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
+  // 安全跳转：目标导航函数缺失时给出明确提示，而不是静默无效点击(死节点)
+  function safeGo(fnName, run, label) {
+    if (typeof window[fnName] === 'function') {
+      try { run(); } catch (e) { if (DN && DN.toast) DN.toast('跳转失败：' + (e && e.message ? e.message : e), 'err'); }
+    } else if (DN && DN.toast) {
+      DN.toast('暂时无法跳转到「' + (label || '目标模块') + '」', 'warn');
+    }
+  }
+
   // 5 条端到端业务闭环链(架构师定义)。每步 {t:标题, go:点击跳转}
-  function gv(key) { return function () { if (window.govGoModule) govGoModule(key, {}); }; }
-  function nv(route, ctx) { return function () { if (window.navigateTo) navigateTo(route, ctx || {}); }; }
-  function mv(key) { return function () { if (window.navigateTo) navigateTo('mdm', { mdm: key }); }; }
+  function gv(key) { return function () { safeGo('govGoModule', function () { govGoModule(key, {}); }, key); }; }
+  function nv(route, ctx) { return function () { safeGo('navigateTo', function () { navigateTo(route, ctx || {}); }, route); }; }
+  function mv(key) { return function () { safeGo('navigateTo', function () { navigateTo('mdm', { mdm: key }); }, 'mdm/' + key); }; }
 
   var CHAINS = [
     { name: '① 数据质量闭环', color: '#1d6fff', steps: [
@@ -54,23 +63,39 @@
     { t: '消费日志', d: '热度/排行/审计', go: gv('consumption') }
   ];
 
+  // 超长文本截断：节点标题过长时截断并以 title 悬浮显示全文(避免撑破布局)
+  function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; }
+  // 给可点击节点统一加键盘可达性(Enter/空格触发)，与鼠标点击等价(a11y)
+  function bindActivate(el, handler) {
+    el.addEventListener('click', handler);
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(e); } });
+  }
+
   window.GOV_RENDERERS.govmap = function (c) {
+    if (!c || !c.appendChild) return;   // 容器缺失则直接返回，避免后续空指针
     c.appendChild(DN.h('div', { class: 'gov-desc', text: '把全系统跨模块联动可视化为 5 条端到端业务闭环链 + 6 个实体枢纽。点击任一节点直达对应模块——一张"活地图"作为导航中枢。' }));
 
     // 业务闭环链
     var chainCard = DN.card({ title: '端到端业务闭环链', icon: 'share' });
-    CHAINS.forEach(function (ch) {
-      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + ch.color + ';border-radius:8px;' });
-      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + ch.color, text: ch.name }));
+    if (!Array.isArray(CHAINS) || !CHAINS.length) {
+      chainCard.body.appendChild(DN.empty('暂无业务闭环链配置', 'inbox'));
+    } else CHAINS.forEach(function (ch) {
+      if (!ch) return;
+      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#1890ff)') + ';border-radius:8px;' });
+      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary,#1890ff)'), text: ch.name || '未命名链' }));
       var flow = DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;' });
-      ch.steps.forEach(function (s, i) {
-        var pill = DN.h('a', { href: 'javascript:void(0)', text: s.t,
+      var steps = Array.isArray(ch.steps) ? ch.steps : [];
+      if (!steps.length) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:12px;', text: '（暂无步骤）' }));
+      steps.forEach(function (s, i) {
+        if (!s) return;
+        var full = String(s.t == null ? '' : s.t);
+        var pill = DN.h('a', { href: 'javascript:void(0)', text: clip(full, 18), title: full, role: 'button',
           style: 'display:inline-block;padding:5px 12px;border-radius:16px;background:var(--bg-body,#f5f6fa);border:1px solid var(--border,#e5e6eb);font-size:12px;color:var(--text-primary);cursor:pointer;transition:all .15s;' });
-        pill.onmouseover = function () { pill.style.background = ch.color; pill.style.color = '#fff'; pill.style.borderColor = ch.color; };
+        pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary,#1890ff)'; pill.style.color = '#fff'; pill.style.borderColor = ch.color || 'var(--primary,#1890ff)'; };
         pill.onmouseout = function () { pill.style.background = 'var(--bg-body,#f5f6fa)'; pill.style.color = 'var(--text-primary)'; pill.style.borderColor = 'var(--border,#e5e6eb)'; };
-        pill.onclick = s.go;
+        if (typeof s.go === 'function') bindActivate(pill, s.go);
         flow.appendChild(pill);
-        if (i < ch.steps.length - 1) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:13px;', text: '→' }));
+        if (i < steps.length - 1) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:13px;', text: '→' }));
       });
       row.appendChild(flow);
       chainCard.body.appendChild(row);
@@ -79,17 +104,23 @@
 
     // 实体枢纽
     var hubCard = DN.card({ title: '联动枢纽实体（改一处牵动全局）', icon: 'grid' });
-    var grid = DN.h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;' });
-    HUBS.forEach(function (h) {
-      var box = DN.h('div', { style: 'padding:12px;border:1px solid var(--border,#e5e6eb);border-radius:10px;cursor:pointer;transition:all .15s;background:var(--bg-card,#fff);' });
-      box.onmouseover = function () { box.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'; box.style.transform = 'translateY(-2px)'; };
-      box.onmouseout = function () { box.style.boxShadow = ''; box.style.transform = ''; };
-      box.onclick = h.go;
-      box.appendChild(DN.h('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: h.t }));
-      box.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);', text: '→ ' + h.d }));
-      grid.appendChild(box);
-    });
-    hubCard.body.appendChild(grid);
+    if (!Array.isArray(HUBS) || !HUBS.length) {
+      hubCard.body.appendChild(DN.empty('暂无枢纽实体配置', 'inbox'));
+    } else {
+      var grid = DN.h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;' });
+      HUBS.forEach(function (h) {
+        if (!h) return;
+        var box = DN.h('div', { role: 'button', tabindex: '0', title: (h.t || '') + ' → ' + (h.d || ''),
+          style: 'padding:12px;border:1px solid var(--border,#e5e6eb);border-radius:10px;cursor:pointer;transition:all .15s;background:var(--bg-card,#fff);outline-offset:2px;' });
+        box.onmouseover = function () { box.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'; box.style.transform = 'translateY(-2px)'; };
+        box.onmouseout = function () { box.style.boxShadow = ''; box.style.transform = ''; };
+        if (typeof h.go === 'function') bindActivate(box, h.go);
+        box.appendChild(DN.h('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: clip(h.t, 20) }));
+        box.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', text: '→ ' + clip(h.d, 40) }));
+        grid.appendChild(box);
+      });
+      hubCard.body.appendChild(grid);
+    }
     c.appendChild(hubCard.el);
   };
 })();

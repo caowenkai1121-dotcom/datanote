@@ -6,6 +6,19 @@
   var levelNames = []; // 当前 scheme 下的密级名称(供确认下拉)
   var clPicker = null; // 对表识别库表选择器
   var rulesTable = null; // 敏感规则表格句柄
+  var _scanBtn = null; // 「识别」按钮句柄(加载中置灰)
+  var _pendBtn = null; // 「扫描待确认列」按钮句柄(加载中置灰)
+  var _busy = {}; // 各异步动作的去重/防重复提交标记(scan/pending/levels/rules/heat)
+
+  function errMsg(e) { return (e && e.message) ? e.message : '请稍后重试'; }
+  // 加载中禁用按钮(置灰+aria-disabled),返回还原函数,防重复提交
+  function lockBtn(btn, busyText) {
+    if (!btn) return function () {};
+    var old = btn.textContent, oldPe = btn.style.pointerEvents;
+    btn.textContent = busyText || '处理中…';
+    btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6'; btn.setAttribute('aria-disabled', 'true');
+    return function () { btn.textContent = old; btn.style.pointerEvents = oldPe; btn.style.opacity = ''; btn.removeAttribute('aria-disabled'); };
+  }
 
   window.GOV_RENDERERS.classification = function (c) {
     // 1. 分级模型
@@ -25,6 +38,7 @@
 
     // 待确认敏感列提醒（基于热力涉及的表，扫描出置信度中等待人工确认的列）
     var pendBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '扫描待确认列', onclick: loadPendingCols });
+    _pendBtn = pendBtn; // 供 loadPendingCols 加载中置灰防重复扫描
     var pendCard = DN.card({ title: '待确认敏感列提醒（置信度中等）', icon: 'alert', actions: pendBtn });
     c.appendChild(pendCard.el);
     pendCard.body.appendChild(DN.h('div', { class: 'gov-desc', text: '聚合已识别出敏感特征但置信度处于中等区间（50%~80%）的列，需人工确认后到「对表采样识别」中打标。' }));
@@ -41,6 +55,7 @@
     // 3. 对表识别
     clPicker = DN.dbTablePicker({});
     var scanBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '识别', onclick: scanTable });
+    _scanBtn = scanBtn; // 供 scanTable 加载中置灰防重复识别
     var trailBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '打标历史', onclick: function () {
       var db = clPicker.db(), table = clPicker.table();
       if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
@@ -71,14 +86,20 @@
   var _clHeatRows = [], _clHeatView = 'heat';
   window.govClSetHeatView = function (v) { _clHeatView = v; renderClHeat(); };
   function loadHeatmap() {
+    var box = document.getElementById('clHeat');
+    if (box) { box.innerHTML = ''; box.appendChild(DN.skeleton(2)); }
     DN.get('/api/gov/classification/heatmap').then(function (rows) {
-      _clHeatRows = rows || [];
+      _clHeatRows = Array.isArray(rows) ? rows : [];
       renderClHeat();
-    }).catch(function () { var box = document.getElementById('clHeat'); if (box) box.innerHTML = ''; });
+    }).catch(function (e) {
+      _clHeatRows = [];
+      var b = document.getElementById('clHeat');
+      if (b) { b.innerHTML = ''; b.appendChild(DN.errorBox('敏感分布热力加载失败：' + errMsg(e), loadHeatmap)); }
+    });
   }
   function renderClHeat() {
     var box = document.getElementById('clHeat'); if (!box) return;
-    var rows = _clHeatRows;
+    var rows = Array.isArray(_clHeatRows) ? _clHeatRows : [];
     box.innerHTML = '';
     if (!rows.length) { box.appendChild(DN.empty('暂无已标敏感列（先在下方采样识别并确认打标）', 'tag')); return; }
     var totalCols = rows.reduce(function (s, r) { return s + (Number(r.count) || 0); }, 0);
@@ -126,10 +147,13 @@
   }
 
   function showAuditTrail(db, table) {
+    if (!db || !table) { DN.toast('缺少库或表信息，无法查看打标历史', 'error'); return; }
+    var d = DN.drawer('打标审计溯源 · ' + db + '.' + table, DN.skeleton(4));
     DN.get('/api/gov/classification/audit-trail?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).then(function (rows) {
+      rows = Array.isArray(rows) ? rows : [];
       var body = DN.h('div', {});
-      body.appendChild(DN.h('div', { class: 'gov-desc', text: db + '.' + table + ' · 共 ' + (rows ? rows.length : 0) + ' 条打标记录' }));
-      if (!rows || !rows.length) { body.appendChild(DN.empty('该表暂无打标历史', 'doc')); }
+      body.appendChild(DN.h('div', { class: 'gov-desc', text: db + '.' + table + ' · 共 ' + rows.length + ' 条打标记录' }));
+      if (!rows.length) { body.appendChild(DN.empty('该表暂无打标历史', 'doc')); }
       else body.appendChild(DN.table({
         search: false, pageSize: 15,
         columns: [
@@ -142,70 +166,100 @@
         ],
         rows: rows
       }));
-      DN.drawer('打标审计溯源 · ' + db + '.' + table, body);
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+      d.body.innerHTML = ''; d.body.appendChild(body); // 复用已打开抽屉,避免叠开第二层
+    }).catch(function (e) {
+      d.body.innerHTML = '';
+      d.body.appendChild(DN.errorBox('打标历史加载失败：' + errMsg(e), function () { d.close(); showAuditTrail(db, table); }));
+    });
   }
 
   function loadLevels() {
-    var scheme = document.getElementById('clScheme').value;
+    var schemeSel = document.getElementById('clScheme');
+    var box = document.getElementById('clLevels');
+    if (!schemeSel || !box) return;
+    var scheme = schemeSel.value;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(1));
     DN.get('/api/gov/classification/levels?scheme=' + encodeURIComponent(scheme)).then(function (rows) {
-      levelNames = (rows || []).map(function (r) { return r.levelName; });
-      var box = document.getElementById('clLevels');
+      rows = Array.isArray(rows) ? rows : [];
+      levelNames = rows.map(function (r) { return r.levelName; }).filter(Boolean);
       box.innerHTML = '';
-      if (!rows || !rows.length) { box.appendChild(DN.empty('无分级', 'layers')); return; }
+      if (!rows.length) { box.appendChild(DN.empty('该分级方案下暂无密级定义', 'layers')); return; }
       var wrap = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' });
-      rows.forEach(function (r) { wrap.appendChild(DN.pill(r.levelName, 'info')); });
+      rows.forEach(function (r) { wrap.appendChild(DN.pill(r.levelName || '-', 'info')); });
       box.appendChild(wrap);
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) {
+      levelNames = [];
+      box.innerHTML = ''; box.appendChild(DN.errorBox('分级模型加载失败：' + errMsg(e), loadLevels));
+    });
+  }
+
+  // 超长文本截断 + title 悬停查看全文(模式/类型可能很长)
+  function ellip(s, n) {
+    s = (s == null ? '' : String(s)); n = n || 40;
+    if (s.length <= n) return s || '-';
+    return DN.h('span', { title: s, text: s.slice(0, n) + '…' });
   }
 
   function loadRules() {
+    var box = document.getElementById('clRules');
+    if (!box) return;
+    box.innerHTML = ''; box.appendChild(DN.skeleton(3));
     DN.get('/api/gov/classification/rules').then(function (rows) {
-      var box = document.getElementById('clRules');
+      rows = Array.isArray(rows) ? rows : [];
       box.innerHTML = '';
       var tbl = DN.table({
         columns: [
-          { key: 'ruleName', label: '规则名' },
-          { label: '匹配', render: function (r) { return DN.pill(r.matchType, 'muted'); } },
-          { key: 'pattern', label: '模式' },
-          { key: 'sensitiveType', label: '类型' },
+          { key: 'ruleName', label: '规则名', render: function (r) { return ellip(r.ruleName, 30); } },
+          { label: '匹配', render: function (r) { return DN.pill(r.matchType || '-', 'muted'); } },
+          { key: 'pattern', label: '模式', render: function (r) { return ellip(r.pattern, 40); } },
+          { key: 'sensitiveType', label: '类型', render: function (r) { return ellip(r.sensitiveType, 20); } },
           { label: '建议密级', render: function (r) { return r.suggestLevel || '-'; } },
           { label: '状态', render: function (r) { return DN.pill(r.enabled === 1 ? '启用' : '停用', r.enabled === 1 ? 'ok' : 'muted'); } },
           { label: '操作', render: renderRuleOps }
         ],
-        rows: rows || [],
+        rows: rows,
         searchKeys: ['ruleName', 'matchType', 'pattern', 'sensitiveType', 'suggestLevel'],
         searchPlaceholder: '搜索规则名/类型/模式...',
         empty: '暂无规则', emptyIcon: 'shield'
       });
       rulesTable = tbl;
       box.appendChild(tbl);
-    }).catch(function (e) { DN.toast(e.message, 'error'); });
+    }).catch(function (e) {
+      box.innerHTML = ''; box.appendChild(DN.errorBox('敏感规则加载失败：' + errMsg(e), loadRules));
+    });
   }
 
   function renderRuleOps(r) {
     var wrap = DN.h('span', {});
-    wrap.appendChild(DN.h('a', {
+    var toggleA = DN.h('a', {
       href: 'javascript:void(0)', text: r.enabled === 1 ? '停用' : '启用',
       style: 'color:var(--primary,#1890ff);margin-right:12px',
       onclick: function () {
+        var restore = lockBtn(toggleA, '处理中…');
         DN.post('/api/gov/classification/rules/' + r.id + '/toggle')
-          .then(loadRules).catch(function (e) { DN.toast(e.message, 'error'); });
+          .then(function () { DN.toast(r.enabled === 1 ? '已停用' : '已启用', 'success'); loadRules(); })
+          .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
       }
-    }));
-    wrap.appendChild(DN.h('a', {
+    });
+    wrap.appendChild(toggleA);
+    var delA = DN.h('a', {
       href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#ff4d4f)',
       onclick: function () {
+        if (!window.confirm('确定删除规则「' + (r.ruleName || '') + '」吗？删除后将不再用于敏感识别，且无法撤销。')) return;
+        var restore = lockBtn(delA, '删除中…');
         DN.del('/api/gov/classification/rules/' + r.id)
-          .then(function () { DN.toast('已删除'); loadRules(); }).catch(function (e) { DN.toast(e.message, 'error'); });
+          .then(function () { DN.toast('已删除', 'success'); loadRules(); })
+          .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
       }
-    }));
+    });
+    wrap.appendChild(delA);
     return wrap;
   }
 
   // 就近 .gov-form 新增规则表单（替代 window.prompt 链）
   function toggleRuleForm() {
     var box = document.getElementById('clRuleForm');
+    if (!box) return;
     if (box.firstChild) { box.innerHTML = ''; return; }
     box.innerHTML = '';
 
@@ -231,18 +285,26 @@
     panel.appendChild(row('敏感类型', sensitiveType));
     panel.appendChild(row('建议密级', suggestLevel));
     var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
-    actions.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存',
+    var saveBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存',
       onclick: function () {
-        if (!name.value.trim()) { DN.toast('规则名必填', 'error'); return; }
-        if (!pattern.value.trim()) { DN.toast('模式必填', 'error'); return; }
-        if (!sensitiveType.value.trim()) { DN.toast('敏感类型必填', 'error'); return; }
+        var nm = name.value.trim(), pt = pattern.value.trim(), st = sensitiveType.value.trim();
+        if (!nm) { DN.toast('规则名必填', 'error'); name.focus(); return; }
+        if (nm.length > 60) { DN.toast('规则名过长（最多 60 字）', 'error'); name.focus(); return; }
+        if (!pt) { DN.toast('模式必填', 'error'); pattern.focus(); return; }
+        if (!st) { DN.toast('敏感类型必填', 'error'); sensitiveType.focus(); return; }
+        // 正则匹配方式：校验模式是否为合法正则，避免存入坏规则
+        if (matchSel.value === 'REGEX') {
+          try { new RegExp(pt); } catch (re) { DN.toast('正则表达式不合法：' + re.message, 'error'); pattern.focus(); return; }
+        }
+        var restore = lockBtn(saveBtn, '保存中…');
         DN.post('/api/gov/classification/rules', {
-          ruleName: name.value.trim(), matchType: matchSel.value,
-          pattern: pattern.value.trim(), sensitiveType: sensitiveType.value.trim(),
+          ruleName: nm, matchType: matchSel.value,
+          pattern: pt, sensitiveType: st,
           suggestLevel: suggestLevel.value.trim(), enabled: 1
-        }).then(function () { DN.toast('已保存'); box.innerHTML = ''; loadRules(); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
-      } }));
+        }).then(function () { DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
+          .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
+      } });
+    actions.appendChild(saveBtn);
     actions.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消',
       onclick: function () { box.innerHTML = ''; } }));
     panel.appendChild(actions);
@@ -257,19 +319,27 @@
   }
 
   function scanTable() {
+    if (!clPicker) return;
     var db = clPicker.db();
     var table = clPicker.table();
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('clScan');
+    if (!box) return;
+    if (_busy.scan) return; // 去重:识别进行中不再并发
+    _busy.scan = true;
+    var unlock = lockBtn(_scanBtn, '识别中…');
     box.innerHTML = '';
     box.appendChild(DN.skeleton(3));
     DN.get('/api/gov/classification/scan?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table))
       .then(function (rows) {
+        _busy.scan = false; unlock();
         box.innerHTML = '';
-        if (!rows || !rows.length) { box.appendChild(DN.empty('未识别到敏感列', 'check')); return; }
-        rows.sort(function (a, b) { return (b.confidence || 0) - (a.confidence || 0); }); // 高置信度优先
+        rows = Array.isArray(rows) ? rows : [];
+        if (!rows.length) { box.appendChild(DN.empty('未识别到敏感列', 'check')); return; }
+        rows.sort(function (a, b) { return (Number(b.confidence) || 0) - (Number(a.confidence) || 0); }); // 高置信度优先
 
-        var opts = levelNames.map(function (n) { return '<option value="' + DN.esc(n) + '">' + DN.esc(n) + '</option>'; }).join('');
+        var opts = (levelNames || []).map(function (n) { return '<option value="' + DN.esc(n) + '">' + DN.esc(n) + '</option>'; }).join('');
+        if (!levelNames || !levelNames.length) { box.appendChild(DN.alertNode('密级清单尚未加载，建议密级暂不可选，请先刷新「分级模型」。', 'warn')); }
         var selAll = DN.h('input', { type: 'checkbox', title: '全选' });
         var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)' });
         var minConfSel = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
@@ -322,32 +392,41 @@
           [selAll, DN.h('span', { text: '全选' })]);
         if (confirmBtn.parentNode) confirmBtn.parentNode.insertBefore(selAllWrap, confirmBtn);
 
-        confirmBtn.onclick = function () { confirmLabels(db, table, rows); };
+        confirmBtn.onclick = function () { confirmLabels(db, table, rows, confirmBtn); };
         box.appendChild(tbl);
       }).catch(function (e) {
+        _busy.scan = false; unlock();
         box.innerHTML = '';
-        box.appendChild(DN.errorBox('识别失败: ' + e.message, function () { scanTable(); }));
+        box.appendChild(DN.errorBox('识别失败: ' + errMsg(e), function () { scanTable(); }));
       });
   }
 
-  function confirmLabels(db, table, rows) {
-    var tasks = [];
-    rows.forEach(function (r) {
-      if (!r._cb.checked) return;
-      tasks.push(DN.post('/api/gov/classification/confirm', {
+  function confirmLabels(db, table, rows, btn) {
+    var picked = (rows || []).filter(function (r) { return r._cb && r._cb.checked; });
+    if (!picked.length) { DN.toast('请先勾选要打标的列', 'error'); return; }
+    // 校验：勾选的每列都必须选定新密级，否则打标无意义
+    var noLevel = picked.filter(function (r) { return !r._levelSel || !r._levelSel.value; });
+    if (noLevel.length) { DN.toast('有 ' + noLevel.length + ' 列未选择「建议密级」，请先选定密级', 'error'); return; }
+    if (!window.confirm('将对 ' + picked.length + ' 列写入新密级标记，确认打标？')) return;
+    var restore = lockBtn(btn, '打标中…');
+    var tasks = picked.map(function (r) {
+      return DN.post('/api/gov/classification/confirm', {
         db: db, table: table, column: r.column, newLevel: r._levelSel.value,
         sensitiveType: r.sensitiveType, reason: '采样识别确认'
-      }));
+      });
     });
-    if (!tasks.length) { DN.toast('请先勾选要打标的列', 'error'); return; }
-    Promise.all(tasks).then(function () { DN.toast('已打标 ' + tasks.length + ' 列'); scanTable(); })
-      .catch(function (e) { DN.toast(e.message, 'error'); });
+    Promise.all(tasks).then(function () {
+      DN.toast('已打标 ' + tasks.length + ' 列', 'success');
+      loadHeatmap(); // 打标后敏感分布热力同步刷新(联动)
+      scanTable();
+    }).catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
   }
 
   // 待确认敏感列：对热力涉及的表逐表采样识别，聚合置信度 50%~80% 的列（复用 scan 端点）
   function loadPendingCols() {
     var box = document.getElementById('clPending'); if (!box) return;
-    var tables = (_clHeatRows || []).filter(function (r) { return r && r.db && r.table; });
+    if (_busy.pending) return; // 去重:扫描进行中不再并发
+    var tables = (Array.isArray(_clHeatRows) ? _clHeatRows : []).filter(function (r) { return r && r.db && r.table; });
     if (!tables.length) {
       box.innerHTML = '';
       var em0 = DN.empty('暂无已标敏感表可供扫描', 'tag');
@@ -357,19 +436,22 @@
       box.appendChild(em0);
       return;
     }
+    _busy.pending = true;
+    var unlock = lockBtn(_pendBtn, '扫描中…');
     var scanList = tables.slice(0, 30); // 上限守卫：仅扫描敏感列数最多的前 30 张表
     box.innerHTML = '';
     box.appendChild(DN.h('div', { class: 'gov-desc', text: '正在扫描 ' + scanList.length + ' 张表…' }));
     box.appendChild(DN.skeleton(3));
     var jobs = scanList.map(function (t) {
       return DN.get('/api/gov/classification/scan?db=' + encodeURIComponent(t.db) + '&table=' + encodeURIComponent(t.table))
-        .then(function (cols) { return { db: t.db, table: t.table, cols: cols || [] }; })
+        .then(function (cols) { return { db: t.db, table: t.table, cols: Array.isArray(cols) ? cols : [] }; })
         .catch(function () { return { db: t.db, table: t.table, cols: [] }; });
     });
     Promise.all(jobs).then(function (results) {
+      _busy.pending = false; unlock();
       var pending = [];
       results.forEach(function (res) {
-        res.cols.forEach(function (col) {
+        (res.cols || []).forEach(function (col) {
           var conf = Number(col.confidence) || 0;
           if (conf >= 50 && conf < 80) {
             pending.push({
@@ -385,6 +467,9 @@
       });
       pending.sort(function (a, b) { return b.confidence - a.confidence; }); // 高置信优先（更接近可确认）
       renderPendingCols(box, pending, scanList.length, tables.length);
+    }).catch(function (e) {
+      _busy.pending = false; unlock();
+      box.innerHTML = ''; box.appendChild(DN.errorBox('待确认列扫描失败：' + errMsg(e), loadPendingCols));
     });
   }
 

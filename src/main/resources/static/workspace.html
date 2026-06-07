@@ -14,17 +14,17 @@
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
 <script src="js/dn-common.js?v=q100r80"></script>
 <script src="js/gov-assets.js?v=q100r99"></script>
-<script src="js/gov-lineage.js?v=q100r92"></script>
+<script src="js/gov-lineage.js?v=q100r100"></script>
 <script src="js/gov-quality.js?v=q100r99"></script>
-<script src="js/gov-standard.js?v=q100r92"></script>
-<script src="js/gov-classification.js?v=q100r89"></script>
-<script src="js/gov-security.js?v=q100r94"></script>
+<script src="js/gov-standard.js?v=q100r100"></script>
+<script src="js/gov-classification.js?v=q100r100"></script>
+<script src="js/gov-security.js?v=q100r100"></script>
 <script src="js/gov-health.js?v=q100r99"></script>
-<script src="js/gov-audit.js?v=q100r92"></script>
+<script src="js/gov-audit.js?v=q100r100"></script>
 <script src="js/gov-overview.js?v=q100r99"></script>
-<script src="js/gov-subject.js?v=q100r92"></script>
+<script src="js/gov-subject.js?v=q100r100"></script>
 <script src="js/gov-consumption.js?v=q100r99"></script>
-<script src="js/gov-govmap.js?v=q100r95"></script>
+<script src="js/gov-govmap.js?v=q100r100"></script>
 <script src="js/home-dashboard.js?v=q100r86"></script>
 <script src="js/mdm.js?v=q100r97"></script>
 <script src="js/mdm-survivorship.js?v=q100r97"></script>
@@ -48,6 +48,10 @@
   .dn-toast-success { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
   .dn-toast-warn { background:#fffbe6; color:#d48806; border:1px solid #ffe58f; }
   .dn-toast-info { background:#e6f7ff; color:#096dd9; border:1px solid #91d5ff; }
+  /* DN 治理层 tone 别名(ok/err/muted)，与 DN.toast 统一枚举对齐，避免回退到深色底 */
+  .dn-toast-ok { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
+  .dn-toast-err { background:#fff1f0; color:#cf1322; border:1px solid #ffa39e; }
+  .dn-toast-muted { background:#f4f5f7; color:#4e5969; border:1px solid #dcdfe6; }
 </style>
 
 <!-- ===== Header ===== -->

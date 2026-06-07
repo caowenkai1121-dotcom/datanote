@@ -8,21 +8,68 @@
 
   // 三处库表选择器（替代自由文本框，级联真实元数据）
   var lnPicker = null, impPicker = null, grPicker = null;
+  // centerGraphOn 的轮询定时器句柄: 新一次聚焦前先清掉上一次, 避免多个轮询竞争/泄漏
+  var centerWaitTimer = null;
+  // 进行中的 GET 去重: 同 url 复用同一 Promise, 杜绝重复点击产生的并发同请求
+  var inflight = {};
+
+  /** 异步期间锁定按钮防重复提交: 加 loading 态 + 禁交互, 返回 done() 还原(幂等)。与各治理模块一致。 */
+  function lockBtn(btn) {
+    if (!btn) return function () {};
+    btn.classList.add('is-loading');
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.6';
+    btn.setAttribute('aria-busy', 'true');
+    var done = false;
+    return function () {
+      if (done) return; done = true;
+      btn.classList.remove('is-loading');
+      btn.style.pointerEvents = '';
+      btn.style.opacity = '';
+      btn.removeAttribute('aria-busy');
+    };
+  }
+
+  /** 去重 GET: 相同 url 在途时复用同一 Promise(完成即释放), 避免重复请求风暴。 */
+  function getOnce(url) {
+    if (inflight[url]) return inflight[url];
+    var p = DN.get(url);
+    inflight[url] = p;
+    p.then(function () { delete inflight[url]; }, function () { delete inflight[url]; });
+    return p;
+  }
+
+  /** 超长文本截断 + title 悬浮看全文(返回安全转义的 DOM 节点)。 */
+  function clip(s, max) {
+    s = s == null ? '' : String(s);
+    max = max || 60;
+    if (s.length <= max) return DN.h('span', { text: s });
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s });
+  }
 
   window.GOV_RENDERERS.lineage = function (c) {
+    // 重新进入本页时清理上一次挂载遗留的轮询定时器/在途请求映射, 避免跨挂载的定时器泄漏与状态串台
+    if (centerWaitTimer) { clearTimeout(centerWaitTimer); centerWaitTimer = null; }
+    inflight = {};
     // 顶部操作条
     var bar = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px' });
     bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
-      onclick: function () {
+      onclick: function (e) {
+        // 重建会全量覆盖血缘边(破坏性), 二次确认; 期间锁按钮防重复提交
+        if (!window.confirm('将依据同步任务全量重建血缘边, 可能覆盖现有边数据。确认继续？')) return;
+        var done = lockBtn(e.currentTarget);
         DN.post('/api/lineage/rebuild-edges').then(function (r) {
-          DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边');
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+          DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边', 'success');
+        }).catch(function (err) { DN.toast(err && err.message ? err.message : '重建失败', 'error'); })
+          .then(done);
       } }));
     bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘',
-      onclick: function () {
+      onclick: function (e) {
+        var done = lockBtn(e.currentTarget);
         DN.post('/api/lineage/parse-scripts').then(function (r) {
-          DN.toast('SQL血缘已解析 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条边');
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+          DN.toast('SQL血缘已解析 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条边', 'success');
+        }).catch(function (err) { DN.toast(err && err.message ? err.message : '解析失败', 'error'); })
+          .then(done);
       } }));
     c.appendChild(bar);
 
@@ -32,7 +79,7 @@
     lnPicker = DN.dbTablePicker({});
     var q = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
     q.appendChild(lnPicker.el);
-    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '查询血缘', onclick: queryLineage }));
+    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '查询血缘', onclick: function (e) { queryLineage(e); } }));
     qCard.body.appendChild(q);
     qCard.body.appendChild(DN.h('div', { id: 'lnResult' }));
 
@@ -43,9 +90,9 @@
     var iq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
     iq.appendChild(impPicker.el);
     iq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '下游影响',
-      onclick: function () { queryFlow('impact'); } }));
+      onclick: function (e) { queryFlow('impact', e); } }));
     iq.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上游溯源',
-      onclick: function () { queryFlow('trace'); } }));
+      onclick: function (e) { queryFlow('trace', e); } }));
     iCard.body.appendChild(iq);
     iCard.body.appendChild(DN.h('div', { id: 'impResult' }));
 
@@ -59,7 +106,7 @@
     var gDep = DN.h('input', { id: 'grDepth', type: 'number', value: '2', min: '1', max: '6',
       class: 'iw-form-input', title: '跳数', style: 'width:60px' });
     gq.appendChild(gDep);
-    gq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '画血缘图', onclick: queryGraph }));
+    gq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '画血缘图', onclick: function (e) { queryGraph(e); } }));
     gCard.body.appendChild(gq);
     // 图例
     gCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:8px',
@@ -96,7 +143,7 @@
     var oq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
     oq.appendChild(DN.h('span', { text: '库', style: 'color:var(--text-muted,#86909c);font-size:13px' }));
     oq.appendChild(oSel);
-    oq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检测孤儿表', onclick: detectOrphans }));
+    oq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检测孤儿表', onclick: function (e) { detectOrphans(e); } }));
     oCard.body.appendChild(oq);
     oCard.body.appendChild(DN.h('div', { id: 'orphanResult' }));
   };
@@ -117,36 +164,53 @@
   }
 
   // 孤儿表检测：取所选库全部表，逐表查表级上下游边，聚合出上下游皆空者
-  function detectOrphans() {
-    var db = document.getElementById('orphanDb').value;
-    if (!db) { DN.toast('请先选择库', 'error'); return; }
+  var ORPHAN_SCAN_CAP = 300; // 超大库逐表查边会造成请求风暴, 限定单次扫描上限
+  function detectOrphans(e) {
+    var sel = document.getElementById('orphanDb');
+    var db = sel ? sel.value : '';
+    if (!db) { DN.toast('请先选择库', 'error'); if (sel) sel.focus(); return; }
     var box = document.getElementById('orphanResult');
+    if (!box) return;
+    var btn = e && e.currentTarget ? e.currentTarget : null;
+    var done = lockBtn(btn);
     box.innerHTML = '';
     box.appendChild(DN.skeleton(4));
     DN.metaTables(db).then(function (tables) {
       tables = tables || [];
       if (!tables.length) { box.innerHTML = ''; box.appendChild(DN.empty('该库下暂无表', 'db')); return; }
-      return mapLimit(tables, 6, function (t) {
+      var total = tables.length;
+      var scanList = tables;
+      var capped = false;
+      if (total > ORPHAN_SCAN_CAP) {   // 边界: 仅扫描前 N 张, 提示用户已截断, 防止上千请求卡死
+        scanList = tables.slice(0, ORPHAN_SCAN_CAP);
+        capped = true;
+        DN.toast('该库表数过多, 本次仅扫描前 ' + ORPHAN_SCAN_CAP + ' 张', 'warn');
+      }
+      return mapLimit(scanList, 6, function (t) {
         var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(t);
-        return DN.get('/api/lineage/table-edges' + qs).then(function (nb) {
+        return getOnce('/api/lineage/table-edges' + qs).then(function (nb) {
           nb = nb || {};
           var up = (nb.upstream || []).length, down = (nb.downstream || []).length;
           return { table: t, up: up, down: down };
         });
       }).then(function (stats) {
-        renderOrphans(box, db, tables.length, stats.filter(function (s) { return s; }));
+        renderOrphans(box, db, capped ? scanList.length : total, stats.filter(function (s) { return s; }), capped ? total : 0);
       });
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + (e && e.message ? e.message : e), function () { detectOrphans(); })); });
+    }).catch(function (err) { box.innerHTML = ''; box.appendChild(DN.errorBox('检测失败: ' + (err && err.message ? err.message : err), function () { detectOrphans(); })); })
+      .then(done);
   }
 
   /** 把指定库表填入“血缘图谱”选择器并触发画图（以该表为中心）。
       复用现有 grPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。
       用于：孤儿表下钻核验、R21 深链聚焦、图节点双击切换中心。 */
   function centerGraphOn(db, table) {
+    if (!db || !table) { DN.toast('缺少库或表, 无法聚焦图谱', 'error'); return; }
     if (!grPicker || !grPicker.el) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
     var sels = grPicker.el.querySelectorAll('select');
     var dbSel = sels[0], tbSel = sels[1];
     if (!dbSel || !tbSel) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
+    // 新一次聚焦前清掉上一次未完成的轮询, 避免多个 waitTable 定时器同时跑(竞争 + 泄漏)
+    if (centerWaitTimer) { clearTimeout(centerWaitTimer); centerWaitTimer = null; }
     dbSel.value = db;
     // 选库后需触发级联加载表列表，再等待目标表选项出现后选中并画图
     dbSel.dispatchEvent(new Event('change'));
@@ -154,14 +218,16 @@
     (function waitTable() {
       var hit = Array.prototype.some.call(tbSel.options, function (o) { return o.value === table; });
       if (hit) {
+        centerWaitTimer = null;
         tbSel.value = table;
         tbSel.dispatchEvent(new Event('change'));
         var gr = document.getElementById('graphResult');
         if (gr && gr.scrollIntoView) gr.scrollIntoView({ behavior: 'smooth', block: 'center' });
         queryGraph();
       } else if (tries++ < 40) {
-        setTimeout(waitTable, 100); // 表列表为异步加载，轮询至多约 4 秒
+        centerWaitTimer = setTimeout(waitTable, 100); // 表列表为异步加载，轮询至多约 4 秒
       } else {
+        centerWaitTimer = null;
         DN.toast('已为你选择「' + db + '」库，请在“血缘图谱”手动选表查询', 'info');
         if (grPicker.el.scrollIntoView) grPicker.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -192,8 +258,9 @@
     return wrap;
   }
 
-  function renderOrphans(box, db, total, stats) {
+  function renderOrphans(box, db, total, stats, fullTotal) {
     box.innerHTML = '';
+    stats = stats || [];
     var orphans = stats.filter(function (s) { return s.up === 0 && s.down === 0; });
     var scanned = stats.length;                 // 实际成功取到边数据的表(排除请求失败)
     var connected = Math.max(0, scanned - orphans.length);
@@ -201,7 +268,9 @@
     if (pct < 0) pct = 0; else if (pct > 100) pct = 100;   // 占比夹取至 0–100
     var failed = total - scanned;               // 检测失败的表数(若有)
     box.appendChild(DN.statRow([
-      { icon: 'db', label: '库内表数', value: total },
+      { icon: 'db', label: fullTotal ? '已扫描/库内表数' : '库内表数',
+        value: fullTotal ? total + '/' + fullTotal : total,
+        sub: fullTotal ? '超量已截断扫描' : '', tone: fullTotal ? 'info' : '' },
       { icon: 'alert', label: '孤儿表数', value: orphans.length, tone: orphans.length > 0 ? 'warn' : 'ok',
         sub: orphans.length > 0 ? '疑似废弃/未接入' : '全部已接入血缘' },
       { icon: 'check', label: '血缘覆盖率', value: pct + '%',
@@ -218,7 +287,7 @@
     }
     box.appendChild(DN.table({
       columns: [
-        { label: '孤儿表', copyable: true, render: function (s) { return DN.esc(db) + '.' + DN.esc(s.table); },
+        { label: '孤儿表', copyable: true, render: function (s) { return clip(db + '.' + s.table, 64); },
           exportValue: function (s) { return db + '.' + s.table; } },
         { label: '上游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
         { label: '下游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
@@ -229,6 +298,7 @@
           } }
       ],
       rows: orphans,
+      pageSize: 15,                 // 边界: 孤儿表可能成百, 分页避免长列表撑爆视口
       searchKeys: ['table'],
       searchPlaceholder: '搜索孤儿表...',
       exportName: '孤儿表清单_' + db,
@@ -243,17 +313,22 @@
     return el;
   }
 
-  function queryGraph() {
+  function queryGraph(e) {
+    if (!grPicker) { DN.toast('图谱选择器未就绪', 'error'); return; }
     var db = grPicker.db();
     var table = grPicker.table();
-    var depth = parseInt(document.getElementById('grDepth').value, 10) || 2;
-    if (depth < 1 || depth > 6) { DN.toast('跳数需在 1-6 之间', 'error'); return; }
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
+    var depEl = document.getElementById('grDepth');
+    var depth = parseInt(depEl ? depEl.value : '', 10);
+    if (isNaN(depth)) depth = 2;
+    if (depth < 1 || depth > 6) { DN.toast('跳数需在 1-6 之间', 'error'); if (depEl) depEl.focus(); return; }
     var box = document.getElementById('graphResult');
+    if (!box) return;
+    var done = lockBtn(e && e.currentTarget ? e.currentTarget : null);
     box.innerHTML = '';
     box.appendChild(DN.skeleton(4));
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table) + '&depth=' + depth;
-    DN.get('/api/lineage/graph' + qs).then(function (g) {
+    getOnce('/api/lineage/graph' + qs).then(function (g) {
       g = g || {};
       var nodes = g.nodes || [], edges = g.edges || [];
       box.innerHTML = '';
@@ -261,11 +336,15 @@
         box.appendChild(DN.empty('该表暂无血缘边（先点上方重建/解析）', 'lineage')); return;
       }
       box.appendChild(renderGraph(nodes, edges, db + '.' + table));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryGraph(); })); });
+    }).catch(function (err) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + (err && err.message ? err.message : err), function () { queryGraph(); })); })
+      .then(done);
   }
 
   /** 分层布局：以中心表为第 0 列，下游为正列(右)、上游为负列(左)，纯 SVG 绘制有向图。 */
   function renderGraph(nodes, edges, centerId) {
+    nodes = nodes || []; edges = edges || [];
+    // 性能边界: 超大图(数百节点)纯 SVG 渲染易卡顿, 提示用户缩小跳数而非直接卡死
+    if (nodes.length > 200) DN.toast('血缘节点较多(' + nodes.length + '), 渲染可能略慢, 建议减小跳数', 'warn');
     // 邻接：out(下游) / in(上游)
     var out = {}, inc = {};
     edges.forEach(function (e) {
@@ -344,35 +423,38 @@
 
     var nodeEls = {}; // id -> rect
     var selected = null;
+    var gNodes = svg('g'); // 节点统一挂到一个组里, 一次性 append, 减少 reflow(性能)
     nodes.forEach(function (n) {
       var p = pos[n.id]; if (!p) return;
       var g = svg('g', { style: 'cursor:pointer' });
       var isCenter = n.id === centerId;
+      var nid = String(n.id == null ? '' : n.id); // 防御: id 异常时不抛 .length/.slice 错
       var rect = svg('rect', { x: p.x, y: p.y, width: NW, height: NH, rx: '8',
         fill: isCenter ? C.primary : C.node,
         stroke: isCenter ? C.primary : C.nodeBorder, 'stroke-width': '1' });
-      var label = n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
+      var label = nid.length > 22 ? nid.slice(0, 21) + '…' : nid;
       // 非色cue(WCAG 1.4.1)：中心表此前仅靠蓝色填充区分，色盲不可辨，前缀★标记
       var txt = svg('text', { x: p.x + NW / 2, y: p.y + NH / 2 + 4, 'text-anchor': 'middle',
         'font-size': '12', fill: isCenter ? '#fff' : C.text });
       txt.textContent = isCenter ? '★ ' + label : label;
-      var ttl = svg('title'); ttl.textContent = n.id + (isCenter ? '（当前中心）' : '（单击高亮 · 双击设为中心）'); rect.appendChild(ttl);
+      var ttl = svg('title'); ttl.textContent = nid + (isCenter ? '（当前中心）' : '（单击高亮 · 双击设为中心）'); rect.appendChild(ttl);
       g.appendChild(rect); g.appendChild(txt);
       g.addEventListener('click', function () {
         selected = (selected === n.id) ? null : n.id;
         highlight(selected);
       });
-      // 双击非中心节点 → 以该表为中心重新画图（图内下钻，n.id 形如 db.table）
+      // 双击非中心节点 → 以该表为中心重新画图（图内下钻，nid 形如 db.table）
       if (!isCenter) {
         g.addEventListener('dblclick', function () {
-          var dot = n.id.indexOf('.');
+          var dot = nid.indexOf('.');
           if (dot <= 0) return;
-          centerGraphOn(n.id.slice(0, dot), n.id.slice(dot + 1));
+          centerGraphOn(nid.slice(0, dot), nid.slice(dot + 1));
         });
       }
-      s.appendChild(g);
+      gNodes.appendChild(g);
       nodeEls[n.id] = { rect: rect, center: isCenter };
     });
+    s.appendChild(gNodes);
 
     function highlight(id) {
       // 复位
@@ -437,7 +519,9 @@
   }
 
   // 影响面板(大功能): 受影响表数/库数/最大层级 统计 + 按层级分组芯片
+  var CHIPS_PER_LEVEL = 40; // 边界: 单层受影响表可能上百, 芯片超量折叠为“+N 张”避免卡顿/撑爆
   function buildImpactPanel(list, kind, centerId) {
+    list = list || [];
     var dbs = {}, maxDepth = 0, byDepth = {};
     list.forEach(function (n) {
       dbs[n.db] = 1;
@@ -457,7 +541,16 @@
       var row = DN.h('div', { style: 'display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' });
       row.appendChild(DN.h('span', { style: 'flex-shrink:0;font-size:11px;color:var(--text-muted);width:54px;padding-top:2px', text: '第 ' + d + ' 层' }));
       var chips = DN.h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px' });
-      byDepth[d].forEach(function (n) { chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-regular)', text: n.db + '.' + n.table })); });
+      var group = byDepth[d];
+      group.slice(0, CHIPS_PER_LEVEL).forEach(function (n) {
+        var fqn = (n.db || '') + '.' + (n.table || '');
+        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-regular)',
+          text: fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, title: fqn })); // 超长 FQN 截断 + title 看全
+      });
+      if (group.length > CHIPS_PER_LEVEL) {
+        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-muted)',
+          text: '+' + (group.length - CHIPS_PER_LEVEL) + ' 张…', title: '该层共 ' + group.length + ' 张, 详见下方表格' }));
+      }
       row.appendChild(chips);
       lvWrap.appendChild(row);
     });
@@ -481,15 +574,18 @@
     return card.el;
   }
 
-  function queryFlow(kind) {
+  function queryFlow(kind, e) {
+    if (!impPicker) { DN.toast('选择器未就绪', 'error'); return; }
     var db = impPicker.db();
     var table = impPicker.table();
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('impResult');
+    if (!box) return;
+    var done = lockBtn(e && e.currentTarget ? e.currentTarget : null);
     box.innerHTML = '';
     box.appendChild(DN.skeleton(3));
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
-    DN.get('/api/lineage/' + kind + qs).then(function (list) {
+    getOnce('/api/lineage/' + kind + qs).then(function (list) {
       list = list || [];
       var title = kind === 'impact' ? '下游影响' : '上游溯源';
       box.innerHTML = '';
@@ -500,35 +596,40 @@
       box.appendChild(buildImpactPanel(list, kind, db + '.' + table));
       box.appendChild(DN.table({
         columns: [
-          { label: '表', copyable: true, render: function (n) { return n.db + '.' + n.table; }, exportValue: function (n) { return n.db + '.' + n.table; } },
-          { label: '层级', align: 'center', render: function (n) { return DN.pill('第 ' + n.depth + ' 层', 'info'); }, exportValue: function (n) { return '第 ' + n.depth + ' 层'; } },
+          { label: '表', copyable: true, render: function (n) { return clip((n.db || '') + '.' + (n.table || ''), 60); }, exportValue: function (n) { return (n.db || '') + '.' + (n.table || ''); } },
+          { label: '层级', align: 'center', render: function (n) { return DN.pill('第 ' + (n.depth != null ? n.depth : '?') + ' 层', 'info'); }, exportValue: function (n) { return '第 ' + (n.depth != null ? n.depth : '?') + ' 层'; } },
           { label: '来源', render: function (n) { return n.source ? DN.pill(n.source, 'muted') : '-'; }, exportValue: function (n) { return n.source || ''; } },
           { label: '下钻', align: 'center', render: function (n) { return tableActionMenu(n.db, n.table); } }
         ],
         rows: list,
+        pageSize: 20,
         searchKeys: ['db', 'table', 'source'],
         searchPlaceholder: '搜索表/来源...',
         exportName: title,
         empty: '无' + title, emptyIcon: 'lineage'
       }));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryFlow(kind); })); });
+    }).catch(function (err) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + (err && err.message ? err.message : err), function () { queryFlow(kind); })); })
+      .then(done);
   }
 
-  function queryLineage() {
+  function queryLineage(e) {
+    if (!lnPicker) { DN.toast('选择器未就绪', 'error'); return; }
     var db = lnPicker.db();
     var table = lnPicker.table();
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var box = document.getElementById('lnResult');
+    if (!box) return;
+    var done = lockBtn(e && e.currentTarget ? e.currentTarget : null);
     box.innerHTML = '';
     box.appendChild(DN.skeleton(3));
     var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
     Promise.all([
-      DN.get('/api/lineage/table-edges' + qs),
-      DN.get('/api/lineage/column-edges' + qs)
+      getOnce('/api/lineage/table-edges' + qs),
+      getOnce('/api/lineage/column-edges' + qs)
     ]).then(function (res) {
       var nb = res[0] || {}, cols = res[1] || [];
-      var up = (nb.upstream || []).map(function (e) { return { db: e.srcDb, table: e.srcTable }; });
-      var down = (nb.downstream || []).map(function (e) { return { db: e.dstDb, table: e.dstTable }; });
+      var up = (nb.upstream || []).map(function (ed) { return { db: ed.srcDb, table: ed.srcTable }; });
+      var down = (nb.downstream || []).map(function (ed) { return { db: ed.dstDb, table: ed.dstTable }; });
       box.innerHTML = '';
 
       // 上下游表：用药丸罗列
@@ -541,11 +642,12 @@
       if (cols.length) {
         box.appendChild(DN.table({
           columns: [
-            { key: 'dstColumn', label: '目标列', copyable: true, exportValue: function (e) { return e.dstColumn || ''; } },
-            { label: '来源', copyable: true, render: function (e) { return e.srcDb + '.' + e.srcTable + '.' + e.srcColumn; }, exportValue: function (e) { return e.srcDb + '.' + e.srcTable + '.' + e.srcColumn; } },
-            { label: '变换', render: function (e) { return e.transformType ? DN.pill(e.transformType, 'info') : '-'; }, exportValue: function (e) { return e.transformType || ''; } }
+            { key: 'dstColumn', label: '目标列', copyable: true, render: function (ed) { return clip(ed.dstColumn, 40); }, exportValue: function (ed) { return ed.dstColumn || ''; } },
+            { label: '来源', copyable: true, render: function (ed) { return clip((ed.srcDb || '') + '.' + (ed.srcTable || '') + '.' + (ed.srcColumn || ''), 60); }, exportValue: function (ed) { return (ed.srcDb || '') + '.' + (ed.srcTable || '') + '.' + (ed.srcColumn || ''); } },
+            { label: '变换', render: function (ed) { return ed.transformType ? DN.pill(ed.transformType, 'info') : '-'; }, exportValue: function (ed) { return ed.transformType || ''; } }
           ],
           rows: cols,
+          pageSize: 20,
           searchKeys: ['dstColumn', 'srcDb', 'srcTable', 'srcColumn', 'transformType'],
           searchPlaceholder: '搜索字段...',
           exportName: '字段级血缘_' + db + '.' + table,
@@ -554,23 +656,30 @@
       } else {
         box.appendChild(DN.empty('无字段级血缘（先点上方重建，或该表非同步目标）', 'lineage'));
       }
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + e.message, function () { queryLineage(); })); });
+    }).catch(function (err) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + (err && err.message ? err.message : err), function () { queryLineage(); })); })
+      .then(done);
   }
 
   // 上/下游表的一行药丸罗列（R25：药丸可点 → 以该表为中心画图，消除“看到却去不了”的死胡同）
+  var NEIGHBOR_CAP = 60; // 边界: 上/下游表可能上百, 超量折叠为“+N 张”避免一行铺满整屏
   function neighborLine(label, arr, dir) {
+    arr = arr || [];
     var tone = dir === 'up' ? 'err' : 'ok';
     var row = DN.h('div', { style: 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px' });
-    row.appendChild(DN.h('b', { text: label + '：', style: 'font-size:13px;flex:none' }));
+    row.appendChild(DN.h('b', { text: label + '（' + arr.length + '）：', style: 'font-size:13px;flex:none' }));
     if (!arr.length) { row.appendChild(DN.h('span', { text: '无', style: 'color:var(--text-muted,#86909c);font-size:13px' })); return row; }
-    arr.forEach(function (t) {
-      var fqn = t.db + '.' + t.table;
-      var p = DN.pill(fqn, tone);
+    arr.slice(0, NEIGHBOR_CAP).forEach(function (t) {
+      var fqn = (t.db || '') + '.' + (t.table || '');
+      var p = DN.pill(fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, tone);
       p.style.cursor = 'pointer';
       p.title = '点击以 ' + fqn + ' 为中心画血缘图';
       p.addEventListener('click', function () { centerGraphOn(t.db, t.table); });
       row.appendChild(p);
     });
+    if (arr.length > NEIGHBOR_CAP) {
+      row.appendChild(DN.h('span', { text: '+' + (arr.length - NEIGHBOR_CAP) + ' 张…',
+        title: '共 ' + arr.length + ' 张, 可用上方“血缘图谱”查看全部', style: 'color:var(--text-muted,#86909c);font-size:12px' }));
+    }
     return row;
   }
 })();

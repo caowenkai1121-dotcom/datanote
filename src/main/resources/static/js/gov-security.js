@@ -27,7 +27,7 @@
     var ovBox = DN.h('div', { id: 'secOverview' });
     ovBox.appendChild(DN.skeleton(2));
     c.appendChild(ovBox);
-    buildSecurityOverview(ovBox);
+    // R42审查修复: 概览渲染统一由下方 loadAllOnce(ovBox) 一次拉取4端点驱动, 删除此处重复调用(原致8次请求+渲染竞态)
 
     // 用户
     var userCard = DN.card({ title: '用户', icon: 'user',
@@ -60,17 +60,45 @@
     rowCard.body.appendChild(rowTbl);
     c.appendChild(rowCard.el);
 
-    loadRoles().then(loadUsers).then(loadMaskingPolicies).then(loadRowPolicies);
+    // 去重 fetch: 四个端点各只请求一次, 结果同时喂给“概览”与四张表(原先概览另发4次=8次, 现4次)
+    loadAllOnce(ovBox);
   };
 
-  // ============== 安全态势概览(大功能) ==============
-  function buildSecurityOverview(box) {
+  /** 首屏统一拉取 + 分发: 一次 Promise.all 拿齐 角色/用户/脱敏/行级, 分别渲染概览与四张表。
+   *  整体失败时概览给 errorBox 可重试; 各表自身也保留独立加载/重试能力(增删后单端点刷新)。 */
+  function loadAllOnce(ovBox) {
     Promise.all([
-      DN.get('/api/rbac/users').catch(function () { return []; }),
-      DN.get('/api/rbac/roles').catch(function () { return []; }),
-      DN.get('/api/gov/masking/policies').catch(function () { return []; }),
-      DN.get('/api/gov/masking/row-policies').catch(function () { return []; })
+      DN.get('/api/rbac/roles'),
+      DN.get('/api/rbac/users'),
+      DN.get('/api/gov/masking/policies'),
+      DN.get('/api/gov/masking/row-policies')
     ]).then(function (r) {
+      var roles = r[0] || [], users = r[1] || [], masks = r[2] || [], rowp = r[3] || [];
+      rolesCache = roles; // 用户/行策略表单依赖, 必须先就位
+      renderRoles(roles); renderUsers(users); renderMaskTable(masks); renderRowTable(rowp);
+      buildSecurityOverview(ovBox, { users: users, roles: roles, masks: masks, rowp: rowp });
+    }).catch(function (e) {
+      // 首屏整体失败: 概览给可重试错误态, 四张表各自回退到独立加载(便于部分端点恢复)
+      if (ovBox && document.body.contains(ovBox)) {
+        ovBox.innerHTML = '';
+        ovBox.appendChild(DN.errorBox('安全数据加载失败: ' + (e && e.message || '未知错误'), function () { loadAllOnce(ovBox); }));
+      }
+      loadRoles().then(loadUsers).then(loadMaskingPolicies).then(loadRowPolicies);
+    });
+  }
+
+  // ============== 安全态势概览(大功能) ==============
+  // data 省略时自行拉取(独立可用); 传入则复用首屏已取数据, 避免重复请求。
+  function buildSecurityOverview(box, data) {
+    var src = data
+      ? Promise.resolve([data.users, data.roles, data.masks, data.rowp])
+      : Promise.all([
+          DN.get('/api/rbac/users').catch(function () { return []; }),
+          DN.get('/api/rbac/roles').catch(function () { return []; }),
+          DN.get('/api/gov/masking/policies').catch(function () { return []; }),
+          DN.get('/api/gov/masking/row-policies').catch(function () { return []; })
+        ]);
+    src.then(function (r) {
       if (!document.body.contains(box)) return;
       var users = r[0] || [], roles = r[1] || [], masks = r[2] || [], rowp = r[3] || [];
       var enabledMask = masks.filter(function (m) { return m.enabled === 1 || m.enabled === true || m.status === 1; }).length;
@@ -87,6 +115,11 @@
         { icon: 'lock', label: '脱敏策略', value: masks.length, sub: enabledMask + ' 启用', tone: masks.length ? 'ok' : 'muted' },
         { icon: 'layers', label: '行级策略', value: rowp.length, tone: rowp.length ? 'ok' : 'muted' }
       ]));
+      // 全空(疑似未初始化 RBAC/脱敏数据)给出明确引导, 而非只摊一排 0
+      if (!users.length && !roles.length && !masks.length && !rowp.length) {
+        box.appendChild(DN.alertNode('尚未有任何安全数据，请先应用 sql/36_rbac.sql、sql/39_masking.sql 初始化，或直接点击下方“新建”', 'info'));
+        return;
+      }
       // 脱敏策略按敏感类型分布环图
       var byType = {};
       masks.forEach(function (m) { var t = m.sensitiveType || '其它'; byType[t] = (byType[t] || 0) + 1; });
@@ -102,7 +135,7 @@
       var noRoleUsers = users.filter(function (u) { return !(u.roleIds || []).length; }).length;
       var usedRoleIds = {};
       users.forEach(function (u) { (u.roleIds || []).forEach(function (rid) { usedRoleIds[rid] = true; }); });
-      var orphanRoles = roles.filter(function (r) { return !usedRoleIds[r.id]; }).length;
+      var orphanRoles = roles.filter(function (ro) { return !usedRoleIds[ro.id]; }).length;
       var disabledMask = masks.filter(function (m) { return !(m.enabled === 1 || m.enabled === true || m.status === 1); }).length;
       var disabledRow = rowp.filter(function (p) { return !(p.enabled === 1 || p.enabled === true); }).length;
       var totalRisk = noRoleUsers + orphanRoles + disabledMask + disabledRow;
@@ -165,36 +198,40 @@
 
   // ============== M9 脱敏策略 ==============
 
+  function renderMaskTable(list) {
+    if (!maskTbl) return;
+    maskTbl.innerHTML = '';
+    maskTbl.appendChild(DN.table({
+      columns: [
+        { key: 'policyName', label: '策略名', render: function (p) { return truncText(p.policyName, 40); } },
+        { key: 'matchDim', label: '维度' },
+        { key: 'sensitiveType', label: '敏感类型', render: function (p) { return p.sensitiveType || '-'; } },
+        { key: '_loc', label: '库.表.列', render: function (p) {
+            if (p.matchDim !== 'COLUMN') return '-';
+            var loc = (p.dbName || '') + '.' + (p.tableName || '') + '.' + (p.columnName || '');
+            return isFocusRow(p.dbName, p.tableName) ? focusWrap(p.dbName, p.tableName, loc) : truncText(loc, 48);
+          } },
+        { key: 'maskingFunc', label: '脱敏函数' },
+        { key: 'enabled', label: '状态', render: function (p) {
+            return p.enabled === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
+          } },
+        { key: '_op', label: '操作', render: function (p) {
+            return ops([
+              link('编辑', function () { openMaskingForm(p); }),
+              delLink(function () { return DN.del('/api/gov/masking/policies/' + p.id); }, loadMaskingPolicies)
+            ].concat(tableDrill(p.dbName, p.tableName)));
+          } }
+      ],
+      rows: list || [], searchKeys: ['policyName', 'sensitiveType', 'tableName'], searchPlaceholder: '搜索策略名/敏感类型',
+      empty: '暂无脱敏策略，请先应用 sql/39_masking.sql 或点击新建', emptyIcon: 'lock'
+    }));
+  }
+
   function loadMaskingPolicies() {
     return DN.get('/api/gov/masking/policies').then(function (list) {
-      if (!maskTbl) return;
-      maskTbl.innerHTML = '';
-      maskTbl.appendChild(DN.table({
-        columns: [
-          { key: 'policyName', label: '策略名' },
-          { key: 'matchDim', label: '维度' },
-          { key: 'sensitiveType', label: '敏感类型', render: function (p) { return p.sensitiveType || '-'; } },
-          { key: '_loc', label: '库.表.列', render: function (p) {
-              if (p.matchDim !== 'COLUMN') return '-';
-              var loc = (p.dbName || '') + '.' + (p.tableName || '') + '.' + (p.columnName || '');
-              return focusWrap(p.dbName, p.tableName, loc);
-            } },
-          { key: 'maskingFunc', label: '脱敏函数' },
-          { key: 'enabled', label: '状态', render: function (p) {
-              return p.enabled === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
-            } },
-          { key: '_op', label: '操作', render: function (p) {
-              return ops([
-                link('编辑', function () { openMaskingForm(p); }),
-                delLink(function () { return DN.del('/api/gov/masking/policies/' + p.id); }, loadMaskingPolicies)
-              ].concat(tableDrill(p.dbName, p.tableName)));
-            } }
-        ],
-        rows: list || [], searchKeys: ['policyName', 'sensitiveType', 'tableName'], searchPlaceholder: '搜索策略名/敏感类型',
-        empty: '暂无脱敏策略，请先应用 sql/39_masking.sql 或点击新建', emptyIcon: 'lock'
-      }));
+      renderMaskTable(list || []);
     }).catch(function (e) {
-      if (maskTbl) { maskTbl.innerHTML = ''; maskTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadMaskingPolicies(); })); }
+      if (maskTbl) { maskTbl.innerHTML = ''; maskTbl.appendChild(DN.errorBox('加载失败: ' + (e && e.message || '未知错误'), function () { loadMaskingPolicies(); })); }
     });
   }
 
@@ -241,41 +278,48 @@
       };
       if (isEdit) body.id = p.id;
       if (!body.policyName) { DN.toast('策略名不能为空', 'error'); return; }
+      if (body.policyName.length > 100) { DN.toast('策略名不能超过 100 字', 'error'); return; }
       if (body.matchDim === 'SENSITIVE_TYPE' && !body.sensitiveType) { DN.toast('按敏感类型匹配时需填敏感类型', 'error'); return; }
       if (body.matchDim === 'COLUMN' && (!body.dbName || !body.tableName || !body.columnName)) { DN.toast('按列匹配时需选库/表/列', 'error'); return; }
-      DN.post('/api/gov/masking/policies', body)
-        .then(function () { DN.toast('保存成功'); close(); loadMaskingPolicies(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      return DN.post('/api/gov/masking/policies', body)
+        .then(function () { DN.toast('保存成功', 'success'); close(); loadMaskingPolicies(); })
+        .catch(function (e) { DN.toast(e.message || '保存失败', 'error'); });
     });
   }
 
   // ============== M9 行级权限 ==============
 
+  function renderRowTable(list) {
+    if (!rowTbl) return;
+    rowTbl.innerHTML = '';
+    rowTbl.appendChild(DN.table({
+      columns: [
+        { key: 'roleCode', label: '角色编码' },
+        { key: 'dbName', label: '库', render: function (p) { return truncText(p.dbName, 24); } },
+        { key: 'tableName', label: '表', render: function (p) {
+            return isFocusRow(p.dbName, p.tableName) ? focusWrap(p.dbName, p.tableName, p.tableName || '-') : truncText(p.tableName, 24);
+          } },
+        { key: 'rowFilter', label: '行过滤条件', render: function (p) { return truncText(p.rowFilter, 48); } },
+        { key: 'enabled', label: '状态', render: function (p) {
+            return p.enabled === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
+          } },
+        { key: '_op', label: '操作', render: function (p) {
+            return ops([
+              link('编辑', function () { openRowPolicyForm(p); }),
+              delLink(function () { return DN.del('/api/gov/masking/row-policies/' + p.id); }, loadRowPolicies)
+            ].concat(tableDrill(p.dbName, p.tableName)));
+          } }
+      ],
+      rows: list || [], searchKeys: ['roleCode', 'dbName', 'tableName'], searchPlaceholder: '搜索角色/库/表',
+      empty: '暂无行级权限策略，点击新建', emptyIcon: 'layers'
+    }));
+  }
+
   function loadRowPolicies() {
     return DN.get('/api/gov/masking/row-policies').then(function (list) {
-      if (!rowTbl) return;
-      rowTbl.innerHTML = '';
-      rowTbl.appendChild(DN.table({
-        columns: [
-          { key: 'roleCode', label: '角色编码' },
-          { key: 'dbName', label: '库' },
-          { key: 'tableName', label: '表', render: function (p) { return focusWrap(p.dbName, p.tableName, p.tableName || '-'); } },
-          { key: 'rowFilter', label: '行过滤条件' },
-          { key: 'enabled', label: '状态', render: function (p) {
-              return p.enabled === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
-            } },
-          { key: '_op', label: '操作', render: function (p) {
-              return ops([
-                link('编辑', function () { openRowPolicyForm(p); }),
-                delLink(function () { return DN.del('/api/gov/masking/row-policies/' + p.id); }, loadRowPolicies)
-              ].concat(tableDrill(p.dbName, p.tableName)));
-            } }
-        ],
-        rows: list || [], searchKeys: ['roleCode', 'dbName', 'tableName'], searchPlaceholder: '搜索角色/库/表',
-        empty: '暂无行级权限策略，点击新建', emptyIcon: 'layers'
-      }));
+      renderRowTable(list || []);
     }).catch(function (e) {
-      if (rowTbl) { rowTbl.innerHTML = ''; rowTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRowPolicies(); })); }
+      if (rowTbl) { rowTbl.innerHTML = ''; rowTbl.appendChild(DN.errorBox('加载失败: ' + (e && e.message || '未知错误'), function () { loadRowPolicies(); })); }
     });
   }
 
@@ -306,61 +350,73 @@
       if (isEdit) body.id = p.id;
       if (!body.roleCode) { DN.toast('请选择角色', 'error'); return; }
       if (!body.dbName || !body.tableName || !body.rowFilter) { DN.toast('库名/表名/过滤条件不能为空', 'error'); return; }
-      DN.post('/api/gov/masking/row-policies', body)
-        .then(function () { DN.toast('保存成功'); close(); loadRowPolicies(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      if (body.rowFilter.length > 500) { DN.toast('过滤条件不能超过 500 字', 'error'); return; }
+      // 行过滤片段会拼入 SQL，前端先挡掉分号/注释等危险写法（服务端仍应再校验）
+      if (/;|--|\/\*|\*\//.test(body.rowFilter)) { DN.toast('过滤条件不能包含 ; 或注释符', 'error'); return; }
+      return DN.post('/api/gov/masking/row-policies', body)
+        .then(function () { DN.toast('保存成功', 'success'); close(); loadRowPolicies(); })
+        .catch(function (e) { DN.toast(e.message || '保存失败', 'error'); });
     });
   }
 
   // ============== 角色 / 用户 ==============
 
+  function renderRoles(roles) {
+    if (!roleTbl) return;
+    roleTbl.innerHTML = '';
+    roleTbl.appendChild(DN.table({
+      columns: [
+        { key: 'roleCode', label: '角色编码' },
+        { key: 'roleName', label: '角色名称', render: function (r) { return truncText(r.roleName, 30); } },
+        { key: '_perms', label: '权限点', render: function (r) { return truncText((r.perms || []).join(', '), 50); } },
+        { key: 'description', label: '描述', render: function (r) { return truncText(r.description, 50); } }
+      ],
+      rows: roles || [], searchKeys: ['roleCode', 'roleName'], searchPlaceholder: '搜索角色',
+      empty: '暂无角色，请先应用 sql/36_rbac.sql', emptyIcon: 'shield'
+    }));
+  }
+
   function loadRoles() {
     return DN.get('/api/rbac/roles').then(function (roles) {
       rolesCache = roles || [];
-      if (!roleTbl) return;
-      roleTbl.innerHTML = '';
-      roleTbl.appendChild(DN.table({
-        columns: [
-          { key: 'roleCode', label: '角色编码' },
-          { key: 'roleName', label: '角色名称' },
-          { key: '_perms', label: '权限点', render: function (r) { return (r.perms || []).join(', '); } },
-          { key: 'description', label: '描述' }
-        ],
-        rows: rolesCache, searchKeys: ['roleCode', 'roleName'], searchPlaceholder: '搜索角色',
-        empty: '暂无角色，请先应用 sql/36_rbac.sql', emptyIcon: 'shield'
-      }));
+      renderRoles(rolesCache);
     }).catch(function (e) {
-      if (roleTbl) { roleTbl.innerHTML = ''; roleTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadRoles(); })); }
+      if (roleTbl) { roleTbl.innerHTML = ''; roleTbl.appendChild(DN.errorBox('加载失败: ' + (e && e.message || '未知错误'), function () { loadRoles(); })); }
     });
+  }
+
+  function renderUsers(users) {
+    if (!userTbl) return;
+    userTbl.innerHTML = '';
+    userTbl.appendChild(DN.table({
+      columns: [
+        { key: 'username', label: '用户名', render: function (u) { return truncText(u.username, 32); } },
+        { key: 'nickname', label: '昵称', render: function (u) { return u.nickname ? truncText(u.nickname, 30) : ''; } },
+        { key: 'status', label: '状态', render: function (u) {
+            return u.status === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
+          } },
+        { key: '_roles', label: '角色', render: function (u) {
+            var names = (u.roleIds || []).map(roleName).filter(Boolean);
+            return names.length ? truncText(names.join(', '), 50) : '-';
+          } },
+        { key: '_op', label: '操作', render: function (u) {
+            return ops([
+              link('编辑', function () { openUserForm(u); }),
+              link('分配角色', function () { openAssignRoles(u); }),
+              delLink(function () { return DN.del('/api/rbac/users/' + u.id); }, loadUsers)
+            ]);
+          } }
+      ],
+      rows: users || [], searchKeys: ['username', 'nickname'], searchPlaceholder: '搜索用户名/昵称',
+      empty: '暂无用户，请先应用 sql/36_rbac.sql 或点击新建', emptyIcon: 'user'
+    }));
   }
 
   function loadUsers() {
     return DN.get('/api/rbac/users').then(function (users) {
-      if (!userTbl) return;
-      userTbl.innerHTML = '';
-      userTbl.appendChild(DN.table({
-        columns: [
-          { key: 'username', label: '用户名' },
-          { key: 'nickname', label: '昵称', render: function (u) { return u.nickname || ''; } },
-          { key: 'status', label: '状态', render: function (u) {
-              return u.status === 1 ? DN.pill('启用', 'ok') : DN.pill('停用', 'muted');
-            } },
-          { key: '_roles', label: '角色', render: function (u) {
-              return (u.roleIds || []).map(roleName).filter(Boolean).join(', ') || '-';
-            } },
-          { key: '_op', label: '操作', render: function (u) {
-              return ops([
-                link('编辑', function () { openUserForm(u); }),
-                link('分配角色', function () { openAssignRoles(u); }),
-                delLink(function () { return DN.del('/api/rbac/users/' + u.id); }, loadUsers)
-              ]);
-            } }
-        ],
-        rows: users || [], searchKeys: ['username', 'nickname'], searchPlaceholder: '搜索用户名/昵称',
-        empty: '暂无用户，请先应用 sql/36_rbac.sql 或点击新建', emptyIcon: 'user'
-      }));
+      renderUsers(users || []);
     }).catch(function (e) {
-      if (userTbl) { userTbl.innerHTML = ''; userTbl.appendChild(DN.errorBox('加载失败: ' + e.message, function () { loadUsers(); })); }
+      if (userTbl) { userTbl.innerHTML = ''; userTbl.appendChild(DN.errorBox('加载失败: ' + (e && e.message || '未知错误'), function () { loadUsers(); })); }
     });
   }
 
@@ -380,8 +436,12 @@
       field('用户名', nameInput), field('昵称', nickInput),
       field('密码', pwdInput), field('状态', statusSel)
     ], function (close) {
+      var nick = nickInput.value.trim();
+      if (nick.length > 50) { DN.toast('昵称不能超过 50 字', 'error'); return; }
+      // 密码校验：新建必填、编辑留空表示不改；填了则统一校验长度
+      if (pwdInput.value && pwdInput.value.length < 6) { DN.toast('密码至少 6 位', 'error'); return; }
       var body = {
-        nickname: nickInput.value.trim(),
+        nickname: nick,
         status: parseInt(statusSel.value, 10)
       };
       if (pwdInput.value) body.password = pwdInput.value;
@@ -389,17 +449,26 @@
       if (isEdit) {
         p = putJson('/api/rbac/users/' + user.id, body);
       } else {
-        body.username = nameInput.value.trim();
-        if (!body.username) { DN.toast('用户名不能为空', 'error'); return; }
-        if (!body.password) { DN.toast('密码不能为空', 'error'); return; }
+        var uname = nameInput.value.trim();
+        if (!uname) { DN.toast('用户名不能为空', 'error'); return; }
+        if (!/^[A-Za-z0-9_]{3,32}$/.test(uname)) { DN.toast('用户名需为 3-32 位字母/数字/下划线', 'error'); return; }
+        if (!pwdInput.value) { DN.toast('密码不能为空', 'error'); return; }
+        body.username = uname;
         p = DN.post('/api/rbac/users', body);
       }
-      p.then(function () { DN.toast('保存成功'); close(); loadUsers(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      return p.then(function () { DN.toast('保存成功', 'success'); close(); loadUsers(); })
+        .catch(function (e) { DN.toast(e.message || '保存失败', 'error'); });
     });
   }
 
   function openAssignRoles(user) {
+    // 角色未加载/为空时给出明确空态，而非空白抽屉
+    if (!rolesCache.length) {
+      drawerForm('分配角色 — ' + user.username,
+        [DN.empty('暂无可分配的角色，请先在“角色”中创建', 'shield')], function () {});
+      return;
+    }
+    var hadRoles = (user.roleIds || []).length > 0;
     var checks = rolesCache.map(function (r) {
       var cb = DN.h('input', { type: 'checkbox', value: String(r.id) });
       if ((user.roleIds || []).indexOf(r.id) >= 0) cb.checked = true;
@@ -410,9 +479,11 @@
         var cb = lab.querySelector('input');
         return cb.checked ? parseInt(cb.value, 10) : null;
       }).filter(function (v) { return v != null; });
-      DN.post('/api/rbac/users/' + user.id + '/roles', { roleIds: roleIds })
-        .then(function () { DN.toast('分配成功'); close(); loadUsers(); })
-        .catch(function (e) { DN.toast(e.message, 'error'); });
+      // 破坏性操作：把原有角色全部清空会使用户失去全部权限，二次确认
+      if (hadRoles && !roleIds.length && !window.confirm('将清空该用户的全部角色，确定？')) return;
+      return DN.post('/api/rbac/users/' + user.id + '/roles', { roleIds: roleIds })
+        .then(function () { DN.toast('分配成功', 'success'); close(); loadUsers(); })
+        .catch(function (e) { DN.toast(e.message || '分配失败', 'error'); });
     });
   }
 
@@ -423,14 +494,39 @@
     return r ? r.roleName : null;
   }
 
-  /** 抽屉表单：body 节点列表 + 底部确定/取消（替代旧居中弹窗） */
+  /** 超长文本截断单元: 超过 max 截断并以 title 挂全文(鼠标悬停可见全量); 空值显示 '-' */
+  function truncText(s, max) {
+    var t = (s == null || s === '') ? '' : String(s);
+    if (!t) return '-';
+    max = max || 40;
+    if (t.length <= max) return t;
+    return DN.h('span', { title: t, text: t.slice(0, max) + '…' });
+  }
+
+  /** 抽屉表单：body 节点列表 + 底部确定/取消（替代旧居中弹窗）
+   * 防重复提交：onOk 若返回 Promise(各表单保存时 return DN.post(...)),
+   * 提交期间禁用“确定”按钮并显示“保存中…”，settle 后恢复；
+   * 校验失败(onOk 返回 undefined)则立即恢复，不阻塞用户改填。 */
   function drawerForm(title, bodyNodes, onOk) {
     var form = DN.h('div', { class: 'gov-form', style: 'margin-bottom:0' });
     bodyNodes.forEach(function (n) { form.appendChild(n); });
     var d = DN.drawer(title, form);
     var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
     footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: d.close }));
-    footer.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', onclick: function () { onOk(d.close); } }));
+    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定' });
+    var busy = false;
+    okBtn.onclick = function () {
+      if (busy) return; // 防止重复点击连发请求
+      var ret = onOk(d.close);
+      if (ret && typeof ret.then === 'function') {
+        busy = true; okBtn.setAttribute('aria-disabled', 'true');
+        okBtn.style.opacity = '0.6'; okBtn.style.pointerEvents = 'none';
+        var prev = okBtn.textContent; okBtn.textContent = '保存中…';
+        ret.then(restore, restore);
+        function restore() { busy = false; okBtn.removeAttribute('aria-disabled'); okBtn.style.opacity = ''; okBtn.style.pointerEvents = ''; okBtn.textContent = prev; }
+      }
+    };
+    footer.appendChild(okBtn);
     d.body.appendChild(footer);
     DN.enterSubmit(d.body);
   }
@@ -506,18 +602,26 @@
     return bar;
   }
 
-  /** 内联确认删除链接，返回 Node */
+  /** 内联确认删除链接（二次点击确认即为破坏性操作的确认环节），返回 Node */
   function delLink(delFn, reload) {
     var a = DN.h('a', { href: 'javascript:void(0)', text: '删除',
       style: 'color:var(--gov-err,#ff4d4f);font-size:13px' });
+    var revertTimer = null, busy = false;
     a.onclick = function () {
+      if (busy) return; // 删除请求进行中，忽略重复点击防止重复 DELETE
       if (a.getAttribute('data-confirm') === '1') {
-        delFn().then(function () { DN.toast('已删除'); reload(); }).catch(function (e) { DN.toast(e.message, 'error'); });
+        if (revertTimer) { clearTimeout(revertTimer); revertTimer = null; }
+        busy = true; a.textContent = '删除中…'; a.style.opacity = '0.6';
+        delFn().then(function () { DN.toast('已删除', 'success'); reload(); })
+          .catch(function (e) {
+            DN.toast(e.message || '删除失败', 'error');
+            busy = false; a.removeAttribute('data-confirm'); a.textContent = '删除'; a.style.opacity = '';
+          });
         return;
       }
       a.setAttribute('data-confirm', '1');
       a.textContent = '确认删除？';
-      setTimeout(function () { if (a.parentNode) { a.removeAttribute('data-confirm'); a.textContent = '删除'; } }, 2500);
+      revertTimer = setTimeout(function () { revertTimer = null; if (a.parentNode) { a.removeAttribute('data-confirm'); a.textContent = '删除'; } }, 2500);
     };
     return a;
   }

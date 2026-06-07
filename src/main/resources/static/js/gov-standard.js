@@ -20,6 +20,35 @@
   // 落标率格式化：保留最多 1 位小数，避免后端浮点 83.33333% 难看
   function fmtRate(v) { if (v == null) return '-'; var n = Number(v); if (isNaN(n)) return '-'; return (Math.round(n * 10) / 10) + '%'; }
 
+  // 超长文本截断 + title 悬浮全文，避免列宽被撑破；返回 Node
+  function truncCell(text, max) {
+    var s = text == null ? '' : String(text);
+    if (!s) return '';
+    max = max || 40;
+    if (s.length <= max) return DN.h('span', { text: s });
+    return DN.h('span', { text: s.slice(0, max) + '…', title: s, style: 'cursor:help' });
+  }
+
+  // 提交按钮防重复点击：执行期禁用 + 文案改“处理中…”，promise 结束后恢复；同时按钮自身做 in-flight 去重
+  function guardSubmit(btn, busyText, task) {
+    if (btn._busy) return;                 // 去重：忽略执行中的二次点击
+    btn._busy = true;
+    var old = btn.textContent;
+    btn.classList.add('is-disabled');
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.6';
+    btn.textContent = busyText || '处理中…';
+    function done() {
+      btn._busy = false;
+      btn.classList.remove('is-disabled');
+      btn.style.pointerEvents = '';
+      btn.style.opacity = '';
+      btn.textContent = old;
+    }
+    var p = task();
+    if (p && typeof p.then === 'function') p.then(done, done); else done();
+  }
+
   // R25 联动：概览磁贴/成熟度构成不再是纯展示死胡同 —— 点击切到本模块对应 Tab。
   // 渲染器进入时把内部 Tab 切换函数挂到 _activeGoTab，供概览(buildStdOverview/buildStdMaturity)调用。
   var _activeGoTab = null;
@@ -27,14 +56,19 @@
 
   // 数据标准总览(大功能): 数据元/词根/码表/落标率 聚合磁贴
   function buildStdOverview(box) {
+    if (box._loading) return;             // 去重：避免重复并发拉取(快速重进/重复调用)
+    box._loading = true;
+    box.innerHTML = '';
+    box.appendChild(DN.skeleton(2));      // 加载骨架
     Promise.all([
       DN.get(API + '/elements').catch(function () { return []; }),
       DN.get(API + '/roots').catch(function () { return []; }),
       DN.get(API + '/dicts').catch(function () { return []; }),
       DN.get(API + '/check/runs').catch(function () { return []; })
     ]).then(function (r) {
+      box._loading = false;
       if (!document.body.contains(box)) return;
-      var els = r[0] || [], roots = r[1] || [], dicts = r[2] || [], runs = r[3] || [];
+      var els = (r && r[0]) || [], roots = (r && r[1]) || [], dicts = (r && r[2]) || [], runs = (r && r[3]) || [];
       var latest = runs.slice().sort(function (a, b) { return (b.id || 0) - (a.id || 0); })[0];
       var rate = latest && latest.passRate != null ? Number(latest.passRate) : null;
       var rTone = rate == null ? 'muted' : rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'err';
@@ -46,6 +80,11 @@
         { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核', title: '查看落标稽核', onClick: function () { goTab('check'); } }
       ]));
       box.appendChild(buildStdMaturity(els, roots, dicts, runs).el);
+    }).catch(function () {                 // 兜底：内层均已 catch，理论不会进；防御性错误重试
+      box._loading = false;
+      if (!document.body.contains(box)) return;
+      box.innerHTML = '';
+      box.appendChild(DN.errorBox('总览加载失败', function () { buildStdOverview(box); }));
     });
   }
 
@@ -178,7 +217,10 @@
     var a = DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm btn-danger', text: '删除' });
     a.onclick = function () {
       if (a.getAttribute('data-confirm') === '1') {
-        delFn().then(function () { DN.toast('已删除'); reload(); }).catch(function (e) { DN.toast(e.message, 'error'); });
+        if (a._busy) return;             // 删除请求去重，防双击重复删除
+        a._busy = true;
+        delFn().then(function () { DN.toast('已删除', 'ok'); reload(); })
+          .catch(function (e) { a._busy = false; DN.toast(e && e.message || '删除失败', 'err'); });
         return;
       }
       a.setAttribute('data-confirm', '1');
@@ -211,16 +253,27 @@
     form.appendChild(formRow('描述', f.description));
     var save = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增数据元', onclick: function () {
+        var code = f.element_code.value.trim();
+        if (!code) { DN.toast('编码必填', 'err'); f.element_code.focus(); return; }
+        // 编码格式校验：字母开头，仅允许字母/数字/下划线（数据元命名规范）
+        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(code)) { DN.toast('编码须字母开头，仅含字母/数字/下划线', 'err'); f.element_code.focus(); return; }
+        // 长度范围校验：可空，填则须为正整数（避免负值/0/非法字符入库）
+        var lenRaw = f.length.value.trim(), len = null;
+        if (lenRaw) {
+          if (!/^\d+$/.test(lenRaw) || parseInt(lenRaw, 10) <= 0) { DN.toast('长度须为正整数', 'err'); f.length.focus(); return; }
+          len = parseInt(lenRaw, 10);
+        }
         var payload = {
-          elementCode: f.element_code.value.trim(), nameCn: f.name_cn.value.trim(),
-          dataType: f.data_type.value.trim(), length: parseInt(f.length.value, 10) || null,
+          elementCode: code, nameCn: f.name_cn.value.trim(),
+          dataType: f.data_type.value.trim(), length: len,
           valueDomain: f.value_domain.value.trim(), sensitiveType: f.sensitive_type.value ? f.sensitive_type.value.trim() : null,
           securityLevel: f.security_level.value ? f.security_level.value.trim() : null, description: f.description.value.trim()
         };
-        if (!payload.elementCode) { DN.toast('编码必填', 'error'); return; }
-        DN.post(API + '/element/save', payload).then(function () {
-          DN.toast('已保存'); renderElements(body);
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+        guardSubmit(save, '保存中…', function () {
+          return DN.post(API + '/element/save', payload).then(function () {
+            DN.toast('已保存', 'ok'); renderElements(body);
+          }).catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
+        });
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
@@ -240,7 +293,7 @@
           { key: 'nameCn', label: '中文名' },
           { key: 'dataType', label: '类型' },
           { key: 'length', label: '长度', align: 'right', render: function (e) { return e.length == null ? '' : e.length; } },
-          { key: 'valueDomain', label: '值域' },
+          { key: 'valueDomain', label: '值域', render: function (e) { return truncCell(e.valueDomain, 30); } },
           { key: 'sensitiveType', label: '敏感', render: function (e) { return e.sensitiveType ? DN.pill(e.sensitiveType, 'warn') : ''; } },
           { key: 'securityLevel', label: '密级' },
           { key: '_op', label: '操作', render: function (e) {
@@ -250,7 +303,7 @@
         rows: data || [], searchKeys: ['elementCode', 'nameCn'], searchPlaceholder: '搜索编码/中文名',
         empty: '暂无数据元，使用上方表单新增', emptyIcon: 'doc'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderElements(body); })); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { body.innerHTML = ''; renderElements(body); })); });
   }
 
   // ========== 命名词根 ==========
@@ -272,10 +325,15 @@
           wordCn: f.word_cn.value.trim(), wordEn: f.word_en.value.trim(),
           abbr: f.abbr.value.trim(), category: f.category.value.trim()
         };
-        if (!payload.wordEn && !payload.abbr) { DN.toast('英文或缩写至少填一个', 'error'); return; }
-        DN.post(API + '/root/save', payload).then(function () {
-          DN.toast('已保存'); renderRoots(body);
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+        if (!payload.wordEn && !payload.abbr) { DN.toast('英文或缩写至少填一个', 'err'); f.word_en.focus(); return; }
+        // 英文/缩写格式校验：仅允许英文字母（命名词根用于生成英文字段名）
+        if (payload.wordEn && !/^[A-Za-z]+$/.test(payload.wordEn)) { DN.toast('英文仅允许字母', 'err'); f.word_en.focus(); return; }
+        if (payload.abbr && !/^[A-Za-z]+$/.test(payload.abbr)) { DN.toast('缩写仅允许字母', 'err'); f.abbr.focus(); return; }
+        guardSubmit(save, '保存中…', function () {
+          return DN.post(API + '/root/save', payload).then(function () {
+            DN.toast('已保存', 'ok'); renderRoots(body);
+          }).catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
+        });
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
@@ -302,7 +360,7 @@
         rows: data || [], searchKeys: ['wordCn', 'wordEn', 'abbr'], searchPlaceholder: '搜索中文/英文/缩写',
         empty: '暂无词根，使用上方表单新增', emptyIcon: 'tag'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderRoots(body); })); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { body.innerHTML = ''; renderRoots(body); })); });
   }
 
   // ========== 码表 ==========
@@ -315,9 +373,13 @@
     var save = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增码表', onclick: function () {
         var payload = { dictCode: f.dict_code.value.trim(), dictName: f.dict_name.value.trim(), description: f.description.value.trim() };
-        if (!payload.dictCode) { DN.toast('编码必填', 'error'); return; }
-        DN.post(API + '/dict/save', payload).then(function () { DN.toast('已保存'); renderDicts(body); })
-          .catch(function (e) { DN.toast(e.message, 'error'); });
+        if (!payload.dictCode) { DN.toast('编码必填', 'err'); f.dict_code.focus(); return; }
+        // 编码格式校验：字母开头，仅含字母/数字/下划线（码表编码作为枚举引用键）
+        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(payload.dictCode)) { DN.toast('编码须字母开头，仅含字母/数字/下划线', 'err'); f.dict_code.focus(); return; }
+        guardSubmit(save, '保存中…', function () {
+          return DN.post(API + '/dict/save', payload).then(function () { DN.toast('已保存', 'ok'); renderDicts(body); })
+            .catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
+        });
       }
     });
     form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
@@ -337,8 +399,8 @@
               return DN.h('a', { href: 'javascript:void(0)', text: d.dictCode || '',
                 style: 'color:var(--primary,#1890ff)', onclick: function () { openDictItems(d); } });
             } },
-          { key: 'dictName', label: '名称' },
-          { key: 'description', label: '描述' },
+          { key: 'dictName', label: '名称', render: function (d) { return truncCell(d.dictName, 24); } },
+          { key: 'description', label: '描述', render: function (d) { return truncCell(d.description, 36); } },
           { key: '_op', label: '操作', render: function (d) {
               return delLink(function () { return DN.del(API + '/dict/' + d.id); }, function () { renderDicts(body); });
             } }
@@ -346,7 +408,7 @@
         rows: data || [], searchKeys: ['dictCode', 'dictName'], searchPlaceholder: '搜索编码/名称',
         empty: '暂无码表，使用上方表单新增', emptyIcon: 'list'
       }));
-    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败: ' + e.message, function () { body.innerHTML = ''; renderDicts(body); })); });
+    }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { body.innerHTML = ''; renderDicts(body); })); });
   }
 
   /** 码表明细项：用抽屉承载（表单 + 明细表） */
@@ -367,9 +429,17 @@
       form.appendChild(formRow('排序', s));
       var add = DN.h('a', {
         class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增项', onclick: function () {
-          if (!k.value.trim()) { DN.toast('码值必填', 'error'); return; }
-          DN.post(API + '/dict/item/save', { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: parseInt(s.value, 10) || 0 })
-            .then(function () { DN.toast('已保存'); refreshDictItems(box, dictId); }).catch(function (e) { DN.toast(e.message, 'error'); });
+          if (!k.value.trim()) { DN.toast('码值必填', 'err'); k.focus(); return; }
+          // 排序校验：可空(默认0)，填则须为非负整数
+          var sortRaw = s.value.trim(), sortVal = 0;
+          if (sortRaw) {
+            if (!/^\d+$/.test(sortRaw)) { DN.toast('排序须为非负整数', 'err'); s.focus(); return; }
+            sortVal = parseInt(sortRaw, 10);
+          }
+          guardSubmit(add, '保存中…', function () {
+            return DN.post(API + '/dict/item/save', { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal })
+              .then(function () { DN.toast('已保存', 'ok'); refreshDictItems(box, dictId); }).catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
+          });
         }
       });
       form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), add]));
@@ -377,16 +447,16 @@
       box.appendChild(form);
       box.appendChild(DN.table({
         columns: [
-          { key: 'itemKey', label: '码值' },
-          { key: 'itemValue', label: '含义' },
+          { key: 'itemKey', label: '码值', render: function (it) { return truncCell(it.itemKey, 20); } },
+          { key: 'itemValue', label: '含义', render: function (it) { return truncCell(it.itemValue, 36); } },
           { key: 'sort', label: '排序', align: 'right', render: function (it) { return it.sort == null ? 0 : it.sort; } },
           { key: '_op', label: '操作', render: function (it) {
               return delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(box, dictId); });
             } }
         ],
-        rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增'
+        rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增', emptyIcon: 'list'
       }));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { refreshDictItems(box, dictId); })); });
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { refreshDictItems(box, dictId); })); });
   }
 
   // ========== 落标稽核 ==========
@@ -398,17 +468,24 @@
     var picker = DN.dbTablePicker({ withColumn: false });
     runCard.body.appendChild(picker.el);
     var result = DN.h('div', { id: 'checkResult', style: 'margin-top:8px' });
-    runCard.body.appendChild(DN.h('a', {
+    var runBtn = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '执行落标稽核', onclick: function () {
         var scope = picker.db() ? (picker.table() ? picker.db() + '.' + picker.table() : picker.db()) : '';
+        // 全量稽核为较重操作，二次确认防误触
+        if (!scope && !window.confirm('未选择范围，将对全量字段执行落标稽核，可能耗时较久，是否继续？')) return;
         var url = API + '/check/run' + (scope ? '?scope=' + encodeURIComponent(scope) : '');
-        DN.post(url).then(function (run) {
-          DN.toast('稽核完成，落标率 ' + fmtRate(run.passRate));
-          showRun(result, run);
-          loadRuns(historyBody);
-        }).catch(function (e) { DN.toast(e.message, 'error'); });
+        guardSubmit(runBtn, '稽核中…', function () {
+          return DN.post(url).then(function (run) {
+            run = run || {};
+            DN.toast('稽核完成，落标率 ' + fmtRate(run.passRate), 'ok');
+            showRun(result, run);
+            loadRuns(historyBody);
+            loadTop();                 // 同步刷新违规 Top，与本次结果联动一致
+          }).catch(function (e) { DN.toast(e && e.message || '稽核失败', 'err'); });
+        });
       }
-    }));
+    });
+    runCard.body.appendChild(runBtn);
     runCard.body.appendChild(result);
     body.appendChild(runCard.el);
 
@@ -419,15 +496,20 @@
     topBody.appendChild(DN.skeleton(3));
     body.appendChild(topCard.el);
     function loadTop() {
+      if (topBody._loading) return;        // 去重：避免重复并发拉取
+      topBody._loading = true;
       topBody.innerHTML = '';
       topBody.appendChild(DN.skeleton(3));
       DN.get(API + '/top-violations?limit=10').then(function (rows) {
+        topBody._loading = false;
         topBody.innerHTML = '';
-        if (!rows || !rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
+        rows = rows || [];
+        if (!rows.length) { topBody.appendChild(DN.empty('暂无违规数据（先执行落标稽核）', 'check')); return; }
         topBody.appendChild(DN.heat(rows.map(function (r) {
-          return { label: r.db + '.' + r.table, value: Number(r.violations) || 0, display: (r.violations || 0) + ' 列' };
+          r = r || {};
+          return { label: (r.db || '?') + '.' + (r.table || '?'), value: Number(r.violations) || 0, display: (r.violations || 0) + ' 列' };
         }), { rgb: [255, 77, 79] }));
-      }).catch(function () { topBody.innerHTML = ''; topBody.appendChild(DN.errorBox('加载失败', function () { loadTop(); })); });
+      }).catch(function () { topBody._loading = false; topBody.innerHTML = ''; topBody.appendChild(DN.errorBox('加载失败', function () { loadTop(); })); });
     }
     loadTop();
 
@@ -439,7 +521,10 @@
   }
 
   function loadRuns(box) {
+    if (box._loading) return;               // 去重：避免重复并发拉取(执行稽核后多次触发)
+    box._loading = true;
     DN.get(API + '/check/runs').then(function (runs) {
+      box._loading = false;
       box.innerHTML = '';
       runs = runs || [];
       // 落标率趋势(按 id 升序取时间序), >=2 次才有意义
@@ -457,28 +542,32 @@
               return DN.h('a', { href: 'javascript:void(0)', text: '#' + r.id, style: 'color:var(--primary,#1890ff)',
                 onclick: function () {
                   DN.get(API + '/check/run/' + r.id).then(function (run) {
-                    showRun(document.getElementById('checkResult'), run);
-                  }).catch(function (e) { DN.toast(e.message, 'error'); });
+                    var rb = document.getElementById('checkResult');
+                    showRun(rb, run);
+                    if (rb && rb.scrollIntoView) rb.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); // 下钻后滚动到结果区
+                  }).catch(function (e) { DN.toast(e && e.message || '加载失败', 'err'); });
                 } });
             } },
-          { key: 'scope', label: '范围', render: function (r) { return r.scope || '全量'; } },
+          { key: 'scope', label: '范围', render: function (r) { return truncCell(r.scope || '全量', 28); } },
           { key: 'totalCount', label: '总数', align: 'right', render: function (r) { return r.totalCount || 0; } },
           { key: 'violationCount', label: '不合规', align: 'right', render: function (r) { return r.violationCount || 0; } },
           { key: 'passRate', label: '落标率', align: 'right', render: function (r) {
               if (r.passRate == null) return '-';
-              var t = r.passRate >= 80 ? 'ok' : (r.passRate >= 60 ? 'warn' : 'err');
+              var pr = Number(r.passRate);
+              var t = pr >= 80 ? 'ok' : (pr >= 60 ? 'warn' : 'err');
               return DN.pill(fmtRate(r.passRate), t);
             } },
-          { key: 'createdAt', label: '时间' }
+          { key: 'createdAt', label: '时间', render: function (r) { return r.createdAt ? DN.timeAgo(r.createdAt) : '-'; } }
         ],
         rows: runs, searchKeys: ['scope'], searchPlaceholder: '搜索范围',
         empty: '尚无稽核记录，点击上方执行', emptyIcon: 'clock'
       }));
-    }).catch(function () { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败', function () { loadRuns(box); })); });
+    }).catch(function () { box._loading = false; box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败', function () { loadRuns(box); })); });
   }
 
   function showRun(box, run) {
     if (!box) return;
+    run = run || {};
     box.innerHTML = '';
     var rate = (run.passRate == null ? 0 : Number(run.passRate));
     var tone = rate >= 80 ? 'ok' : (rate >= 60 ? 'warn' : 'err');
@@ -488,14 +577,14 @@
       { icon: 'alert', label: '不合规', value: run.violationCount || 0, tone: 'err' }
     ]));
     var detail = [];
-    try { detail = run.detail ? JSON.parse(run.detail) : []; } catch (e) { detail = []; DN.toast('稽核明细解析失败', 'warn'); }
+    try { var pd = run.detail ? JSON.parse(run.detail) : []; detail = Array.isArray(pd) ? pd : []; } catch (e) { detail = []; DN.toast('稽核明细解析失败', 'warn'); }
     // 违规原因 Top 聚合(先看主要违规类型再下钻)
     var detailTbl = DN.table({
       columns: [
         { key: 'tableMetaId', label: '表ID', align: 'right', sortable: true, render: function (d) { return d.tableMetaId == null ? '' : d.tableMetaId; } },
-        { key: 'columnName', label: '列名', sortable: true },
+        { key: 'columnName', label: '列名', sortable: true, render: function (d) { return truncCell(d.columnName, 28); } },
         { key: 'dataType', label: '类型', sortable: true },
-        { key: 'reason', label: '原因', sortable: true }
+        { key: 'reason', label: '原因', sortable: true, render: function (d) { return truncCell(d.reason, 40); } }
       ],
       rows: detail, searchKeys: ['columnName', 'reason'], searchPlaceholder: '搜索列名/原因',
       exportName: '落标稽核明细', empty: '无不合规项', emptyIcon: 'check'
