@@ -396,6 +396,7 @@
     var body = DN.h('div', {});
     var dr = DN.drawer(db + '.' + table, body);
     renderGovLinks(body, db, table);   // R22 治理联动: 资产即枢纽, 交叉跳转质量/工单/血缘/分级/消费
+    renderSubjectRow(body, db, table); // R35 所属主题域: 概要展示当前主题域并可设置/取消
     renderColumns(body, db, table);
     renderProfileSection(body, db, table);
     renderGlossarySection(body);
@@ -419,6 +420,80 @@
       bar.appendChild(DN.h('a', { class: 'btn ' + (l.tone || ''), href: 'javascript:void(0)', text: l.text, onclick: l.go }));
     });
     panel.appendChild(bar);
+  }
+
+  // R35 所属主题域: 概要区展示当前主题域名(或未设置)并可设置/取消, 独立 try/catch 不影响抽屉其它内容
+  function renderSubjectRow(panel, db, table) {
+    try {
+      var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
+      var subjects = [];        // [{id,name}]
+      var curId = null;         // 当前主题域 id(数字或 null)
+      var row = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
+      row.appendChild(DN.h('span', { text: '所属主题域', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));
+      var nameSpan = DN.h('span', { text: '加载中…', style: 'font-size:13px;color:var(--text-primary,#1f2329)' });
+      row.appendChild(nameSpan);
+      panel.appendChild(row);
+
+      function nameOf(id) {
+        if (id == null) return null;
+        for (var i = 0; i < subjects.length; i++) { if (String(subjects[i].id) === String(id)) return subjects[i].name; }
+        return null;
+      }
+      function refresh() {
+        var nm = nameOf(curId);
+        nameSpan.textContent = nm || (curId == null ? '未设置' : '主题域#' + curId);
+        nameSpan.style.color = nm ? 'var(--text-primary,#1f2329)' : 'var(--text-muted,#86909c)';
+      }
+
+      // 内联设置: 主题域下拉(含「未设置」空选项) + 保存/取消, 保存成功后 toast 并刷新本行
+      function startEdit() {
+        var sel = DN.h('select', { class: 'iw-form-select', style: 'min-width:160px;' });
+        sel.innerHTML = '<option value="">（未设置 / 取消归属）</option>';
+        subjects.forEach(function (s) {
+          var o = document.createElement('option');
+          o.value = String(s.id); o.textContent = s.name; o.selected = (String(s.id) === String(curId));
+          sel.appendChild(o);
+        });
+        var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
+        var cancel = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', onclick: function () { renderRow(); } });
+        save.onclick = function () {
+          var newId = sel.value === '' ? null : Number(sel.value);
+          save.classList.add('is-loading');
+          DN.post('/api/metadata/table/set-subject', { db: db, table: table, subjectId: newId }).then(function () {
+            curId = newId;
+            DN.toast('主题域已更新', 'ok');
+            renderRow();
+          }).catch(function (e) {
+            save.classList.remove('is-loading');
+            DN.toast('设置失败: ' + (e && e.message || e), 'err');
+          });
+        };
+        row.innerHTML = '';
+        row.appendChild(DN.h('span', { text: '所属主题域', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));
+        row.appendChild(sel);
+        row.appendChild(save);
+        row.appendChild(cancel);
+      }
+      // 还原为只读行(主题域名 + 设置按钮)
+      function renderRow() {
+        row.innerHTML = '';
+        row.appendChild(DN.h('span', { text: '所属主题域', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));
+        row.appendChild(nameSpan);
+        row.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '设置', onclick: startEdit }));
+        refresh();
+      }
+
+      Promise.all([
+        DN.get('/api/metadata/table/subject' + qs).catch(function () { return null; }),
+        DN.get('/api/gov/subject').catch(function () { return []; })
+      ]).then(function (res) {
+        var cur = res[0]; curId = cur && cur.subjectId != null ? cur.subjectId : null;
+        subjects = Array.isArray(res[1]) ? res[1] : [];
+        renderRow();
+      }).catch(function () {
+        nameSpan.textContent = '加载失败';
+      });
+    } catch (e) { /* 主题域行失败不影响抽屉其它内容 */ }
   }
 
   function subTitle(text) {
