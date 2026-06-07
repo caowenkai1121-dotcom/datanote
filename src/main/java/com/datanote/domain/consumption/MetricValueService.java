@@ -12,10 +12,12 @@ import com.datanote.domain.integration.HiveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 指标值引擎（消费层核心）—— 复用 {@link HiveService#executeSQL} 按 dn_metric.calc_formula 计算指标值并落库，
@@ -39,8 +41,16 @@ public class MetricValueService {
     /** 指标值新鲜度阈值（小时）：超过视为陈旧 */
     static final long FRESH_HOURS = 26;
 
-    /** 计算单个指标当前值并落快照（仅 status=1 + 有公式）。失败也落 error 快照，不抛断主流程。 */
+    /** 批量取值入参上限（看板单次最多拉取的指标 code 数），防超大请求拖垮库 */
+    private static final int MAX_BATCH_CODES = 200;
+
+    /**
+     * 计算单个指标当前值并落快照（仅 status=1 + 有公式）。失败也落 error 快照，不抛断主流程。
+     * 多次写（value 落库 + 预警可能建/刷工单）置于同一事务保证原子。
+     */
+    @Transactional
     public DnMetricValue calc(Long metricId, String operator) {
+        if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         DnMetric m = metricMapper.selectById(metricId);
         if (m == null) throw new BusinessException("指标不存在: " + metricId);
         if (m.getStatus() == null || m.getStatus() != 1) throw new BusinessException("指标未发布(status≠1)，不可消费: " + m.getMetricCode());
@@ -62,7 +72,7 @@ public class MetricValueService {
         } catch (Exception e) {
             v.setRunStatus("error");
             v.setErrorMsg(e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage()));
-            log.warn("指标取值失败 metricId={}: {}", metricId, e.getMessage());
+            log.warn("指标取值失败 metricId={} code={}: {}", metricId, m.getMetricCode(), e.getMessage());
         }
         v.setDurationMs(System.currentTimeMillis() - start);
         valueMapper.insert(v);
@@ -77,6 +87,7 @@ public class MetricValueService {
 
     /** 指标最新一次成功值 */
     public DnMetricValue latest(Long metricId) {
+        if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         QueryWrapper<DnMetricValue> qw = new QueryWrapper<>();
         qw.eq("metric_id", metricId).eq("run_status", "success").orderByDesc("created_at").last("LIMIT 1");
         return valueMapper.selectOne(qw);
@@ -84,27 +95,46 @@ public class MetricValueService {
 
     /** 指标值历史（时间序列，正序） */
     public List<DnMetricValue> history(Long metricId, int limit) {
+        if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         int n = limit <= 0 ? 30 : Math.min(limit, 365);
         QueryWrapper<DnMetricValue> qw = new QueryWrapper<>();
         qw.eq("metric_id", metricId).orderByDesc("created_at").last("LIMIT " + n);
         List<DnMetricValue> rows = valueMapper.selectList(qw);
+        if (rows == null || rows.isEmpty()) return new ArrayList<>();
         Collections.reverse(rows);
         return rows;
     }
 
-    /** 按 code 批量取最新值（供看板批量拉取） */
+    /** 按 code 批量取最新值（供看板批量拉取）。批量查指标+批量查最新值，消除逐 code N+1。 */
     public List<Map<String, Object>> batchLatestByCode(List<String> codes) {
         List<Map<String, Object>> out = new ArrayList<>();
-        if (codes == null) return out;
+        if (codes == null || codes.isEmpty()) return out;
+        if (codes.size() > MAX_BATCH_CODES) throw new BusinessException("单次批量取值最多 " + MAX_BATCH_CODES + " 个指标, 实际 " + codes.size());
+        // 去空白并保序去重，仅用有效 code 一次性查指标
+        LinkedHashSet<String> valid = new LinkedHashSet<>();
+        for (String c : codes) {
+            if (c != null && !c.trim().isEmpty()) valid.add(c.trim());
+        }
+        Map<String, DnMetric> metricByCode = new HashMap<>();
+        if (!valid.isEmpty()) {
+            List<DnMetric> metrics = metricMapper.selectList(
+                    new QueryWrapper<DnMetric>().in("metric_code", new ArrayList<>(valid)));
+            if (metrics != null) {
+                for (DnMetric m : metrics) {
+                    if (m.getMetricCode() != null) metricByCode.putIfAbsent(m.getMetricCode(), m);
+                }
+            }
+        }
+        // 一次取出这批指标的全部最新成功值, 内存映射 metricId -> latest
+        Map<Long, DnMetricValue> latestByMetricId = latestSuccessMap(
+                metricByCode.values().stream().map(DnMetric::getId).filter(Objects::nonNull).collect(Collectors.toList()));
         for (String code : codes) {
-            QueryWrapper<DnMetric> mq = new QueryWrapper<>();
-            mq.eq("metric_code", code).last("LIMIT 1");
-            DnMetric m = metricMapper.selectOne(mq);
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("metricCode", code);
+            DnMetric m = code == null ? null : metricByCode.get(code.trim());
             if (m != null) {
                 row.put("metricName", m.getMetricName()); row.put("unit", m.getUnit());
-                DnMetricValue v = latest(m.getId());
+                DnMetricValue v = latestByMetricId.get(m.getId());
                 row.put("value", v == null ? null : v.getMetricValue());
                 row.put("valueAt", v == null ? null : v.getCreatedAt());
             }
@@ -113,12 +143,15 @@ public class MetricValueService {
         return out;
     }
 
-    /** 指标新鲜度：每个启用指标最近一次取值时间 + 是否陈旧 */
+    /** 指标新鲜度：每个启用指标最近一次取值时间 + 是否陈旧。批量取最新值消除逐指标 N+1。 */
     public List<Map<String, Object>> freshness() {
         List<Map<String, Object>> out = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
-        for (DnMetric m : enabledMetrics()) {
-            DnMetricValue v = latest(m.getId());
+        List<DnMetric> metrics = enabledMetrics();
+        Map<Long, DnMetricValue> latestByMetricId = latestSuccessMap(
+                metrics.stream().map(DnMetric::getId).filter(Objects::nonNull).collect(Collectors.toList()));
+        for (DnMetric m : metrics) {
+            DnMetricValue v = latestByMetricId.get(m.getId());
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("metricId", m.getId()); row.put("metricCode", m.getMetricCode()); row.put("metricName", m.getMetricName());
             row.put("lastValue", v == null ? null : v.getMetricValue());
@@ -131,12 +164,15 @@ public class MetricValueService {
         return out;
     }
 
-    /** 僵尸指标：启用但从未被取值消费过(无任何值记录)的指标 */
+    /** 僵尸指标：启用但从未被取值消费过(无任何值记录)的指标。一次查出有值的 metricId 集合, 消除逐指标计数。 */
     public List<DnMetric> zombies() {
+        List<DnMetric> metrics = enabledMetrics();
+        if (metrics.isEmpty()) return new ArrayList<>();
+        Set<Long> hasValue = metricIdsWithAnyValue(
+                metrics.stream().map(DnMetric::getId).filter(Objects::nonNull).collect(Collectors.toList()));
         List<DnMetric> out = new ArrayList<>();
-        for (DnMetric m : enabledMetrics()) {
-            Long cnt = valueMapper.selectCount(new QueryWrapper<DnMetricValue>().eq("metric_id", m.getId()));
-            if (cnt == null || cnt == 0) out.add(m);
+        for (DnMetric m : metrics) {
+            if (m.getId() == null || !hasValue.contains(m.getId())) out.add(m);
         }
         return out;
     }
@@ -144,17 +180,17 @@ public class MetricValueService {
     /** 消费层概览聚合 */
     public Map<String, Object> overview() {
         Map<String, Object> o = new LinkedHashMap<>();
-        long enabled = metricMapper.selectCount(new QueryWrapper<DnMetric>().eq("status", 1));
-        long totalValues = valueMapper.selectCount(null);
+        Long enabled = metricMapper.selectCount(new QueryWrapper<DnMetric>().eq("status", 1));
+        Long totalValues = valueMapper.selectCount(null);
         int zombieN = zombies().size();
         List<Map<String, Object>> fresh = freshness();
         long staleN = fresh.stream().filter(r -> Boolean.TRUE.equals(r.get("stale"))).count();
-        long consume7d = logMapper.selectCount(new QueryWrapper<DnConsumptionLog>().ge("created_at", LocalDateTime.now().minusDays(7)));
-        o.put("enabledMetrics", enabled);
-        o.put("totalValues", totalValues);
+        Long consume7d = logMapper.selectCount(new QueryWrapper<DnConsumptionLog>().ge("created_at", LocalDateTime.now().minusDays(7)));
+        o.put("enabledMetrics", enabled == null ? 0L : enabled);
+        o.put("totalValues", totalValues == null ? 0L : totalValues);
         o.put("zombieMetrics", zombieN);
         o.put("staleMetrics", staleN);
-        o.put("consume7d", consume7d);
+        o.put("consume7d", consume7d == null ? 0L : consume7d);
         return o;
     }
 
@@ -169,27 +205,35 @@ public class MetricValueService {
             l.setCreatedAt(LocalDateTime.now());
             logMapper.insert(l);
         } catch (Exception e) {
-            log.warn("消费审计写入失败(不影响主流程): {}", e.getMessage());
+            log.warn("消费审计写入失败(不影响主流程) consumer={} action={} target={}: {}",
+                    consumer, action, targetCode, e.getMessage());
         }
     }
 
     /** 资产影响联动：给定库.表，反查哪些指标消费它(经 DnMetricRef)+ 最新值。改表前评估影响面。 */
     public List<Map<String, Object>> assetImpact(String db, String table) {
         List<Map<String, Object>> out = new ArrayList<>();
-        if (db == null || table == null) return out;
+        if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) return out;
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.domain.governance.model.DnMetricRef> qw =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         qw.eq("db_name", db).eq("table_name", table);
         List<com.datanote.domain.governance.model.DnMetricRef> refs = metricRefMapper.selectList(qw);
-        java.util.Set<Long> seen = new java.util.HashSet<>();
+        if (refs == null || refs.isEmpty()) return out;
+        // 按出现顺序收集去重 metricId, 一次批量查指标与最新值, 消除逐 ref 的 selectById/latest N+1
+        LinkedHashMap<Long, String> refTypeById = new LinkedHashMap<>();
         for (com.datanote.domain.governance.model.DnMetricRef ref : refs) {
-            if (ref.getMetricId() == null || !seen.add(ref.getMetricId())) continue;
-            DnMetric m = metricMapper.selectById(ref.getMetricId());
+            if (ref.getMetricId() != null) refTypeById.putIfAbsent(ref.getMetricId(), ref.getRefType());
+        }
+        if (refTypeById.isEmpty()) return out;
+        Map<Long, DnMetric> metricById = metricMapByIds(new ArrayList<>(refTypeById.keySet()));
+        Map<Long, DnMetricValue> latestByMetricId = latestSuccessMap(new ArrayList<>(refTypeById.keySet()));
+        for (Map.Entry<Long, String> e : refTypeById.entrySet()) {
+            DnMetric m = metricById.get(e.getKey());
             if (m == null) continue;
-            DnMetricValue v = latest(m.getId());
+            DnMetricValue v = latestByMetricId.get(m.getId());
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("metricId", m.getId()); row.put("metricCode", m.getMetricCode());
-            row.put("metricName", m.getMetricName()); row.put("refType", ref.getRefType());
+            row.put("metricName", m.getMetricName()); row.put("refType", e.getValue());
             row.put("lastValue", v == null ? null : v.getMetricValue());
             row.put("lastValueAt", v == null ? null : v.getCreatedAt());
             out.add(row);
@@ -199,6 +243,7 @@ public class MetricValueService {
 
     /** 指标输入质量联动：指标来源表(DnMetricRef)上的质量规则 + 各规则最新通过率，给指标可信度信号。 */
     public Map<String, Object> inputQuality(Long metricId) {
+        if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         Map<String, Object> out = new LinkedHashMap<>();
         List<Map<String, Object>> tables = new ArrayList<>();
         int total = 0, fail = 0, noResult = 0;
@@ -207,21 +252,28 @@ public class MetricValueService {
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         rq.eq("metric_id", metricId);
         Set<String> seen = new LinkedHashSet<>();
-        for (com.datanote.domain.governance.model.DnMetricRef ref : metricRefMapper.selectList(rq)) {
-            if (ref.getDbName() == null || ref.getTableName() == null) continue;
-            seen.add(ref.getDbName() + "::" + ref.getTableName());
+        List<com.datanote.domain.governance.model.DnMetricRef> refs = metricRefMapper.selectList(rq);
+        if (refs != null) {
+            for (com.datanote.domain.governance.model.DnMetricRef ref : refs) {
+                if (ref.getDbName() == null || ref.getTableName() == null) continue;
+                seen.add(ref.getDbName() + "::" + ref.getTableName());
+            }
         }
         for (String key : seen) {
             String[] dt = key.split("::", 2);
+            if (dt.length < 2) continue;
             QueryWrapper<com.datanote.domain.governance.model.DnQualityRule> qq = new QueryWrapper<>();
             qq.eq("database_name", dt[0]).eq("table_name", dt[1]).eq("status", 1);
             List<com.datanote.domain.governance.model.DnQualityRule> rules = qualityRuleMapper.selectList(qq);
+            if (rules == null) rules = new ArrayList<>();
+            // 一次取这批规则的最新运行记录, 内存按 ruleId 取首条(最新), 消除逐规则 selectOne N+1
+            Map<Long, com.datanote.domain.governance.model.DnQualityRun> latestRunByRuleId = latestRunMap(
+                    rules.stream().map(com.datanote.domain.governance.model.DnQualityRule::getId)
+                            .filter(Objects::nonNull).collect(Collectors.toList()));
             List<Map<String, Object>> ruleRows = new ArrayList<>();
             for (com.datanote.domain.governance.model.DnQualityRule rule : rules) {
                 total++;
-                com.datanote.domain.governance.model.DnQualityRun run = qualityRunMapper.selectOne(
-                        new QueryWrapper<com.datanote.domain.governance.model.DnQualityRun>()
-                                .eq("rule_id", rule.getId()).orderByDesc("started_at").last("LIMIT 1"));
+                com.datanote.domain.governance.model.DnQualityRun run = latestRunByRuleId.get(rule.getId());
                 Map<String, Object> rr = new LinkedHashMap<>();
                 rr.put("ruleName", rule.getRuleName()); rr.put("ruleType", rule.getRuleType());
                 rr.put("severity", rule.getSeverity()); rr.put("dimension", rule.getDimension());
@@ -248,7 +300,7 @@ public class MetricValueService {
         return out;
     }
 
-    /** 指标消费排行：按消费日志计数，Top 指标(含名称)。 */
+    /** 指标消费排行：按消费日志计数，Top 指标(含名称)。批量查名称消除逐 code N+1。 */
     public List<Map<String, Object>> metricRanking() {
         QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
         qw.select("target_code", "COUNT(*) AS cnt")
@@ -256,18 +308,89 @@ public class MetricValueService {
           .isNotNull("target_code").ne("target_code", "")
           .groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
         List<Map<String, Object>> rows = logMapper.selectMaps(qw);
+        if (rows == null || rows.isEmpty()) return new ArrayList<>();
+        // 收集本批 code, 一次查名称, 内存映射 code -> metricName
+        Set<String> codes = new HashSet<>();
         for (Map<String, Object> r : rows) {
             Object code = r.get("target_code");
-            if (code != null) {
-                DnMetric m = metricMapper.selectOne(new QueryWrapper<DnMetric>().eq("metric_code", code).last("LIMIT 1"));
-                r.put("metricName", m == null ? null : m.getMetricName());
+            if (code != null) codes.add(String.valueOf(code));
+        }
+        Map<String, String> nameByCode = new HashMap<>();
+        if (!codes.isEmpty()) {
+            List<DnMetric> metrics = metricMapper.selectList(
+                    new QueryWrapper<DnMetric>().in("metric_code", new ArrayList<>(codes)));
+            if (metrics != null) {
+                for (DnMetric m : metrics) {
+                    if (m.getMetricCode() != null) nameByCode.putIfAbsent(m.getMetricCode(), m.getMetricName());
+                }
             }
+        }
+        for (Map<String, Object> r : rows) {
+            Object code = r.get("target_code");
+            r.put("metricName", code == null ? null : nameByCode.get(String.valueOf(code)));
         }
         return rows;
     }
 
     private List<DnMetric> enabledMetrics() {
-        return metricMapper.selectList(new QueryWrapper<DnMetric>().eq("status", 1).orderByDesc("updated_at"));
+        List<DnMetric> rows = metricMapper.selectList(new QueryWrapper<DnMetric>().eq("status", 1).orderByDesc("updated_at"));
+        return rows == null ? new ArrayList<>() : rows;
+    }
+
+    // ---- 内部批量查询辅助(消除 N+1) ----
+
+    /** 批量取一组指标各自的"最新成功值"，内存归约为 metricId -> 最新 DnMetricValue。空入参返回空表。 */
+    private Map<Long, DnMetricValue> latestSuccessMap(List<Long> metricIds) {
+        Map<Long, DnMetricValue> map = new HashMap<>();
+        if (metricIds == null || metricIds.isEmpty()) return map;
+        List<DnMetricValue> rows = valueMapper.selectList(new QueryWrapper<DnMetricValue>()
+                .in("metric_id", metricIds).eq("run_status", "success").orderByDesc("created_at"));
+        if (rows == null) return map;
+        // 已按 created_at 倒序，首条即为最新；putIfAbsent 保留每个 metricId 的最新一条
+        for (DnMetricValue v : rows) {
+            if (v.getMetricId() != null) map.putIfAbsent(v.getMetricId(), v);
+        }
+        return map;
+    }
+
+    /** 一次查出给定指标中"存在任意值记录"的 metricId 集合（用于僵尸判定，避免逐指标 count）。 */
+    private Set<Long> metricIdsWithAnyValue(List<Long> metricIds) {
+        Set<Long> set = new HashSet<>();
+        if (metricIds == null || metricIds.isEmpty()) return set;
+        List<DnMetricValue> rows = valueMapper.selectList(new QueryWrapper<DnMetricValue>()
+                .select("DISTINCT metric_id").in("metric_id", metricIds));
+        if (rows == null) return set;
+        for (DnMetricValue v : rows) {
+            if (v.getMetricId() != null) set.add(v.getMetricId());
+        }
+        return set;
+    }
+
+    /** 批量按 id 查指标，内存映射 id -> DnMetric。空入参返回空表。 */
+    private Map<Long, DnMetric> metricMapByIds(List<Long> ids) {
+        Map<Long, DnMetric> map = new HashMap<>();
+        if (ids == null || ids.isEmpty()) return map;
+        List<DnMetric> metrics = metricMapper.selectBatchIds(ids);
+        if (metrics == null) return map;
+        for (DnMetric m : metrics) {
+            if (m.getId() != null) map.put(m.getId(), m);
+        }
+        return map;
+    }
+
+    /** 批量取一组质量规则各自最新一次运行记录，内存归约为 ruleId -> 最新 DnQualityRun。 */
+    private Map<Long, com.datanote.domain.governance.model.DnQualityRun> latestRunMap(List<Long> ruleIds) {
+        Map<Long, com.datanote.domain.governance.model.DnQualityRun> map = new HashMap<>();
+        if (ruleIds == null || ruleIds.isEmpty()) return map;
+        List<com.datanote.domain.governance.model.DnQualityRun> rows = qualityRunMapper.selectList(
+                new QueryWrapper<com.datanote.domain.governance.model.DnQualityRun>()
+                        .in("rule_id", ruleIds).orderByDesc("started_at"));
+        if (rows == null) return map;
+        // 已按 started_at 倒序，每个 ruleId 首条即最新
+        for (com.datanote.domain.governance.model.DnQualityRun run : rows) {
+            if (run.getRuleId() != null) map.putIfAbsent(run.getRuleId(), run);
+        }
+        return map;
     }
 
     // ---- 纯函数(可单测) ----
@@ -296,7 +419,7 @@ public class MetricValueService {
     }
 
     static long ageHours(LocalDateTime from, LocalDateTime now) {
-        if (from == null) return 0L;
+        if (from == null || now == null) return 0L;
         long h = java.time.Duration.between(from, now).toHours();
         return h < 0 ? 0L : h;
     }

@@ -51,6 +51,10 @@ public class HealthScoreService {
     /** 数据源缺失时的中性分：不惩罚也不奖励 */
     private static final double NEUTRAL = 60.0;
 
+    /** 趋势查询天数默认值与上限（防超大区间扫全表） */
+    private static final int TREND_DEFAULT_DAYS = 30;
+    private static final int TREND_MAX_DAYS = 3650;
+
     public static final String DIM_STANDARD = "规范";
     public static final String DIM_QUALITY = "质量";
     public static final String DIM_SECURITY = "安全";
@@ -90,9 +94,13 @@ public class HealthScoreService {
         QueryWrapper<DnGovernanceMetric> qw = new QueryWrapper<>();
         qw.eq("enabled", 1);
         List<DnGovernanceMetric> metrics = metricMapper.selectList(qw);
-        for (DnGovernanceMetric m : metrics) {
-            double w = m.getWeight() == null ? 0.0 : m.getWeight().doubleValue();
-            map.merge(m.getDimension(), w, Double::sum);
+        if (metrics != null) {
+            for (DnGovernanceMetric m : metrics) {
+                // 维度名为空的脏数据跳过，避免污染权重表的 null/空 key
+                if (m == null || m.getDimension() == null || m.getDimension().trim().isEmpty()) continue;
+                double w = m.getWeight() == null ? 0.0 : m.getWeight().doubleValue();
+                map.merge(m.getDimension(), w, Double::sum);
+            }
         }
         // 配置表为空时回退到设计默认权重，保证不崩
         if (map.isEmpty()) {
@@ -128,12 +136,15 @@ public class HealthScoreService {
             if (list == null || list.isEmpty()) return dim(NEUTRAL, "未做 DCMM 自评(中性分)");
             double sum = 0; int n = 0;
             for (DnMaturityAssessment a : list) {
+                if (a == null) continue;
                 if (a.getScore() != null) { sum += a.getScore().doubleValue(); n++; }
                 else if (a.getLevel() != null) { sum += a.getLevel() * 20.0; n++; }  // level 1-5 → 0-100
             }
             if (n == 0) return dim(NEUTRAL, "DCMM 自评无评分(中性分)");
             return dim(sum / n, "DCMM 八大域自评均值(" + n + "域)");
         } catch (Exception e) {
+            // 取数失败降级为中性分，但记录上下文便于排查（不静默吞错）
+            log.warn("组织成熟度维度取数失败, 降级中性分: {}", e.getMessage());
             return dim(NEUTRAL, "DCMM 取数失败(中性分)");
         }
     }
@@ -169,9 +180,14 @@ public class HealthScoreService {
             List<DnQualityRun> runs = qualityMapper.selectList(qw);
             if (runs != null && !runs.isEmpty()) {
                 double sum = 0.0;
-                for (DnQualityRun r : runs) sum += r.getPassRate().doubleValue();
+                int n = 0;
+                for (DnQualityRun r : runs) {
+                    if (r == null || r.getPassRate() == null) continue; // 防御性判空, 仅对有效记录求均值
+                    sum += r.getPassRate().doubleValue();
+                    n++;
+                }
                 // pass_rate 已是百分比(0-100,见 QualityService pass*100/total),不可再×100
-                return dim(sum / runs.size(), "质量调度(M5,近" + runs.size() + "次)");
+                if (n > 0) return dim(sum / n, "质量调度(M5,近" + n + "次)");
             }
         } catch (Exception e) {
             log.warn("质量维度取数失败: {}", e.getMessage());
@@ -218,10 +234,16 @@ public class HealthScoreService {
             long total = tableMetaMapper.selectCount(null);
             if (total > 0) {
                 Set<String> tablesWithEdge = new HashSet<>();
-                List<DnLineageEdge> edges = lineageMapper.selectList(null);
-                for (DnLineageEdge e : edges) {
-                    if (e.getSrcTable() != null) tablesWithEdge.add(key(e.getSrcDb(), e.getSrcTable()));
-                    if (e.getDstTable() != null) tablesWithEdge.add(key(e.getDstDb(), e.getDstTable()));
+                // 只取覆盖率计算所需的 4 列, 降低大表全量拉取的内存/IO 开销
+                QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
+                qw.select("src_db", "src_table", "dst_db", "dst_table");
+                List<DnLineageEdge> edges = lineageMapper.selectList(qw);
+                if (edges != null) {
+                    for (DnLineageEdge e : edges) {
+                        if (e == null) continue;
+                        if (e.getSrcTable() != null) tablesWithEdge.add(key(e.getSrcDb(), e.getSrcTable()));
+                        if (e.getDstTable() != null) tablesWithEdge.add(key(e.getDstDb(), e.getDstTable()));
+                    }
                 }
                 long covered = Math.min(tablesWithEdge.size(), total);
                 return dim(covered * 100.0 / total, "血缘覆盖(M3/M4," + covered + "/" + total + ")");
@@ -244,7 +266,11 @@ public class HealthScoreService {
         Map<String, Double> weights = dimensionWeights();
         Map<String, Double> dimScores = new LinkedHashMap<>();
         for (Map.Entry<String, Map<String, Object>> e : detail.entrySet()) {
-            dimScores.put(e.getKey(), ((Number) e.getValue().get("score")).doubleValue());
+            Map<String, Object> dimMap = e.getValue();
+            Object scoreObj = dimMap == null ? null : dimMap.get("score");
+            // 维度分缺失或非数值时按 0 处理, 避免 NPE / ClassCastException
+            double s = scoreObj instanceof Number ? ((Number) scoreObj).doubleValue() : 0.0;
+            dimScores.put(e.getKey(), s);
         }
         double total = round1(weightedScore(dimScores, weights));
 
@@ -274,12 +300,16 @@ public class HealthScoreService {
             Map<String, Map<String, Object>> detail =
                     (Map<String, Map<String, Object>>) result.get("dimensions");
             Map<String, Object> dimOnly = new LinkedHashMap<>();
-            for (Map.Entry<String, Map<String, Object>> e : detail.entrySet()) {
-                dimOnly.put(e.getKey(), e.getValue().get("score"));
+            if (detail != null) {
+                for (Map.Entry<String, Map<String, Object>> e : detail.entrySet()) {
+                    dimOnly.put(e.getKey(), e.getValue() == null ? null : e.getValue().get("score"));
+                }
             }
+            Object totalObj = result.get("totalScore");
+            double totalVal = totalObj instanceof Number ? ((Number) totalObj).doubleValue() : 0.0;
             DnGovernanceScore snap = new DnGovernanceScore();
             snap.setScoreDate(LocalDate.now());
-            snap.setTotalScore(BigDecimal.valueOf(((Number) result.get("totalScore")).doubleValue()));
+            snap.setTotalScore(BigDecimal.valueOf(totalVal));
             snap.setDimScores(JSON.writeValueAsString(dimOnly));
             snap.setCreatedAt(LocalDateTime.now());
             scoreMapper.insert(snap);
@@ -309,11 +339,16 @@ public class HealthScoreService {
 
     /** 趋势：近 days 天快照（按时间升序） */
     public List<Map<String, Object>> trend(int days) {
+        // days<=0 用默认 30; 超过上限按上限收口, 防止超大区间扫全表
+        int span = days <= 0 ? TREND_DEFAULT_DAYS : Math.min(days, TREND_MAX_DAYS);
         QueryWrapper<DnGovernanceScore> qw = new QueryWrapper<>();
-        qw.ge("created_at", LocalDateTime.now().minusDays(days <= 0 ? 30 : days))
+        qw.ge("created_at", LocalDateTime.now().minusDays(span))
                 .orderByAsc("created_at");
         List<Map<String, Object>> list = new ArrayList<>();
-        for (DnGovernanceScore s : scoreMapper.selectList(qw)) {
+        List<DnGovernanceScore> snaps = scoreMapper.selectList(qw);
+        if (snaps == null) return list;
+        for (DnGovernanceScore s : snaps) {
+            if (s == null) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("scoreDate", s.getScoreDate());
             m.put("totalScore", s.getTotalScore());
@@ -328,6 +363,8 @@ public class HealthScoreService {
         try {
             return JSON.readValue(json, Map.class);
         } catch (Exception e) {
+            // 历史快照 JSON 解析失败时降级为空, 记录便于定位脏数据
+            log.warn("健康分快照维度 JSON 解析失败, 降级空: {}", e.getMessage());
             return Collections.emptyMap();
         }
     }
