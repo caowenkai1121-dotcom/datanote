@@ -1,7 +1,6 @@
 package com.datanote.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.datanote.config.HiveConfig;
 import com.datanote.mapper.DnSearchHistoryMapper;
 import com.datanote.mapper.DnTableCommentMapper;
 import com.datanote.mapper.DnTableFavoriteMapper;
@@ -9,17 +8,18 @@ import com.datanote.mapper.DnTableMetaMapper;
 import com.datanote.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.datanote.util.ProcessUtil;
-
-import java.sql.*;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * 数据地图 Service — 基于 Hive 的元数据搜索、预览、探查、DDL、收藏、评论等
+ * 数据资产目录 Service —— 离线目录侧职责：搜索、AI 搜索、搜索历史、收藏、热门、评论、表详情。
+ *
+ * 重构(R5)：原 648 行 god-service 把"连库探查"与"读离线目录"混在一处。本服务现只负责
+ * 离线目录/社交(读 DnTableMeta/收藏/评论/搜索历史)，凡需实时库数据均委托
+ * {@link DatasourceExploreService}（唯一直连库出口），不再自行持有 DB 连接。
  */
 @Slf4j
 @Service
@@ -27,129 +27,16 @@ import java.util.*;
 public class DataMapService {
 
     private final AiAssistService aiAssistService;
-    private final HiveConfig hiveConfig;
     private final DnTableCommentMapper tableCommentMapper;
     private final DnTableFavoriteMapper tableFavoriteMapper;
     private final DnSearchHistoryMapper searchHistoryMapper;
     private final DnTableMetaMapper tableMetaMapper;
+    private final DatasourceExploreService exploreService;
 
-    @Value("${doris.database:ods}")
-    private String hiveWarehouse;
-
-    /** 排除的 Hive 系统库 */
-    private static final Set<String> SYS_DBS = new HashSet<String>(Arrays.asList(
-            "default", "information_schema", "sys"
-    ));
-
-    // ========== Hive 元数据查询 ==========
-
-    /**
-     * 获取 Hive 数据库列表（排除系统库）
-     */
-    public List<String> getHiveDatabases() throws SQLException {
-        List<String> dbs = new ArrayList<String>();
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW DATABASES")) {
-            while (rs.next()) {
-                String db = rs.getString(1);
-                if (!SYS_DBS.contains(db)) {
-                    dbs.add(db);
-                }
-            }
-        }
-        return dbs;
-    }
-
-    /**
-     * 获取 Hive 指定库的表列表
-     */
-    public List<String> getHiveTables(String db) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+")) { // 底层防注入:库名拼入SHOW TABLES IN
-            throw new IllegalArgumentException("非法的库名");
-        }
-        List<String> tables = new ArrayList<String>();
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW TABLES IN " + db)) {
-            while (rs.next()) {
-                tables.add(rs.getString(1));
-            }
-        }
-        return tables;
-    }
-
-    /**
-     * 获取 Doris 指定表的字段信息。
-     */
-    public List<ColumnInfo> getHiveColumns(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入:拼入DESCRIBE/information_schema
-        }
-        try {
-            return getDorisColumns(db, table);
-        } catch (SQLException e) {
-            log.warn("通过 information_schema 获取字段失败，降级 DESCRIBE: {}.{}, {}", db, table, e.getMessage());
-            return getColumnsByDescribe(db, table);
-        }
-    }
-
-    private List<ColumnInfo> getDorisColumns(String db, String table) throws SQLException {
-        List<ColumnInfo> columns = new ArrayList<ColumnInfo>();
-        try (Connection conn = hiveConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, EXTRA, COLUMN_COMMENT "
-                             + "FROM information_schema.COLUMNS "
-                             + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? "
-                             + "ORDER BY ORDINAL_POSITION")) {
-            stmt.setString(1, db);
-            stmt.setString(2, table);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    ColumnInfo col = new ColumnInfo();
-                    col.setName(rs.getString("COLUMN_NAME"));
-                    col.setType(nullToDefault(rs.getString("COLUMN_TYPE"), "string"));
-                    col.setComment(nullToDefault(rs.getString("COLUMN_COMMENT"), ""));
-                    col.setHiveType(col.getType());
-                    col.setKey(nullToDefault(rs.getString("COLUMN_KEY"), ""));
-                    col.setNullable(nullToDefault(rs.getString("IS_NULLABLE"), "YES"));
-                    col.setExtra(nullToDefault(rs.getString("EXTRA"), ""));
-                    columns.add(col);
-                }
-            }
-        }
-        return columns;
-    }
-
-    private List<ColumnInfo> getColumnsByDescribe(String db, String table) throws SQLException {
-        List<ColumnInfo> columns = new ArrayList<ColumnInfo>();
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("DESCRIBE " + db + "." + table)) {
-            int columnCount = rs.getMetaData().getColumnCount();
-            while (rs.next()) {
-                String colName = rs.getString(1);
-                if (colName == null || colName.trim().isEmpty()) break;
-                // DESCRIBE 输出中分区信息以 # 开头，跳过
-                if (colName.trim().startsWith("#")) break;
-                ColumnInfo col = new ColumnInfo();
-                col.setName(colName.trim());
-                col.setType(rs.getString(2) != null ? rs.getString(2).trim() : "string");
-                col.setComment(columnCount >= 7 && rs.getString(7) != null ? rs.getString(7).trim() : "");
-                col.setHiveType(col.getType());
-                col.setKey(columnCount >= 4 && rs.getString(4) != null ? rs.getString(4).trim() : "");
-                col.setNullable(columnCount >= 3 && rs.getString(3) != null ? rs.getString(3).trim() : "YES");
-                col.setExtra(columnCount >= 6 && rs.getString(6) != null ? rs.getString(6).trim() : "");
-                columns.add(col);
-            }
-        }
-        return columns;
-    }
-
-    // ========== 搜索 ==========
+    // ========== 搜索（基于在线全表摘要） ==========
 
     public List<Map<String, Object>> searchTables(String keyword) throws SQLException {
-        List<Map<String, Object>> allTables = getAllTablesSummary();
+        List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
         List<Map<String, Object>> matched = new ArrayList<Map<String, Object>>();
         String kw = keyword.toLowerCase();
         for (Map<String, Object> t : allTables) {
@@ -165,7 +52,7 @@ public class DataMapService {
     }
 
     public Map<String, Object> aiSearch(String query) throws Exception {
-        List<Map<String, Object>> allTables = getAllTablesSummary();
+        List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
         StringBuilder tableList = new StringBuilder();
         for (Map<String, Object> t : allTables) {
             tableList.append(t.get("TABLE_SCHEMA")).append(".").append(t.get("TABLE_NAME"));
@@ -190,32 +77,6 @@ public class DataMapService {
         String jsonStr = extractJsonArray(aiReply);
         if (jsonStr != null) {
             result.put("tables", jsonStr);
-        }
-        return result;
-    }
-
-    /**
-     * 获取所有 Hive 表的摘要信息
-     */
-    public List<Map<String, Object>> getAllTablesSummary() throws SQLException {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-        List<String> dbs = getHiveDatabases();
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement()) {
-            for (String db : dbs) {
-                try (ResultSet rs = stmt.executeQuery("SHOW TABLES IN " + db)) {
-                    while (rs.next()) {
-                        String tableName = rs.getString(1);
-                        Map<String, Object> row = new LinkedHashMap<String, Object>();
-                        row.put("TABLE_SCHEMA", db);
-                        row.put("TABLE_NAME", tableName);
-                        row.put("TABLE_COMMENT", "");
-                        row.put("TABLE_ROWS", null);
-                        row.put("col_count", null);
-                        result.add(row);
-                    }
-                }
-            }
         }
         return result;
     }
@@ -303,7 +164,7 @@ public class DataMapService {
 
         // 不足 10 个则用全部表填充
         if (result.size() < 10) {
-            List<Map<String, Object>> allTables = getAllTablesSummary();
+            List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
             Set<String> existing = new HashSet<String>();
             for (Map<String, Object> t : result) {
                 existing.add(t.get("TABLE_SCHEMA") + "." + t.get("TABLE_NAME"));
@@ -343,139 +204,15 @@ public class DataMapService {
         tableCommentMapper.deleteById(id);
     }
 
-    // ========== 数据预览 ==========
-
-    public Map<String, Object> preview(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table) + " LIMIT 20")) {
-            ResultSetMetaData meta = rs.getMetaData();
-            int colCount = meta.getColumnCount();
-            List<String> headers = new ArrayList<String>();
-            for (int i = 1; i <= colCount; i++) {
-                String colName = meta.getColumnName(i);
-                // Hive 返回的列名可能带 db.table 前缀，去掉
-                if (colName.contains(".")) {
-                    colName = colName.substring(colName.lastIndexOf('.') + 1);
-                }
-                headers.add(colName);
-            }
-            List<List<String>> rows = new ArrayList<List<String>>();
-            while (rs.next()) {
-                List<String> row = new ArrayList<String>();
-                for (int i = 1; i <= colCount; i++) {
-                    String val = rs.getString(i);
-                    row.add(val != null ? val : "NULL");
-                }
-                rows.add(row);
-            }
-            Map<String, Object> result = new HashMap<String, Object>();
-            result.put("headers", headers);
-            result.put("rows", rows);
-            result.put("rowCount", rows.size());
-            return result;
-        }
-    }
-
-    // ========== 数据探查 ==========
-
-    public Map<String, Object> profile(String db, String table) throws SQLException {
-        List<ColumnInfo> columns = getHiveColumns(db, table);
-        List<Map<String, Object>> fieldStats = new ArrayList<Map<String, Object>>();
-
-        // Hive 聚合查询较慢，先查总行数
-        long totalRows = 0;
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table))) {
-            if (rs.next()) totalRows = rs.getLong(1);
-        }
-
-        // 逐字段统计（限制字段数，避免 Hive 查询过慢）
-        int maxProfileFields = Math.min(columns.size(), 30);
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement()) {
-            for (int i = 0; i < maxProfileFields; i++) {
-                ColumnInfo col = columns.get(i);
-                Map<String, Object> stat = new HashMap<String, Object>();
-                stat.put("name", col.getName());
-                stat.put("type", col.getType());
-                stat.put("comment", col.getComment());
-                stat.put("key", "");
-                stat.put("nullable", "YES");
-                try {
-                    String colName = "`" + col.getName() + "`";
-                    String sql = "SELECT COUNT(*) AS total, "
-                            + "SUM(CASE WHEN " + colName + " IS NULL THEN 1 ELSE 0 END) AS null_count, "
-                            + "COUNT(DISTINCT " + colName + ") AS distinct_count "
-                            + "FROM " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table);
-                    try (ResultSet rs = stmt.executeQuery(sql)) {
-                        if (rs.next()) {
-                            long nullCount = rs.getLong("null_count");
-                            stat.put("nullCount", nullCount);
-                            stat.put("nullRate", totalRows > 0 ? String.format("%.1f%%", nullCount * 100.0 / totalRows) : "0%");
-                            stat.put("distinctCount", rs.getLong("distinct_count"));
-                        }
-                    }
-                } catch (SQLException e) {
-                    stat.put("error", e.getMessage());
-                }
-                fieldStats.add(stat);
-            }
-        }
-
-        Map<String, Object> result = new HashMap<String, Object>();
-        result.put("totalRows", totalRows);
-        result.put("columnCount", columns.size());
-        result.put("fields", fieldStats);
-        return result;
-    }
-
-    // ========== DDL / SQL 生成 ==========
-
-    public Map<String, String> generateDdlAndSelect(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
-        Map<String, String> result = new HashMap<String, String>();
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SHOW CREATE TABLE " + com.datanote.util.DorisSqlUtil.quoteQualified(db, table))) {
-            StringBuilder ddl = new StringBuilder();
-            while (rs.next()) {
-                ddl.append(rs.getString(1)).append("\n");
-            }
-            result.put("ddl", ddl.toString().trim());
-        }
-
-        List<ColumnInfo> columns = getHiveColumns(db, table);
-        StringBuilder selectSql = new StringBuilder("SELECT\n");
-        for (int i = 0; i < columns.size(); i++) {
-            selectSql.append("  ").append(columns.get(i).getName());
-            if (i < columns.size() - 1) selectSql.append(",");
-            String comment = columns.get(i).getComment();
-            if (comment != null && !comment.isEmpty()) {
-                selectSql.append("  -- ").append(comment);
-            }
-            selectSql.append("\n");
-        }
-        selectSql.append("FROM ").append(db).append(".").append(table).append("\nLIMIT 100;");
-        result.put("selectSql", selectSql.toString());
-        return result;
-    }
-
-    // ========== 表详情 ==========
+    // ========== 表详情（在线信息 + 离线收藏/评论） ==========
 
     public Map<String, Object> getTableDetail(String db, String table) throws Exception {
         Map<String, Object> result = new HashMap<String, Object>();
 
-        Map<String, Object> info = getDorisTableInfo(db, table);
+        Map<String, Object> info = exploreService.getDorisTableInfo(db, table);
 
         result.put("tableInfo", info);
-        result.put("columns", getHiveColumns(db, table));
+        result.put("columns", exploreService.getHiveColumns(db, table));
         result.put("favorited", isFavorited(db, table));
         Long tableMetaId = findTableMetaId(db, table);
         if (tableMetaId != null) {
@@ -488,72 +225,7 @@ public class DataMapService {
         return result;
     }
 
-    private Map<String, Object> getDorisTableInfo(String db, String table) throws SQLException {
-        Map<String, Object> info = new HashMap<String, Object>();
-        info.put("db", db);
-        info.put("table", table);
-        info.put("comment", "");
-        info.put("engine", "Doris");
-
-        try (Connection conn = hiveConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT TABLE_NAME, TABLE_COMMENT, TABLE_ROWS, ENGINE, CREATE_TIME, UPDATE_TIME, DATA_LENGTH "
-                             + "FROM information_schema.TABLES "
-                             + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?")) {
-            stmt.setString(1, db);
-            stmt.setString(2, table);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (!rs.next()) {
-                    return info;
-                }
-                putIfNotBlank(info, "table", rs.getString("TABLE_NAME"));
-                putIfNotBlank(info, "comment", rs.getString("TABLE_COMMENT"));
-                putIfNotBlank(info, "engine", rs.getString("ENGINE"));
-                putObjectString(info, "createTime", rs.getObject("CREATE_TIME"));
-                putObjectString(info, "updateTime", rs.getObject("UPDATE_TIME"));
-                putLong(info, "rowCount", rs.getObject("TABLE_ROWS"));
-                putLong(info, "dataLength", rs.getObject("DATA_LENGTH"));
-            }
-        }
-        return info;
-    }
-
     // ========== 内部方法 ==========
-
-    private String nullToDefault(String value, String defaultValue) {
-        return value != null ? value.trim() : defaultValue;
-    }
-
-    private void putIfNotBlank(Map<String, Object> info, String key, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            info.put(key, value.trim());
-        }
-    }
-
-    private void putObjectString(Map<String, Object> info, String key, Object value) {
-        if (value != null && !value.toString().trim().isEmpty()) {
-            info.put(key, value.toString());
-        }
-    }
-
-    private void putLong(Map<String, Object> info, String key, Object value) {
-        Long parsed = toLong(value);
-        if (parsed != null) {
-            info.put(key, parsed);
-        }
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return null;
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
-        try {
-            return Long.parseLong(value.toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
 
     private Long findTableMetaId(String db, String table) {
         QueryWrapper<DnTableMeta> qw = new QueryWrapper<DnTableMeta>();
@@ -579,63 +251,6 @@ public class DataMapService {
             if (retryId != null) return retryId;
             throw e;
         }
-    }
-
-    // ========== 分区信息 ==========
-
-    /**
-     * 获取 Doris 表的分区列表。DataNote 建的 ODS 表多为非分区表，
-     * Doris 非分区表执行 SHOW PARTITIONS 会报错，此处捕获并返回空列表。
-     */
-    public List<Map<String, Object>> getPartitions(String db, String table) throws SQLException {
-        if (db == null || !db.matches("[a-zA-Z0-9_]+") || table == null || !table.matches("[a-zA-Z0-9_]+")) {
-            throw new IllegalArgumentException("非法的库名或表名"); // 底层防注入
-        }
-        List<Map<String, Object>> partitions = new ArrayList<Map<String, Object>>();
-        String sql = "SHOW PARTITIONS FROM `" + db + "`.`" + table + "`";
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            ResultSetMetaData md = rs.getMetaData();
-            int cols = md.getColumnCount();
-            while (rs.next()) {
-                Map<String, Object> raw = new LinkedHashMap<String, Object>();
-                for (int i = 1; i <= cols; i++) {
-                    raw.put(md.getColumnLabel(i), rs.getObject(i));
-                }
-                partitions.add(mapDorisPartitionRow(raw));
-            }
-        } catch (SQLException e) {
-            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
-            // 非分区表：Doris 提示 "is not a partitioned table" / "unpartitioned table"
-            if (msg.contains("not a partitioned") || msg.contains("not partitioned")
-                    || msg.contains("unpartitioned")) {
-                return partitions;
-            }
-            throw e;
-        }
-        return partitions;
-    }
-
-    /**
-     * 把 Doris SHOW PARTITIONS 的一行（列名→值）映射为前端使用的分区信息。
-     * 抽成静态纯函数便于单元测试。
-     */
-    static Map<String, Object> mapDorisPartitionRow(Map<String, Object> raw) {
-        Map<String, Object> p = new LinkedHashMap<String, Object>();
-        p.put("partition", str(raw.get("PartitionName")));
-        p.put("partitionKey", str(raw.get("PartitionKey")));
-        p.put("range", str(raw.get("Range")));
-        p.put("buckets", raw.get("Buckets"));
-        p.put("state", str(raw.get("State")));
-        // Doris 的 DataSize 已是可读字符串（如 "1.234 GB"）
-        p.put("totalSizeDisplay", str(raw.get("DataSize")));
-        p.put("lastModified", str(raw.get("VisibleVersionTime")));
-        return p;
-    }
-
-    private static String str(Object o) {
-        return o == null ? "" : o.toString().trim();
     }
 
     private String extractJsonArray(String text) {

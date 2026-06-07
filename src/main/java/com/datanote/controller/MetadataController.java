@@ -2,6 +2,7 @@ package com.datanote.controller;
 
 import com.datanote.model.*;
 import com.datanote.service.DataMapService;
+import com.datanote.service.DatasourceExploreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,8 @@ import java.util.*;
 @Tag(name = "数据地图", description = "元数据查询、AI搜索、收藏、评论等")
 public class MetadataController {
 
-    private final DataMapService dataMapService;
+    private final DataMapService dataMapService;          // 离线目录：搜索/收藏/评论/历史/表详情
+    private final DatasourceExploreService exploreService; // 在线探查：库/表/列/预览/探查/DDL/分区
 
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
 
@@ -43,7 +45,7 @@ public class MetadataController {
     @GetMapping("/databases")
     public R<List<String>> databases() {
         try {
-            return R.ok(dataMapService.getHiveDatabases());
+            return R.ok(exploreService.getHiveDatabases());
         } catch (Exception e) {
             log.error("获取数据库列表失败", e);
             return R.fail("获取数据库列表失败");
@@ -57,7 +59,7 @@ public class MetadataController {
             return R.fail("非法的库名");
         }
         try {
-            return R.ok(dataMapService.getHiveTables(db));
+            return R.ok(exploreService.getHiveTables(db));
         } catch (Exception e) {
             log.error("获取表列表失败", e);
             return R.fail("获取表列表失败");
@@ -71,7 +73,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
-            return R.ok(dataMapService.getHiveColumns(db, table));
+            return R.ok(exploreService.getHiveColumns(db, table));
         } catch (Exception e) {
             log.error("获取字段列表失败", e);
             return R.fail("获取字段列表失败");
@@ -113,7 +115,7 @@ public class MetadataController {
     @GetMapping("/all-tables")
     public R<List<Map<String, Object>>> allTables(@RequestParam(required = false) String db) {
         try {
-            List<Map<String, Object>> tables = dataMapService.getAllTablesSummary();
+            List<Map<String, Object>> tables = exploreService.getAllTablesSummary();
             if (db != null && !db.isEmpty()) {
                 List<Map<String, Object>> filtered = new ArrayList<>();
                 for (Map<String, Object> t : tables) {
@@ -233,7 +235,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
-            return R.ok(dataMapService.preview(db, table));
+            return R.ok(exploreService.preview(db, table));
         } catch (Exception e) {
             log.error("数据预览失败: {}.{}", db, table, e);
             return R.fail(dorisMsg(e, "查询失败"));
@@ -249,7 +251,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
-            return R.ok(dataMapService.profile(db, table));
+            return R.ok(exploreService.profile(db, table));
         } catch (Exception e) {
             log.error("数据探查失败: {}.{}", db, table, e);
             return R.fail(dorisMsg(e, "探查失败"));
@@ -265,7 +267,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
-            return R.ok(dataMapService.generateDdlAndSelect(db, table));
+            return R.ok(exploreService.generateDdlAndSelect(db, table));
         } catch (Exception e) {
             log.error("获取DDL失败: {}.{}", db, table, e);
             return R.fail("获取DDL失败");
@@ -297,7 +299,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
-            return R.ok(dataMapService.getPartitions(db, table));
+            return R.ok(exploreService.getPartitions(db, table));
         } catch (Exception e) {
             log.error("获取分区信息失败: {}.{}", db, table, e);
             return R.fail(dorisMsg(e, "获取分区信息失败"));

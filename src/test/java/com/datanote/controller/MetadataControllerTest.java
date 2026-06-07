@@ -4,6 +4,7 @@ import com.datanote.model.ColumnInfo;
 import com.datanote.model.DnTableComment;
 import com.datanote.model.R;
 import com.datanote.service.DataMapService;
+import com.datanote.service.DatasourceExploreService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,9 @@ class MetadataControllerTest {
     @Mock
     private DataMapService dataMapService;
 
+    @Mock
+    private DatasourceExploreService exploreService;
+
     @InjectMocks
     private MetadataController controller;
 
@@ -29,7 +33,7 @@ class MetadataControllerTest {
 
     @Test
     void databases_returnsOk() throws Exception {
-        when(dataMapService.getHiveDatabases()).thenReturn(Arrays.asList("datanote", "base_data"));
+        when(exploreService.getHiveDatabases()).thenReturn(Arrays.asList("datanote", "base_data"));
         R<List<String>> r = controller.databases();
         assertEquals(0, r.getCode());
         assertEquals(2, r.getData().size());
@@ -37,7 +41,7 @@ class MetadataControllerTest {
 
     @Test
     void tables_returnsOk() throws Exception {
-        when(dataMapService.getHiveTables("datanote")).thenReturn(Arrays.asList("dn_script", "dn_sync_task"));
+        when(exploreService.getHiveTables("datanote")).thenReturn(Arrays.asList("dn_script", "dn_sync_task"));
         R<List<String>> r = controller.tables("datanote");
         assertEquals(0, r.getCode());
         assertEquals(2, r.getData().size());
@@ -48,7 +52,7 @@ class MetadataControllerTest {
         ColumnInfo col = new ColumnInfo();
         col.setName("id");
         col.setType("bigint");
-        when(dataMapService.getHiveColumns("datanote", "dn_script")).thenReturn(Collections.singletonList(col));
+        when(exploreService.getHiveColumns("datanote", "dn_script")).thenReturn(Collections.singletonList(col));
         R<List<ColumnInfo>> r = controller.columns("datanote", "dn_script");
         assertEquals(0, r.getCode());
         assertEquals("id", r.getData().get(0).getName());
@@ -164,7 +168,7 @@ class MetadataControllerTest {
     void preview_validParams_returnsOk() throws Exception {
         Map<String, Object> result = new HashMap<>();
         result.put("rowCount", 5);
-        when(dataMapService.preview("datanote", "dn_script")).thenReturn(result);
+        when(exploreService.preview("datanote", "dn_script")).thenReturn(result);
         R<Map<String, Object>> r = controller.preview("datanote", "dn_script");
         assertEquals(0, r.getCode());
         assertEquals(5, r.getData().get("rowCount"));

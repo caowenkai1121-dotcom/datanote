@@ -8,7 +8,6 @@ import com.datanote.mapper.DnTableMetaMapper;
 import com.datanote.model.ColumnInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,6 +25,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * R5 拆分后：在线探查走 DatasourceExploreService，离线表详情走 DataMapService(委托 explore)。
+ * 行为保持：仍用 Doris information_schema 取列/表信息，不走 Hive DESCRIBE FORMATTED。
+ */
 @ExtendWith(MockitoExtension.class)
 class DataMapServiceDorisTest {
 
@@ -37,7 +40,7 @@ class DataMapServiceDorisTest {
     @Mock private DnTableMetaMapper tableMetaMapper;
 
     @Test
-    void getHiveColumnsReadsDorisColumnCommentsFromInformationSchema() throws Exception {
+    void exploreGetHiveColumnsReadsDorisColumnCommentsFromInformationSchema() throws Exception {
         Connection conn = org.mockito.Mockito.mock(Connection.class);
         PreparedStatement stmt = org.mockito.Mockito.mock(PreparedStatement.class);
         ResultSet rs = org.mockito.Mockito.mock(ResultSet.class);
@@ -53,8 +56,8 @@ class DataMapServiceDorisTest {
         when(rs.getString("COLUMN_KEY")).thenReturn("");
         when(rs.getString("EXTRA")).thenReturn("");
 
-        DataMapService service = newService();
-        List<ColumnInfo> columns = service.getHiveColumns("ods", "ods_xh_dms_t_after_sales_order_detail_df");
+        DatasourceExploreService explore = new DatasourceExploreService(hiveConfig);
+        List<ColumnInfo> columns = explore.getHiveColumns("ods", "ods_xh_dms_t_after_sales_order_detail_df");
 
         assertEquals(1, columns.size());
         assertEquals("after_sales_code", columns.get(0).getName());
@@ -112,11 +115,11 @@ class DataMapServiceDorisTest {
     private DataMapService newService() {
         return new DataMapService(
                 aiAssistService,
-                hiveConfig,
                 tableCommentMapper,
                 tableFavoriteMapper,
                 searchHistoryMapper,
-                tableMetaMapper
+                tableMetaMapper,
+                new DatasourceExploreService(hiveConfig)
         );
     }
 }

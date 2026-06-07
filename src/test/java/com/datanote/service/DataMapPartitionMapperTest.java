@@ -21,7 +21,7 @@ class DataMapPartitionMapperTest {
         raw.put("DataSize", "1.234 GB");
         raw.put("VisibleVersionTime", "2026-05-30 11:22:33");
 
-        Map<String, Object> info = DataMapService.mapDorisPartitionRow(raw);
+        Map<String, Object> info = DatasourceExploreService.mapDorisPartitionRow(raw);
 
         assertEquals("p20260530", info.get("partition"));
         assertEquals("dt", info.get("partitionKey"));
@@ -36,7 +36,7 @@ class DataMapPartitionMapperTest {
         Map<String, Object> raw = new LinkedHashMap<>();
         raw.put("PartitionName", "p1");
 
-        Map<String, Object> info = DataMapService.mapDorisPartitionRow(raw);
+        Map<String, Object> info = DatasourceExploreService.mapDorisPartitionRow(raw);
 
         assertEquals("p1", info.get("partition"));
         assertEquals("", info.get("partitionKey"));
