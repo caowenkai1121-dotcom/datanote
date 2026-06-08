@@ -24,10 +24,18 @@
 }
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px;
   color: var(--text-primary);
   overflow: hidden;
+  /* 字形精修: 抗锯齿 + 合字/字距优化, 工程平台更清爽锐利 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+/* 数据平台: 所有表格数字等宽对齐(digits 列对齐, 不影响中文); 输入框/代码同理 */
+table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"], code, pre, kbd {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===== Top Header (same as index.html) ===== */
