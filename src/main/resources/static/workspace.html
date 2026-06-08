@@ -195,6 +195,7 @@
                 style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-main);color:var(--text-primary);font-size:12px;"
                 onkeydown="if(event.key==='Enter')sendAiRequest()">
               <button class="btn btn-primary btn-sm" onclick="sendAiRequest()">发送</button>
+              <button class="btn btn-sm" style="color:#722ed1" onclick="develAskAgent()" title="把当前SQL转交AI智能体:解释+优化+解析涉及表+跨域风险评估">🤖转交智能体</button>
               <button class="btn btn-sm" onclick="toggleAiPanel()">关闭</button>
             </div>
             <div id="aiResponse" style="font-size:12px;color:var(--text-regular);max-height:200px;overflow-y:auto;line-height:1.6;padding:4px;">
@@ -6497,6 +6498,14 @@ function toggleAiPanel() {
   }
 }
 
+// 把开发编辑器当前 SQL 转交 AI 智能体(跨域深析: 解释/优化/解析涉及表/风险), 与侧栏单轮 nl2sql 互补
+function develAskAgent() {
+  var sql = ((typeof codeArea !== 'undefined' && codeArea) ? (codeArea.value || '') : '').trim();
+  if (!sql) { if (window.DN && DN.toast) DN.toast('编辑器内没有 SQL', 'warn'); return; }
+  var s = sql.slice(0, 4000);
+  window.dnAskAi('解释并优化这段 SQL, 解析它涉及的源表, 评估执行风险:\n' + s, { route: 'develop', currentSql: s });
+}
+
 function sendAiRequest() {
   var mode = document.getElementById('aiMode').value;
   var input = document.getElementById('aiInput').value.trim();
@@ -7894,6 +7903,7 @@ function renderMetricList(metrics) {
       '<td class="quality-actions">' +
         '<button class="btn btn-sm" onclick="editMetric(' + m.id + ')">编辑</button>' +
         '<button class="btn btn-sm" onclick="metricGotoBoard(\'' + escapeHtml(m.metricCode || '') + '\')" title="在消费驾驶舱查看该指标值/新鲜度/输入质量">驾驶舱</button>' +
+        '<button class="btn btn-sm" style="color:#722ed1" onclick="window.dnAskAi(\'解读指标「' + escapeHtml(m.metricName || '') + '」(metricId=' + m.id + '):最新值、历史趋势与输入数据质量,分析异常波动原因。\', {route:\'metrics\',metricId:' + m.id + '})" title="AI解读该指标">🤖AI</button>' +
         '<button class="btn btn-sm btn-danger" onclick="deleteMetric(' + m.id + ')">删除</button>' +
       '</td></tr>';
   });
