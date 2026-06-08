@@ -19,7 +19,7 @@
 <script src="js/gov-standard.js?v=q100r100"></script>
 <script src="js/gov-classification.js?v=q100r100"></script>
 <script src="js/gov-security.js?v=q100r100"></script>
-<script src="js/gov-health.js?v=q100r99"></script>
+<script src="js/gov-health.js?v=q100r106"></script>
 <script src="js/gov-audit.js?v=q100r100"></script>
 <script src="js/gov-overview.js?v=q100r99"></script>
 <script src="js/gov-subject.js?v=q100r100"></script>
@@ -6889,6 +6889,16 @@ window.openAiAgent = openAiLauncher;
 window.dnAskAi = function (prefill, ctx) {
   navigateTo('assistant', { agentPrefill: prefill || '', agentCtx: ctx || {}, agentAutoSend: true });
 };
+// 同步任务详情 AI 排障入口
+window.dbsyncAskAi = function (jobId, jobName) {
+  window.dnAskAi('分析同步任务 #' + jobId + '(' + (jobName || '') + '):基础配置、CDC/增量断点积压情况、对账差异与异常排查建议。[任务:#' + jobId + ']',
+    { route: 'dbsync', jobId: jobId, jobName: jobName });
+};
+// 调度运行失败 AI 根因入口
+window.schedAskAi = function (runId, taskId, taskType, taskName) {
+  window.dnAskAi('调度运行 run#' + runId + '(' + (taskName || '') + ')执行失败:读运行日志定位根因、列出下游依赖爆炸半径、给补数/重跑建议(重试/补数为写操作仅给建议不代办)。',
+    { route: 'operations', runId: runId, taskId: taskId, taskType: taskType, taskName: taskName });
+};
 // 按当前路由拼默认情境(typeof 守卫, 只读已有全局变量, 不存在则跳过)
 function defaultAiCtx() {
   var r = currentRoute || 'home';
@@ -9277,6 +9287,7 @@ function renderSchedTasks(runs) {
       html += '<div class="sched-task-actions">';
 
       if (r.status === -1) {
+        html += '<button style="color:#722ed1" onclick="schedAskAi(' + r.id + ',' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\',\'' + escapeHtml(r.taskName) + '\')" title="AI根因:读日志+下游波及+补数建议">🤖AI根因</button>';
         html += '<button onclick="schedRetry(' + r.id + ')">重试</button>';
         html += '<button onclick="schedPauseDown(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\')">暂停下游</button>';
       }
@@ -15387,6 +15398,7 @@ function dbsyncRenderDetailHead(job) {
   var pbtn = document.getElementById('dbsyncDetailPrimaryBtn');
   var reconcileBtn = '<button class="btn btn-sm" onclick="dbsyncOpenReconcile(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" style="margin-left:4px;" title="行数对账">行数对账</button>';
   var checksumBtn  = '<button class="btn btn-sm" onclick="dbsyncOpenChecksum(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" style="margin-left:4px;" title="深度对账(checksum)">深度对账</button>';
+  var aiBtn = '<button class="btn btn-sm" style="margin-left:4px;color:#722ed1" onclick="dbsyncAskAi(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="AI排障:配置/断点/对账/异常">🤖AI排障</button>';
   if (job.syncMode === 'CDC') {
     var cdcBtns = (job.status === 'RUNNING')
       ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
@@ -15395,9 +15407,9 @@ function dbsyncRenderDetailHead(job) {
     cdcBtns += '<button class="btn btn-sm" onclick="dbsyncTriggerIncrSnapshot(' + job.id + ')" title="需先开启增量快照开关并在源库建 signal 表" style="margin-left:4px;">增量快照</button>';
     cdcBtns += reconcileBtn;
     cdcBtns += checksumBtn;
-    pbtn.innerHTML = cdcBtns;
+    pbtn.innerHTML = cdcBtns + aiBtn;
   } else {
-    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn + checksumBtn;
+    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn + checksumBtn + aiBtn;
   }
 }
 // 状态变更后（列表刷新触发）同步刷新抽屉头部 + 概览/历史

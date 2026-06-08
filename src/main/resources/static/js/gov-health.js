@@ -155,6 +155,10 @@
       });
       row.appendChild(bt);
     }
+    // AI 解读健康分(始终可用)
+    var weakNames = weak.map(function (x) { return x.dim; }).join('/');
+    row.appendChild(DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '🤖AI解读健康分', style: 'flex-basis:100%;width:fit-content',
+      onclick: function () { if (window.dnAskAi) window.dnAskAi('解读当前治理健康总分 ' + total + ' 分: 逐项分析五维(规范/质量/安全/生命周期/血缘)得分与权重' + (weakNames ? (', 重点说明薄弱维度 ' + weakNames + ' 拉低分数的原因') : '') + ', 结合质量分/健康趋势/治理总览给出可落地的提分改进路线。', { route: 'governance', gov: 'health' }); } }));
     // 五维明细表
     var tblBox = DN.h('div', { style: 'flex:1;min-width:300px' });
     tblBox.appendChild(DN.table({
