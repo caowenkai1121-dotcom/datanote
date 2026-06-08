@@ -214,9 +214,10 @@
   };
   DN.icon = function (name, attrs) {
     var p = ICONS[name] || ICONS.grid;
-    // width/height="100%" 让图标填满其容器盒(避免无 CSS 约束时 SVG 撑大成巨图);
-    // 属性优先级低于 CSS, 既有 .xxx svg{width:16px} 之类规则仍可覆盖, 不影响已对的图标。
-    return '<svg width="100%" height="100%" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' + (attrs || '') + '>' + p + '</svg>';
+    // 默认 1em(= 容器 font-size)。SVG 不写 width/height 时按规范默认 100%, 在无尺寸容器里会撑成 300px 巨图;
+    // 用 1em 让图标随文字大小走(永不撑大), 既有 .xxx svg{width:Npx} 之类 CSS 规则优先级更高仍可覆盖到精确尺寸。
+    // 需要更大图标的容器: 给容器设 font-size(如 40px)即可, 或用 CSS 给该处 svg 设 width/height。
+    return '<svg width="1em" height="1em" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' + (attrs || '') + '>' + p + '</svg>';
   };
 
   DN.statTile = function (o) {

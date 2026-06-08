@@ -99,14 +99,15 @@
 .gov-bigscreen .gov-stat-tile .v { font-size:1.18em; }
 .gov-bigscreen .gov-grid { gap:20px; }
 
-/* ---- 抽屉 ---- */
-#govDrawerMask { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:9000; opacity:0; transition:opacity .2s; }
+/* ---- 抽屉(统一标准: 与 .dbsync-drawer 同一套视觉语言, R76 全站抽屉统一) ---- */
+#govDrawerMask { position:fixed; inset:0; background:var(--bg-mask,rgba(15,20,40,.45)); z-index:9000; opacity:0; transition:opacity .2s ease; }
 #govDrawerMask.show { opacity:1; }
-.gov-drawer { position:fixed; top:0; right:0; height:100vh; width:560px; max-width:92vw; background:var(--bg-card,#fff); box-shadow:-4px 0 24px rgba(0,0,0,.12); z-index:9001; transform:translateX(100%); transition:transform .25s ease; display:flex; flex-direction:column; }
+.gov-drawer { position:fixed; top:0; right:0; height:100vh; width:600px; max-width:94vw; background:var(--bg-card,#fff); box-shadow:-8px 0 32px rgba(15,20,40,.14); z-index:9001; transform:translateX(100%); transition:transform .26s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
 .gov-drawer.show { transform:translateX(0); }
-.gov-drawer .dh { display:flex; align-items:center; gap:8px; padding:16px 20px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; }
-.gov-drawer .dh .x { margin-left:auto; cursor:pointer; color:var(--text-muted,#86909c); border:0; background:none; font-size:18px; line-height:1; padding:8px; min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; }
-.gov-drawer .dh .x:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
+.gov-drawer .dh { display:flex; align-items:center; gap:10px; padding:16px 20px; background:var(--bg-card,#fff); border-bottom:1px solid var(--divider,#f0f1f3); font-size:16px; font-weight:600; color:var(--text-primary,#1b2030); flex-shrink:0; }
+.gov-drawer .dh > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gov-drawer .dh .x { margin-left:auto; cursor:pointer; color:var(--text-muted,#86909c); border:0; background:none; font-size:20px; line-height:1; width:32px; height:32px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius,6px); transition:background .15s,color .15s; }
+.gov-drawer .dh .x:hover { background:var(--bg-hover,#f1f4fa); color:var(--text-regular,#333a4a); }
 .gov-drawer .db { padding:18px 20px; overflow-y:auto; flex:1; }
 
 /* ---- 内联表单(替代弹窗手输) ---- */

@@ -285,13 +285,13 @@
     var root = document.getElementById('aiAgentRoot'); if (!root) return;
     closeDrawer();
     var mask = DN.h('div', { id: 'aiDrawerMask', style: 'position:absolute;inset:0;background:rgba(0,0,0,.18);z-index:20;', onclick: closeDrawer });
-    var panel = DN.h('div', { id: 'aiDrawer', style: 'position:absolute;top:0;right:0;bottom:0;width:380px;max-width:86%;background:var(--bg-card,#fff);border-left:1px solid var(--border,#e5e6eb);box-shadow:-4px 0 16px rgba(0,0,0,.08);z-index:21;display:flex;flex-direction:column;' });
+    var panel = DN.h('div', { id: 'aiDrawer', style: 'position:absolute;top:0;right:0;bottom:0;width:400px;max-width:88%;background:var(--bg-card,#fff);border-left:1px solid var(--border,#e5e6eb);box-shadow:-8px 0 32px rgba(15,20,40,.14);z-index:21;display:flex;flex-direction:column;' });
     var title = kind === 'memory' ? '🧠 AI 自学习记忆' : '🛡️ 待审批写操作';
-    panel.appendChild(DN.h('div', { style: 'padding:14px 18px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:8px;flex:0 0 auto;' }, [
-      DN.h('div', { text: title, style: 'font-weight:650;font-size:14px;color:var(--text-primary);' }),
-      DN.h('button', { class: 'btn btn-sm', text: '✕', style: 'margin-left:auto;', onclick: closeDrawer })
+    panel.appendChild(DN.h('div', { style: 'padding:16px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--divider,#eef1f7);display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
+      DN.h('div', { text: title, style: 'font-weight:600;font-size:16px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+      DN.h('button', { text: '✕', title: '关闭', onclick: closeDrawer, style: 'margin-left:auto;flex-shrink:0;width:32px;height:32px;border:0;background:none;cursor:pointer;color:var(--text-muted,#86909c);font-size:20px;line-height:1;border-radius:var(--radius,6px);display:inline-flex;align-items:center;justify-content:center;' })
     ]));
-    var body = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:14px 18px;' });
+    var body = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:18px 20px;' });
     body.appendChild(DN.h('div', { text: '加载中…', style: 'color:var(--text-muted);font-size:13px;' }));
     panel.appendChild(body);
     root.appendChild(mask); root.appendChild(panel);
@@ -354,7 +354,7 @@
     root.style.position = 'relative'; // 供经验/审批抽屉绝对定位
     // 顶栏
     var head = DN.h('div', { style: 'padding:16px 24px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:12px;flex:0 0 auto;' }, [
-      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;color:var(--primary,#1890ff);' }),
+      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary,#1890ff);display:flex;' }),
       DN.h('div', { style: 'min-width:0;' }, [
         DN.h('div', { text: '天工·自由意志数据智能体', style: 'font-size:16px;font-weight:650;color:var(--text-primary);' }),
         DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主编排工具，写操作经人工审批，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
@@ -385,7 +385,7 @@
 
   function welcome() {
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
-    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;margin:0 auto 10px;color:var(--primary,#1890ff);opacity:.8;' }));
+    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary,#1890ff);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
     box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
     box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary,#1890ff);margin-top:6px;' }));
     return box;
