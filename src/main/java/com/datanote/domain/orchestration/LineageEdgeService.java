@@ -40,7 +40,9 @@ public class LineageEdgeService {
 
         List<DnSyncJob> jobs = syncJobMapper.selectList(null);
         int count = 0;
+        if (jobs == null) return count;   // selectList 理论可返回 null,无任务直接返回
         for (DnSyncJob job : jobs) {
+            if (job == null) continue;
             List<TableSyncConfig> tables;
             try {
                 tables = syncJobService.parseTables(job);
@@ -109,7 +111,10 @@ public class LineageEdgeService {
             qw.eq("level_type", "TABLE");
             if (downstream) qw.eq("src_db", cur[0]).eq("src_table", cur[1]);
             else qw.eq("dst_db", cur[0]).eq("dst_table", cur[1]);
-            for (DnLineageEdge e : edgeMapper.selectList(qw)) {
+            List<DnLineageEdge> edges = edgeMapper.selectList(qw);
+            if (edges == null) continue;   // selectList 理论可返回 null,该跳无边
+            for (DnLineageEdge e : edges) {
+                if (e == null) continue;
                 String nDb = downstream ? e.getDstDb() : e.getSrcDb();
                 String nTab = downstream ? e.getDstTable() : e.getSrcTable();
                 String k = key(nDb, nTab);
@@ -242,9 +247,13 @@ public class LineageEdgeService {
         QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
         qw.eq("level_type", "TABLE");
         List<TableEdge> edges = new ArrayList<>();
-        for (DnLineageEdge e : edgeMapper.selectList(qw)) {
-            edges.add(new TableEdge(key(e.getSrcDb(), e.getSrcTable()),
-                    key(e.getDstDb(), e.getDstTable()), "TABLE", e.getSource()));
+        List<DnLineageEdge> rawEdges = edgeMapper.selectList(qw);
+        if (rawEdges != null) {
+            for (DnLineageEdge e : rawEdges) {
+                if (e == null) continue;
+                edges.add(new TableEdge(key(e.getSrcDb(), e.getSrcTable()),
+                        key(e.getDstDb(), e.getDstTable()), "TABLE", e.getSource()));
+            }
         }
         SubGraph sub = buildSubgraph(edges, db, table, d, GRAPH_MAX_NODES);
 

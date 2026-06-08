@@ -201,7 +201,10 @@ public class OverviewService {
             qw.select(column + " AS k", "COUNT(*) AS cnt")
                     .isNotNull(column).ne(column, "")
                     .groupBy(column).orderByDesc("cnt");
-            for (Map<String, Object> row : columnMetaMapper.selectMaps(qw)) {
+            List<Map<String, Object>> rows = columnMetaMapper.selectMaps(qw);
+            if (rows == null) return out;   // selectMaps 理论可返回 null
+            for (Map<String, Object> row : rows) {
+                if (row == null) continue;
                 Object k = row.get("k");
                 Object cnt = row.get("cnt");
                 if (k == null) continue;

@@ -222,7 +222,7 @@ public class MetadataService {
         try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
             if (isOracle(type)) {
                 List<String> list = new ArrayList<>();
-                String owner = (db == null || db.trim().isEmpty()) ? conn.getMetaData().getUserName().toUpperCase() : db.toUpperCase();
+                String owner = (db == null || db.trim().isEmpty()) ? currentSchema(conn) : db.toUpperCase();
                 try (PreparedStatement ps = conn.prepareStatement(
                         "SELECT table_name FROM all_tables WHERE owner = ? ORDER BY table_name")) {
                     ps.setString(1, owner);
@@ -246,9 +246,15 @@ public class MetadataService {
         }
     }
 
+    /** 取当前连接登录用户(大写)作为 Oracle owner，getUserName 为空时返回空串防 NPE。 */
+    private static String currentSchema(Connection conn) throws SQLException {
+        String u = conn.getMetaData().getUserName();
+        return u == null ? "" : u.toUpperCase();
+    }
+
     private List<ColumnInfo> queryOracleColumns(Connection conn, String schema, String table) throws SQLException {
         String owner = (schema == null || schema.trim().isEmpty())
-                ? conn.getMetaData().getUserName().toUpperCase() : schema.toUpperCase();
+                ? currentSchema(conn) : schema.toUpperCase();
         String tbl = table == null ? "" : table.toUpperCase();
         java.util.Set<String> pks = new java.util.HashSet<>();
         String pkSql = "SELECT c.column_name FROM all_constraints k "

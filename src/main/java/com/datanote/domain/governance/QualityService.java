@@ -55,9 +55,11 @@ public class QualityService {
         if (ruleId != null) qw.eq("rule_id", ruleId);
         qw.orderByDesc("started_at").last("LIMIT 100");
         List<DnQualityRun> runs = qualityRunMapper.selectList(qw);
+        if (runs == null) runs = new ArrayList<>();   // selectList 理论可返回 null,统一兜底
         Map<String, Integer> byStatus = new LinkedHashMap<>();
         List<Map<String, Object>> failures = new ArrayList<>();
         for (DnQualityRun r : runs) {
+            if (r == null) continue;
             String st = r.getRunStatus() == null ? "UNKNOWN" : r.getRunStatus();
             byStatus.merge(st, 1, Integer::sum);
             if (("FAIL".equalsIgnoreCase(st) || "ERROR".equalsIgnoreCase(st)) && failures.size() < 20) {
@@ -97,6 +99,9 @@ public class QualityService {
      * @return 检查执行记录
      */
     public DnQualityRun executeRule(DnQualityRule rule) {
+        if (rule == null) {
+            throw new BusinessException("质量规则不能为空");
+        }
         DnQualityRun run = new DnQualityRun();
         run.setRuleId(rule.getId());
         run.setStartedAt(LocalDateTime.now());

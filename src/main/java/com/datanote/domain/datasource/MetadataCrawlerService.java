@@ -10,6 +10,7 @@ import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.datasource.model.DnDatasource;
 import com.datanote.domain.metadata.model.DnMetaCollectLog;
 import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,11 +64,16 @@ public class MetadataCrawlerService {
     /** 采集全部：所有源数据源 + Doris 数仓 */
     public void crawlAll() {
         List<DnDatasource> all = datasourceMapper.selectList(null);
-        for (DnDatasource ds : all) {
-            try {
-                crawlDatasource(ds.getId());
-            } catch (Exception e) {
-                log.error("采集数据源失败 dsId={}", ds.getId(), e);
+        if (all != null) {
+            for (DnDatasource ds : all) {
+                if (ds == null || ds.getId() == null) {
+                    continue;   // 脏数据(空记录/缺主键)跳过,无法定位采集
+                }
+                try {
+                    crawlDatasource(ds.getId());
+                } catch (Exception e) {
+                    log.error("采集数据源失败 dsId={}", ds.getId(), e);
+                }
             }
         }
         try {
@@ -79,9 +85,12 @@ public class MetadataCrawlerService {
 
     /** 采集指定 MySQL 源数据源（全部非系统库） */
     public DnMetaCollectLog crawlDatasource(Long datasourceId) {
+        if (datasourceId == null) {
+            throw new BusinessException("数据源 ID 不能为空");
+        }
         DnDatasource ds = datasourceMapper.selectById(datasourceId);
         if (ds == null) {
-            throw new IllegalArgumentException("数据源不存在: " + datasourceId);
+            throw new BusinessException("数据源不存在: " + datasourceId);
         }
         String password = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
         String url = "jdbc:mysql://" + ds.getHost() + ":" + ds.getPort()

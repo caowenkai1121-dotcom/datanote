@@ -6,6 +6,7 @@ import com.datanote.domain.develop.model.DnScriptFolder;
 import com.datanote.domain.develop.model.DnScriptVersion;
 import com.datanote.domain.integration.model.DnSyncTask;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.domain.datasource.mapper.DnDatasourceMapper;
 import com.datanote.domain.develop.mapper.DnScriptFolderMapper;
@@ -42,7 +43,11 @@ public class ScriptService {
         List<DnScript> scripts = scriptMapper.selectList(null);
         List<DnDatasource> datasources = datasourceMapper.selectList(null);
         List<DnSyncTask> syncTasks = syncTaskMapper.selectList(null);
-        return buildTree(folders, scripts, datasources, syncTasks, 0L);
+        // selectList 理论可返回 null,统一兜底空列表,buildTree 内不再判空
+        return buildTree(folders == null ? new ArrayList<>() : folders,
+                scripts == null ? new ArrayList<>() : scripts,
+                datasources == null ? new ArrayList<>() : datasources,
+                syncTasks == null ? new ArrayList<>() : syncTasks, 0L);
     }
 
     @SuppressWarnings("unchecked")
@@ -53,6 +58,7 @@ public class ScriptService {
                                                  Long parentId) {
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (DnScriptFolder f : folders) {
+            if (f == null) continue;
             if (!Objects.equals(f.getParentId(), parentId)) continue;
 
             Map<String, Object> node = new HashMap<>();
@@ -64,6 +70,7 @@ public class ScriptService {
 
             if ("数据源".equals(f.getLayer())) {
                 for (DnDatasource ds : datasources) {
+                    if (ds == null) continue;
                     Map<String, Object> dsNode = new HashMap<>();
                     dsNode.put("id", ds.getId());
                     dsNode.put("name", ds.getName());
@@ -75,6 +82,7 @@ public class ScriptService {
                 }
             } else if ("ODS".equals(f.getLayer())) {
                 for (DnSyncTask t : syncTasks) {
+                    if (t == null) continue;
                     Map<String, Object> tNode = new HashMap<>();
                     tNode.put("id", t.getId());
                     tNode.put("name", t.getTaskName());
@@ -88,6 +96,7 @@ public class ScriptService {
                 }
             } else {
                 for (DnScript s : scripts) {
+                    if (s == null) continue;
                     if (Objects.equals(s.getFolderId(), f.getId())) {
                         Map<String, Object> sNode = new HashMap<>();
                         sNode.put("id", s.getId());
@@ -108,11 +117,15 @@ public class ScriptService {
     // ========== 脚本 CRUD ==========
 
     public DnScript getById(Long id) {
+        if (id == null) return null;
         return scriptMapper.selectById(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public DnScript save(DnScript script) {
+        if (script == null) {
+            throw new BusinessException("脚本不能为空");
+        }
         if (script.getId() != null) {
             DnScript existing = scriptMapper.selectById(script.getId());
             if (existing == null) {
@@ -137,6 +150,10 @@ public class ScriptService {
     }
 
     public void updateBasicInfo(Long id, Map<String, String> body) {
+        if (id == null) {
+            throw new BusinessException("脚本 ID 不能为空");
+        }
+        if (body == null || body.isEmpty()) return;   // 无字段可更新,直接返回
         DnScript script = new DnScript();
         script.setId(id);
         if (body.containsKey("taskType")) script.setTaskType(body.get("taskType"));
@@ -174,7 +191,8 @@ public class ScriptService {
     public List<Map<String, Object>> allWithContent() {
         List<DnScript> scripts = scriptMapper.selectList(null);
         List<Map<String, Object>> result = new ArrayList<>();
-        for (DnScript s : scripts) {
+        if (scripts != null) for (DnScript s : scripts) {
+            if (s == null) continue;
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("name", s.getScriptName());
@@ -185,7 +203,8 @@ public class ScriptService {
         }
         // 同步任务也加入，让前端依赖分析能匹配到 ODS 任务
         List<DnSyncTask> syncTasks = syncTaskMapper.selectList(null);
-        for (DnSyncTask t : syncTasks) {
+        if (syncTasks != null) for (DnSyncTask t : syncTasks) {
+            if (t == null) continue;
             Map<String, Object> m = new HashMap<>();
             m.put("id", t.getId());
             m.put("name", t.getTargetTable());
@@ -200,6 +219,7 @@ public class ScriptService {
     // ========== 版本管理 ==========
 
     public List<DnScriptVersion> listVersions(Long scriptId) {
+        if (scriptId == null) return new ArrayList<>();
         QueryWrapper<DnScriptVersion> qw = new QueryWrapper<>();
         qw.eq("script_id", scriptId)
           .orderByDesc("committed_at", "id")
@@ -234,8 +254,8 @@ public class ScriptService {
                 .orderByDesc("committed_at", "id")
                 .last("LIMIT 10, 1000000");
         List<DnScriptVersion> expired = scriptVersionMapper.selectList(cleanupQuery);
-        for (DnScriptVersion v : expired) {
-            scriptVersionMapper.deleteById(v.getId());
+        if (expired != null) for (DnScriptVersion v : expired) {
+            if (v != null) scriptVersionMapper.deleteById(v.getId());
         }
     }
 
@@ -263,8 +283,8 @@ public class ScriptService {
         QueryWrapper<DnScriptFolder> childQuery = new QueryWrapper<>();
         childQuery.eq("parent_id", folderId);
         List<DnScriptFolder> children = folderMapper.selectList(childQuery);
-        for (DnScriptFolder child : children) {
-            deleteFolderRecursively(child.getId());
+        if (children != null) for (DnScriptFolder child : children) {
+            if (child != null) deleteFolderRecursively(child.getId());
         }
         QueryWrapper<DnScript> scriptQuery = new QueryWrapper<>();
         scriptQuery.eq("folder_id", folderId);
