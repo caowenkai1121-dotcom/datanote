@@ -2989,6 +2989,44 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .iw-form-select:focus, .iw-form-input:focus { border-color: var(--primary); }
 .iw-form-select { cursor: pointer; appearance: auto; }
 .iw-form-input:read-only { background: var(--bg-hover); color: var(--text-muted); }
+
+/* ============================================================
+   R83 抽屉/弹窗 表单内容设计系统(全站通用, 让所有抽屉表单美观人性化)
+   ============================================================ */
+/* 分组小节: 标题 + 细分割线, 把长表单切成有节奏的几组 */
+.dn-form-section { margin: 2px 0 18px; }
+.dn-form-section:last-child { margin-bottom: 4px; }
+.dn-form-section > .dn-sec-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: .3px;
+  margin: 0 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--divider);
+}
+.dn-form-section > .dn-sec-title::before { content: ''; width: 3px; height: 13px; border-radius: 2px; background: var(--primary); }
+/* 字段: 标签 / 控件 / 提示 三层, 舒适间距 */
+.dn-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; min-width: 0; }
+.dn-field > label { font-size: 12.5px; font-weight: 500; color: var(--text-regular); display: inline-flex; align-items: center; }
+.dn-field > label .req { color: var(--error); margin-left: 3px; font-weight: 700; }
+.dn-field .dn-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+/* 控件: 36px 舒适高度 + 焦点环 */
+.dn-form-input, .dn-form-select, textarea.dn-form-input {
+  width: 100%; height: 36px; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 11px; font-size: 13px; color: var(--text-primary); background: var(--bg-card);
+  outline: none; transition: border-color .15s, box-shadow .15s; font-family: inherit;
+}
+.dn-form-select { cursor: pointer; padding-right: 8px; }
+.dn-form-input::placeholder { color: var(--text-muted); opacity: .9; }
+.dn-form-input:focus, .dn-form-select:focus, textarea.dn-form-input:focus { border-color: var(--primary); box-shadow: var(--ring); }
+.dn-form-input:disabled, .dn-form-select:disabled { background: var(--bg-hover); color: var(--text-muted); cursor: not-allowed; }
+textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resize: vertical; line-height: 1.6; }
+/* 短字段两列, 减少纵向冗长 + 更平衡(窄屏自动单列) */
+.dn-form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+@media (max-width: 560px) { .dn-form-grid2 { grid-template-columns: 1fr; } }
+/* 抽屉底部 sticky 操作栏: 永远可见, 不随内容滚走 */
+.gov-drawer > .df, .dn-drawer-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 13px 20px; border-top: 1px solid var(--divider); background: var(--bg-card); flex-shrink: 0;
+}
+.gov-drawer > .df .foot-grow, .dn-drawer-foot .foot-grow { margin-right: auto; font-size: 12px; color: var(--text-muted); }
 .iw-form-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .iw-field-section { margin-top: 20px; }
 .iw-field-section-title {

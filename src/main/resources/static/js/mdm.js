@@ -254,17 +254,18 @@
     });
   }
 
-  // ===================== 表单（DN.drawer） =====================
-  function field(label, input, hint) {
-    var row = DN.h('div', { class: 'ds-form-row', style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    if (hint) row.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted)', text: hint }));
+  // ===================== 表单（DN.drawer, R83 全新表单设计系统） =====================
+  // field(标签, 控件, 提示, 必填) — 用 .dn-* 类, 标签清晰 + 必填红星 + 焦点环输入
+  function field(label, input, hint, required) {
+    var lab = DN.h('label', { text: label });
+    if (required) lab.appendChild(DN.h('span', { class: 'req', text: '*' }));
+    var row = DN.h('div', { class: 'dn-field' }, [lab, input]);
+    if (hint) row.appendChild(DN.h('div', { class: 'dn-hint', text: hint }));
     return row;
   }
-  function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
+  function inp(val, ph) { return DN.h('input', { class: 'dn-form-input', value: val == null ? '' : String(val), placeholder: ph || '' }); }
   function sel(opts, val) {
-    var s = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var s = DN.h('select', { class: 'dn-form-select' });
     opts.forEach(function (o) { var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; var op = DN.h('option', { value: ov, text: ol }); if (String(val) === String(ov)) op.selected = true; s.appendChild(op); });
     return s;
   }
@@ -283,27 +284,26 @@
     var fDesc = inp(row.description, '描述');
     var fStatus = sel([[1, '启用'], [0, '停用']], row.status == null ? 1 : row.status);
     var body = DN.h('div', {});
-    body.appendChild(field('域编码', fCode, '唯一，建议大写英文'));
-    body.appendChild(field('域名称', fName));
-    body.appendChild(field('业务类别', fCat));
-    body.appendChild(field('负责人', fOwner));
-    body.appendChild(field('描述', fDesc));
-    body.appendChild(field('状态', fStatus));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '主数据域', body);
-    save.onclick = function () {
-      if (save._busy) return;
+    var sec = DN.formSection('域信息');
+    sec.add(DN.formGrid2([field('域编码', fCode, '唯一，建议大写英文', true), field('域名称', fName, null, true)]));
+    sec.add(DN.formGrid2([field('业务类别', fCat), field('负责人', fOwner, '域负责人/部门')]));
+    sec.add(field('描述', fDesc));
+    sec.add(field('状态', fStatus));
+    body.appendChild(sec.el);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var payload = { id: row.id, domainCode: fCode.value.trim(), domainName: fName.value.trim(), category: fCat.value, owner: fOwner.value.trim(), description: fDesc.value.trim(), status: Number(fStatus.value) };
       if (!payload.domainCode) { DN.toast('请填写域编码', 'err'); return; }
       if (!payload.domainName) { DN.toast('请填写域名称', 'err'); return; }
       if (codeTaken(_domainRows, 'domainCode', payload.domainCode, row.id)) { DN.toast('域编码「' + payload.domainCode + '」已存在，请改用唯一编码', 'err'); return; }
-      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      foot.busy();
       DN.post('/api/mdm/domain/save', payload).then(function () { invalidateEntities(); DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); foot.reset(); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '创建', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '新建') + '主数据域', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   function entityForm(row, c) {
@@ -314,26 +314,26 @@
     var fDesc = inp(row.description, '描述');
     var fStatus = sel([[1, '启用'], [0, '停用']], row.status == null ? 1 : row.status);
     var body = DN.h('div', {});
-    body.appendChild(field('所属域', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: _selDomain.domainName, disabled: 'disabled' })));
-    body.appendChild(field('实体编码', fCode, '同域内唯一'));
-    body.appendChild(field('实体名称', fName));
-    body.appendChild(field('描述', fDesc));
-    body.appendChild(field('状态', fStatus));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '实体', body);
-    save.onclick = function () {
-      if (save._busy) return;
+    var sec = DN.formSection('实体信息');
+    sec.add(field('所属域', DN.h('input', { class: 'dn-form-input', value: _selDomain.domainName, disabled: 'disabled' })));
+    sec.add(DN.formGrid2([field('实体编码', fCode, '同域内唯一', true), field('实体名称', fName, null, true)]));
+    sec.add(field('描述', fDesc));
+    sec.add(field('状态', fStatus));
+    body.appendChild(sec.el);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var payload = { id: row.id, domainId: _selDomain.id, entityCode: fCode.value.trim(), entityName: fName.value.trim(), description: fDesc.value.trim(), status: Number(fStatus.value) };
       if (!payload.entityCode) { DN.toast('请填写实体编码', 'err'); return; }
       if (!payload.entityName) { DN.toast('请填写实体名称', 'err'); return; }
       if (codeTaken(_entityRows, 'entityCode', payload.entityCode, row.id)) { DN.toast('实体编码「' + payload.entityCode + '」在本域内已存在', 'err'); return; }
-      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      foot.busy();
       DN.post('/api/mdm/entity/save', payload).then(function () { invalidateEntities(); DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); foot.reset(); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '创建', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '新建') + '实体', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   function attrForm(row, c) {
@@ -351,31 +351,30 @@
     var cReq = chk('必填', row.required === 1);
     var cUniq = chk('唯一', row.isUnique === 1);
     var body = DN.h('div', {});
-    body.appendChild(field('所属实体', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: _selEntity.entityName, disabled: 'disabled' })));
-    body.appendChild(field('属性编码', fCode, '同实体内唯一'));
-    body.appendChild(field('属性名称', fName));
-    body.appendChild(field('数据类型', fType));
-    body.appendChild(field('长度限制', fLen));
-    body.appendChild(field('枚举候选值', fEnum, '仅 ENUM/REFERENCE 类型时填写'));
+    var sec1 = DN.formSection('基本信息 · ' + _selEntity.entityName);
+    sec1.add(DN.formGrid2([field('属性编码', fCode, '同实体内唯一', true), field('属性名称', fName, null, true)]));
+    sec1.add(DN.formGrid2([field('数据类型', fType), field('长度限制', fLen, '文本/数值最大长度，可空')]));
+    body.appendChild(sec1.el);
+    var sec2 = DN.formSection('取值与默认');
+    sec2.add(field('枚举候选值', fEnum, '仅 ENUM/REFERENCE 类型时填写，逗号分隔'));
     // “选码表”辅助：ENUM/REFERENCE 时可从参考数据码表引用，避免纯手填
     var refRow = buildRefPicker(fEnum);
-    body.appendChild(refRow.el);
+    sec2.add(refRow.el);
     function syncRefRow() {
       var t = (fType.value || '').toUpperCase();
       refRow.el.style.display = (t === 'ENUM' || t === 'REFERENCE') ? '' : 'none';
     }
     fType.addEventListener('change', syncRefRow);
     syncRefRow();
-    body.appendChild(field('默认值', fDefault));
-    body.appendChild(field('约束', DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center' }, [cKey, cReq, cUniq])));
-    body.appendChild(field('描述', fDesc));
-    body.appendChild(field('排序', fSort));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '属性', body);
-    save.onclick = function () {
-      if (save._busy) return;
+    sec2.add(field('默认值', fDefault));
+    body.appendChild(sec2.el);
+    var sec3 = DN.formSection('约束与排序');
+    sec3.add(field('约束', DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-top:3px' }, [cKey, cReq, cUniq])));
+    sec3.add(DN.formGrid2([field('描述', fDesc), field('排序', fSort, '数字，越小越靠前')]));
+    body.appendChild(sec3.el);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var dataType = fType.value;
       // 长度/排序按数值解析，非法（NaN/负数）即时拦截，避免脏数据落库
       var lenStr = fLen.value.trim(), len = null;
@@ -394,11 +393,13 @@
       if (codeTaken(_attrRows, 'attrCode', payload.attrCode, row.id)) { DN.toast('属性编码「' + payload.attrCode + '」在本实体内已存在', 'err'); return; }
       // ENUM/REFERENCE 类型必须提供候选值，否则黄金记录无法按枚举录入
       if ((dataType === 'ENUM' || dataType === 'REFERENCE') && !payload.enumValues) { DN.toast(dataType + ' 类型需填写枚举候选值（可“引用码值”）', 'err'); return; }
-      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      foot.busy();
       DN.post('/api/mdm/attribute/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); renderModeling(c); })
-        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); foot.reset(); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '创建属性', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '新建') + '属性', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   // “选码表”辅助控件：选参考数据类别 → 拉取其码值填入枚举候选值输入框
@@ -588,23 +589,24 @@
     var vals = row.dataJson ? safeParse(row.dataJson, (row._vals || {})) : (row._vals || {});
     var inputs = {};   // attrCode -> input element
     var body = DN.h('div', {});
-    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '实体：' + _grEntity.entityName + '（按属性 schema 录入，标 * 为必填）' }));
+    // 属性信息分组: 每个属性一字段, 必填红星 + 关键字段徽标, 提示给可读类型
+    var secA = DN.formSection('属性信息 · ' + _grEntity.entityName);
     _grAttrs.forEach(function (a) {
       var input = grInput(a, vals[a.attrCode]);
       inputs[a.attrCode] = input;
-      var label = a.attrName + (a.required === 1 ? ' *' : '') + (a.isKey === 1 ? '（关键）' : '');
-      body.appendChild(field(label, input, a.dataType + (a.lengthLimit ? '(' + a.lengthLimit + ')' : '')));
+      var hint = readableType(a.dataType, a.lengthLimit) + (a.isKey === 1 ? ' · 关键字段(匹配去重用)' : '');
+      secA.add(field(a.attrName, input, hint, a.required === 1));
     });
-    var srcInput = inp(row.sourceSystem, '如 CRM / ERP');
-    body.appendChild(field('来源系统', srcInput));
+    body.appendChild(secA.el);
+    // 记录元信息分组
+    var secM = DN.formSection('记录元信息');
+    var srcInput = inp(row.sourceSystem, '如 CRM / ERP / 人工录入');
     var statusSel = sel([['draft', '草稿'], ['active', '已生效'], ['inactive', '已停用']], row.status || 'draft');
-    body.appendChild(field('状态', statusSel));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '黄金记录', body);
-    save.onclick = function () {
-      if (save._busy) return;
+    secM.add(DN.formGrid2([field('来源系统', srcInput, '该记录的数据来源'), field('状态', statusSel, '草稿可继续编辑，发布后生效')]));
+    body.appendChild(secM.el);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var data = {};
       var missing = null, invalid = null;
       _grAttrs.forEach(function (a) {
@@ -624,11 +626,20 @@
       if (invalid) { DN.toast('属性校验失败：' + invalid, 'err'); return; }
       if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
       var payload = { id: row.id, entityId: _grEntity.id, dataJson: JSON.stringify(data), status: statusSel.value, sourceSystem: srcInput.value.trim() };
-      save._busy = true; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      foot.busy();
       DN.post('/api/mdm/golden/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); reloadGolden(); })
-        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast(errMsg(e) || '保存失败', 'err'); foot.reset(); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '创建记录', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '新建') + '黄金记录', body, foot.el);
+    DN.enterSubmit(body, doSave);
+  }
+
+  // 可读类型提示(技术类型 → 人话)
+  function readableType(t, len) {
+    var m = { STRING: '文本', INT: '整数', DECIMAL: '小数', DATE: '日期', DATETIME: '日期时间', BOOLEAN: '是/否', ENUM: '枚举', REFERENCE: '引用' };
+    var base = m[(t || 'STRING').toUpperCase()] || (t || '文本');
+    return base + (len ? '，最长 ' + len + ' 字符' : '');
   }
 
   // ===================== 匹配去重（按关键/唯一属性检测重复 + 合并） =====================

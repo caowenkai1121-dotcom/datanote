@@ -402,8 +402,8 @@
     return wrap;
   };
 
-  /** 右侧抽屉：返回 {close, body} */
-  DN.drawer = function (title, bodyNode) {
+  /** 右侧抽屉：返回 {close, body}。footerNode 可选: 渲染为 sticky 底部操作栏(.df), 永远贴底不随内容滚走。 */
+  DN.drawer = function (title, bodyNode, footerNode) {
     // 替换旧抽屉时先解绑其 keydown 监听,避免监听器泄漏累积
     if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
     var old = document.getElementById('govDrawerMask'); if (old) old.remove();
@@ -411,6 +411,7 @@
     var _prevFocus = document.activeElement; // 关闭后归还焦点(a11y)
     var mask = DN.h('div', { id: 'govDrawerMask' });
     var bd = DN.h('div', { class: 'db' }); if (bodyNode) bd.appendChild(bodyNode);
+    var df = footerNode ? DN.h('div', { class: 'df' }, [footerNode]) : null;
     function onKey(e) {
       if (e.key === 'Escape') { close(); return; }
       if (e.key === 'Tab') { // 焦点陷阱:Tab 在抽屉内循环(规范模态 a11y)
@@ -425,12 +426,74 @@
     }
     var _closing = false;
     function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
-    var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd]);
+    var drKids = [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd];
+    if (df) drKids.push(df);
+    var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, drKids);
     mask.onclick = close;
     document.body.appendChild(mask); document.body.appendChild(dr);
     DN._drawerKey = onKey; document.addEventListener('keydown', onKey);
     requestAnimationFrame(function () { mask.classList.add('show'); dr.classList.add('show'); var f = bd.querySelector('input,select,textarea,button'); if (f) try { f.focus(); } catch (e) {} });
     return { close: close, body: bd };
+  };
+
+  // ===== 表单组件(配合 app.css .dn-* 表单设计系统, 让抽屉/弹窗表单美观人性化) =====
+  /** 输入框: opts {placeholder, type, value, disabled, textarea} */
+  DN.formInput = function (opts) {
+    opts = opts || {};
+    var el = DN.h(opts.textarea ? 'textarea' : 'input', { class: 'dn-form-input' });
+    if (opts.type && !opts.textarea) el.type = opts.type;
+    if (opts.placeholder != null) el.placeholder = opts.placeholder;
+    if (opts.value != null) el.value = String(opts.value);
+    if (opts.disabled) el.disabled = true;
+    return el;
+  };
+  /** 下拉: options 为 [val|[val,label],...], val 为当前值 */
+  DN.formSelect = function (options, val) {
+    var s = DN.h('select', { class: 'dn-form-select' });
+    (options || []).forEach(function (o) {
+      var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o;
+      var op = DN.h('option', { value: ov, text: ol });
+      if (val != null && String(val) === String(ov)) op.selected = true;
+      s.appendChild(op);
+    });
+    return s;
+  };
+  /** 字段: 标签(可必填红星) + 控件 + 提示。opts {hint, required} */
+  DN.field = function (label, control, opts) {
+    opts = opts || {};
+    var lab = DN.h('label', { text: label || '' });
+    if (opts.required) lab.appendChild(DN.h('span', { class: 'req', text: '*' }));
+    var f = DN.h('div', { class: 'dn-field' + (opts.col2 ? ' dn-field-col2' : '') }, [lab, control]);
+    if (opts.hint) f.appendChild(DN.h('div', { class: 'dn-hint', text: opts.hint }));
+    return f;
+  };
+  /** 分组小节: 标题 + 容纳字段的容器。返回 {el, add(node)} */
+  DN.formSection = function (title) {
+    var box = DN.h('div', { class: 'dn-form-section' });
+    if (title) box.appendChild(DN.h('div', { class: 'dn-sec-title', text: title }));
+    return { el: box, add: function (n) { box.appendChild(n); return box; } };
+  };
+  /** 短字段两列容器: 把多个 dn-field 并成两列 */
+  DN.formGrid2 = function (fields) {
+    var g = DN.h('div', { class: 'dn-form-grid2' });
+    (fields || []).forEach(function (f) { if (f) g.appendChild(f); });
+    return g;
+  };
+  /** 抽屉底部操作栏: 取消(ghost) + 主按钮。opts {okText, onOk, onCancel(默认关闭), extra(左侧节点)}; 返回 {el, ok, busy(text), reset(text)} */
+  DN.drawerFoot = function (opts) {
+    opts = opts || {};
+    var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: opts.okText || '保存', style: 'background:var(--primary);color:#fff;border-color:var(--primary);height:32px;padding:0 18px;' });
+    var cancel = DN.h('button', { class: 'btn btn-sm', text: opts.cancelText || '取消', style: 'height:32px;padding:0 16px;' });
+    var foot = DN.h('div', {});
+    if (opts.extra) foot.appendChild(DN.h('span', { class: 'foot-grow' }, [opts.extra]));
+    foot.appendChild(cancel); foot.appendChild(ok);
+    if (typeof opts.onOk === 'function') ok.onclick = opts.onOk;
+    cancel.onclick = function () { if (typeof opts.onCancel === 'function') opts.onCancel(); };
+    return {
+      el: foot, ok: ok, cancel: cancel,
+      busy: function (t) { ok.disabled = true; cancel.disabled = true; ok.textContent = t || '保存中…'; },
+      reset: function (t) { ok.disabled = false; cancel.disabled = false; ok.textContent = t || (opts.okText || '保存'); }
+    };
   };
 
   /** 纯 SVG 雷达图。dims:[{label,value(0-100)}]，opts:{size,color} */
