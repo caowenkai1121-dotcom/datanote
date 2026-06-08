@@ -6,8 +6,8 @@
   --gov-gap: 16px;
   --gov-radius: 10px;
   --gov-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
-  --gov-shadow-h: 0 4px 16px rgba(24,144,255,.12);
-  --gov-ok: #52c41a; --gov-warn: #faad14; --gov-err: #ff4d4f; --gov-info: var(--primary,#1890ff);
+  --gov-shadow-h: 0 4px 16px rgba(52,87,213,.12);
+  --gov-ok: #52c41a; --gov-warn: #faad14; --gov-err: #ff4d4f; --gov-info: var(--primary,#3457d5);
   color: var(--text-regular,#1f2329);
 }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-h1 { font-size:19px; font-weight:650; letter-spacing:.2px; margin-bottom:4px; }
@@ -20,8 +20,8 @@
 /* ---- KPI 磁贴 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat { position:relative; display:flex; align-items:center; gap:14px; background:var(--bg-card,#fff);
   border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); padding:16px 18px; box-shadow:var(--gov-shadow); transition:transform .15s, box-shadow .15s, border-color .15s; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,#1890ff); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(24,144,255,.08)); color:var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,#3457d5); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(52,87,213,.08)); color:var(--primary,#3457d5); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat .ic svg { width:22px; height:22px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat.tone-ok .ic { background:rgba(82,196,26,.1); color:var(--gov-ok); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stat.tone-warn .ic { background:rgba(250,173,20,.12); color:var(--gov-warn); }
@@ -33,7 +33,7 @@
 /* ---- 卡片 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card { background:var(--bg-card,#fff); border:1px solid var(--border,#eceef1); border-radius:var(--gov-radius); box-shadow:var(--gov-shadow); margin-bottom:var(--gov-gap); overflow:hidden; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-hd { display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--divider,#f0f1f3); font-weight:600; font-size:14px; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-hd .ic { color:var(--primary,#1890ff); display:flex; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-hd .ic { color:var(--primary,#3457d5); display:flex; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-hd .ic svg { width:18px; height:18px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-hd .sp { flex:1; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-bd { padding:18px; }
@@ -42,9 +42,9 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search { position:relative; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input:focus { border-color:var(--primary,#1890ff); box-shadow:0 0 0 3px var(--primary-light,rgba(24,144,255,.1)); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input:focus { border-color:var(--primary,#3457d5); box-shadow:0 0 0 3px var(--primary-light,rgba(52,87,213,.1)); }
 /* 键盘焦点环(仅键盘聚焦显示),覆盖所有 gov 交互元素 */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) a:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) button:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) [role="button"]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) th[data-sk]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) select:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#1890ff); outline-offset:2px; border-radius:4px; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) a:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) button:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) [role="button"]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) th[data-sk]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) select:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#3457d5); outline-offset:2px; border-radius:4px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search .gov-search-clr { position:absolute; right:8px; top:6px; cursor:pointer; color:var(--text-muted,#86909c); font-size:16px; line-height:20px; width:18px; text-align:center; border-radius:50%; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
@@ -55,7 +55,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl thead th { position:sticky; top:0; z-index:3; background:#fafbfc; text-align:left; color:var(--text-muted,#86909c); font-weight:600; font-size:12px; letter-spacing:.3px; padding:12px 16px; border-bottom:1px solid var(--border,#eceef1); white-space:nowrap; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody td { padding:12px 16px; border-bottom:1px solid var(--divider,#f3f4f6); color:var(--text-regular,#1f2329); line-height:1.55; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr { transition:background .12s; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); color:var(--text-regular,#1f2329); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(52,87,213,.06)); color:var(--text-regular,#1f2329); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:last-child td { border-bottom:none; }
 
 /* ---- 分页(小屏换行不挤) ---- */
@@ -68,14 +68,14 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-ok { background:rgba(82,196,26,.14); color:#389e0d; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-warn { background:rgba(250,173,20,.16); color:#ad6800; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-err { background:rgba(255,77,79,.12); color:#cf1322; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-info { background:var(--primary-light,rgba(24,144,255,.1)); color:#0958d9; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-info { background:var(--primary-light,rgba(52,87,213,.1)); color:#0958d9; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-muted { background:rgba(140,140,140,.16); color:#595959; }
 
 /* ---- 横向条形图 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:13px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar .bl { width:96px; color:var(--text-regular,#1f2329); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar .bt { flex:1; height:8px; background:#f0f1f3; border-radius:5px; overflow:hidden; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar .bf { height:100%; border-radius:5px; background:var(--primary,#1890ff); transition:width .5s ease; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar .bf { height:100%; border-radius:5px; background:var(--primary,#3457d5); transition:width .5s ease; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-bar .bv { width:54px; text-align:right; color:var(--text-muted,#86909c); font-variant-numeric:tabular-nums; flex-shrink:0; }
 
 /* ---- 环形仪表 ---- */
@@ -120,11 +120,11 @@
 
 /* ---- 字体层级 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-h1 { font-size:22px; font-weight:700; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-section-title { font-size:13px; font-weight:650; color:var(--text-regular,#1f2329); margin:6px 0 10px; padding-left:9px; border-left:3px solid var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-section-title { font-size:13px; font-weight:650; color:var(--text-regular,#1f2329); margin:6px 0 10px; padding-left:9px; border-left:3px solid var(--primary,#3457d5); }
 
 /* ---- 卡片阴影/层级 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card.primary { box-shadow:0 2px 6px rgba(0,0,0,.05),0 8px 28px rgba(24,144,255,.10); border-color:rgba(24,144,255,.22); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card.primary .gov-card-hd { background:linear-gradient(90deg,rgba(24,144,255,.06),transparent); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card.primary { box-shadow:0 2px 6px rgba(0,0,0,.05),0 8px 28px rgba(52,87,213,.10); border-color:rgba(52,87,213,.22); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card.primary .gov-card-hd { background:linear-gradient(90deg,rgba(52,87,213,.06),transparent); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card.flat { box-shadow:none; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-bd.split { display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
 @media (max-width:760px){ :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-card-bd.split { grid-template-columns:1fr; } }
@@ -142,12 +142,12 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(52,87,213,.25); }
 
 /* ---- 表格斑马纹 + hover 左标记 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:nth-child(even) { background:#fafbfc; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr { box-shadow:inset 3px 0 0 transparent; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(24,144,255,.06)); box-shadow:inset 3px 0 0 var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) table.gov-tbl tbody tr:hover { background:var(--primary-light,rgba(52,87,213,.06)); box-shadow:inset 3px 0 0 var(--primary,#3457d5); }
 
 /* ---- 响应式网格 ---- */
 @media (max-width:1200px){ :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }
@@ -164,8 +164,8 @@
 /* ---- 按钮分级 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn.btn-danger { color:#cf1322; border-color:rgba(255,77,79,.4); background:#fff1f0; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn.btn-danger:hover { background:#ffccc7; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn.btn-ghost { background:transparent; color:var(--primary,#1890ff); border-color:var(--border,#d4d7de); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:not(.btn-primary):not(.btn-danger):hover { border-color:var(--primary,#1890ff); color:var(--primary,#1890ff); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn.btn-ghost { background:transparent; color:var(--primary,#3457d5); border-color:var(--border,#d4d7de); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:not(.btn-primary):not(.btn-danger):hover { border-color:var(--primary,#3457d5); color:var(--primary,#3457d5); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:active { transform:translateY(1px); }
 
 /* ---- 告警条 ---- */
@@ -177,7 +177,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(250,173,20,.3); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(255,77,79,.25); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(82,196,26,.25); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(24,144,255,.25); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(52,87,213,.25); }
 
 /* ---- 可视化组件容器 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-radar, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-line { display:flex; justify-content:center; }

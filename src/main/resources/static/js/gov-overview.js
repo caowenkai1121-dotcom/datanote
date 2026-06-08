@@ -407,12 +407,12 @@
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
     var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>数据治理体检报告 ' + ts + '</title>'
       + '<style>body{font-family:-apple-system,"Microsoft YaHei",sans-serif;color:#1f2329;max-width:820px;margin:24px auto;padding:0 20px;line-height:1.7}'
-      + 'h1{font-size:24px;border-bottom:3px solid #1890ff;padding-bottom:10px}h2{font-size:17px;margin-top:26px;color:#1890ff;border-left:4px solid #1890ff;padding-left:8px}'
+      + 'h1{font-size:24px;border-bottom:3px solid #3457d5;padding-bottom:10px}h2{font-size:17px;margin-top:26px;color:#3457d5;border-left:4px solid #3457d5;padding-left:8px}'
       + '.score{font-size:48px;font-weight:800;color:' + (total >= 85 ? '#52c41a' : total >= 60 ? '#faad14' : '#ff4d4f') + '}'
       + 'table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left}th{background:#f6f7f9}'
       + '.kpi{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}.kpi div{font-size:13px;color:#666}.kpi b{display:block;font-size:22px;color:#1f2329}'
       + '.muted{color:#86909c;font-size:12px}@media print{.noprint{display:none}body{margin:0}}</style></head><body>'
-      + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#1890ff;color:#fff;border:0;border-radius:6px;cursor:pointer">打印 / 另存为PDF</button></div>'
+      + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#3457d5;color:#fff;border:0;border-radius:6px;cursor:pointer">打印 / 另存为PDF</button></div>'
       + '<h1>数据治理体检报告</h1><div class="muted">生成时间：' + ts + '　|　DataNote 数据治理平台</div>'
       + '<h2>一、治理健康总分</h2><div class="score">' + total + ' <span style="font-size:18px;color:#86909c">/ 100 · ' + level(total) + '</span></div>'
       + '<h2>二、五维健康明细</h2><table><tr><th>维度</th><th>得分</th><th>权重</th><th>评级</th></tr>' + dimRows + '</table>'
@@ -444,7 +444,7 @@
   }
   // 分值映射药丸/磁贴色调：>=85 绿 / >=60 黄 / 其余红
   function tone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
-  function toneColor(t) { return t === 'ok' ? '#389e0d' : t === 'warn' ? '#d48806' : t === 'err' ? '#cf1322' : 'var(--primary,#1890ff)'; }
+  function toneColor(t) { return t === 'ok' ? '#389e0d' : t === 'warn' ? '#d48806' : t === 'err' ? '#cf1322' : 'var(--primary,#3457d5)'; }
   function level(v) { return v >= 85 ? '优秀' : v >= 70 ? '良好' : v >= 60 ? '一般' : '待完善'; }
   function round1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
   function fmtInt(v) {

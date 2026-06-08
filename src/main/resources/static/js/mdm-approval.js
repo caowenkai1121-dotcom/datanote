@@ -91,7 +91,7 @@
           { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary,#1890ff)', onclick: function () { detailDrawer(r); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary,#3457d5)', onclick: function () { detailDrawer(r); } }));
               if (r.status === 'pending') {
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '批准', style: 'color:#389e0d', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:#ff4d4f', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));

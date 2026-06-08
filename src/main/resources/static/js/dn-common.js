@@ -268,7 +268,7 @@
   };
   DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
 
-  function toneColor(t) { return t === 'ok' ? '#52c41a' : t === 'warn' ? '#faad14' : t === 'err' ? '#ff4d4f' : 'var(--primary,#1890ff)'; }
+  function toneColor(t) { return t === 'ok' ? '#52c41a' : t === 'warn' ? '#faad14' : t === 'err' ? '#ff4d4f' : 'var(--primary,#3457d5)'; }
   DN.bars = function (items) {
     items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
     var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));
@@ -437,7 +437,7 @@
   DN.radar = function (dims, opts) {
     opts = opts || {}; dims = dims || [];
     var n = dims.length; if (!n) return DN.empty('暂无维度数据', 'chart');
-    var size = opts.size || 230, cx = size / 2, cy = size / 2, r = size / 2 - 38, color = opts.color || 'var(--primary,#1890ff)';
+    var size = opts.size || 230, cx = size / 2, cy = size / 2, r = size / 2 - 38, color = opts.color || 'var(--primary,#3457d5)';
     function pt(i, frac) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + r * frac * Math.cos(a), cy + r * frac * Math.sin(a)]; }
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
     [0.25, 0.5, 0.75, 1].forEach(function (fr) {
@@ -450,7 +450,7 @@
       svg += '<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" font-size="11" fill="#86909c" text-anchor="' + anchor + '" dominant-baseline="middle">' + DN.esc(dims[i].label) + '</text>';
     }
     var dp = []; for (var i = 0; i < n; i++) { var v = Math.max(0, Math.min(100, dims[i].value || 0)) / 100; var p = pt(i, v); dp.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); }
-    svg += '<polygon points="' + dp.join(' ') + '" fill="rgba(24,144,255,.16)" stroke="' + color + '" stroke-width="2"/>';
+    svg += '<polygon points="' + dp.join(' ') + '" fill="rgba(52,87,213,.16)" stroke="' + color + '" stroke-width="2"/>';
     for (var i = 0; i < n; i++) { var v = Math.max(0, Math.min(100, dims[i].value || 0)) / 100; var p = pt(i, v); svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + color + '"/>'; }
     return DN.h('div', { class: 'gov-radar', html: svg + '</svg>' });
   };
@@ -462,7 +462,7 @@
     var h = opts.height || 72, pad = 6, vw = 300, n = data.length;
     var max = opts.max != null ? opts.max : Math.max.apply(null, data.concat([1])), min = opts.min != null ? opts.min : Math.min.apply(null, data.concat([0]));
     if (max === min) max = min + 1;
-    var stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0, col = opts.color || 'var(--primary,#1890ff)';
+    var stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0, col = opts.color || 'var(--primary,#3457d5)';
     function X(i) { return pad + i * stepX; } function Y(v) { return (h - pad) - ((v - min) / (max - min)) * (h - pad * 2); }
     var pts = data.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
     var svg = '<svg width="100%" height="' + h + '" viewBox="0 0 ' + vw + ' ' + h + '" preserveAspectRatio="none">';
@@ -479,7 +479,7 @@
     var size = opts.size || 120, sw = opts.stroke || 14, r = (size - sw) / 2, c = 2 * Math.PI * r, cx = size / 2;
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>';
     var off = 0;
-    segs.forEach(function (s) { var len = c * (total ? s.value / total : 0); svg += '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + (s.color || '#1890ff') + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cx + ')" style="transition:stroke-dasharray .5s"/>'; off += len; });
+    segs.forEach(function (s) { var len = c * (total ? s.value / total : 0); svg += '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + (s.color || '#3457d5') + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cx + ')" style="transition:stroke-dasharray .5s"/>'; off += len; });
     svg += '</svg>';
     var ring = DN.h('div', { style: 'position:relative;width:' + size + 'px;height:' + size + 'px', html: svg });
     if (opts.centerLabel != null || opts.centerSub != null) ring.appendChild(DN.h('div', { style: 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center' },
@@ -487,7 +487,7 @@
     if (!opts.legend) return ring;
     // 可选内置图例：环 + 图例并排
     var lg = DN.h('div', { class: 'gov-legend' });
-    segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + (s.color || '#1890ff') }), DN.h('span', { text: (s.label != null ? s.label : '') + ' ' + (s.value || 0) })])); });
+    segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + (s.color || '#3457d5') }), DN.h('span', { text: (s.label != null ? s.label : '') + ' ' + (s.value || 0) })])); });
     return DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' }, [ring, lg]);
   };
 

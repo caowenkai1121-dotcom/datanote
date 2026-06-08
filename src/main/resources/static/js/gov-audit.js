@@ -186,7 +186,7 @@
       tc.el.classList.add('primary');
       if (trend.length >= 2) {
         var vals = trend.map(function (x) { return Number(x && x.cnt) || 0; });
-        tc.body.appendChild(DN.line(vals, { height: 80, color: '#1890ff' }));
+        tc.body.appendChild(DN.line(vals, { height: 80, color: '#3457d5' }));
         var d0 = (trend[0] && trend[0].day) || '', dn = (trend[trend.length - 1] && trend[trend.length - 1].day) || '';
         var sum = vals.reduce(function (a, b) { return a + b; }, 0);
         tc.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0;text-align:center', text: (d0 && dn ? d0 + ' ~ ' + dn + ' · ' : '') + '合计 ' + sum + ' 条' }));
@@ -454,7 +454,7 @@
       grid[key] = (grid[key] || 0) + 1; if (grid[key] > max) max = grid[key];
     });
     var dows = ['日', '一', '二', '三', '四', '五', '六'];
-    var colorOf = function (n) { if (!n) return '#f0f1f3'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+    var colorOf = function (n) { if (!n) return '#f0f1f3'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#7e97ee' : '#c3cef5'; };
     var wrap = DN.h('div', { style: 'overflow-x:auto' });
     var tbl = DN.h('div', { style: 'display:inline-block;min-width:100%' });
     // 表头(小时)

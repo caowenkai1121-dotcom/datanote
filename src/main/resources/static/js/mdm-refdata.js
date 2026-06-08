@@ -109,8 +109,8 @@
             } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary,#1890ff)', onclick: function () { detailDrawer(r, nameByCode); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { codeForm(r, tileBox, box); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary,#3457d5)', onclick: function () { detailDrawer(r, nameByCode); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { codeForm(r, tileBox, box); } }));
               var delLink = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f' });
               delLink.onclick = function () {
                 if (delLink._busy) return; // 防重复点击（删除请求在途时忽略再次点击）

@@ -261,14 +261,14 @@
       if (typeof tip.go === 'function') {
         line.appendChild(DN.h('a', {
           href: 'javascript:void(0)', text: ' ' + tip.label + ' →',
-          style: 'color:var(--primary,#1890ff);text-decoration:none;white-space:nowrap',
+          style: 'color:var(--primary,#3457d5);text-decoration:none;white-space:nowrap',
           onclick: tip.go
         }));
       }
       tipBox.appendChild(DN.h('div', {
         style: 'display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text-regular,#4e5969);line-height:1.5'
       }, [
-        DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary,#1890ff);margin-top:2px;flex:none' }),
+        DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary,#3457d5);margin-top:2px;flex:none' }),
         line
       ]));
     });
@@ -309,7 +309,7 @@
       // 层级图标：父节点用 layers，叶子用 doc
       row.appendChild(DN.h('span', {
         class: 'subj-ic', html: DN.icon(hasChild ? 'layers' : 'doc'),
-        style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#1890ff);margin-right:8px;flex:none'
+        style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#3457d5);margin-right:8px;flex:none'
       }));
       // 主题名 → 下钻到资产目录按该主题域筛资产(gov-assets 收 ctx.subjectId), 消除纯展示死胡同
       // 超长名称用省略号+完整 title;无名兜底占位,避免链接空白不可点
@@ -324,7 +324,7 @@
       row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
       var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
       ops.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff);font-size:13px;margin-right:12px',
+        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5);font-size:13px;margin-right:12px',
         onclick: function () { editNode(n, reloadFn); }
       }));
       var delLink = DN.h('a', {

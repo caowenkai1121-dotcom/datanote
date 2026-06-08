@@ -145,7 +145,7 @@
     wrap.appendChild(DN.h('div', { style: 'position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--divider,#eee)' }));
     logs.slice(0, 10).forEach(function (lg) {
       var st = (lg.status || '').toUpperCase();
-      var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#52c41a' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#ff4d4f' : '#1890ff';
+      var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#52c41a' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#ff4d4f' : '#3457d5';
       var row = DN.h('div', { style: 'position:relative;padding:0 0 12px 14px;cursor:pointer', title: '点击查看本次采集明细' });
       row.innerHTML = '<div style="position:absolute;left:-16px;top:2px;width:9px;height:9px;border-radius:50%;background:' + color + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + color + '"></div>'
         + '<div style="font-size:12px"><b style="color:' + color + '">' + DN.esc(lg.status || '-') + '</b> '
@@ -336,7 +336,7 @@
     }).sort(function (a, b) { return b.sum - a.sum; });
     var grand = groups.reduce(function (s, g) { return s + g.sum; }, 0) || 1;
     var maxT = withSize.reduce(function (m, t) { return Math.max(m, Number(t.sizeBytes) || 0); }, 1);
-    var colorOf = function (v) { var r = v / maxT; return r > 0.66 ? '#1677ff' : r > 0.33 ? '#4d94ff' : r > 0.1 ? '#85b8ff' : '#bcd7ff'; };
+    var colorOf = function (v) { var r = v / maxT; return r > 0.66 ? '#1677ff' : r > 0.33 ? '#4d94ff' : r > 0.1 ? '#85b8ff' : '#c3cef5'; };
     var wrap = DN.h('div', { style: 'display:flex;flex-direction:column;gap:8px' });
     groups.forEach(function (g) {
       var bandH = Math.max(28, Math.round(g.sum / grand * 260)); // 带高按库占比
@@ -383,7 +383,7 @@
       var head = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:var(--bg-hover,#f6f7f9);border-bottom:1px solid var(--divider,#eee)' });
       head.innerHTML = '<span style="font-size:11px;color:var(--text-muted);width:12px;display:inline-block;transition:transform .15s;transform:rotate(' + (open ? '90' : '0') + 'deg)">▶</span>'
         + '<span style="font-weight:600;font-size:13px">' + DN.esc(dbName) + '</span>'
-        + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:8px;background:#e6f0ff;color:#1890ff">' + DN.esc(dbType || '-') + '</span>'
+        + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:8px;background:#eaeefc;color:#3457d5">' + DN.esc(dbType || '-') + '</span>'
         + '<span style="font-size:11px;color:var(--text-muted)">' + tables.length + ' 表 · ' + DN.fmtBytes(totalBytes) + '</span>';
       var bodyWrap = DN.h('div', { style: 'display:' + (open ? 'block' : 'none') });
       // 仅在展开时才构建该库的行(节省折叠库的渲染开销)
@@ -394,7 +394,7 @@
           var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:7px 12px 7px 34px;border-bottom:1px solid var(--divider,#f3f4f6);cursor:pointer;font-size:12.5px' });
           row.onmouseenter = function () { row.style.background = 'var(--bg-hover,#f6f7f9)'; };
           row.onmouseleave = function () { row.style.background = ''; };
-          row.innerHTML = '<span style="color:#1890ff">▦</span>'
+          row.innerHTML = '<span style="color:#3457d5">▦</span>'
             + '<span style="font-weight:500">' + DN.esc(t.tableName || '-') + '</span>'
             + '<span style="color:var(--text-muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + DN.esc(t.tableComment || '') + '">' + DN.esc(t.tableComment || '') + '</span>'
             + '<span style="color:var(--text-muted);font-size:11px;white-space:nowrap">' + (t.rowCount == null ? '' : fmtInt(t.rowCount) + ' 行 · ') + DN.fmtBytes(t.sizeBytes) + '</span>';

@@ -15,7 +15,7 @@
   // 用户气泡
   function userBubble(text) {
     return DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:10px 0;' },
-      [DN.h('div', { style: 'max-width:78%;background:var(--primary,#1890ff);color:#fff;padding:9px 13px;border-radius:12px 12px 2px 12px;white-space:pre-wrap;word-break:break-word;font-size:13px;', text: text })]);
+      [DN.h('div', { style: 'max-width:78%;background:var(--primary,#3457d5);color:#fff;padding:9px 13px;border-radius:12px 12px 2px 12px;white-space:pre-wrap;word-break:break-word;font-size:13px;', text: text })]);
   }
 
   // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
@@ -44,7 +44,7 @@
 
   function linkChip(label, onclick) {
     return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
-      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:10px;background:var(--primary,#1890ff);color:#fff;font-size:12px;text-decoration:none;' });
+      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:10px;background:var(--primary,#3457d5);color:#fff;font-size:12px;text-decoration:none;' });
   }
 
   // ===== 轻量 Markdown → DOM 渲染(零依赖, XSS 安全: 全程 DOM 构造不用 innerHTML 拼 LLM 文本) =====
@@ -256,7 +256,7 @@
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:#d48806;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
-      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);' });
+      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
       okBtn.onclick = function () {
         okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
@@ -326,7 +326,7 @@
           DN.h('span', { text: a.riskLevel || '', style: 'margin-left:8px;font-size:11px;padding:1px 7px;border-radius:9px;background:' + (a.riskLevel === 'HIGH' ? '#ffece8;color:#f53f3f' : '#fff7e8;color:#ff7d00') + ';' })
         ]));
         card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:11px;color:var(--text-secondary,#4e5969);background:var(--bg-body,#f7f8fa);border-radius:6px;padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
-        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);' });
+        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });
         var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
         ok.onclick = function () {
           ok.disabled = no.disabled = true; ok.textContent = '执行中…';
@@ -354,7 +354,7 @@
     root.style.position = 'relative'; // 供经验/审批抽屉绝对定位
     // 顶栏
     var head = DN.h('div', { style: 'padding:16px 24px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:12px;flex:0 0 auto;' }, [
-      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary,#1890ff);display:flex;' }),
+      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary,#3457d5);display:flex;' }),
       DN.h('div', { style: 'min-width:0;' }, [
         DN.h('div', { text: '天工·自由意志数据智能体', style: 'font-size:16px;font-weight:650;color:var(--text-primary);' }),
         DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主编排工具，写操作经人工审批，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
@@ -375,7 +375,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
     });
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);', onclick: send });
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);', onclick: send });
     var inputBar = DN.h('div', { style: 'flex:0 0 auto;padding:12px 24px;border-top:1px solid var(--border,#e5e6eb);display:flex;gap:10px;align-items:flex-end;background:var(--bg-card,#fff);' }, [inputEl, sendBtn]);
     root.appendChild(inputBar);
 
@@ -385,9 +385,9 @@
 
   function welcome() {
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
-    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary,#1890ff);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
+    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary,#3457d5);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
     box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
-    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary,#1890ff);margin-top:6px;' }));
+    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary,#3457d5);margin-top:6px;' }));
     return box;
   }
 

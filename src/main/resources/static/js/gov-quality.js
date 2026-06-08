@@ -136,7 +136,7 @@
     var grid = {}, max = 0;
     allRules.forEach(function (r) { var k = (r.dimension || '未分类') + '||' + (r.ruleType || '未分类'); grid[k] = (grid[k] || 0) + 1; if (grid[k] > max) max = grid[k]; });
     var card = DN.card({ title: '规则覆盖矩阵（维度 × 类型）', icon: 'grid' });
-    var colorOf = function (n) { if (!n) return 'var(--bg-hover,#f0f1f3)'; var rr = n / (max || 1); return rr > 0.66 ? '#1890ff' : rr > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+    var colorOf = function (n) { if (!n) return 'var(--bg-hover,#f0f1f3)'; var rr = n / (max || 1); return rr > 0.66 ? '#3457d5' : rr > 0.33 ? '#7e97ee' : '#c3cef5'; };
     var tbl = DN.h('table', { class: 'gov-tbl', style: 'width:auto' });
     var thead = '<thead><tr><th></th>' + types.map(function (t) { return '<th style="font-size:11px;text-align:center">' + DN.esc(t) + '</th>'; }).join('') + '</tr></thead>';
     var tb = '<tbody>';
@@ -257,7 +257,7 @@
           } },
         { key: 'ruleName', label: '规则', render: function (r) {
             var link = DN.h('a', { href: 'javascript:void(0)', text: trunc(r.ruleName, 36),
-              style: 'color:var(--primary,#1890ff)', title: r.ruleName + ' · 点击查看该规则趋势与失败根因',
+              style: 'color:var(--primary,#3457d5)', title: r.ruleName + ' · 点击查看该规则趋势与失败根因',
               onclick: function () { loadRuleDetail(r._f.rule.id, r._f.rule.ruleName); } });
             if (r._f.rule.blockDownstream !== 1) return link;
             var wrap = DN.h('span', { style: 'display:inline-flex;align-items:center;gap:6px' });
@@ -289,7 +289,7 @@
             // 影响面(创新功能): 按需查该失败规则目标表的下游受影响范围, 助按影响排序修复优先级(质量↔血缘联动)
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
             wrap.appendChild(rerunBtn);
-            var impBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--primary,#1890ff)', title: '查看该表下游受影响范围(评估修复优先级)', text: '影响面' });
+            var impBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--primary,#3457d5)', title: '查看该表下游受影响范围(评估修复优先级)', text: '影响面' });
             impBtn.onclick = function () {
               impBtn.textContent = '查询中…';
               DN.get('/api/lineage/impact?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(tbl)).then(function (list) {
@@ -329,7 +329,7 @@
       box.innerHTML = '';
       // R21 深链: 按库表过滤时, 顶部提示 + 可清除
       if (ctxTableFilter) {
-        var hint = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;color:var(--primary,#1890ff)' }, [
+        var hint = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;color:var(--primary,#3457d5)' }, [
           DN.h('span', { text: '按 ' + ctxTableFilter.db + '.' + ctxTableFilter.table + ' 过滤' }),
           DN.h('a', { href: 'javascript:void(0)', style: 'margin-left:10px', text: '清除过滤',
             onclick: function () { ctxTableFilter = null; hint.remove(); if (tableEl) tableEl.reload(filtered()); DN.toast('已清除库表过滤', 'info'); } })
@@ -485,7 +485,7 @@
         { key: 'ruleName', label: '规则', render: function (r) {
             var nm = r.ruleName || '-';
             return DN.h('a', { href: 'javascript:void(0)', text: trunc(nm, 40), title: nm, // 超长规则名截断+title 防撑表
-              style: 'color:var(--primary,#1890ff)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
+              style: 'color:var(--primary,#3457d5)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
           } },
         { key: 'ruleType', label: '类型', render: function (r) { return r.ruleType || '-'; } },
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension || '-'; } },
@@ -510,16 +510,16 @@
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap' });
             // R21 深链下钻: 跳健康/工单, 按该规则 id 过滤其触发的治理工单(质量↔工单联动)
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
-              style: 'color:var(--primary,#1890ff)', title: '查看该规则触发生成的治理工单',
+              style: 'color:var(--primary,#3457d5)', title: '查看该规则触发生成的治理工单',
               onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'health', issueFilter: { ruleId: r.id } }); } }));
             // R22 深链下钻: 规则↔血缘↔数据地图闭环(仅当规则含目标库表时提供)
             var db = r.databaseName || r.dbName, tbl = r.tableName;
             if (db && tbl) {
               wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '看来源表血缘',
-                style: 'color:var(--primary,#1890ff)', title: '在血缘模块查看该来源表的血缘关系',
+                style: 'color:var(--primary,#3457d5)', title: '在血缘模块查看该来源表的血缘关系',
                 onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: db, table: tbl } }); } }));
               wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '数据地图',
-                style: 'color:var(--primary,#1890ff)', title: '在数据地图中打开该来源表',
+                style: 'color:var(--primary,#3457d5)', title: '在数据地图中打开该来源表',
                 onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
             }
             return wrap;

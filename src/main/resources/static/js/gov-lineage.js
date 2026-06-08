@@ -4,7 +4,7 @@
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
   // SVG 用具体色值（CSS 变量在 SVG 内解析不可靠），与系统令牌对齐
-  var C = { primary: '#1890ff', up: '#ff4d4f', down: '#52c41a', node: '#f2f3f5', nodeBorder: '#d4d7de', text: '#1f2329' };
+  var C = { primary: '#3457d5', up: '#ff4d4f', down: '#52c41a', node: '#f2f3f5', nodeBorder: '#d4d7de', text: '#1f2329' };
 
   // 三处库表选择器（替代自由文本框，级联真实元数据）
   var lnPicker = null, impPicker = null, grPicker = null;

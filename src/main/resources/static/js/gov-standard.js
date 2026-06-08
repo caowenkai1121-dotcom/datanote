@@ -397,7 +397,7 @@
         columns: [
           { key: 'dictCode', label: '编码', render: function (d) {
               return DN.h('a', { href: 'javascript:void(0)', text: d.dictCode || '',
-                style: 'color:var(--primary,#1890ff)', onclick: function () { openDictItems(d); } });
+                style: 'color:var(--primary,#3457d5)', onclick: function () { openDictItems(d); } });
             } },
           { key: 'dictName', label: '名称', render: function (d) { return truncCell(d.dictName, 24); } },
           { key: 'description', label: '描述', render: function (d) { return truncCell(d.description, 36); } },
@@ -539,7 +539,7 @@
       box.appendChild(DN.table({
         columns: [
           { key: 'id', label: 'ID', render: function (r) {
-              return DN.h('a', { href: 'javascript:void(0)', text: '#' + r.id, style: 'color:var(--primary,#1890ff)',
+              return DN.h('a', { href: 'javascript:void(0)', text: '#' + r.id, style: 'color:var(--primary,#3457d5)',
                 onclick: function () {
                   DN.get(API + '/check/run/' + r.id).then(function (run) {
                     var rb = document.getElementById('checkResult');

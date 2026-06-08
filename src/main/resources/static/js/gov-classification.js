@@ -111,7 +111,7 @@
     ]));
     // 视图切换: 热力 / 矩形树图
     var tog = DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:6px 0' });
-    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:6px 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#1890ff);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
+    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:6px 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#3457d5);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
     tog.appendChild(mk('heat', '热力')); tog.appendChild(mk('treemap', '矩形图'));
     box.appendChild(tog);
     if (_clHeatView === 'treemap') { box.appendChild(buildClTreemap(rows)); return; }
@@ -233,7 +233,7 @@
     var wrap = DN.h('span', {});
     var toggleA = DN.h('a', {
       href: 'javascript:void(0)', text: r.enabled === 1 ? '停用' : '启用',
-      style: 'color:var(--primary,#1890ff);margin-right:12px',
+      style: 'color:var(--primary,#3457d5);margin-right:12px',
       onclick: function () {
         var restore = lockBtn(toggleA, '处理中…');
         DN.post('/api/gov/classification/rules/' + r.id + '/toggle')
@@ -365,7 +365,7 @@
             { label: '操作', render: function (r) {
               return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
                 title: '回到数据地图查看 ' + db + '.' + table + ' 的字段与血缘',
-                style: 'color:var(--primary,#1890ff);text-decoration:none',
+                style: 'color:var(--primary,#3457d5);text-decoration:none',
                 onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: table } }); } });
             } }
           ],
@@ -431,7 +431,7 @@
       box.innerHTML = '';
       var em0 = DN.empty('暂无已标敏感表可供扫描', 'tag');
       em0.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '前往「对表采样识别」打标',
-        style: 'color:var(--primary,#1890ff);font-size:12px;text-decoration:none',
+        style: 'color:var(--primary,#3457d5);font-size:12px;text-decoration:none',
         onclick: function () { if (clPicker && clPicker.el && clPicker.el.closest) { var card = clPicker.el.closest('.gov-card'); if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }));
       box.appendChild(em0);
       return;
@@ -520,7 +520,7 @@
           render: function (r) {
             return DN.h('a', { href: 'javascript:void(0)', text: r.table || '-',
               title: '定位到「对表采样识别」复核 ' + (r.db || '') + '.' + (r.table || '') + ' 后打标',
-              style: 'color:var(--primary,#1890ff);text-decoration:none',
+              style: 'color:var(--primary,#3457d5);text-decoration:none',
               onclick: function () { focusScanOnTable(r.db, r.table); } });
           } },
         { key: 'column', label: '列', sortable: true, copyable: true, exportValue: function (r) { return r.column; } },
@@ -531,7 +531,7 @@
         { label: '操作', render: function (r) {
           return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
             title: '回到数据地图查看 ' + (r.db || '') + '.' + (r.table || '') + ' 的字段与血缘',
-            style: 'color:var(--primary,#1890ff);text-decoration:none',
+            style: 'color:var(--primary,#3457d5);text-decoration:none',
             onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: r.db, table: r.table } }); } });
         } }
       ],

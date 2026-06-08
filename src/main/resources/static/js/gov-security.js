@@ -125,7 +125,7 @@
       masks.forEach(function (m) { var t = m.sensitiveType || '其它'; byType[t] = (byType[t] || 0) + 1; });
       var keys = Object.keys(byType);
       if (keys.length) {
-        var palette = ['#1890ff', '#52c41a', '#faad14', '#ff4d4f', '#13c2c2', '#722ed1'];
+        var palette = ['#3457d5', '#52c41a', '#faad14', '#ff4d4f', '#13c2c2', '#722ed1'];
         var segs = keys.map(function (k, i) { return { label: k, value: byType[k], color: palette[i % palette.length] }; });
         var card = DN.card({ title: '脱敏策略覆盖（按敏感类型）', icon: 'lock' });
         card.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: masks.length, centerSub: '策略', legend: true }));
@@ -191,7 +191,7 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       var prev = el.style.boxShadow;
       el.style.transition = 'box-shadow .3s';
-      el.style.boxShadow = '0 0 0 2px var(--primary,#1890ff)';
+      el.style.boxShadow = '0 0 0 2px var(--primary,#3457d5)';
       setTimeout(function () { el.style.boxShadow = prev; }, 1600);
     };
   }
@@ -539,7 +539,7 @@
 
   function link(text, fn) {
     return DN.h('a', { href: 'javascript:void(0)', text: text,
-      style: 'margin-right:12px;color:var(--primary,#1890ff);font-size:13px', onclick: fn });
+      style: 'margin-right:12px;color:var(--primary,#3457d5);font-size:13px', onclick: fn });
   }
 
   /** R21 深链: 命中入口 ctx.table 的行做聚焦标记(库可空, 仅比表名时忽略库) */
@@ -582,9 +582,9 @@
     var fqn = (ft.db ? ft.db + '.' : '') + ft.table;
     var bar = DN.h('div', { class: 'gov-focus-banner',
       style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;' +
-        'border:1px solid var(--primary,#1890ff);border-radius:8px;background:rgba(24,144,255,.06)' });
+        'border:1px solid var(--primary,#3457d5);border-radius:8px;background:rgba(52,87,213,.06)' });
     bar.appendChild(DN.h('span', { style: 'font-weight:600',
-      html: DN.icon('lock', 'style="margin-right:6px;color:var(--primary,#1890ff)"') + '安全聚焦：' + DN.esc(fqn) }));
+      html: DN.icon('lock', 'style="margin-right:6px;color:var(--primary,#3457d5)"') + '安全聚焦：' + DN.esc(fqn) }));
     bar.appendChild(DN.h('span', { style: 'color:var(--text-muted,#888);font-size:13px',
       text: '下方脱敏/行级策略中涉及该表的策略已高亮' }));
     var acts = DN.h('span', { style: 'margin-left:auto' });

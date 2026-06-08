@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231890ff'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=q100r77">
+<link rel="stylesheet" href="css/app.css?v=q100r78">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r76">
-<link rel="stylesheet" href="css/redesign.css?v=q100r77">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r78">
+<link rel="stylesheet" href="css/redesign.css?v=q100r78">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r76"></script>
-<script src="js/gov-assets.js?v=q100r105"></script>
-<script src="js/gov-lineage.js?v=q100r105"></script>
-<script src="js/gov-quality.js?v=q100r75"></script>
-<script src="js/gov-standard.js?v=q100r100"></script>
-<script src="js/gov-classification.js?v=q100r100"></script>
-<script src="js/gov-security.js?v=q100r100"></script>
-<script src="js/gov-health.js?v=q100r106"></script>
-<script src="js/gov-audit.js?v=q100r100"></script>
-<script src="js/gov-overview.js?v=q100r99"></script>
-<script src="js/gov-subject.js?v=q100r100"></script>
-<script src="js/gov-consumption.js?v=q100r75"></script>
-<script src="js/gov-govmap.js?v=q100r100"></script>
-<script src="js/home-dashboard.js?v=q100r110"></script>
-<script src="js/mdm.js?v=q100r101"></script>
-<script src="js/mdm-survivorship.js?v=q100r101"></script>
-<script src="js/mdm-approval.js?v=q100r101"></script>
-<script src="js/mdm-refdata.js?v=q100r101"></script>
-<script src="js/mdm-quality.js?v=q100r101"></script>
-<script src="js/mdm-pubsub.js?v=q100r101"></script>
-<script src="js/mdm-hierarchy.js?v=q100r101"></script>
-<script src="js/ai-agent.js?v=q100r76"></script>
+<script src="js/dn-common.js?v=q100r78"></script>
+<script src="js/gov-assets.js?v=q100r78"></script>
+<script src="js/gov-lineage.js?v=q100r78"></script>
+<script src="js/gov-quality.js?v=q100r78"></script>
+<script src="js/gov-standard.js?v=q100r78"></script>
+<script src="js/gov-classification.js?v=q100r78"></script>
+<script src="js/gov-security.js?v=q100r78"></script>
+<script src="js/gov-health.js?v=q100r78"></script>
+<script src="js/gov-audit.js?v=q100r78"></script>
+<script src="js/gov-overview.js?v=q100r78"></script>
+<script src="js/gov-subject.js?v=q100r78"></script>
+<script src="js/gov-consumption.js?v=q100r78"></script>
+<script src="js/gov-govmap.js?v=q100r78"></script>
+<script src="js/home-dashboard.js?v=q100r78"></script>
+<script src="js/mdm.js?v=q100r78"></script>
+<script src="js/mdm-survivorship.js?v=q100r78"></script>
+<script src="js/mdm-approval.js?v=q100r78"></script>
+<script src="js/mdm-refdata.js?v=q100r78"></script>
+<script src="js/mdm-quality.js?v=q100r78"></script>
+<script src="js/mdm-pubsub.js?v=q100r78"></script>
+<script src="js/mdm-hierarchy.js?v=q100r78"></script>
+<script src="js/ai-agent.js?v=q100r78"></script>
 <style>
-  .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary,#1890ff); background:var(--primary,#1890ff); color:#fff; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
-  .ai-launcher-btn:hover { filter:brightness(1.08); box-shadow:0 2px 10px rgba(24,144,255,.35); }
+  .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary,#3457d5); background:var(--primary,#3457d5); color:#fff; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .ai-launcher-btn:hover { filter:brightness(1.08); box-shadow:0 2px 10px rgba(52,87,213,.35); }
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
   #govModuleContent .gov-placeholder { background:var(--bg-card,#fff); border:1px dashed var(--border,#d4d7de); border-radius:8px; padding:40px; text-align:center; color:var(--text-muted,#86909c); }
@@ -60,7 +60,7 @@
 <!-- ===== Header ===== -->
 <div class="dev-header">
   <a class="logo" href="#/home">
-    <svg viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="5" fill="#1890ff"/><path d="M8 9h12M8 14h8M8 19h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="5" fill="#3457d5"/><path d="M8 9h12M8 14h8M8 19h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
     DataNote
   </a>
   <nav class="header-tabs">
@@ -237,8 +237,8 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;">
           <div onclick="createNewScript()" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;cursor:pointer;transition:box-shadow .2s,transform .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform=''">
-            <div style="width:36px;height:36px;border-radius:8px;background:rgba(24,144,255,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#1890ff" stroke-width="1.5"><rect x="3" y="2" width="14" height="16" rx="2"/><path d="M7 10h6M10 7v6"/></svg>
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(52,87,213,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#3457d5" stroke-width="1.5"><rect x="3" y="2" width="14" height="16" rx="2"/><path d="M7 10h6M10 7v6"/></svg>
             </div>
             <div style="font-size:14px;font-weight:600;margin-bottom:4px;">新建 SQL 脚本</div>
             <div style="font-size:12px;color:var(--text-muted);">在文件树中创建 DorisSQL 脚本</div>
@@ -299,8 +299,8 @@
           <!-- Source -->
           <div class="intg-source">
             <div class="intg-panel-header">
-              <div class="intg-panel-icon" style="background:rgba(24,144,255,.08);">
-                <svg viewBox="0 0 16 16" fill="none" stroke="#1890ff" stroke-width="1.5"><ellipse cx="8" cy="4.5" rx="6" ry="2.5"/><path d="M2 4.5v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4.5"/><path d="M2 8v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/></svg>
+              <div class="intg-panel-icon" style="background:rgba(52,87,213,.08);">
+                <svg viewBox="0 0 16 16" fill="none" stroke="#3457d5" stroke-width="1.5"><ellipse cx="8" cy="4.5" rx="6" ry="2.5"/><path d="M2 4.5v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4.5"/><path d="M2 8v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/></svg>
               </div>
               <h3>源端（MySQL）</h3>
               <span class="intg-panel-tag intg-tag-source">Reader</span>
@@ -1304,7 +1304,7 @@
 
           <!-- 源端 -->
           <div class="dbsync-section-title">
-            <svg viewBox="0 0 14 14" fill="none" stroke="#1890ff" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
+            <svg viewBox="0 0 14 14" fill="none" stroke="#3457d5" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
             源端配置
           </div>
           <div class="dbsync-form-grid">
@@ -2173,8 +2173,8 @@
     <!-- Source Panel -->
     <div class="iw-source-panel">
       <div class="iw-panel-header">
-        <div class="iw-panel-icon" style="background:rgba(24,144,255,.08);">
-          <svg viewBox="0 0 16 16" fill="none" stroke="#1890ff" stroke-width="1.5"><ellipse cx="8" cy="4.5" rx="6" ry="2.5"/><path d="M2 4.5v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4.5"/><path d="M2 8v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/></svg>
+        <div class="iw-panel-icon" style="background:rgba(52,87,213,.08);">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#3457d5" stroke-width="1.5"><ellipse cx="8" cy="4.5" rx="6" ry="2.5"/><path d="M2 4.5v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4.5"/><path d="M2 8v3.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/></svg>
         </div>
         <h3>源端（MySQL）</h3>
         <span class="iw-panel-tag iw-tag-source">Reader</span>
@@ -2426,7 +2426,7 @@
 })();
 // ===== 通用弹窗（替代 alert/confirm/prompt）=====
 var _msgBoxResolve = null;
-var _msgInfoIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(24,144,255,.1)" stroke="#1890ff" stroke-width="2"/><path d="M24 16v2M24 22v10" stroke="#1890ff" stroke-width="3" stroke-linecap="round"/></svg>';
+var _msgInfoIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(52,87,213,.1)" stroke="#3457d5" stroke-width="2"/><path d="M24 16v2M24 22v10" stroke="#3457d5" stroke-width="3" stroke-linecap="round"/></svg>';
 var _msgOkIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(82,196,26,.1)" stroke="#52c41a" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#52c41a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var _msgErrIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(255,77,79,.1)" stroke="#ff4d4f" stroke-width="2"/><path d="M16 16l16 16M32 16L16 32" stroke="#ff4d4f" stroke-width="3" stroke-linecap="round"/></svg>';
 var _msgWarnIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(250,173,20,.1)" stroke="#faad14" stroke-width="2"/><path d="M24 16v10M24 30v2" stroke="#faad14" stroke-width="3" stroke-linecap="round"/></svg>';
@@ -3001,7 +3001,7 @@ function addOrActivateTab(id, name, type) {
     } else if (type === 'scheduler') {
       iconSvg = '<svg viewBox="0 0 13 13" fill="none" stroke="#722ed1" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 3.5v3l2.5 1.5"/></svg>';
     } else {
-      iconSvg = '<svg class="sql-icon" viewBox="0 0 13 13" fill="none" stroke="#1890ff" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="2"/><path d="M4 4.5h5M4 7h3.5"/></svg>';
+      iconSvg = '<svg class="sql-icon" viewBox="0 0 13 13" fill="none" stroke="#3457d5" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="2"/><path d="M4 4.5h5M4 7h3.5"/></svg>';
     }
     tab.innerHTML = iconSvg + ' ' + escapeHtml(name) + ' <span class="tab-close" onclick="event.stopPropagation();closeTab(this.parentElement)">&times;</span>';
     tabBar.appendChild(tab);
@@ -5815,7 +5815,7 @@ function depRedraw() {
 
   // --- 中心节点 ---
   nodes.push('<g><title>' + escapeHtml(depCurrentName) + '</title>');
-  nodes.push('<rect x="' + centerX + '" y="' + centerY + '" width="' + C.nodeW + '" height="' + C.nodeH + '" rx="4" fill="#1890ff" stroke="none"/>');
+  nodes.push('<rect x="' + centerX + '" y="' + centerY + '" width="' + C.nodeW + '" height="' + C.nodeH + '" rx="4" fill="#3457d5" stroke="none"/>');
   nodes.push('<text x="' + (centerX + C.nodeW / 2) + '" y="' + (centerCY + 4) + '" text-anchor="middle" fill="#fff" style="font-size:11px;font-weight:500;">' + escapeHtml(depCurrentName) + '</text>');
   nodes.push('</g>');
 
@@ -5902,7 +5902,7 @@ function depInitContextMenu(container) {
     if (!gEl) {
       // 检查是否点了中心节点（蓝色）
       var rect = e.target.closest('rect');
-      if (rect && rect.getAttribute('fill') === '#1890ff') {
+      if (rect && rect.getAttribute('fill') === '#3457d5') {
         depShowContextMenu(e, [
           { label: '增加上游节点', action: function() { depShowAddDialog(); } }
         ]);
@@ -5928,7 +5928,7 @@ function depShowContextMenu(e, items) {
     var row = document.createElement('div');
     row.textContent = item.label;
     row.style.cssText = 'padding:6px 14px;font-size:12px;cursor:pointer;color:#333;';
-    row.onmouseover = function() { row.style.background = 'rgba(24,144,255,.06)'; };
+    row.onmouseover = function() { row.style.background = 'rgba(52,87,213,.06)'; };
     row.onmouseout = function() { row.style.background = ''; };
     row.onclick = function() { depCloseContextMenu(); item.action(); };
     menu.appendChild(row);
@@ -6173,7 +6173,7 @@ function depSearchTasks() {
         var html = '';
         res.data.forEach(function(t) {
           html += '<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;" '
-            + 'onmouseover="this.style.background=\'rgba(24,144,255,.06)\'" onmouseout="this.style.background=\'\'">'
+            + 'onmouseover="this.style.background=\'rgba(52,87,213,.06)\'" onmouseout="this.style.background=\'\'">'
             + '<span>' + escapeHtml(t.taskName) + ' <span style="color:var(--text-muted);font-size:11px;">(' + escapeHtml(t.taskType) + ')</span></span>'
             + '<button class="btn btn-sm" style="font-size:11px;padding:2px 8px;" onclick="depAddManual(' + t.taskId + ',\'' + escapeHtml(t.taskType) + '\',\'' + escapeHtml(t.taskName) + '\')">添加</button>'
             + '</div>';
@@ -6877,7 +6877,7 @@ function navRenderBack() {
   var chip = document.getElementById('navBackChip');
   if (!chip) {
     chip = document.createElement('div'); chip.id = 'navBackChip';
-    chip.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:9000;display:none;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:var(--primary,#1890ff);color:#fff;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);';
+    chip.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:9000;display:none;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:var(--primary,#3457d5);color:#fff;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);';
     chip.onclick = window.navBack;
     document.body.appendChild(chip);
   }
@@ -7418,7 +7418,7 @@ function dmLoadImpact() {
         html += '<td>' + escapeHtml(m.refType || 'SOURCE') + '</td>';
         html += '<td>' + (m.lastValue == null ? '-' : escapeHtml(String(m.lastValue))) + '</td>';
         html += '<td>' + escapeHtml(m.lastValueAt || '-') + '</td>';
-        html += '<td><a href="javascript:void(0)" onclick="dmGotoMetric(\'' + escapeHtml(code) + '\')" style="color:var(--primary,#1890ff)">查看指标</a></td>';
+        html += '<td><a href="javascript:void(0)" onclick="dmGotoMetric(\'' + escapeHtml(code) + '\')" style="color:var(--primary,#3457d5)">查看指标</a></td>';
         html += '</tr>';
       }
       html += '</tbody></table>';
@@ -7688,7 +7688,7 @@ function dmLoadProfile() {
           + '<td class="dm-num">' + (f.distinctCount != null ? f.distinctCount : '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.minVal || '') + '">' + escapeHtml(f.minVal || '-') + '</td>'
           + '<td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(f.maxVal || '') + '">' + escapeHtml(f.maxVal || '-') + '</td>'
-          + '<td><a href="javascript:void(0)" onclick="dmBuildRule(\'' + escapeHtml(f.name || '') + '\',\'' + dim + '\')" style="color:var(--primary,#1890ff);font-size:12px;" title="据此字段在质量模块建规则">建质量规则</a></td>'
+          + '<td><a href="javascript:void(0)" onclick="dmBuildRule(\'' + escapeHtml(f.name || '') + '\',\'' + dim + '\')" style="color:var(--primary,#3457d5);font-size:12px;" title="据此字段在质量模块建规则">建质量规则</a></td>'
           + '</tr>';
       });
       html += '</tbody></table>';
@@ -8530,7 +8530,7 @@ function renderOpsOverview(stats, today) {
   var donutData = [
     { label: '成功', value: success, color: '#52c41a' },
     { label: '失败', value: failed, color: '#ff4d4f' },
-    { label: '运行中', value: running, color: '#1890ff' },
+    { label: '运行中', value: running, color: '#3457d5' },
     { label: '等待中', value: waiting, color: '#faad14' },
     { label: '暂停', value: paused, color: '#d9d9d9' }
   ];
@@ -8879,7 +8879,7 @@ function loadBaselineList() {
         ? '<span style="color:var(--success);font-weight:500;">启用</span>'
         : '<span style="color:var(--text-muted);">禁用</span>';
       var priorityLabel = b.priority === 1 ? 'P1' : b.priority === 2 ? 'P2' : 'P3';
-      var typeLabel = b.baselineType === 'dashboard' ? '<span style="color:#1890ff;">看板</span>' : '<span style="color:#e74c3c;">核心</span>';
+      var typeLabel = b.baselineType === 'dashboard' ? '<span style="color:#3457d5;">看板</span>' : '<span style="color:#e74c3c;">核心</span>';
       return '<tr>' +
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + escapeHtml(b.baselineName) + '</td>' +
@@ -9110,7 +9110,7 @@ function renderDag(lineageData) {
   svg.setAttribute('height', svgHeight);
   svg.setAttribute('viewBox', '0 0 ' + svgWidth + ' ' + svgHeight);
 
-  var statusColors = { script: '#1890ff', syncTask: '#52c41a' };
+  var statusColors = { script: '#3457d5', syncTask: '#52c41a' };
 
   layers.forEach(function(layer, li) {
     var x = 60 + li * (nodeWidth + layerGap);
@@ -9987,8 +9987,8 @@ function projQsRender(kw) {
 function projQsHighlight() {
   Array.prototype.slice.call(document.querySelectorAll('#projQsList .proj-qs-row')).forEach(function(r, i) {
     var on = i === _projQsIdx;
-    r.style.background = on ? 'var(--primary-bg,#e6f0ff)' : '';
-    r.style.borderLeft = on ? '3px solid var(--primary,#1890ff)' : '3px solid transparent'; // 高对比度选中标识(兼容浅色主题)
+    r.style.background = on ? 'var(--primary-bg,#eaeefc)' : '';
+    r.style.borderLeft = on ? '3px solid var(--primary,#3457d5)' : '3px solid transparent'; // 高对比度选中标识(兼容浅色主题)
     if (on) r.scrollIntoView({ block: 'nearest' });
   });
 }
@@ -10822,7 +10822,7 @@ window.projLoadAssets = function() {
     else {
       var tc = {}; as.forEach(function(a) { tc[a.assetType] = (tc[a.assetType] || 0) + 1; });
       // 类型分布迷你环图 + 徽标
-      var palette = { SYNC_JOB: '#1890ff', SCRIPT: '#52c41a', DATASOURCE: '#faad14', QUALITY_RULE: '#722ed1' };
+      var palette = { SYNC_JOB: '#3457d5', SCRIPT: '#52c41a', DATASOURCE: '#faad14', QUALITY_RULE: '#722ed1' };
       var keys = Object.keys(tc), acc = 0, stops = [];
       keys.forEach(function(k) { var p0 = acc / as.length * 100, p1 = (acc + tc[k]) / as.length * 100; stops.push((palette[k] || '#8c8c8c') + ' ' + p0.toFixed(1) + '% ' + p1.toFixed(1) + '%'); acc += tc[k]; });
       h += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:10px;border:1px solid var(--divider);border-radius:8px;">'
@@ -11066,7 +11066,7 @@ function projActHeatmap(acts) {
   var colorOf = function(n) {
     if (!n) return 'var(--bg-hover,#ebedf0)';
     var r = n / (max || 1);
-    return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff';
+    return r > 0.66 ? '#1677ff' : r > 0.33 ? '#7e97ee' : '#c3cef5';
   };
   var cells = '';
   var totalActs = 0;
@@ -11082,7 +11082,7 @@ function projActHeatmap(acts) {
   }
   return '<div style="border:1px solid var(--divider);border-radius:8px;padding:12px;margin-bottom:12px;">'
     + '<div style="display:flex;align-items:center;margin-bottom:8px;"><span style="font-size:13px;font-weight:600;">活动热力 · 近 ' + WEEKS + ' 周</span>'
-    + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">少 <span style="width:11px;height:11px;background:var(--bg-hover,#ebedf0);border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#bcd7ff;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#69a9ff;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#1677ff;border-radius:2px;display:inline-block;"></span> 多</span></div>'
+    + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">少 <span style="width:11px;height:11px;background:var(--bg-hover,#ebedf0);border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#c3cef5;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#7e97ee;border-radius:2px;display:inline-block;"></span><span style="width:11px;height:11px;background:#1677ff;border-radius:2px;display:inline-block;"></span> 多</span></div>'
     + '<div style="display:flex;gap:3px;overflow-x:auto;">' + cells + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">窗口内共 ' + totalActs + ' 次活动, 单日峰值 ' + max + ' 次</div></div>';
 }
@@ -11117,7 +11117,7 @@ window.projRenderActs = function() {
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>方法</th><th>路径</th><th>状态</th><th>前往</th></tr></thead><tbody>';
   as.forEach(function(a) {
     var go = projActRouteOf(a.path || '');
-    var goCell = go ? '<a href="#" onclick="navigateTo(\'' + go.r + '\');return false;" style="color:var(--primary,#1890ff)" title="前往' + go.l + '">' + go.l + '</a>' : '-';
+    var goCell = go ? '<a href="#" onclick="navigateTo(\'' + go.r + '\');return false;" style="color:var(--primary,#3457d5)" title="前往' + go.l + '">' + go.l + '</a>' : '-';
     h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
       + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
       + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
@@ -11430,15 +11430,15 @@ function projBurndownHtml(tasks, today) {
   var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:' + W + 'px;">'
     + grid + todayLine
     + line(ideal, '#bfbfbf', true)
-    + line(actual, '#1890ff', false)
+    + line(actual, '#3457d5', false)
     + '<text x="' + (padL) + '" y="' + (H - 6) + '" font-size="9" fill="#999">' + startDs + '</text>'
     + '<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="9" fill="#999" text-anchor="end">' + endDs + '</text>'
     + '</svg>';
   return '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;">'
     + '<span><b style="font-size:18px;">' + total + '</b> 总任务</span>'
     + '<span style="color:#52c41a;"><b style="font-size:18px;">' + doneNow + '</b> 已完成</span>'
-    + '<span style="color:#1890ff;"><b style="font-size:18px;">' + (remainNow == null ? total : remainNow) + '</b> 剩余</span>'
-    + '<span style="margin-left:auto;color:var(--text-muted);"><span style="color:#1890ff;">━</span> 实际剩余 &nbsp; <span style="color:#bfbfbf;">┄</span> 理想匀速 &nbsp; <span style="color:#ff4d4f;">┊</span> 今日</span></div>'
+    + '<span style="color:#3457d5;"><b style="font-size:18px;">' + (remainNow == null ? total : remainNow) + '</b> 剩余</span>'
+    + '<span style="margin-left:auto;color:var(--text-muted);"><span style="color:#3457d5;">━</span> 实际剩余 &nbsp; <span style="color:#bfbfbf;">┄</span> 理想匀速 &nbsp; <span style="color:#ff4d4f;">┊</span> 今日</span></div>'
     + '<div style="border:1px solid var(--divider);border-radius:8px;padding:8px;">' + svg + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">实际线按任务创建/完成(更新)时点逐日重建; 实际线高于理想线表示进度滞后。</div>';
 }
@@ -11557,7 +11557,7 @@ window.projMilestoneDetail = function(msId) {
 var _projKbDragId = null;
 window.projKbDragStart = function(ev, id) { _projKbDragId = id; ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', String(id)); } catch (e) {} var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = '0.5'; };
 window.projKbDragEnd = function(ev) { var c = ev.target.closest('.proj-kb-card'); if (c) c.style.opacity = ''; };
-window.projKbDragOver = function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; var col = ev.currentTarget; if (col) col.style.background = 'var(--primary-bg,#e6f0ff)'; };
+window.projKbDragOver = function(ev) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; var col = ev.currentTarget; if (col) col.style.background = 'var(--primary-bg,#eaeefc)'; };
 window.projKbDragLeave = function(ev) { var col = ev.currentTarget; if (col) col.style.background = ''; };
 window.projKbDrop = function(ev, status) {
   ev.preventDefault();
@@ -12430,7 +12430,7 @@ function smRenderSchedule(d) {
   function cell(n, l, c) { return '<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + c + ';">' + n + '</div><div style="font-size:11px;color:var(--text-muted);">' + l + '</div></div>'; }
   box.innerHTML = '<div style="border:1px solid var(--divider,#eee);border-radius:8px;padding:14px;cursor:pointer;" title="点击进入数据运维" onclick="navigateTo(\'operations\')">'
     + '<div style="display:flex;">' + cell(suc, '成功', '#52c41a') + cell(fail, '失败', '#ff4d4f') + cell(run < 0 ? 0 : run, '运行中', '#1677ff') + cell(total, '总计', 'var(--text-primary)') + '</div>'
-    + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）· <span style="color:var(--primary,#1890ff)">点击进入运维 →</span></div></div>';
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）· <span style="color:var(--primary,#3457d5)">点击进入运维 →</span></div></div>';
 }
 function smRenderAudit(rows) {
   var box = document.getElementById('smAuditBox'); if (!box) return;
@@ -12441,7 +12441,7 @@ function smRenderAudit(rows) {
     h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td><td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.actionType || a.method || '-') + '</td><td style="font-size:12px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td><td style="color:' + (String(st).indexOf('4') === 0 || String(st).indexOf('5') === 0 ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(String(st)) + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table>'
-    + '<div style="margin-top:8px;text-align:right;"><a href="javascript:void(0)" onclick="navigateTo(\'governance\',{gov:\'audit\'})" style="font-size:12px;color:var(--primary,#1890ff)">查看全部审计 →</a></div>';
+    + '<div style="margin-top:8px;text-align:right;"><a href="javascript:void(0)" onclick="navigateTo(\'governance\',{gov:\'audit\'})" style="font-size:12px;color:var(--primary,#3457d5)">查看全部审计 →</a></div>';
 }
 
 // ===== 系统管理：安全设置(认证状态 + 操作审计) =====
@@ -12785,7 +12785,7 @@ function loadOpsIntegration() {
       var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : 'color:#e74c3c';
       var tid = r.syncTaskId || '';
       var taskCell = tid
-        ? '<a href="javascript:void(0)" onclick="opsGotoSyncTask(' + tid + ')" style="color:var(--primary,#1890ff)" title="查看该同步任务详情">syncTask:' + tid + '</a>'
+        ? '<a href="javascript:void(0)" onclick="opsGotoSyncTask(' + tid + ')" style="color:var(--primary,#3457d5)" title="查看该同步任务详情">syncTask:' + tid + '</a>'
         : 'syncTask:-';
       html += '<tr>'
         + '<td>' + taskCell + '</td>'
@@ -12869,7 +12869,7 @@ function previewBackfill() {
       var container = document.getElementById('backfillPreview');
       container.style.display = 'block';
       container.innerHTML = '<div style="font-weight:600;margin-bottom:4px;">共 ' + res.data.totalDays + ' 天：</div>'
-        + res.data.dates.map(function(d) { return '<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 8px;background:rgba(24,144,255,.08);border-radius:3px;">' + d + '</span>'; }).join('');
+        + res.data.dates.map(function(d) { return '<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 8px;background:rgba(52,87,213,.08);border-radius:3px;">' + d + '</span>'; }).join('');
     }
   });
 }
@@ -12958,7 +12958,7 @@ function toggleBackfillDetail(el, backfillId) {
     var html = '<table style="width:100%;font-size:11px;border-collapse:collapse;">'
       + '<tr style="background:rgba(0,0,0,.04);"><th style="padding:3px 6px;">日期</th><th>状态</th><th>开始</th><th>结束</th><th>耗时</th></tr>';
     res.data.forEach(function(inst) {
-      var sc = inst.status === 'SUCCESS' ? 'color:#52c41a;' : inst.status === 'FAILED' ? 'color:#e74c3c;' : inst.status === 'RUNNING' ? 'color:#1890ff;' : '';
+      var sc = inst.status === 'SUCCESS' ? 'color:#52c41a;' : inst.status === 'FAILED' ? 'color:#e74c3c;' : inst.status === 'RUNNING' ? 'color:#3457d5;' : '';
       html += '<tr style="border-bottom:1px solid rgba(0,0,0,.05);">'
         + '<td style="padding:3px 6px;">' + inst.runDate + '</td>'
         + '<td style="' + sc + 'font-weight:600;">' + inst.status + '</td>'
@@ -14785,7 +14785,7 @@ var _dbsyncJobsView = (function() { try { return localStorage.getItem('dbsync.jo
 window.dbsyncSetJobsView = function(v) { _dbsyncJobsView = v; try { localStorage.setItem('dbsync.jobsView', v); } catch (e) {} dbsyncRenderJobs(_dbsyncRenderBase); };
 function dbsyncJobsCards(list) {
   var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' };
-  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#1890ff'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
   var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
   list.forEach(function(job) {
     var st = stMeta[job.status] || [job.status || '未运行', '#8c8c8c'];
@@ -14840,7 +14840,7 @@ function dbsyncRenderJobs(list) {
     + kpi('总任务', base.length, 'var(--text-regular,#1f2329)', 'ALL')
     + kpi('运行中', cnt('RUNNING'), '#52c41a', 'RUNNING')
     + kpi('失败', cnt('FAILED'), '#ff4d4f', 'FAILED')
-    + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#1890ff)')
+    + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#3457d5)')
     + '</div>';
   // 同步任务风险概览(创新): 基于已加载 base 前端计算失败率与风险态, 精简单行风险条
   (function() {
@@ -14859,7 +14859,7 @@ function dbsyncRenderJobs(list) {
   var selIds = Object.keys(_dbsyncSelected).filter(function(id) { return _dbsyncSelected[id]; });
   var bulkHtml = '';
   if (selIds.length) {
-    bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(24,144,255,.08));border:1px solid var(--primary,#1890ff);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;animation:wsOverlayIn .15s ease;">'
+    bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(52,87,213,.08));border:1px solid var(--primary,#3457d5);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;animation:wsOverlayIn .15s ease;">'
       + '<span>已选 <b>' + selIds.length + '</b> 个任务</span>'
       + '<button class="btn btn-sm btn-success" onclick="dbsyncBulkRun()">批量运行</button>'
       + '<button class="btn btn-sm btn-danger" onclick="dbsyncBulkStop()">批量停止</button>'
@@ -15626,7 +15626,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     html += '<div style="margin-top:10px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">近 ' + recent.length + ' 次执行<span style="color:var(--text-muted);opacity:.7;"> · 点击查看历史</span></div><div style="display:flex;gap:3px;align-items:flex-end;">';
     recent.forEach(function(ex) {
       var k = dbsyncExecKind(ex.status);
-      var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#1890ff';
+      var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#3457d5';
       var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (Number(ex.readCount) || 0).toLocaleString() + '/写' + (Number(ex.writeCount) || 0).toLocaleString() + '/错' + (Number(ex.errorCount) || 0).toLocaleString();
       html += '<span onclick="dbsyncGoTab(\'history\')" title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:pointer;"></span>';
     });
@@ -15753,7 +15753,7 @@ function dbsyncDepGraph(ups, selfLabel) {
       + '<text x="' + (upX + 24) + '" y="' + (y + (rowH - 12) / 2 + 4) + '" font-size="11" fill="#1f2329">' + escapeHtml(_dbsyncTrunc(u.name, 16)) + '</text></g>';
   });
   // 本任务节点
-  svg += '<g><rect x="' + selfX + '" y="' + (selfCY - 13) + '" width="' + selfW + '" height="26" rx="6" fill="var(--primary,#1890ff)"/>'
+  svg += '<g><rect x="' + selfX + '" y="' + (selfCY - 13) + '" width="' + selfW + '" height="26" rx="6" fill="var(--primary,#3457d5)"/>'
     + '<text x="' + (selfX + selfW / 2) + '" y="' + (selfCY + 4) + '" font-size="11.5" font-weight="600" fill="#fff" text-anchor="middle">' + escapeHtml(_dbsyncTrunc(selfLabel, 18)) + '</text></g>';
   svg += '</svg>';
   return '<div style="margin-bottom:6px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">依赖拓扑（' + ups.length + ' 个上游 → 本任务，调度按此等待上游完成）</div>' + svg + '</div>';
@@ -15913,7 +15913,7 @@ function dbsyncHistCalendar(view) {
   var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
   var fmt = function(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
   var max = 0; Object.keys(cnt).forEach(function(k) { if (cnt[k] > max) max = cnt[k]; });
-  var colorOf = function(n) { if (!n) return 'var(--bg-hover,#ebedf0)'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#69a9ff' : '#bcd7ff'; };
+  var colorOf = function(n) { if (!n) return 'var(--bg-hover,#ebedf0)'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#7e97ee' : '#c3cef5'; };
   var cells = '';
   for (var wk = 0; wk < WEEKS; wk++) {
     cells += '<div style="display:flex;flex-direction:column;gap:3px;">';
@@ -16172,7 +16172,7 @@ window.dbsyncQuickSwitch = function() {
 };
 function dbsyncQsRender(kw) {
   kw = (kw || '').trim().toLowerCase();
-  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#1890ff'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
   var list = (_dbsyncAllJobs || []).filter(function(j) {
     if (!kw) return true;
     return ((j.jobName || '') + ' ' + (j.sourceDsName || '') + '.' + (j.sourceDb || '') + ' ' + (j.targetDsName || '') + '.' + (j.targetDb || '')).toLowerCase().indexOf(kw) >= 0;
@@ -16191,7 +16191,7 @@ function dbsyncQsRender(kw) {
 }
 function dbsyncQsHi() {
   Array.prototype.slice.call(document.querySelectorAll('#dbsyncQsList .dbsync-qs-row')).forEach(function(r, i) {
-    var on = i === _dbsyncQsIdx; r.style.background = on ? 'var(--primary-bg,#e6f0ff)' : ''; if (on) r.scrollIntoView({ block: 'nearest' });
+    var on = i === _dbsyncQsIdx; r.style.background = on ? 'var(--primary-bg,#eaeefc)' : ''; if (on) r.scrollIntoView({ block: 'nearest' });
   });
 }
 // Esc 关闭：优先收行菜单，否则关抽屉
@@ -16338,7 +16338,7 @@ function dbsyncRenderDashCharts(list) {
   list = list || [];
   // 状态分布(以运行状态计)
   var stCnt = {}; list.forEach(function(j) { var s = j.status || 'CREATED'; stCnt[s] = (stCnt[s] || 0) + 1; });
-  var stMeta = { RUNNING: ['运行中', '#52c41a'], FAILED: ['失败', '#ff4d4f'], STOPPED: ['已停止', '#faad14'], CREATED: ['未运行', '#8c8c8c'], PAUSED: ['暂停', '#1890ff'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { RUNNING: ['运行中', '#52c41a'], FAILED: ['失败', '#ff4d4f'], STOPPED: ['已停止', '#faad14'], CREATED: ['未运行', '#8c8c8c'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
   var segs = Object.keys(stCnt).map(function(s) { return { label: (stMeta[s] || [s])[0], value: stCnt[s], color: (stMeta[s] || [s, '#8c8c8c'])[1] }; });
   var total = list.length || 1;
   // 环图(conic-gradient)
@@ -16367,7 +16367,7 @@ function dbsyncRenderDashCharts(list) {
   // 同步模式分布环图(以列表全量任务计)
   var allJobs = _dbsyncAllJobs || [];
   var modeCnt = {}; allJobs.forEach(function(j) { var m = j.syncMode || 'FULL'; modeCnt[m] = (modeCnt[m] || 0) + 1; });
-  var modeMeta = { FULL: ['全量', '#1890ff'], INCREMENTAL: ['增量', '#52c41a'], CDC: ['CDC实时', '#722ed1'] };
+  var modeMeta = { FULL: ['全量', '#3457d5'], INCREMENTAL: ['增量', '#52c41a'], CDC: ['CDC实时', '#722ed1'] };
   var mSegs = Object.keys(modeCnt).map(function(m) { return { label: (modeMeta[m] || [m])[0], value: modeCnt[m], color: (modeMeta[m] || [m, '#8c8c8c'])[1] }; });
   var mTotal = allJobs.length || 1, mAcc = 0, mStops = [];
   mSegs.forEach(function(sg) { var p0 = mAcc / mTotal * 100, p1 = (mAcc + sg.value) / mTotal * 100; mStops.push(sg.color + ' ' + p0.toFixed(1) + '% ' + p1.toFixed(1) + '%'); mAcc += sg.value; });

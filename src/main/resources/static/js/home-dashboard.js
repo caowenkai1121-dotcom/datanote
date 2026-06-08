@@ -250,7 +250,7 @@
       });
       var arr = Object.keys(byDb).map(function (k) { return { label: k, value: byDb[k] }; });
       arr.sort(function (x, y) { return y.value - x.value; });
-      var palette = ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#13c2c2', '#eb2f96'];
+      var palette = ['#3457d5', '#52c41a', '#faad14', '#722ed1', '#13c2c2', '#eb2f96'];
       var segs = arr.slice(0, 6).map(function (s, i) { return { label: trunc(s.label, 14), value: s.value, color: palette[i % palette.length] }; });
       if (arr.length > 6) {
         var other = arr.slice(6).reduce(function (a, s) { return a + s.value; }, 0);
@@ -309,7 +309,7 @@
       }
       var wrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:center' });
       wrap.appendChild(DN.donut([
-        { label: '运行', value: running, color: '#1890ff' },
+        { label: '运行', value: running, color: '#3457d5' },
         { label: '暂停', value: paused, color: '#faad14' },
         { label: '失败', value: failed, color: '#ff4d4f' }
       ], { legend: true }));

@@ -113,7 +113,7 @@
     // 临时描边高亮，便于用户视觉锁定（结束后还原）
     var prev = target.style.boxShadow;
     target.style.transition = 'box-shadow .3s';
-    target.style.boxShadow = '0 0 0 2px var(--primary,#1890ff)';
+    target.style.boxShadow = '0 0 0 2px var(--primary,#3457d5)';
     setTimeout(function () { target.style.boxShadow = prev || ''; }, 1600);
     DN.toast(dim ? ('已定位维度「' + dim + '」') : ('已定位日期 ' + date), 'info');
   }
@@ -142,7 +142,7 @@
     // 总分大环形
     row.appendChild(DN.gauge(total, { label: '治理健康总分', decimals: total % 1 ? 1 : 0 }));
     // 五维雷达
-    row.appendChild(DN.radar(DIMS.map(function (d) { return { label: d, value: Number((dims[d] || {}).score) || 0 }; }), { color: '#1890ff' }));
+    row.appendChild(DN.radar(DIMS.map(function (d) { return { label: d, value: Number((dims[d] || {}).score) || 0 }; }), { color: '#3457d5' }));
     // 瓶颈维度提示（最低两维）
     var dimVals = DIMS.map(function (d) { return { dim: d, v: Number((dims[d] || {}).score) || 0 }; }).sort(function (a, b) { return a.v - b.v; });
     var weak = dimVals.slice(0, 2).filter(function (x) { return x.v < 85; });
@@ -286,7 +286,7 @@
 
   // 工单分析概览(大功能): 状态分布环图 + 级别分布 + 维度Top
   function buildIssueAnalytics(rows) {
-    var stMeta = { OPEN: ['待处理', '#ff4d4f'], FIXING: ['处理中', '#faad14'], RESOLVED: ['已解决', '#1890ff'], VERIFIED: ['已验证', '#13c2c2'], CLOSED: ['已关闭', '#52c41a'] };
+    var stMeta = { OPEN: ['待处理', '#ff4d4f'], FIXING: ['处理中', '#faad14'], RESOLVED: ['已解决', '#3457d5'], VERIFIED: ['已验证', '#13c2c2'], CLOSED: ['已关闭', '#52c41a'] };
     var stCnt = {}, sevCnt = {}, dimCnt = {};
     (rows || []).forEach(function (r) {
       if (!r) return;
@@ -545,7 +545,7 @@
         // 等级分布环图 + 平均成熟度
         var lvCnt = {}, sum = 0; rows.forEach(function (r) { var l = 'L' + (Number(r.level) || 0); lvCnt[l] = (lvCnt[l] || 0) + 1; sum += Number(r.score) || 0; });
         var avg = rows.length ? (sum / rows.length) : 0;
-        var lvColor = { L1: '#ff4d4f', L2: '#fa8c16', L3: '#faad14', L4: '#1890ff', L5: '#52c41a' };
+        var lvColor = { L1: '#ff4d4f', L2: '#fa8c16', L3: '#faad14', L4: '#3457d5', L5: '#52c41a' };
         var segs = Object.keys(lvCnt).sort().map(function (l) { return { label: l, value: lvCnt[l], color: lvColor[l] || '#8c8c8c' }; });
         var dwrap = DN.h('div', { style: 'display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px' });
         dwrap.appendChild(DN.donut(segs, { size: 100, stroke: 13, centerLabel: avg.toFixed(0), centerSub: '平均分' }));

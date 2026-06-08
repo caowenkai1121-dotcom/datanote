@@ -134,7 +134,7 @@
 
   function crumbLink(text, onclick, active) {
     if (active || !onclick) return DN.h('span', { text: text, style: 'font-weight:600;color:var(--text-regular)' });
-    return DN.h('a', { href: 'javascript:void(0)', text: text, style: 'color:var(--primary,#1890ff)', onclick: onclick });
+    return DN.h('a', { href: 'javascript:void(0)', text: text, style: 'color:var(--primary,#3457d5)', onclick: onclick });
   }
 
   // ---- 第1级：域管理 ----
@@ -152,7 +152,7 @@
         columns: [
           { key: 'domainCode', label: '域编码', copyable: true, render: function (r) { return r.domainCode; } },
           { key: 'domainName', label: '域名称', render: function (r) {
-              return DN.h('a', { href: 'javascript:void(0)', text: r.domainName, style: 'color:var(--primary,#1890ff)', title: '管理该域下实体', onclick: function () { _selDomain = r; _selEntity = null; renderModeling(c); } });
+              return DN.h('a', { href: 'javascript:void(0)', text: r.domainName, style: 'color:var(--primary,#3457d5)', title: '管理该域下实体', onclick: function () { _selDomain = r; _selEntity = null; renderModeling(c); } });
             } },
           { key: 'category', label: '类别', render: function (r) { return r.category ? DN.pill(r.category, 'info') : '-'; } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
@@ -160,8 +160,8 @@
           { key: 'status', label: '状态', render: function (r) { return r.status === 0 ? DN.pill('停用', 'muted') : DN.pill('启用', 'ok'); } },
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '实体', style: 'color:var(--primary,#1890ff)', onclick: function () { _selDomain = r; _selEntity = null; renderModeling(c); } }));
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { domainForm(r, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '实体', style: 'color:var(--primary,#3457d5)', onclick: function () { _selDomain = r; _selEntity = null; renderModeling(c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { domainForm(r, c); } }));
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除域「' + r.domainName + '」？将级联删除其下所有实体与属性。', '/api/mdm/domain/' + r.id, c); } }));
               return box;
             } }
@@ -189,15 +189,15 @@
         columns: [
           { key: 'entityCode', label: '实体编码', copyable: true, render: function (r) { return r.entityCode; } },
           { key: 'entityName', label: '实体名称', render: function (r) {
-              return DN.h('a', { href: 'javascript:void(0)', text: r.entityName, style: 'color:var(--primary,#1890ff)', title: '管理该实体的属性', onclick: function () { _selEntity = r; renderModeling(c); } });
+              return DN.h('a', { href: 'javascript:void(0)', text: r.entityName, style: 'color:var(--primary,#3457d5)', title: '管理该实体的属性', onclick: function () { _selEntity = r; renderModeling(c); } });
             } },
           { key: 'attrCount', label: '属性数', align: 'right', sortable: true, render: function (r) { return String(r.attrCount == null ? 0 : r.attrCount); } },
           { key: 'description', label: '描述', render: function (r) { return r.description ? clip(r.description, 40) : '-'; } },
           { key: 'status', label: '状态', render: function (r) { return r.status === 0 ? DN.pill('停用', 'muted') : DN.pill('启用', 'ok'); } },
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '属性', style: 'color:var(--primary,#1890ff)', onclick: function () { _selEntity = r; renderModeling(c); } }));
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { entityForm(r, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '属性', style: 'color:var(--primary,#3457d5)', onclick: function () { _selEntity = r; renderModeling(c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { entityForm(r, c); } }));
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除实体「' + r.entityName + '」？将级联删除其属性。', '/api/mdm/entity/' + r.id, c); } }));
               return box;
             } }
@@ -241,7 +241,7 @@
           { key: 'description', label: '描述', render: function (r) { return r.description ? clip(r.description, 40) : '-'; } },
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { attrForm(r, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { attrForm(r, c); } }));
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除属性「' + r.attrName + '」？', '/api/mdm/attribute/' + r.id, c); } }));
               return box;
             } }
@@ -544,7 +544,7 @@
       cols.push({ key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } });
       cols.push({ key: '_op', label: '操作', render: function (r) {
           var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
-          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
+          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
           if (r.status !== 'active') { var pubA = DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:#389e0d', onclick: function () { if (!window.confirm('发布黄金记录「' + (r.bizKey || r.id) + '」？发布后将作为单一可信版本生效。')) return; busyLink(pubA, '发布中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); }); } }); w.appendChild(pubA); }
           if (r.status === 'active') { var deA = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:#ad6800', onclick: function () { if (!window.confirm('停用黄金记录「' + (r.bizKey || r.id) + '」？停用后将不再作为生效版本。')) return; busyLink(deA, '停用中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); }); } }); w.appendChild(deA); }
           var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
@@ -710,7 +710,7 @@
       var up = document.createElement('td'); up.appendChild(DN.timeAgo(r.updatedAt)); tr.appendChild(up);
       // 下钻：查看该记录 → 黄金记录模块并自动打开其编辑（带选中实体）
       var opTd = document.createElement('td');
-      opTd.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看记录', style: 'color:var(--primary,#1890ff)', title: '在黄金记录中打开该记录', onclick: (function (rec) { return function () { mdmGoModule('goldenrecord', { editId: rec.id, entityId: _ddEntity.id }); }; })(r) }));
+      opTd.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看记录', style: 'color:var(--primary,#3457d5)', title: '在黄金记录中打开该记录', onclick: (function (rec) { return function () { mdmGoModule('goldenrecord', { editId: rec.id, entityId: _ddEntity.id }); }; })(r) }));
       tr.appendChild(opTd);
       tb.appendChild(tr);
     });
@@ -871,7 +871,7 @@
           { key: 'matchScore', label: '置信度', align: 'right', render: function (r) { return r.matchScore == null ? '-' : (r.matchScore + '%'); } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)', onclick: function () { xrefForm(r, box); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { xrefForm(r, box); } }));
               var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
               w.appendChild(delA);
               return w;

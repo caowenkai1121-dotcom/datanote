@@ -243,7 +243,7 @@
     };
     wrap.appendChild(calc);
     if (r.metricId != null) {
-      var exp = DN.h('a', { href: '/api/consumption/metric/' + r.metricId + '/export?format=csv', text: '导出', style: 'color:var(--primary,#1890ff)', title: '导出该指标历史值 CSV' });
+      var exp = DN.h('a', { href: '/api/consumption/metric/' + r.metricId + '/export?format=csv', text: '导出', style: 'color:var(--primary,#3457d5)', title: '导出该指标历史值 CSV' });
       wrap.appendChild(exp);
     }
     var al = DN.h('a', { href: 'javascript:void(0)', text: '预警', onclick: function () { alertRulesDrawer(r); } });
@@ -472,7 +472,7 @@
       }).catch(function (e) { setLinkBusy(calc, false, '立即计算'); DN.toast('计算失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(calc);
-    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#1890ff)' });
+    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)' });
     edit.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法编辑', 'err'); return; }
       if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id });
@@ -541,7 +541,7 @@
   function ensureFlashStyle() {
     if (document.getElementById('consFlashStyle')) return;
     var st = document.createElement('style'); st.id = 'consFlashStyle';
-    st.textContent = '@keyframes consFlash{0%{background:rgba(24,144,255,.22)}100%{background:transparent}}'
+    st.textContent = '@keyframes consFlash{0%{background:rgba(52,87,213,.22)}100%{background:transparent}}'
       + '.cons-flash{animation:consFlash 1.5s ease-out;border-radius:6px}';
     document.head.appendChild(st);
   }

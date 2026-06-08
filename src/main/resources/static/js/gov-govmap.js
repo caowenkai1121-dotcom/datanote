@@ -81,8 +81,8 @@
       chainCard.body.appendChild(DN.empty('暂无业务闭环链配置', 'inbox'));
     } else CHAINS.forEach(function (ch) {
       if (!ch) return;
-      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#1890ff)') + ';border-radius:8px;' });
-      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary,#1890ff)'), text: ch.name || '未命名链' }));
+      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#3457d5)') + ';border-radius:8px;' });
+      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary,#3457d5)'), text: ch.name || '未命名链' }));
       var flow = DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;' });
       var steps = Array.isArray(ch.steps) ? ch.steps : [];
       if (!steps.length) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:12px;', text: '（暂无步骤）' }));
@@ -91,7 +91,7 @@
         var full = String(s.t == null ? '' : s.t);
         var pill = DN.h('a', { href: 'javascript:void(0)', text: clip(full, 18), title: full, role: 'button',
           style: 'display:inline-block;padding:5px 12px;border-radius:16px;background:var(--bg-body,#f5f6fa);border:1px solid var(--border,#e5e6eb);font-size:12px;color:var(--text-primary);cursor:pointer;transition:all .15s;' });
-        pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary,#1890ff)'; pill.style.color = '#fff'; pill.style.borderColor = ch.color || 'var(--primary,#1890ff)'; };
+        pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary,#3457d5)'; pill.style.color = '#fff'; pill.style.borderColor = ch.color || 'var(--primary,#3457d5)'; };
         pill.onmouseout = function () { pill.style.background = 'var(--bg-body,#f5f6fa)'; pill.style.color = 'var(--text-primary)'; pill.style.borderColor = 'var(--border,#e5e6eb)'; };
         if (typeof s.go === 'function') bindActivate(pill, s.go);
         flow.appendChild(pill);
