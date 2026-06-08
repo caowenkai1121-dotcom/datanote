@@ -162,7 +162,7 @@
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '实体', style: 'color:var(--primary,#3457d5)', onclick: function () { _selDomain = r; _selEntity = null; renderModeling(c); } }));
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { domainForm(r, c); } }));
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除域「' + r.domainName + '」？将级联删除其下所有实体与属性。', '/api/mdm/domain/' + r.id, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delConfirm('删除域「' + r.domainName + '」？将级联删除其下所有实体与属性。', '/api/mdm/domain/' + r.id, c); } }));
               return box;
             } }
         ],
@@ -198,7 +198,7 @@
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '属性', style: 'color:var(--primary,#3457d5)', onclick: function () { _selEntity = r; renderModeling(c); } }));
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { entityForm(r, c); } }));
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除实体「' + r.entityName + '」？将级联删除其属性。', '/api/mdm/entity/' + r.id, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delConfirm('删除实体「' + r.entityName + '」？将级联删除其属性。', '/api/mdm/entity/' + r.id, c); } }));
               return box;
             } }
         ],
@@ -242,7 +242,7 @@
           { key: '_op', label: '操作', render: function (r) {
               var box = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { attrForm(r, c); } }));
-              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delConfirm('删除属性「' + r.attrName + '」？', '/api/mdm/attribute/' + r.id, c); } }));
+              box.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delConfirm('删除属性「' + r.attrName + '」？', '/api/mdm/attribute/' + r.id, c); } }));
               return box;
             } }
         ],
@@ -547,7 +547,7 @@
           w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
           if (r.status !== 'active') { var pubA = DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:#389e0d', onclick: function () { if (!window.confirm('发布黄金记录「' + (r.bizKey || r.id) + '」？发布后将作为单一可信版本生效。')) return; busyLink(pubA, '发布中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); }); } }); w.appendChild(pubA); }
           if (r.status === 'active') { var deA = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:#ad6800', onclick: function () { if (!window.confirm('停用黄金记录「' + (r.bizKey || r.id) + '」？停用后将不再作为生效版本。')) return; busyLink(deA, '停用中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); }); } }); w.appendChild(deA); }
-          var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
+          var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { if (!window.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
           w.appendChild(delA);
           return w;
         } });
@@ -847,7 +847,7 @@
           if (!d || !d.found) { rout.appendChild(DN.empty('未找到该源标识对应的黄金记录', 'alert')); return; }
           var dj = d.dataJson || '';
           var djShow = dj.length > 120 ? dj.slice(0, 120) + '…' : dj;
-          rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:8px;background:rgba(82,196,26,.08);border:1px solid rgba(82,196,26,.25);font-size:13px' }, [
+          rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:8px;background:rgba(47,158,68,.08);border:1px solid rgba(47,158,68,.25);font-size:13px' }, [
             DN.h('div', { style: 'font-weight:600;margin-bottom:4px' }, [DN.h('span', { text: '✓ 命中黄金记录：' + (d.bizKey || ('#' + d.goldenRecordId)) }), DN.h('span', { style: 'margin-left:8px' }, [DN.pill(d.status === 'active' ? '已生效' : (d.status === 'inactive' ? '已停用' : '草稿'), d.status === 'active' ? 'ok' : 'warn')])]),
             DN.h('div', { class: 'gov-desc', style: 'margin:0', text: 'MDM ID: ' + d.goldenRecordId + ' · 属性: ' + djShow, title: dj })
           ]));
@@ -872,7 +872,7 @@
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { xrefForm(r, box); } }));
-              var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
+              var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { if (!window.confirm('删除映射 ' + r.sourceSystem + ':' + r.sourceId + '？')) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/xref/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadXref(box); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); } });
               w.appendChild(delA);
               return w;
             } }

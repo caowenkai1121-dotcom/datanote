@@ -125,7 +125,7 @@
       masks.forEach(function (m) { var t = m.sensitiveType || '其它'; byType[t] = (byType[t] || 0) + 1; });
       var keys = Object.keys(byType);
       if (keys.length) {
-        var palette = ['#3457d5', '#52c41a', '#faad14', '#ff4d4f', '#13c2c2', '#722ed1'];
+        var palette = ['#3457d5', '#2f9e44', '#e8930c', '#e03131', '#13c2c2', '#722ed1'];
         var segs = keys.map(function (k, i) { return { label: k, value: byType[k], color: palette[i % palette.length] }; });
         var card = DN.card({ title: '脱敏策略覆盖（按敏感类型）', icon: 'lock' });
         card.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: masks.length, centerSub: '策略', legend: true }));
@@ -166,7 +166,7 @@
       if (!totalRisk) {
         riskCard.body.appendChild(DN.h('div', {
           class: 'gov-empty', style: 'padding:10px 0 2px',
-          html: DN.icon('check', 'style="color:var(--gov-ok,#52c41a)"') +
+          html: DN.icon('check', 'style="color:var(--gov-ok,#2f9e44)"') +
             '<div class="et">权限态势良好，未发现上述风险项</div>'
         }));
       }
@@ -605,7 +605,7 @@
   /** 内联确认删除链接（二次点击确认即为破坏性操作的确认环节），返回 Node */
   function delLink(delFn, reload) {
     var a = DN.h('a', { href: 'javascript:void(0)', text: '删除',
-      style: 'color:var(--gov-err,#ff4d4f);font-size:13px' });
+      style: 'color:var(--gov-err,#e03131);font-size:13px' });
     var revertTimer = null, busy = false;
     a.onclick = function () {
       if (busy) return; // 删除请求进行中，忽略重复点击防止重复 DELETE

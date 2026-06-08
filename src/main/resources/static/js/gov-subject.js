@@ -328,7 +328,7 @@
         onclick: function () { editNode(n, reloadFn); }
       }));
       var delLink = DN.h('a', {
-        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#ff4d4f);font-size:13px',
+        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#e03131);font-size:13px',
         onclick: function () {
           if (delLink.getAttribute('data-busy') === '1') return;   // 删除中防重复触发
           var tip = hasChild

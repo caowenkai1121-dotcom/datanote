@@ -145,7 +145,7 @@
     wrap.appendChild(DN.h('div', { style: 'position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--divider,#eee)' }));
     logs.slice(0, 10).forEach(function (lg) {
       var st = (lg.status || '').toUpperCase();
-      var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#52c41a' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#ff4d4f' : '#3457d5';
+      var color = (st.indexOf('SUCC') >= 0 || st === 'OK') ? '#2f9e44' : (st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0) ? '#e03131' : '#3457d5';
       var row = DN.h('div', { style: 'position:relative;padding:0 0 12px 14px;cursor:pointer', title: '点击查看本次采集明细' });
       row.innerHTML = '<div style="position:absolute;left:-16px;top:2px;width:9px;height:9px;border-radius:50%;background:' + color + ';border:2px solid var(--bg-card,#fff);box-shadow:0 0 0 1px ' + color + '"></div>'
         + '<div style="font-size:12px"><b style="color:' + color + '">' + DN.esc(lg.status || '-') + '</b> '
@@ -266,7 +266,7 @@
   // 数值分档渐进色条：按占最大值比例渲染右对齐迷你条 + 数值
   function magBar(v, max, label) {
     var pct = max > 0 ? Math.max(2, Math.round(v * 100 / max)) : 0;
-    var color = pct >= 75 ? '#ff4d4f' : pct >= 50 ? '#fa8c16' : pct >= 25 ? '#faad14' : '#52c41a';
+    var color = pct >= 75 ? '#e03131' : pct >= 50 ? '#fa8c16' : pct >= 25 ? '#e8930c' : '#2f9e44';
     return '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">'
       + '<span style="font-variant-numeric:tabular-nums;">' + label + '</span>'
       + '<span style="display:inline-block;width:48px;height:6px;border-radius:3px;background:var(--bg-hover,#f0f1f3);overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';"></span></span></div>';
@@ -842,8 +842,8 @@
       st.style.flex = '1'; st.style.marginBottom = '0';
       wrap.appendChild(st);
       if (rows.length > 0) wrap.appendChild(DN.donut([
-        { label: '无下游', value: noLineage, color: '#52c41a' },
-        { label: '有下游', value: rows.length - noLineage, color: '#faad14' }
+        { label: '无下游', value: noLineage, color: '#2f9e44' },
+        { label: '有下游', value: rows.length - noLineage, color: '#e8930c' }
       ], { size: 96, stroke: 12, centerLabel: rows.length, centerSub: '候选' }));
       box.appendChild(wrap);
       unusedTbl = DN.table({
@@ -882,7 +882,7 @@
   function openDropConfirm(u) {
     var body = DN.h('div', {});
     var dr = DN.drawer('销毁确认', body);
-    body.appendChild(DN.h('div', { style: 'color:var(--gov-err,#ff4d4f);font-size:14px;font-weight:600;margin-bottom:14px;',
+    body.appendChild(DN.h('div', { style: 'color:var(--gov-err,#e03131);font-size:14px;font-weight:600;margin-bottom:14px;',
       text: '确认销毁 ' + u.db + '.' + u.table + '？此操作进入宽限期后不可逆。' }));
     var form = DN.h('div', { class: 'gov-form' });
     var approver = DN.h('input', { class: 'iw-form-input', placeholder: '审批人(必填,留痕)', style: 'width:100%;height:34px;margin-bottom:10px;' });

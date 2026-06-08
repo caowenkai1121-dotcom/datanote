@@ -26,7 +26,7 @@
       { t: '规则失败自动工单', go: gv('health') },
       { t: '修复→关单→健康分回升', go: gv('overview') }
     ]},
-    { name: '② 指标可信度闭环', color: '#52c41a', steps: [
+    { name: '② 指标可信度闭环', color: '#2f9e44', steps: [
       { t: '消费驾驶舱看指标', go: gv('consumption') },
       { t: '输入质量查来源表', go: gv('quality') },
       { t: '来源表血缘定位脏源', go: gv('lineage') },

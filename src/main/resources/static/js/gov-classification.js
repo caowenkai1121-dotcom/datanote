@@ -128,7 +128,7 @@
     var groups = Object.keys(byDb).map(function (k) { var ts = byDb[k]; return { db: k, tables: ts, sum: ts.reduce(function (s, t) { return s + (Number(t.count) || 0); }, 0) }; }).sort(function (a, b) { return b.sum - a.sum; });
     var grand = groups.reduce(function (s, g) { return s + g.sum; }, 0) || 1;
     var maxT = rows.reduce(function (m, r) { return Math.max(m, Number(r.count) || 0); }, 1);
-    var colorOf = function (v) { var rr = v / maxT; return rr > 0.66 ? '#cf1322' : rr > 0.33 ? '#ff4d4f' : rr > 0.1 ? '#ff7875' : '#ffccc7'; };
+    var colorOf = function (v) { var rr = v / maxT; return rr > 0.66 ? '#cf1322' : rr > 0.33 ? '#e03131' : rr > 0.1 ? '#ff7875' : '#ffccc7'; };
     var wrap = DN.h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-top:6px' });
     groups.forEach(function (g) {
       var bandH = Math.max(26, Math.round(g.sum / grand * 220));
@@ -243,7 +243,7 @@
     });
     wrap.appendChild(toggleA);
     var delA = DN.h('a', {
-      href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#ff4d4f)',
+      href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#e03131)',
       onclick: function () {
         if (!window.confirm('确定删除规则「' + (r.ruleName || '') + '」吗？删除后将不再用于敏感识别，且无法撤销。')) return;
         var restore = lockBtn(delA, '删除中…');

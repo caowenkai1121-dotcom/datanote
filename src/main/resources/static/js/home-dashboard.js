@@ -229,9 +229,9 @@
       var total = ok + bad + err;
       if (!total) { c.body.appendChild(DN.empty('近24h暂无质量执行', 'check')); return; }
       c.body.appendChild(DN.donut([
-        { label: '成功', value: ok, color: '#52c41a' },
-        { label: '失败', value: bad, color: '#ff4d4f' },
-        { label: '异常', value: err, color: '#faad14' }
+        { label: '成功', value: ok, color: '#2f9e44' },
+        { label: '失败', value: bad, color: '#e03131' },
+        { label: '异常', value: err, color: '#e8930c' }
       ], { centerLabel: fmtInt(total), centerSub: '近24h', legend: true }));
     }).catch(function (e) { fail(c, d, e); });
   }
@@ -250,7 +250,7 @@
       });
       var arr = Object.keys(byDb).map(function (k) { return { label: k, value: byDb[k] }; });
       arr.sort(function (x, y) { return y.value - x.value; });
-      var palette = ['#3457d5', '#52c41a', '#faad14', '#722ed1', '#13c2c2', '#eb2f96'];
+      var palette = ['#3457d5', '#2f9e44', '#e8930c', '#722ed1', '#13c2c2', '#eb2f96'];
       var segs = arr.slice(0, 6).map(function (s, i) { return { label: trunc(s.label, 14), value: s.value, color: palette[i % palette.length] }; });
       if (arr.length > 6) {
         var other = arr.slice(6).reduce(function (a, s) { return a + s.value; }, 0);
@@ -310,8 +310,8 @@
       var wrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:center' });
       wrap.appendChild(DN.donut([
         { label: '运行', value: running, color: '#3457d5' },
-        { label: '暂停', value: paused, color: '#faad14' },
-        { label: '失败', value: failed, color: '#ff4d4f' }
+        { label: '暂停', value: paused, color: '#e8930c' },
+        { label: '失败', value: failed, color: '#e03131' }
       ], { legend: true }));
       // successRate 约定为 0-1，gauge 前 *100；若后端已给百分数(>1)则原样用，避免被钳到 100
       var sr = num(s.successRate); var srPct = sr > 1 ? sr : sr * 100;

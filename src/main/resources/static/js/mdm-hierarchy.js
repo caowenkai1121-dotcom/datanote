@@ -136,7 +136,7 @@
                   w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看父记录', style: 'color:var(--primary,#3457d5)', title: '在黄金记录中打开父节点记录', onclick: function () { goGolden(r.parentRecordId); } }));
                 }
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { saveDrawer(r, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delRel(r, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRel(r, box); } }));
                 return w;
               } }
           ],
@@ -191,7 +191,7 @@
     if (node.childRecordId != null) {
       ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看黄金记录', style: 'color:var(--primary,#3457d5);font-size:12px', title: '在黄金记录中打开该节点对应记录', onclick: function () { goGolden(node.childRecordId); } }));
     }
-    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f;font-size:12px', onclick: function () { delRel(node, box); } }));
+    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131;font-size:12px', onclick: function () { delRel(node, box); } }));
     row.appendChild(ops);
     wrap.appendChild(row);
     if (key != null) seen[key] = 1;

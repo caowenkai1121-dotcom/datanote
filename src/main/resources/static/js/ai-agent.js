@@ -9,7 +9,7 @@
   var flowEl = null, inputEl = null, sendBtn = null, built = false;
 
   function groupColor(g) {
-    return ({ gov: '#1d6fff', quality: '#52c41a', lineage: '#fa8c16', sync: '#722ed1', metadata: '#13c2c2' })[g] || '#86909c';
+    return ({ gov: '#1d6fff', quality: '#2f9e44', lineage: '#fa8c16', sync: '#722ed1', metadata: '#13c2c2' })[g] || '#86909c';
   }
 
   // 用户气泡
@@ -252,7 +252,7 @@
       var ap = null;
       for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
       if (!ap) return;
-      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #faad14;background:var(--bg-body,#fffbe6);border-radius:10px;padding:12px 14px;' });
+      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #e8930c;background:var(--bg-body,#fffbe6);border-radius:10px;padding:12px 14px;' });
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:#d48806;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });

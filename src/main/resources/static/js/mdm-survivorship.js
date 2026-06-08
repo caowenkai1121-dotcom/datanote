@@ -147,7 +147,7 @@
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
             var ru = _svRules[r.attrCode];
             w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: ru ? '编辑' : '配置', style: 'color:var(--primary,#3457d5)', onclick: function () { ruleForm(r, ru, box); } }));
-            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delRule(ru, box); } }));
+            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRule(ru, box); } }));
             return w;
           } }
       ],
@@ -177,7 +177,7 @@
                 var attr = _svAttrs.filter(function (a) { return a.attrCode === r.attrCode; })[0] || { attrCode: r.attrCode, attrName: r.attrName };
                 ruleForm(attr, r, box);
               } }));
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delRule(r, box); } }));
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRule(r, box); } }));
             return w;
           } }
       ],

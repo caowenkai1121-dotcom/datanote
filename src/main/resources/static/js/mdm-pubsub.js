@@ -118,7 +118,7 @@
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '日志', style: 'color:var(--primary,#3457d5)', onclick: function () { _logSubId = String(r.id); loadLogs(logBox); logBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }));
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { subDrawer(r, box, statBox, logBox); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#ff4d4f', onclick: function () { delSub(r, box, statBox, logBox); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delSub(r, box, statBox, logBox); } }));
               return w;
             } }
         ],

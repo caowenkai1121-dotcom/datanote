@@ -268,7 +268,7 @@
   };
   DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
 
-  function toneColor(t) { return t === 'ok' ? '#52c41a' : t === 'warn' ? '#faad14' : t === 'err' ? '#ff4d4f' : 'var(--primary,#3457d5)'; }
+  function toneColor(t) { return t === 'ok' ? '#2f9e44' : t === 'warn' ? '#e8930c' : t === 'err' ? '#e03131' : 'var(--primary,#3457d5)'; }
   DN.bars = function (items) {
     items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
     var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));
@@ -286,7 +286,7 @@
   /** 环形仪表：值 0-100，按分值着色(红<60/黄<80/绿) */
   DN.gauge = function (val, opts) {
     opts = opts || {}; var size = opts.size || 124, sw = 11, r = (size - sw) / 2, c = 2 * Math.PI * r;
-    var v = Math.max(0, Math.min(100, Number(val) || 0)); var col = v < 60 ? '#ff4d4f' : v < 80 ? '#faad14' : '#52c41a';
+    var v = Math.max(0, Math.min(100, Number(val) || 0)); var col = v < 60 ? '#e03131' : v < 80 ? '#e8930c' : '#2f9e44';
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">'
       + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>'
       + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - v / 100)) + '" transform="rotate(-90 ' + (size / 2) + ' ' + (size / 2) + ')" style="transition:stroke-dashoffset .6s ease"/></svg>';

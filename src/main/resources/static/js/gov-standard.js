@@ -129,7 +129,7 @@
     if (ratePts.length >= 2) {
       card.body.appendChild(DN.sectionTitle('近期落标率趋势'));
       var avg = ratePts.reduce(function (x, y) { return x + y; }, 0) / (ratePts.length || 1);
-      card.body.appendChild(DN.line(ratePts, { height: 60, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+      card.body.appendChild(DN.line(ratePts, { height: 60, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
     }
 
     // —— 标准建设简评 ——
@@ -534,7 +534,7 @@
       if (pts.length >= 2) {
         box.appendChild(DN.sectionTitle('落标率趋势 · 治理改善曲线'));
         var avg = pts.reduce(function (x, y) { return x + y; }, 0) / pts.length;
-        box.appendChild(DN.line(pts, { height: 70, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+        box.appendChild(DN.line(pts, { height: 70, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
       }
       box.appendChild(DN.table({
         columns: [

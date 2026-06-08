@@ -9,7 +9,7 @@
  *   2) 复用 app.css 既有语义令牌：--primary/--success/--warning/--error/--border/
  *      --bg-card/--bg-body/--text-x /--radius/--shadow（名称已与源码核对）。
  *   3) 颜色语义与 gov-overview.js 的 tone() 完全对齐：
- *      ok=#52c41a 健康/成功 · warn=#faad14 注意/处理中 · err=#ff4d4f 异常/超期。
+ *      ok=#2f9e44 健康/成功 · warn=#e8930c 注意/处理中 · err=#e03131 异常/超期。
  *   4) 暗色：app.css 当前无暗色令牌，故文末提供「可选」prefers-color-scheme 兼容块，
  *      仅作用于 :is(#homeCockpit,#govModuleContent,#mdmModuleContent)，存在则增强、不存在亦无副作用。
  * ========================================================================== */
@@ -33,9 +33,9 @@
   --dash-brand:           #1d6fff;
 
   /* 语义色（与 gov-modern / tone() 对齐，集中声明便于复用） */
-  --dash-ok:   var(--success, #52c41a);
-  --dash-warn: var(--warning, #faad14);
-  --dash-err:  var(--error,   #ff4d4f);
+  --dash-ok:   var(--success, #2f9e44);
+  --dash-warn: var(--warning, #e8930c);
+  --dash-err:  var(--error,   #e03131);
 
   /* 圆角 / 阴影 / 间距（驾驶舱专用，比 app.css 更柔和现代） */
   --dash-card-radius: 14px;

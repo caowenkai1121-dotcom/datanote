@@ -5,35 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231890ff'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=q100r79">
+<link rel="stylesheet" href="css/app.css?v=q100r80">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r78">
-<link rel="stylesheet" href="css/redesign.css?v=q100r78">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r80">
+<link rel="stylesheet" href="css/redesign.css?v=q100r80">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r78"></script>
-<script src="js/gov-assets.js?v=q100r78"></script>
-<script src="js/gov-lineage.js?v=q100r78"></script>
-<script src="js/gov-quality.js?v=q100r78"></script>
-<script src="js/gov-standard.js?v=q100r78"></script>
-<script src="js/gov-classification.js?v=q100r78"></script>
-<script src="js/gov-security.js?v=q100r78"></script>
-<script src="js/gov-health.js?v=q100r78"></script>
-<script src="js/gov-audit.js?v=q100r78"></script>
-<script src="js/gov-overview.js?v=q100r78"></script>
-<script src="js/gov-subject.js?v=q100r78"></script>
-<script src="js/gov-consumption.js?v=q100r78"></script>
-<script src="js/gov-govmap.js?v=q100r78"></script>
-<script src="js/home-dashboard.js?v=q100r78"></script>
-<script src="js/mdm.js?v=q100r78"></script>
-<script src="js/mdm-survivorship.js?v=q100r78"></script>
-<script src="js/mdm-approval.js?v=q100r78"></script>
-<script src="js/mdm-refdata.js?v=q100r78"></script>
-<script src="js/mdm-quality.js?v=q100r78"></script>
-<script src="js/mdm-pubsub.js?v=q100r78"></script>
-<script src="js/mdm-hierarchy.js?v=q100r78"></script>
-<script src="js/ai-agent.js?v=q100r78"></script>
+<script src="js/dn-common.js?v=q100r80"></script>
+<script src="js/gov-assets.js?v=q100r80"></script>
+<script src="js/gov-lineage.js?v=q100r80"></script>
+<script src="js/gov-quality.js?v=q100r80"></script>
+<script src="js/gov-standard.js?v=q100r80"></script>
+<script src="js/gov-classification.js?v=q100r80"></script>
+<script src="js/gov-security.js?v=q100r80"></script>
+<script src="js/gov-health.js?v=q100r80"></script>
+<script src="js/gov-audit.js?v=q100r80"></script>
+<script src="js/gov-overview.js?v=q100r80"></script>
+<script src="js/gov-subject.js?v=q100r80"></script>
+<script src="js/gov-consumption.js?v=q100r80"></script>
+<script src="js/gov-govmap.js?v=q100r80"></script>
+<script src="js/home-dashboard.js?v=q100r80"></script>
+<script src="js/mdm.js?v=q100r80"></script>
+<script src="js/mdm-survivorship.js?v=q100r80"></script>
+<script src="js/mdm-approval.js?v=q100r80"></script>
+<script src="js/mdm-refdata.js?v=q100r80"></script>
+<script src="js/mdm-quality.js?v=q100r80"></script>
+<script src="js/mdm-pubsub.js?v=q100r80"></script>
+<script src="js/mdm-hierarchy.js?v=q100r80"></script>
+<script src="js/ai-agent.js?v=q100r80"></script>
 <style>
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary,#3457d5); background:var(--primary,#3457d5); color:#fff; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
   .ai-launcher-btn:hover { filter:brightness(1.08); box-shadow:0 2px 10px rgba(52,87,213,.35); }
@@ -244,15 +244,15 @@
             <div style="font-size:12px;color:var(--text-muted);">在文件树中创建 DorisSQL 脚本</div>
           </div>
           <div onclick="navigateTo('operations')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;cursor:pointer;transition:box-shadow .2s,transform .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform=''">
-            <div style="width:36px;height:36px;border-radius:8px;background:rgba(82,196,26,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#52c41a" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg>
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(47,158,68,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#2f9e44" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></svg>
             </div>
             <div style="font-size:14px;font-weight:600;margin-bottom:4px;">查看运维</div>
             <div style="font-size:12px;color:var(--text-muted);">查看调度状态与运行日志</div>
           </div>
           <div onclick="navigateTo('quality')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;cursor:pointer;transition:box-shadow .2s,transform .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform=''">
-            <div style="width:36px;height:36px;border-radius:8px;background:rgba(250,173,20,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#faad14" stroke-width="1.5"><path d="M10 2l8 4.5v5.5c0 4-3.5 7-8 8-4.5-1-8-4-8-8V6.5L10 2z"/><path d="M7.5 10.5l2 2 3.5-3.5"/></svg>
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(232,147,12,.08);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+              <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="#e8930c" stroke-width="1.5"><path d="M10 2l8 4.5v5.5c0 4-3.5 7-8 8-4.5-1-8-4-8-8V6.5L10 2z"/><path d="M7.5 10.5l2 2 3.5-3.5"/></svg>
             </div>
             <div style="font-size:14px;font-weight:600;margin-bottom:4px;">数据质量</div>
             <div style="font-size:12px;color:var(--text-muted);">配置和查看质量规则执行结果</div>
@@ -343,8 +343,8 @@
           <!-- Target -->
           <div class="intg-target">
             <div class="intg-panel-header">
-              <div class="intg-panel-icon" style="background:rgba(82,196,26,.08);">
-                <svg viewBox="0 0 16 16" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
+              <div class="intg-panel-icon" style="background:rgba(47,158,68,.08);">
+                <svg viewBox="0 0 16 16" fill="none" stroke="#2f9e44" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
               </div>
               <h3>目标端（Doris ODS）</h3>
               <span class="intg-panel-tag intg-tag-target">Writer</span>
@@ -1277,7 +1277,7 @@
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row" style="grid-column:1/-1;">
-              <label class="dbsync-form-label">任务名称 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">任务名称 <span style="color:var(--error,#e03131)">*</span></label>
               <input class="dbsync-form-input" id="dfsJobName" placeholder="请输入任务名称">
             </div>
             <div class="dbsync-form-row">
@@ -1287,7 +1287,7 @@
               </select>
             </div>
             <div class="dbsync-form-row" style="grid-column:1/-1;">
-              <label class="dbsync-form-label">同步模式 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">同步模式 <span style="color:var(--error,#e03131)">*</span></label>
               <div style="display:flex;gap:16px;padding:8px 0;">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
                   <input type="radio" name="dfsSyncMode" value="FULL" checked onchange="dbsyncOnModeChange()"> 全量同步 FULL
@@ -1309,13 +1309,13 @@
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">源数据源 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">源数据源 <span style="color:var(--error,#e03131)">*</span></label>
               <select class="dbsync-form-select" id="dfsSrcDsId" onchange="dbsyncLoadSrcDbs()">
                 <option value="">请选择数据源</option>
               </select>
             </div>
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">源数据库 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">源数据库 <span style="color:var(--error,#e03131)">*</span></label>
               <select class="dbsync-form-select" id="dfsSrcDb" onchange="dbsyncLoadSrcTables()">
                 <option value="">请选择数据库</option>
               </select>
@@ -1324,18 +1324,18 @@
 
           <!-- 目标端 -->
           <div class="dbsync-section-title">
-            <svg viewBox="0 0 14 14" fill="none" stroke="#52c41a" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
+            <svg viewBox="0 0 14 14" fill="none" stroke="#2f9e44" stroke-width="1.5" width="13" height="13"><ellipse cx="7" cy="4" rx="5" ry="2"/><path d="M2 4v3.5c0 1.1 2.2 2 5 2s5-.9 5-2V4"/><path d="M2 7.5V10c0 1.1 2.2 2 5 2s5-.9 5-2V7.5"/></svg>
             目标端配置
           </div>
           <div class="dbsync-form-grid">
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">目标数据源 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">目标数据源 <span style="color:var(--error,#e03131)">*</span></label>
               <select class="dbsync-form-select" id="dfsTgtDsId" onchange="dbsyncLoadTgtDbs()">
                 <option value="">请选择数据源</option>
               </select>
             </div>
             <div class="dbsync-form-row">
-              <label class="dbsync-form-label">目标数据库 <span style="color:var(--error,#ff4d4f)">*</span></label>
+              <label class="dbsync-form-label">目标数据库 <span style="color:var(--error,#e03131)">*</span></label>
               <select class="dbsync-form-select" id="dfsTgtDb">
                 <option value="">请选择数据库</option>
               </select>
@@ -2221,8 +2221,8 @@
     <!-- Target Panel -->
     <div class="iw-target-panel">
       <div class="iw-panel-header">
-        <div class="iw-panel-icon" style="background:rgba(82,196,26,.08);">
-          <svg viewBox="0 0 16 16" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
+        <div class="iw-panel-icon" style="background:rgba(47,158,68,.08);">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#2f9e44" stroke-width="1.5"><path d="M2 4l6-2 6 2v8l-6 2-6-2z"/><path d="M2 4l6 2 6-2M8 6v8"/></svg>
         </div>
         <h3>目标端（Doris ODS）</h3>
         <span class="iw-panel-tag iw-tag-target">Writer</span>
@@ -2427,9 +2427,9 @@
 // ===== 通用弹窗（替代 alert/confirm/prompt）=====
 var _msgBoxResolve = null;
 var _msgInfoIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(52,87,213,.1)" stroke="#3457d5" stroke-width="2"/><path d="M24 16v2M24 22v10" stroke="#3457d5" stroke-width="3" stroke-linecap="round"/></svg>';
-var _msgOkIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(82,196,26,.1)" stroke="#52c41a" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#52c41a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var _msgErrIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(255,77,79,.1)" stroke="#ff4d4f" stroke-width="2"/><path d="M16 16l16 16M32 16L16 32" stroke="#ff4d4f" stroke-width="3" stroke-linecap="round"/></svg>';
-var _msgWarnIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(250,173,20,.1)" stroke="#faad14" stroke-width="2"/><path d="M24 16v10M24 30v2" stroke="#faad14" stroke-width="3" stroke-linecap="round"/></svg>';
+var _msgOkIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(47,158,68,.1)" stroke="#2f9e44" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#2f9e44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var _msgErrIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(224,49,49,.1)" stroke="#e03131" stroke-width="2"/><path d="M16 16l16 16M32 16L16 32" stroke="#e03131" stroke-width="3" stroke-linecap="round"/></svg>';
+var _msgWarnIcon = '<svg width="40" height="40" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(232,147,12,.1)" stroke="#e8930c" stroke-width="2"/><path d="M24 16v10M24 30v2" stroke="#e8930c" stroke-width="3" stroke-linecap="round"/></svg>';
 
 function msgAlert(title, msg, type) {
   return new Promise(function(resolve) {
@@ -2995,9 +2995,9 @@ function addOrActivateTab(id, name, type) {
     tab.onclick = function() { switchTab(this); };
     var iconSvg;
     if (type === 'sync') {
-      iconSvg = '<svg class="sync-icon" viewBox="0 0 13 13" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M1.5 6.5h3l1.2-2.5 1.2 5 1.2-2.5h3.4"/></svg>';
+      iconSvg = '<svg class="sync-icon" viewBox="0 0 13 13" fill="none" stroke="#2f9e44" stroke-width="1.5"><path d="M1.5 6.5h3l1.2-2.5 1.2 5 1.2-2.5h3.4"/></svg>';
     } else if (type === 'datasource') {
-      iconSvg = '<svg viewBox="0 0 13 13" fill="none" stroke="#faad14" stroke-width="1.5"><ellipse cx="6.5" cy="4" rx="4.5" ry="2"/><path d="M2 4v2.5c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V4"/><path d="M2 6.5V9c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V6.5"/></svg>';
+      iconSvg = '<svg viewBox="0 0 13 13" fill="none" stroke="#e8930c" stroke-width="1.5"><ellipse cx="6.5" cy="4" rx="4.5" ry="2"/><path d="M2 4v2.5c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V4"/><path d="M2 6.5V9c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V6.5"/></svg>';
     } else if (type === 'scheduler') {
       iconSvg = '<svg viewBox="0 0 13 13" fill="none" stroke="#722ed1" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="5"/><path d="M6.5 3.5v3l2.5 1.5"/></svg>';
     } else {
@@ -3373,9 +3373,9 @@ function intgCopyDDL() {
 
 function intgShowModal(title, msg, isError) {
   if (isError) {
-    document.getElementById('intgModalIcon').innerHTML = '<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(255,77,79,.1)" stroke="#ff4d4f" stroke-width="2"/><path d="M16 16l16 16M32 16L16 32" stroke="#ff4d4f" stroke-width="3" stroke-linecap="round"/></svg>';
+    document.getElementById('intgModalIcon').innerHTML = '<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(224,49,49,.1)" stroke="#e03131" stroke-width="2"/><path d="M16 16l16 16M32 16L16 32" stroke="#e03131" stroke-width="3" stroke-linecap="round"/></svg>';
   } else {
-    document.getElementById('intgModalIcon').innerHTML = '<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(82,196,26,.1)" stroke="#52c41a" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#52c41a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    document.getElementById('intgModalIcon').innerHTML = '<svg width="44" height="44" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(47,158,68,.1)" stroke="#2f9e44" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#2f9e44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
   document.getElementById('intgModalTitle').textContent = title;
   document.getElementById('intgModalMsg').textContent = msg;
@@ -4979,7 +4979,7 @@ function renderFolderTree(nodes, parentLayer, openFolderIds) {
       var stMode = (node.syncMode || 'df').replace(/'/g, "\\'");
       var stDsId = node.sourceDsId || '';
       html += '<div class="tree-file" onclick="openSyncTask(this,' + node.id + ',\'' + node.name.replace(/'/g, "\\'") + '\',\'' + stDb + '\',\'' + stTable + '\',\'' + stMode + '\',' + stDsId + ')" oncontextmenu="showCtx(event,this)">';
-      html += '  <svg class="sync-icon" viewBox="0 0 13 13" fill="none" stroke="#52c41a" stroke-width="1.5"><path d="M1.5 6.5h3l1.2-2.5 1.2 5 1.2-2.5h3.4"/></svg>';
+      html += '  <svg class="sync-icon" viewBox="0 0 13 13" fill="none" stroke="#2f9e44" stroke-width="1.5"><path d="M1.5 6.5h3l1.2-2.5 1.2 5 1.2-2.5h3.4"/></svg>';
       html += '  <span class="file-name">' + escapeHtml(node.name) + '</span>';
       html += '</div>';
     } else if (node.type === 'script') {
@@ -5188,11 +5188,11 @@ function dfsCronPreview() {
   box.innerHTML = '计算中…';
   apiPost('/api/scheduler/cron-preview', { cron: cron }).then(function(res) {
     if (res.code === 0 && res.data && res.data.length) {
-      box.innerHTML = '<span style="color:var(--success,#52c41a);">下次执行：' + escapeHtml(res.data[0]) + (res.data[1] ? '，' + escapeHtml(res.data[1]) : '') + ' …</span>';
+      box.innerHTML = '<span style="color:var(--success,#2f9e44);">下次执行：' + escapeHtml(res.data[0]) + (res.data[1] ? '，' + escapeHtml(res.data[1]) : '') + ' …</span>';
     } else {
-      box.innerHTML = '<span style="color:var(--error,#ff4d4f);">' + escapeHtml((res && res.msg) || 'Cron 无效') + '</span>';
+      box.innerHTML = '<span style="color:var(--error,#e03131);">' + escapeHtml((res && res.msg) || 'Cron 无效') + '</span>';
     }
-  }).catch(function() { box.innerHTML = '<span style="color:var(--error,#ff4d4f);">Cron 校验失败</span>'; });
+  }).catch(function() { box.innerHTML = '<span style="color:var(--error,#e03131);">Cron 校验失败</span>'; });
 }
 
 // 通用预览：根据当前调度配置生成 cron 并预览未来执行时间
@@ -5296,7 +5296,7 @@ function loadSchedConfig(scriptId) {
     var badge = document.getElementById('scheduleStatusBadge');
     currentScriptOnline = d.scheduleStatus === 'online';
     if (currentScriptOnline) {
-      badge.textContent = '已上线'; badge.style.background = 'rgba(82,196,26,.12)'; badge.style.color = '#52c41a';
+      badge.textContent = '已上线'; badge.style.background = 'rgba(47,158,68,.12)'; badge.style.color = '#2f9e44';
     } else {
       badge.textContent = '未上线'; badge.style.background = 'rgba(0,0,0,.06)'; badge.style.color = 'var(--text-muted)';
     }
@@ -5443,7 +5443,7 @@ function loadSyncSchedConfig(taskId) {
     var badge = document.getElementById('scheduleStatusBadge');
     currentScriptOnline = d.scheduleStatus === 'online';
     if (currentScriptOnline) {
-      badge.textContent = '已上线'; badge.style.background = 'rgba(82,196,26,.12)'; badge.style.color = '#52c41a';
+      badge.textContent = '已上线'; badge.style.background = 'rgba(47,158,68,.12)'; badge.style.color = '#2f9e44';
     } else {
       badge.textContent = '未上线'; badge.style.background = 'rgba(0,0,0,.06)'; badge.style.color = 'var(--text-muted)';
     }
@@ -6049,7 +6049,7 @@ function depDrawBranch(tree, childEdgeX, parentCY, dir, C, state) {
     state.lines.push('<line x1="' + spineX + '" y1="' + cy + '" x2="' + childEdgeX + '" y2="' + cy + '" stroke="#d9d9d9" stroke-width="1"/>');
 
     // 节点颜色
-    var bc = n.status === 1 ? '#52c41a' : n.status === 0 ? '#faad14' : '#d9d9d9';
+    var bc = n.status === 1 ? '#2f9e44' : n.status === 0 ? '#e8930c' : '#d9d9d9';
     var bg = n.status === 1 ? '#f6ffed' : n.status === 0 ? '#fffbe6' : '#fafafa';
 
     // 节点矩形（带 data 属性供右键菜单识别）
@@ -6289,7 +6289,7 @@ function loadDependencies() {
             + '<span style="color:' + (isOnline ? 'var(--success)' : '#e6a23c') + ';font-weight:600;">' + (isOnline ? '&#10003;' : '&#9888;') + '</span>'
             + '<span>' + escapeHtml(ms.name) + '</span>'
             + (isOnline
-              ? '<span style="font-size:10px;padding:0 4px;border-radius:3px;background:rgba(82,196,26,.12);color:#52c41a;">已上线</span>'
+              ? '<span style="font-size:10px;padding:0 4px;border-radius:3px;background:rgba(47,158,68,.12);color:#2f9e44;">已上线</span>'
               : '<span style="font-size:10px;padding:0 4px;border-radius:3px;background:rgba(230,162,60,.12);color:#e6a23c;">未上线</span>')
             + '</div>';
         } else {
@@ -7201,7 +7201,7 @@ function dmSemanticSearch() {
       var row = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:' + (isTable ? 'pointer' : 'default') + ';' });
       row.onmouseover = function () { row.style.background = 'var(--bg-body,#f5f6fa)'; };
       row.onmouseout = function () { row.style.background = ''; };
-      var kindColor = ({ table: '#1d6fff', glossary: '#52c41a', metric: '#fa8c16', column: '#13c2c2' })[it.kind] || '#86909c';
+      var kindColor = ({ table: '#1d6fff', glossary: '#2f9e44', metric: '#fa8c16', column: '#13c2c2' })[it.kind] || '#86909c';
       row.appendChild(DN.h('span', { text: it.kind || 'table', style: 'font-size:11px;color:#fff;background:' + kindColor + ';padding:1px 8px;border-radius:9px;flex:0 0 auto;' }));
       var mid = DN.h('div', { style: 'flex:1;min-width:0;' });
       mid.appendChild(DN.h('div', { text: (it.db ? it.db + '.' : '') + (it.name || ''), style: 'font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }));
@@ -7213,7 +7213,7 @@ function dmSemanticSearch() {
     });
     box.innerHTML = ''; box.appendChild(wrap);
   }).catch(function (e) {
-    box.innerHTML = '<div class="datamap-ai-result" style="color:#ff4d4f">语义检索失败: ' + DN.esc(e && e.message ? e.message : e) + '</div>';
+    box.innerHTML = '<div class="datamap-ai-result" style="color:#e03131">语义检索失败: ' + DN.esc(e && e.message ? e.message : e) + '</div>';
   });
 }
 
@@ -8528,10 +8528,10 @@ function renderOpsOverview(stats, today) {
   }
 
   var donutData = [
-    { label: '成功', value: success, color: '#52c41a' },
-    { label: '失败', value: failed, color: '#ff4d4f' },
+    { label: '成功', value: success, color: '#2f9e44' },
+    { label: '失败', value: failed, color: '#e03131' },
     { label: '运行中', value: running, color: '#3457d5' },
-    { label: '等待中', value: waiting, color: '#faad14' },
+    { label: '等待中', value: waiting, color: '#e8930c' },
     { label: '暂停', value: paused, color: '#d9d9d9' }
   ];
 
@@ -9110,7 +9110,7 @@ function renderDag(lineageData) {
   svg.setAttribute('height', svgHeight);
   svg.setAttribute('viewBox', '0 0 ' + svgWidth + ' ' + svgHeight);
 
-  var statusColors = { script: '#3457d5', syncTask: '#52c41a' };
+  var statusColors = { script: '#3457d5', syncTask: '#2f9e44' };
 
   layers.forEach(function(layer, li) {
     var x = 60 + li * (nodeWidth + layerGap);
@@ -10013,7 +10013,7 @@ document.addEventListener('keydown', function(e) {
 }, true);
 var PROJ_TYPE_LABEL = { GENERAL: '通用', DATASYNC: '数据同步', DEVSQL: 'SQL开发', HYBRID: '混合' };
 var PROJ_ENV_LABEL = { DEV: '开发', PROD: '生产', MIXED: '混合' };
-var PROJ_STATUS = { ACTIVE: { t: '活跃', c: '#52c41a' }, ARCHIVED: { t: '已归档', c: '#8c8c8c' }, DELETED: { t: '已删除', c: '#ff4d4f' } };
+var PROJ_STATUS = { ACTIVE: { t: '活跃', c: '#2f9e44' }, ARCHIVED: { t: '已归档', c: '#8c8c8c' }, DELETED: { t: '已删除', c: '#e03131' } };
 
 var _projTags = [], _projTagMap = {}, _projFav = {}, _projRecent = {};
 function _pdata(res) { return (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : []); }
@@ -10063,7 +10063,7 @@ function projRenderKpi() {
   var ym = new Date().toISOString().slice(0, 7);
   var month = _projList.filter(function(p) { return (p.createdAt || '').slice(0, 7) === ym; }).length;
   box.innerHTML = projTile('项目总数', total, '', "document.getElementById('projFilterStatus').value='';projApplyFilter()")
-    + projTile('活跃', active, '#52c41a', "document.getElementById('projFilterStatus').value='ACTIVE';projApplyFilter()")
+    + projTile('活跃', active, '#2f9e44', "document.getElementById('projFilterStatus').value='ACTIVE';projApplyFilter()")
     + projTile('已归档', archived, '#8c8c8c', "document.getElementById('projFilterStatus').value='ARCHIVED';projApplyFilter()")
     + projTile('本月新增', month, '#1677ff', "document.getElementById('projFilterStatus').value='';document.getElementById('projSort').value='created_desc';projApplyFilter()");
 }
@@ -10150,9 +10150,9 @@ function projListCards(rows) {
     var tagChips = (_projTagMap[p.id] || []).map(function(tid) { var t = _projTagById(tid); if (!t) return ''; return '<span style="display:inline-block;font-size:10px;padding:0 6px;border-radius:8px;margin:2px 3px;word-break:break-word;background:' + (t.tagColor || '#1677ff') + '22;color:' + (t.tagColor || '#1677ff') + ';">' + escapeHtml(t.tagName) + '</span>'; }).join('');
     h += '<div style="border:1px solid var(--border);border-top:3px solid ' + st.c + ';border-radius:10px;padding:12px;background:var(--bg-card,#fff);cursor:pointer;transition:box-shadow .15s,transform .15s;" onclick="projOpenDetail(' + p.id + ')" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'\';this.style.transform=\'\'">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
-      + (pinned ? '<span style="font-size:10px;color:#faad14;">📌</span>' : '')
+      + (pinned ? '<span style="font-size:10px;color:#e8930c;">📌</span>' : '')
       + '<span style="font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(p.projectName || '') + '">' + escapeHtml(p.projectName || '-') + '</span>'
-      + '<a href="#" onclick="event.stopPropagation();projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#faad14' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></div>'
+      + '<a href="#" onclick="event.stopPropagation();projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#e8930c' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></div>'
       + '<div style="font-family:monospace;font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(p.projectCode || '-') + '</div>'
       + (p.description ? '<div style="font-size:12px;color:var(--text-regular);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHtml(p.description) + '</div>' : '')
       + (tagChips ? '<div style="margin-bottom:8px;">' + tagChips + '</div>' : '')
@@ -10195,8 +10195,8 @@ function projRenderList(list) {
       return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:var(--bg-hover);color:var(--text-muted);">' + escapeHtml(s) + '</span>';
     }).join('');
     h += '<tr>'
-      + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#faad14' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
-      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#faad14;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? '#e8930c' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
+      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b>' + (pinned ? ' <span style="font-size:10px;color:#e8930c;">置顶</span>' : '') + (p.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
       + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
@@ -10209,7 +10209,7 @@ function projRenderList(list) {
       + '<a href="#" onclick="projTogglePin(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
       + '<a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">归档</a>' : '')
-      + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#ff4d4f;">删除</a></td>'
+      + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#e03131;">删除</a></td>'
       + '</tr>';
   });
   h += '</tbody></table>';
@@ -10241,7 +10241,7 @@ window.projManageTags = function() {
 function projRenderTagList() {
   var box = document.getElementById('ptList'); if (!box) return;
   if (!_projTags.length) { box.innerHTML = '<div style="color:var(--text-muted);">暂无标签</div>'; return; }
-  box.innerHTML = _projTags.map(function(t) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + (t.tagColor || '#1677ff') + ';"></span><span style="flex:1;">' + escapeHtml(t.tagName) + '</span><a href="#" onclick="projDeleteTag(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></div>'; }).join('');
+  box.innerHTML = _projTags.map(function(t) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:' + (t.tagColor || '#1677ff') + ';"></span><span style="flex:1;">' + escapeHtml(t.tagName) + '</span><a href="#" onclick="projDeleteTag(' + t.id + ');return false;" style="color:#e03131;">删除</a></div>'; }).join('');
 }
 window.projCreateTag = function() {
   var name = (document.getElementById('ptNewName').value || '').trim();
@@ -10434,7 +10434,7 @@ window.projGenReport = function() {
       + 'h1{font-size:24px;border-bottom:3px solid #1677ff;padding-bottom:10px}h2{font-size:17px;margin-top:24px;color:#1677ff;border-left:4px solid #1677ff;padding-left:8px}'
       + 'table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left}th{background:#f6f7f9}'
       + '.kpi{display:flex;gap:22px;flex-wrap:wrap;margin:12px 0}.kpi div{font-size:13px;color:#666}.kpi b{display:block;font-size:22px;color:#1f2329}'
-      + '.bar{height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-top:4px}.bar>i{display:block;height:100%;background:#52c41a}'
+      + '.bar{height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-top:4px}.bar>i{display:block;height:100%;background:#2f9e44}'
       + '.muted{color:#86909c;font-size:12px}@media print{.noprint{display:none}body{margin:0}}</style></head><body>'
       + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#1677ff;color:#fff;border:0;border-radius:6px;cursor:pointer">打印 / 另存为PDF</button></div>'
       + '<h1>项目报告 · ' + esc(p.projectName || '') + '</h1><div class="muted">生成时间：' + ts + '　|　编码 ' + esc(p.projectCode || '-') + '</div>'
@@ -10442,7 +10442,7 @@ window.projGenReport = function() {
       + '<tr><th>类型</th><td>' + esc(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td><th>环境</th><td>' + esc(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td></tr>'
       + '<tr><th>负责人</th><td>' + esc(p.owner || '-') + '</td><th>状态</th><td>' + esc((PROJ_STATUS[p.status] || {}).t || p.status || '-') + '</td></tr>'
       + '<tr><th>描述</th><td colspan="3">' + esc(p.description || '-') + '</td></tr></table>'
-      + '<h2>二、任务进度</h2><div class="kpi"><div><b>' + tasks.length + '</b>任务总数</div><div><b style="color:#52c41a">' + doneN + '</b>已完成</div><div><b style="color:#1677ff">' + doingN + '</b>进行中</div><div><b style="color:#8c8c8c">' + todoN + '</b>待办</div><div><b style="color:' + (overdueN ? '#ff4d4f' : '#52c41a') + '">' + overdueN + '</b>超期</div></div>'
+      + '<h2>二、任务进度</h2><div class="kpi"><div><b>' + tasks.length + '</b>任务总数</div><div><b style="color:#2f9e44">' + doneN + '</b>已完成</div><div><b style="color:#1677ff">' + doingN + '</b>进行中</div><div><b style="color:#8c8c8c">' + todoN + '</b>待办</div><div><b style="color:' + (overdueN ? '#e03131' : '#2f9e44') + '">' + overdueN + '</b>超期</div></div>'
       + '<div>完成率 ' + donePct + '%<div class="bar"><i style="width:' + donePct + '%"></i></div></div>'
       + '<h2>三、里程碑（' + ms.length + '）</h2><table><tr><th>名称</th><th>周期</th><th>完成</th><th>进度</th></tr>' + msRows + '</table>'
       + '<h2>四、项目成员（' + members.length + '）</h2><table><tr><th>用户名</th><th>角色</th></tr>' + memRows + '</table>'
@@ -10523,7 +10523,7 @@ window.projLoadMembers = function() {
         h += '<tr class="proj-member-row" data-uname="' + escapeHtml((m.username || '').toLowerCase()) + '" data-role="' + escapeHtml(m.projectRole || '') + '"><td>' + escapeHtml(m.username) + '</td>'
           + '<td><select class="dbsync-form-select" style="width:110px;" onchange="projChangeRole(' + m.id + ',this.value)">' + projRoleOptions(m.projectRole) + '</select></td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((m.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-          + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:#ff4d4f;">移除</a></td></tr>';
+          + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:#e03131;">移除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -10576,7 +10576,7 @@ window.projLoadInvites = function() {
         h += '<tr><td>' + escapeHtml(v.invitee || '（任意凭码）') + '</td><td>' + escapeHtml(projRoleLabel(v.projectRole)) + '</td>'
           + '<td>' + escapeHtml(IST[v.status] || v.status) + '</td>'
           + '<td style="font-family:monospace;font-size:11px;">' + escapeHtml((v.token || '').slice(0, 8)) + '… <a href="#" onclick="projCopyInvite(\'' + v.token + '\');return false;" style="font-family:inherit;color:var(--primary);">复制</a></td>'
-          + '<td>' + (v.status === 'PENDING' ? '<a href="#" onclick="projAcceptInvite(\'' + v.token + '\');return false;" style="color:#52c41a;margin-right:6px;">接受</a><a href="#" onclick="projCancelInvite(' + v.id + ');return false;" style="color:#ff4d4f;">取消</a>' : '-') + '</td></tr>';
+          + '<td>' + (v.status === 'PENDING' ? '<a href="#" onclick="projAcceptInvite(\'' + v.token + '\');return false;" style="color:#2f9e44;margin-right:6px;">接受</a><a href="#" onclick="projCancelInvite(' + v.id + ');return false;" style="color:#e03131;">取消</a>' : '-') + '</td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -10680,7 +10680,7 @@ window.projLoadSetting = function() {
     + '<button class="btn btn-sm btn-primary" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
     + '<button class="btn btn-sm" onclick="projSaveAsTemplate(' + p.id + ')">存为模板</button>'
     + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" onclick="projArchive(' + p.id + ')">归档</button>' : '')
-    + '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
+    + '<button class="btn btn-sm" style="color:#e03131;border-color:#e03131;" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
     + '</div></div>'
     + '<div class="dbsync-detail-card" id="projQuotaCard" style="border:1px solid var(--divider);border-radius:8px;padding:14px;margin-top:12px;"><div style="color:var(--text-muted);">资源配额加载中...</div></div>'
     + '<div class="dbsync-detail-card" id="projEnvParamCard" style="border:1px solid var(--divider);border-radius:8px;padding:14px;margin-top:12px;"><div style="color:var(--text-muted);">环境参数加载中...</div></div>';
@@ -10737,7 +10737,7 @@ window.projLoadEnvParams = function() {
         var diff = (p.devValue || '') !== (p.prodValue || '');
         var dcell = diff ? ' style="background:#fff7e6;color:#d46b08;font-weight:600;"' : '';
         h += '<tr class="proj-env-row" data-diff="' + (diff ? '1' : '0') + '" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td' + dcell + '>' + escapeHtml(p.devValue || '-') + '</td><td' + dcell + '>' + escapeHtml(p.prodValue || '-') + (diff ? ' <span title="开发值≠生产值">≠</span>' : '') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
-          + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+          + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -10822,7 +10822,7 @@ window.projLoadAssets = function() {
     else {
       var tc = {}; as.forEach(function(a) { tc[a.assetType] = (tc[a.assetType] || 0) + 1; });
       // 类型分布迷你环图 + 徽标
-      var palette = { SYNC_JOB: '#3457d5', SCRIPT: '#52c41a', DATASOURCE: '#faad14', QUALITY_RULE: '#722ed1' };
+      var palette = { SYNC_JOB: '#3457d5', SCRIPT: '#2f9e44', DATASOURCE: '#e8930c', QUALITY_RULE: '#722ed1' };
       var keys = Object.keys(tc), acc = 0, stops = [];
       keys.forEach(function(k) { var p0 = acc / as.length * 100, p1 = (acc + tc[k]) / as.length * 100; stops.push((palette[k] || '#8c8c8c') + ' ' + p0.toFixed(1) + '% ' + p1.toFixed(1) + '%'); acc += tc[k]; });
       h += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;padding:10px;border:1px solid var(--divider);border-radius:8px;">'
@@ -10837,7 +10837,7 @@ window.projLoadAssets = function() {
           + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
           + '<td><a href="#" onclick="projAssetGoto(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;" title="跳到该资产所在模块">查看</a>'
           + '<a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
-          + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#ff4d4f;">解绑</a></td></tr>';
+          + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:#e03131;">解绑</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -10895,7 +10895,7 @@ window.projLoadOverview = function() {
       + '<div id="projAnnounceCard" style="margin-bottom:14px;"></div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">'
       + projTile('资产总数', d.assetTotal != null ? d.assetTotal : 0, '#1677ff')
-      + projTile('成员', d.memberCount != null ? d.memberCount : 0, '#52c41a')
+      + projTile('成员', d.memberCount != null ? d.memberCount : 0, '#2f9e44')
       + projTile('发布版本', d.releaseTotal != null ? d.releaseTotal : 0)
       + projTile('待审批', d.releasePending != null ? d.releasePending : 0, (d.releasePending > 0 ? '#fa8c16' : ''))
       + '</div>';
@@ -10909,15 +10909,15 @@ window.projLoadOverview = function() {
       h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;margin-bottom:14px;">'
         + '<div style="font-weight:600;margin-bottom:8px;font-size:13px;">绑定同步任务运行</div>'
         + '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;flex-wrap:wrap;">'
-        + '<span>成功 <b style="color:#52c41a;">' + (jr.success || 0) + '</b></span>'
-        + '<span>失败 <b style="color:#ff4d4f;">' + (jr.failed || 0) + '</b></span>'
+        + '<span>成功 <b style="color:#2f9e44;">' + (jr.success || 0) + '</b></span>'
+        + '<span>失败 <b style="color:#e03131;">' + (jr.failed || 0) + '</b></span>'
         + '<span>运行中 <b style="color:#1677ff;">' + (jr.running || 0) + '</b></span>'
         + '<span>未运行 <b style="color:#8c8c8c;">' + (jr.neverRun || 0) + '</b></span></div>';
       var rec = jr.recent || [];
       if (rec.length) {
         h += '<div style="font-size:12px;line-height:1.9;">';
         rec.forEach(function(x) {
-          var c = x.status === 'SUCCESS' ? '#52c41a' : (x.status === 'FAILED' ? '#ff4d4f' : (x.status === 'RUNNING' ? '#1677ff' : '#8c8c8c'));
+          var c = x.status === 'SUCCESS' ? '#2f9e44' : (x.status === 'FAILED' ? '#e03131' : (x.status === 'RUNNING' ? '#1677ff' : '#8c8c8c'));
           h += '<div style="display:flex;gap:8px;"><span style="flex:1;">' + escapeHtml(x.name || '-') + '</span><span style="color:' + c + ';">' + escapeHtml(x.status || '-') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((x.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
         });
         h += '</div>';
@@ -10928,7 +10928,7 @@ window.projLoadOverview = function() {
     h += '<div class="dbsync-detail-card" style="border:1px solid var(--divider);border-radius:8px;padding:12px;">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-weight:600;font-size:13px;">最近活动</span>';
     if (acts.length) {
-      var kinds = { member: ['成员', '#52c41a'], asset: ['资产', '#1677ff'], release: ['发布', '#fa8c16'] };
+      var kinds = { member: ['成员', '#2f9e44'], asset: ['资产', '#1677ff'], release: ['发布', '#fa8c16'] };
       var present = {}; acts.forEach(function(a) { present[a.kind || 'release'] = 1; });
       h += '<span style="margin-left:auto;display:flex;gap:4px;">';
       h += '<span onclick="projFilterOverviewActs(\'\')" class="proj-act-chip" data-k="" data-color="var(--text-regular)" style="cursor:pointer;font-size:11px;padding:1px 8px;border-radius:10px;background:var(--primary);color:#fff;">全部</span>';
@@ -10940,7 +10940,7 @@ window.projLoadOverview = function() {
     else {
       h += '<div id="projOverviewActs" style="font-size:12px;line-height:1.9;">';
       acts.forEach(function(a) {
-        var dot = a.kind === 'member' ? '#52c41a' : (a.kind === 'asset' ? '#1677ff' : '#fa8c16');
+        var dot = a.kind === 'member' ? '#2f9e44' : (a.kind === 'asset' ? '#1677ff' : '#fa8c16');
         h += '<div class="proj-act-row" data-kind="' + escapeHtml(a.kind || 'release') + '" style="display:flex;gap:8px;"><span style="color:' + dot + ';">●</span><span style="flex:1;">' + escapeHtml(a.text || '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((a.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
       });
       h += '</div>';
@@ -10984,7 +10984,7 @@ window.projLoadAnnounceCard = function() {
     if (!as.length) h += '<div style="font-size:12px;color:var(--text-muted);">暂无公告</div>';
     else {
       h += as.map(function(a) {
-        return '<div style="padding:6px 0;border-top:1px solid var(--border-light,#f0f0f0);"><div style="display:flex;justify-content:space-between;"><span>' + (a.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[重要] </span>' : '') + '<b>' + escapeHtml(a.title) + '</b></span><a href="#" onclick="projDeleteAnnounce(' + a.id + ');return false;" style="color:#ff4d4f;font-size:12px;">删除</a></div>'
+        return '<div style="padding:6px 0;border-top:1px solid var(--border-light,#f0f0f0);"><div style="display:flex;justify-content:space-between;"><span>' + (a.priority === 'HIGH' ? '<span style="color:#e03131;">[重要] </span>' : '') + '<b>' + escapeHtml(a.title) + '</b></span><a href="#" onclick="projDeleteAnnounce(' + a.id + ');return false;" style="color:#e03131;font-size:12px;">删除</a></div>'
           + (a.content ? '<div style="font-size:12px;color:var(--text-regular);margin-top:2px;">' + escapeHtml(a.content) + '</div>' : '')
           + '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(a.createdBy || '') + ' · <span title="' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '">' + escapeHtml(wsFmtAgo(a.createdAt)) + '</span></div></div>';
       }).join('');
@@ -11021,7 +11021,7 @@ window.projLoadHealthCard = function() {
   api('/api/project/' + _projDetail.id + '/health').then(function(res) {
     var d = (res && res.code === 0) ? (res.data || {}) : {};
     var dims = d.dims || {};
-    var color = d.total >= 80 ? '#52c41a' : (d.total >= 60 ? '#1677ff' : (d.total >= 40 ? '#faad14' : '#ff4d4f'));
+    var color = d.total >= 80 ? '#2f9e44' : (d.total >= 60 ? '#1677ff' : (d.total >= 40 ? '#e8930c' : '#e03131'));
     var dimLabel = { asset: '资产', member: '成员', release: '发布', run: '运行', active: '活跃' };
     var bars = Object.keys(dimLabel).map(function(k) {
       var v = dims[k] || 0;
@@ -11121,7 +11121,7 @@ window.projRenderActs = function() {
     h += '<tr><td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
       + '<td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.method || '-') + '</td>'
       + '<td style="font-family:monospace;font-size:11px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td>'
-      + '<td style="color:' + (a.status != null && a.status >= 400 ? '#ff4d4f' : '#52c41a') + ';">' + (a.status != null ? a.status : '-') + '</td>'
+      + '<td style="color:' + (a.status != null && a.status >= 400 ? '#e03131' : '#2f9e44') + ';">' + (a.status != null ? a.status : '-') + '</td>'
       + '<td>' + goCell + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table><div style="font-size:11px;color:var(--text-muted);margin-top:6px;">共 ' + as.length + ' / ' + _projActs.length + ' 条</div>';
@@ -11139,8 +11139,8 @@ window.projExportActs = function() {
 
 /* ===== PM2-M3：任务待办 + 里程碑 ===== */
 var _projMilestones = [];
-var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#52c41a' } };
-var TASK_PRIO = { HIGH: { t: '高', c: '#ff4d4f' }, MEDIUM: { t: '中', c: '#faad14' }, LOW: { t: '低', c: '#8c8c8c' } };
+var TASK_STATUS = { TODO: { t: '待办', c: '#8c8c8c' }, DOING: { t: '进行中', c: '#1677ff' }, DONE: { t: '完成', c: '#2f9e44' } };
+var TASK_PRIO = { HIGH: { t: '高', c: '#e03131' }, MEDIUM: { t: '中', c: '#e8930c' }, LOW: { t: '低', c: '#8c8c8c' } };
 var _projTaskFilter = { assignee: '', overdue: false, priority: '' };
 var _projTasksAll = [];
 var _projTaskView = (function() { try { return localStorage.getItem('proj.taskView') || 'list'; } catch (e) { return 'list'; } })();
@@ -11180,8 +11180,8 @@ window.projLoadTasks = function() {
       + viewToggle
       + asgSel + prioSel
       + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
-      + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
-    if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#52c41a;"></div></div></div>';
+      + '<span style="font-size:12px;color:var(--text-muted);margin-left:6px;">待办 ' + cnt.TODO + ' · 进行中 ' + cnt.DOING + ' · 完成 ' + cnt.DONE + (overdueN ? ' · <span style="color:#e03131;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</span></div>';
+    if (tasks.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + donePct + '%</span><div style="flex:1;height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;"><div style="width:' + donePct + '%;height:100%;background:#2f9e44;"></div></div></div>';
     // 项目风险提示(创新): 基于全部任务+里程碑前端计算逾期/高优未完成/临近截止/滞后里程碑
     if (tasksAll.length) {
       var _d3 = (function() { var d = new Date(_today + 'T00:00:00'); d.setDate(d.getDate() + 3); var p = function(n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); })();
@@ -11234,11 +11234,11 @@ window.projLoadTasks = function() {
           h += '<tr><td style="width:50px;"><span style="color:' + pr.c + ';font-size:11px;">' + pr.t + '</span></td>'
             + '<td><b onclick="projTaskView(' + t.id + ')" style="cursor:pointer;" title="点击查看详情">' + escapeHtml(t.title) + '</b>' + (t.description ? '<div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(t.description) + '</div>' : '') + '</td>'
             + '<td style="width:80px;">' + escapeHtml(t.assignee || '-') + '</td>'
-            + '<td style="width:110px;' + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? 'color:#ff4d4f;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate || '') + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? ' 超期' : '') + '</td>'
+            + '<td style="width:110px;' + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? 'color:#e03131;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate || '') + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? ' 超期' : '') + '</td>'
             + '<td style="width:90px;color:var(--text-muted);">' + escapeHtml(msName[t.milestoneId] || '') + '</td>'
             + '<td style="width:90px;"><select class="dbsync-form-select" style="width:84px;" onchange="projTaskStatus(' + t.id + ',this.value)">'
             + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></td>'
-            + '<td style="width:80px;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:6px;">编辑</a><a href="#" onclick="projDeleteTask(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+            + '<td style="width:80px;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:6px;">编辑</a><a href="#" onclick="projDeleteTask(' + t.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
         });
         h += '</tbody></table>';
       });
@@ -11286,7 +11286,7 @@ function projKanbanHtml(tasks, msName, today) {
         + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);">'
         + (t.priority ? '<span style="color:' + pr.c + ';font-weight:600;">' + pr.t + '</span>' : '')
         + (t.assignee ? '<span style="background:var(--bg-hover);padding:0 6px;border-radius:8px;">@' + escapeHtml(t.assignee) + '</span>' : '')
-        + (t.dueDate ? '<span style="' + (od ? 'color:#ff4d4f;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
+        + (t.dueDate ? '<span style="' + (od ? 'color:#e03131;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
         + (msName[t.milestoneId] ? '<span>🎯' + escapeHtml(msName[t.milestoneId]) + '</span>' : '')
         + '</div>'
         + '<div style="margin-top:6px;text-align:right;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="font-size:11px;color:var(--primary);">编辑</a></div>'
@@ -11336,7 +11336,7 @@ function projCalendarHtml(tasks, today) {
     list.slice(0, 4).forEach(function(t) {
       var pr = TASK_PRIO[t.priority] || { c: 'var(--text-muted)' };
       var done = t.status === 'DONE', od = !done && ds < today;
-      h += '<div onclick="projTaskModal(' + t.id + ')" title="' + escapeHtml(t.title) + (t.assignee ? ' · @' + escapeHtml(t.assignee) : '') + '" style="font-size:11px;line-height:1.5;cursor:pointer;border-left:3px solid ' + (od ? '#ff4d4f' : pr.c) + ';padding-left:5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (done ? 'text-decoration:line-through;color:var(--text-muted);' : '') + '">' + escapeHtml(t.title) + '</div>';
+      h += '<div onclick="projTaskModal(' + t.id + ')" title="' + escapeHtml(t.title) + (t.assignee ? ' · @' + escapeHtml(t.assignee) : '') + '" style="font-size:11px;line-height:1.5;cursor:pointer;border-left:3px solid ' + (od ? '#e03131' : pr.c) + ';padding-left:5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (done ? 'text-decoration:line-through;color:var(--text-muted);' : '') + '">' + escapeHtml(t.title) + '</div>';
     });
     if (list.length > 4) h += '<div style="font-size:10px;color:var(--text-muted);">+' + (list.length - 4) + ' 更多</div>';
     h += '</div>';
@@ -11369,16 +11369,16 @@ function projWorkloadHtml(tasks, today) {
   var h = alertBar + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--text-muted);">'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#8c8c8c;border-radius:2px;"></span> 待办</span>'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#1677ff;border-radius:2px;"></span> 进行中</span>'
-    + '<span><span style="display:inline-block;width:10px;height:10px;background:#52c41a;border-radius:2px;"></span> 完成</span>'
-    + '<span style="color:#ff4d4f;">● 超期</span></div>';
+    + '<span><span style="display:inline-block;width:10px;height:10px;background:#2f9e44;border-radius:2px;"></span> 完成</span>'
+    + '<span style="color:#e03131;">● 超期</span></div>';
   h += '<div style="display:flex;flex-direction:column;gap:8px;">';
   rows.forEach(function(r) {
     var g = r.g, active = g.TODO + g.DOING;
     var seg = function(v, c) { return v > 0 ? '<div title="' + v + '" style="height:100%;width:' + (v / maxTotal * 100) + '%;background:' + c + ';"></div>' : ''; };
     h += '<div style="display:flex;align-items:center;gap:10px;">'
       + '<div style="width:120px;flex-shrink:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(r.name) + (active >= OVERLOAD ? ' · 负载偏高' : '') + '">' + escapeHtml(r.name) + (active >= OVERLOAD ? ' <span style="display:inline-block;font-size:10px;padding:0 5px;border-radius:8px;background:#fff1f0;color:#cf1322;font-weight:600;">过载</span>' : '') + '</div>'
-      + '<div style="flex:1;display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--bg-hover,#f0f1f3);">' + seg(g.TODO, '#8c8c8c') + seg(g.DOING, '#1677ff') + seg(g.DONE, '#52c41a') + '</div>'
-      + '<div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;">进行中 ' + active + ' / 共 ' + g.total + (g.overdue ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + g.overdue + '</span>' : '') + '</div>'
+      + '<div style="flex:1;display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--bg-hover,#f0f1f3);">' + seg(g.TODO, '#8c8c8c') + seg(g.DOING, '#1677ff') + seg(g.DONE, '#2f9e44') + '</div>'
+      + '<div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text-muted);white-space:nowrap;">进行中 ' + active + ' / 共 ' + g.total + (g.overdue ? ' · <span style="color:#e03131;font-weight:600;">超期 ' + g.overdue + '</span>' : '') + '</div>'
       + '</div>';
   });
   h += '</div><div style="font-size:11px;color:var(--text-muted);margin-top:8px;">共 ' + rows.length + ' 人(含未指派), 按未完成任务数排序; 条长按占最大负载比例。</div>';
@@ -11424,7 +11424,7 @@ function projBurndownHtml(tasks, today) {
   for (var g = 0; g <= 4; g++) { var gy = padT + plotH * g / 4; var val = Math.round(total * (1 - g / 4)); grid += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="var(--divider,#eee)" stroke-width="1"/><text x="' + (padL - 5) + '" y="' + (gy + 3) + '" font-size="9" fill="#999" text-anchor="end">' + val + '</text>'; }
   // 今日竖线
   var tIdx = Math.round((todayD - start) / 86400000);
-  var todayLine = (tIdx >= 0 && tIdx <= days) ? '<line x1="' + x(tIdx).toFixed(1) + '" y1="' + padT + '" x2="' + x(tIdx).toFixed(1) + '" y2="' + (padT + plotH) + '" stroke="#ff4d4f" stroke-width="1" stroke-dasharray="3 3"/>' : '';
+  var todayLine = (tIdx >= 0 && tIdx <= days) ? '<line x1="' + x(tIdx).toFixed(1) + '" y1="' + padT + '" x2="' + x(tIdx).toFixed(1) + '" y2="' + (padT + plotH) + '" stroke="#e03131" stroke-width="1" stroke-dasharray="3 3"/>' : '';
   var remainNow = actual.filter(function(v){return v!=null;}).slice(-1)[0];
   var doneNow = total - (remainNow == null ? total : remainNow);
   var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:' + W + 'px;">'
@@ -11436,9 +11436,9 @@ function projBurndownHtml(tasks, today) {
     + '</svg>';
   return '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;">'
     + '<span><b style="font-size:18px;">' + total + '</b> 总任务</span>'
-    + '<span style="color:#52c41a;"><b style="font-size:18px;">' + doneNow + '</b> 已完成</span>'
+    + '<span style="color:#2f9e44;"><b style="font-size:18px;">' + doneNow + '</b> 已完成</span>'
     + '<span style="color:#3457d5;"><b style="font-size:18px;">' + (remainNow == null ? total : remainNow) + '</b> 剩余</span>'
-    + '<span style="margin-left:auto;color:var(--text-muted);"><span style="color:#3457d5;">━</span> 实际剩余 &nbsp; <span style="color:#bfbfbf;">┄</span> 理想匀速 &nbsp; <span style="color:#ff4d4f;">┊</span> 今日</span></div>'
+    + '<span style="margin-left:auto;color:var(--text-muted);"><span style="color:#3457d5;">━</span> 实际剩余 &nbsp; <span style="color:#bfbfbf;">┄</span> 理想匀速 &nbsp; <span style="color:#e03131;">┊</span> 今日</span></div>'
     + '<div style="border:1px solid var(--divider);border-radius:8px;padding:8px;">' + svg + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">实际线按任务创建/完成(更新)时点逐日重建; 实际线高于理想线表示进度滞后。</div>';
 }
@@ -11468,7 +11468,7 @@ function projGanttHtml(tasks, milestones, today) {
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
   var todayLine = '';
-  if (td) { var tp = pct(td); if (tp >= 0 && tp <= 100) todayLine = '<div style="position:absolute;left:' + tp.toFixed(2) + '%;top:0;bottom:0;border-left:2px solid #ff4d4f;z-index:2;"></div>'; }
+  if (td) { var tp = pct(td); if (tp >= 0 && tp <= 100) todayLine = '<div style="position:absolute;left:' + tp.toFixed(2) + '%;top:0;bottom:0;border-left:2px solid #e03131;z-index:2;"></div>'; }
   var rows = '';
   ms.slice().sort(function(a, b) { return (a.startDate || a.endDate || '').localeCompare(b.startDate || b.endDate || ''); }).forEach(function(m) {
     var s = parse(m.startDate) || parse(m.endDate), e = parse(m.endDate) || parse(m.startDate);
@@ -11477,7 +11477,7 @@ function projGanttHtml(tasks, milestones, today) {
     var doneN = mt.filter(function(t) { return t.status === 'DONE'; }).length;
     var prog = mt.length ? Math.round(doneN * 100 / mt.length) : 0;
     var overdue = e && td && e < td && prog < 100;
-    var barColor = prog >= 100 ? '#52c41a' : overdue ? '#ff4d4f' : 'var(--primary)';
+    var barColor = prog >= 100 ? '#2f9e44' : overdue ? '#e03131' : 'var(--primary)';
     rows += '<div style="display:flex;align-items:center;height:34px;border-bottom:1px solid var(--divider);">'
       + '<div onclick="projMilestoneDetail(' + m.id + ')" style="width:150px;flex-shrink:0;font-size:12px;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:var(--primary);" title="点击查看里程碑任务: ' + escapeHtml(m.name || '') + '">' + escapeHtml(m.name || '里程碑') + '</div>'
       + '<div style="flex:1;position:relative;height:100%;">'
@@ -11508,9 +11508,9 @@ window.projTaskView = function(id) {
   var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
     + '<span style="background:' + st.c + ';color:#fff;font-size:12px;padding:2px 10px;border-radius:12px;">' + escapeHtml(st.t) + '</span>'
     + '<span style="color:' + pr.c + ';font-size:12px;font-weight:600;">' + escapeHtml(pr.t) + '优先级</span>'
-    + (od ? '<span style="color:#ff4d4f;font-weight:600;font-size:12px;">已超期</span>' : '') + '</div>';
+    + (od ? '<span style="color:#e03131;font-weight:600;font-size:12px;">已超期</span>' : '') + '</div>';
   h += kv('指派人', escapeHtml(t.assignee || '未指派'));
-  h += kv('截止日', t.dueDate ? ('<span style="' + (od ? 'color:#ff4d4f;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate) + '</span>') : '—');
+  h += kv('截止日', t.dueDate ? ('<span style="' + (od ? 'color:#e03131;font-weight:600;' : '') + '">' + escapeHtml(t.dueDate) + '</span>') : '—');
   h += kv('里程碑', ms ? escapeHtml(ms.name) : '—');
   h += kv('创建', t.createdAt ? '<span title="' + escapeHtml((t.createdAt || '').replace('T', ' ').slice(0, 16)) + '">' + escapeHtml(wsFmtAgo(t.createdAt)) + '</span>' : '—');
   h += kv('更新', t.updatedAt ? '<span title="' + escapeHtml((t.updatedAt || '').replace('T', ' ').slice(0, 16)) + '">' + escapeHtml(wsFmtAgo(t.updatedAt)) + '</span>' : '—');
@@ -11531,8 +11531,8 @@ window.projMilestoneDetail = function(msId) {
   var overdueN = mt.filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < today; }).length;
   var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">'
     + '周期 ' + escapeHtml(m.startDate || '?') + ' ~ ' + escapeHtml(m.endDate || '?')
-    + ' · 任务 ' + mt.length + ' · 完成 ' + doneN + (overdueN ? ' · <span style="color:#ff4d4f;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</div>';
-  if (mt.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#52c41a' : 'var(--primary)') + ';"></div></div></div>';
+    + ' · 任务 ' + mt.length + ' · 完成 ' + doneN + (overdueN ? ' · <span style="color:#e03131;font-weight:600;">超期 ' + overdueN + '</span>' : '') + '</div>';
+  if (mt.length) h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">完成率 ' + prog + '%</span><div style="flex:1;height:8px;background:var(--bg-hover,#eee);border-radius:4px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + (prog >= 100 ? '#2f9e44' : 'var(--primary)') + ';"></div></div></div>';
   if (!mt.length) h += '<div style="padding:28px 16px;text-align:center;color:var(--text-muted);"><div style="font-size:26px;margin-bottom:6px;opacity:.7;">🗂️</div><div style="font-size:13px;">该里程碑暂无关联任务</div><div style="font-size:12px;opacity:.7;margin-top:4px;">在任务中设置里程碑即可归集到此</div></div>';
   else {
     ['DOING', 'TODO', 'DONE'].forEach(function(st) {
@@ -11547,7 +11547,7 @@ window.projMilestoneDetail = function(msId) {
           + '<span style="width:3px;height:14px;background:' + pr.c + ';border-radius:2px;flex-shrink:0;"></span>'
           + '<a href="#" onclick="projCloseModalBox&&projCloseModalBox();projTaskModal(' + t.id + ');return false;" style="flex:1;color:var(--text-regular);text-decoration:none;">' + escapeHtml(t.title) + '</a>'
           + (t.assignee ? '<span style="font-size:11px;color:var(--text-muted);">@' + escapeHtml(t.assignee) + '</span>' : '')
-          + (t.dueDate ? '<span style="font-size:11px;' + (od ? 'color:#ff4d4f;font-weight:600;' : 'color:var(--text-muted);') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
+          + (t.dueDate ? '<span style="font-size:11px;' + (od ? 'color:#e03131;font-weight:600;' : 'color:var(--text-muted);') + '">' + escapeHtml(t.dueDate) + (od ? ' 超期' : '') + '</span>' : '')
           + '</div>';
       });
     });
@@ -11636,7 +11636,7 @@ function _projMsRisk(m, today) {
   var pct = total ? Math.round(done * 100 / total) : 0;
   var label = '进行中', tone = '#1677ff';
   if (!total) { label = '无任务'; tone = '#8c8c8c'; }
-  else if (done === total) { label = '已完成'; tone = '#52c41a'; }
+  else if (done === total) { label = '已完成'; tone = '#2f9e44'; }
   else if (m.endDate && m.endDate < today) { label = '已延期'; tone = '#cf1322'; }
   else if (m.endDate) {
     var d = Math.ceil((new Date(m.endDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
@@ -11659,7 +11659,7 @@ function projRenderMilestones() {
     var r = risks[i];
     var badge = '<span style="display:inline-block;font-size:11px;padding:1px 8px;border-radius:10px;background:' + r.tone + '1a;color:' + r.tone + ';font-weight:600;">' + r.label + '</span>';
     var prog = r.total ? '<span style="color:var(--text-muted);font-size:11px;">' + r.done + '/' + r.total + ' 任务 · ' + r.pct + '%</span>' : '';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border-light,#f0f0f0);"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span>' + badge + ' ' + prog + ' <a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#ff4d4f;">删除</a></div>';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border-light,#f0f0f0);"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:11px;">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span>' + badge + ' ' + prog + ' <a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:#e03131;">删除</a></div>';
   }).join('');
 }
 window.projSaveMilestone = function(btn) {
@@ -11778,7 +11778,7 @@ window.projWikiSelect = function(pageId) {
   _projWikiCur = pageId; projWikiRenderTree();
   api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) {
     var p = (res && res.code === 0) ? res.data : null; var c = document.getElementById('projWikiContent'); if (!p || !c) return;
-    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">' + escapeHtml(p.title) + '</b><span><button class="btn btn-sm" onclick="projWikiEdit(' + p.id + ')">编辑</button> <button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="projWikiDelete(' + p.id + ')">删除</button></span></div>'
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">' + escapeHtml(p.title) + '</b><span><button class="btn btn-sm" onclick="projWikiEdit(' + p.id + ')">编辑</button> <button class="btn btn-sm" style="color:#e03131;border-color:#e03131;" onclick="projWikiDelete(' + p.id + ')">删除</button></span></div>'
       + '<div id="projWikiToc"></div>'
       + '<div class="proj-md" id="projWikiBody" style="font-size:13px;line-height:1.7;">' + projMd(p.content) + '</div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">更新人 ' + escapeHtml(p.updatedBy || '-') + ' · ' + escapeHtml((p.updatedAt || '').replace('T', ' ').slice(0, 16)) + '</div>';
@@ -11855,7 +11855,7 @@ window.loadProjectHome = function() {
     var overdueN = (d.myTasks || []).filter(function(t) { return t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday; }).length;
     var tasks = (d.myTasks || []).map(function(t) {
       var od = t.dueDate && t.status !== 'DONE' && t.dueDate < _homeToday;
-      return '<div style="padding:3px 0;">' + (t.priority === 'HIGH' ? '<span style="color:#ff4d4f;">[高] </span>' : '') + escapeHtml(t.title) + ' <span style="color:var(--text-muted);font-size:11px;">@' + escapeHtml(t.projectName) + (t.dueDate ? ' · ' + t.dueDate : '') + '</span>' + (od ? ' <span style="color:#ff4d4f;font-weight:600;font-size:11px;">超期</span>' : '') + '</div>';
+      return '<div style="padding:3px 0;">' + (t.priority === 'HIGH' ? '<span style="color:#e03131;">[高] </span>' : '') + escapeHtml(t.title) + ' <span style="color:var(--text-muted);font-size:11px;">@' + escapeHtml(t.projectName) + (t.dueDate ? ' · ' + t.dueDate : '') + '</span>' + (od ? ' <span style="color:#e03131;font-weight:600;font-size:11px;">超期</span>' : '') + '</div>';
     }).join('') || empty();
     // 个人仪表盘 KPI 横幅 + 我的任务状态环图
     var mt = d.myTasks || [];
@@ -11865,18 +11865,18 @@ window.loadProjectHome = function() {
     var kpiCard = function(v, l, c) { return '<div style="flex:1;min-width:90px;background:var(--bg-card,#fff);border:1px solid var(--divider);border-radius:8px;padding:10px 14px;"><div style="font-size:22px;font-weight:700;color:' + (c || 'var(--text-regular)') + ';">' + v + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + l + '</div></div>'; };
     var kpi = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
       + kpiCard((d.myProjects || []).length, '我负责项目')
-      + kpiCard((d.favorites || []).length, '我的收藏', '#faad14')
+      + kpiCard((d.favorites || []).length, '我的收藏', '#e8930c')
       + kpiCard(mt.length, '我的待办', '#1677ff')
-      + kpiCard(overdueN, '超期任务', overdueN ? '#ff4d4f' : '#52c41a')
-      + kpiCard((d.pendingApprovals || []).length, '待我审批', (d.pendingApprovals || []).length ? '#fa8c16' : '#52c41a')
+      + kpiCard(overdueN, '超期任务', overdueN ? '#e03131' : '#2f9e44')
+      + kpiCard((d.pendingApprovals || []).length, '待我审批', (d.pendingApprovals || []).length ? '#fa8c16' : '#2f9e44')
       + '</div>';
     // 任务状态环图(conic)
     var donut = '';
     if (mt.length) {
       var t1 = tDone / mt.length * 100, t2 = (tDone + tDoing) / mt.length * 100;
       donut = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:12px;border:1px solid var(--divider);border-radius:8px;">'
-        + '<div style="width:84px;height:84px;border-radius:50%;background:conic-gradient(#52c41a 0 ' + t1.toFixed(1) + '%,#1677ff ' + t1.toFixed(1) + '% ' + t2.toFixed(1) + '%,#8c8c8c ' + t2.toFixed(1) + '% 100%);position:relative;flex-shrink:0;"><div style="position:absolute;inset:16px;background:var(--bg-card,#fff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + mt.length + '</div></div>'
-        + '<div style="font-size:12px;line-height:2;"><div><span style="color:#52c41a;">●</span> 完成 ' + tDone + '</div><div><span style="color:#1677ff;">●</span> 进行中 ' + tDoing + '</div><div><span style="color:#8c8c8c;">●</span> 待办 ' + tTodo + '</div></div>'
+        + '<div style="width:84px;height:84px;border-radius:50%;background:conic-gradient(#2f9e44 0 ' + t1.toFixed(1) + '%,#1677ff ' + t1.toFixed(1) + '% ' + t2.toFixed(1) + '%,#8c8c8c ' + t2.toFixed(1) + '% 100%);position:relative;flex-shrink:0;"><div style="position:absolute;inset:16px;background:var(--bg-card,#fff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + mt.length + '</div></div>'
+        + '<div style="font-size:12px;line-height:2;"><div><span style="color:#2f9e44;">●</span> 完成 ' + tDone + '</div><div><span style="color:#1677ff;">●</span> 进行中 ' + tDoing + '</div><div><span style="color:#8c8c8c;">●</span> 待办 ' + tTodo + '</div></div>'
         + '<div style="margin-left:auto;font-size:12px;color:var(--text-muted);">我的任务概览</div></div>';
     } else {
       donut = '<div style="margin-bottom:14px;padding:14px;border:1px solid var(--divider);border-radius:8px;text-align:center;color:var(--text-muted);font-size:13px;">🎉 暂无待办任务，保持节奏！</div>';
@@ -11886,7 +11886,7 @@ window.loadProjectHome = function() {
       + card('我的收藏 (' + (d.favorites || []).length + ')', favs)
       + card('最近访问', recent)
       + card('待我审批的发布 (' + (d.pendingApprovals || []).length + ')', appr)
-      + '</div><div style="margin-top:14px;">' + card('我的待办 (' + (d.myTasks || []).length + ')' + (overdueN ? ' <span style="color:#ff4d4f;font-weight:600;">· 超期 ' + overdueN + '</span>' : ''), tasks) + '</div>';
+      + '</div><div style="margin-top:14px;">' + card('我的待办 (' + (d.myTasks || []).length + ')' + (overdueN ? ' <span style="color:#e03131;font-weight:600;">· 超期 ' + overdueN + '</span>' : ''), tasks) + '</div>';
   }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 };
 window.loadProjectTemplates = function() {
@@ -11900,7 +11900,7 @@ window.loadProjectTemplates = function() {
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模板名</th><th>类型</th><th>描述</th><th>创建人</th><th style="width:160px;">操作</th></tr></thead><tbody>';
       ts.forEach(function(t) {
         h += '<tr><td><b>' + escapeHtml(t.templateName) + '</b></td><td>' + escapeHtml(PROJ_TYPE_LABEL[t.templateType] || t.templateType || '-') + '</td><td>' + escapeHtml(t.description || '-') + '</td><td>' + escapeHtml(t.createdBy || '-') + '</td>'
-          + '<td><a href="#" onclick="projFromTemplateModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:8px;">新建项目</a><a href="#" onclick="projDeleteTemplate(' + t.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+          + '<td><a href="#" onclick="projFromTemplateModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:8px;">新建项目</a><a href="#" onclick="projDeleteTemplate(' + t.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -11963,7 +11963,7 @@ window.projDoCompare = function() {
         ? '<a href="#" onclick="projCmpGoDetail(' + pid + ');return false;" style="color:var(--primary);font-weight:600;" title="打开项目详情">' + escapeHtml(r.projectName) + '</a>'
         : '<b>' + escapeHtml(r.projectName) + '</b>';
       h += '<tr><td>' + nameCell + '</td>'
-        + barCell(r.assetTotal, mAsset, '#1677ff') + barCell(r.memberCount, mMem, '#52c41a')
+        + barCell(r.assetTotal, mAsset, '#1677ff') + barCell(r.memberCount, mMem, '#2f9e44')
         + barCell(r.releaseTotal, mRel, '#722ed1') + barCell(r.releasePending, mPend, '#fa8c16') + '</tr>';
     });
     h += '</tbody></table>';
@@ -11985,7 +11985,7 @@ window.projSaveAsTemplate = function(pid) {
 };
 
 /* ===== PM-M5：发布管理 ===== */
-var REL_STATUS = { PENDING: { t: '待审批', c: '#fa8c16' }, APPROVED: { t: '已通过', c: '#1677ff' }, REJECTED: { t: '已驳回', c: '#8c8c8c' }, RELEASED: { t: '已发布', c: '#52c41a' }, ROLLED_BACK: { t: '已回滚', c: '#ff4d4f' } };
+var REL_STATUS = { PENDING: { t: '待审批', c: '#fa8c16' }, APPROVED: { t: '已通过', c: '#1677ff' }, REJECTED: { t: '已驳回', c: '#8c8c8c' }, RELEASED: { t: '已发布', c: '#2f9e44' }, ROLLED_BACK: { t: '已回滚', c: '#e03131' } };
 var _projReleases = [];
 window.projRelDetail = function(rid) {
   var r = (_projReleases || []).filter(function(x) { return x.id === rid; })[0]; if (!r) return;
@@ -12001,7 +12001,7 @@ window.projRelDetail = function(rid) {
 };
 function projRelActionLinks(r, scope) {
   var s = r.status, rid = r.id, a = '';
-  if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:#52c41a;margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:#ff4d4f;">驳回</a>';
+  if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:#2f9e44;margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:#e03131;">驳回</a>';
   else if (s === 'APPROVED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'release\',\'' + scope + '\');return false;" style="color:var(--primary);">发布上线</a>';
   else if (s === 'RELEASED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:#d48806;">回滚</a>';
   else a = '<span style="color:var(--text-muted);">-</span>';
@@ -12224,13 +12224,13 @@ window.umRenderUsers = function() {
     var on = u.status === 1 || u.status === '1';
     var chips = (u.roleIds || []).map(function(id) { return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(umRoleName(id)) + '</span>'; }).join('') || '<span style="color:var(--text-muted);">-</span>';
     h += '<tr><td><b>' + escapeHtml(u.username) + '</b></td><td>' + escapeHtml(u.nickname || '-') + '</td>'
-      + '<td><span style="color:' + (on ? '#52c41a' : '#8c8c8c') + ';font-weight:500;">' + (on ? '启用' : '停用') + '</span></td>'
+      + '<td><span style="color:' + (on ? '#2f9e44' : '#8c8c8c') + ';font-weight:500;">' + (on ? '启用' : '停用') + '</span></td>'
       + '<td>' + chips + '</td>'
       + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
       + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:#d48806;margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
-      + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+      + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
 };
@@ -12298,11 +12298,11 @@ window.umRenderRoles = function() {
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>角色编码</th><th>名称</th><th>描述</th><th>权限点</th><th style="width:200px;">操作</th></tr></thead><tbody>';
   _umRoles.forEach(function(r) {
     var perms = (r.perms || []);
-    var permChips = perms.length ? perms.map(function(p) { return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:' + (p === '*' ? 'rgba(82,196,26,.12);color:#52c41a' : 'var(--bg-hover);color:var(--text-regular)') + ';">' + escapeHtml(p === '*' ? '全部权限(*)' : p) + '</span>'; }).join('') : '<span style="color:var(--text-muted);">-</span>';
+    var permChips = perms.length ? perms.map(function(p) { return '<span style="display:inline-block;font-size:11px;padding:0 6px;border-radius:8px;margin:1px;background:' + (p === '*' ? 'rgba(47,158,68,.12);color:#2f9e44' : 'var(--bg-hover);color:var(--text-regular)') + ';">' + escapeHtml(p === '*' ? '全部权限(*)' : p) + '</span>'; }).join('') : '<span style="color:var(--text-muted);">-</span>';
     h += '<tr><td style="font-family:monospace;">' + escapeHtml(r.roleCode) + '</td><td><b>' + escapeHtml(r.roleName || '-') + '</b></td><td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.description || '-') + '</td><td>' + permChips + '</td>'
       + '<td><a href="#" onclick="umRoleModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umPermModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
-      + '<a href="#" onclick="umDeleteRole(' + r.id + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+      + '<a href="#" onclick="umDeleteRole(' + r.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
 };
@@ -12363,11 +12363,11 @@ window.smToggleAuto = function() {
   if (cb && cb.checked) _smTimer = setInterval(function() { if (document.getElementById('settingsMonitorPanel').style.display !== 'none') smLoad(); else smStopAuto(); }, 10000);
 };
 function smBar(pct, level) {
-  var color = level === 'danger' ? '#ff4d4f' : (level === 'warn' ? '#faad14' : '#52c41a');
+  var color = level === 'danger' ? '#e03131' : (level === 'warn' ? '#e8930c' : '#2f9e44');
   return '<div style="height:6px;background:var(--bg-hover,#eee);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="width:' + pct + '%;height:100%;background:' + color + ';"></div></div>';
 }
 function smTile(label, big, sub, pct, level) {
-  var color = level === 'danger' ? '#ff4d4f' : (level === 'warn' ? '#faad14' : 'var(--text-primary)');
+  var color = level === 'danger' ? '#e03131' : (level === 'warn' ? '#e8930c' : 'var(--text-primary)');
   return '<div style="flex:1;min-width:150px;border:1px solid var(--divider,#eee);border-radius:8px;padding:12px 14px;">'
     + '<div style="font-size:12px;color:var(--text-muted);">' + label + '</div>'
     + '<div style="font-size:22px;font-weight:700;margin-top:4px;color:' + color + ';">' + big + '</div>'
@@ -12409,7 +12409,7 @@ function smRenderMetrics(m) {
   if (sys.cpuPct >= 0 && sys.cpuLevel === 'danger') alerts.push('CPU ' + sys.cpuPct + '%');
   if (!db.ok) alerts.push('元数据库连接异常');
   var bar = document.getElementById('smAlertBar');
-  if (bar) { if (alerts.length) { bar.style.display = ''; bar.innerHTML = '<div style="padding:8px 14px;border-radius:6px;background:rgba(255,77,79,.1);color:#ff4d4f;font-size:13px;">⚠ 告警：' + alerts.map(escapeHtml).join('；') + '</div>'; } else { bar.style.display = 'none'; } }
+  if (bar) { if (alerts.length) { bar.style.display = ''; bar.innerHTML = '<div style="padding:8px 14px;border-radius:6px;background:rgba(224,49,49,.1);color:#e03131;font-size:13px;">⚠ 告警：' + alerts.map(escapeHtml).join('；') + '</div>'; } else { bar.style.display = 'none'; } }
 }
 function smRenderServices(list) {
   var box = document.getElementById('smServiceBox'); if (!box) return;
@@ -12417,10 +12417,10 @@ function smRenderServices(list) {
   box.innerHTML = list.map(function(s) {
     var off = !s.alive;
     var click = off ? ' style="cursor:pointer;" title="离线 — 点击去数据源/环境配置排查" onclick="navigateTo(\'settings\',{sm:\'datasource\'})"' : '';
-    return '<div' + click + ' style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid ' + (off ? 'rgba(255,77,79,.4)' : 'var(--divider,#eee)') + ';border-radius:6px;margin-bottom:6px;' + (off ? 'cursor:pointer;' : '') + '">'
-      + '<span style="width:9px;height:9px;border-radius:50%;background:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';"></span>'
+    return '<div' + click + ' style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid ' + (off ? 'rgba(224,49,49,.4)' : 'var(--divider,#eee)') + ';border-radius:6px;margin-bottom:6px;' + (off ? 'cursor:pointer;' : '') + '">'
+      + '<span style="width:9px;height:9px;border-radius:50%;background:' + (s.alive ? '#2f9e44' : '#e03131') + ';"></span>'
       + '<div style="flex:1;"><div style="font-size:13px;font-weight:500;">' + escapeHtml(s.name) + '</div><div style="font-size:11px;color:var(--text-muted);">' + escapeHtml(s.desc || '') + '</div></div>'
-      + '<span style="font-size:12px;color:' + (s.alive ? '#52c41a' : '#ff4d4f') + ';">' + (s.alive ? '在线' : (off ? '离线 →' : '离线')) + '</span></div>';
+      + '<span style="font-size:12px;color:' + (s.alive ? '#2f9e44' : '#e03131') + ';">' + (s.alive ? '在线' : (off ? '离线 →' : '离线')) + '</span></div>';
   }).join('');
 }
 function smRenderSchedule(d) {
@@ -12429,7 +12429,7 @@ function smRenderSchedule(d) {
   var rate = total > 0 ? Math.round(suc * 100 / total) : 0;
   function cell(n, l, c) { return '<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + c + ';">' + n + '</div><div style="font-size:11px;color:var(--text-muted);">' + l + '</div></div>'; }
   box.innerHTML = '<div style="border:1px solid var(--divider,#eee);border-radius:8px;padding:14px;cursor:pointer;" title="点击进入数据运维" onclick="navigateTo(\'operations\')">'
-    + '<div style="display:flex;">' + cell(suc, '成功', '#52c41a') + cell(fail, '失败', '#ff4d4f') + cell(run < 0 ? 0 : run, '运行中', '#1677ff') + cell(total, '总计', 'var(--text-primary)') + '</div>'
+    + '<div style="display:flex;">' + cell(suc, '成功', '#2f9e44') + cell(fail, '失败', '#e03131') + cell(run < 0 ? 0 : run, '运行中', '#1677ff') + cell(total, '总计', 'var(--text-primary)') + '</div>'
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">完成率 ' + rate + '%（统计前一调度日）· <span style="color:var(--primary,#3457d5)">点击进入运维 →</span></div></div>';
 }
 function smRenderAudit(rows) {
@@ -12438,7 +12438,7 @@ function smRenderAudit(rows) {
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>路径</th><th>状态</th></tr></thead><tbody>';
   rows.slice(0, 10).forEach(function(a) {
     var st = a.status || '';
-    h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td><td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.actionType || a.method || '-') + '</td><td style="font-size:12px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td><td style="color:' + (String(st).indexOf('4') === 0 || String(st).indexOf('5') === 0 ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(String(st)) + '</td></tr>';
+    h += '<tr><td style="white-space:nowrap;font-size:12px;">' + escapeHtml(String(a.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td><td>' + escapeHtml(a.userName || '-') + '</td><td>' + escapeHtml(a.actionType || a.method || '-') + '</td><td style="font-size:12px;word-break:break-all;">' + escapeHtml(a.path || '-') + '</td><td style="color:' + (String(st).indexOf('4') === 0 || String(st).indexOf('5') === 0 ? '#e03131' : '#2f9e44') + ';">' + escapeHtml(String(st)) + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table>'
     + '<div style="margin-top:8px;text-align:right;"><a href="javascript:void(0)" onclick="navigateTo(\'governance\',{gov:\'audit\'})" style="font-size:12px;color:var(--primary,#3457d5)">查看全部审计 →</a></div>';
@@ -12458,7 +12458,7 @@ window.loadSecurityCenter = function() {
     var permCnt = (me.perms || []).length, allPerm = (me.perms || []).indexOf('*') >= 0;
     function tile(label, val, color) { return '<div style="flex:1;min-width:160px;border:1px solid var(--divider,#eee);border-radius:8px;padding:12px 14px;"><div style="font-size:12px;color:var(--text-muted);">' + label + '</div><div style="font-size:16px;font-weight:600;margin-top:4px;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div></div>'; }
     card.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
-      + tile('登录认证', enabled ? '已启用' : '未启用（开放访问）', enabled ? '#52c41a' : '#faad14')
+      + tile('登录认证', enabled ? '已启用' : '未启用（开放访问）', enabled ? '#2f9e44' : '#e8930c')
       + tile('当前身份', authed ? escapeHtml(st.username || me.username || '-') : '匿名/未登录', authed ? 'var(--text-primary)' : '#8c8c8c')
       + tile('权限', allPerm ? '全部权限(*)' : (permCnt + ' 项权限点'), 'var(--text-primary)')
       + '</div>'
@@ -12514,7 +12514,7 @@ function secRenderAudit(list) {
       + '<td style="font-size:12px;">' + escapeHtml(a.method || '-') + '</td>'
       + '<td style="font-size:12px;word-break:break-all;max-width:320px;">' + escapeHtml(a.path || '-') + '</td>'
       + '<td style="font-size:12px;">' + escapeHtml(a.ip || '-') + '</td>'
-      + '<td style="color:' + (bad ? '#ff4d4f' : '#52c41a') + ';">' + escapeHtml(st || '-') + '</td></tr>';
+      + '<td style="color:' + (bad ? '#e03131' : '#2f9e44') + ';">' + escapeHtml(st || '-') + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
 }
@@ -12558,12 +12558,12 @@ function loadDatasourceConfig() {
     if (res.code === 0 && res.data) {
       bar.style.display = '';
       if (res.data.available) {
-        bar.style.background = 'rgba(82,196,26,.08)';
-        bar.style.color = '#52c41a';
+        bar.style.background = 'rgba(47,158,68,.08)';
+        bar.style.color = '#2f9e44';
         bar.innerHTML = '● Doris 已连接';
       } else if (res.data.url) {
-        bar.style.background = 'rgba(250,173,20,.08)';
-        bar.style.color = '#faad14';
+        bar.style.background = 'rgba(232,147,12,.08)';
+        bar.style.color = '#e8930c';
         bar.innerHTML = '⚠ Doris 配置已保存，但连接不可用';
       } else {
         bar.style.background = 'rgba(0,0,0,.03)';
@@ -12597,7 +12597,7 @@ function testHiveConnection() {
   }).then(function(r) { return r.json(); }).then(function(res) {
     result.style.display = '';
     if (res.code === 0) {
-      result.style.color = '#52c41a';
+      result.style.color = '#2f9e44';
       result.textContent = '✓ ' + res.data;
     } else {
       result.style.color = 'var(--error)';
@@ -12742,7 +12742,7 @@ function loadOpsManual() {
     var html = '<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">共 ' + res.data.length + ' 条手动执行记录</div>';
     html += '<table class="datamap-table"><thead><tr><th>执行时间</th><th>任务</th><th>状态</th><th>耗时</th></tr></thead><tbody>';
     res.data.forEach(function(r) {
-      var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : r.status === 'FAILED' ? 'color:#e74c3c' : '';
+      var sc = r.status === 'SUCCESS' ? 'color:#2f9e44' : r.status === 'FAILED' ? 'color:#e74c3c' : '';
       html += '<tr><td>' + (r.startTime || '').replace('T', ' ').substring(0, 19) + '</td>'
         + '<td>' + escapeHtml(r.taskType || '') + ':' + (r.scriptId || r.syncTaskId || '') + '</td>'
         + '<td style="' + sc + ';font-weight:600;">' + r.status + '</td>'
@@ -12782,7 +12782,7 @@ function loadOpsIntegration() {
     // 按耗时排序
     res.data.sort(function(a, b) { return (b.duration || 0) - (a.duration || 0); });
     res.data.forEach(function(r) {
-      var sc = r.status === 'SUCCESS' ? 'color:#52c41a' : 'color:#e74c3c';
+      var sc = r.status === 'SUCCESS' ? 'color:#2f9e44' : 'color:#e74c3c';
       var tid = r.syncTaskId || '';
       var taskCell = tid
         ? '<a href="javascript:void(0)" onclick="opsGotoSyncTask(' + tid + ')" style="color:var(--primary,#3457d5)" title="查看该同步任务详情">syncTask:' + tid + '</a>'
@@ -12958,7 +12958,7 @@ function toggleBackfillDetail(el, backfillId) {
     var html = '<table style="width:100%;font-size:11px;border-collapse:collapse;">'
       + '<tr style="background:rgba(0,0,0,.04);"><th style="padding:3px 6px;">日期</th><th>状态</th><th>开始</th><th>结束</th><th>耗时</th></tr>';
     res.data.forEach(function(inst) {
-      var sc = inst.status === 'SUCCESS' ? 'color:#52c41a;' : inst.status === 'FAILED' ? 'color:#e74c3c;' : inst.status === 'RUNNING' ? 'color:#3457d5;' : '';
+      var sc = inst.status === 'SUCCESS' ? 'color:#2f9e44;' : inst.status === 'FAILED' ? 'color:#e74c3c;' : inst.status === 'RUNNING' ? 'color:#3457d5;' : '';
       html += '<tr style="border-bottom:1px solid rgba(0,0,0,.05);">'
         + '<td style="padding:3px 6px;">' + inst.runDate + '</td>'
         + '<td style="' + sc + 'font-weight:600;">' + inst.status + '</td>'
@@ -13060,7 +13060,7 @@ function testAiConfig() {
     model: document.getElementById('aiCfgModel').value
   }).then(function(res) {
     if (res.code === 0) {
-      status.innerHTML = '<span style="color:#52c41a;">✓ 连接成功</span>';
+      status.innerHTML = '<span style="color:#2f9e44;">✓ 连接成功</span>';
     } else {
       status.innerHTML = '<span style="color:var(--error);">✗ ' + escapeHtml(res.msg || '连接失败') + '</span>';
     }
@@ -13092,9 +13092,9 @@ function openStoreConfig() {
       + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">维度(须与模型一致,换模型/维度需重建索引)</label>'
       + '<input id="embCfgDim" class="prop-input" style="width:100%;" value="' + escapeHtml(String(e.dim || '1024')) + '"></div>'
       + '<div style="border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--text-muted);">运行态: 嵌入 '
-      + (e.available ? '<span style="color:#52c41a">✓可用</span>' : '<span style="color:#cf1322">✗未配置</span>')
-      + ' · 向量库 ' + (v.ready ? ('<span style="color:#52c41a">✓就绪(' + escapeHtml(v.collection || '') + ')</span>') : '<span style="color:#cf1322">✗未连</span>')
-      + ' · 图库 ' + (g.ready ? '<span style="color:#52c41a">✓就绪</span>' : '<span style="color:#cf1322">✗未连</span>') + '</div>'
+      + (e.available ? '<span style="color:#2f9e44">✓可用</span>' : '<span style="color:#cf1322">✗未配置</span>')
+      + ' · 向量库 ' + (v.ready ? ('<span style="color:#2f9e44">✓就绪(' + escapeHtml(v.collection || '') + ')</span>') : '<span style="color:#cf1322">✗未连</span>')
+      + ' · 图库 ' + (g.ready ? '<span style="color:#2f9e44">✓就绪</span>' : '<span style="color:#cf1322">✗未连</span>') + '</div>'
       + '<div id="embCfgStatus" style="font-size:12px;"></div></div>',
       '<button class="btn btn-sm" onclick="reindexStore()" style="margin-right:8px;" title="把表/术语/指标重新嵌入向量库+血缘镜像图库">重建索引</button>'
       + '<button class="btn btn-primary btn-sm" onclick="saveStoreConfig()">保存</button>'
@@ -13136,7 +13136,7 @@ function reindexStore() {
   st.innerHTML = '<span style="color:var(--text-muted);">重建中(向量嵌入较慢,请稍候)...</span>';
   apiPost('/api/ai/store/sync', {}).then(function(res) {
     var d = res.data || {};
-    st.innerHTML = '<span style="color:#52c41a;">✓ 图库边 ' + (d.graphEdges != null ? d.graphEdges : '-') + ' · 向量点 ' + (d.vectorPoints != null ? d.vectorPoints : '-') + '</span>';
+    st.innerHTML = '<span style="color:#2f9e44;">✓ 图库边 ' + (d.graphEdges != null ? d.graphEdges : '-') + ' · 向量点 ' + (d.vectorPoints != null ? d.vectorPoints : '-') + '</span>';
   }).catch(function() { st.innerHTML = '<span style="color:var(--error);">✗ 重建失败</span>'; });
 }
 
@@ -13310,7 +13310,7 @@ function iwShowModal(type, title, msg) {
   var modal = document.getElementById('iwResultModal');
   var iconEl = document.getElementById('iwResultIcon');
   if (type === 'success') {
-    iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(82,196,26,.1)" stroke="#52c41a" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#52c41a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(47,158,68,.1)" stroke="#2f9e44" stroke-width="2"/><path d="M15 24l6 6 12-12" stroke="#2f9e44" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
   document.getElementById('iwResultTitle').textContent = title;
   document.getElementById('iwResultMsg').innerHTML = msg;
@@ -13653,7 +13653,7 @@ window.dbsyncToggleFieldMap = function(btn) {
   var srcDsId  = (document.getElementById('dfsSrcDsId') || {}).value;
   var srcDb    = (document.getElementById('dfsSrcDb')   || {}).value;
   if (!srcDsId || !srcDb || !srcTable) {
-    content.innerHTML = '<div style="color:#faad14;font-size:12px;padding:8px 0;">请先选择源数据源、源库和源表</div>';
+    content.innerHTML = '<div style="color:#e8930c;font-size:12px;padding:8px 0;">请先选择源数据源、源库和源表</div>';
     return;
   }
   var createSel = row.querySelector('.dfs-auto-create-sel');
@@ -13673,7 +13673,7 @@ window.dbsyncToggleFieldMap = function(btn) {
       var fields = res.data.map(function(col) { return { source: col.name, target: col.name, sync: true }; });
       content.innerHTML = dbsyncRenderFieldMapHtml(fields);
     }).catch(function() {
-      content.innerHTML = '<div style="color:#ff4d4f;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
+      content.innerHTML = '<div style="color:#e03131;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
     });
     return;
   }
@@ -13683,7 +13683,7 @@ window.dbsyncToggleFieldMap = function(btn) {
   var tgtDb    = (document.getElementById('dfsTgtDb')   || {}).value;
   var tgtTable = row ? (row.querySelector('.dfs-tgt-table') || {}).value : '';
   if (!tgtDsId || !tgtDb || !tgtTable) {
-    content.innerHTML = '<div style="color:#faad14;font-size:12px;padding:8px 0;">请先选择目标数据源、目标库，并在上方选择已存在的目标表</div>';
+    content.innerHTML = '<div style="color:#e8930c;font-size:12px;padding:8px 0;">请先选择目标数据源、目标库，并在上方选择已存在的目标表</div>';
     return;
   }
   var tgtUrl = '/api/datasource/' + encodeURIComponent(tgtDsId) + '/columns?db=' + encodeURIComponent(tgtDb) + '&table=' + encodeURIComponent(tgtTable);
@@ -13704,10 +13704,10 @@ window.dbsyncToggleFieldMap = function(btn) {
       return { source: col.name, target: match || '', sync: !!match }; // 同名才默认勾选同步
     });
     var warn = (tgtNames.length === 0)
-      ? '<div style="color:#faad14;font-size:12px;padding:4px 0;">未拉到目标表字段，请确认已选择存在的目标表</div>' : '';
+      ? '<div style="color:#e8930c;font-size:12px;padding:4px 0;">未拉到目标表字段，请确认已选择存在的目标表</div>' : '';
     content.innerHTML = warn + dbsyncRenderFieldMapHtml(fields, tgtNames);
   }).catch(function() {
-    content.innerHTML = '<div style="color:#ff4d4f;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
+    content.innerHTML = '<div style="color:#e03131;font-size:12px;padding:8px 0;">字段加载失败，请检查网络</div>';
   });
 };
 
@@ -14168,7 +14168,7 @@ window.dbsyncOpenTemplates = function() {
     return '<tr><td><b>' + escapeHtml(t.name) + '</b></td>'
       + '<td style="font-size:11px;color:var(--text-muted);">' + escapeHtml(t.syncMode) + ' · ' + escapeHtml(t.writeMode) + ' · ' + escapeHtml(t.writeChannel) + ' · 批' + (t.batchSize || '-') + (t.scheduleCron ? ' · ' + escapeHtml(t.scheduleCron) : '') + '</td>'
       + '<td style="white-space:nowrap;"><a href="#" onclick="dbsyncNewFromTemplate(' + i + ');return false;" style="color:var(--primary);margin-right:8px;">新建</a>'
-      + '<a href="#" onclick="dbsyncDelTemplate(' + i + ');return false;" style="color:#ff4d4f;">删除</a></td></tr>';
+      + '<a href="#" onclick="dbsyncDelTemplate(' + i + ');return false;" style="color:#e03131;">删除</a></td></tr>';
   }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text-muted);">暂无模板。可在任务行菜单「另存为模板」保存常用配置。</td></tr>';
   ov.innerHTML = '<div class="dbsync-modal" style="width:560px;max-width:94vw;">'
     + '<div class="dbsync-modal-header"><span>任务模板</span><button class="dbsync-modal-close" onclick="document.getElementById(\'dbsyncTplOverlay\').remove()">&times;</button></div>'
@@ -14373,7 +14373,7 @@ window.dbsyncTestConnection = function() {
     var d = (res && res.code === 0) ? res.data : res;
     var checks = (d && d.checks) || [];
     var h = '<table class="dbsync-exec-table" style="font-size:12px;"><thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead><tbody>';
-    checks.forEach(function(c) { h += '<tr><td>' + escapeHtml(c.name || '-') + '</td><td style="color:' + (c.ok ? '#52c41a' : '#ff4d4f') + ';font-weight:500;">' + (c.ok ? '通过' : '失败') + '</td><td style="max-width:360px;word-break:break-all;">' + escapeHtml(c.message || '') + '</td></tr>'; });
+    checks.forEach(function(c) { h += '<tr><td>' + escapeHtml(c.name || '-') + '</td><td style="color:' + (c.ok ? '#2f9e44' : '#e03131') + ';font-weight:500;">' + (c.ok ? '通过' : '失败') + '</td><td style="max-width:360px;word-break:break-all;">' + escapeHtml(c.message || '') + '</td></tr>'; });
     h += '</tbody></table>';
     dbsyncShowPreview((d && d.ok) ? '连接测试：全部通过 ✓' : '连接测试：存在失败项', h);
   }).catch(function() { showToast('连接测试请求失败', 'error'); });
@@ -14785,7 +14785,7 @@ var _dbsyncJobsView = (function() { try { return localStorage.getItem('dbsync.jo
 window.dbsyncSetJobsView = function(v) { _dbsyncJobsView = v; try { localStorage.setItem('dbsync.jobsView', v); } catch (e) {} dbsyncRenderJobs(_dbsyncRenderBase); };
 function dbsyncJobsCards(list) {
   var modeLabel = { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' };
-  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#2f9e44'], STOPPED: ['已停止', '#e8930c'], FAILED: ['失败', '#e03131'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#2f9e44'] };
   var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
   list.forEach(function(job) {
     var st = stMeta[job.status] || [job.status || '未运行', '#8c8c8c'];
@@ -14838,8 +14838,8 @@ function dbsyncRenderJobs(list) {
   }
   var kpiHtml = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
     + kpi('总任务', base.length, 'var(--text-regular,#1f2329)', 'ALL')
-    + kpi('运行中', cnt('RUNNING'), '#52c41a', 'RUNNING')
-    + kpi('失败', cnt('FAILED'), '#ff4d4f', 'FAILED')
+    + kpi('运行中', cnt('RUNNING'), '#2f9e44', 'RUNNING')
+    + kpi('失败', cnt('FAILED'), '#e03131', 'FAILED')
     + kpi('CDC 实时', base.filter(function(j) { return j.syncMode === 'CDC'; }).length, 'var(--primary,#3457d5)')
     + '</div>';
   // 同步任务风险概览(创新): 基于已加载 base 前端计算失败率与风险态, 精简单行风险条
@@ -15626,7 +15626,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     html += '<div style="margin-top:10px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">近 ' + recent.length + ' 次执行<span style="color:var(--text-muted);opacity:.7;"> · 点击查看历史</span></div><div style="display:flex;gap:3px;align-items:flex-end;">';
     recent.forEach(function(ex) {
       var k = dbsyncExecKind(ex.status);
-      var c = k === 'ok' ? '#52c41a' : k === 'err' ? '#ff4d4f' : '#3457d5';
+      var c = k === 'ok' ? '#2f9e44' : k === 'err' ? '#e03131' : '#3457d5';
       var tip = dbsyncFmtTime(ex.startTime || ex.createTime) + ' · ' + dbsyncExecLabel(ex.status) + ' · 读' + (Number(ex.readCount) || 0).toLocaleString() + '/写' + (Number(ex.writeCount) || 0).toLocaleString() + '/错' + (Number(ex.errorCount) || 0).toLocaleString();
       html += '<span onclick="dbsyncGoTab(\'history\')" title="' + escapeHtml(tip) + '" style="width:14px;height:22px;border-radius:2px;background:' + c + ';opacity:.85;cursor:pointer;"></span>';
     });
@@ -15733,7 +15733,7 @@ function dbsyncFillDepSelect(jobId) {
 // 依赖 DAG 拓扑：上游节点纵向排列 → 贝塞尔连线汇入本任务节点(纯前端 SVG)
 function dbsyncDepGraph(ups, selfLabel) {
   if (!ups.length) return '';
-  var stColor = function(s) { return s === 'RUNNING' ? '#52c41a' : s === 'FAILED' ? '#ff4d4f' : s === 'STOPPED' ? '#faad14' : '#8c8c8c'; };
+  var stColor = function(s) { return s === 'RUNNING' ? '#2f9e44' : s === 'FAILED' ? '#e03131' : s === 'STOPPED' ? '#e8930c' : '#8c8c8c'; };
   var W = 460, rowH = 38, padY = 14;
   var H = Math.max(rowH * ups.length + padY * 2, 70);
   var upX = 14, upW = 150, selfX = 280, selfW = 160;
@@ -15880,7 +15880,7 @@ function dbsyncRenderConfig(job) {
         html += '<table class="dfs-field-map-table" style="margin-top:8px;"><thead><tr><th>源字段</th><th>目标字段</th><th style="width:70px;">同步</th></tr></thead><tbody>';
         fields.forEach(function(fm) {
           html += '<tr><td>' + escapeHtml(fm.source || '') + '</td><td>' + escapeHtml(fm.target || fm.source || '') + '</td><td>'
-            + (fm.sync === false ? '<span style="color:var(--text-muted);">不同步</span>' : '<span style="color:#52c41a;">同步</span>') + '</td></tr>';
+            + (fm.sync === false ? '<span style="color:var(--text-muted);">不同步</span>' : '<span style="color:#2f9e44;">同步</span>') + '</td></tr>';
         });
         html += '</tbody></table>';
       }
@@ -15921,7 +15921,7 @@ function dbsyncHistCalendar(view) {
       var d = new Date(start); d.setDate(start.getDate() + wk * 7 + dow);
       if (d > today) { cells += '<div style="width:13px;height:13px;"></div>'; continue; }
       var ds = fmt(d), n = cnt[ds] || 0, f = fail[ds] || 0;
-      var border = f > 0 ? 'box-shadow:inset 0 0 0 2px #ff4d4f;' : '';
+      var border = f > 0 ? 'box-shadow:inset 0 0 0 2px #e03131;' : '';
       cells += '<div title="' + ds + ' · ' + n + ' 次执行' + (f ? ' (含' + f + '次失败)' : '') + '" style="width:13px;height:13px;border-radius:2px;background:' + colorOf(n) + ';' + border + '"></div>';
     }
     cells += '</div>';
@@ -15947,7 +15947,7 @@ function dbsyncHistTimeline(view) {
   items.sort(function(a, b) { return b.start - a.start; });
   var rows = items.slice(0, 60).map(function(x) {
     var kind = dbsyncExecKind(x.ex.status);
-    var color = kind === 'ok' ? '#52c41a' : kind === 'err' ? '#ff4d4f' : 'var(--primary)';
+    var color = kind === 'ok' ? '#2f9e44' : kind === 'err' ? '#e03131' : 'var(--primary)';
     var left = (x.start - minT) / span * 100;
     var w = Math.max(1.2, (x.end - x.start) / span * 100);
     if (left + w > 100) w = 100 - left;
@@ -15994,7 +15994,7 @@ function dbsyncRenderHistory(execs) {
   view.forEach(function(ex, i) {
     var kind = dbsyncExecKind(ex.status);
     var label = dbsyncExecLabel(ex.status);
-    var color = kind === 'ok' ? '#52c41a' : kind === 'err' ? '#ff4d4f' : 'var(--primary)';
+    var color = kind === 'ok' ? '#2f9e44' : kind === 'err' ? '#e03131' : 'var(--primary)';
     var logFull = ex.log ? String(ex.log) : '';
     var logId = 'dbsyncDetailExecLog_' + i;
     var logCell = logFull
@@ -16066,7 +16066,7 @@ function dbsyncRenderAudit(audits, _keepCache) {
     + '</tr></thead><tbody>';
   audits.forEach(function(a) {
     var opLabel = _dbsyncAuditOpLabel[a.operationType] || (a.operationType || '-');
-    var opColor = a.operationType === 'RUN' ? '#52c41a' : a.operationType === 'STOP' ? '#ff4d4f' : 'var(--primary)';
+    var opColor = a.operationType === 'RUN' ? '#2f9e44' : a.operationType === 'STOP' ? '#e03131' : 'var(--primary)';
     var detail = a.changeDetail ? String(a.changeDetail) : '';
     var detailCell = detail
       ? '<span title="' + escapeHtml(detail) + '">' + escapeHtml(detail.length > 60 ? detail.slice(0, 60) + '…' : detail) + '</span>'
@@ -16172,7 +16172,7 @@ window.dbsyncQuickSwitch = function() {
 };
 function dbsyncQsRender(kw) {
   kw = (kw || '').trim().toLowerCase();
-  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#52c41a'], STOPPED: ['已停止', '#faad14'], FAILED: ['失败', '#ff4d4f'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { CREATED: ['未运行', '#8c8c8c'], RUNNING: ['运行中', '#2f9e44'], STOPPED: ['已停止', '#e8930c'], FAILED: ['失败', '#e03131'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#2f9e44'] };
   var list = (_dbsyncAllJobs || []).filter(function(j) {
     if (!kw) return true;
     return ((j.jobName || '') + ' ' + (j.sourceDsName || '') + '.' + (j.sourceDb || '') + ' ' + (j.targetDsName || '') + '.' + (j.targetDb || '')).toLowerCase().indexOf(kw) >= 0;
@@ -16272,11 +16272,11 @@ function dbsyncRenderDashboardSummary(s) {
   var box = document.getElementById('dbsyncDashboardSummary');
   if (!box) return;
   var rate = (s.successRate != null) ? (Math.round(s.successRate * 1000) / 10) + '%' : '-';
-  var rateColor = (s.successRate != null && s.successRate < 0.9) ? '#ff4d4f' : '#52c41a';
+  var rateColor = (s.successRate != null && s.successRate < 0.9) ? '#e03131' : '#2f9e44';
   var html = ''
     + dbsyncDashTile('任务总数', s.jobsTotal != null ? s.jobsTotal : '-')
     + dbsyncDashTile('运行中', s.running != null ? s.running : '-', '#1677ff')
-    + dbsyncDashTile('失败任务', s.failed != null ? s.failed : '-', (s.failed > 0 ? '#ff4d4f' : ''), s.failed > 0)
+    + dbsyncDashTile('失败任务', s.failed != null ? s.failed : '-', (s.failed > 0 ? '#e03131' : ''), s.failed > 0)
     + dbsyncDashTile('成功率(近200次)', rate, rateColor, (s.successRate != null && s.successRate < 0.9))
     + dbsyncDashTile('今日执行', s.runsToday != null ? s.runsToday : '-')
     + dbsyncDashTile('今日写入行', s.rowsToday != null ? s.rowsToday : '-')
@@ -16313,10 +16313,10 @@ function dbsyncRenderDashboard(list) {
   var html = '';
   list.forEach(function(job) {
     var isFailed = job.status === 'FAILED' || job.lastStatus === 'FAILED';
-    var rowStyle = ' style="cursor:pointer;' + (isFailed ? 'background:rgba(255,77,79,.04);' : '') + '" title="点击查看明细" onclick="dbsyncCloseDashboard();dbsyncOpenDetail(' + job.id + ')"';
+    var rowStyle = ' style="cursor:pointer;' + (isFailed ? 'background:rgba(224,49,49,.04);' : '') + '" title="点击查看明细" onclick="dbsyncCloseDashboard();dbsyncOpenDetail(' + job.id + ')"';
     var statusCls = 'dbsync-status-badge ' + (job.status || 'CREATED');
     var statusLabel = { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }[job.status] || (job.status || '-');
-    var lastStatusColor = job.lastStatus === 'FAILED' ? 'color:#ff4d4f;font-weight:500;' : 'color:var(--text-muted);';
+    var lastStatusColor = job.lastStatus === 'FAILED' ? 'color:#e03131;font-weight:500;' : 'color:var(--text-muted);';
     var lagCell = (job.cdcLagMs != null) ? (job.cdcLagMs + ' ms') : '-';
     html += '<tr' + rowStyle + '>'
       + '<td>' + escapeHtml(job.jobName || ('#' + job.id)) + '</td>'
@@ -16325,7 +16325,7 @@ function dbsyncRenderDashboard(list) {
       + '<td style="' + lastStatusColor + '">' + escapeHtml(job.lastStatus || '-') + '</td>'
       + '<td>' + (job.lastReadCount != null ? job.lastReadCount : '-') + '</td>'
       + '<td>' + (job.lastWriteCount != null ? job.lastWriteCount : '-') + '</td>'
-      + '<td style="' + (job.lastErrorCount > 0 ? 'color:#ff4d4f;font-weight:500;' : '') + '">' + (job.lastErrorCount != null ? job.lastErrorCount : '-') + '</td>'
+      + '<td style="' + (job.lastErrorCount > 0 ? 'color:#e03131;font-weight:500;' : '') + '">' + (job.lastErrorCount != null ? job.lastErrorCount : '-') + '</td>'
       + '<td>' + escapeHtml(lagCell) + '</td>'
       + '</tr>';
   });
@@ -16338,7 +16338,7 @@ function dbsyncRenderDashCharts(list) {
   list = list || [];
   // 状态分布(以运行状态计)
   var stCnt = {}; list.forEach(function(j) { var s = j.status || 'CREATED'; stCnt[s] = (stCnt[s] || 0) + 1; });
-  var stMeta = { RUNNING: ['运行中', '#52c41a'], FAILED: ['失败', '#ff4d4f'], STOPPED: ['已停止', '#faad14'], CREATED: ['未运行', '#8c8c8c'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#52c41a'] };
+  var stMeta = { RUNNING: ['运行中', '#2f9e44'], FAILED: ['失败', '#e03131'], STOPPED: ['已停止', '#e8930c'], CREATED: ['未运行', '#8c8c8c'], PAUSED: ['暂停', '#3457d5'], SUCCESS: ['成功', '#2f9e44'] };
   var segs = Object.keys(stCnt).map(function(s) { return { label: (stMeta[s] || [s])[0], value: stCnt[s], color: (stMeta[s] || [s, '#8c8c8c'])[1] }; });
   var total = list.length || 1;
   // 环图(conic-gradient)
@@ -16367,7 +16367,7 @@ function dbsyncRenderDashCharts(list) {
   // 同步模式分布环图(以列表全量任务计)
   var allJobs = _dbsyncAllJobs || [];
   var modeCnt = {}; allJobs.forEach(function(j) { var m = j.syncMode || 'FULL'; modeCnt[m] = (modeCnt[m] || 0) + 1; });
-  var modeMeta = { FULL: ['全量', '#3457d5'], INCREMENTAL: ['增量', '#52c41a'], CDC: ['CDC实时', '#722ed1'] };
+  var modeMeta = { FULL: ['全量', '#3457d5'], INCREMENTAL: ['增量', '#2f9e44'], CDC: ['CDC实时', '#722ed1'] };
   var mSegs = Object.keys(modeCnt).map(function(m) { return { label: (modeMeta[m] || [m])[0], value: modeCnt[m], color: (modeMeta[m] || [m, '#8c8c8c'])[1] }; });
   var mTotal = allJobs.length || 1, mAcc = 0, mStops = [];
   mSegs.forEach(function(sg) { var p0 = mAcc / mTotal * 100, p1 = (mAcc + sg.value) / mTotal * 100; mStops.push(sg.color + ' ' + p0.toFixed(1) + '% ' + p1.toFixed(1) + '%'); mAcc += sg.value; });
@@ -16401,7 +16401,7 @@ window.dbsyncOpenReconcile = function(id, nm) {
     }
     var html = '';
     tables.forEach(function(t) {
-      var matchStyle = t.match ? '' : 'color:#ff4d4f;font-weight:500;';
+      var matchStyle = t.match ? '' : 'color:#e03131;font-weight:500;';
       var matchLabel = t.match ? '一致' : '不一致';
       html += '<tr>'
         + '<td>' + escapeHtml(t.table || '-') + '</td>'
@@ -16449,9 +16449,9 @@ window.dbsyncOpenChecksum = function(id, nm) {
     var html = '<table class="dbsync-exec-table" style="width:100%;">'
       + '<thead><tr><th>表名</th><th>分桶数</th><th>是否一致</th></tr></thead><tbody>';
     tables.forEach(function(t) {
-      var matchStyle = t.match ? '' : 'color:#ff4d4f;font-weight:500;';
+      var matchStyle = t.match ? '' : 'color:#e03131;font-weight:500;';
       var matchLabel = t.match ? '一致' : '不一致';
-      var rowStyle = t.error ? 'color:#ff4d4f;' : matchStyle;
+      var rowStyle = t.error ? 'color:#e03131;' : matchStyle;
       html += '<tr>'
         + '<td>' + escapeHtml(t.table || '-') + '</td>'
         + '<td style="text-align:right;">' + (t.bucketCount != null ? t.bucketCount : '-') + '</td>'
@@ -16484,7 +16484,7 @@ window.dbsyncOpenChecksum = function(id, nm) {
         var ms = (t.missingSample || []).slice(0, 20).map(function(k){ return escapeHtml(String(k)); }).join(', ');
         var es = (t.extraSample || []).slice(0, 20).map(function(k){ return escapeHtml(String(k)); }).join(', ');
         html += '<tr><td colspan="3" style="padding:0 0 8px 16px;font-size:12px;">'
-          + '<div style="color:#ff4d4f;">主键级差异：源有目标无 <b>' + miss + '</b> 行；目标有源无 <b>' + ext + '</b> 行</div>'
+          + '<div style="color:#e03131;">主键级差异：源有目标无 <b>' + miss + '</b> 行；目标有源无 <b>' + ext + '</b> 行</div>'
           + (ms ? '<div style="margin-top:3px;color:var(--text-regular);word-break:break-all;">缺失主键样本：<span style="font-family:monospace;">' + ms + '</span></div>' : '')
           + (es ? '<div style="margin-top:3px;color:var(--text-regular);word-break:break-all;">多余主键样本：<span style="font-family:monospace;">' + es + '</span></div>' : '')
           + '</td></tr>';
@@ -16535,7 +16535,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
   // 两类断点均为空 → 正向说明空态
   if (incremental.length === 0 && chunk.length === 0) {
     pane.innerHTML = '<div class="dbsync-detail-card" style="text-align:center;padding:28px 16px;">'
-      + '<svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#52c41a" stroke-width="2" style="display:block;margin:0 auto 12px;"><circle cx="24" cy="24" r="20"/><path d="M16 24l6 6 12-12"/></svg>'
+      + '<svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="#2f9e44" stroke-width="2" style="display:block;margin:0 auto 12px;"><circle cx="24" cy="24" r="20"/><path d="M16 24l6 6 12-12"/></svg>'
       + '<div style="font-size:14px;font-weight:600;color:var(--text-regular);margin-bottom:6px;">暂无断点记录 · 状态正常</div>'
       + '<div style="font-size:12px;color:var(--text-muted);line-height:1.7;max-width:420px;margin:0 auto;">增量/CDC 任务运行后会在此记录<b>增量水位</b>(增量字段的当前最大值，用于断点续传)；分片全量任务会记录 <b>Chunk 断点</b>(已完成的数据分片)。当前任务尚未产生断点，或为全量覆盖模式无需断点。</div>'
       + '</div>';
@@ -16556,7 +16556,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td>' + tbl + '</td>'
         + '<td style="font-family:monospace;">' + field + '</td>'
         + '<td style="font-family:monospace;">' + val + '</td>'
-        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetIncrementalCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.table || '')) + ')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:#e03131;border-color:#e03131;" onclick="dbsyncResetIncrementalCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.table || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -16579,7 +16579,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td style="font-family:monospace;">' + cursor + '</td>'
         + '<td>' + rows + '</td>'
         + '<td style="white-space:nowrap;">' + updAt + '</td>'
-        + '<td><button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncResetChunkCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.sourceTable || '')) + ')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:#e03131;border-color:#e03131;" onclick="dbsyncResetChunkCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.sourceTable || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -16656,7 +16656,7 @@ function dbsyncErrDist(rows) {
     }).join('');
   };
   return '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;border:1px solid var(--divider);border-radius:8px;padding:10px;">'
-    + '<div style="flex:1;min-width:240px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">错误类型分布</div>' + col(topN(byKind, 6), '#ff4d4f', rows.length) + '</div>'
+    + '<div style="flex:1;min-width:240px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">错误类型分布</div>' + col(topN(byKind, 6), '#e03131', rows.length) + '</div>'
     + '<div style="flex:1;min-width:240px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">源表 Top5</div>' + col(topN(byTable, 5), '#fa8c16', rows.length) + '</div>'
     + '</div>';
 }
@@ -16668,7 +16668,7 @@ function dbsyncRenderErrorRows(pane, jobId, rows) {
     + '<span style="display:flex;gap:6px;">'
     + (rows.length ? '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterErrorRows(' + jobId + ',this.value)"><option value="">全部源表</option>' + srcOpts + '</select>' : '')
     + (rows.length ? '<button class="btn btn-sm" onclick="dbsyncExportErrorRows()">导出CSV</button>' : '')
-    + (rows.length ? '<button class="btn btn-sm" style="color:#ff4d4f;border-color:#ff4d4f;" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
+    + (rows.length ? '<button class="btn btn-sm" style="color:#e03131;border-color:#e03131;" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
     + '</span></div>';
   if (!rows || rows.length === 0) {
     pane.innerHTML = bar + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无坏行记录</div>';
@@ -16690,7 +16690,7 @@ function dbsyncRenderErrorRows(pane, jobId, rows) {
       + '<td style="white-space:nowrap;">' + escapeHtml(dbsyncFmtTime(r.createdAt)) + '</td>'
       + '<td style="font-family:monospace;">' + escapeHtml(r.sourceTable || '-') + '</td>'
       + '<td>' + escapeHtml(stage) + '</td>'
-      + '<td style="max-width:320px;word-break:break-all;color:#ff4d4f;"><span title="' + escapeHtml(msg) + '">' + escapeHtml(msg.length > 120 ? msg.slice(0, 120) + '…' : msg) + '</span></td>'
+      + '<td style="max-width:320px;word-break:break-all;color:#e03131;"><span title="' + escapeHtml(msg) + '">' + escapeHtml(msg.length > 120 ? msg.slice(0, 120) + '…' : msg) + '</span></td>'
       + '<td>' + rawCell + '</td>'
       + '</tr>';
   });

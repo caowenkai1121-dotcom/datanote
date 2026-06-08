@@ -94,7 +94,7 @@
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary,#3457d5)', onclick: function () { detailDrawer(r); } }));
               if (r.status === 'pending') {
                 w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '批准', style: 'color:#389e0d', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:#ff4d4f', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:#e03131', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
               }
               return w;
             } }

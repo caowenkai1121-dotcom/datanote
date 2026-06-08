@@ -100,9 +100,9 @@
       }
       var wrap = DN.h('div', { style: 'display:flex;align-items:center;gap:20px;flex-wrap:wrap' });
       var segs = [
-        { label: '成功', value: ok, color: '#52c41a' },
-        { label: '失败', value: failed, color: '#faad14' },
-        { label: '异常', value: err, color: '#ff4d4f' }
+        { label: '成功', value: ok, color: '#2f9e44' },
+        { label: '失败', value: failed, color: '#e8930c' },
+        { label: '异常', value: err, color: '#e03131' }
       ].filter(function (s) { return s.value > 0; });
       wrap.appendChild(DN.donut(segs, { size: 104, stroke: 14, centerLabel: total, centerSub: '次', legend: true }));
       // 成功率健康解读
@@ -235,7 +235,7 @@
     var summary = blockedN
       ? '共 ' + fails.length + ' 条规则未通过，其中 ' + blockedN + ' 条为强阻断（已置顶，会阻断下游流程，请优先处理），点规则名查看趋势根因'
       : '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示, 点规则名查看趋势根因';
-    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px' + (blockedN ? ';color:#ff4d4f;font-weight:500' : ''), text: summary }));
+    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px' + (blockedN ? ';color:#e03131;font-weight:500' : ''), text: summary }));
     // 扁平化为行数据(供 DN.table 渲染 + CSV 导出取 key)
     var rows = fails.map(function (f) {
       var run = f.run, st = run.runStatus || '';
@@ -560,12 +560,12 @@
         DN.pill(eff[0], eff[1])
       ]);
       trendBody.appendChild(head);
-      trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? '#52c41a' : avg >= 60 ? '#faad14' : '#ff4d4f' }));
+      trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
       // 状态分布环 + 失败根因样本
       var sc = Array.isArray(fa.statusCounts) ? fa.statusCounts : [];
       if (sc.length) {
         trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
-        var colorOf = function (s) { return s === 'PASS' ? '#52c41a' : s === 'FAIL' ? '#faad14' : s === 'ERROR' ? '#ff4d4f' : '#8c8c8c'; };
+        var colorOf = function (s) { return s === 'PASS' ? '#2f9e44' : s === 'FAIL' ? '#e8930c' : s === 'ERROR' ? '#e03131' : '#8c8c8c'; };
         var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
         trendBody.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次', legend: true }));
       }

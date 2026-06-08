@@ -4,10 +4,10 @@
   --primary: #3457d5;
   --primary-hover: #4f6ef0;
   --primary-light: rgba(52,87,213,.08);
-  --success: #52c41a;
-  --success-light: rgba(82,196,26,.08);
-  --warning: #faad14;
-  --error: #ff4d4f;
+  --success: #2f9e44;
+  --success-light: rgba(47,158,68,.08);
+  --warning: #e8930c;
+  --error: #e03131;
   --bg-body: #f0f2f5;
   --bg-card: #ffffff;
   --bg-editor: #ffffff;
@@ -112,7 +112,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   font-size: 12px;
   padding: 2px 10px;
   border-radius: 3px;
-  background: rgba(82,196,26,.1);
+  background: rgba(47,158,68,.1);
   color: var(--success);
   font-weight: 500;
 }
@@ -509,7 +509,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .run-log-entry:last-child { border-bottom:none; }
 .run-log-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
 .run-log-status { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; font-weight:600; }
-.run-log-status.ok { background:rgba(82,196,26,.12); color:#52c41a; }
+.run-log-status.ok { background:rgba(47,158,68,.12); color:#2f9e44; }
 .run-log-status.fail { background:rgba(231,76,60,.12); color:#e74c3c; }
 .run-log-status.running { background:rgba(52,87,213,.12); color:#3457d5; }
 .run-log-time { font-size:11px; color:var(--text-muted); }
@@ -955,7 +955,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   margin-left: auto;
 }
 .intg-tag-source { background: rgba(52,87,213,.08); color: var(--primary); }
-.intg-tag-target { background: rgba(82,196,26,.08); color: var(--success); }
+.intg-tag-target { background: rgba(47,158,68,.08); color: var(--success); }
 
 .intg-panel-body { padding: 14px 16px; }
 
@@ -2198,7 +2198,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .dbsync-folder-node:focus-within .dbsync-folder-delete,
 .dbsync-folder-node:focus-within .dbsync-folder-action { opacity: 1; }
 .dbsync-folder-action:hover { background: rgba(52,87,213,.08); color: var(--primary); }
-.dbsync-folder-delete:hover { background: rgba(255,77,79,.08); color: var(--error); }
+.dbsync-folder-delete:hover { background: rgba(224,49,49,.08); color: var(--error); }
 .dbsync-folder-action svg,
 .dbsync-folder-delete svg { width: 12px; height: 12px; }
 .dbsync-folder-create {
@@ -2376,8 +2376,8 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   font-size: 11px;
   font-weight: 600;
 }
-.ops-rank-num.top1 { background: #ff4d4f; color: #fff; }
-.ops-rank-num.top2 { background: #faad14; color: #fff; }
+.ops-rank-num.top1 { background: #e03131; color: #fff; }
+.ops-rank-num.top2 { background: #e8930c; color: #fff; }
 .ops-rank-num.top3 { background: #3457d5; color: #fff; }
 .ops-status-dot {
   display: inline-block;
@@ -2430,7 +2430,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .sched-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .sched-btn.primary:hover { background: var(--primary-hover); }
 .sched-btn.danger { color: var(--error); border-color: var(--error); }
-.sched-btn.danger:hover { background: rgba(255,77,79,.05); }
+.sched-btn.danger:hover { background: rgba(224,49,49,.05); }
 .sched-stats {
   display: flex;
   gap: 16px;
@@ -2487,8 +2487,8 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .sched-badge.success { background: var(--success-light); color: #389e0d; }
 .sched-badge.running { background: var(--primary-light); color: var(--primary); }
 .sched-badge.waiting { background: #f5f5f5; color: #8c8c8c; }
-.sched-badge.failed { background: rgba(255,77,79,.08); color: var(--error); }
-.sched-badge.paused { background: rgba(250,173,20,.08); color: #d48806; }
+.sched-badge.failed { background: rgba(224,49,49,.08); color: var(--error); }
+.sched-badge.paused { background: rgba(232,147,12,.08); color: #d48806; }
 .sched-task-actions {
   display: flex; gap: 4px;
 }
@@ -2782,13 +2782,13 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   margin-top: 8px;
   font-weight: 500;
 }
-.tag-ready { background: rgba(82,196,26,.1); color: var(--success); }
+.tag-ready { background: rgba(47,158,68,.1); color: var(--success); }
 .tag-dev { background: rgba(250,140,22,.1); color: var(--warning); }
 .tag-plan { background: rgba(52,87,213,.08); color: var(--primary); }
-.tag-live { background: rgba(82,196,26,.1); color: var(--success); }
+.tag-live { background: rgba(47,158,68,.1); color: var(--success); }
 .ic-blue { background: rgba(52,87,213,.08); }
 .ic-blue svg { color: var(--primary); }
-.ic-green { background: rgba(82,196,26,.08); }
+.ic-green { background: rgba(47,158,68,.08); }
 .ic-green svg { color: var(--success); }
 .ic-orange { background: rgba(250,140,22,.08); }
 .ic-orange svg { color: var(--warning); }
@@ -2975,7 +2975,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   margin-left: auto;
 }
 .iw-tag-source { background: rgba(52,87,213,.08); color: var(--primary); }
-.iw-tag-target { background: rgba(82,196,26,.08); color: var(--success); }
+.iw-tag-target { background: rgba(47,158,68,.08); color: var(--success); }
 .iw-panel-body { padding: 16px 20px; }
 .iw-form-row { display: flex; align-items: center; margin-bottom: 14px; }
 .iw-form-label { width: 70px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
@@ -3013,7 +3013,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .iw-field-table tr:hover td { background: var(--primary-light); }
 .iw-col-name { font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px; }
 .iw-col-type { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: var(--text-muted); background: var(--bg-hover); padding: 2px 8px; border-radius: 3px; display: inline-block; }
-.iw-hive-type { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: var(--success); background: rgba(82,196,26,.08); padding: 2px 8px; border-radius: 3px; display: inline-block; }
+.iw-hive-type { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; color: var(--success); background: rgba(47,158,68,.08); padding: 2px 8px; border-radius: 3px; display: inline-block; }
 .iw-checkbox-cell { width: 36px; text-align: center; }
 .iw-checkbox-cell input { cursor: pointer; }
 .iw-ddl-section {
@@ -3059,17 +3059,17 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   border-radius: 10px; font-size: 11px; font-weight: 500;
 }
 .dbsync-status-badge.CREATED  { background: rgba(52,87,213,.10); color: #096dd9; }
-.dbsync-status-badge.RUNNING  { background: rgba(82,196,26,.12);  color: #389e0d; }
+.dbsync-status-badge.RUNNING  { background: rgba(47,158,68,.12);  color: #389e0d; }
 .dbsync-status-badge.STOPPED  { background: rgba(118,124,130,.14); color: #5c6166; }
-.dbsync-status-badge.FAILED   { background: rgba(255,77,79,.10);  color: #cf1322; }
-.dbsync-status-badge.PAUSED   { background: rgba(250,173,20,.14); color: #ad6800; }
-.dbsync-status-badge.SUCCESS  { background: rgba(82,196,26,.12);  color: #389e0d; }
+.dbsync-status-badge.FAILED   { background: rgba(224,49,49,.10);  color: #cf1322; }
+.dbsync-status-badge.PAUSED   { background: rgba(232,147,12,.14); color: #ad6800; }
+.dbsync-status-badge.SUCCESS  { background: rgba(47,158,68,.12);  color: #389e0d; }
 .dbsync-mode-badge {
   display: inline-flex; align-items: center; padding: 2px 8px;
   border-radius: 10px; font-size: 11px; font-weight: 500;
 }
 .dbsync-mode-badge.FULL        { background: rgba(52,87,213,.06); color: #3457d5; }
-.dbsync-mode-badge.INCREMENTAL { background: rgba(82,196,26,.06);  color: #52c41a; }
+.dbsync-mode-badge.INCREMENTAL { background: rgba(47,158,68,.06);  color: #2f9e44; }
 .dbsync-mode-badge.CDC         { background: rgba(114,46,209,.06); color: #722ed1; }
 /* 任务表格 */
 .dbsync-table { width: 100%; border-collapse: collapse; }
@@ -3114,7 +3114,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .dbsync-row-menu button:hover svg { color: var(--primary); }
 .dbsync-row-menu button.danger { color: var(--error); }
 .dbsync-row-menu button.danger svg { color: var(--error); }
-.dbsync-row-menu button.danger:hover { background: rgba(255,77,79,.08); }
+.dbsync-row-menu button.danger:hover { background: rgba(224,49,49,.08); }
 .dbsync-row-menu .dbsync-row-menu-sep { height: 1px; background: var(--divider); margin: 4px 6px; }
 
 /* ===== 任务明细抽屉 ===== */
@@ -3168,8 +3168,8 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   background: var(--bg-card); border: 1px solid var(--divider); border-radius: var(--radius-lg); padding: 12px 14px;
 }
 .dbsync-metric-card .v { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
-.dbsync-metric-card .v.ok { color: #52c41a; }
-.dbsync-metric-card .v.err { color: #ff4d4f; }
+.dbsync-metric-card .v.ok { color: #2f9e44; }
+.dbsync-metric-card .v.err { color: #e03131; }
 .dbsync-metric-card .l { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 /* 信息卡（键值表） */
 .dbsync-detail-card {
@@ -3258,16 +3258,16 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .dbsync-table-row.with-incr { grid-template-columns: 1fr 1fr 1fr 120px 104px auto 28px; }
 .dbsync-del-row-btn {
   width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-  border: none; background: none; color: #ff4d4f; cursor: pointer;
+  border: none; background: none; color: #e03131; cursor: pointer;
   border-radius: var(--radius); font-size: 16px; line-height: 1;
 }
-.dbsync-del-row-btn:hover { background: rgba(255,77,79,.08); }
+.dbsync-del-row-btn:hover { background: rgba(224,49,49,.08); }
 /* 字段映射：删除单行按钮 */
 .dfs-fm-del {
-  border: none; background: none; color: #ff4d4f; cursor: pointer;
+  border: none; background: none; color: #e03131; cursor: pointer;
   font-size: 15px; line-height: 1; padding: 0 4px; border-radius: var(--radius);
 }
-.dfs-fm-del:hover { background: rgba(255,77,79,.08); }
+.dfs-fm-del:hover { background: rgba(224,49,49,.08); }
 /* 执行历史 */
 .dbsync-exec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .dbsync-exec-table th {
