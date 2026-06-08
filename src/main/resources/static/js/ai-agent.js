@@ -129,14 +129,7 @@
 
     DN.post('/api/ai/agent/chat', { sessionId: sessionId, message: msg, ctx: pendingCtx }).then(function (res) {
       if (th.parentNode) th.parentNode.removeChild(th);
-      res = res || {};
-      sessionId = res.sessionId || sessionId;
-      var steps = res.steps || [];
-      steps.forEach(function (st) {
-        if (st && st.stepType === 'SKILL_CALL') flowEl.appendChild(toolCard(st));
-      });
-      var tone = res.status === 'blocked' ? 'err' : null;
-      flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
+      renderTurn(res || {});
       scrollBottom();
     }).catch(function (e) {
       if (th.parentNode) th.parentNode.removeChild(th);
@@ -145,6 +138,46 @@
     }).then(function () {
       sending = false; sendBtn.disabled = false; sendBtn.textContent = '发送'; if (inputEl) inputEl.focus();
     });
+  }
+
+  // 渲染一轮结果(对话/恢复共用): 工具卡 + 终答; 若挂起待审批则出审批卡
+  function renderTurn(res) {
+    sessionId = res.sessionId || sessionId;
+    (res.steps || []).forEach(function (st) { if (st && st.stepType === 'SKILL_CALL') flowEl.appendChild(toolCard(st)); });
+    var tone = res.status === 'blocked' ? 'err' : null;
+    flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
+    if (res.status === 'wait_approval') loadApproval(res.sessionId);
+  }
+
+  // 写操作待审批: 拉本会话待审项, 出批准/拒绝卡; 批准→decide+resume, 拒绝→decide
+  function loadApproval(sid) {
+    DN.get('/api/ai/agent/approvals?status=pending').then(function (list) {
+      list = list || [];
+      var ap = null;
+      for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
+      if (!ap) return;
+      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #faad14;background:var(--bg-body,#fffbe6);border-radius:10px;padding:12px 14px;' });
+      card.appendChild(DN.h('div', { style: 'font-weight:600;color:#d48806;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
+      if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
+      var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
+      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续' });
+      var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
+      okBtn.onclick = function () {
+        okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
+        DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'approved' })
+          .then(function () { return DN.post('/api/ai/agent/' + sid + '/resume', {}); })
+          .then(function (res) { card.remove(); renderTurn(res || {}); scrollBottom(); })
+          .catch(function (e) { DN.toast('审批/恢复失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; okBtn.textContent = '批准并继续'; });
+      };
+      noBtn.onclick = function () {
+        okBtn.disabled = true; noBtn.disabled = true;
+        DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'rejected' })
+          .then(function () { card.remove(); flowEl.appendChild(assistantBubble('已拒绝该写操作。', 'err')); scrollBottom(); })
+          .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; });
+      };
+      btns.appendChild(okBtn); btns.appendChild(noBtn); card.appendChild(btns);
+      flowEl.appendChild(card); scrollBottom();
+    }).catch(function () {});
   }
 
   function build() {

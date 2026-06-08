@@ -146,6 +146,39 @@ public class AuditService {
         }
     }
 
+    /**
+     * 记录审计并返回自增主键(供 fail-closed 写前审计回读校验)。落库失败返 null(调用方据此拒绝执行写动作)。
+     * 不改既有 record(零回归);本方法专供 AI Agent 写工具前置审计。
+     */
+    public Long recordReturning(String userName, String actionType, String method,
+                                String path, String ip, Integer status, String detail) {
+        try {
+            DnAuditLog a = new DnAuditLog();
+            a.setUserName(userName == null || userName.isEmpty() ? "anonymous" : userName);
+            a.setActionType(actionType);
+            a.setMethod(method);
+            a.setPath(path == null ? null : (path.length() > 255 ? path.substring(0, 255) : path));
+            a.setIp(ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip));
+            a.setStatus(status);
+            a.setDetail(detail == null ? null : (detail.length() > 60000 ? detail.substring(0, 60000) : detail));
+            auditMapper.insert(a);
+            return a.getId();
+        } catch (Exception e) {
+            log.warn("审计记录(returning)失败 user={} action={} path={}", userName, actionType, path, e);
+            return null;
+        }
+    }
+
+    /** 回读校验: 审计是否真落库。 */
+    public boolean existsById(Long id) {
+        if (id == null) return false;
+        try {
+            return auditMapper.selectById(id) != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ======================= 检索 / 统计 =======================
 
     private QueryWrapper<DnAuditLog> buildWrapper(String from, String to, String actionType,

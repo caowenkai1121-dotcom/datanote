@@ -40,6 +40,8 @@ public class AiAgentService {
     private final DnAiSessionMapper sessionMapper;
     private final DnAiStepMapper stepMapper;
     private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;
+    private final com.datanote.platform.audit.AuditService auditService;
+    private final ApprovalGate approvalGate;
 
     /** M1 单轮最大步数（含工具调用），防失控 */
     private static final int MAX_STEPS = 6;
@@ -91,7 +93,7 @@ public class AiAgentService {
         String ragText = buildRagText(userMessage);   // 循环外算一次, 自动 grounding
         boolean first = true;
 
-        for (int i = 0; i < MAX_STEPS && !st.done && !st.blocked; i++) {
+        for (int i = 0; i < MAX_STEPS && !st.done && !st.blocked && !st.awaitingApproval; i++) {
             String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
             String userPrompt = first
                     ? userMessage
@@ -153,6 +155,45 @@ public class AiAgentService {
                 continue;
             }
 
+            // ===== 写操作护栏门(咽喉点): 只读直放 / 红线拒 / 写需审批 =====
+            Guardrail.Gate gate = Guardrail.gate(tool);
+            String riskName = tool.risk() == null ? "HIGH" : tool.risk().name();
+            if (gate == Guardrail.Gate.DENY) {
+                AiToolResult r = AiToolResult.fail("forbidden", "该操作属永久禁区, 拒绝执行");
+                appendTrace(st, toolName, callJson, r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                        null, "error", "forbidden", tool.readOnly(), riskName, latency));
+                continue;
+            }
+            if (gate == Guardrail.Gate.NEED_APPROVAL) {
+                ApprovalGate.Outcome oc = approvalGate.check(st.session.getSessionId(), st.seq, tool, argsToStr(argsNode), Guardrail.isHigh(tool));
+                if (oc == ApprovalGate.Outcome.PENDING) {
+                    st.awaitingApproval = true;
+                    st.pendingSkill = toolName;
+                    st.finalAnswer = "写操作「" + toolName + "」需人工审批,已挂起会话。请在审批面板批准后继续。";
+                    newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                            null, "pending", "need_approval", false, riskName, latency));
+                    break;
+                }
+                if (oc == ApprovalGate.Outcome.REJECTED) {
+                    AiToolResult r = AiToolResult.fail("forbidden", "写操作被审批拒绝");
+                    appendTrace(st, toolName, callJson, r);
+                    newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                            null, "error", "forbidden", false, riskName, latency));
+                    continue;
+                }
+                // APPROVED → fail-closed 写前审计 + 回读校验(未落库拒执行)
+                Long auditId = auditService.recordReturning(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE", "POST",
+                        "/api/ai/agent/tool/" + toolName, ctx == null ? null : ctx.getIp(), null, "args=" + argsToStr(argsNode));
+                if (!auditService.existsById(auditId)) {
+                    AiToolResult r = AiToolResult.fail("audit_failed", "写前审计未落库, 拒绝执行");
+                    appendTrace(st, toolName, callJson, r);
+                    newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                            null, "error", "audit_failed", false, riskName, latency));
+                    continue;
+                }
+            }
+
             AiToolResult result;
             long e0 = System.currentTimeMillis();
             try {
@@ -162,6 +203,13 @@ public class AiAgentService {
             }
             long execLatency = System.currentTimeMillis() - e0;
 
+            // 写工具: 补一条结果审计(发起+结果 双流水)
+            if (!tool.readOnly()) {
+                auditService.record(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE_RESULT", "POST",
+                        "/api/ai/agent/tool/" + toolName, ctx == null ? null : ctx.getIp(),
+                        result.isOk() ? 200 : 500, cap(toJson(result), 2000));
+            }
+
             appendTrace(st, toolName, callJson, result);
             String resultData = toJson(result);
             newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
@@ -170,7 +218,7 @@ public class AiAgentService {
         }
 
         // 达步数上限仍无终答 → 一次 grace call 收尾
-        if (!st.done && !st.blocked) {
+        if (!st.done && !st.blocked && !st.awaitingApproval) {
             String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
             String raw = aiAssistService.chat(
                     "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
@@ -180,13 +228,13 @@ public class AiAgentService {
         }
 
         // 落库会话终态
-        session.setStatus(st.blocked ? "blocked" : "done");
+        session.setStatus(st.awaitingApproval ? "wait_approval" : (st.blocked ? "blocked" : "done"));
         session.setBudgetStepsUsed(st.seq);
         session.setUpdatedAt(LocalDateTime.now());
         sessionMapper.updateById(session);
 
         resp.put("sessionId", session.getSessionId());
-        resp.put("status", st.blocked ? "blocked" : "done");
+        resp.put("status", st.awaitingApproval ? "wait_approval" : (st.blocked ? "blocked" : "done"));
         resp.put("finalAnswer", st.finalAnswer != null ? st.finalAnswer
                 : (st.blockReason != null ? st.blockReason : "（无答复）"));
         resp.put("steps", stepsToDto(newSteps));

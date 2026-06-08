@@ -13,4 +13,8 @@ public class AgentState {
     public boolean done;
     public boolean blocked;
     public String blockReason;
+    /** 写动作待审批挂起(会话置 wait_approval, 循环跳出, 审批后 resume 重入) */
+    public boolean awaitingApproval;
+    public String pendingSkill;
 }
+

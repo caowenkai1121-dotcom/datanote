@@ -1,10 +1,13 @@
 package com.datanote.platform.ai.agent.web;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.common.model.R;
 import com.datanote.platform.ai.agent.engine.AiAgentService;
+import com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiSessionMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiStepMapper;
+import com.datanote.platform.ai.agent.model.DnAiApproval;
 import com.datanote.platform.ai.agent.model.DnAiSession;
 import com.datanote.platform.ai.agent.model.DnAiStep;
 import com.datanote.platform.ai.agent.tool.AgentContext;
@@ -16,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +34,7 @@ public class AiAgentController {
     private final AiToolRegistry toolRegistry;
     private final DnAiSessionMapper sessionMapper;
     private final DnAiStepMapper stepMapper;
+    private final DnAiApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
@@ -74,6 +79,52 @@ public class AiAgentController {
             m.put("tools", toolRegistry.toToolsManifestJson());
         }
         return R.ok(m);
+    }
+
+    /** 待审批清单(审批抽屉数据源)。 */
+    @GetMapping("/approvals")
+    public R<List<DnAiApproval>> approvals(@RequestParam(value = "status", required = false, defaultValue = "pending") String status) {
+        return R.ok(approvalMapper.selectList(new QueryWrapper<DnAiApproval>()
+                .eq("status", status).orderByDesc("id").last("LIMIT 100")));
+    }
+
+    /** 审批决策: decided_by 服务端强制 + 禁自批 + 乐观 where status=pending 防竞态。 */
+    @PostMapping("/approval/{id}/decide")
+    public R<Void> decide(@PathVariable("id") Long id, @RequestBody Map<String, String> body) {
+        String decision = body == null ? null : body.get("decision");
+        if (!"approved".equals(decision) && !"rejected".equals(decision)) {
+            return R.fail("decision 须为 approved 或 rejected");
+        }
+        DnAiApproval ap = approvalMapper.selectById(id);
+        if (ap == null) return R.fail("审批不存在");
+        if (!"pending".equals(ap.getStatus())) return R.fail("该审批已处理");
+        String me = currentUser();
+        // 防自批提权: 审批人不得为会话发起人(匿名测试态放行)
+        DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", ap.getSessionId()).last("LIMIT 1"));
+        if (s != null && me != null && !"anonymous".equals(me) && me.equals(s.getUserName())) {
+            return R.fail("不可自批(审批人须不同于会话发起人)");
+        }
+        int rows = approvalMapper.update(null, new UpdateWrapper<DnAiApproval>()
+                .eq("id", id).eq("status", "pending")
+                .set("status", decision).set("decided_by", me).set("decided_at", LocalDateTime.now()));
+        if (rows == 0) return R.fail("审批已被处理(竞态)");
+        // 会话状态: 批准→paused(待恢复), 拒绝→blocked
+        if (s != null) {
+            s.setStatus("approved".equals(decision) ? "paused" : "blocked");
+            s.setUpdatedAt(LocalDateTime.now());
+            sessionMapper.updateById(s);
+        }
+        return R.ok();
+    }
+
+    /** 恢复执行: 重入 run, 命中已批审批点放行写动作落地。 */
+    @PostMapping("/{sessionId}/resume")
+    public R<Map<String, Object>> resume(@PathVariable("sessionId") String sessionId, HttpServletRequest req) {
+        DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (s == null) return R.fail("会话不存在");
+        String goal = (s.getGoalIntent() == null || s.getGoalIntent().trim().isEmpty()) ? "继续之前的任务" : s.getGoalIntent();
+        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        return R.ok(aiAgentService.run(sessionId, goal, ctx));
     }
 
     private String currentUser() {
