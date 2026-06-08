@@ -25,7 +25,7 @@
 <script src="js/gov-subject.js?v=q100r100"></script>
 <script src="js/gov-consumption.js?v=q100r99"></script>
 <script src="js/gov-govmap.js?v=q100r100"></script>
-<script src="js/home-dashboard.js?v=q100r102"></script>
+<script src="js/home-dashboard.js?v=q100r110"></script>
 <script src="js/mdm.js?v=q100r101"></script>
 <script src="js/mdm-survivorship.js?v=q100r101"></script>
 <script src="js/mdm-approval.js?v=q100r101"></script>
@@ -1009,6 +1009,7 @@
           <div class="dbsync-drawer-sub" id="projDetailSub"></div>
         </div>
         <div class="dbsync-drawer-head-actions">
+          <button class="btn btn-sm" onclick="if(typeof _projDetail!=='undefined'&&_projDetail)projAskAi(_projDetail.id,_projDetail.projectName)" title="AI 分析此项目" style="margin-right:8px;">🤖 AI</button>
           <button class="btn btn-sm" onclick="projGenReport()" title="生成项目报告" style="margin-right:8px;">生成报告</button>
           <button class="dbsync-drawer-close" onclick="projCloseDetail()" title="关闭">&times;</button>
         </div>
@@ -6909,6 +6910,16 @@ window.dbsyncAskAi = function (jobId, jobName) {
 window.schedAskAi = function (runId, taskId, taskType, taskName) {
   window.dnAskAi('调度运行 run#' + runId + '(' + (taskName || '') + ')执行失败:读运行日志定位根因、列出下游依赖爆炸半径、给补数/重跑建议(重试/补数为写操作仅给建议不代办)。',
     { route: 'operations', runId: runId, taskId: taskId, taskType: taskType, taskName: taskName });
+};
+// 首页今日 AI 简报入口
+window.homeAskAi = function () {
+  window.dnAskAi('生成今日数据平台简报:综合治理总览、质量分、今日调度执行状态、数据同步大盘,用要点列出今日资产/健康/质量/同步的关键状态、主要风险与优先待办建议(简明扼要)。',
+    { route: 'home' });
+};
+// 项目详情 AI 分析入口
+window.projAskAi = function (projId, projName) {
+  window.dnAskAi('分析项目 #' + projId + '(' + (projName || '') + '):结合项目概览(进度/任务/里程碑/成员/健康分),指出当前主要风险、阻塞与可落地的推进建议。',
+    { route: 'project', projectId: projId });
 };
 // 按当前路由拼默认情境(typeof 守卫, 只读已有全局变量, 不存在则跳过)
 function defaultAiCtx() {

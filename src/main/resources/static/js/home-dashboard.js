@@ -74,12 +74,18 @@
         window.renderHomeDashboard(_box);              // 整页重载（内部会复位 _refreshing）
       }
     });
+    var briefBtn = DN.h('a', {
+      class: 'btn btn-sm', href: 'javascript:void(0)', text: '🤖 今日简报',
+      style: 'background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35);margin-right:8px;',
+      onclick: function () { if (window.homeAskAi) window.homeAskAi(); }
+    });
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
       DN.h('div', { class: 'h-title', text: greet + '，欢迎回来' }),
       DN.h('div', { class: 'h-sub', text: 'DataNote · 数据资产驾驶舱 — 一屏掌握资产 / 治理 / 质量 / 消费 / 同步全景' }),
       DN.h('div', { class: 'h-meta' }, [
         DN.h('span', { text: '更新于 ' + new Date().toLocaleTimeString() }),
         DN.h('span', { text: '　' }),
+        briefBtn,
         refreshBtn
       ])
     ]));
