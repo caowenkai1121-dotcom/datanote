@@ -8,6 +8,7 @@ import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.orchestration.model.DnBackfillInstance;
 import com.datanote.domain.orchestration.model.DnBackfillTask;
 import com.datanote.domain.develop.model.DnScript;
+import com.datanote.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,13 @@ public class BackfillService {
      */
     public DnBackfillTask createBackfill(Long taskId, String taskType, String taskName,
                                           LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new BusinessException("补数据起止日期不能为空");
+        }
+        if (endDate.isBefore(startDate)) {
+            // 逆序区间会算出负 totalDays,致任务无实例却永 RUNNING,提前拦截
+            throw new BusinessException("补数据结束日期不能早于开始日期");
+        }
         int totalDays = (int) ChronoUnit.DAYS.between(startDate, endDate) + 1;
 
         DnBackfillTask task = new DnBackfillTask();
@@ -80,9 +88,11 @@ public class BackfillService {
         QueryWrapper<DnBackfillInstance> qw = new QueryWrapper<>();
         qw.eq("backfill_id", backfillId).orderByAsc("run_date");
         List<DnBackfillInstance> instances = backfillInstanceMapper.selectList(qw);
+        if (instances == null) instances = new java.util.ArrayList<>();
 
         int completed = 0;
         for (DnBackfillInstance inst : instances) {
+            if (inst == null) continue;
             // 检查控制信号
             String control = taskControl.getOrDefault(backfillId, "RUNNING");
             if ("STOPPED".equals(control)) {

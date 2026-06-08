@@ -39,9 +39,11 @@ public class SqlLineageService {
 
         List<DnScript> scripts = scriptMapper.selectList(null);
         int count = 0;
+        if (scripts == null) return count;
         for (DnScript script : scripts) {
+            if (script == null) continue;
             ParseResult r = SqlLineageParser.parse(script.getContent(), script.getDatabaseName());
-            if (r.getWriteTable() == null) continue;
+            if (r == null || r.getWriteTable() == null) continue;
             count += insertEdges(r);
         }
         return count;
@@ -51,11 +53,15 @@ public class SqlLineageService {
     private int insertEdges(ParseResult r) {
         TableRef dst = r.getWriteTable();
         int count = 0;
-        for (TableRef src : r.getReadTables()) {
+        List<TableRef> reads = r.getReadTables();
+        if (reads != null) for (TableRef src : reads) {
+            if (src == null) continue;
             count += tryInsert(edge("TABLE", src.getDb(), src.getTable(), "",
                     dst.getDb(), dst.getTable(), "", 100));
         }
-        for (ColumnMapping cm : r.getColumnMappings()) {
+        List<ColumnMapping> cms = r.getColumnMappings();
+        if (cms != null) for (ColumnMapping cm : cms) {
+            if (cm == null) continue;
             count += tryInsert(edge("COLUMN", cm.getSrcDb(), cm.getSrcTable(), cm.getSrcColumn(),
                     dst.getDb(), dst.getTable(), cm.getTargetColumn(), COLUMN_CONFIDENCE));
         }

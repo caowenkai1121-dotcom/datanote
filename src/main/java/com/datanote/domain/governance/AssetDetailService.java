@@ -1,6 +1,7 @@
 package com.datanote.domain.governance;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.platform.config.HiveConfig;
 import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
 import com.datanote.domain.governance.mapper.DnGlossaryTermMapper;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * 资产详情 Service — 字段级元数据聚合 / Profiler 下推探查 / 业务术语 CRUD
@@ -38,6 +40,19 @@ public class AssetDetailService {
     /** Profiler 单次探查的最大字段数，防止数仓聚合查询过慢 */
     static final int MAX_PROFILE_FIELDS = 30;
 
+    /** 合法标识符：字母/数字/下划线/中文，1-128 字符（库名/表名/列名拼入原生 SQL 前必校验，防注入） */
+    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("^[\\w\\u4e00-\\u9fa5]{1,128}$");
+
+    private static boolean validIdentifier(String name) {
+        return name != null && IDENTIFIER_PATTERN.matcher(name).matches();
+    }
+
+    private static void requireIdentifier(String name, String label) {
+        if (!validIdentifier(name)) {
+            throw new BusinessException(label + " 包含非法字符: " + name);
+        }
+    }
+
     // ========== 资产详情：表 + 字段级元数据 ==========
 
     public Map<String, Object> assetDetail(String db, String table) {
@@ -49,6 +64,7 @@ public class AssetDetailService {
             QueryWrapper<DnColumnMeta> qw = new QueryWrapper<DnColumnMeta>();
             qw.eq("table_meta_id", meta.getId()).orderByAsc("ordinal").orderByAsc("id");
             columns = columnMetaMapper.selectList(qw);
+            if (columns == null) columns = new ArrayList<DnColumnMeta>();
         }
         result.put("columns", columns);
         return result;
@@ -63,6 +79,8 @@ public class AssetDetailService {
     // ========== Profiler 探查：下推数仓采样 ==========
 
     public Map<String, Object> profile(String db, String table) throws SQLException {
+        requireIdentifier(db, "数据库名");   // db/table 拼入原生 COUNT/聚合 SQL,先校验防注入
+        requireIdentifier(table, "表名");
         List<String> columnNames = listColumnNames(db, table);
         long totalRows = 0;
         try (Connection conn = hiveConfig.getConnection();
@@ -79,6 +97,11 @@ public class AssetDetailService {
                 String name = columnNames.get(i);
                 Map<String, Object> stat = new HashMap<String, Object>();
                 stat.put("name", name);
+                if (!validIdentifier(name)) {
+                    stat.put("error", "非法列名,跳过探查");   // 列名拼入聚合 SQL,非法则跳过防注入
+                    fields.add(stat);
+                    continue;
+                }
                 try {
                     String col = "`" + name + "`";
                     String sql = "SELECT SUM(CASE WHEN " + col + " IS NULL THEN 1 ELSE 0 END) AS null_count, "
@@ -143,6 +166,7 @@ public class AssetDetailService {
     }
 
     public DnGlossaryTerm saveTerm(DnGlossaryTerm term) {
+        if (term == null) throw new BusinessException("术语内容不能为空");
         if (term.getId() != null) {
             glossaryTermMapper.updateById(term);
         } else {

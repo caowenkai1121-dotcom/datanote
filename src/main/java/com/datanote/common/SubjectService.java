@@ -28,6 +28,7 @@ public class SubjectService {
         QueryWrapper<DnSubject> qw = new QueryWrapper<>();
         qw.orderByAsc("sort_order", "id");
         List<DnSubject> subjects = subjectMapper.selectList(qw);
+        if (subjects == null) subjects = new ArrayList<>();
         return buildTree(subjects, null);
     }
 
@@ -38,6 +39,7 @@ public class SubjectService {
      * @return 插入后的实体（含自增 ID）
      */
     public DnSubject create(DnSubject subject) {
+        if (subject == null) throw new IllegalArgumentException("主题域不能为空");
         subject.setCreatedAt(LocalDateTime.now());
         subjectMapper.insert(subject);
         return subject;
@@ -50,11 +52,20 @@ public class SubjectService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        // 删除子节点
+        if (id == null) return;
+        deleteRecursive(id);
+    }
+
+    /** 递归删除整棵子树后删自身（原仅删一层子节点会致孙节点孤立）。 */
+    private void deleteRecursive(Long id) {
         QueryWrapper<DnSubject> childQuery = new QueryWrapper<>();
         childQuery.eq("parent_id", id);
-        subjectMapper.delete(childQuery);
-        // 删除自身
+        List<DnSubject> children = subjectMapper.selectList(childQuery);
+        if (children != null) {
+            for (DnSubject c : children) {
+                if (c != null && c.getId() != null) deleteRecursive(c.getId());
+            }
+        }
         subjectMapper.deleteById(id);
     }
 
@@ -64,6 +75,7 @@ public class SubjectService {
     private List<Map<String, Object>> buildTree(List<DnSubject> subjects, Long parentId) {
         List<Map<String, Object>> nodes = new ArrayList<>();
         for (DnSubject s : subjects) {
+            if (s == null) continue;
             boolean match = (parentId == null && s.getParentId() == null)
                     || (parentId != null && parentId.equals(s.getParentId()));
             if (match) {

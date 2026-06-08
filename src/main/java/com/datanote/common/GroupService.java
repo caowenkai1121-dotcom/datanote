@@ -38,6 +38,7 @@ public class GroupService {
      * @return 插入后的实体（含自增 ID）
      */
     public DnGroup create(DnGroup group) {
+        if (group == null) throw new IllegalArgumentException("分组不能为空");
         group.setCreatedAt(LocalDateTime.now());
         groupMapper.insert(group);
         return group;
@@ -50,6 +51,7 @@ public class GroupService {
      * @return 更新后的实体
      */
     public DnGroup update(DnGroup group) {
+        if (group == null || group.getId() == null) throw new IllegalArgumentException("分组或分组ID不能为空");
         groupMapper.updateById(group);
         return group;
     }
@@ -86,6 +88,7 @@ public class GroupService {
      * @return 插入后的实体（含自增 ID）
      */
     public DnGroupMember addMember(DnGroupMember member) {
+        if (member == null) throw new IllegalArgumentException("分组成员不能为空");
         member.setCreatedAt(LocalDateTime.now());
         memberMapper.insert(member);
         return member;

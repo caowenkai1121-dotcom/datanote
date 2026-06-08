@@ -156,6 +156,9 @@ public class DolphinService {
         JSONObject result = doGet("/projects/" + projectCode + "/task-definition/gen-task-codes?genNum=1");
         checkSuccess(result, "生成 taskCode");
         JSONArray codes = result.getJSONArray("data");
+        if (codes == null || codes.isEmpty()) {
+            throw new RuntimeException("生成 taskCode 失败: DS 未返回 code");
+        }
         return codes.getLongValue(0);
     }
 
@@ -381,7 +384,7 @@ public class DolphinService {
 
         if (existingWorkflowCode != null && existingWorkflowCode > 0) {
             // 已有 workflow，先下线再更新
-            taskCode = existingTaskCode;
+            taskCode = existingTaskCode != null ? existingTaskCode : genTaskCode(); // 缺 taskCode 时补生成,防自动拆箱 NPE
             workflowCode = existingWorkflowCode;
             try {
                 releaseWorkflow(workflowCode, false);
@@ -471,7 +474,7 @@ public class DolphinService {
         JSONObject taskParams = new JSONObject();
         String taskType;
 
-        switch (scriptType.toLowerCase()) {
+        switch (scriptType == null ? "" : scriptType.toLowerCase()) {
             case "shell":
                 taskType = "SHELL";
                 taskParams.put("rawScript", scriptContent);
