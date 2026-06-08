@@ -92,6 +92,6 @@ public class ProjectReleaseService {
         List<DnProjectRelease> rs = releaseMapper.selectList(new LambdaQueryWrapper<DnProjectRelease>()
                 .eq(DnProjectRelease::getProjectId, projectId)
                 .orderByDesc(DnProjectRelease::getVersionNo).last("LIMIT 1"));
-        return rs.isEmpty() || rs.get(0).getVersionNo() == null ? 1 : rs.get(0).getVersionNo() + 1;
+        return rs == null || rs.isEmpty() || rs.get(0).getVersionNo() == null ? 1 : rs.get(0).getVersionNo() + 1;
     }
 }

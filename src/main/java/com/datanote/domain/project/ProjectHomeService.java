@@ -29,24 +29,29 @@ public class ProjectHomeService {
     public Map<String, Object> home() {
         String user = ProjectService.currentUser();
         List<DnProject> all = projectService.list(null);
+        if (all == null) all = new ArrayList<>();   // list 理论可返回 null
         Map<Long, DnProject> byId = new HashMap<>();
-        for (DnProject p : all) byId.put(p.getId(), p);
+        for (DnProject p : all) if (p != null) byId.put(p.getId(), p);
 
         Map<String, Object> r = new LinkedHashMap<>();
         // 我负责
         List<DnProject> mine = new ArrayList<>();
-        for (DnProject p : all) if (user.equals(p.getOwner())) mine.add(p);
+        for (DnProject p : all) if (p != null && user.equals(p.getOwner())) mine.add(p);
         r.put("myProjects", mine);
         // 收藏
         List<DnProject> favs = new ArrayList<>();
-        for (DnProjectFavorite f : favoriteService.listFavorites()) {
+        List<DnProjectFavorite> favList = favoriteService.listFavorites();
+        if (favList != null) for (DnProjectFavorite f : favList) {
+            if (f == null) continue;
             DnProject p = byId.get(f.getProjectId());
             if (p != null) favs.add(p);
         }
         r.put("favorites", favs);
         // 最近访问
         List<Map<String, Object>> recent = new ArrayList<>();
-        for (DnProjectAccess a : favoriteService.recent(8)) {
+        List<DnProjectAccess> recentAccess = favoriteService.recent(8);
+        if (recentAccess != null) for (DnProjectAccess a : recentAccess) {
+            if (a == null) continue;
             DnProject p = byId.get(a.getProjectId());
             if (p == null) continue;
             Map<String, Object> m = new LinkedHashMap<>();
@@ -60,7 +65,8 @@ public class ProjectHomeService {
         List<DnProjectRelease> pending = releaseMapper.selectList(new LambdaQueryWrapper<DnProjectRelease>()
                 .eq(DnProjectRelease::getStatus, "PENDING").orderByDesc(DnProjectRelease::getId).last("LIMIT 50"));
         List<Map<String, Object>> approvals = new ArrayList<>();
-        for (DnProjectRelease rel : pending) {
+        if (pending != null) for (DnProjectRelease rel : pending) {
+            if (rel == null) continue;
             DnProject p = byId.get(rel.getProjectId());
             if (p == null) continue; // 项目已删，跳过
             Map<String, Object> m = new LinkedHashMap<>();
@@ -78,7 +84,8 @@ public class ProjectHomeService {
                 .eq(DnProjectTask::getAssignee, user).ne(DnProjectTask::getStatus, "DONE")
                 .orderByDesc(DnProjectTask::getId).last("LIMIT 50"));
         List<Map<String, Object>> myTasks = new ArrayList<>();
-        for (DnProjectTask t : tasks) {
+        if (tasks != null) for (DnProjectTask t : tasks) {
+            if (t == null) continue;
             DnProject p = byId.get(t.getProjectId());
             if (p == null) continue; // 项目已删，跳过
             Map<String, Object> m = new LinkedHashMap<>();

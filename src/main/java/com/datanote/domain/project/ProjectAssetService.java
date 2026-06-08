@@ -79,9 +79,9 @@ public class ProjectAssetService {
         projectService.getById(projectId);
         if (!TYPES.contains(type)) throw new IllegalArgumentException("非法资产类型: " + type);
         Set<Long> bound = new HashSet<>();
-        for (DnProjectAsset a : assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
-                .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, type))) {
-            bound.add(a.getAssetId());
+        for (DnProjectAsset a : nz(assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, type)))) {
+            if (a != null) bound.add(a.getAssetId());
         }
         List<Map<String, Object>> out = new ArrayList<>();
         for (Object[] idName : allOfType(type)) {
@@ -116,8 +116,21 @@ public class ProjectAssetService {
         if (!TYPES.contains(type) || assetId == null) return out;
         List<DnProjectAsset> bindings = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getAssetType, type).eq(DnProjectAsset::getAssetId, assetId));
+        if (bindings == null || bindings.isEmpty()) return out;
+        // 收集项目 id 去重剔空,批量查项目,消 N+1(原逐绑定 selectById)
+        Set<Long> pids = new LinkedHashSet<>();
         for (DnProjectAsset b : bindings) {
-            com.datanote.domain.project.model.DnProject p = projectMapper.selectById(b.getProjectId());
+            if (b != null && b.getProjectId() != null) pids.add(b.getProjectId());
+        }
+        if (pids.isEmpty()) return out;
+        Map<Long, com.datanote.domain.project.model.DnProject> projById = new HashMap<>();
+        for (com.datanote.domain.project.model.DnProject p : nz(projectMapper.selectBatchIds(pids))) {
+            if (p != null) projById.put(p.getId(), p);
+        }
+        // 保持原绑定顺序输出(同项目多次绑定按原语义重复出现)
+        for (DnProjectAsset b : bindings) {
+            if (b == null || b.getProjectId() == null) continue;
+            com.datanote.domain.project.model.DnProject p = projById.get(b.getProjectId());
             if (p == null || "DELETED".equals(p.getStatus())) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("projectId", p.getId());
@@ -128,20 +141,25 @@ public class ProjectAssetService {
         return out;
     }
 
+    /** null 安全：selectList 理论可返回 null,统一兜底空列表,for-each 不再 NPE。 */
+    private static <T> List<T> nz(List<T> l) {
+        return l == null ? Collections.emptyList() : l;
+    }
+
     private List<Object[]> allOfType(String type) {
         List<Object[]> list = new ArrayList<>();
         switch (type) {
             case "SYNC_JOB":
-                for (DnSyncJob j : syncJobMapper.selectList(null)) list.add(new Object[]{j.getId(), j.getJobName()});
+                for (DnSyncJob j : nz(syncJobMapper.selectList(null))) list.add(new Object[]{j.getId(), j.getJobName()});
                 break;
             case "SCRIPT":
-                for (DnScript s : scriptMapper.selectList(null)) list.add(new Object[]{s.getId(), s.getScriptName()});
+                for (DnScript s : nz(scriptMapper.selectList(null))) list.add(new Object[]{s.getId(), s.getScriptName()});
                 break;
             case "DATASOURCE":
-                for (DnDatasource d : datasourceMapper.selectList(null)) list.add(new Object[]{d.getId(), d.getName()});
+                for (DnDatasource d : nz(datasourceMapper.selectList(null))) list.add(new Object[]{d.getId(), d.getName()});
                 break;
             case "QUALITY_RULE":
-                for (DnQualityRule q : qualityRuleMapper.selectList(null)) list.add(new Object[]{q.getId(), q.getRuleName()});
+                for (DnQualityRule q : nz(qualityRuleMapper.selectList(null))) list.add(new Object[]{q.getId(), q.getRuleName()});
                 break;
             default:
                 break;

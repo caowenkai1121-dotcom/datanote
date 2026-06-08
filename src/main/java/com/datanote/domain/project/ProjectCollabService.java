@@ -33,6 +33,7 @@ public class ProjectCollabService {
 
     public DnProjectAnnouncement createAnnouncement(Long projectId, DnProjectAnnouncement a) {
         projectService.getById(projectId);
+        if (a == null) throw new IllegalArgumentException("公告内容不能为空");
         if (a.getTitle() == null || a.getTitle().trim().isEmpty()) throw new IllegalArgumentException("公告标题不能为空");
         a.setId(null);
         a.setProjectId(projectId);

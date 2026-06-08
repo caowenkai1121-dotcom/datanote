@@ -10,6 +10,7 @@ import com.datanote.domain.project.model.DnProjectMember;
 import com.datanote.domain.project.model.DnProjectTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -40,7 +41,9 @@ public class ProjectTemplateService {
         cfg.put("tags", p.getTags());
         cfg.put("sensitivity", p.getSensitivity());
         com.alibaba.fastjson.JSONArray members = new com.alibaba.fastjson.JSONArray();
-        for (DnProjectMember m : memberMapper.selectList(new LambdaQueryWrapper<DnProjectMember>().eq(DnProjectMember::getProjectId, projectId))) {
+        List<DnProjectMember> memberList = memberMapper.selectList(new LambdaQueryWrapper<DnProjectMember>().eq(DnProjectMember::getProjectId, projectId));
+        if (memberList != null) for (DnProjectMember m : memberList) {
+            if (m == null) continue;
             if ("OWNER".equals(m.getProjectRole())) continue; // owner 由新建者承担
             JSONObject mm = new JSONObject();
             mm.put("username", m.getUsername());
@@ -59,6 +62,7 @@ public class ProjectTemplateService {
         return t;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public DnProject createFromTemplate(Long templateId, String projectName) {
         DnProjectTemplate t = templateMapper.selectById(templateId);
         if (t == null) throw new IllegalArgumentException("模板不存在");

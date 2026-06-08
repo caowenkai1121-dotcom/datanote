@@ -43,8 +43,10 @@ public class ProjectOverviewService {
 
         List<DnProjectRelease> releases = releaseMapper.selectList(new LambdaQueryWrapper<DnProjectRelease>()
                 .eq(DnProjectRelease::getProjectId, projectId));
+        if (releases == null) releases = new ArrayList<>();   // selectList 理论可返回 null
         long pending = 0, released = 0;
         for (DnProjectRelease rel : releases) {
+            if (rel == null) continue;
             if ("PENDING".equals(rel.getStatus())) pending++;
             else if ("RELEASED".equals(rel.getStatus())) released++;
         }
@@ -61,19 +63,37 @@ public class ProjectOverviewService {
     private Map<String, Object> boundJobRuns(Long projectId) {
         List<DnProjectAsset> jobs = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, "SYNC_JOB"));
+        if (jobs == null) jobs = new ArrayList<>();   // selectList 理论可返回 null
         long success = 0, failed = 0, running = 0, neverRun = 0, other = 0;
         List<Object[]> recents = new ArrayList<>(); // [time, name, status]
+        // 收集绑定的同步任务 id(去重剔空),一次性批量查执行记录,消 N+1(原逐任务 selectOne)
+        Set<Long> jobIds = new LinkedHashSet<>();
         for (DnProjectAsset job : jobs) {
-            List<com.datanote.domain.orchestration.model.DnTaskExecution> ex = taskExecutionMapper.selectList(
+            if (job != null && job.getAssetId() != null) jobIds.add(job.getAssetId());
+        }
+        Map<Long, com.datanote.domain.orchestration.model.DnTaskExecution> latestByJob = new HashMap<>();
+        if (!jobIds.isEmpty()) {
+            List<com.datanote.domain.orchestration.model.DnTaskExecution> execs = taskExecutionMapper.selectList(
                     new LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnTaskExecution>()
-                            .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getSyncTaskId, job.getAssetId())
+                            .in(com.datanote.domain.orchestration.model.DnTaskExecution::getSyncTaskId, jobIds)
                             .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getTaskType, "DbSync")
-                            .orderByDesc(com.datanote.domain.orchestration.model.DnTaskExecution::getId).last("LIMIT 1"));
-            if (ex.isEmpty()) {
+                            .orderByDesc(com.datanote.domain.orchestration.model.DnTaskExecution::getId));
+            if (execs != null) {
+                for (com.datanote.domain.orchestration.model.DnTaskExecution e : execs) {
+                    if (e == null || e.getSyncTaskId() == null) continue;
+                    // id 倒序,每个任务首次出现即最新一条(等价原 LIMIT 1)
+                    latestByJob.putIfAbsent(e.getSyncTaskId(), e);
+                }
+            }
+        }
+        for (DnProjectAsset job : jobs) {
+            if (job == null) continue;
+            com.datanote.domain.orchestration.model.DnTaskExecution e =
+                    job.getAssetId() == null ? null : latestByJob.get(job.getAssetId());
+            if (e == null) {
                 neverRun++;
                 continue;
             }
-            com.datanote.domain.orchestration.model.DnTaskExecution e = ex.get(0);
             String st = e.getStatus();
             if ("SUCCESS".equals(st)) success++;
             else if ("FAILED".equals(st)) failed++;
@@ -111,17 +131,23 @@ public class ProjectOverviewService {
     /** 合成活动流：成员加入 / 资产绑定 / 发布事件，按时间倒序取前 15。 */
     private List<Map<String, Object>> buildActivity(Long projectId, List<DnProjectRelease> releases) {
         List<Object[]> events = new ArrayList<>(); // [LocalDateTime, kind, text]
-        for (DnProjectMember m : memberMapper.selectList(new LambdaQueryWrapper<DnProjectMember>()
-                .eq(DnProjectMember::getProjectId, projectId))) {
+        List<DnProjectMember> members = memberMapper.selectList(new LambdaQueryWrapper<DnProjectMember>()
+                .eq(DnProjectMember::getProjectId, projectId));
+        if (members != null) for (DnProjectMember m : members) {
+            if (m == null) continue;
             events.add(new Object[]{m.getCreatedAt(), "member",
                     "成员 " + m.getUsername() + " 加入（" + ProjectRoles.label(m.getProjectRole()) + "）"});
         }
-        for (DnProjectAsset a : assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
-                .eq(DnProjectAsset::getProjectId, projectId))) {
+        List<DnProjectAsset> assets = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getProjectId, projectId));
+        if (assets != null) for (DnProjectAsset a : assets) {
+            if (a == null) continue;
             events.add(new Object[]{a.getCreatedAt(), "asset",
                     "绑定" + ProjectAssetService.typeLabel(a.getAssetType()) + " " + (a.getAssetName() == null ? a.getAssetId() : a.getAssetName())});
         }
+        if (releases == null) releases = new ArrayList<>();
         for (DnProjectRelease rel : releases) {
+            if (rel == null) continue;
             LocalDateTime at = rel.getReleasedAt() != null ? rel.getReleasedAt()
                     : (rel.getSubmittedAt() != null ? rel.getSubmittedAt() : rel.getCreatedAt());
             events.add(new Object[]{at, "release", "发布 v" + rel.getVersionNo() + " " + relStatusLabel(rel.getStatus())});
