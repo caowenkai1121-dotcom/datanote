@@ -81,7 +81,7 @@
       chainCard.body.appendChild(DN.empty('暂无业务闭环链配置', 'inbox'));
     } else CHAINS.forEach(function (ch) {
       if (!ch) return;
-      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#3457d5)') + ';border-radius:8px;' });
+      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#3457d5)') + ';border-radius:var(--radius-lg);' });
       row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary,#3457d5)'), text: ch.name || '未命名链' }));
       var flow = DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;' });
       var steps = Array.isArray(ch.steps) ? ch.steps : [];
@@ -111,7 +111,7 @@
       HUBS.forEach(function (h) {
         if (!h) return;
         var box = DN.h('div', { role: 'button', tabindex: '0', title: (h.t || '') + ' → ' + (h.d || ''),
-          style: 'padding:12px;border:1px solid var(--border,#e5e6eb);border-radius:10px;cursor:pointer;transition:all .15s;background:var(--bg-card,#fff);outline-offset:2px;' });
+          style: 'padding:12px;border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);cursor:pointer;transition:all .15s;background:var(--bg-card,#fff);outline-offset:2px;' });
         box.onmouseover = function () { box.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'; box.style.transform = 'translateY(-2px)'; };
         box.onmouseout = function () { box.style.boxShadow = ''; box.style.transform = ''; };
         if (typeof h.go === 'function') bindActivate(box, h.go);

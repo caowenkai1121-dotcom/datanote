@@ -412,7 +412,7 @@
       + 'table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left}th{background:#f6f7f9}'
       + '.kpi{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}.kpi div{font-size:13px;color:#666}.kpi b{display:block;font-size:22px;color:#1f2329}'
       + '.muted{color:#86909c;font-size:12px}@media print{.noprint{display:none}body{margin:0}}</style></head><body>'
-      + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#3457d5;color:#fff;border:0;border-radius:6px;cursor:pointer">打印 / 另存为PDF</button></div>'
+      + '<div class="noprint" style="text-align:right;margin-bottom:10px"><button onclick="window.print()" style="padding:6px 16px;background:#3457d5;color:#fff;border:0;border-radius:var(--radius);cursor:pointer">打印 / 另存为PDF</button></div>'
       + '<h1>数据治理体检报告</h1><div class="muted">生成时间：' + ts + '　|　DataNote 数据治理平台</div>'
       + '<h2>一、治理健康总分</h2><div class="score">' + total + ' <span style="font-size:18px;color:#86909c">/ 100 · ' + level(total) + '</span></div>'
       + '<h2>二、五维健康明细</h2><table><tr><th>维度</th><th>得分</th><th>权重</th><th>评级</th></tr>' + dimRows + '</table>'

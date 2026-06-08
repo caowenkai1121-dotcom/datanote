@@ -123,7 +123,7 @@
     if (r.reviewer) body.appendChild(kv('审批人', DN.h('span', { text: r.reviewer })));
     if (r.reviewComment) body.appendChild(kv('审批意见', DN.h('span', { text: r.reviewComment })));
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:14px 0 6px', text: '变更内容(JSON)：' }));
-    var pre = DN.h('pre', { style: 'margin:0;padding:10px 12px;border-radius:8px;background:var(--bg-soft,rgba(0,0,0,.04));font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto' });
+    var pre = DN.h('pre', { style: 'margin:0;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-soft,rgba(0,0,0,.04));font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto' });
     pre.textContent = prettyJson(r.payloadJson);
     body.appendChild(pre);
     DN.drawer('变更请求详情', body);

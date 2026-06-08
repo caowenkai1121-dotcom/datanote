@@ -144,7 +144,7 @@
       tb += '<tr><td style="font-size:12px;font-weight:500;white-space:nowrap">' + DN.esc(d) + '</td>';
       types.forEach(function (t) {
         var n = grid[d + '||' + t] || 0;
-        tb += '<td style="text-align:center;padding:2px"><div data-dim="' + DN.esc(d) + '" data-type="' + DN.esc(t) + '" title="' + DN.esc(d) + ' · ' + DN.esc(t) + ' · ' + n + ' 条规则' + (n ? ' (点击筛选)' : '') + '" style="width:42px;height:28px;line-height:28px;border-radius:4px;margin:0 auto;background:' + colorOf(n) + ';color:' + (n ? '#fff' : 'var(--text-muted)') + ';font-size:12px;cursor:' + (n ? 'pointer' : 'default') + '">' + (n || '') + '</div></td>';
+        tb += '<td style="text-align:center;padding:2px"><div data-dim="' + DN.esc(d) + '" data-type="' + DN.esc(t) + '" title="' + DN.esc(d) + ' · ' + DN.esc(t) + ' · ' + n + ' 条规则' + (n ? ' (点击筛选)' : '') + '" style="width:42px;height:28px;line-height:28px;border-radius:var(--radius-sm);margin:0 auto;background:' + colorOf(n) + ';color:' + (n ? '#fff' : 'var(--text-muted)') + ';font-size:12px;cursor:' + (n ? 'pointer' : 'default') + '">' + (n || '') + '</div></td>';
       });
       tb += '</tr>';
     });

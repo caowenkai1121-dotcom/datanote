@@ -847,7 +847,7 @@
           if (!d || !d.found) { rout.appendChild(DN.empty('未找到该源标识对应的黄金记录', 'alert')); return; }
           var dj = d.dataJson || '';
           var djShow = dj.length > 120 ? dj.slice(0, 120) + '…' : dj;
-          rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:8px;background:rgba(47,158,68,.08);border:1px solid rgba(47,158,68,.25);font-size:13px' }, [
+          rout.appendChild(DN.h('div', { style: 'padding:10px 12px;border-radius:var(--radius-lg);background:rgba(47,158,68,.08);border:1px solid rgba(47,158,68,.25);font-size:13px' }, [
             DN.h('div', { style: 'font-weight:600;margin-bottom:4px' }, [DN.h('span', { text: '✓ 命中黄金记录：' + (d.bizKey || ('#' + d.goldenRecordId)) }), DN.h('span', { style: 'margin-left:8px' }, [DN.pill(d.status === 'active' ? '已生效' : (d.status === 'inactive' ? '已停用' : '草稿'), d.status === 'active' ? 'ok' : 'warn')])]),
             DN.h('div', { class: 'gov-desc', style: 'margin:0', text: 'MDM ID: ' + d.goldenRecordId + ' · 属性: ' + djShow, title: dj })
           ]));

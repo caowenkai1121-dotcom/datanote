@@ -269,7 +269,7 @@
     var color = pct >= 75 ? '#e03131' : pct >= 50 ? '#fa8c16' : pct >= 25 ? '#e8930c' : '#2f9e44';
     return '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">'
       + '<span style="font-variant-numeric:tabular-nums;">' + label + '</span>'
-      + '<span style="display:inline-block;width:48px;height:6px;border-radius:3px;background:var(--bg-hover,#f0f1f3);overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';"></span></span></div>';
+      + '<span style="display:inline-block;width:48px;height:6px;border-radius:var(--radius-sm);background:var(--bg-hover,#f0f1f3);overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';"></span></span></div>';
   }
   function renderAssetTable() {
     var box = document.getElementById('assetTbl');
@@ -341,7 +341,7 @@
     groups.forEach(function (g) {
       var bandH = Math.max(28, Math.round(g.sum / grand * 260)); // 带高按库占比
       var head = DN.h('div', { style: 'font-size:12px;color:var(--text-regular);margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + DN.fmtBytes(g.sum) + '</span>' });
-      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:6px;overflow:hidden' });
+      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:var(--radius);overflow:hidden' });
       g.tables.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); }).forEach(function (t) {
         var w = (Number(t.sizeBytes) || 0) / (g.sum || 1) * 100;
         var cell = DN.h('div', { title: t.tableName + ' · ' + DN.fmtBytes(t.sizeBytes) + (t.rowCount != null ? ' · ' + fmtInt(t.rowCount) + ' 行' : ''),
@@ -373,7 +373,7 @@
     box.innerHTML = '';
     box.appendChild(bar);
     if (!keys.length) { box.appendChild(DN.empty('暂无资产', 'inbox')); return; }
-    var wrap = DN.h('div', { style: 'border:1px solid var(--border,#eceef1);border-radius:10px;overflow:hidden' });
+    var wrap = DN.h('div', { style: 'border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg);overflow:hidden' });
     var manyDb = keys.length > 12;  // 库很多时默认折叠, 避免一次性展开全部库造成卡顿
     keys.forEach(function (k) {
       var parts = k.split('|'), dbType = parts[0], dbName = parts[1];
@@ -383,7 +383,7 @@
       var head = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;background:var(--bg-hover,#f6f7f9);border-bottom:1px solid var(--divider,#eee)' });
       head.innerHTML = '<span style="font-size:11px;color:var(--text-muted);width:12px;display:inline-block;transition:transform .15s;transform:rotate(' + (open ? '90' : '0') + 'deg)">▶</span>'
         + '<span style="font-weight:600;font-size:13px">' + DN.esc(dbName) + '</span>'
-        + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:8px;background:#eaeefc;color:#3457d5">' + DN.esc(dbType || '-') + '</span>'
+        + '<span class="gov-pill" style="font-size:10px;padding:0 6px;border-radius:var(--radius-lg);background:#eaeefc;color:#3457d5">' + DN.esc(dbType || '-') + '</span>'
         + '<span style="font-size:11px;color:var(--text-muted)">' + tables.length + ' 表 · ' + DN.fmtBytes(totalBytes) + '</span>';
       var bodyWrap = DN.h('div', { style: 'display:' + (open ? 'block' : 'none') });
       // 仅在展开时才构建该库的行(节省折叠库的渲染开销)
@@ -442,7 +442,7 @@
         if (window.dnAskAi) window.dnAskAi('对表 ' + fqn + ' 做一次资产体检:元数据画像、字段密级、下游影响与质量状况。[表:' + fqn + ']',
           { route: 'catalog', db: db, table: table }); } }
     ];
-    var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
+    var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' });
     bar.appendChild(DN.h('span', { text: '治理联动', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));
     links.forEach(function (l) {
       bar.appendChild(DN.h('a', { class: 'btn ' + (l.tone || ''), href: 'javascript:void(0)', text: l.text, onclick: l.go }));
@@ -456,7 +456,7 @@
       var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table);
       var subjects = [];        // [{id,name}]
       var curId = null;         // 当前主题域 id(数字或 null)
-      var row = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
+      var row = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' });
       row.appendChild(DN.h('span', { text: '所属主题域', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));
       var nameSpan = DN.h('span', { text: '加载中…', style: 'font-size:13px;color:var(--text-primary,#1f2329)' });
       row.appendChild(nameSpan);

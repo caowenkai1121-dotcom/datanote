@@ -110,7 +110,7 @@
     gCard.body.appendChild(gq);
     // 图例
     gCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:8px',
-      html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:3px;vertical-align:middle;margin-right:4px"></span>★ 中心表 ' +
+      html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:var(--radius-sm);vertical-align:middle;margin-right:4px"></span>★ 中心表 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.up + ';vertical-align:middle;margin:0 4px 0 12px"></span>上游边 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 单击节点高亮相邻，双击节点设为中心，悬停边看来源/层级' }));
     gCard.body.appendChild(DN.h('div', { id: 'graphResult' }));
@@ -393,7 +393,7 @@
 
     var s = svg('svg', { width: String(width), height: String(height),
       viewBox: '0 0 ' + width + ' ' + height,
-      style: 'background:#fff;border:1px solid var(--border,#eceef1);border-radius:10px;max-width:100%' });
+      style: 'background:#fff;border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg);max-width:100%' });
     // 箭头标记（上游红 / 下游绿）
     var defs = svg('defs');
     [['arrU', C.up], ['arrD', C.down]].forEach(function (a) {
@@ -497,7 +497,7 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
       } catch (e) { DN.toast('导出失败', 'error'); }
     }
-    var scroll = DN.h('div', { style: 'overflow:auto;max-width:100%;max-height:600px;border:1px solid var(--border,#eceef1);border-radius:10px' }, [s]);
+    var scroll = DN.h('div', { style: 'overflow:auto;max-width:100%;max-height:600px;border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' }, [s]);
     scroll.addEventListener('wheel', function (e) {
       if (!e.ctrlKey) return; e.preventDefault(); zoom(e.deltaY < 0 ? 0.1 : -0.1);
     }, { passive: false });
@@ -513,7 +513,7 @@
     var dot = String(centerId || '').indexOf('.');
     if (dot > 0 && window.navigateTo) {   // 独立页(无路由)中心表无跨模块去处, 不渲染空下钻条
       var cdb = centerId.slice(0, dot), ctb = centerId.slice(dot + 1);
-      var drill = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
+      var drill = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' });
       drill.appendChild(DN.h('span', { text: '中心表 ' + centerId + ' 下钻：', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c)' }));
       drill.appendChild(tableActionMenu(cdb, ctb, { skipGraph: true }));
       out.appendChild(drill);
@@ -547,11 +547,11 @@
       var group = byDepth[d];
       group.slice(0, CHIPS_PER_LEVEL).forEach(function (n) {
         var fqn = (n.db || '') + '.' + (n.table || '');
-        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-regular)',
+        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover,#f0f1f3);color:var(--text-regular)',
           text: fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, title: fqn })); // 超长 FQN 截断 + title 看全
       });
       if (group.length > CHIPS_PER_LEVEL) {
-        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:10px;background:var(--bg-hover,#f0f1f3);color:var(--text-muted)',
+        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover,#f0f1f3);color:var(--text-muted)',
           text: '+' + (group.length - CHIPS_PER_LEVEL) + ' 张…', title: '该层共 ' + group.length + ' 张, 详见下方表格' }));
       }
       row.appendChild(chips);
@@ -563,7 +563,7 @@
     if (kind === 'impact') {
       var n = list.length;
       var risk = (n > 10 || maxDepth >= 4) ? ['高风险', 'err'] : (n > 3 || maxDepth >= 2) ? ['中风险', 'warn'] : ['低风险', 'ok'];
-      var rc = DN.h('div', { style: 'margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--bg-hover,#f7f8fa)' });
+      var rc = DN.h('div', { style: 'margin-top:12px;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-hover,#f7f8fa)' });
       rc.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px' }, [
         DN.h('span', { style: 'font-weight:600;font-size:13px', text: '变更风险评估' }), DN.pill(risk[0], risk[1])
       ]));

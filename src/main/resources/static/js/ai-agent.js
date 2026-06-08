@@ -44,7 +44,7 @@
 
   function linkChip(label, onclick) {
     return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
-      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:10px;background:var(--primary,#3457d5);color:#fff;font-size:12px;text-decoration:none;' });
+      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:var(--radius-lg);background:var(--primary,#3457d5);color:#fff;font-size:12px;text-decoration:none;' });
   }
 
   // ===== 轻量 Markdown → DOM 渲染(零依赖, XSS 安全: 全程 DOM 构造不用 innerHTML 拼 LLM 文本) =====
@@ -55,7 +55,7 @@
     while ((m = INLINE_RE.exec(str)) !== null) {
       if (m.index > last) el.appendChild(document.createTextNode(str.slice(last, m.index)));
       if (m[1] != null) el.appendChild(DN.h('strong', { text: m[1], style: 'font-weight:650;' }));
-      else if (m[2] != null) el.appendChild(DN.h('code', { text: m[2], style: 'background:var(--bg-main,#f1f4fa);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' }));
+      else if (m[2] != null) el.appendChild(DN.h('code', { text: m[2], style: 'background:var(--bg-main,#f1f4fa);border-radius:var(--radius-sm);padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' }));
       else if (m[3] != null) (function (db, tb) { el.appendChild(linkChip('🔗 ' + db + '.' + tb, function () { go('catalog', { openTable: { db: db, table: tb } }); })); })(m[3], m[4]);
       else if (m[5] != null) (function (id) { el.appendChild(linkChip('🔗 规则#' + id, function () { go('governance', { gov: 'quality', ruleId: Number(id) }); })); })(m[5]);
       else if (m[6] != null) (function (id) { el.appendChild(linkChip('🔗 任务#' + id, function () { go('dbsync', { openDetail: Number(id) }); })); })(m[6]);
@@ -74,7 +74,7 @@
         var buf = []; i++;
         while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
         i++; // 跳过收尾 ```
-        var pre = DN.h('pre', { style: 'background:var(--bg-main,#f1f4fa);border:1px solid var(--divider,#eef1f7);border-radius:8px;padding:10px 12px;overflow-x:auto;margin:8px 0;' });
+        var pre = DN.h('pre', { style: 'background:var(--bg-main,#f1f4fa);border:1px solid var(--divider,#eef1f7);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
         pre.appendChild(DN.h('code', { text: buf.join('\n'), style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
         container.appendChild(pre); continue;
       }
@@ -167,7 +167,7 @@
       card.body.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:6px;', text: '参数：' + step.argsJson }));
     }
     var resultText = summarizeResult(step.resultData, ok);
-    var pre = DN.h('div', { style: 'font-size:12px;color:var(--text-regular,#4e5969);white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;background:var(--bg-body,#f7f8fa);border-radius:6px;padding:8px 10px;', text: resultText });
+    var pre = DN.h('div', { style: 'font-size:12px;color:var(--text-regular,#4e5969);white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;background:var(--bg-body,#f7f8fa);border-radius:var(--radius);padding:8px 10px;', text: resultText });
     card.body.appendChild(pre);
     // 工具结果若带 _deeplink, 渲染"跳转到模块"按钮(天工开物·一图可复核 + 自由意志·人机协同回链)
     var dl = extractDeeplink(step.resultData);
@@ -252,7 +252,7 @@
       var ap = null;
       for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
       if (!ap) return;
-      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #e8930c;background:var(--bg-body,#fffbe6);border-radius:10px;padding:12px 14px;' });
+      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #e8930c;background:var(--bg-body,#fffbe6);border-radius:var(--radius-lg);padding:12px 14px;' });
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:#9a5b00;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
@@ -303,7 +303,7 @@
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
       arr.forEach(function (m) {
-        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--bg-body,#f7f8fa);' });
+        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--bg-body,#f7f8fa);' });
         card.appendChild(DN.h('div', { text: m.title || '(无标题)', style: 'font-weight:600;font-size:13px;color:var(--text-primary);margin-bottom:4px;' }));
         card.appendChild(DN.h('div', { text: m.content || '', style: 'font-size:12.5px;color:var(--text-secondary,#4e5969);line-height:1.7;' }));
         var meta = [];
@@ -320,12 +320,12 @@
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '没有待审批的写操作。', style: 'color:var(--text-muted);font-size:13px;' })); return; }
       arr.forEach(function (a) {
-        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:8px;padding:10px 12px;margin-bottom:10px;' });
+        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;' });
         card.appendChild(DN.h('div', {}, [
           DN.h('span', { text: a.skillName || '?', style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
           DN.h('span', { text: a.riskLevel || '', style: 'margin-left:8px;font-size:11px;padding:1px 7px;border-radius:9px;background:' + (a.riskLevel === 'HIGH' ? '#ffece8;color:#f53f3f' : '#fff7e8;color:#ff7d00') + ';' })
         ]));
-        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:11px;color:var(--text-secondary,#4e5969);background:var(--bg-body,#f7f8fa);border-radius:6px;padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
+        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:11px;color:var(--text-secondary,#4e5969);background:var(--bg-body,#f7f8fa);border-radius:var(--radius);padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
         var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });
         var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
         ok.onclick = function () {
@@ -371,7 +371,7 @@
 
     // 输入区
     inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2',
-      style: 'flex:1;resize:none;border:1px solid var(--border,#e5e6eb);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;' });
+      style: 'flex:1;resize:none;border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:9px 12px;font-size:13px;font-family:inherit;outline:none;' });
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
     });

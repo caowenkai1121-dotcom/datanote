@@ -582,7 +582,7 @@
     var fqn = (ft.db ? ft.db + '.' : '') + ft.table;
     var bar = DN.h('div', { class: 'gov-focus-banner',
       style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;' +
-        'border:1px solid var(--primary,#3457d5);border-radius:8px;background:rgba(52,87,213,.06)' });
+        'border:1px solid var(--primary,#3457d5);border-radius:var(--radius-lg);background:rgba(52,87,213,.06)' });
     bar.appendChild(DN.h('span', { style: 'font-weight:600',
       html: DN.icon('lock', 'style="margin-right:6px;color:var(--primary,#3457d5)"') + '安全聚焦：' + DN.esc(fqn) }));
     bar.appendChild(DN.h('span', { style: 'color:var(--text-muted,#888);font-size:13px',

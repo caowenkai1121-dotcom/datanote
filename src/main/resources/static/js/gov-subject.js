@@ -391,7 +391,7 @@
 
   function modal(title, bodyNodes, onOk) {
     var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
-    var box = DN.h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '对话框', style: 'background:var(--bg-card,#fff);border-radius:8px;min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
+    var box = DN.h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '对话框', style: 'background:var(--bg-card,#fff);border-radius:var(--radius-lg);min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
     box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
     bodyNodes.forEach(function (n) { box.appendChild(n); });
     var _closed = false;

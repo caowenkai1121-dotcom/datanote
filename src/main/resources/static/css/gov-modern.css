@@ -41,10 +41,10 @@
 /* ---- 工具条 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search { position:relative; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:8px; font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input { height:34px; padding:0 12px 0 32px; border:1px solid var(--border,#d4d7de); border-radius:var(--radius-lg); font-size:13px; min-width:220px; outline:none; transition:border-color .15s, box-shadow .15s; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search input:focus { border-color:var(--primary,#3457d5); box-shadow:0 0 0 3px var(--primary-light,rgba(52,87,213,.1)); }
 /* 键盘焦点环(仅键盘聚焦显示),覆盖所有 gov 交互元素 */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) a:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) button:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) [role="button"]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) th[data-sk]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) select:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#3457d5); outline-offset:2px; border-radius:4px; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) a:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) button:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) [role="button"]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) th[data-sk]:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) select:focus-visible, :is(#govModuleContent,#mdmModuleContent,#homeCockpit) input[type="checkbox"]:focus-visible { outline:2px solid var(--primary,#3457d5); outline-offset:2px; border-radius:var(--radius-sm); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search svg { position:absolute; left:9px; top:9px; width:15px; height:15px; color:var(--text-muted,#86909c); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search .gov-search-clr { position:absolute; right:8px; top:6px; cursor:pointer; color:var(--text-muted,#86909c); font-size:16px; line-height:20px; width:18px; text-align:center; border-radius:50%; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-search .gov-search-clr:hover { background:var(--bg-hover,#f0f1f3); color:var(--text-regular,#1f2329); }
@@ -90,7 +90,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-empty .et { font-size:13px; }
 
 /* ---- 骨架屏 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-skel { height:14px; border-radius:6px; background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.6s ease infinite; margin:10px 0; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-skel { height:14px; border-radius:var(--radius); background:linear-gradient(90deg,#f0f1f3 25%,#e7e9ec 37%,#f0f1f3 63%); background-size:400% 100%; animation:govShimmer 1.6s ease infinite; margin:10px 0; }
 @keyframes govShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
 
 /* ---- 治理大屏全屏模式：放大留白, 适合投屏 ---- */
@@ -169,7 +169,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .btn:active { transform:translateY(1px); }
 
 /* ---- 告警条 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert { display:flex; align-items:center; gap:9px; padding:10px 14px; border-radius:var(--radius-lg); font-size:13px; margin-bottom:14px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .ic svg { width:17px; height:17px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .m { flex:1; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .x { border:0; background:none; cursor:pointer; font-size:17px; line-height:1; color:inherit; opacity:.6; }
@@ -187,11 +187,11 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-err { color:#cf1322; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-muted { color:#5b6472; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:var(--radius-lg); font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell:hover { transform:translateY(-2px); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell .hl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-regular,#1f2329); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell .hv { font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
 
 /* ---- 图例 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text-muted,#86909c); margin-top:10px; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-legend i { display:inline-block; width:10px; height:10px; border-radius:var(--radius-sm); margin-right:5px; vertical-align:middle; }

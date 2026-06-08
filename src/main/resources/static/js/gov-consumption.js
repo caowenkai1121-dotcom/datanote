@@ -542,7 +542,7 @@
     if (document.getElementById('consFlashStyle')) return;
     var st = document.createElement('style'); st.id = 'consFlashStyle';
     st.textContent = '@keyframes consFlash{0%{background:rgba(52,87,213,.22)}100%{background:transparent}}'
-      + '.cons-flash{animation:consFlash 1.5s ease-out;border-radius:6px}';
+      + '.cons-flash{animation:consFlash 1.5s ease-out;border-radius:var(--radius)}';
     document.head.appendChild(st);
   }
 })();

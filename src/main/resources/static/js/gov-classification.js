@@ -111,7 +111,7 @@
     ]));
     // 视图切换: 热力 / 矩形树图
     var tog = DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:6px 0' });
-    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:6px 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#3457d5);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
+    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:var(--radius) 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#3457d5);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
     tog.appendChild(mk('heat', '热力')); tog.appendChild(mk('treemap', '矩形图'));
     box.appendChild(tog);
     if (_clHeatView === 'treemap') { box.appendChild(buildClTreemap(rows)); return; }
@@ -133,7 +133,7 @@
     groups.forEach(function (g) {
       var bandH = Math.max(26, Math.round(g.sum / grand * 220));
       wrap.appendChild(DN.h('div', { style: 'font-size:12px;margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + g.sum + ' 敏感列</span>' }));
-      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:6px;overflow:hidden' });
+      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:var(--radius);overflow:hidden' });
       g.tables.slice().sort(function (a, b) { return (b.count || 0) - (a.count || 0); }).forEach(function (t) {
         var w = (Number(t.count) || 0) / (g.sum || 1) * 100;
         var cell = DN.h('div', { title: t.table + ' · ' + (t.count || 0) + ' 敏感列', style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.count) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap' });
