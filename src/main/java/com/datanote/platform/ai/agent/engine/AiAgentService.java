@@ -42,6 +42,7 @@ public class AiAgentService {
     private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;
     private final com.datanote.platform.audit.AuditService auditService;
     private final ApprovalGate approvalGate;
+    private final AiMemoryService aiMemoryService;
 
     /** M1 单轮最大步数（含工具调用），防失控 */
     private static final int MAX_STEPS = 6;
@@ -53,6 +54,8 @@ public class AiAgentService {
     private static final int RAG_TOPK = 5;
     /** RAG 注入文本上限(控 token) */
     private static final int RAG_TEXT_CAP = 800;
+    /** 自学习记忆召回条数 */
+    private static final int MEM_TOPK = 3;
 
     /** 一轮对话：发起 userMessage，返回 {sessionId, status, finalAnswer, steps:[...]}。 */
     public Map<String, Object> run(String sessionId, String userMessage, AgentContext ctx) {
@@ -91,10 +94,11 @@ public class AiAgentService {
         String today = LocalDate.now().toString();
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
         String ragText = buildRagText(userMessage);   // 循环外算一次, 自动 grounding
+        String memoryText = aiMemoryService.recall(userMessage, ctx == null ? null : ctx.getUserName(), MEM_TOPK); // 自学习记忆召回(只读上下文)
         boolean first = true;
 
         for (int i = 0; i < MAX_STEPS && !st.done && !st.blocked && !st.awaitingApproval; i++) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText);
             String userPrompt = first
                     ? userMessage
                     : "请根据上面的『已执行步骤与工具结果』继续：若仍需信息就只输出一个 <tool_call>，否则直接给出最终中文答复（不要再输出 tool_call）。";
@@ -219,7 +223,7 @@ public class AiAgentService {
 
         // 达步数上限仍无终答 → 一次 grace call 收尾
         if (!st.done && !st.blocked && !st.awaitingApproval) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText);
             String raw = aiAssistService.chat(
                     "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
             st.finalAnswer = AgentTextUtil.sanitize(raw);
@@ -232,6 +236,16 @@ public class AiAgentService {
         session.setBudgetStepsUsed(st.seq);
         session.setUpdatedAt(LocalDateTime.now());
         sessionMapper.updateById(session);
+
+        // 自学习: 成功完成且有实质工具调用时, 异步蒸馏经验入库+向量化(失败静默, 不影响本轮返回)
+        if (st.done && !st.blocked && !st.awaitingApproval && hasToolCall(newSteps)) {
+            try {
+                aiMemoryService.learn(session.getSessionId(), session.getGoalIntent(),
+                        ctx == null ? null : ctx.getUserName(), st.trace.toString(), st.finalAnswer);
+            } catch (Exception e) {
+                log.warn("[memory] 触发 learn 失败 session={}: {}", session.getSessionId(), e.getMessage());
+            }
+        }
 
         resp.put("sessionId", session.getSessionId());
         resp.put("status", st.awaitingApproval ? "wait_approval" : (st.blocked ? "blocked" : "done"));
@@ -426,6 +440,15 @@ public class AiAgentService {
             case "home": return "首页";
             default: return route;
         }
+    }
+
+    /** 本轮是否有实质工具调用(决定是否值得沉淀经验)。 */
+    private boolean hasToolCall(List<DnAiStep> steps) {
+        if (steps == null) return false;
+        for (DnAiStep s : steps) {
+            if (s != null && "SKILL_CALL".equals(s.getStepType()) && s.getSkillName() != null) return true;
+        }
+        return false;
     }
 
     private String argsToStr(JsonNode args) {

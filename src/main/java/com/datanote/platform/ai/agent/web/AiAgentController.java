@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.common.model.R;
 import com.datanote.platform.ai.agent.engine.AiAgentService;
 import com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper;
+import com.datanote.platform.ai.agent.mapper.DnAiMemorySkillMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiSessionMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiStepMapper;
 import com.datanote.platform.ai.agent.model.DnAiApproval;
+import com.datanote.platform.ai.agent.model.DnAiMemorySkill;
 import com.datanote.platform.ai.agent.model.DnAiSession;
 import com.datanote.platform.ai.agent.model.DnAiStep;
 import com.datanote.platform.ai.agent.tool.AgentContext;
@@ -35,6 +37,7 @@ public class AiAgentController {
     private final DnAiSessionMapper sessionMapper;
     private final DnAiStepMapper stepMapper;
     private final DnAiApprovalMapper approvalMapper;
+    private final DnAiMemorySkillMapper memoryMapper;
     private final ObjectMapper objectMapper;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
@@ -79,6 +82,13 @@ public class AiAgentController {
             m.put("tools", toolRegistry.toToolsManifestJson());
         }
         return R.ok(m);
+    }
+
+    /** AI 自学习记忆清单(active, 按命中+近因)。让"AI 数据入库入表、留记忆"可见。 */
+    @GetMapping("/memories")
+    public R<List<DnAiMemorySkill>> memories(@RequestParam(value = "status", required = false, defaultValue = "active") String status) {
+        return R.ok(memoryMapper.selectList(new QueryWrapper<DnAiMemorySkill>()
+                .eq("status", status).orderByDesc("hit_count").orderByDesc("updated_at").last("LIMIT 200")));
     }
 
     /** 待审批清单(审批抽屉数据源)。 */
