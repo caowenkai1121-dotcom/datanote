@@ -39,6 +39,7 @@ public class AiAgentService {
     private final ObjectMapper objectMapper;
     private final DnAiSessionMapper sessionMapper;
     private final DnAiStepMapper stepMapper;
+    private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;
 
     /** M1 单轮最大步数（含工具调用），防失控 */
     private static final int MAX_STEPS = 6;
@@ -46,6 +47,10 @@ public class AiAgentService {
     private static final int TRACE_RESULT_CAP = 1500;
     /** 入库 result_data 上限 */
     private static final int STORE_RESULT_CAP = 8000;
+    /** RAG 召回条数 */
+    private static final int RAG_TOPK = 5;
+    /** RAG 注入文本上限(控 token) */
+    private static final int RAG_TEXT_CAP = 800;
 
     /** 一轮对话：发起 userMessage，返回 {sessionId, status, finalAnswer, steps:[...]}。 */
     public Map<String, Object> run(String sessionId, String userMessage, AgentContext ctx) {
@@ -83,10 +88,11 @@ public class AiAgentService {
         String manifest = toolRegistry.toToolsManifestJson();
         String today = LocalDate.now().toString();
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
+        String ragText = buildRagText(userMessage);   // 循环外算一次, 自动 grounding
         boolean first = true;
 
         for (int i = 0; i < MAX_STEPS && !st.done && !st.blocked; i++) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
             String userPrompt = first
                     ? userMessage
                     : "请根据上面的『已执行步骤与工具结果』继续：若仍需信息就只输出一个 <tool_call>，否则直接给出最终中文答复（不要再输出 tool_call）。";
@@ -165,7 +171,7 @@ public class AiAgentService {
 
         // 达步数上限仍无终答 → 一次 grace call 收尾
         if (!st.done && !st.blocked) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText);
             String raw = aiAssistService.chat(
                     "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
             st.finalAnswer = AgentTextUtil.sanitize(raw);
@@ -317,9 +323,45 @@ public class AiAgentService {
         if (runId != null) sb.append("关注调度运行 run#").append(runId).append(taskName != null ? ("(" + taskName + ")") : "").append('。');
         Object metricId = bizCtx.get("metricId");
         if (metricId != null) sb.append("关注指标 metricId=").append(metricId).append('。');
+        Object taskId = bizCtx.get("taskId"), taskType = bizCtx.get("taskType");
+        if (taskId != null) sb.append("关注调度任务 taskId=").append(taskId).append(taskType != null ? ("(类型" + taskType + ")") : "").append('。');
+        Object projectId = bizCtx.get("projectId");
+        if (projectId != null) sb.append("关注项目 projectId=").append(projectId).append('。');
         sb.append("回答时优先围绕该情境；如涉及具体表/规则/任务，在结论中用 [表:库.表] / [规则:#id] / [任务:#id] 标记以便用户一键跳转。");
         String s = sb.toString().trim();
         return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
+    }
+
+    /** RAG: 向量召回与目标相关的资产, 渲染为线索文本注入首轮 prompt; 仅向量引擎命中才注入(关键字噪音大跳过), 异常返 null 降级。 */
+    @SuppressWarnings("unchecked")
+    private String buildRagText(String query) {
+        try {
+            Map<String, Object> rag = semanticSearchService.search(query, null, RAG_TOPK);
+            if (rag == null || !"vector".equals(rag.get("engine"))) return null;
+            Object resObj = rag.get("results");
+            if (!(resObj instanceof List)) return null;
+            List<Map<String, Object>> results = (List<Map<String, Object>>) resObj;
+            StringBuilder sb = new StringBuilder();
+            for (Map<String, Object> r : results) {
+                if (r == null) continue;
+                Object name = r.get("name");
+                if (name == null) continue;
+                Object db = r.get("db"), title = r.get("title"), score = r.get("score");
+                sb.append("- ").append(r.get("kind") == null ? "表" : r.get("kind")).append(" ")
+                        .append(db == null ? "" : db + ".").append(name);
+                if (title != null && !String.valueOf(title).trim().isEmpty()) sb.append(" — ").append(title);
+                if (score != null) {
+                    try { sb.append(" (相关度 ").append(String.format("%.2f", Double.parseDouble(String.valueOf(score)))).append(")"); }
+                    catch (Exception ignore) {}
+                }
+                sb.append('\n');
+                if (sb.length() >= RAG_TEXT_CAP) break;
+            }
+            String s = sb.toString().trim();
+            return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String routeLabel(String route) {

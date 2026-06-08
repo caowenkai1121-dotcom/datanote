@@ -437,7 +437,10 @@
       { text: '相关工单', go: function () { navigateTo('governance', { gov: 'health', issueFilter: { relTable: fqn } }); } },
       { text: '血缘图谱', go: function () { navigateTo('governance', { gov: 'lineage', table: { db: db, table: table } }); } },
       { text: '敏感分级', go: function () { navigateTo('governance', { gov: 'classification', table: { db: db, table: table } }); } },
-      { text: '消费指标', go: function () { navigateTo('governance', { gov: 'consumption', table: { db: db, table: table } }); } }
+      { text: '消费指标', go: function () { navigateTo('governance', { gov: 'consumption', table: { db: db, table: table } }); } },
+      { text: '🤖AI分析', tone: 'btn-primary', go: function () {
+        if (window.dnAskAi) window.dnAskAi('对表 ' + fqn + ' 做一次资产体检:元数据画像、字段密级、下游影响与质量状况。[表:' + fqn + ']',
+          { route: 'catalog', db: db, table: table }); } }
     ];
     var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:0 0 4px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:8px' });
     bar.appendChild(DN.h('span', { text: '治理联动', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c);margin-right:2px' }));

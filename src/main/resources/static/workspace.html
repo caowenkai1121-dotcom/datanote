@@ -13,9 +13,9 @@
 <link rel="stylesheet" href="css/redesign.css?v=q100r88">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
 <script src="js/dn-common.js?v=q100r103"></script>
-<script src="js/gov-assets.js?v=q100r99"></script>
-<script src="js/gov-lineage.js?v=q100r100"></script>
-<script src="js/gov-quality.js?v=q100r99"></script>
+<script src="js/gov-assets.js?v=q100r105"></script>
+<script src="js/gov-lineage.js?v=q100r105"></script>
+<script src="js/gov-quality.js?v=q100r105"></script>
 <script src="js/gov-standard.js?v=q100r100"></script>
 <script src="js/gov-classification.js?v=q100r100"></script>
 <script src="js/gov-security.js?v=q100r100"></script>
@@ -6876,6 +6876,10 @@ function openAiLauncher(prefill, ctx) {
 }
 window.openAiLauncher = openAiLauncher;
 window.openAiAgent = openAiLauncher;
+// 各模块情境入口统一姿势: 拼 prefill + 透传 agentCtx 跳 AI助手并自动发起一轮
+window.dnAskAi = function (prefill, ctx) {
+  navigateTo('assistant', { agentPrefill: prefill || '', agentCtx: ctx || {}, agentAutoSend: true });
+};
 // 按当前路由拼默认情境(typeof 守卫, 只读已有全局变量, 不存在则跳过)
 function defaultAiCtx() {
   var r = currentRoute || 'home';

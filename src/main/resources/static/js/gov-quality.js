@@ -301,6 +301,12 @@
               }).catch(function () { impBtn.textContent = '影响面'; DN.toast('影响面查询失败(可先在血缘模块解析脚本血缘)', 'warn'); });
             };
             wrap.appendChild(impBtn);
+            var aiBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:#722ed1', title: '让AI诊断该规则失败根因与下游影响', text: '🤖AI诊断' });
+            aiBtn.onclick = function () {
+              if (window.dnAskAi) window.dnAskAi('诊断质量规则「' + (f.rule.ruleName || ('#' + f.rule.id)) + '」(#' + f.rule.id + ', 维度 ' + (f.rule.dimension || r.dimension || '') + ', 目标表 ' + db + '.' + tbl + ') 最近一次未通过(通过率 ' + (r.rateText || '') + ', 失败 ' + r.failCount + ' 行): 分析失败根因、状态分布趋势、对下游的影响面, 给修复建议与优先级。[规则:#' + f.rule.id + '] [表:' + db + '.' + tbl + ']',
+                { route: 'governance', gov: 'quality', ruleId: f.rule.id, db: db, table: tbl });
+            };
+            wrap.appendChild(aiBtn);
             return wrap;
           } }
       ],

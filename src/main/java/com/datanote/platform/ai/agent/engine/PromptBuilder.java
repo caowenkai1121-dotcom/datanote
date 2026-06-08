@@ -32,7 +32,7 @@ public class PromptBuilder {
      * @param traceText        已执行步骤与工具结果摘要（volatile）
      * @param today            当前日期(到天)
      */
-    public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText) {
+    public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText) {
         StringBuilder sb = new StringBuilder(2048);
         sb.append(IDENTITY).append('\n');
         sb.append("# 可用工具（机读清单）\n").append(toolsManifestJson == null ? "[]" : toolsManifestJson).append("\n\n");
@@ -43,6 +43,10 @@ public class PromptBuilder {
         // 情境注入：各模块情境入口透传的业务上下文，让 agent 首轮即知用户在哪、看什么（缺参时工具也可据此回退）
         if (bizCtxText != null && !bizCtxText.trim().isEmpty()) {
             sb.append("# 当前所在场景\n").append(bizCtxText.trim()).append("\n\n");
+        }
+        // RAG 自动 grounding：循环前向量召回的相关资产，作线索(供参考, 需工具核实后再断言, 防幻觉)
+        if (ragText != null && !ragText.trim().isEmpty()) {
+            sb.append("# 相关数据资产(语义召回, 供参考, 未必精确, 需用工具核实后再断言)\n").append(ragText.trim()).append("\n\n");
         }
         sb.append("# 当前日期\n").append(today == null ? "" : today).append("\n\n");
         if (traceText != null && !traceText.trim().isEmpty()) {
