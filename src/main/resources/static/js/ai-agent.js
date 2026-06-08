@@ -160,7 +160,7 @@
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:#d48806;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
-      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续' });
+      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
       okBtn.onclick = function () {
         okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
@@ -180,18 +180,91 @@
     }).catch(function () {});
   }
 
+  // ===== 经验/审批 抽屉 =====
+  function closeDrawer() {
+    var d = document.getElementById('aiDrawer'); if (d) d.remove();
+    var m = document.getElementById('aiDrawerMask'); if (m) m.remove();
+  }
+  function openDrawer(kind) {
+    var root = document.getElementById('aiAgentRoot'); if (!root) return;
+    closeDrawer();
+    var mask = DN.h('div', { id: 'aiDrawerMask', style: 'position:absolute;inset:0;background:rgba(0,0,0,.18);z-index:20;', onclick: closeDrawer });
+    var panel = DN.h('div', { id: 'aiDrawer', style: 'position:absolute;top:0;right:0;bottom:0;width:380px;max-width:86%;background:var(--bg-card,#fff);border-left:1px solid var(--border,#e5e6eb);box-shadow:-4px 0 16px rgba(0,0,0,.08);z-index:21;display:flex;flex-direction:column;' });
+    var title = kind === 'memory' ? '🧠 AI 自学习记忆' : '🛡️ 待审批写操作';
+    panel.appendChild(DN.h('div', { style: 'padding:14px 18px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:8px;flex:0 0 auto;' }, [
+      DN.h('div', { text: title, style: 'font-weight:650;font-size:14px;color:var(--text-primary);' }),
+      DN.h('button', { class: 'btn btn-sm', text: '✕', style: 'margin-left:auto;', onclick: closeDrawer })
+    ]));
+    var body = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:14px 18px;' });
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'color:var(--text-muted);font-size:13px;' }));
+    panel.appendChild(body);
+    root.appendChild(mask); root.appendChild(panel);
+    if (kind === 'memory') renderMemories(body); else renderApprovals(body);
+  }
+  function renderMemories(body) {
+    DN.get('/api/ai/agent/memories').then(function (list) {
+      body.innerHTML = '';
+      var arr = list || [];
+      if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
+      arr.forEach(function (m) {
+        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--bg-body,#f7f8fa);' });
+        card.appendChild(DN.h('div', { text: m.title || '(无标题)', style: 'font-weight:600;font-size:13px;color:var(--text-primary);margin-bottom:4px;' }));
+        card.appendChild(DN.h('div', { text: m.content || '', style: 'font-size:12.5px;color:var(--text-secondary,#4e5969);line-height:1.7;' }));
+        var meta = [];
+        if (m.triggerHint) meta.push('适用: ' + m.triggerHint);
+        meta.push('命中 ' + (m.hitCount || 0));
+        card.appendChild(DN.h('div', { text: meta.join(' · '), style: 'font-size:11px;color:var(--text-muted);margin-top:6px;' }));
+        body.appendChild(card);
+      });
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger,#f53f3f);font-size:13px;' })); });
+  }
+  function renderApprovals(body) {
+    DN.get('/api/ai/agent/approvals?status=pending').then(function (list) {
+      body.innerHTML = '';
+      var arr = list || [];
+      if (!arr.length) { body.appendChild(DN.h('div', { text: '没有待审批的写操作。', style: 'color:var(--text-muted);font-size:13px;' })); return; }
+      arr.forEach(function (a) {
+        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:8px;padding:10px 12px;margin-bottom:10px;' });
+        card.appendChild(DN.h('div', {}, [
+          DN.h('span', { text: a.skillName || '?', style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
+          DN.h('span', { text: a.riskLevel || '', style: 'margin-left:8px;font-size:11px;padding:1px 7px;border-radius:9px;background:' + (a.riskLevel === 'HIGH' ? '#ffece8;color:#f53f3f' : '#fff7e8;color:#ff7d00') + ';' })
+        ]));
+        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:11px;color:var(--text-secondary,#4e5969);background:var(--bg-body,#f7f8fa);border-radius:6px;padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
+        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);' });
+        var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
+        ok.onclick = function () {
+          ok.disabled = no.disabled = true; ok.textContent = '执行中…';
+          DN.post('/api/ai/agent/approval/' + a.id + '/decide', { decision: 'approved' })
+            .then(function () { return DN.post('/api/ai/agent/' + a.sessionId + '/resume', {}); })
+            .then(function (res) { card.remove(); if (flowEl) { renderTurn(res || {}); scrollBottom(); } DN.toast('已执行', 'ok'); })
+            .catch(function (e) { DN.toast('执行失败：' + (e && e.message ? e.message : e), 'err'); ok.disabled = no.disabled = false; ok.textContent = '批准并执行'; });
+        };
+        no.onclick = function () {
+          ok.disabled = no.disabled = true;
+          DN.post('/api/ai/agent/approval/' + a.id + '/decide', { decision: 'rejected' })
+            .then(function () { card.remove(); }).catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); ok.disabled = no.disabled = false; });
+        };
+        card.appendChild(DN.h('div', { style: 'display:flex;align-items:center;' }, [ok, no]));
+        body.appendChild(card);
+      });
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger,#f53f3f);font-size:13px;' })); });
+  }
+
   function build() {
     var root = document.getElementById('aiAgentRoot');
     if (!root) return;
     root.innerHTML = '';
 
+    root.style.position = 'relative'; // 供经验/审批抽屉绝对定位
     // 顶栏
     var head = DN.h('div', { style: 'padding:16px 24px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:12px;flex:0 0 auto;' }, [
       DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;color:var(--primary,#1890ff);' }),
-      DN.h('div', {}, [
+      DN.h('div', { style: 'min-width:0;' }, [
         DN.h('div', { text: '天工·自由意志数据智能体', style: 'font-size:16px;font-weight:650;color:var(--text-primary);' }),
-        DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主串联只读工具，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
-      ])
+        DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主编排工具，写操作经人工审批，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
+      ]),
+      DN.h('button', { class: 'btn btn-sm', text: '🧠 经验', title: 'AI 自学习记忆', style: 'margin-left:auto;flex:0 0 auto;', onclick: function () { openDrawer('memory'); } }),
+      DN.h('button', { class: 'btn btn-sm', text: '🛡️ 审批', title: '待审批写操作', style: 'flex:0 0 auto;', onclick: function () { openDrawer('approval'); } })
     ]);
     root.appendChild(head);
 
@@ -206,7 +279,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
     });
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;', onclick: send });
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary,#1890ff);color:#fff;border-color:var(--primary,#1890ff);', onclick: send });
     var inputBar = DN.h('div', { style: 'flex:0 0 auto;padding:12px 24px;border-top:1px solid var(--border,#e5e6eb);display:flex;gap:10px;align-items:flex-end;background:var(--bg-card,#fff);' }, [inputEl, sendBtn]);
     root.appendChild(inputBar);
 
@@ -217,15 +290,15 @@
   function welcome() {
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
     box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;margin:0 auto 10px;color:var(--primary,#1890ff);opacity:.8;' }));
-    box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等只读工具帮你排障与评估。' }));
-    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」', style: 'color:var(--primary,#1890ff);margin-top:6px;' }));
+    box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
+    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary,#1890ff);margin-top:6px;' }));
     return box;
   }
 
   function loadToolsHint() {
     DN.get('/api/ai/agent/tools').then(function (d) {
       var hint = document.getElementById('aiToolsHint');
-      if (hint && d && d.count != null) hint.textContent = '已装备 ' + d.count + ' 个只读工具 · 在护栏内自主编排、逐道工序可复核';
+      if (hint && d && d.count != null) hint.textContent = '已装备 ' + d.count + ' 个工具 · 写操作经人工审批 · 逐道工序可复核';
     }).catch(function () {});
   }
 
