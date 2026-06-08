@@ -35,6 +35,7 @@ public class ProjectSettingService {
 
     public DnProjectQuota saveQuota(Long projectId, DnProjectQuota q) {
         projectService.getById(projectId);
+        if (q == null) throw new IllegalArgumentException("配额配置不能为空");
         q.setProjectId(projectId);
         boolean exists = quotaMapper.selectById(projectId) != null;
         if (exists) quotaMapper.updateById(q);
@@ -50,6 +51,7 @@ public class ProjectSettingService {
 
     public synchronized DnProjectEnvParam saveEnvParam(Long projectId, DnProjectEnvParam p) {
         projectService.getById(projectId);
+        if (p == null) throw new IllegalArgumentException("环境参数不能为空");
         if (p.getParamKey() == null || p.getParamKey().trim().isEmpty()) {
             throw new IllegalArgumentException("参数键不能为空");
         }
@@ -70,7 +72,7 @@ public class ProjectSettingService {
     public void deleteEnvParam(Long projectId, Long paramId) {
         DnProjectEnvParam p = envParamMapper.selectById(paramId);
         if (p == null) return;
-        if (!p.getProjectId().equals(projectId)) {
+        if (!java.util.Objects.equals(p.getProjectId(), projectId)) {   // getProjectId 可能为 null,Objects.equals 防 NPE
             throw new IllegalArgumentException("参数不属于该项目，拒绝删除");
         }
         envParamMapper.deleteById(paramId);

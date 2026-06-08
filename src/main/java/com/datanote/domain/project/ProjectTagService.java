@@ -47,11 +47,15 @@ public class ProjectTagService {
     }
 
     /** 覆盖设置某项目的标签集合（仅接受真实存在的标签，避免孤立关联）。 */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void setProjectTags(Long projectId, List<Long> tagIds) {
         mappingMapper.delete(new LambdaQueryWrapper<DnProjectTagMapping>().eq(DnProjectTagMapping::getProjectId, projectId));
         if (tagIds == null) return;
         java.util.Set<Long> existing = new java.util.HashSet<>();
-        for (DnProjectTag t : tagMapper.selectList(null)) existing.add(t.getId());
+        List<DnProjectTag> allTags = tagMapper.selectList(null);
+        if (allTags != null) for (DnProjectTag t : allTags) {
+            if (t != null) existing.add(t.getId());
+        }
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (Long tid : tagIds) {
             if (tid == null || !existing.contains(tid) || !seen.add(tid)) continue;

@@ -30,6 +30,7 @@ public class ProjectTaskService {
 
     public DnProjectTask saveTask(Long projectId, DnProjectTask t) {
         projectService.getById(projectId);
+        if (t == null) throw new IllegalArgumentException("任务内容不能为空");
         if (t.getTitle() == null || t.getTitle().trim().isEmpty()) throw new IllegalArgumentException("任务标题不能为空");
         t.setTitle(t.getTitle().trim());
         if (t.getStatus() == null || !STATUS.contains(t.getStatus())) t.setStatus("TODO");
@@ -63,6 +64,7 @@ public class ProjectTaskService {
 
     public DnProjectMilestone saveMilestone(Long projectId, DnProjectMilestone m) {
         projectService.getById(projectId);
+        if (m == null) throw new IllegalArgumentException("里程碑内容不能为空");
         if (m.getName() == null || m.getName().trim().isEmpty()) throw new IllegalArgumentException("里程碑名称不能为空");
         m.setName(m.getName().trim());
         m.setProjectId(projectId);

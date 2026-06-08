@@ -35,6 +35,7 @@ public class ProjectWikiService {
 
     public DnProjectWikiPage savePage(Long projectId, DnProjectWikiPage p) {
         projectService.getById(projectId);
+        if (p == null) throw new IllegalArgumentException("文档内容不能为空");
         if (p.getTitle() == null || p.getTitle().trim().isEmpty()) throw new IllegalArgumentException("文档标题不能为空");
         p.setTitle(p.getTitle().trim());
         p.setProjectId(projectId);
