@@ -312,3 +312,22 @@
   :is(#homeCockpit,#govModuleContent,#mdmModuleContent) .dash-kpi,
   :is(#homeCockpit,#govModuleContent,#mdmModuleContent) .dash-card { border-color: rgba(255,255,255,.06); }
 }
+
+
+/* ── 10) 全站弹窗统一(R77)──────────────────────────────────────────────────────
+ * 原有 5 套弹窗(g-modal/dbsync-modal/quality-modal/sched-log-modal/intg-modal)遮罩/底/圆角/阴影各异。
+ * 本块(最后加载,优先级胜过各自定义)把面板级视觉收敛为一套设计语言:统一遮罩 var(--bg-mask)、
+ * 卡片底 var(--bg-card)、圆角 --radius-lg、大阴影 --shadow-lg。头/体/脚结构各模块自有(内容相关)不强统一。*/
+.g-modal-overlay, .dbsync-modal-overlay, .quality-modal-overlay, .sched-log-overlay, .intg-modal-overlay {
+  background: var(--bg-mask, rgba(15,20,40,.45));
+}
+.g-modal, .dbsync-modal, .quality-modal, .sched-log-modal, .intg-modal {
+  background: var(--bg-card, #fff);
+  border-radius: var(--radius-lg, 10px);
+  box-shadow: var(--shadow-lg, 0 12px 40px rgba(15,20,40,.16));
+}
+/* 弹窗关闭按钮统一(与抽屉关闭同款 32×32 圆角 hover) */
+.g-modal-close {
+  width: 30px; height: 30px; border-radius: var(--radius, 6px); font-size: 18px;
+}
+.g-modal-close:hover, .sched-log-modal-close:hover { background: var(--bg-hover, #f1f4fa); color: var(--text-regular, #333a4a); }
