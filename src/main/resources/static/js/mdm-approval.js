@@ -149,41 +149,35 @@
     var bizLabel = bizKeyOf(r);
     var typeLabel = TYPE_LABEL[r.changeType] || r.changeType || '-';
     var submitText = isApprove ? '确认批准' : '确认驳回';
+
     var body = DN.h('div', {});
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: (isApprove ? '批准' : '驳回') + '变更请求：' + bizLabel + '（' + typeLabel + '）' }));
+
+    var sec = DN.formSection('审批信息');
     var fReviewer = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: '审批人姓名/工号' });
-    body.appendChild(field('审批人', fReviewer));
     var fComment = DN.h('textarea', { class: 'iw-form-select', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
-    body.appendChild(field('审批意见', fComment));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: submitText });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isApprove ? '批准' : '驳回') + '变更请求', body);
-    var submitting = false;          // 防重复提交（按钮再入守卫）
-    save.onclick = function () {
-      if (submitting) return;
+    sec.add(DN.field('审批人', fReviewer, { required: true }));
+    sec.add(DN.field('审批意见', fComment));
+    body.appendChild(sec.el);
+
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var reviewer = fReviewer.value.trim();
       if (!reviewer) { DN.toast('请填写审批人', 'err'); fReviewer.focus(); return; }
       // 破坏性/不可逆操作（审批结果落库）二次确认
       if (!window.confirm((isApprove ? '确认批准' : '确认驳回') + '该变更请求？\n' + bizLabel + '（' + typeLabel + '）\n审批人：' + reviewer)) return;
       var payload = { reviewer: reviewer, reviewComment: fComment.value.trim() };
-      submitting = true;
-      save.textContent = '提交中...'; save.style.pointerEvents = 'none'; save.classList.add('is-disabled');
+      foot.busy(submitText === '确认批准' ? '批准中...' : '驳回中...');
       DN.post('/api/mdm/approval/' + encodeURIComponent(r.id) + '/' + action, payload).then(function () {
         DN.toast(isApprove ? '已批准' : '已驳回', 'ok'); dr.close(); loadApproval(statBox, box);
       }).catch(function (e) {
-        submitting = false;
         DN.toast((e && e.message) || '操作失败', 'err');
-        save.textContent = submitText; save.style.pointerEvents = ''; save.classList.remove('is-disabled');
+        foot.reset(submitText);
       });
     };
-    DN.enterSubmit(body);
-  }
-
-  function field(label, input) {
-    var row = DN.h('div', { style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    return row;
+    foot = DN.drawerFoot({ okText: submitText, onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isApprove ? '批准' : '驳回') + '变更请求', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 })();

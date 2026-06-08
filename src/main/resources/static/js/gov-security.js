@@ -263,12 +263,17 @@
       funcSel.value = p.maskingFunc || 'MASK';
       statusSel.value = String(p.enabled == null ? 1 : p.enabled);
     }
-    drawerForm(isEdit ? '编辑脱敏策略' : '新建脱敏策略', [
-      field('策略名', nameInput), field('匹配维度', dimSel),
-      field('敏感类型（按类型时填）', stSel),
-      field('库表列（按列时填）', picker.el),
-      field('脱敏函数', funcSel), field('状态', statusSel)
-    ], function (close) {
+    var secBasic = DN.formSection('基本信息');
+    secBasic.add(DN.field('策略名', nameInput, { required: true, hint: '最多 100 字' }));
+    secBasic.add(DN.formGrid2([
+      DN.field('匹配维度', dimSel, { required: true }),
+      DN.field('状态', statusSel)
+    ]));
+    var secMatch = DN.formSection('匹配规则');
+    secMatch.add(DN.field('敏感类型', stSel, { hint: '匹配维度选"按敏感类型"时填写' }));
+    secMatch.add(DN.field('库 / 表 / 列', picker.el, { hint: '匹配维度选"按具体列"时填写' }));
+    secMatch.add(DN.field('脱敏函数', funcSel, { required: true }));
+    drawerForm(isEdit ? '编辑脱敏策略' : '新建脱敏策略', [secBasic.el, secMatch.el], function (close) {
       var body = {
         policyName: nameInput.value.trim(), matchDim: dimSel.value,
         sensitiveType: stSel.value || null,
@@ -339,10 +344,14 @@
       roleSel.value = p.roleCode || '';
       statusSel.value = String(p.enabled == null ? 1 : p.enabled);
     }
-    drawerForm(isEdit ? '编辑行策略' : '新建行策略', [
-      field('角色', roleSel), field('库表', picker.el),
-      field('行过滤条件', filterInput), field('状态', statusSel)
-    ], function (close) {
+    var secBase = DN.formSection('策略配置');
+    secBase.add(DN.formGrid2([
+      DN.field('角色', roleSel, { required: true }),
+      DN.field('状态', statusSel)
+    ]));
+    secBase.add(DN.field('库 / 表', picker.el, { required: true }));
+    secBase.add(DN.field('行过滤条件', filterInput, { required: true, hint: '如 region = \'EAST\'，不允许含 ; 或注释符' }));
+    drawerForm(isEdit ? '编辑行策略' : '新建行策略', [secBase.el], function (close) {
       var body = {
         roleCode: roleSel.value, dbName: picker.db(), tableName: picker.table(),
         rowFilter: filterInput.value.trim(), enabled: parseInt(statusSel.value, 10)
@@ -432,10 +441,16 @@
     ]);
     if (isEdit) statusSel.value = String(user.status == null ? 1 : user.status);
 
-    drawerForm(isEdit ? '编辑用户' : '新建用户', [
-      field('用户名', nameInput), field('昵称', nickInput),
-      field('密码', pwdInput), field('状态', statusSel)
-    ], function (close) {
+    var secInfo = DN.formSection('用户信息');
+    secInfo.add(DN.formGrid2([
+      DN.field('用户名', nameInput, { required: !isEdit, hint: '3-32 位字母/数字/下划线，创建后不可修改' }),
+      DN.field('昵称', nickInput, { hint: '最多 50 字' })
+    ]));
+    secInfo.add(DN.formGrid2([
+      DN.field('密码', pwdInput, { required: !isEdit, hint: isEdit ? '留空则不修改密码，至少 6 位' : '至少 6 位' }),
+      DN.field('状态', statusSel)
+    ]));
+    drawerForm(isEdit ? '编辑用户' : '新建用户', [secInfo.el], function (close) {
       var nick = nickInput.value.trim();
       if (nick.length > 50) { DN.toast('昵称不能超过 50 字', 'error'); return; }
       // 密码校验：新建必填、编辑留空表示不改；填了则统一校验长度
@@ -503,38 +518,24 @@
     return DN.h('span', { title: t, text: t.slice(0, max) + '…' });
   }
 
-  /** 抽屉表单：body 节点列表 + 底部确定/取消（替代旧居中弹窗）
-   * 防重复提交：onOk 若返回 Promise(各表单保存时 return DN.post(...)),
-   * 提交期间禁用“确定”按钮并显示“保存中…”，settle 后恢复；
+  /** 抽屉表单：body 节点列表 + 底部确定/取消，使用新表单设计系统组件。
+   * 防重复提交：onOk 若返回 Promise 则 foot.busy/foot.reset 驱动；
    * 校验失败(onOk 返回 undefined)则立即恢复，不阻塞用户改填。 */
   function drawerForm(title, bodyNodes, onOk) {
     var form = DN.h('div', { class: 'gov-form', style: 'margin-bottom:0' });
     bodyNodes.forEach(function (n) { form.appendChild(n); });
-    var d = DN.drawer(title, form);
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:16px' });
-    footer.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-right:8px', onclick: d.close }));
-    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定' });
-    var busy = false;
-    okBtn.onclick = function () {
-      if (busy) return; // 防止重复点击连发请求
-      var ret = onOk(d.close);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
+      var ret = onOk(function () { dr.close(); });
       if (ret && typeof ret.then === 'function') {
-        busy = true; okBtn.setAttribute('aria-disabled', 'true');
-        okBtn.style.opacity = '0.6'; okBtn.style.pointerEvents = 'none';
-        var prev = okBtn.textContent; okBtn.textContent = '保存中…';
-        ret.then(restore, restore);
-        function restore() { busy = false; okBtn.removeAttribute('aria-disabled'); okBtn.style.opacity = ''; okBtn.style.pointerEvents = ''; okBtn.textContent = prev; }
+        foot.busy('保存中…');
+        ret.then(function () { foot.reset('确定'); }, function () { foot.reset('确定'); });
       }
     };
-    footer.appendChild(okBtn);
-    d.body.appendChild(footer);
-    DN.enterSubmit(d.body);
-  }
-
-  function field(label, input) {
-    return DN.h('div', { class: 'ds-form-row', style: 'flex-direction:column;align-items:stretch' }, [
-      DN.h('label', { style: 'width:auto;margin-bottom:4px', text: label }), input
-    ]);
+    foot = DN.drawerFoot({ okText: '确定', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer(title, form, foot.el);
+    DN.enterSubmit(form, doSave);
   }
 
   function link(text, fn) {

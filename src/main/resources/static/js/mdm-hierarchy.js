@@ -254,22 +254,21 @@
       cSel.value = String(rec.childRecordId);
     }
     if (noRecords) { pSel.disabled = true; cSel.disabled = true; }
-    body.appendChild(field('父黄金记录', pSel));
-    body.appendChild(field('子黄金记录', cSel));
 
     var fSort = DN.h('input', { class: 'iw-form-select', style: 'width:100%', type: 'number', step: '1', placeholder: '同级排序(默认0)', value: (isEdit && rec.sortOrder != null) ? String(rec.sortOrder) : '0' });
     if (noRecords) fSort.disabled = true;
-    body.appendChild(field('排序', fSort));
 
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: isEdit ? '保存修改' : '确认新增' });
-    if (noRecords) { save.style.pointerEvents = 'none'; save.style.opacity = '0.5'; save.title = '请先创建黄金记录'; }
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新增') + '层级关系', body);
+    var sec = DN.formSection('关系配置');
+    sec.add(DN.formGrid2([
+      DN.field('父黄金记录', pSel),
+      DN.field('子黄金记录', cSel, { required: true })
+    ]));
+    sec.add(DN.field('排序', fSort));
+    body.appendChild(sec.el);
 
-    var submitting = false; // 防重复提交(回车/双击)
-    save.onclick = function () {
-      if (noRecords || submitting) return;
+    var dr, foot;
+    var doSave = function () {
+      if (noRecords || foot.ok.disabled) return;
       var childId = cSel.value;
       if (!childId) { DN.toast('请选择子黄金记录', 'err'); return; }
       var parentId = pSel.value;
@@ -286,23 +285,17 @@
         sortOrder: sortNum
       };
       if (isEdit) payload.id = rec.id;
-      submitting = true;
-      save.textContent = '提交中...'; save.style.pointerEvents = 'none'; save.style.opacity = '0.7';
+      foot.busy('提交中…');
       DN.post('/api/mdm/hierarchy/save', payload).then(function () {
         DN.toast(isEdit ? '已保存' : '已新增', 'ok'); dr.close(); loadHierarchy(box);
       }).catch(function (e) {
         DN.toast(e && e.message ? e.message : '保存失败', 'err');
-        submitting = false;
-        save.textContent = isEdit ? '保存修改' : '确认新增'; save.style.pointerEvents = ''; save.style.opacity = '';
+        foot.reset(isEdit ? '保存修改' : '确认新增');
       });
     };
-    DN.enterSubmit(body);
-  }
-
-  function field(label, input) {
-    var row = DN.h('div', { style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    return row;
+    foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '确认新增', onOk: doSave, onCancel: function () { dr.close(); } });
+    if (noRecords) { foot.ok.disabled = true; foot.ok.title = '请先创建黄金记录'; }
+    dr = DN.drawer((isEdit ? '编辑' : '新增') + '层级关系', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 })();

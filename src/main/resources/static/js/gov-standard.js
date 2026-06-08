@@ -413,50 +413,60 @@
 
   /** 码表明细项：用抽屉承载（表单 + 明细表） */
   function openDictItems(dict) {
-    var d = DN.drawer('码表项 — ' + dict.dictCode, DN.skeleton(4));
-    refreshDictItems(d.body, dict.id);
+    var dictId = dict.id;
+    // 输入字段
+    var k = input('码值'), v = input('含义'), s = input('排序');
+
+    // 分组小节：新增码表项
+    var sec = DN.formSection('新增码表项');
+    sec.add(DN.field('码值', k, { required: true }));
+    sec.add(DN.formGrid2([DN.field('含义', v), DN.field('排序', s, { hint: '非负整数，越小越靠前' })]));
+
+    var listEl = DN.h('div');
+    listEl.appendChild(DN.skeleton(3));
+
+    var body = DN.h('div');
+    body.appendChild(sec.el);
+    body.appendChild(listEl);
+
+    var dr, foot;
+    var doAdd = function () {
+      if (foot.ok.disabled) return;
+      if (!k.value.trim()) { DN.toast('码值必填', 'err'); k.focus(); return; }
+      // 排序校验：可空(默认0)，填则须为非负整数
+      var sortRaw = s.value.trim(), sortVal = 0;
+      if (sortRaw) {
+        if (!/^\d+$/.test(sortRaw)) { DN.toast('排序须为非负整数', 'err'); s.focus(); return; }
+        sortVal = parseInt(sortRaw, 10);
+      }
+      foot.busy('保存中…');
+      DN.post(API + '/dict/item/save', { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal })
+        .then(function () { DN.toast('已保存', 'ok'); foot.reset('新增项'); refreshDictItems(listEl, dictId); })
+        .catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); foot.reset('新增项'); });
+    };
+    foot = DN.drawerFoot({ okText: '新增项', onOk: doAdd, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('码表项 — ' + dict.dictCode, body, foot.el);
+    DN.enterSubmit(body, doAdd);
+    refreshDictItems(listEl, dictId);
   }
 
-  function refreshDictItems(box, dictId) {
-    box.innerHTML = '';
-    box.appendChild(DN.skeleton(3));
+  function refreshDictItems(listEl, dictId) {
+    listEl.innerHTML = '';
+    listEl.appendChild(DN.skeleton(3));
     DN.get(API + '/dict/' + dictId).then(function (data) {
-      box.innerHTML = '';
-      var form = DN.h('div', { class: 'gov-form' });
-      var k = input('码值'), v = input('含义'), s = input('排序');
-      form.appendChild(formRow('码值', k));
-      form.appendChild(formRow('含义', v));
-      form.appendChild(formRow('排序', s));
-      var add = DN.h('a', {
-        class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增项', onclick: function () {
-          if (!k.value.trim()) { DN.toast('码值必填', 'err'); k.focus(); return; }
-          // 排序校验：可空(默认0)，填则须为非负整数
-          var sortRaw = s.value.trim(), sortVal = 0;
-          if (sortRaw) {
-            if (!/^\d+$/.test(sortRaw)) { DN.toast('排序须为非负整数', 'err'); s.focus(); return; }
-            sortVal = parseInt(sortRaw, 10);
-          }
-          guardSubmit(add, '保存中…', function () {
-            return DN.post(API + '/dict/item/save', { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal })
-              .then(function () { DN.toast('已保存', 'ok'); refreshDictItems(box, dictId); }).catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
-          });
-        }
-      });
-      form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), add]));
-      DN.enterSubmit(form);
-      box.appendChild(form);
-      box.appendChild(DN.table({
+      listEl.innerHTML = '';
+      listEl.appendChild(DN.table({
         columns: [
           { key: 'itemKey', label: '码值', render: function (it) { return truncCell(it.itemKey, 20); } },
           { key: 'itemValue', label: '含义', render: function (it) { return truncCell(it.itemValue, 36); } },
           { key: 'sort', label: '排序', align: 'right', render: function (it) { return it.sort == null ? 0 : it.sort; } },
           { key: '_op', label: '操作', render: function (it) {
-              return delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(box, dictId); });
+              return delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(listEl, dictId); });
             } }
         ],
         rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增', emptyIcon: 'list'
       }));
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { refreshDictItems(box, dictId); })); });
+    }).catch(function (e) { listEl.innerHTML = ''; listEl.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { refreshDictItems(listEl, dictId); })); });
   }
 
   // ========== 落标稽核 ==========

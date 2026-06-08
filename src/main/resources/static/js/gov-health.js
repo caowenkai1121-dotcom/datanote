@@ -480,20 +480,44 @@
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
     var ownerInput = DN.h('input', { class: 'iw-form-input', placeholder: '负责人（可空）', maxlength: '60' });
     var descInput = DN.h('input', { class: 'iw-form-input', placeholder: '描述（可空）', maxlength: '500' });
-    drawerForm('新建工单', [
-      formRow('标题', titleInput), formRow('问题类型', typeSel), formRow('所属维度', dimSel),
-      formRow('级别', sevSel), formRow('负责人', ownerInput), formRow('描述', descInput)
-    ], function (close, okBtn) {
+
+    var body = DN.h('div');
+
+    var secBase = DN.formSection('基本信息');
+    secBase.add(DN.field('标题', titleInput, { required: true }));
+    secBase.add(DN.formGrid2([
+      DN.field('问题类型', typeSel),
+      DN.field('所属维度', dimSel)
+    ]));
+    secBase.add(DN.formGrid2([
+      DN.field('级别', sevSel),
+      DN.field('负责人', ownerInput)
+    ]));
+    body.appendChild(secBase.el);
+
+    var secDesc = DN.formSection('补充信息');
+    secDesc.add(DN.field('描述', descInput));
+    body.appendChild(secDesc.el);
+
+    var dr, foot;
+    var doSave = function () {
       var title = titleInput.value.trim();
       if (!title) { DN.toast('标题不能为空', 'error'); return; }
       if (title.length > 120) { DN.toast('标题过长（不超过 120 字）', 'error'); return; }
-      submitGuard(okBtn, function () {
-        return DN.post('/api/gov/health/issues', {
-          title: title, issueType: typeSel.value, dimension: dimSel.value,
-          severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
-        }).then(function () { DN.toast('已新建'); close(); loadIssues(); loadBoard(); });
-      }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
-    });
+      if (foot.ok.disabled) return;
+      foot.busy('提交中…');
+      DN.post('/api/gov/health/issues', {
+        title: title, issueType: typeSel.value, dimension: dimSel.value,
+        severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
+      }).then(function () {
+        DN.toast('已新建'); dr.close(); loadIssues(); loadBoard();
+      }).catch(function (e) {
+        DN.toast(errMsg(e), 'error');
+      }).then(function () { foot.reset('保存'); });
+    };
+    foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('新建工单', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   function loadBoard() {
@@ -583,21 +607,38 @@
       var scoreInput = DN.h('input', { class: 'iw-form-input', type: 'number', min: '0', max: '100', value: '60' });
       var levelSel = selectOf(['1', '2', '3', '4', '5'], '3');
       var noteInput = DN.h('input', { class: 'iw-form-input', placeholder: '备注（可空）', maxlength: '200' });
-      drawerForm('录入 DCMM 自评', [
-        formRow('能力域', domainSel), formRow('自评分', scoreInput),
-        formRow('成熟度等级', levelSel), formRow('备注', noteInput)
-      ], function (close, okBtn) {
+
+      var body = DN.h('div');
+
+      var secMain = DN.formSection('自评信息');
+      secMain.add(DN.field('能力域', domainSel, { required: true }));
+      secMain.add(DN.formGrid2([
+        DN.field('自评分（0–100）', scoreInput, { required: true }),
+        DN.field('成熟度等级', levelSel, { required: true })
+      ]));
+      secMain.add(DN.field('备注', noteInput));
+      body.appendChild(secMain.el);
+
+      var dr, foot;
+      var doSave = function () {
         if (!domainSel.value) { DN.toast('请选择能力域', 'error'); return; }
         var score = Number(scoreInput.value);
         if (scoreInput.value === '' || isNaN(score)) { DN.toast('请填写自评分（数字）', 'error'); return; }
         if (score < 0 || score > 100) { DN.toast('自评分需在 0–100 之间', 'error'); return; }
-        submitGuard(okBtn, function () {
-          return DN.post('/api/gov/health/maturity', {
-            domain: domainSel.value, score: score,
-            level: Number(levelSel.value), note: noteInput.value.trim()
-          }).then(function () { DN.toast('已录入'); close(); loadMaturity(); });
-        }).catch(function (e) { if (e && e.message !== 'busy') DN.toast(errMsg(e), 'error'); });
-      });
+        if (foot.ok.disabled) return;
+        foot.busy('提交中…');
+        DN.post('/api/gov/health/maturity', {
+          domain: domainSel.value, score: score,
+          level: Number(levelSel.value), note: noteInput.value.trim()
+        }).then(function () {
+          DN.toast('已录入'); dr.close(); loadMaturity();
+        }).catch(function (e) {
+          DN.toast(errMsg(e), 'error');
+        }).then(function () { foot.reset('保存'); });
+      };
+      foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+      dr = DN.drawer('录入 DCMM 自评', body, foot.el);
+      DN.enterSubmit(body, doSave);
     }).catch(function (e) { DN.toast('能力域加载失败：' + errMsg(e), 'error'); });
   }
 

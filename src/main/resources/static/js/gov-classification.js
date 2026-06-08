@@ -263,12 +263,6 @@
     if (box.firstChild) { box.innerHTML = ''; return; }
     box.innerHTML = '';
 
-    function row(labelText, control) {
-      var r = DN.h('div', { class: 'ds-form-row' });
-      r.appendChild(DN.h('label', { text: labelText }));
-      r.appendChild(control);
-      return r;
-    }
     var name = DN.h('input', { class: 'iw-form-input', placeholder: '规则名' });
     var matchSel = DN.h('select', { class: 'iw-form-select' });
     [['COLUMN_NAME', '按列名关键词'], ['REGEX', '按正则'], ['VALIDATOR', '按校验器']].forEach(function (m) {
@@ -279,12 +273,19 @@
     var suggestLevel = DN.h('input', { class: 'iw-form-input', placeholder: '建议密级(如 重要，可空)' });
 
     var panel = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
-    panel.appendChild(row('规则名', name));
-    panel.appendChild(row('匹配方式', matchSel));
-    panel.appendChild(row('模式', pattern));
-    panel.appendChild(row('敏感类型', sensitiveType));
-    panel.appendChild(row('建议密级', suggestLevel));
-    var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
+
+    var sec = DN.formSection('新增敏感规则');
+    sec.add(DN.formGrid2([
+      DN.field('规则名', name, { required: true }),
+      DN.field('匹配方式', matchSel, { required: true })
+    ]));
+    sec.add(DN.field('模式', pattern, { required: true, hint: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)' }));
+    sec.add(DN.formGrid2([
+      DN.field('敏感类型', sensitiveType, { required: true }),
+      DN.field('建议密级', suggestLevel, { hint: '可空，如：重要' })
+    ]));
+    panel.appendChild(sec.el);
+
     var saveBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存',
       onclick: function () {
         var nm = name.value.trim(), pt = pattern.value.trim(), st = sensitiveType.value.trim();
@@ -296,6 +297,7 @@
         if (matchSel.value === 'REGEX') {
           try { new RegExp(pt); } catch (re) { DN.toast('正则表达式不合法：' + re.message, 'error'); pattern.focus(); return; }
         }
+        if (saveBtn.disabled) return;
         var restore = lockBtn(saveBtn, '保存中…');
         DN.post('/api/gov/classification/rules', {
           ruleName: nm, matchType: matchSel.value,
@@ -304,12 +306,13 @@
         }).then(function () { DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
           .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
       } });
+    var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
     actions.appendChild(saveBtn);
     actions.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消',
       onclick: function () { box.innerHTML = ''; } }));
     panel.appendChild(actions);
     box.appendChild(panel);
-    DN.enterSubmit(panel);
+    DN.enterSubmit(panel, function () { saveBtn.onclick(); });
   }
 
   // 置信度着色：>=80 绿，>=50 黄，否则红

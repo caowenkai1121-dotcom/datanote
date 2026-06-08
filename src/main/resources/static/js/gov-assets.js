@@ -613,9 +613,15 @@
     var term = DN.h('input', { class: 'iw-form-input', placeholder: '如：日活' });
     var cat = DN.h('input', { class: 'iw-form-input', placeholder: '如：指标' });
     var def = DN.h('input', { class: 'iw-form-input', placeholder: '术语定义' });
-    function row(labelText, input) {
-      return DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: labelText, style: 'display:block;margin-bottom:4px;font-size:12px;color:var(--text-muted,#86909c)' }), input]);
-    }
+
+    var sec = DN.formSection('新增术语');
+    sec.add(DN.formGrid2([
+      DN.field('术语', term, { required: true }),
+      DN.field('分类', cat)
+    ]));
+    sec.add(DN.field('定义', def));
+    form.appendChild(sec.el);
+
     var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增术语',
       onclick: function () {
         var tv = term.value.trim(), cv = cat.value.trim(), dv = def.value.trim();
@@ -628,11 +634,8 @@
           .then(function () { done(); DN.toast('已新增', 'success'); term.value = ''; cat.value = ''; def.value = ''; loadGlossary(listBox); })
           .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
-    form.appendChild(row('术语', term));
-    form.appendChild(row('分类', cat));
-    form.appendChild(row('定义', def));
     form.appendChild(DN.h('div', { style: 'margin-top:6px;' }, [addBtn]));
-    DN.enterSubmit(form);
+    DN.enterSubmit(form, function () { addBtn.onclick(); });
     panel.appendChild(form);
     var listBox = DN.h('div', {}, [DN.skeleton(2)]);
     panel.appendChild(listBox);
@@ -881,27 +884,33 @@
   // 就近确认（抽屉内）：审批人 + 原因 + 确认销毁
   function openDropConfirm(u) {
     var body = DN.h('div', {});
-    var dr = DN.drawer('销毁确认', body);
+    var dr, foot;
+
     body.appendChild(DN.h('div', { style: 'color:var(--gov-err,#e03131);font-size:14px;font-weight:600;margin-bottom:14px;',
       text: '确认销毁 ' + u.db + '.' + u.table + '？此操作进入宽限期后不可逆。' }));
-    var form = DN.h('div', { class: 'gov-form' });
-    var approver = DN.h('input', { class: 'iw-form-input', placeholder: '审批人(必填,留痕)', style: 'width:100%;height:34px;margin-bottom:10px;' });
-    var reason = DN.h('input', { class: 'iw-form-input', placeholder: '销毁原因', style: 'width:100%;height:34px;' });
-    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '审批人', style: 'display:block;margin-bottom:4px;font-size:12px;color:var(--text-muted,#86909c)' }), approver]));
-    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '原因', style: 'display:block;margin-bottom:4px;font-size:12px;color:var(--text-muted,#86909c)' }), reason]));
-    body.appendChild(form);
-    var ok = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认销毁',
-      onclick: function () {
-        var av = approver.value.trim(), rv = reason.value.trim();
-        if (!av) { DN.toast('审批人必填', 'error'); approver.focus(); return; }
-        if (rv.length > 200) { DN.toast('原因过长(请控制在 200 字以内)', 'error'); reason.focus(); return; }
-        var done = lockBtn(ok);
-        DN.post('/api/gov/lifecycle/drop', { db: u.db, table: u.table, approver: av, reason: rv })
-          .then(function (p) { DN.toast('已进入宽限期，至 ' + (p && p.dropDueAt || '-'), 'success'); dr.close(); loadUnused(); loadPolicies(); })
-          .catch(function (e) { done(); DN.toast(e.message, 'error'); });
-      } });
-    var cancel = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', style: 'margin-left:8px;', onclick: function () { dr.close(); } });
-    body.appendChild(DN.h('div', { style: 'margin-top:6px;' }, [ok, cancel]));
+
+    var approver = DN.h('input', { class: 'iw-form-input', placeholder: '审批人(必填,留痕)' });
+    var reason = DN.h('input', { class: 'iw-form-input', placeholder: '销毁原因' });
+
+    var sec = DN.formSection('销毁信息');
+    sec.add(DN.field('审批人', approver, { required: true }));
+    sec.add(DN.field('销毁原因', reason));
+    body.appendChild(sec.el);
+
+    var doSave = function () {
+      var av = approver.value.trim(), rv = reason.value.trim();
+      if (!av) { DN.toast('审批人必填', 'error'); approver.focus(); return; }
+      if (rv.length > 200) { DN.toast('原因过长(请控制在 200 字以内)', 'error'); reason.focus(); return; }
+      if (foot.ok.disabled) return;
+      foot.busy('提交中…');
+      DN.post('/api/gov/lifecycle/drop', { db: u.db, table: u.table, approver: av, reason: rv })
+        .then(function (p) { DN.toast('已进入宽限期，至 ' + (p && p.dropDueAt || '-'), 'success'); dr.close(); loadUnused(); loadPolicies(); })
+        .catch(function (e) { foot.reset('确认销毁'); DN.toast(e.message, 'error'); });
+    };
+
+    DN.enterSubmit(body, doSave);
+    foot = DN.drawerFoot({ okText: '确认销毁', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('销毁确认', body, foot.el);
   }
 
   // ===== 成本排行（DN.card + DN.table） =====

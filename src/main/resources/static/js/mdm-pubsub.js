@@ -27,19 +27,6 @@
     return DN.h('span', { text: s.slice(0, max) + '…', title: s, style: 'cursor:help' });
   }
 
-  // 提交按钮置忙/复位：禁用点击 + 键盘提交(DN.enterSubmit 据 .disabled 跳过)，杜绝重复提交
-  function setBusy(btn, busyText) {
-    btn._idleText = btn._idleText || btn.textContent;
-    btn.textContent = busyText || '处理中...';
-    btn.classList.add('disabled'); btn.setAttribute('aria-disabled', 'true');
-    btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6';
-  }
-  function setIdle(btn) {
-    if (btn._idleText != null) btn.textContent = btn._idleText;
-    btn.classList.remove('disabled'); btn.removeAttribute('aria-disabled');
-    btn.style.pointerEvents = ''; btn.style.opacity = '';
-  }
-
   window.MDM_RENDERERS.pubsub = function (c) {
     _logSubId = '';            // 每次进入模块重置日志筛选，避免上次的“按订阅筛选”状态残留
     _goldenCache = {};         // 重置黄金记录缓存，确保取最新数据
@@ -142,20 +129,25 @@
   function subDrawer(r, box, statBox, logBox) {
     var isEdit = !!r;
     var body = DN.h('div', {});
+
+    var secBase = DN.formSection('基本信息');
     var fSubscriber = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: '订阅方系统名称', maxlength: '64' });
     if (isEdit) fSubscriber.value = r.subscriberSystem || '';
-    body.appendChild(field('订阅方系统', fSubscriber));
-
     var entSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     if (!_entities.length) {
-      entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在“域与实体建模”创建)' }));
+      entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在”域与实体建模”创建)' }));
     } else {
       entSel.appendChild(DN.h('option', { value: '', text: '(请选择实体)' }));
       _entities.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
     }
     if (isEdit) entSel.value = String(r.entityId);
-    body.appendChild(field('订阅实体', entSel));
+    secBase.add(DN.formGrid2([
+      DN.field('订阅方系统', fSubscriber, { required: true }),
+      DN.field('订阅实体', entSel, { required: true })
+    ]));
+    body.appendChild(secBase.el);
 
+    var secConf = DN.formSection('订阅配置');
     var typesWrap = DN.h('div', { style: 'display:flex;gap:14px;flex-wrap:wrap' });
     var typeChecks = {};
     var existing = isEdit && r.changeTypes ? r.changeTypes.split(',') : ['create', 'update', 'delete'];
@@ -166,32 +158,28 @@
       var lab = DN.h('label', { style: 'display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer' }, [cb, DN.h('span', { text: TYPE_LABEL[t] })]);
       typesWrap.appendChild(lab);
     });
-    body.appendChild(field('订阅变更类型', typesWrap));
-
     var fEndpoint = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: 'http(s):// 推送地址', maxlength: '512' });
     if (isEdit) fEndpoint.value = r.endpoint || '';
-    body.appendChild(field('推送地址', fEndpoint));
-
     var statusSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     [['1', '启用'], ['0', '停用']].forEach(function (o) { statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     statusSel.value = isEdit ? String(r.status) : '1';
-    body.appendChild(field('状态', statusSel));
-
     var fDesc = DN.h('textarea', { class: 'iw-form-select', style: 'width:100%;min-height:64px;resize:vertical', placeholder: '订阅说明（可选）', maxlength: '500' });
     if (isEdit) fDesc.value = r.description || '';
-    body.appendChild(field('描述', fDesc));
+    secConf.add(DN.field('订阅变更类型', typesWrap, { required: true }));
+    secConf.add(DN.field('推送地址', fEndpoint, { required: true }));
+    secConf.add(DN.formGrid2([
+      DN.field('状态', statusSel),
+      DN.field('描述', fDesc)
+    ]));
+    body.appendChild(secConf.el);
 
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer(isEdit ? '编辑订阅' : '新建订阅', body);
-
-    save.onclick = function () {
-      if (save._busy) return;                 // 防重复提交（点击/回车均拦截）
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var subscriber = fSubscriber.value.trim();
       if (!subscriber) { DN.toast('请填写订阅方系统', 'err'); fSubscriber.focus(); return; }
       if (subscriber.length > 64) { DN.toast('订阅方系统名称不能超过 64 个字符', 'err'); fSubscriber.focus(); return; }
-      if (!entSel.value) { DN.toast(_entities.length ? '请选择订阅实体' : '暂无实体，请先在“域与实体建模”创建', 'err'); entSel.focus(); return; }
+      if (!entSel.value) { DN.toast(_entities.length ? '请选择订阅实体' : '暂无实体，请先在”域与实体建模”创建', 'err'); entSel.focus(); return; }
       var types = ['create', 'update', 'delete'].filter(function (t) { return typeChecks[t].checked; });
       if (!types.length) { DN.toast('请至少订阅一种变更类型', 'err'); return; }
       var endpoint = fEndpoint.value.trim();
@@ -211,12 +199,14 @@
         endpoint: endpoint, status: Number(statusSel.value), description: fDesc.value.trim()
       };
       if (isEdit) payload.id = r.id;
-      save._busy = true; setBusy(save, '保存中...');
+      foot.busy('保存中...');
       DN.post('/api/mdm/pubsub/subscription/save', payload).then(function () {
         DN.toast('已保存', 'ok'); dr.close(); loadSubscriptions(box, statBox, logBox); loadStats(statBox);
-      }).catch(function (e) { DN.toast(errMsg(e, '保存失败'), 'err'); save._busy = false; setIdle(save); });
+      }).catch(function (e) { DN.toast(errMsg(e, '保存失败'), 'err'); foot.reset('保存'); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer(isEdit ? '编辑订阅' : '新建订阅', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   // ---- 模拟发布抽屉 ----
@@ -224,14 +214,13 @@
     var body = DN.h('div', {});
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: '选择实体与一条黄金记录，模拟一次变更发布。系统将对该实体下启用且订阅了对应变更类型的订阅写入发布日志。' }));
 
+    var sec = DN.formSection('发布参数');
     var entSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     entSel.appendChild(DN.h('option', { value: '', text: _entities.length ? '(请选择实体)' : '(暂无实体)' }));
     _entities.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
-    body.appendChild(field('实体', entSel));
 
     var recSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     recSel.appendChild(DN.h('option', { value: '', text: '(先选择实体)' }));
-    body.appendChild(field('黄金记录', recSel));
 
     function fillRecs(recs) {
       recs = Array.isArray(recs) ? recs : [];
@@ -260,26 +249,30 @@
 
     var typeSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
     [['update', '修改'], ['create', '新增'], ['delete', '删除']].forEach(function (o) { typeSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
-    body.appendChild(field('变更类型', typeSel));
 
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认发布' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer('模拟发布', body);
+    sec.add(DN.formGrid2([
+      DN.field('实体', entSel, { required: true }),
+      DN.field('变更类型', typeSel, { required: true })
+    ]));
+    sec.add(DN.field('黄金记录', recSel, { required: true }));
+    body.appendChild(sec.el);
 
-    save.onclick = function () {
-      if (save._busy) return;                  // 防重复提交
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       if (!entSel.value) { DN.toast('请先选择实体', 'err'); entSel.focus(); return; }
       if (!recSel.value) { DN.toast('请选择黄金记录', 'err'); recSel.focus(); return; }
-      save._busy = true; setBusy(save, '发布中...');
+      foot.busy('发布中...');
       DN.post('/api/mdm/pubsub/publish', { goldenRecordId: Number(recSel.value), changeType: typeSel.value }).then(function (res) {
         var n = res && res.matchedSubscriptions != null ? res.matchedSubscriptions : 0;
         DN.toast(n > 0 ? ('已发布至 ' + n + ' 个订阅') : '无匹配的启用订阅', n > 0 ? 'ok' : 'info');
         _goldenCache = {};   // 黄金记录可能因本次变更失效，清缓存以便下次取最新
         dr.close(); loadStats(statBox); loadLogs(logBox);
-      }).catch(function (e) { DN.toast(errMsg(e, '发布失败'), 'err'); save._busy = false; setIdle(save); });
+      }).catch(function (e) { DN.toast(errMsg(e, '发布失败'), 'err'); foot.reset('确认发布'); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: '确认发布', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('模拟发布', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   // ---- 发布日志表 ----
@@ -311,10 +304,4 @@
     });
   }
 
-  function field(label, input) {
-    var row = DN.h('div', { style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    return row;
-  }
 })();

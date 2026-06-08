@@ -186,14 +186,6 @@
     box.appendChild(card.el);
   }
 
-  // ---- 表单（DN.drawer） ----
-  function field(label, input, hint) {
-    var row = DN.h('div', { style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    if (hint) row.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted)', text: hint }));
-    return row;
-  }
   function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
 
   function ruleForm(attr, rule, box) {
@@ -211,14 +203,22 @@
     var fPriority = inp(rule.priority == null ? '' : rule.priority, '规则优先级，数字越小越优先');
 
     var body = DN.h('div', {});
-    body.appendChild(field('所属实体', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: _svEntity.entityName, disabled: 'disabled' })));
-    body.appendChild(field('属性', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: (attr.attrName || '') + ' (' + attr.attrCode + ')', disabled: 'disabled' })));
-    var stratHint = DN.h('div', { style: 'font-size:11px;color:var(--text-muted)' });
-    body.appendChild(field('存活策略', stratSel));
-    body.appendChild(stratHint);
-    var srcRow = field('源系统优先级清单', fSrc, '仅「源系统优先」策略需要，逗号分隔');
-    body.appendChild(srcRow);
-    body.appendChild(field('规则优先级', fPriority));
+
+    var secInfo = DN.formSection('所属信息');
+    secInfo.add(DN.formGrid2([
+      DN.field('所属实体', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: _svEntity.entityName, disabled: 'disabled' })),
+      DN.field('属性', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: (attr.attrName || '') + ' (' + attr.attrCode + ')', disabled: 'disabled' }))
+    ]));
+    body.appendChild(secInfo.el);
+
+    var secStrat = DN.formSection('策略配置');
+    var stratHint = DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:-6px;margin-bottom:8px' });
+    var srcRow = DN.field('源系统优先级清单', fSrc, { hint: '仅「源系统优先」策略需要，逗号分隔' });
+    secStrat.add(DN.field('存活策略', stratSel, { required: true }));
+    secStrat.add(stratHint);
+    secStrat.add(srcRow);
+    secStrat.add(DN.field('规则优先级', fPriority, { hint: '数字越小越优先，留空默认为 0' }));
+    body.appendChild(secStrat.el);
 
     function syncStrategyUI() {
       var v = stratSel.value;
@@ -228,12 +228,9 @@
     syncStrategyUI();
     stratSel.onchange = syncStrategyUI;
 
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '配置') + '存活规则', body);
-    save.onclick = function () {
-      if (save.dataset.busy === '1') return;                 // 防重复提交
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var strategy = stratSel.value;
       // 校验：策略必须为已知枚举值（防脏数据落库）
       var known = _strategies.some(function (s) { return s.value === strategy; });
@@ -259,11 +256,13 @@
         strategy: strategy, sourcePriority: srcVal,
         priority: priority
       };
-      save.dataset.busy = '1'; save.textContent = '保存中...'; save.style.pointerEvents = 'none';
+      foot.busy('保存中...');
       DN.post('/api/mdm/survivorship/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); loadSurvivorship(box); })
-        .catch(function (e) { DN.toast((e && e.message) || '保存失败', 'err'); save.dataset.busy = ''; save.textContent = '保存'; save.style.pointerEvents = ''; });
+        .catch(function (e) { DN.toast((e && e.message) || '保存失败', 'err'); foot.reset('保存'); });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '配置') + '存活规则', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   var _delBusy = false;       // 删除中互斥，防同一规则被重复提交

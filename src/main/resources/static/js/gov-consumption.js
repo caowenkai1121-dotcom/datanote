@@ -155,9 +155,24 @@
     var sqlI = DN.h('textarea', { class: 'iw-form-input', rows: '4', placeholder: '精选 SELECT 查询' });
     if (prefill.querySql) sqlI.value = prefill.querySql; // R21 深链预填 SQL
     var ownerI = DN.h('input', { class: 'iw-form-input', placeholder: '负责人(可空)' });
-    drawerForm('新建数据集', [
-      formRow('名称', nameI), formRow('编码', codeI), formRow('默认库', dbI), formRow('查询SQL', sqlI), formRow('负责人', ownerI)
-    ], function (close, ok) {
+
+    var body = DN.h('div');
+    var secBase = DN.formSection('基本信息');
+    secBase.add(DN.field('名称', nameI, { required: true }));
+    secBase.add(DN.formGrid2([
+      DN.field('编码', codeI, { required: true, hint: '字母开头，字母/数字/下划线，长度2-50' }),
+      DN.field('负责人', ownerI)
+    ]));
+    body.appendChild(secBase.el);
+
+    var secQuery = DN.formSection('查询配置');
+    secQuery.add(DN.field('默认库', dbI, { hint: '如 ods，可空' }));
+    secQuery.add(DN.field('查询SQL', sqlI, { required: true, hint: '只允许以 SELECT 开头（消费层只读）' }));
+    body.appendChild(secQuery.el);
+
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
       var name = nameI.value.trim(), code = codeI.value.trim(), sql = sqlI.value.trim();
       // 输入校验：必填 / 编码格式 / SQL 仅允许 SELECT（消费层只读安全）
       if (!name) { DN.toast('请填写数据集名称', 'err'); nameI.focus(); return; }
@@ -165,26 +180,14 @@
       if (!/^[A-Za-z][A-Za-z0-9_]{1,49}$/.test(code)) { DN.toast('编码须以字母开头，仅含字母/数字/下划线，长度2-50', 'err'); codeI.focus(); return; }
       if (!sql) { DN.toast('请填写查询 SQL', 'err'); sqlI.focus(); return; }
       if (!/^\s*select\b/i.test(sql)) { DN.toast('查询 SQL 只能以 SELECT 开头（消费层仅支持只读查询）', 'err'); sqlI.focus(); return; }
-      if (ok && ok.dataset.busy) return; if (ok) setLinkBusy(ok, true, '保存中…'); // 防重复提交
+      foot.busy();
       DN.post('/api/consumption/dataset/save', { datasetName: name, datasetCode: code, defaultDb: dbI.value.trim(), querySql: sql, owner: ownerI.value.trim(), status: 1 })
-        .then(function () { DN.toast('已保存', 'ok'); close(); loadDatasets(); })
-        .catch(function (e) { if (ok) setLinkBusy(ok, false, '确定'); DN.toast('保存失败：' + errMsg(e), 'err'); });
-    });
-  }
-
-  // 抽屉表单:基于 DN.drawer(title, bodyNode) 构建表单 + 确定按钮
-  function drawerForm(title, rows, onOk) {
-    var body = DN.h('div'); rows.forEach(function (r) { body.appendChild(r); });
-    var ok = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确定', style: 'margin-top:10px' });
-    body.appendChild(ok);
-    var d = DN.drawer(title, body);
-    ok.onclick = function () { onOk(function () { if (d && d.close) d.close(); }, ok); };
-  }
-  function formRow(label, input) {
-    var row = DN.h('div', { class: 'ds-form-row', style: 'margin-bottom:10px' });
-    row.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:4px', text: label }));
-    row.appendChild(input);
-    return row;
+        .then(function () { DN.toast('已保存', 'ok'); dr.close(); loadDatasets(); })
+        .catch(function (e) { foot.reset(); DN.toast('保存失败：' + errMsg(e), 'err'); });
+    };
+    foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('新建数据集', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   function loadOverview() {
@@ -352,14 +355,43 @@
     var minI = DN.h('input', { class: 'iw-form-input', placeholder: '阈值/区间下界' });
     var maxI = DN.h('input', { class: 'iw-form-input', placeholder: '区间上界(OUT/IN用,可空)' });
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
-    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', style: 'margin-top:8px' });
-    body.appendChild(DN.h('div', { class: 'gov-section-title', text: '新增规则' }));
-    body.appendChild(formRow('比较符', opSel));
-    body.appendChild(formRow('阈值下界', minI));
-    body.appendChild(formRow('区间上界', maxI));
-    body.appendChild(formRow('严重度', sevSel));
-    body.appendChild(addBtn);
-    DN.drawer('指标预警规则 · ' + (r.metricName || r.metricCode || ''), body);
+    var secAdd = DN.formSection('新增规则');
+    secAdd.add(DN.formGrid2([
+      DN.field('比较符', opSel, { required: true }),
+      DN.field('严重度', sevSel, { required: true })
+    ]));
+    secAdd.add(DN.formGrid2([
+      DN.field('阈值下界', minI, { required: true }),
+      DN.field('区间上界', maxI, { hint: 'OUT/IN 区间比较时填写' })
+    ]));
+    body.appendChild(secAdd.el);
+
+    var dr, foot;
+    var doAdd = function () {
+      if (foot.ok.disabled) return;
+      var op = opSel.value, minS = minI.value.trim(), maxS = maxI.value.trim();
+      var needsRange = (op === 'OUT' || op === 'IN');
+      // 输入校验：单值比较符必填下界且为数值；区间比较符必填上下界且下界<上界
+      if (minS === '') { DN.toast(needsRange ? '区间比较符需填写下界' : '请填写阈值', 'err'); minI.focus(); return; }
+      var minN = Number(minS); if (isNaN(minN)) { DN.toast('阈值下界必须是数值', 'err'); minI.focus(); return; }
+      var body2 = { metricId: r.metricId, op: op, severity: sevSel.value, thresholdMin: minN };
+      if (needsRange) {
+        if (maxS === '') { DN.toast(op + ' 需要填写区间上界', 'err'); maxI.focus(); return; }
+        var maxN = Number(maxS); if (isNaN(maxN)) { DN.toast('区间上界必须是数值', 'err'); maxI.focus(); return; }
+        if (maxN <= minN) { DN.toast('区间上界必须大于下界', 'err'); maxI.focus(); return; }
+        body2.thresholdMax = maxN;
+      } else if (maxS !== '') {
+        var maxN2 = Number(maxS); if (!isNaN(maxN2)) body2.thresholdMax = maxN2;
+      }
+      foot.busy();
+      DN.post('/api/consumption/metric/alert-rule/save', body2).then(function () {
+        foot.reset();
+        DN.toast('规则已保存', 'ok'); minI.value = ''; maxI.value = ''; reload();
+      }).catch(function (e) { foot.reset(); DN.toast('保存失败：' + errMsg(e), 'err'); });
+    };
+    foot = DN.drawerFoot({ okText: '新增规则', onOk: doAdd, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('指标预警规则 · ' + (r.metricName || r.metricCode || ''), body, foot.el);
+    DN.enterSubmit(body, doAdd);
     function reload() {
       listBox.innerHTML = ''; listBox.appendChild(DN.skeleton(2));
       DN.get('/api/consumption/metric/' + r.metricId + '/alert-rules').then(function (rows) {
@@ -383,28 +415,6 @@
         });
       }).catch(function (e) { listBox.innerHTML = ''; listBox.appendChild(DN.errorBox('预警规则加载失败：' + errMsg(e), reload)); });
     }
-    addBtn.onclick = function () {
-      if (addBtn.dataset.busy) return;
-      var op = opSel.value, minS = minI.value.trim(), maxS = maxI.value.trim();
-      var needsRange = (op === 'OUT' || op === 'IN');
-      // 输入校验：单值比较符必填下界且为数值；区间比较符必填上下界且下界<上界
-      if (minS === '') { DN.toast(needsRange ? '区间比较符需填写下界' : '请填写阈值', 'err'); minI.focus(); return; }
-      var minN = Number(minS); if (isNaN(minN)) { DN.toast('阈值下界必须是数值', 'err'); minI.focus(); return; }
-      var body2 = { metricId: r.metricId, op: op, severity: sevSel.value, thresholdMin: minN };
-      if (needsRange) {
-        if (maxS === '') { DN.toast(op + ' 需要填写区间上界', 'err'); maxI.focus(); return; }
-        var maxN = Number(maxS); if (isNaN(maxN)) { DN.toast('区间上界必须是数值', 'err'); maxI.focus(); return; }
-        if (maxN <= minN) { DN.toast('区间上界必须大于下界', 'err'); maxI.focus(); return; }
-        body2.thresholdMax = maxN;
-      } else if (maxS !== '') {
-        var maxN2 = Number(maxS); if (!isNaN(maxN2)) body2.thresholdMax = maxN2;
-      }
-      setLinkBusy(addBtn, true, '保存中…'); // 防重复提交
-      DN.post('/api/consumption/metric/alert-rule/save', body2).then(function () {
-        setLinkBusy(addBtn, false, '新增规则');
-        DN.toast('规则已保存', 'ok'); minI.value = ''; maxI.value = ''; reload();
-      }).catch(function (e) { setLinkBusy(addBtn, false, '新增规则'); DN.toast('保存失败：' + errMsg(e), 'err'); });
-    };
     reload();
   }
 

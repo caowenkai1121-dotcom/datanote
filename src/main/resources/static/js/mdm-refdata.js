@@ -140,13 +140,6 @@
   }
 
   // ===================== 表单（DN.drawer） =====================
-  function field(label, input, hint) {
-    var row = DN.h('div', { style: 'display:flex;flex-direction:column;gap:4px;margin-bottom:12px' });
-    row.appendChild(DN.h('label', { text: label, style: 'font-size:12px;color:var(--text-muted)' }));
-    row.appendChild(input);
-    if (hint) row.appendChild(DN.h('div', { style: 'font-size:11px;color:var(--text-muted)', text: hint }));
-    return row;
-  }
   function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
   function sel(opts, val) {
     var s = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
@@ -167,20 +160,27 @@
     var fSort = inp(row.sortOrder == null ? '' : row.sortOrder, '排序，越小越靠前');
     var fStatus = sel([[1, '启用'], [0, '停用']], row.status == null ? 1 : row.status);
     var fDesc = inp(row.description, '描述');
+
     var body = DN.h('div', {});
-    body.appendChild(field('码表类别', fCat, isEdit ? '编辑时不可修改' : '唯一，建议大写英文，复用已有类别即归入该类别'));
-    body.appendChild(field('码值', fCode, isEdit ? '编辑时不可修改' : '同类别内唯一'));
-    body.appendChild(field('名称', fName));
-    body.appendChild(field('父级码值', fParent, '树形结构，留空为顶级'));
-    body.appendChild(field('排序', fSort));
-    body.appendChild(field('状态', fStatus));
-    body.appendChild(field('描述', fDesc));
-    var footer = DN.h('div', { style: 'text-align:right;margin-top:10px' });
-    var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
-    footer.appendChild(save); body.appendChild(footer);
-    var dr = DN.drawer((isEdit ? '编辑' : '新建') + '码值', body);
-    save.onclick = function () {
-      if (save._busy) return; // 防重复提交（保存在途时忽略再次点击 / 回车）
+    var sec = DN.formSection('码值信息');
+    sec.add(DN.formGrid2([
+      DN.field('码表类别', fCat, { required: true, hint: isEdit ? '编辑时不可修改' : '唯一，建议大写英文，复用已有类别即归入该类别' }),
+      DN.field('码值', fCode, { required: true, hint: isEdit ? '编辑时不可修改' : '同类别内唯一' })
+    ]));
+    sec.add(DN.formGrid2([
+      DN.field('名称', fName, { required: true }),
+      DN.field('父级码值', fParent, { hint: '树形结构，留空为顶级' })
+    ]));
+    sec.add(DN.formGrid2([
+      DN.field('排序', fSort),
+      DN.field('状态', fStatus)
+    ]));
+    sec.add(DN.field('描述', fDesc));
+    body.appendChild(sec.el);
+
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return; // 防重复提交（保存在途时忽略再次点击 / 回车）
       var sortRaw = fSort.value.trim();
       var payload = {
         id: row.id,
@@ -214,18 +214,19 @@
           (_rows || []).some(function (x) { return x && x.code === payload.code; })) {
         DN.toast('该类别下码值已存在：' + payload.code, 'err'); return;
       }
-      save._busy = true;
-      save.textContent = '保存中...'; save.style.pointerEvents = 'none'; save.style.opacity = '0.7';
+      foot.busy('保存中…');
       DN.post('/api/mdm/refdata/save', payload).then(function () {
         DN.toast('已保存', 'ok'); dr.close();
         _selCategory = payload.category;
         loadCategories(tileBox, box);
       }).catch(function (e) {
         DN.toast(e && e.message ? e.message : '保存失败', 'err');
-        save._busy = false; save.textContent = '保存'; save.style.pointerEvents = ''; save.style.opacity = '';
+        foot.reset('保存');
       });
     };
-    DN.enterSubmit(body);
+    foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer((isEdit ? '编辑' : '新建') + '码值', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   // R26: 「在建模中引用」—— 跳到域与实体建模, 提示用 REFERENCE 引用该码表类别
