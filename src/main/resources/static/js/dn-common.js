@@ -69,9 +69,9 @@
         var v = attrs[k];
         if (k === 'class') el.className = v;
         else if (k === 'html') el.innerHTML = v;
-        else if (k === 'text') el.textContent = v;
+        else if (k === 'text') el.textContent = (v == null ? '' : v);
         else if (k.indexOf('on') === 0 && typeof v === 'function') el.addEventListener(k.slice(2), v);
-        else el.setAttribute(k, v);
+        else if (v != null) el.setAttribute(k, v);   // 跳过 null/undefined,避免写出字面 "null"/"undefined" 属性
       });
     }
     if (children != null) {
@@ -266,9 +266,10 @@
 
   function toneColor(t) { return t === 'ok' ? '#52c41a' : t === 'warn' ? '#faad14' : t === 'err' ? '#ff4d4f' : 'var(--primary,#1890ff)'; }
   DN.bars = function (items) {
-    var max = Math.max.apply(null, (items || []).map(function (i) { return i.max || i.value || 0; }).concat([1]));
+    items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
+    var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));
     var w = DN.h('div', {});
-    (items || []).forEach(function (i) {
+    items.forEach(function (i) {
       var pct = Math.round((i.value || 0) / (i.max || max || 1) * 100);
       var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + toneColor(i.tone) });
       var bar = DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]);
@@ -297,7 +298,7 @@
    * 返回 element，附 .reload(rows)
    */
   DN.table = function (o) {
-    o = o || {}; var cols = o.columns || [], all = o.rows || [], pageSize = o.pageSize || 20, page = 1, q = '';
+    o = o || {}; var cols = o.columns || [], all = (o.rows || []).filter(function (r) { return r != null; }), pageSize = o.pageSize || 20, page = 1, q = '';
     var sortKey = null, sortDir = 1, inp = null, _t = null;
     var wrap = DN.h('div', {});
     if (o.search !== false) {
@@ -393,7 +394,7 @@
       }
     }
     draw();
-    wrap.reload = function (rows) { all = rows || []; page = 1; draw(); };
+    wrap.reload = function (rows) { all = (rows || []).filter(function (r) { return r != null; }); page = 1; draw(); };
     return wrap;
   };
 
@@ -469,7 +470,7 @@
 
   /** 环形占比图。segments:[{label,value,color}]，opts:{size,stroke,centerLabel,centerSub} */
   DN.donut = function (segments, opts) {
-    opts = opts || {}; var segs = (segments || []).filter(function (s) { return (s.value || 0) > 0; });
+    opts = opts || {}; var segs = (segments || []).filter(function (s) { return s && (s.value || 0) > 0; });
     var total = segs.reduce(function (a, s) { return a + (s.value || 0); }, 0);
     var size = opts.size || 120, sw = opts.stroke || 14, r = (size - sw) / 2, c = 2 * Math.PI * r, cx = size / 2;
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>';
@@ -488,7 +489,7 @@
 
   /** 热力清单：items:[{label,value,display?}] 按值映射蓝色深浅。opts:{rgb,onClick} */
   DN.heat = function (items, opts) {
-    opts = opts || {}; items = items || []; if (!items.length) return DN.empty('暂无数据');
+    opts = opts || {}; items = (items || []).filter(function (i) { return i != null; }); if (!items.length) return DN.empty('暂无数据');
     var vals = items.map(function (i) { return Number(i.value) || 0; });
     var max = Math.max.apply(null, vals.concat([1]));
     var base = opts.rgb || [24, 144, 255];
