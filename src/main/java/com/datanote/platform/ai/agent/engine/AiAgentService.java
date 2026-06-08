@@ -2,8 +2,10 @@ package com.datanote.platform.ai.agent.engine;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.platform.ai.AiAssistService;
+import com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiSessionMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiStepMapper;
+import com.datanote.platform.ai.agent.model.DnAiApproval;
 import com.datanote.platform.ai.agent.model.DnAiSession;
 import com.datanote.platform.ai.agent.model.DnAiStep;
 import com.datanote.platform.ai.agent.tool.AgentContext;
@@ -43,6 +45,7 @@ public class AiAgentService {
     private final com.datanote.platform.audit.AuditService auditService;
     private final ApprovalGate approvalGate;
     private final AiMemoryService aiMemoryService;
+    private final DnAiApprovalMapper approvalMapper;
 
     /** M1 单轮最大步数（含工具调用），防失控 */
     private static final int MAX_STEPS = 6;
@@ -253,6 +256,155 @@ public class AiAgentService {
                 : (st.blockReason != null ? st.blockReason : "（无答复）"));
         resp.put("steps", stepsToDto(newSteps));
         return resp;
+    }
+
+    // ============ 恢复执行: 按已批 args 重放(消除 LLM 漂移, 保证"批准的即执行的") ============
+
+    /**
+     * 恢复执行: 不再重跑 LLM 主循环, 而是把本会话【已批准且未执行】的写动作按 step_seq 顺序、
+     * 以审批时的原始 args 精确重放(fail-closed 写前审计 + invoke + executed_at 置位防重复),
+     * 末尾一次 LLM 收尾汇报。彻底消除"resume 重规划导致 args 漂移/反复审批/执行未批参数"的缺陷。
+     */
+    public Map<String, Object> resume(String sessionId, AgentContext ctx) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        DnAiSession session = sessionMapper.selectOne(
+                new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (session == null) {
+            resp.put("status", "error");
+            resp.put("finalAnswer", "会话不存在");
+            resp.put("steps", new ArrayList<>());
+            return resp;
+        }
+        List<DnAiApproval> approved = approvalMapper.selectList(new QueryWrapper<DnAiApproval>()
+                .eq("session_id", sessionId).eq("status", "approved").isNull("executed_at")
+                .orderByAsc("step_seq").orderByAsc("id"));
+        if (approved == null || approved.isEmpty()) {
+            resp.put("sessionId", sessionId);
+            resp.put("status", session.getStatus());
+            resp.put("finalAnswer", "没有待执行的已批准写操作(可能已执行或被拒绝)。");
+            resp.put("steps", new ArrayList<>());
+            return resp;
+        }
+
+        AgentState st = new AgentState();
+        st.session = session;
+        st.seq = nextSeq(sessionId);
+        seedPriorTrace(st);
+        List<DnAiStep> newSteps = new ArrayList<>();
+        int executed = 0;
+
+        for (DnAiApproval ap : approved) {
+            AiTool tool = toolRegistry.find(ap.getSkillName());
+            if (tool == null) { markExecuted(ap); continue; }
+            String riskName = tool.risk() == null ? "HIGH" : tool.risk().name();
+            // 防御: 重放仅限写工具且非永久禁区(审批记录本不应出现禁区/只读, 双保险)
+            if (tool.readOnly() || Guardrail.gate(tool) == Guardrail.Gate.DENY) { markExecuted(ap); continue; }
+            JsonNode argsNode = null;
+            try {
+                argsNode = (ap.getArgsJson() == null || ap.getArgsJson().isEmpty())
+                        ? null : objectMapper.readTree(ap.getArgsJson());
+            } catch (Exception ignore) { /* 脏 args 下方校验拦截 */ }
+            String vErr = Validation.validate(argsNode, tool.paramsSchemaJson(), objectMapper);
+            if (vErr != null) {
+                AiToolResult r = AiToolResult.fail("bad_arguments", vErr);
+                appendTrace(st, tool.name(), ap.getArgsJson(), r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, tool.name(), ap.getArgsJson(),
+                        null, "error", "bad_arguments", false, riskName, null));
+                markExecuted(ap);
+                continue;
+            }
+            // fail-closed 写前审计 + 回读(未落库拒执行, 不置 executed 以便下次重试)
+            Long auditId = auditService.recordReturning(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE", "POST",
+                    "/api/ai/agent/tool/" + tool.name(), ctx == null ? null : ctx.getIp(), null,
+                    "replay args=" + cap(ap.getArgsJson(), 2000));
+            if (!auditService.existsById(auditId)) {
+                AiToolResult r = AiToolResult.fail("audit_failed", "写前审计未落库, 拒绝执行");
+                appendTrace(st, tool.name(), ap.getArgsJson(), r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, tool.name(), ap.getArgsJson(),
+                        null, "error", "audit_failed", false, riskName, null));
+                continue;
+            }
+            AiToolResult result;
+            long e0 = System.currentTimeMillis();
+            try {
+                result = tool.invoke(argsNode, ctx);
+            } catch (Exception ex) {
+                result = AiToolResult.fail("exec_failed", ex.getMessage());
+            }
+            long lat = System.currentTimeMillis() - e0;
+            auditService.record(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE_RESULT", "POST",
+                    "/api/ai/agent/tool/" + tool.name(), ctx == null ? null : ctx.getIp(),
+                    result.isOk() ? 200 : 500, cap(toJson(result), 2000));
+            appendTrace(st, tool.name(), ap.getArgsJson(), result);
+            newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, tool.name(), ap.getArgsJson(),
+                    cap(toJson(result), STORE_RESULT_CAP), result.getStatus(), result.getType(), false, riskName, lat));
+            markExecuted(ap);
+            executed++;
+        }
+
+        // 一次 LLM 收尾汇报(不再调用工具)
+        String manifest = toolRegistry.toToolsManifestJson();
+        String today = LocalDate.now().toString();
+        String context = promptBuilder.build(session.getGoalIntent(), manifest, st.trace.toString(), today, null, null, null);
+        String raw = aiAssistService.isAvailable()
+                ? aiAssistService.chat("以上为已通过人工审批并按原始参数执行的写操作结果。请用中文向用户简要汇报: 做了什么、成功或失败、关键产出(ID/名称)与后续建议。不要再调用任何工具。", context)
+                : null;
+        st.finalAnswer = (raw == null || raw.startsWith("AI 功能未配置") || raw.startsWith("AI 请求失败"))
+                ? ("已执行 " + executed + " 个已审批写操作。") : AgentTextUtil.sanitize(raw);
+        st.done = true;
+        newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, null, null, null, null, "ok", null, true, "LOW", null));
+
+        session.setStatus("done");
+        session.setBudgetStepsUsed(st.seq);
+        session.setUpdatedAt(LocalDateTime.now());
+        sessionMapper.updateById(session);
+
+        if (executed > 0) {
+            try {
+                aiMemoryService.learn(sessionId, session.getGoalIntent(),
+                        ctx == null ? null : ctx.getUserName(), st.trace.toString(), st.finalAnswer);
+            } catch (Exception e) {
+                log.warn("[memory] resume 触发 learn 失败 session={}: {}", sessionId, e.getMessage());
+            }
+        }
+
+        resp.put("sessionId", sessionId);
+        resp.put("status", "done");
+        resp.put("finalAnswer", st.finalAnswer);
+        resp.put("steps", stepsToDto(newSteps));
+        return resp;
+    }
+
+    /** 标记审批已执行(防 resume 重复执行同一写动作)。 */
+    private void markExecuted(DnAiApproval ap) {
+        try {
+            ap.setExecutedAt(LocalDateTime.now());
+            approvalMapper.updateById(ap);
+        } catch (Exception ignore) {
+        }
+    }
+
+    /** 把既往步骤的工具结果喂进 trace, 让 resume 收尾汇报连贯(取近 12 条带结果的步骤)。 */
+    private void seedPriorTrace(AgentState st) {
+        try {
+            List<DnAiStep> prior = stepMapper.selectList(new QueryWrapper<DnAiStep>()
+                    .eq("session_id", st.session.getSessionId())
+                    .orderByAsc("seq").last("LIMIT 12"));
+            if (prior == null || prior.isEmpty()) return;
+            StringBuilder h = new StringBuilder("（本会话此前步骤）\n");
+            for (DnAiStep s : prior) {
+                if (s == null) continue;
+                if (s.getSkillName() != null) {
+                    h.append("- 工具 ").append(s.getSkillName()).append(" → ")
+                            .append(s.getResultStatus() == null ? "" : s.getResultStatus());
+                    if (s.getResultData() != null) h.append(": ").append(cap(s.getResultData(), 300));
+                    h.append('\n');
+                }
+            }
+            st.trace.append(h).append('\n');
+        } catch (Exception e) {
+            log.warn("seedPriorTrace 失败 session={}: {}", st.session.getSessionId(), e.getMessage());
+        }
     }
 
     // ============ 会话/步骤 ============

@@ -127,14 +127,11 @@ public class AiAgentController {
         return R.ok();
     }
 
-    /** 恢复执行: 重入 run, 命中已批审批点放行写动作落地。 */
+    /** 恢复执行: 按已批 args 精确重放已批准未执行的写动作(不重跑 LLM 规划, 消除 args 漂移)。 */
     @PostMapping("/{sessionId}/resume")
     public R<Map<String, Object>> resume(@PathVariable("sessionId") String sessionId, HttpServletRequest req) {
-        DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
-        if (s == null) return R.fail("会话不存在");
-        String goal = (s.getGoalIntent() == null || s.getGoalIntent().trim().isEmpty()) ? "继续之前的任务" : s.getGoalIntent();
         AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
-        return R.ok(aiAgentService.run(sessionId, goal, ctx));
+        return R.ok(aiAgentService.resume(sessionId, ctx));
     }
 
     private String currentUser() {

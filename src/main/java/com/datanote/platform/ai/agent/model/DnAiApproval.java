@@ -22,5 +22,7 @@ public class DnAiApproval {
     private String status;
     private String decidedBy;
     private LocalDateTime decidedAt;
+    /** 已批写操作的实际执行时间(NULL=已批未执行); resume 重放后置位, 防重复执行 */
+    private LocalDateTime executedAt;
     private LocalDateTime createdAt;
 }
