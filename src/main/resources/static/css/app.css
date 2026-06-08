@@ -872,10 +872,10 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .ds-form { background: var(--bg-card); border: 1px solid var(--divider); border-radius: var(--radius-lg); padding: 24px; max-width: 560px; }
 .ds-form h3 { font-size: 15px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 .ds-form h3 svg { width: 18px; height: 18px; color: var(--primary); }
-.ds-form-row { display: flex; align-items: center; margin-bottom: 14px; }
-.ds-form-row label { width: 80px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
-.ds-form-row input { flex: 1; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text-regular); outline: none; }
-.ds-form-row input:focus { border-color: var(--primary); }
+.ds-form-row { display: flex; align-items: center; margin-bottom: 15px; }
+.ds-form-row label { width: 88px; font-size: 13px; color: var(--text-regular); font-weight: 500; flex-shrink: 0; }
+.ds-form-row input { flex: 1; height: 36px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text-primary); background: var(--bg-card); outline: none; transition: border-color .15s, box-shadow .15s; }
+.ds-form-row input:focus { border-color: var(--primary); box-shadow: var(--ring); }
 .ds-form-actions { display: flex; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--divider); }
 
 /* Steps bar inside center */
@@ -967,10 +967,10 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .intg-form-control { flex: 1; }
 .intg-select, .intg-input {
-  width: 100%; height: 30px;
-  border: 1px solid var(--divider); border-radius: var(--radius);
-  padding: 0 8px; font-size: 12px; color: var(--text-regular);
-  background: var(--bg-card); outline: none; transition: border-color .2s;
+  width: 100%; height: 34px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 10px; font-size: 12.5px; color: var(--text-primary);
+  background: var(--bg-card); outline: none; transition: border-color .15s, box-shadow .15s;
 }
 .intg-select:focus, .intg-input:focus { border-color: var(--primary); }
 .intg-select { cursor: pointer; appearance: auto; }
@@ -1163,16 +1163,18 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .g-modal-input {
   width: 100%;
-  height: 32px;
+  height: 36px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0 10px;
+  padding: 0 11px;
   font-size: 13px;
-  color: var(--text-regular);
+  color: var(--text-primary);
   outline: none;
   margin-top: 8px;
+  background: var(--bg-card);
+  transition: border-color .15s, box-shadow .15s;
 }
-.g-modal-input:focus { border-color: var(--primary); }
+.g-modal-input:focus { border-color: var(--primary); box-shadow: var(--ring); }
 
 /* ===== Welcome Page ===== */
 .view-welcome {
@@ -3280,20 +3282,20 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
   display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px;
   margin-bottom: 16px;
 }
-.dbsync-form-row { display: flex; flex-direction: column; gap: 4px; }
-.dbsync-form-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.dbsync-form-row { display: flex; flex-direction: column; gap: 6px; }
+.dbsync-form-label { font-size: 12.5px; color: var(--text-regular); font-weight: 500; }
 .dbsync-form-input {
-  height: 32px; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0 10px; font-size: 13px; color: var(--text-regular); outline: none;
-  background: var(--bg-card); width: 100%;
+  height: 36px; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 11px; font-size: 13px; color: var(--text-primary); outline: none;
+  background: var(--bg-card); width: 100%; transition: border-color .15s, box-shadow .15s;
 }
-.dbsync-form-input:focus { border-color: var(--primary); }
+.dbsync-form-input:focus { border-color: var(--primary); box-shadow: var(--ring); }
 .dbsync-form-select {
-  height: 32px; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0 8px; font-size: 13px; color: var(--text-regular); outline: none;
-  background: var(--bg-card); cursor: pointer; width: 100%;
+  height: 36px; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0 8px; font-size: 13px; color: var(--text-primary); outline: none;
+  background: var(--bg-card); cursor: pointer; width: 100%; transition: border-color .15s, box-shadow .15s;
 }
-.dbsync-form-select:focus { border-color: var(--primary); }
+.dbsync-form-select:focus { border-color: var(--primary); box-shadow: var(--ring); }
 .dbsync-section-title {
   font-size: 13px; font-weight: 600; color: var(--text-regular);
   margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--divider);
