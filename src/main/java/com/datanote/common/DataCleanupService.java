@@ -38,20 +38,30 @@ public class DataCleanupService {
         LocalDate cutoffDate = LocalDate.now().minusDays(RETENTION_DAYS);
         LocalDateTime cutoffDateTime = cutoffDate.atStartOfDay();
 
-        // 清理 dn_scheduler_run
-        QueryWrapper<DnSchedulerRun> runQw = new QueryWrapper<>();
-        runQw.lt("run_date", cutoffDate);
-        int deletedRuns = schedulerRunMapper.delete(runQw);
-
-        // 清理 dn_task_execution
-        QueryWrapper<DnTaskExecution> execQw = new QueryWrapper<>();
-        execQw.lt("created_at", cutoffDateTime);
-        int deletedExecs = taskExecutionMapper.delete(execQw);
-
-        // 清理 dn_sync_error_row（坏行 DLQ 只增不删会膨胀，按同保留期清理）
-        QueryWrapper<DnSyncErrorRow> errQw = new QueryWrapper<>();
-        errQw.lt("created_at", cutoffDateTime);
-        int deletedErrs = syncErrorRowMapper.delete(errQw);
+        // 各表清理相互独立：单表失败(锁超时等)不阻断其它表清理，本次失败的表下次再清
+        int deletedRuns = 0, deletedExecs = 0, deletedErrs = 0;
+        try {
+            QueryWrapper<DnSchedulerRun> runQw = new QueryWrapper<>();
+            runQw.lt("run_date", cutoffDate);
+            deletedRuns = schedulerRunMapper.delete(runQw);
+        } catch (Exception e) {
+            log.error("清理 dn_scheduler_run 失败: {}", e.getMessage());
+        }
+        try {
+            QueryWrapper<DnTaskExecution> execQw = new QueryWrapper<>();
+            execQw.lt("created_at", cutoffDateTime);
+            deletedExecs = taskExecutionMapper.delete(execQw);
+        } catch (Exception e) {
+            log.error("清理 dn_task_execution 失败: {}", e.getMessage());
+        }
+        try {
+            // 坏行 DLQ 只增不删会膨胀，按同保留期清理
+            QueryWrapper<DnSyncErrorRow> errQw = new QueryWrapper<>();
+            errQw.lt("created_at", cutoffDateTime);
+            deletedErrs = syncErrorRowMapper.delete(errQw);
+        } catch (Exception e) {
+            log.error("清理 dn_sync_error_row 失败: {}", e.getMessage());
+        }
 
         if (deletedRuns > 0 || deletedExecs > 0 || deletedErrs > 0) {
             log.info("数据清理完成: 删除 {} 条调度记录, {} 条执行指标, {} 条同步坏行 (截止 {})",

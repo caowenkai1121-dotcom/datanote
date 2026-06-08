@@ -36,7 +36,7 @@ public class LogBroadcastService {
         payload.put("level", level);
         payload.put("message", message);
         payload.put("time", LocalDateTime.now().format(FMT));
-        messagingTemplate.convertAndSend("/topic/task-log", payload);
+        send("/topic/task-log", payload);
     }
 
     /**
@@ -54,7 +54,7 @@ public class LogBroadcastService {
         payload.put("status", status);
         payload.put("runDate", runDate);
         payload.put("time", LocalDateTime.now().format(FMT));
-        messagingTemplate.convertAndSend("/topic/task-status", payload);
+        send("/topic/task-status", payload);
     }
 
     /**
@@ -70,7 +70,7 @@ public class LogBroadcastService {
         payload.put("taskType", "DbSync");
         payload.put("status", status);
         payload.put("time", LocalDateTime.now().format(FMT));
-        messagingTemplate.convertAndSend("/topic/task-status", payload);
+        send("/topic/task-status", payload);
     }
 
     /**
@@ -84,6 +84,15 @@ public class LogBroadcastService {
         payload.put("level", level);
         payload.put("message", message);
         payload.put("time", LocalDateTime.now().format(FMT));
-        messagingTemplate.convertAndSend("/topic/notification", payload);
+        send("/topic/notification", payload);
+    }
+
+    /** 统一发送：广播为辅助通知，失败(broker 不可用/序列化异常)只记日志，绝不冒泡中断调用方业务流程。 */
+    private void send(String destination, Map<String, Object> payload) {
+        try {
+            messagingTemplate.convertAndSend(destination, payload);
+        } catch (Exception e) {
+            log.warn("WebSocket 广播失败 dest={}: {}", destination, e.getMessage());
+        }
     }
 }

@@ -36,8 +36,8 @@ public class TypeMappingService {
         if (t.startsWith("decimal") || t.startsWith("numeric")) {
             Matcher m = DECIMAL.matcher(t);
             if (m.find()) {
-                int p = Integer.parseInt(m.group(1));
-                int s = Integer.parseInt(m.group(2));
+                int p = parseIntSafe(m.group(1), 38);   // 超大括号数字会溢出,兜底到上限
+                int s = parseIntSafe(m.group(2), 0);
                 // Doris DECIMAL 精度上限 38
                 if (p > 38) { p = 38; }
                 if (s > p) { s = p; }
@@ -68,7 +68,7 @@ public class TypeMappingService {
     private int lenOrDefault(String type, int def) {
         Matcher m = LEN.matcher(type);
         if (m.find()) {
-            return Integer.parseInt(m.group(1));
+            return parseIntSafe(m.group(1), def);
         }
         return def;
     }
@@ -77,8 +77,17 @@ public class TypeMappingService {
     private int precisionOrDefault(String type, int def) {
         Matcher m = LEN.matcher(type);
         if (m.find()) {
-            return Integer.parseInt(m.group(1));
+            return parseIntSafe(m.group(1), def);
         }
         return def;
+    }
+
+    /** 安全解析整数：超大括号数字(如 varchar(99999999999))会溢出抛 NumberFormatException,兜底返回 def。 */
+    private static int parseIntSafe(String s, int def) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return def;
+        }
     }
 }

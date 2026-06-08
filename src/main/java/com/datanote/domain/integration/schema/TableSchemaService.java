@@ -36,7 +36,7 @@ public class TableSchemaService {
                                   List<ColumnDef> sourceColumns) throws SQLException {
         List<String> existing = target.listTables(targetDb);
         // 表名按 lower_case_table_names 可能大小写不敏感，忽略大小写判断避免重复建表报错
-        if (existing.stream().anyMatch(t -> t.equalsIgnoreCase(targetTable))) {
+        if (existing != null && existing.stream().anyMatch(t -> t != null && t.equalsIgnoreCase(targetTable))) {
             log.info("目标表已存在，跳过建表: {}.{}", targetDb, targetTable);
             return;
         }

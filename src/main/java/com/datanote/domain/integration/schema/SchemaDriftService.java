@@ -33,7 +33,8 @@ public class SchemaDriftService {
     public boolean checkAndTrack(Long jobId, String jobName, String sourceTable, List<ColumnDef> cols) {
         Map<String, String> cur = new LinkedHashMap<>();
         List<String> curPk = new ArrayList<>();
-        for (ColumnDef c : cols) {
+        if (cols != null) for (ColumnDef c : cols) {
+            if (c == null) continue;
             cur.put(c.getName(), c.getColumnType());
             if (c.isPrimaryKey()) curPk.add(c.getName());
         }
