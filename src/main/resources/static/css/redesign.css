@@ -272,9 +272,12 @@
 }
 .card:hover { box-shadow: var(--dash-shadow-h); }
 
-/* 主按钮：扁平蓝升级为品牌渐变（仅背景与阴影，尺寸/内边距不变） */
+/* 主按钮：扁平蓝升级为品牌渐变（仅背景与阴影，尺寸/内边距不变）
+ * 修复(R74): --dash-brand-grad 仅在驾驶舱/治理/主数据三容器内定义, 容器外未定义且无 fallback
+ *   会使 background 整条失效→透明→白字隐形(全站主按钮空白)。补 fallback var(--primary) 兜底:
+ *   容器内得渐变, 容器外得纯靛蓝, 两者均可见。 */
 .btn-primary {
-  background: var(--dash-brand-grad);
+  background: var(--dash-brand-grad, var(--primary));
   border-color: transparent;
   box-shadow: 0 2px 6px rgba(29,111,255,.22);
   transition: filter .18s ease, box-shadow .18s ease, transform .12s ease;

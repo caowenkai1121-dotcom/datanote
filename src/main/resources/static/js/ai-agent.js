@@ -22,8 +22,8 @@
   function assistantBubble(text, tone) {
     var bg = tone === 'err' ? 'var(--bg-body,#fff2f0)' : 'var(--bg-card,#fff)';
     var bd = tone === 'err' ? '#ffccc7' : 'var(--border,#e5e6eb)';
-    var inner = DN.h('div', { style: 'max-width:84%;background:' + bg + ';border:1px solid ' + bd + ';padding:10px 14px;border-radius:12px 12px 12px 2px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.7;color:var(--text-primary);' });
-    renderRich(inner, String(text == null ? '' : text));
+    var inner = DN.h('div', { class: 'ai-md', style: 'max-width:84%;background:' + bg + ';border:1px solid ' + bd + ';padding:10px 15px;border-radius:12px 12px 12px 2px;word-break:break-word;font-size:13px;line-height:1.7;color:var(--text-primary);overflow-x:auto;' });
+    renderMarkdown(inner, String(text == null ? '' : text));
     return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:10px 0;' }, [inner]);
   }
 
@@ -45,6 +45,102 @@
   function linkChip(label, onclick) {
     return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
       style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:10px;background:var(--primary,#1890ff);color:#fff;font-size:12px;text-decoration:none;' });
+  }
+
+  // ===== 轻量 Markdown → DOM 渲染(零依赖, XSS 安全: 全程 DOM 构造不用 innerHTML 拼 LLM 文本) =====
+  // 支持: # 标题 / **粗体** / `行内码` / ```代码块``` / - 与 1. 列表 / | 表格 | / > 引用 / 段落换行 + 深链 chip
+  var INLINE_RE = /\*\*([^*]+?)\*\*|`([^`]+?)`|\[表:([^\]\.]+)\.([^\]]+)\]|\[规则:#?(\d+)\]|\[任务:#?(\d+)\]/g;
+  function appendInline(el, str) {
+    var last = 0, m; INLINE_RE.lastIndex = 0;
+    while ((m = INLINE_RE.exec(str)) !== null) {
+      if (m.index > last) el.appendChild(document.createTextNode(str.slice(last, m.index)));
+      if (m[1] != null) el.appendChild(DN.h('strong', { text: m[1], style: 'font-weight:650;' }));
+      else if (m[2] != null) el.appendChild(DN.h('code', { text: m[2], style: 'background:var(--bg-main,#f1f4fa);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' }));
+      else if (m[3] != null) (function (db, tb) { el.appendChild(linkChip('🔗 ' + db + '.' + tb, function () { go('catalog', { openTable: { db: db, table: tb } }); })); })(m[3], m[4]);
+      else if (m[5] != null) (function (id) { el.appendChild(linkChip('🔗 规则#' + id, function () { go('governance', { gov: 'quality', ruleId: Number(id) }); })); })(m[5]);
+      else if (m[6] != null) (function (id) { el.appendChild(linkChip('🔗 任务#' + id, function () { go('dbsync', { openDetail: Number(id) }); })); })(m[6]);
+      last = m.index + m[0].length;
+    }
+    if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
+  }
+  function renderMarkdown(container, text) {
+    var lines = String(text == null ? '' : text).replace(/\r\n/g, '\n').split('\n');
+    var i = 0;
+    function isBlank(s) { return s.trim() === ''; }
+    while (i < lines.length) {
+      var line = lines[i];
+      // 代码块 ```
+      if (/^```/.test(line.trim())) {
+        var buf = []; i++;
+        while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
+        i++; // 跳过收尾 ```
+        var pre = DN.h('pre', { style: 'background:var(--bg-main,#f1f4fa);border:1px solid var(--divider,#eef1f7);border-radius:8px;padding:10px 12px;overflow-x:auto;margin:8px 0;' });
+        pre.appendChild(DN.h('code', { text: buf.join('\n'), style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
+        container.appendChild(pre); continue;
+      }
+      // 标题 #..######
+      var hm = line.match(/^(#{1,6})\s+(.*)$/);
+      if (hm) {
+        var lv = hm[1].length;
+        var sz = lv <= 1 ? 18 : lv === 2 ? 16 : lv === 3 ? 14.5 : 13.5;
+        var h = DN.h('div', { style: 'font-weight:650;font-size:' + sz + 'px;color:var(--text-primary);margin:' + (container.childNodes.length ? 12 : 2) + 'px 0 6px;' });
+        appendInline(h, hm[2]); container.appendChild(h); i++; continue;
+      }
+      // 表格: 当前行含 | 且下一行是分隔行 |---|
+      if (line.indexOf('|') >= 0 && i + 1 < lines.length && /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(lines[i + 1]) && lines[i + 1].indexOf('-') >= 0) {
+        var rows = [splitRow(line)]; i += 2;
+        while (i < lines.length && lines[i].indexOf('|') >= 0 && !isBlank(lines[i])) { rows.push(splitRow(lines[i])); i++; }
+        var tbl = DN.h('table', { style: 'border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px;' });
+        rows.forEach(function (cells, ri) {
+          var tr = DN.h('tr', {});
+          cells.forEach(function (cell) {
+            var td = DN.h(ri === 0 ? 'th' : 'td', { style: 'border:1px solid var(--border,#e3e7f0);padding:5px 9px;text-align:left;' + (ri === 0 ? 'background:var(--bg-main,#f1f4fa);font-weight:600;' : '') });
+            appendInline(td, cell); tr.appendChild(td);
+          });
+          tbl.appendChild(tr);
+        });
+        container.appendChild(tbl); continue;
+      }
+      // 无序列表
+      if (/^\s*[-*+]\s+/.test(line)) {
+        var ul = DN.h('ul', { style: 'margin:6px 0;padding-left:20px;' });
+        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+          var li = DN.h('li', { style: 'margin:2px 0;' }); appendInline(li, lines[i].replace(/^\s*[-*+]\s+/, '')); ul.appendChild(li); i++;
+        }
+        container.appendChild(ul); continue;
+      }
+      // 有序列表
+      if (/^\s*\d+\.\s+/.test(line)) {
+        var ol = DN.h('ol', { style: 'margin:6px 0;padding-left:22px;' });
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+          var oli = DN.h('li', { style: 'margin:2px 0;' }); appendInline(oli, lines[i].replace(/^\s*\d+\.\s+/, '')); ol.appendChild(oli); i++;
+        }
+        container.appendChild(ol); continue;
+      }
+      // 引用
+      if (/^>\s?/.test(line)) {
+        var bq = DN.h('div', { style: 'border-left:3px solid var(--border,#e3e7f0);padding:2px 0 2px 10px;margin:6px 0;color:var(--text-muted,#5b6472);' });
+        appendInline(bq, line.replace(/^>\s?/, '')); container.appendChild(bq); i++; continue;
+      }
+      // 分隔线
+      if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        container.appendChild(DN.h('div', { style: 'border-top:1px solid var(--divider,#eef1f7);margin:10px 0;' })); i++; continue;
+      }
+      // 空行
+      if (isBlank(line)) { i++; continue; }
+      // 段落: 收集连续普通行, 行内换行用 <br>
+      var para = DN.h('div', { style: 'margin:4px 0;' });
+      var first = true;
+      while (i < lines.length && !isBlank(lines[i]) && !/^(#{1,6})\s|^```|^\s*[-*+]\s|^\s*\d+\.\s|^>\s?/.test(lines[i]) && !(lines[i].indexOf('|') >= 0 && i + 1 < lines.length && /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(lines[i + 1]))) {
+        if (!first) para.appendChild(DN.h('br', {}));
+        appendInline(para, lines[i]); first = false; i++;
+      }
+      container.appendChild(para);
+    }
+  }
+  function splitRow(line) {
+    var s = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+    return s.split('|').map(function (c) { return c.trim(); });
   }
 
   // 统一深链跳转（复用全局 navigateTo, 自动压栈可一键返回 AI助手）

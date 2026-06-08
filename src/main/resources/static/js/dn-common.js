@@ -154,7 +154,8 @@
     opts = opts || {};
     var withColumn = !!opts.withColumn;
     function sel(ph) {
-      var s = DN.h('select', { class: 'iw-form-select', style: 'min-width:140px;margin-right:4px;' });
+      // width:auto 覆盖 .iw-form-select{width:100%}, 否则每个 select 占满 100% 致 flex 容器换行竖排(库/表错位)
+      var s = DN.h('select', { class: 'iw-form-select', style: 'width:auto;min-width:150px;margin-right:4px;' });
       s.innerHTML = '<option value="">' + ph + '</option>';
       return s;
     }
@@ -213,7 +214,9 @@
   };
   DN.icon = function (name, attrs) {
     var p = ICONS[name] || ICONS.grid;
-    return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' + (attrs || '') + '>' + p + '</svg>';
+    // width/height="100%" 让图标填满其容器盒(避免无 CSS 约束时 SVG 撑大成巨图);
+    // 属性优先级低于 CSS, 既有 .xxx svg{width:16px} 之类规则仍可覆盖, 不影响已对的图标。
+    return '<svg width="100%" height="100%" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ' + (attrs || '') + '>' + p + '</svg>';
   };
 
   DN.statTile = function (o) {

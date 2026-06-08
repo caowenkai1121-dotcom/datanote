@@ -14,7 +14,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:18px; }
 
 /* ---- 网格 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gov-gap); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gov-gap); align-items:start; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:var(--gov-gap); }
 
 /* ---- KPI 磁贴 ---- */
@@ -63,7 +63,7 @@
 @media (max-width:480px) { :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pager > span:first-child { flex-basis:100%; } }
 
 /* ---- 状态药丸 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; white-space:nowrap; }
 /* 文字色加深至 WCAG AA(≥4.5:1),小字号药丸在浅底上可读 */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-ok { background:rgba(82,196,26,.14); color:#389e0d; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-warn { background:rgba(250,173,20,.16); color:#ad6800; }
