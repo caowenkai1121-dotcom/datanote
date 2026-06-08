@@ -57,7 +57,13 @@ html, body {
   gap: 0;
   height: 100%;
   flex: 1;
+  min-width: 0;
+  overflow-x: auto;          /* 窄屏 12 个 tab 溢出时可横向滚动, 不挤压不折行 */
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
+.header-tabs::-webkit-scrollbar { height: 3px; }
+.header-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .header-tab {
   display: flex;
   align-items: center;
@@ -71,6 +77,7 @@ html, body {
   transition: all .2s;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;            /* 不挤压, 溢出时由 .header-tabs 横向滚动 */
 }
 .header-tab:hover {
   color: var(--primary);
