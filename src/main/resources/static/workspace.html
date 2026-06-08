@@ -5,35 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231890ff'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=q100r80">
+<link rel="stylesheet" href="css/app.css?v=q100r81">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-<link rel="stylesheet" href="css/gov-modern.css?v=q100r80">
-<link rel="stylesheet" href="css/redesign.css?v=q100r80">
+<link rel="stylesheet" href="css/gov-modern.css?v=q100r81">
+<link rel="stylesheet" href="css/redesign.css?v=q100r81">
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=q100r80"></script>
-<script src="js/gov-assets.js?v=q100r80"></script>
-<script src="js/gov-lineage.js?v=q100r80"></script>
-<script src="js/gov-quality.js?v=q100r80"></script>
-<script src="js/gov-standard.js?v=q100r80"></script>
-<script src="js/gov-classification.js?v=q100r80"></script>
-<script src="js/gov-security.js?v=q100r80"></script>
-<script src="js/gov-health.js?v=q100r80"></script>
-<script src="js/gov-audit.js?v=q100r80"></script>
-<script src="js/gov-overview.js?v=q100r80"></script>
-<script src="js/gov-subject.js?v=q100r80"></script>
-<script src="js/gov-consumption.js?v=q100r80"></script>
-<script src="js/gov-govmap.js?v=q100r80"></script>
-<script src="js/home-dashboard.js?v=q100r80"></script>
-<script src="js/mdm.js?v=q100r80"></script>
-<script src="js/mdm-survivorship.js?v=q100r80"></script>
-<script src="js/mdm-approval.js?v=q100r80"></script>
-<script src="js/mdm-refdata.js?v=q100r80"></script>
-<script src="js/mdm-quality.js?v=q100r80"></script>
-<script src="js/mdm-pubsub.js?v=q100r80"></script>
-<script src="js/mdm-hierarchy.js?v=q100r80"></script>
-<script src="js/ai-agent.js?v=q100r80"></script>
+<script src="js/dn-common.js?v=q100r81"></script>
+<script src="js/gov-assets.js?v=q100r81"></script>
+<script src="js/gov-lineage.js?v=q100r81"></script>
+<script src="js/gov-quality.js?v=q100r81"></script>
+<script src="js/gov-standard.js?v=q100r81"></script>
+<script src="js/gov-classification.js?v=q100r81"></script>
+<script src="js/gov-security.js?v=q100r81"></script>
+<script src="js/gov-health.js?v=q100r81"></script>
+<script src="js/gov-audit.js?v=q100r81"></script>
+<script src="js/gov-overview.js?v=q100r81"></script>
+<script src="js/gov-subject.js?v=q100r81"></script>
+<script src="js/gov-consumption.js?v=q100r81"></script>
+<script src="js/gov-govmap.js?v=q100r81"></script>
+<script src="js/home-dashboard.js?v=q100r81"></script>
+<script src="js/mdm.js?v=q100r81"></script>
+<script src="js/mdm-survivorship.js?v=q100r81"></script>
+<script src="js/mdm-approval.js?v=q100r81"></script>
+<script src="js/mdm-refdata.js?v=q100r81"></script>
+<script src="js/mdm-quality.js?v=q100r81"></script>
+<script src="js/mdm-pubsub.js?v=q100r81"></script>
+<script src="js/mdm-hierarchy.js?v=q100r81"></script>
+<script src="js/ai-agent.js?v=q100r81"></script>
 <style>
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary,#3457d5); background:var(--primary,#3457d5); color:#fff; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
   .ai-launcher-btn:hover { filter:brightness(1.08); box-shadow:0 2px 10px rgba(52,87,213,.35); }
@@ -49,7 +49,7 @@
   /* 类型分色，与 showToast 调色板统一 */
   .dn-toast-error { background:#fff1f0; color:#cf1322; border:1px solid #ffa39e; }
   .dn-toast-success { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
-  .dn-toast-warn { background:#fffbe6; color:#d48806; border:1px solid #ffe58f; }
+  .dn-toast-warn { background:#fffbe6; color:#9a5b00; border:1px solid #ffe58f; }
   .dn-toast-info { background:#e6f7ff; color:#096dd9; border:1px solid #91d5ff; }
   /* DN 治理层 tone 别名(ok/err/muted)，与 DN.toast 统一枚举对齐，避免回退到深色底 */
   .dn-toast-ok { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
@@ -1734,7 +1734,7 @@
           <thead id="resultHead"></thead>
           <tbody id="resultBody"></tbody>
         </table>
-        <div id="resultEmpty" style="color:#888;padding:12px;">暂无数据</div>
+        <div id="resultEmpty" style="color:#5b6472;padding:12px;">暂无数据</div>
         <div id="resultStatusBar" style="position:sticky;bottom:0;background:var(--bg-card);border-top:1px solid var(--border);padding:4px 16px;font-size:11px;color:var(--text-muted);flex-shrink:0;"></div>
       </div>
     </div>
@@ -9504,7 +9504,7 @@ function wsSkeleton(rows) {
 function showToast(msg, type) {
   var t = document.createElement('div');
   var icon = type === 'error' ? '✕' : type === 'success' ? '✓' : type === 'warning' ? '!' : 'i';
-  var c = type === 'error' ? ['#fff1f0', '#cf1322', '#ffa39e'] : type === 'success' ? ['#f6ffed', '#389e0d', '#b7eb8f'] : type === 'warning' ? ['#fffbe6', '#d48806', '#ffe58f'] : ['#e6f7ff', '#096dd9', '#91d5ff'];
+  var c = type === 'error' ? ['#fff1f0', '#cf1322', '#ffa39e'] : type === 'success' ? ['#f6ffed', '#389e0d', '#b7eb8f'] : type === 'warning' ? ['#fffbe6', '#9a5b00', '#ffe58f'] : ['#e6f7ff', '#096dd9', '#91d5ff'];
   t.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:' + c[1] + ';color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">' + icon + '</span><span></span>';
   t.lastChild.textContent = msg;
   t.style.cssText = 'position:fixed;top:20px;left:50%;z-index:99999;display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.14);transition:opacity .3s,transform .3s;opacity:0;transform:translateX(-50%) translateY(-12px);background:' + c[0] + ';color:' + c[1] + ';border:1px solid ' + c[2] + ';';
@@ -10206,9 +10206,9 @@ function projRenderList(list) {
       + '<td style="white-space:nowrap;">' + escapeHtml((p.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="projOpenDetail(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>'
       + '<a href="#" onclick="projSetTagsModal(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">标签</a>'
-      + '<a href="#" onclick="projTogglePin(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
+      + '<a href="#" onclick="projTogglePin(' + p.id + ');return false;" style="color:#9a5b00;margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
       + '<a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
-      + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#d48806;margin-right:8px;">归档</a>' : '')
+      + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:#9a5b00;margin-right:8px;">归档</a>' : '')
       + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:#e03131;">删除</a></td>'
       + '</tr>';
   });
@@ -10427,8 +10427,8 @@ window.projGenReport = function() {
       var dn = mt.filter(function(t) { return t.status === 'DONE'; }).length;
       var pg = mt.length ? Math.round(dn * 100 / mt.length) : 0;
       return '<tr><td>' + esc(m.name || '') + '</td><td>' + esc(m.startDate || '-') + ' ~ ' + esc(m.endDate || '-') + '</td><td>' + dn + '/' + mt.length + '</td><td>' + pg + '%</td></tr>';
-    }).join('') : '<tr><td colspan="4" style="color:#999">无里程碑</td></tr>';
-    var memRows = members.length ? members.map(function(m) { return '<tr><td>' + esc(m.username || '') + '</td><td>' + esc(projRoleLabel ? projRoleLabel(m.projectRole) : (m.projectRole || '')) + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="color:#999">无成员</td></tr>';
+    }).join('') : '<tr><td colspan="4" style="color:#5b6472">无里程碑</td></tr>';
+    var memRows = members.length ? members.map(function(m) { return '<tr><td>' + esc(m.username || '') + '</td><td>' + esc(projRoleLabel ? projRoleLabel(m.projectRole) : (m.projectRole || '')) + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="color:#5b6472">无成员</td></tr>';
     var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>项目报告 · ' + esc(p.projectName || '') + '</title>'
       + '<style>body{font-family:-apple-system,"Microsoft YaHei",sans-serif;color:#1f2329;max-width:820px;margin:24px auto;padding:0 20px;line-height:1.7}'
       + 'h1{font-size:24px;border-bottom:3px solid #1677ff;padding-bottom:10px}h2{font-size:17px;margin-top:24px;color:#1677ff;border-left:4px solid #1677ff;padding-left:8px}'
@@ -10442,7 +10442,7 @@ window.projGenReport = function() {
       + '<tr><th>类型</th><td>' + esc(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td><th>环境</th><td>' + esc(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td></tr>'
       + '<tr><th>负责人</th><td>' + esc(p.owner || '-') + '</td><th>状态</th><td>' + esc((PROJ_STATUS[p.status] || {}).t || p.status || '-') + '</td></tr>'
       + '<tr><th>描述</th><td colspan="3">' + esc(p.description || '-') + '</td></tr></table>'
-      + '<h2>二、任务进度</h2><div class="kpi"><div><b>' + tasks.length + '</b>任务总数</div><div><b style="color:#2f9e44">' + doneN + '</b>已完成</div><div><b style="color:#1677ff">' + doingN + '</b>进行中</div><div><b style="color:#8c8c8c">' + todoN + '</b>待办</div><div><b style="color:' + (overdueN ? '#e03131' : '#2f9e44') + '">' + overdueN + '</b>超期</div></div>'
+      + '<h2>二、任务进度</h2><div class="kpi"><div><b>' + tasks.length + '</b>任务总数</div><div><b style="color:#2f9e44">' + doneN + '</b>已完成</div><div><b style="color:#1677ff">' + doingN + '</b>进行中</div><div><b style="color:#5b6472">' + todoN + '</b>待办</div><div><b style="color:' + (overdueN ? '#e03131' : '#2f9e44') + '">' + overdueN + '</b>超期</div></div>'
       + '<div>完成率 ' + donePct + '%<div class="bar"><i style="width:' + donePct + '%"></i></div></div>'
       + '<h2>三、里程碑（' + ms.length + '）</h2><table><tr><th>名称</th><th>周期</th><th>完成</th><th>进度</th></tr>' + msRows + '</table>'
       + '<h2>四、项目成员（' + members.length + '）</h2><table><tr><th>用户名</th><th>角色</th></tr>' + memRows + '</table>'
@@ -10735,7 +10735,7 @@ window.projLoadEnvParams = function() {
       h += '<table class="dbsync-exec-table" id="projEnvTbl" style="width:100%;"><thead><tr><th>参数键</th><th>开发值</th><th>生产值</th><th>说明</th><th style="width:60px;">操作</th></tr></thead><tbody>';
       ps.forEach(function(p) {
         var diff = (p.devValue || '') !== (p.prodValue || '');
-        var dcell = diff ? ' style="background:#fff7e6;color:#d46b08;font-weight:600;"' : '';
+        var dcell = diff ? ' style="background:#fdf3e2;color:#9a5b00;font-weight:600;"' : '';
         h += '<tr class="proj-env-row" data-diff="' + (diff ? '1' : '0') + '" data-k="' + escapeHtml(((p.paramKey || '') + ' ' + (p.devValue || '') + ' ' + (p.prodValue || '')).toLowerCase()) + '"><td style="font-family:monospace;">' + escapeHtml(p.paramKey) + '</td><td' + dcell + '>' + escapeHtml(p.devValue || '-') + '</td><td' + dcell + '>' + escapeHtml(p.prodValue || '-') + (diff ? ' <span title="开发值≠生产值">≠</span>' : '') + '</td><td>' + escapeHtml(p.remark || '-') + '</td>'
           + '<td><a href="#" onclick="projDelEnvParam(' + p.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
       });
@@ -10912,7 +10912,7 @@ window.projLoadOverview = function() {
         + '<span>成功 <b style="color:#2f9e44;">' + (jr.success || 0) + '</b></span>'
         + '<span>失败 <b style="color:#e03131;">' + (jr.failed || 0) + '</b></span>'
         + '<span>运行中 <b style="color:#1677ff;">' + (jr.running || 0) + '</b></span>'
-        + '<span>未运行 <b style="color:#8c8c8c;">' + (jr.neverRun || 0) + '</b></span></div>';
+        + '<span>未运行 <b style="color:#5b6472;">' + (jr.neverRun || 0) + '</b></span></div>';
       var rec = jr.recent || [];
       if (rec.length) {
         h += '<div style="font-size:12px;line-height:1.9;">';
@@ -11653,7 +11653,7 @@ function projRenderMilestones() {
   var late = risks.filter(function(r) { return r.label === '已延期'; }).length;
   var atRisk = risks.filter(function(r) { return r.label === '延期风险'; }).length;
   var summary = (late || atRisk)
-    ? '<div style="padding:6px 10px;margin-bottom:8px;border-radius:6px;background:#fff7e6;border:1px solid #ffe7ba;font-size:12px;color:#ad6800;">里程碑风险：' + (late ? '已延期 ' + late + ' 个' : '') + (late && atRisk ? '，' : '') + (atRisk ? '延期风险 ' + atRisk + ' 个' : '') + '，建议优先协调</div>'
+    ? '<div style="padding:6px 10px;margin-bottom:8px;border-radius:6px;background:#fdf3e2;border:1px solid #ffe7ba;font-size:12px;color:#ad6800;">里程碑风险：' + (late ? '已延期 ' + late + ' 个' : '') + (late && atRisk ? '，' : '') + (atRisk ? '延期风险 ' + atRisk + ' 个' : '') + '，建议优先协调</div>'
     : '<div style="font-size:12px;color:#389e0d;margin-bottom:8px;">✓ 各里程碑进度正常</div>';
   box.innerHTML = summary + _projMilestones.map(function(m, i) {
     var r = risks[i];
@@ -11876,7 +11876,7 @@ window.loadProjectHome = function() {
       var t1 = tDone / mt.length * 100, t2 = (tDone + tDoing) / mt.length * 100;
       donut = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:12px;border:1px solid var(--divider);border-radius:8px;">'
         + '<div style="width:84px;height:84px;border-radius:50%;background:conic-gradient(#2f9e44 0 ' + t1.toFixed(1) + '%,#1677ff ' + t1.toFixed(1) + '% ' + t2.toFixed(1) + '%,#8c8c8c ' + t2.toFixed(1) + '% 100%);position:relative;flex-shrink:0;"><div style="position:absolute;inset:16px;background:var(--bg-card,#fff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + mt.length + '</div></div>'
-        + '<div style="font-size:12px;line-height:2;"><div><span style="color:#2f9e44;">●</span> 完成 ' + tDone + '</div><div><span style="color:#1677ff;">●</span> 进行中 ' + tDoing + '</div><div><span style="color:#8c8c8c;">●</span> 待办 ' + tTodo + '</div></div>'
+        + '<div style="font-size:12px;line-height:2;"><div><span style="color:#2f9e44;">●</span> 完成 ' + tDone + '</div><div><span style="color:#1677ff;">●</span> 进行中 ' + tDoing + '</div><div><span style="color:#5b6472;">●</span> 待办 ' + tTodo + '</div></div>'
         + '<div style="margin-left:auto;font-size:12px;color:var(--text-muted);">我的任务概览</div></div>';
     } else {
       donut = '<div style="margin-bottom:14px;padding:14px;border:1px solid var(--divider);border-radius:8px;text-align:center;color:var(--text-muted);font-size:13px;">🎉 暂无待办任务，保持节奏！</div>';
@@ -12003,7 +12003,7 @@ function projRelActionLinks(r, scope) {
   var s = r.status, rid = r.id, a = '';
   if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:#2f9e44;margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:#e03131;">驳回</a>';
   else if (s === 'APPROVED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'release\',\'' + scope + '\');return false;" style="color:var(--primary);">发布上线</a>';
-  else if (s === 'RELEASED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:#d48806;">回滚</a>';
+  else if (s === 'RELEASED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:#9a5b00;">回滚</a>';
   else a = '<span style="color:var(--text-muted);">-</span>';
   return a;
 }
@@ -12229,7 +12229,7 @@ window.umRenderUsers = function() {
       + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
-      + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:#d48806;margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
+      + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:#9a5b00;margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
       + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:#e03131;">删除</a></td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
@@ -15380,11 +15380,11 @@ window.dbsyncDoCompare = function(leftId) {
       var va = a[f[0]], vb = b[f[0]];
       var diff = String(va == null ? '' : va) !== String(vb == null ? '' : vb);
       if (diff) diffN++;
-      return '<tr' + (diff ? ' style="background:#fff7e6;"' : '') + '><td style="font-weight:500;color:var(--text-muted);white-space:nowrap;">' + f[1] + '</td>'
-        + '<td' + (diff ? ' style="color:#d46b08;font-weight:600;"' : '') + '>' + fmt(va) + '</td>'
-        + '<td' + (diff ? ' style="color:#d46b08;font-weight:600;"' : '') + '>' + fmt(vb) + '</td></tr>';
+      return '<tr' + (diff ? ' style="background:#fdf3e2;"' : '') + '><td style="font-weight:500;color:var(--text-muted);white-space:nowrap;">' + f[1] + '</td>'
+        + '<td' + (diff ? ' style="color:#9a5b00;font-weight:600;"' : '') + '>' + fmt(va) + '</td>'
+        + '<td' + (diff ? ' style="color:#9a5b00;font-weight:600;"' : '') + '>' + fmt(vb) + '</td></tr>';
     }).join('');
-    box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">共 ' + _DBSYNC_CMP_FIELDS.length + ' 项, <b style="color:#d46b08;">' + diffN + '</b> 项存在差异(橙色高亮)</div>'
+    box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">共 ' + _DBSYNC_CMP_FIELDS.length + ' 项, <b style="color:#9a5b00;">' + diffN + '</b> 项存在差异(橙色高亮)</div>'
       + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:110px;">配置项</th><th>' + escapeHtml(a.jobName || ('#' + leftId)) + '</th><th>' + escapeHtml(b.jobName || ('#' + rightId)) + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
   }).catch(function() { box.innerHTML = '<div style="padding:20px;color:var(--error);">对比失败</div>'; });
 };
@@ -15657,7 +15657,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
       + card(lErrRate.toFixed(2) + '%', '最近错误率', lErrRate > 1 ? 'err' : '')
       + card(avgErrRate.toFixed(2) + '%', '平均错误率', avgErrRate > 1 ? 'err' : '')
       + '</div>';
-    if (hWarns.length) html += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:#fff7e6;border:1px solid #ffe7ba;font-size:12px;color:#d48806;line-height:1.7;">⚠ ' + hWarns.map(escapeHtml).join('<br>⚠ ') + '</div>';
+    if (hWarns.length) html += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:#fdf3e2;border:1px solid #ffe7ba;font-size:12px;color:#9a5b00;line-height:1.7;">⚠ ' + hWarns.map(escapeHtml).join('<br>⚠ ') + '</div>';
     else html += '<div style="margin-top:8px;font-size:12px;color:#389e0d;">✓ 吞吐量与错误率处于正常区间</div>';
     html += '</div>';
   }
@@ -16007,7 +16007,7 @@ function dbsyncRenderHistory(execs) {
       + '<td class="num">' + (Number(ex.readCount) || 0).toLocaleString() + '</td>'
       + '<td class="num">' + (Number(ex.writeCount) || 0).toLocaleString() + '</td>'
       + '<td class="num">' + (Number(ex.errorCount) || 0).toLocaleString() + '</td>'
-      + '<td class="num"' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#d48806;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
+      + '<td class="num"' + (ex.duration != null && ex.duration >= 300 ? ' style="background:#fffbe6;color:#9a5b00;font-weight:600;" title="慢执行(≥300秒)"' : '') + '>' + (ex.duration != null ? ex.duration + (ex.duration >= 300 ? ' 慢' : '') : '-') + '</td>'
       + '<td style="max-width:200px;">' + logCell + '</td>'
       + '</tr>';
   });

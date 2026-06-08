@@ -501,7 +501,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   color: var(--text-muted);
   line-height: 1.8;
 }
-.result-body .log-time { color: #999; }
+.result-body .log-time { color:#5b6472; }
 .result-body .log-info { color: var(--primary); }
 .result-body .log-ok { color: var(--success); }
 .result-body .log-err { color: #e74c3c; }
@@ -1076,7 +1076,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .intg-ddl-body .kw { color: #0550ae; font-weight: 600; }
 .intg-ddl-body .str { color: #0a3069; }
-.intg-ddl-body .cm { color: #999; }
+.intg-ddl-body .cm { color:#5b6472; }
 
 /* Action bar */
 .intg-actions {
@@ -2486,9 +2486,9 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 }
 .sched-badge.success { background: var(--success-light); color: #389e0d; }
 .sched-badge.running { background: var(--primary-light); color: var(--primary); }
-.sched-badge.waiting { background: #f5f5f5; color: #8c8c8c; }
+.sched-badge.waiting { background: #f5f5f5; color:#5b6472; }
 .sched-badge.failed { background: rgba(224,49,49,.08); color: var(--error); }
-.sched-badge.paused { background: rgba(232,147,12,.08); color: #d48806; }
+.sched-badge.paused { background: rgba(232,147,12,.08); color: #9a5b00; }
 .sched-task-actions {
   display: flex; gap: 4px;
 }
@@ -3035,7 +3035,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 }
 .iw-ddl-body .kw { color: #0550ae; font-weight: 600; }
 .iw-ddl-body .str { color: #0a3069; }
-.iw-ddl-body .cm { color: #999; }
+.iw-ddl-body .cm { color:#5b6472; }
 .iw-action-bar {
   margin-top: 24px; padding: 16px 0; display: flex; justify-content: center; gap: 12px; border-top: 1px solid var(--divider);
 }

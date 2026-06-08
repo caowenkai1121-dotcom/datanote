@@ -459,11 +459,11 @@
     var tbl = DN.h('div', { style: 'display:inline-block;min-width:100%' });
     // 表头(小时)
     var head = DN.h('div', { style: 'display:flex;gap:2px;margin-bottom:2px;padding-left:22px' });
-    for (var hH = 0; hH < 24; hH += 2) head.appendChild(DN.h('div', { style: 'width:26px;font-size:9px;color:#999;text-align:left', text: hH }));
+    for (var hH = 0; hH < 24; hH += 2) head.appendChild(DN.h('div', { style: 'width:26px;font-size:9px;color:#5b6472;text-align:left', text: hH }));
     tbl.appendChild(head);
     for (var w = 0; w < 7; w++) {
       var row = DN.h('div', { style: 'display:flex;gap:2px;align-items:center;margin-bottom:2px' });
-      row.appendChild(DN.h('div', { style: 'width:20px;font-size:10px;color:#999', text: dows[w] }));
+      row.appendChild(DN.h('div', { style: 'width:20px;font-size:10px;color:#5b6472', text: dows[w] }));
       for (var hr = 0; hr < 24; hr++) {
         var n = grid[w + '_' + hr] || 0;
         var cell = DN.h('div', { title: dows[w] + ' ' + hr + ':00 · ' + n + ' 次' + (n ? '（点击下钻）' : ''), style: 'width:11px;height:11px;border-radius:2px;background:' + colorOf(n) });

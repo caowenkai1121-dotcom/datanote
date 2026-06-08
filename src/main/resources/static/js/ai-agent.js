@@ -253,7 +253,7 @@
       for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
       if (!ap) return;
       var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #e8930c;background:var(--bg-body,#fffbe6);border-radius:10px;padding:12px 14px;' });
-      card.appendChild(DN.h('div', { style: 'font-weight:600;color:#d48806;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
+      card.appendChild(DN.h('div', { style: 'font-weight:600;color:#9a5b00;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });

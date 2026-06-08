@@ -402,7 +402,7 @@
       var v = round1(Number(dims[k]) || 0), w = weights[k];
       return '<tr><td>' + k + '</td><td>' + v + '</td><td>' + (w != null ? w : '-') + '</td><td>' + level(v) + '</td></tr>';
     }).join('');
-    var sensRows = Object.keys(sensitive.byLevel || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + (Number(sensitive.byLevel[k]) || 0) + '</td></tr>'; }).join('') || '<tr><td colspan="2" style="color:#999">无敏感分布数据</td></tr>';
+    var sensRows = Object.keys(sensitive.byLevel || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td>' + (Number(sensitive.byLevel[k]) || 0) + '</td></tr>'; }).join('') || '<tr><td colspan="2" style="color:#5b6472">无敏感分布数据</td></tr>';
     var rate = round1(Number(quality.recentPassRate) || 0);
     var pending = (Number(issues.open) || 0) + (Number(issues.fixing) || 0);
     var html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>数据治理体检报告 ' + ts + '</title>'
@@ -444,7 +444,7 @@
   }
   // 分值映射药丸/磁贴色调：>=85 绿 / >=60 黄 / 其余红
   function tone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
-  function toneColor(t) { return t === 'ok' ? '#389e0d' : t === 'warn' ? '#d48806' : t === 'err' ? '#cf1322' : 'var(--primary,#3457d5)'; }
+  function toneColor(t) { return t === 'ok' ? '#389e0d' : t === 'warn' ? '#9a5b00' : t === 'err' ? '#cf1322' : 'var(--primary,#3457d5)'; }
   function level(v) { return v >= 85 ? '优秀' : v >= 70 ? '良好' : v >= 60 ? '一般' : '待完善'; }
   function round1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
   function fmtInt(v) {

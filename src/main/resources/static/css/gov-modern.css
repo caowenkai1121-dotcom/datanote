@@ -140,7 +140,7 @@
 /* ---- 药丸配色加强 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill { font-weight:600; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(47,158,68,.25); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(232,147,12,.3); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-warn { background:#fffbe6; color:#9a5b00; box-shadow:inset 0 0 0 1px rgba(232,147,12,.3); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(224,49,49,.25); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-pill.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(52,87,213,.25); }
 
@@ -174,7 +174,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .m { flex:1; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .x { border:0; background:none; cursor:pointer; font-size:17px; line-height:1; color:inherit; opacity:.6; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert .x:hover { opacity:1; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-warn { background:#fffbe6; color:#d48806; box-shadow:inset 0 0 0 1px rgba(232,147,12,.3); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-warn { background:#fffbe6; color:#9a5b00; box-shadow:inset 0 0 0 1px rgba(232,147,12,.3); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-err { background:#fff1f0; color:#cf1322; box-shadow:inset 0 0 0 1px rgba(224,49,49,.25); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-ok { background:#f6ffed; color:#389e0d; box-shadow:inset 0 0 0 1px rgba(47,158,68,.25); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-alert.is-info { background:#e6f4ff; color:#0958d9; box-shadow:inset 0 0 0 1px rgba(52,87,213,.25); }
@@ -185,7 +185,7 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta { font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-ok { color:#389e0d; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-err { color:#cf1322; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-muted { color:#8c8c8c; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-delta.is-muted { color:#5b6472; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; font-size:12.5px; border:1px solid rgba(0,0,0,.04); transition:transform .12s; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit) .gov-heat-cell:hover { transform:translateY(-2px); }
