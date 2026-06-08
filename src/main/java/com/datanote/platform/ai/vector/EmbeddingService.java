@@ -92,9 +92,24 @@ public class EmbeddingService {
         return (r == null || r.isEmpty()) ? null : r.get(0);
     }
 
-    /** 批量嵌入；不可用/失败返 null(调用方降级)。 */
+    /** 单次请求上限(DashScope text-embedding-v3 限 10; 兼容其它 provider 取保守值)。 */
+    private static final int MAX_BATCH = 10;
+
+    /** 批量嵌入(内部按 MAX_BATCH 分块, 适配 provider 单批上限)；不可用/任一子批失败返 null。 */
     public List<float[]> embedBatch(List<String> texts) {
         if (!isAvailable() || texts == null || texts.isEmpty()) return null;
+        List<float[]> all = new ArrayList<>(texts.size());
+        for (int i = 0; i < texts.size(); i += MAX_BATCH) {
+            List<String> chunk = texts.subList(i, Math.min(i + MAX_BATCH, texts.size()));
+            List<float[]> part = embedChunk(chunk);
+            if (part == null || part.size() != chunk.size()) return null;
+            all.addAll(part);
+        }
+        return all;
+    }
+
+    /** 单批(≤MAX_BATCH)嵌入。 */
+    private List<float[]> embedChunk(List<String> texts) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", model);

@@ -38,6 +38,7 @@ public class GraphStoreClient {
     private String password;
 
     private volatile boolean ready = false;
+    private volatile long lastProbe = 0L;
 
     public GraphStoreClient(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -65,7 +66,25 @@ public class GraphStoreClient {
     }
 
     public boolean available() {
-        return enabled && ready;
+        if (!enabled) return false;
+        if (ready) return true;
+        // 启动探活瞬时失败 → 惰性重探(30s 退避)自愈
+        long now = System.currentTimeMillis();
+        if (now - lastProbe < 30000) return false;
+        synchronized (this) {
+            if (ready) return true;
+            if (System.currentTimeMillis() - lastProbe < 30000) return false;
+            lastProbe = System.currentTimeMillis();
+            try {
+                if (run("RETURN 1 AS ok", null) != null) {
+                    run("CREATE CONSTRAINT dn_table_fqn IF NOT EXISTS FOR (t:Table) REQUIRE t.fqn IS UNIQUE", null);
+                    ready = true;
+                    log.info("[graph] 惰性重探成功, 启用: {}", baseUrl);
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return ready;
     }
 
     /** 执行 Cypher（参数化防注入），返回行列表(每行: 列名→值)；失败/有错误返 null。 */

@@ -36,6 +36,7 @@ public class VectorStoreClient {
     private String collection;
 
     private volatile boolean ready = false;
+    private volatile long lastProbe = 0L;
 
     public VectorStoreClient(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -61,7 +62,24 @@ public class VectorStoreClient {
     }
 
     public boolean available() {
-        return enabled && ready;
+        if (!enabled) return false;
+        if (ready) return true;
+        // 启动探活可能因瞬时网络失败 → 惰性重探(30s 退避), 自愈瞬时抖动而不阻断启动
+        long now = System.currentTimeMillis();
+        if (now - lastProbe < 30000) return false;
+        synchronized (this) {
+            if (ready) return true;
+            if (System.currentTimeMillis() - lastProbe < 30000) return false;
+            lastProbe = System.currentTimeMillis();
+            try {
+                if (http("GET", "/collections", null) != null) {
+                    ready = true;
+                    log.info("[vector] 惰性重探成功, 启用: {}", baseUrl);
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return ready;
     }
 
     public String collection() {
