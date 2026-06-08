@@ -94,6 +94,8 @@ public class EmbeddingService {
 
     /** 单次请求上限(DashScope text-embedding-v3 限 10; 兼容其它 provider 取保守值)。 */
     private static final int MAX_BATCH = 10;
+    /** 单条文本字符上限: 防超长 comment/定义撑爆 provider 单条 token 限制致整批失败丢点。 */
+    private static final int MAX_INPUT_CHARS = 2000;
 
     /** 批量嵌入(内部按 MAX_BATCH 分块, 适配 provider 单批上限)；不可用/任一子批失败返 null。 */
     public List<float[]> embedBatch(List<String> texts) {
@@ -111,9 +113,15 @@ public class EmbeddingService {
     /** 单批(≤MAX_BATCH)嵌入。 */
     private List<float[]> embedChunk(List<String> texts) {
         try {
+            // 单条截断, 防超长文本致整批 422 静默丢点
+            List<String> capped = new ArrayList<>(texts.size());
+            for (String t : texts) {
+                if (t == null) capped.add("");
+                else capped.add(t.length() > MAX_INPUT_CHARS ? t.substring(0, MAX_INPUT_CHARS) : t);
+            }
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", model);
-            body.put("input", texts);
+            body.put("input", capped);
             String resp = post(baseUrl.replaceAll("/+$", "") + "/embeddings",
                     objectMapper.writeValueAsString(body));
             if (resp == null) return null;

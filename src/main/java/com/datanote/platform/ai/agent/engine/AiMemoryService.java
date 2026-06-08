@@ -141,8 +141,8 @@ public class AiMemoryService {
 
     // ===================== 沉淀(异步) =====================
 
-    /** 异步: 把一次完整会话蒸馏成一条可复用经验并入库+向量化。失败静默。 */
-    @Async
+    /** 异步: 把一次完整会话蒸馏成一条可复用经验并入库+向量化。失败静默。走有界执行器防堆积。 */
+    @Async("aiLearnExecutor")
     public void learn(String sessionId, String goal, String owner, String traceSummary, String finalAnswer) {
         try {
             if (!aiAssistService.isAvailable()) return;

@@ -111,7 +111,7 @@ public class AiAgentService {
             String raw = aiAssistService.chat(userPrompt, context);
             long latency = System.currentTimeMillis() - t0;
 
-            if (raw == null || raw.startsWith("AI 功能未配置") || raw.startsWith("AI 请求失败") || raw.equals("AI 返回格式异常")) {
+            if (isAiError(raw)) {
                 st.blocked = true;
                 st.blockReason = raw;
                 newSteps.add(writeStep(st, "FINAL", "assistant", raw == null ? "AI 调用失败" : raw,
@@ -206,7 +206,8 @@ public class AiAgentService {
             try {
                 result = tool.invoke(argsNode, ctx);
             } catch (Exception ex) {
-                result = AiToolResult.fail("exec_failed", ex.getMessage());
+                log.warn("工具 {} 执行异常", toolName, ex);
+                result = AiToolResult.fail("exec_failed", msgOf(ex));
             }
             long execLatency = System.currentTimeMillis() - e0;
 
@@ -229,7 +230,8 @@ public class AiAgentService {
             String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText);
             String raw = aiAssistService.chat(
                     "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
-            st.finalAnswer = AgentTextUtil.sanitize(raw);
+            st.finalAnswer = isAiError(raw)
+                    ? "已收集到部分信息但收尾应答失败，请稍后重试或换种问法。" : AgentTextUtil.sanitize(raw);
             st.done = true;
             newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, null, null, null, null, "ok", null, true, "LOW", null));
         }
@@ -286,6 +288,10 @@ public class AiAgentService {
             return resp;
         }
 
+        // 重放身份: 写入归属(createdBy/owner)取【会话发起人】, 审计 actor 记【实际触发 resume 者】, 二者分离防冒名。
+        AgentContext writeCtx = new AgentContext(session.getUserName(), ctx == null ? null : ctx.getIp(), null, sessionId, null);
+        String actor = ctx == null ? null : ctx.getUserName();
+
         AgentState st = new AgentState();
         st.session = session;
         st.seq = nextSeq(sessionId);
@@ -313,10 +319,10 @@ public class AiAgentService {
                 markExecuted(ap);
                 continue;
             }
-            // fail-closed 写前审计 + 回读(未落库拒执行, 不置 executed 以便下次重试)
-            Long auditId = auditService.recordReturning(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE", "POST",
+            // fail-closed 写前审计 + 回读(未落库拒执行, 不置 executed 以便下次重试); actor=实际触发者
+            Long auditId = auditService.recordReturning(actor, "AI_AGENT_WRITE", "POST",
                     "/api/ai/agent/tool/" + tool.name(), ctx == null ? null : ctx.getIp(), null,
-                    "replay args=" + cap(ap.getArgsJson(), 2000));
+                    "replay by=" + actor + " owner=" + session.getUserName() + " args=" + cap(ap.getArgsJson(), 2000));
             if (!auditService.existsById(auditId)) {
                 AiToolResult r = AiToolResult.fail("audit_failed", "写前审计未落库, 拒绝执行");
                 appendTrace(st, tool.name(), ap.getArgsJson(), r);
@@ -324,21 +330,27 @@ public class AiAgentService {
                         null, "error", "audit_failed", false, riskName, null));
                 continue;
             }
+            // 原子占行: 仅把 executed_at 从 null→now 抢到者执行, 防并发 resume 重复 invoke(at-most-once)
+            int claimed = approvalMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnAiApproval>()
+                    .eq("id", ap.getId()).eq("status", "approved").isNull("executed_at")
+                    .set("executed_at", LocalDateTime.now()));
+            if (claimed == 0) {
+                continue; // 已被并发 resume 领走, 跳过不重复执行
+            }
             AiToolResult result;
             long e0 = System.currentTimeMillis();
             try {
-                result = tool.invoke(argsNode, ctx);
+                result = tool.invoke(argsNode, writeCtx); // 写入归属取会话发起人身份
             } catch (Exception ex) {
-                result = AiToolResult.fail("exec_failed", ex.getMessage());
+                result = AiToolResult.fail("exec_failed", msgOf(ex));
             }
             long lat = System.currentTimeMillis() - e0;
-            auditService.record(ctx == null ? null : ctx.getUserName(), "AI_AGENT_WRITE_RESULT", "POST",
+            auditService.record(actor, "AI_AGENT_WRITE_RESULT", "POST",
                     "/api/ai/agent/tool/" + tool.name(), ctx == null ? null : ctx.getIp(),
                     result.isOk() ? 200 : 500, cap(toJson(result), 2000));
             appendTrace(st, tool.name(), ap.getArgsJson(), result);
             newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, tool.name(), ap.getArgsJson(),
                     cap(toJson(result), STORE_RESULT_CAP), result.getStatus(), result.getType(), false, riskName, lat));
-            markExecuted(ap);
             executed++;
         }
 
@@ -349,7 +361,7 @@ public class AiAgentService {
         String raw = aiAssistService.isAvailable()
                 ? aiAssistService.chat("以上为已通过人工审批并按原始参数执行的写操作结果。请用中文向用户简要汇报: 做了什么、成功或失败、关键产出(ID/名称)与后续建议。不要再调用任何工具。", context)
                 : null;
-        st.finalAnswer = (raw == null || raw.startsWith("AI 功能未配置") || raw.startsWith("AI 请求失败"))
+        st.finalAnswer = isAiError(raw)
                 ? ("已执行 " + executed + " 个已审批写操作。") : AgentTextUtil.sanitize(raw);
         st.done = true;
         newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, null, null, null, null, "ok", null, true, "LOW", null));
@@ -362,7 +374,7 @@ public class AiAgentService {
         if (executed > 0) {
             try {
                 aiMemoryService.learn(sessionId, session.getGoalIntent(),
-                        ctx == null ? null : ctx.getUserName(), st.trace.toString(), st.finalAnswer);
+                        session.getUserName(), st.trace.toString(), st.finalAnswer);
             } catch (Exception e) {
                 log.warn("[memory] resume 触发 learn 失败 session={}: {}", sessionId, e.getMessage());
             }
@@ -619,5 +631,19 @@ public class AiAgentService {
     private static String cap(String s, int max) {
         if (s == null) return null;
         return s.length() > max ? s.substring(0, max) + "…(截断)" : s;
+    }
+
+    /** AiAssistService.chat 的错误前缀统一判定(未配置/请求失败/格式异常/空)。 */
+    private static boolean isAiError(String raw) {
+        return raw == null
+                || raw.startsWith("AI 功能未配置")
+                || raw.startsWith("AI 请求失败")
+                || raw.equals("AI 返回格式异常");
+    }
+
+    /** 取异常可读信息: message 为空(如 NPE)时退化为异常类名, 避免问题被 null 掩盖。 */
+    private static String msgOf(Throwable e) {
+        if (e == null) return "unknown_error";
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 }

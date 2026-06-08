@@ -33,12 +33,9 @@ public class ApprovalGate {
             if ("rejected".equals(exist.getStatus())) return Outcome.REJECTED;
             return Outcome.PENDING;
         }
-        // MEDIUM 会话级一次性确认豁免: 本会话该 skill 已有 approved
-        if (!isHigh) {
-            Long cnt = approvalMapper.selectCount(new QueryWrapper<DnAiApproval>()
-                    .eq("session_id", sessionId).eq("skill_name", tool.name()).eq("status", "approved"));
-            if (cnt != null && cnt > 0) return Outcome.APPROVED;
-        }
+        // 安全: 审批严格绑定 args(session+skill+完全相同 args 命中 approved 才放行)。
+        // 不做"同会话同 skill 任意 args 豁免"——否则一次良性审批可放行同会话该工具的任意后续写入(审批绕过)。
+        // HIGH/MEDIUM 一视同仁按 args 精确审批; isHigh 仅保留语义入参, 不再放宽 MEDIUM。
         DnAiApproval a = new DnAiApproval();
         a.setSessionId(sessionId);
         a.setStepSeq(stepSeq);
