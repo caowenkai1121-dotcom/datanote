@@ -30,6 +30,7 @@ public class LineageEdgeService {
     private final DnLineageEdgeMapper edgeMapper;
     private final DnSyncJobMapper syncJobMapper;
     private final SyncJobService syncJobService;
+    private final com.datanote.platform.ai.graph.GraphMirrorService graphMirrorService;
 
     /** 从所有同步任务重建 MAPPING 来源的血缘边（保留 MANUAL 边）。返回重建的边数。 */
     @Transactional(rollbackFor = Exception.class)
@@ -61,6 +62,8 @@ public class LineageEdgeService {
                 }
             }
         }
+        // 派生镜像: 血缘 → 图数据库(图库不可用/失败仅 warn, 绝不回滚 MySQL SoT)
+        try { graphMirrorService.fullSync(); } catch (Exception e) { log.warn("血缘图库镜像失败(不影响主流程): {}", e.getMessage()); }
         return count;
     }
 

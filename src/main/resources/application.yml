@@ -57,6 +57,24 @@ datanote:
     api-key: ${CLAUDE_API_KEY:}
     model: ${CLAUDE_MODEL:claude-sonnet-4-6}
     base-url: ${CLAUDE_BASE_URL:https://api.anthropic.com}
+    # 嵌入(向量化)服务: 独立于 chat provider(deepseek 无 embeddings 端点)。OpenAI 兼容 /embeddings
+    embedding-provider: ${EMB_PROVIDER:bailian}
+    embedding-base-url: ${EMB_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    embedding-api-key: ${EMB_API_KEY:}
+    embedding-model: ${EMB_MODEL:text-embedding-v3}
+    embedding-dim: ${EMB_DIM:1024}
+  # 向量库(Qdrant, REST) — 语义检索 + RAG; 默认关闭, 不可用优雅降级关键字
+  vector:
+    enabled: ${VECTOR_ENABLED:false}
+    base-url: ${QDRANT_URL:http://datanote-qdrant:6333}
+    api-key: ${QDRANT_API_KEY:}
+    collection: ${QDRANT_COLLECTION:dn_meta}
+  # 图数据库(Neo4j, HTTP Query API) — 血缘多跳/实体关系; 默认关闭, 不可用回退 Java BFS
+  graph:
+    enabled: ${GRAPH_ENABLED:false}
+    base-url: ${NEO4J_HTTP:http://datanote-neo4j:7474}
+    user: ${NEO4J_USER:neo4j}
+    password: ${NEO4J_PWD:}
   sync:
     executor:
       # FULL/INCREMENTAL 同步线程池大小（优先级池），高优先级任务先跑
