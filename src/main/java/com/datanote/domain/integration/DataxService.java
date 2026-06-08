@@ -69,6 +69,9 @@ public class DataxService {
                                   String sourceDb, String sourceTable,
                                   String odsTable, List<ColumnInfo> columns,
                                   String bizdate) throws IOException {
+        if (columns == null || columns.isEmpty()) {
+            throw new IllegalArgumentException("无源字段,无法生成 DataX 作业: " + sourceDb + "." + sourceTable);
+        }
         new File(jobDir).mkdirs();
 
         String actualHost = translateHost(mysqlHost);
@@ -215,6 +218,9 @@ public class DataxService {
     }
 
     public ProcessUtil.ExecResult runJobFromJson(String dataxJsonContent, String taskName) throws Exception {
+        if (dataxJsonContent == null || dataxJsonContent.trim().isEmpty()) {
+            throw new IllegalArgumentException("DataX 作业内容不能为空");
+        }
         if ("docker".equals(dataxMode)) {
             dataxJsonContent = dataxJsonContent
                     .replace("jdbc:mysql://127.0.0.1", "jdbc:mysql://host.docker.internal")

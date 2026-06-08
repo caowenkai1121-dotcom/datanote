@@ -46,7 +46,10 @@ public class DataReconciliationService {
         DbConnector tgt = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean allMatch = true;
-        for (TableSyncConfig tc : syncJobService.parseTables(job)) {
+        List<TableSyncConfig> tables = syncJobService.parseTables(job);
+        if (tables == null) tables = new ArrayList<>();   // parseTables 理论可返回 null
+        for (TableSyncConfig tc : tables) {
+            if (tc == null) continue;
             String ew = FilterExpressionBuilder.build(tc.getFilterExpression(), src::quoteIdentifier);
             long sc = count(src, job.getSourceDb(), tc.getSourceTable(), ew);
             // 目标不套源过滤表达式（列名可能不同）
@@ -86,7 +89,10 @@ public class DataReconciliationService {
         DbConnector tgt = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
         List<Map<String, Object>> tableResults = new ArrayList<>();
         boolean allMatch = true;
-        for (com.datanote.domain.integration.dto.TableSyncConfig tc : syncJobService.parseTables(job)) {
+        List<com.datanote.domain.integration.dto.TableSyncConfig> ckTables = syncJobService.parseTables(job);
+        if (ckTables == null) ckTables = new ArrayList<>();   // parseTables 理论可返回 null
+        for (com.datanote.domain.integration.dto.TableSyncConfig tc : ckTables) {
+            if (tc == null) continue;
             Map<String, Object> tr = new LinkedHashMap<>();
             tr.put("table", tc.getSourceTable() + "->" + tc.getTargetTable());
             try {
