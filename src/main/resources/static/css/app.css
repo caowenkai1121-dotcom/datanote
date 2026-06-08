@@ -3027,6 +3027,24 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
   padding: 13px 20px; border-top: 1px solid var(--divider); background: var(--bg-card); flex-shrink: 0;
 }
 .gov-drawer > .df .foot-grow, .dn-drawer-foot .foot-grow { margin-right: auto; font-size: 12px; color: var(--text-muted); }
+/* 抽屉/弹窗内既有 .iw-form-input/.iw-form-select 也升级到舒适 36px + 焦点环(无需逐个改 JS, 广覆盖所有抽屉/弹窗表单输入) */
+.gov-drawer .iw-form-input, .gov-drawer .iw-form-select,
+.dbsync-drawer .iw-form-input, .dbsync-drawer .iw-form-select,
+.g-modal .iw-form-input, .g-modal .iw-form-select,
+.dbsync-modal .iw-form-input, .dbsync-modal .iw-form-select,
+.quality-modal .iw-form-input, .quality-modal .iw-form-select {
+  height: 36px; border-color: var(--border); border-radius: var(--radius);
+}
+.gov-drawer .iw-form-input:focus, .gov-drawer .iw-form-select:focus,
+.dbsync-drawer .iw-form-input:focus, .dbsync-drawer .iw-form-select:focus,
+.g-modal .iw-form-input:focus, .g-modal .iw-form-select:focus,
+.dbsync-modal .iw-form-input:focus, .dbsync-modal .iw-form-select:focus,
+.quality-modal .iw-form-input:focus, .quality-modal .iw-form-select:focus {
+  border-color: var(--primary); box-shadow: var(--ring);
+}
+/* 抽屉内 ds-form-row 标签也统一为新字段样式(gov 各模块本地 formRow 产物) */
+.gov-drawer .ds-form-row { margin-bottom: 15px; }
+.gov-drawer .ds-form-row > div:first-child { font-size: 12.5px !important; font-weight: 500; color: var(--text-regular) !important; margin-bottom: 6px !important; }
 .iw-form-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .iw-field-section { margin-top: 20px; }
 .iw-field-section-title {

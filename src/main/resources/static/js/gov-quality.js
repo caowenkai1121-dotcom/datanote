@@ -401,28 +401,25 @@
     sevSel.value = 'warning';
 
     var body = DN.h('div');
-    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px',
-      text: '已自动预填来自来源模块的库/表/列/维度/阈值, 选择数据源后即可创建' }));
-    body.appendChild(formRow('规则名称', nameIn));
-    body.appendChild(formRow('规则类型', typeSel));
-    body.appendChild(formRow('数据源', dsSel));
-    body.appendChild(formRow('数据库', dbIn));
-    body.appendChild(formRow('表名', tblIn));
-    body.appendChild(formRow('字段', colIn));
-    body.appendChild(formRow('质量维度', dimIn));
-    body.appendChild(formRow('通过率阈值(%)', thrIn));
-    body.appendChild(formRow('严重级别', sevSel));
-    var okBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '创建规则', style: 'margin-top:10px' });
-    body.appendChild(okBtn);
-
-    var dr = DN.drawer('新建质量规则', body);
+    var s1 = DN.formSection('规则定义');
+    s1.add(DN.field('规则名称', nameIn, { required: true, hint: '简明描述本规则检查什么' }));
+    s1.add(DN.formGrid2([DN.field('规则类型', typeSel), DN.field('数据源', dsSel)]));
+    body.appendChild(s1.el);
+    var s2 = DN.formSection('检查目标');
+    s2.add(DN.formGrid2([DN.field('数据库', dbIn, { required: true }), DN.field('表名', tblIn, { required: true })]));
+    s2.add(DN.formGrid2([DN.field('字段', colIn, { hint: '自定义SQL 类型可空' }), DN.field('质量维度', dimIn, { hint: '如 完整性/唯一性/准确性' })]));
+    body.appendChild(s2.el);
+    var s3 = DN.formSection('阈值与级别');
+    s3.add(DN.formGrid2([DN.field('通过率阈值(%)', thrIn, { hint: '低于此值判为不通过' }), DN.field('严重级别', sevSel)]));
+    body.appendChild(s3.el);
+    var dr, foot;
     // 拉取数据源列表填充下拉(失败则仅保留 Doris 数仓选项, 不阻断)
     DN.get('/api/datasource/list').then(function (list) {
       (list || []).forEach(function (d) { dsSel.appendChild(DN.h('option', { value: String(d.id), text: (d.name || ('数据源#' + d.id)) + (d.type ? ' (' + d.type + ')' : '') })); });
     }).catch(function () {});
 
-    okBtn.onclick = function () {
-      if (okBtn.style.pointerEvents === 'none') return; // 防重复提交(创建进行中)
+    var doSave = function () {
+      if (foot.ok.disabled) return; // 防重复提交(创建进行中)
       var name = (nameIn.value || '').trim();
       if (!name) { DN.toast('请填写规则名称', 'warn'); nameIn.focus(); return; }
       if (name.length > 100) { DN.toast('规则名称过长(请控制在 100 字以内)', 'warn'); nameIn.focus(); return; }
@@ -448,16 +445,19 @@
         passThreshold: thrVal,
         severity: sevSel.value
       };
-      okBtn.style.pointerEvents = 'none'; okBtn.textContent = '创建中…';
+      foot.busy('创建中…');
       DN.post('/api/quality/rule/save', payload).then(function () {
         DN.toast('质量规则已创建', 'ok');
         if (dr && dr.close) dr.close();
         loadRules(rulesBox);   // 刷新规则列表(新规则即时可见)
       }).catch(function (e) {
         DN.toast('创建失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
-        okBtn.style.pointerEvents = ''; okBtn.textContent = '创建规则';
+        foot.reset('创建规则');
       });
     };
+    foot = DN.drawerFoot({ okText: '创建规则', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('新建质量规则', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   function buildToolbarAndTable() {
