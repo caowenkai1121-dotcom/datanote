@@ -77,7 +77,9 @@ public class AiAssistService {
             DnSystemConfig cfg = systemConfigMapper.selectById(key);
             return cfg != null ? cfg.getConfigValue() : null;
         } catch (Exception e) {
-            return null;  // 表不存在等情况，静默降级
+            // 表不存在/启动期 DB 未就绪等情况：降级为环境变量兜底，记一笔便于排障（不静默吞错）
+            log.warn("读取 AI 系统配置失败,降级使用环境变量兜底: key={}, cause={}", key, e.getMessage());
+            return null;
         }
     }
 
@@ -103,6 +105,10 @@ public class AiAssistService {
     public String chat(String userMessage, String context) {
         if (apiKey == null || apiKey.isEmpty()) {
             return "AI 功能未配置。请在【系统配置 → AI 配置】中设置 API Key。";
+        }
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            // 保持降级语义(不抛异常,调用方直接 trim 结果),仅给出明确提示
+            return "AI 请求失败: 用户消息不能为空";
         }
 
         try {
@@ -134,27 +140,39 @@ public class AiAssistService {
             requestBody.put("messages", messages);
 
             String responseBody = callApi(objectMapper.writeValueAsString(requestBody), provider, apiKey, baseUrl);
+            if (responseBody == null || responseBody.isEmpty()) {
+                log.error("AI API 返回空响应: provider={}, model={}", provider, model);
+                return "AI 返回格式异常";
+            }
             JsonNode root = objectMapper.readTree(responseBody);
 
             // Anthropic 格式响应
-            if (root.has("content") && root.get("content").isArray() && root.get("content").size() > 0) {
-                return root.get("content").get(0).get("text").asText();
+            JsonNode contentArr = root.get("content");
+            if (contentArr != null && contentArr.isArray() && contentArr.size() > 0) {
+                JsonNode textNode = contentArr.get(0).get("text");
+                if (textNode != null) {
+                    return textNode.asText();
+                }
             }
             // OpenAI 兼容格式响应
-            if (root.has("choices") && root.get("choices").isArray() && root.get("choices").size() > 0) {
-                JsonNode choice = root.get("choices").get(0);
-                if (choice.has("message") && choice.get("message").has("content")) {
-                    return choice.get("message").get("content").asText();
+            JsonNode choices = root.get("choices");
+            if (choices != null && choices.isArray() && choices.size() > 0) {
+                JsonNode message = choices.get(0).get("message");
+                JsonNode contentNode = message != null ? message.get("content") : null;
+                if (contentNode != null) {
+                    return contentNode.asText();
                 }
             }
             // 错误处理
-            if (root.has("error")) {
-                String errorMsg = root.get("error").has("message")
-                        ? root.get("error").get("message").asText()
-                        : root.get("error").toString();
-                log.error("AI API 错误: {}", errorMsg);
+            JsonNode errorNode = root.get("error");
+            if (errorNode != null) {
+                JsonNode errMsgNode = errorNode.get("message");
+                String errorMsg = errMsgNode != null ? errMsgNode.asText() : errorNode.toString();
+                log.error("AI API 错误: provider={}, msg={}", provider, errorMsg);
                 return "AI 请求失败: " + errorMsg;
             }
+            log.warn("AI 返回格式异常,无法解析响应: provider={}, body(截断)={}", provider,
+                    responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody);
             return "AI 返回格式异常";
         } catch (Exception e) {
             log.error("AI 助手调用异常", e);
@@ -166,7 +184,9 @@ public class AiAssistService {
      * NL2SQL：自然语言转 SQL
      */
     public String nl2sql(String question, String tableSchema) {
-        String context = "以下是可用的表结构信息：\n" + tableSchema;
+        // null 兜底,避免拼出字面量 "null"(保持原降级语义,空入参由 chat 统一降级)
+        String schema = tableSchema != null ? tableSchema : "";
+        String context = "以下是可用的表结构信息：\n" + schema;
         String prompt = "请根据以下需求生成 SQL 语句：\n" + question + "\n\n要求：只返回可执行的 SQL，用 ```sql 包裹。";
         return chat(prompt, context);
     }

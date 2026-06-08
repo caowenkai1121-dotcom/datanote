@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -176,14 +177,15 @@ public class AuditService {
         int p = page < 1 ? 1 : (page > 10000 ? 10000 : page); // 限制翻页深度,防超大 offset 慢查询
         int s = size < 1 ? 20 : (size > 500 ? 500 : size);
         QueryWrapper<DnAuditLog> qw = buildWrapper(from, to, actionType, userName, path);
-        long total = auditMapper.selectCount(qw);
+        Long total = auditMapper.selectCount(qw);
+        long totalVal = total == null ? 0L : total; // selectCount 理论可返回 null,消 NPE
         qw.orderByDesc("created_at").last("LIMIT " + ((p - 1) * s) + "," + s);
         List<DnAuditLog> list = auditMapper.selectList(qw);
         Map<String, Object> r = new HashMap<>();
-        r.put("total", total);
+        r.put("total", totalVal);
         r.put("page", p);
         r.put("size", s);
-        r.put("list", list);
+        r.put("list", list == null ? Collections.emptyList() : list); // 结果判空,前端不再处理 null
         return r;
     }
 
@@ -193,7 +195,13 @@ public class AuditService {
     public String exportCsv(String from, String to, String actionType, String userName, String path) {
         QueryWrapper<DnAuditLog> qw = buildWrapper(from, to, actionType, userName, path);
         qw.orderByDesc("created_at").last("LIMIT 50000");
-        return toCsv(auditMapper.selectList(qw));
+        List<DnAuditLog> rows = auditMapper.selectList(qw);
+        return toCsv(rows == null ? Collections.emptyList() : rows); // 结果判空,toCsv 始终拿到非 null
+    }
+
+    /** 统计结果判空：selectMaps 理论可返回 null,统一兜底空列表,前端不再处理 null。 */
+    private static List<Map<String, Object>> safeMaps(List<Map<String, Object>> maps) {
+        return maps == null ? Collections.emptyList() : maps;
     }
 
     /** 按动作类型统计计数。 */
@@ -201,7 +209,7 @@ public class AuditService {
         QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
         qw.select("action_type AS actionType", "COUNT(*) AS cnt")
                 .groupBy("action_type").orderByDesc("cnt");
-        return auditMapper.selectMaps(qw);
+        return safeMaps(auditMapper.selectMaps(qw));
     }
 
     /** 按操作人统计计数（Top 50）。 */
@@ -209,7 +217,7 @@ public class AuditService {
         QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
         qw.select("user_name AS userName", "COUNT(*) AS cnt")
                 .groupBy("user_name").orderByDesc("cnt").last("LIMIT 50");
-        return auditMapper.selectMaps(qw);
+        return safeMaps(auditMapper.selectMaps(qw));
     }
 
     /** 按访问路径统计计数（Top 20）。 */
@@ -218,7 +226,7 @@ public class AuditService {
         qw.select("path", "COUNT(*) AS cnt")
                 .isNotNull("path").ne("path", "")
                 .groupBy("path").orderByDesc("cnt").last("LIMIT 20");
-        return auditMapper.selectMaps(qw);
+        return safeMaps(auditMapper.selectMaps(qw));
     }
 
     /** 近 N 天审计量时序（按天计数）。 */
@@ -228,6 +236,6 @@ public class AuditService {
         qw.select("DATE(created_at) AS day", "COUNT(*) AS cnt")
                 .ge("created_at", LocalDateTime.now().minusDays(d - 1).toLocalDate().atStartOfDay())
                 .groupBy("DATE(created_at)").orderByAsc("day");
-        return auditMapper.selectMaps(qw);
+        return safeMaps(auditMapper.selectMaps(qw));
     }
 }

@@ -12,6 +12,7 @@ import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.datanote.domain.orchestration.model.DnTaskDependency;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.Constants;
+import com.datanote.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,16 +63,18 @@ public class TaskDependencyService {
 
         List<DnScript> scripts = scriptMapper.selectList(null);
         List<DnSyncTask> syncTasks = syncTaskMapper.selectList(null);
+        if (scripts == null) scripts = Collections.emptyList();
+        if (syncTasks == null) syncTasks = Collections.emptyList();
 
         // 构建表名 → 任务映射
         Map<String, TaskRef> tableToTask = new HashMap<>();
         for (DnSyncTask st : syncTasks) {
-            if (st.getTargetTable() != null) {
+            if (st != null && st.getTargetTable() != null) {
                 tableToTask.put(st.getTargetTable().toLowerCase(), new TaskRef(st.getId(), Constants.TASK_TYPE_SYNC_TASK));
             }
         }
         for (DnScript s : scripts) {
-            if (s.getScriptName() != null) {
+            if (s != null && s.getScriptName() != null) {
                 tableToTask.put(s.getScriptName().toLowerCase(), new TaskRef(s.getId(), Constants.TASK_TYPE_SCRIPT));
             }
         }
@@ -81,6 +84,7 @@ public class TaskDependencyService {
         List<DnTaskDependency> allDeps = new ArrayList<>();
 
         for (DnScript script : scripts) {
+            if (script == null || script.getId() == null) continue;
             if (script.getContent() == null || script.getContent().trim().isEmpty()) continue;
             String nodeKey = "script:" + script.getId();
             graph.putIfAbsent(nodeKey, new HashSet<>());
@@ -131,12 +135,18 @@ public class TaskDependencyService {
      * @return 所有上游是否已完成
      */
     public boolean allUpstreamsCompleted(Long taskId, String taskType, LocalDate runDate, String runType) {
+        if (taskId == null) throw new BusinessException("任务 ID 不能为空");
+        if (taskType == null || taskType.trim().isEmpty()) throw new BusinessException("任务类型不能为空");
+        if (runDate == null) throw new BusinessException("运行日期不能为空");
+        if (runType == null || runType.trim().isEmpty()) throw new BusinessException("运行类型不能为空");
+
         QueryWrapper<DnTaskDependency> depQw = new QueryWrapper<>();
         depQw.eq("task_id", taskId).eq("task_type", taskType);
         List<DnTaskDependency> deps = depMapper.selectList(depQw);
-        if (deps.isEmpty()) return true;
+        if (deps == null || deps.isEmpty()) return true;
 
         for (DnTaskDependency dep : deps) {
+            if (dep == null || dep.getUpstreamTaskId() == null) continue;
             QueryWrapper<DnSchedulerRun> runQw = new QueryWrapper<>();
             runQw.eq("task_id", dep.getUpstreamTaskId())
                  .eq("task_type", dep.getUpstreamTaskType())
@@ -158,11 +168,17 @@ public class TaskDependencyService {
      * @return 上游是否已完成
      */
     public boolean allUpstreamsCompletedInBatch(DnSchedulerRun run, String batchId) {
+        if (run == null) throw new BusinessException("运行记录不能为空");
+        if (run.getTaskId() == null) throw new BusinessException("运行记录的任务 ID 不能为空");
+        if (batchId == null || batchId.trim().isEmpty()) throw new BusinessException("补数据批次 ID 不能为空");
+
         QueryWrapper<DnTaskDependency> depQw = new QueryWrapper<>();
         depQw.eq("task_id", run.getTaskId()).eq("task_type", run.getTaskType());
         List<DnTaskDependency> deps = depMapper.selectList(depQw);
+        if (deps == null || deps.isEmpty()) return true;
 
         for (DnTaskDependency dep : deps) {
+            if (dep == null || dep.getUpstreamTaskId() == null) continue;
             QueryWrapper<DnSchedulerRun> batchQw = new QueryWrapper<>();
             batchQw.eq("task_id", dep.getUpstreamTaskId())
                    .eq("task_type", dep.getUpstreamTaskType())

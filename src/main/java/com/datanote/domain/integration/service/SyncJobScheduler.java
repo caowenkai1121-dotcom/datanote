@@ -20,8 +20,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -86,6 +88,11 @@ public class SyncJobScheduler {
                 }
 
                 Long jobId = job.getId();
+                if (jobId == null) {
+                    // 主键缺失的脏数据，无法定位/调度，跳过避免 NPE
+                    log.warn("[SyncJobScheduler] 跳过无 id 的同步任务记录: {}", job.getJobName());
+                    continue;
+                }
                 // 无记录时默认从 1 分钟前开始判断
                 LocalDateTime lastFire = lastFireMap.getOrDefault(jobId, now.minusMinutes(1));
 
@@ -116,27 +123,48 @@ public class SyncJobScheduler {
      * 全部 SUCCESS 才就绪。无上游恒就绪。
      */
     private boolean depsReady(Long jobId) {
+        if (jobId == null) {
+            return true;
+        }
         List<DnSyncJobDependency> deps = dependencyMapper.selectList(
                 new LambdaQueryWrapper<DnSyncJobDependency>()
                         .eq(DnSyncJobDependency::getSyncJobId, jobId));
         if (deps == null || deps.isEmpty()) {
             return true;
         }
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        List<Long> upstreamIds = new ArrayList<>();
-        Map<Long, String> latestStatus = new HashMap<>();
+        // 去重并剔除空上游 id（脏数据），保持插入顺序便于排查
+        Set<Long> upstreamSet = new LinkedHashSet<>();
         for (DnSyncJobDependency d : deps) {
             Long up = d.getUpstreamSyncJobId();
-            upstreamIds.add(up);
-            DnTaskExecution last = taskExecutionMapper.selectOne(
-                    new LambdaQueryWrapper<DnTaskExecution>()
-                            .eq(DnTaskExecution::getSyncTaskId, up)
-                            .eq(DnTaskExecution::getTaskType, "DbSync")
-                            .ge(DnTaskExecution::getStartTime, todayStart)
-                            .orderByDesc(DnTaskExecution::getId)
-                            .last("LIMIT 1"));
-            if (last != null) {
-                latestStatus.put(up, last.getStatus());
+            if (up != null) {
+                upstreamSet.add(up);
+            }
+        }
+        if (upstreamSet.isEmpty()) {
+            // 仅有脏依赖（上游 id 全空），无有效上游门控，视为就绪
+            return true;
+        }
+        List<Long> upstreamIds = new ArrayList<>(upstreamSet);
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        // 消 N+1：一次性查出所有上游今日的 DbSync 执行记录（按 id 倒序），
+        // 内存中按上游分组取首条(=最新)状态，语义等价于逐个上游取今日最新一条。
+        List<DnTaskExecution> execs = taskExecutionMapper.selectList(
+                new LambdaQueryWrapper<DnTaskExecution>()
+                        .in(DnTaskExecution::getSyncTaskId, upstreamIds)
+                        .eq(DnTaskExecution::getTaskType, "DbSync")
+                        .ge(DnTaskExecution::getStartTime, todayStart)
+                        .orderByDesc(DnTaskExecution::getId));
+        Map<Long, String> latestStatus = new HashMap<>();
+        if (execs != null) {
+            for (DnTaskExecution e : execs) {
+                if (e == null) {
+                    continue;
+                }
+                Long up = e.getSyncTaskId();
+                // id 倒序，首次出现即该上游今日最新一条，后续同上游忽略
+                if (up != null && !latestStatus.containsKey(up)) {
+                    latestStatus.put(up, e.getStatus());
+                }
             }
         }
         return DepReadyChecker.allReady(upstreamIds, latestStatus);

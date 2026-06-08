@@ -1,6 +1,7 @@
 package com.datanote.platform.alert;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.platform.alert.mapper.DnAlertConfigMapper;
 import com.datanote.domain.orchestration.mapper.DnSchedulerRunMapper;
 import com.datanote.platform.alert.model.DnAlertConfig;
@@ -8,6 +9,7 @@ import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -30,7 +32,11 @@ public class AlertConfigService {
      * @param scriptId 脚本 ID
      * @return 告警配置
      */
+    @Transactional(rollbackFor = Exception.class)
     public DnAlertConfig getByScriptId(Long scriptId) {
+        if (scriptId == null) {
+            throw new BusinessException("获取告警配置失败：脚本 ID 不能为空");
+        }
         QueryWrapper<DnAlertConfig> qw = new QueryWrapper<>();
         qw.eq("script_id", scriptId);
         DnAlertConfig config = alertConfigMapper.selectOne(qw);
@@ -55,7 +61,14 @@ public class AlertConfigService {
      * @param config 告警配置
      * @return 保存后的配置
      */
+    @Transactional(rollbackFor = Exception.class)
     public DnAlertConfig save(DnAlertConfig config) {
+        if (config == null) {
+            throw new BusinessException("保存告警配置失败：配置对象不能为空");
+        }
+        if (config.getScriptId() == null) {
+            throw new BusinessException("保存告警配置失败：脚本 ID 不能为空");
+        }
         if (config.getId() != null) {
             config.setUpdatedAt(LocalDateTime.now());
             alertConfigMapper.updateById(config);
@@ -74,22 +87,30 @@ public class AlertConfigService {
      * @return 延迟阈值（分钟）
      */
     public int calculateDelayThreshold(Long scriptId) {
+        if (scriptId == null) {
+            throw new BusinessException("计算延迟阈值失败：脚本 ID 不能为空");
+        }
         QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
         qw.eq("task_id", scriptId)
           .eq("task_type", "script")
-          .eq("status", 1)
-          .ge("start_time", LocalDateTime.now().minusDays(7));
+          .eq("status", DnSchedulerRun.STATUS_SUCCESS)
+          .ge("start_time", LocalDateTime.now().minusDays(7))
+          .last("LIMIT 1000");
         List<DnSchedulerRun> runs = runMapper.selectList(qw);
 
-        if (runs.isEmpty()) {
+        if (runs == null || runs.isEmpty()) {
             return 60;
         }
 
         long totalMinutes = 0;
         int validCount = 0;
         for (DnSchedulerRun run : runs) {
-            if (run.getStartTime() != null && run.getEndTime() != null) {
+            if (run != null && run.getStartTime() != null && run.getEndTime() != null) {
                 long minutes = Duration.between(run.getStartTime(), run.getEndTime()).toMinutes();
+                // 防御时钟漂移导致 endTime 早于 startTime 而产生负值，污染平均耗时
+                if (minutes < 0) {
+                    continue;
+                }
                 totalMinutes += minutes;
                 validCount++;
             }

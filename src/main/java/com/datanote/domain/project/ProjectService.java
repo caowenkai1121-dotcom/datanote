@@ -1,6 +1,7 @@
 package com.datanote.domain.project;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.project.mapper.DnProjectMapper;
 import com.datanote.domain.project.mapper.DnProjectMemberMapper;
 import com.datanote.domain.project.model.DnProject;
@@ -35,9 +36,12 @@ public class ProjectService {
     }
 
     public DnProject getById(Long id) {
+        if (id == null) {
+            throw new BusinessException("项目ID不能为空");
+        }
         DnProject p = projectMapper.selectById(id);
         if (p == null || "DELETED".equals(p.getStatus())) {
-            throw new IllegalArgumentException("项目不存在: " + id);
+            throw new BusinessException("项目不存在: " + id);
         }
         return p;
     }
