@@ -32,15 +32,18 @@ public class AiAgentController {
     private final DnAiStepMapper stepMapper;
     private final ObjectMapper objectMapper;
 
-    /** 发起一轮：body {sessionId?, message}，返回 {sessionId, status, finalAnswer, steps}。 */
+    /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
-    public R<Map<String, Object>> chat(@RequestBody(required = false) Map<String, String> body, HttpServletRequest req) {
-        String message = body == null ? null : body.get("message");
-        String sessionId = body == null ? null : body.get("sessionId");
+    @SuppressWarnings("unchecked")
+    public R<Map<String, Object>> chat(@RequestBody(required = false) Map<String, Object> body, HttpServletRequest req) {
+        String message = (body == null || body.get("message") == null) ? null : String.valueOf(body.get("message"));
+        String sessionId = (body == null || body.get("sessionId") == null) ? null : String.valueOf(body.get("sessionId"));
         if (message == null || message.trim().isEmpty()) {
             return R.fail("消息不能为空");
         }
-        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId);
+        Object ctxObj = body == null ? null : body.get("ctx");
+        Map<String, Object> bizCtx = (ctxObj instanceof Map) ? (Map<String, Object>) ctxObj : null;
+        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, bizCtx);
         return R.ok(aiAgentService.run(sessionId, message.trim(), ctx));
     }
 

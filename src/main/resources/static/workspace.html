@@ -33,8 +33,10 @@
 <script src="js/mdm-quality.js?v=q100r101"></script>
 <script src="js/mdm-pubsub.js?v=q100r101"></script>
 <script src="js/mdm-hierarchy.js?v=q100r101"></script>
-<script src="js/ai-agent.js?v=q100r103"></script>
+<script src="js/ai-agent.js?v=q100r104"></script>
 <style>
+  .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary,#1890ff); background:var(--primary,#1890ff); color:#fff; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .ai-launcher-btn:hover { filter:brightness(1.08); box-shadow:0 2px 10px rgba(24,144,255,.35); }
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
   #govModuleContent .gov-placeholder { background:var(--bg-card,#fff); border:1px dashed var(--border,#d4d7de); border-radius:8px; padding:40px; text-align:center; color:var(--text-muted,#86909c); }
@@ -109,6 +111,10 @@
   </nav>
   <div class="header-right">
     <span class="env-badge">本地环境</span>
+    <button class="ai-launcher-btn" id="aiLauncherBtn" title="AI 助手 · 天工司辰 (Ctrl+K)" onclick="openAiLauncher()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px;"><path d="M8 2a4 4 0 014 4c0 1.5-.8 2.4-1.6 3.2-.6.6-.9 1-.9 1.8H6.5c0-.8-.3-1.2-.9-1.8C4.8 8.4 4 7.5 4 6a4 4 0 014-4z"/><path d="M6.5 13h3M7 15h2"/></svg>
+      <span>AI</span>
+    </button>
     <div class="user-btn">A</div>
   </div>
 </div>
@@ -684,6 +690,7 @@
               <div class="datamap-detail-sub" id="dmDetailSub">-</div>
             </div>
             <div class="datamap-detail-actions">
+              <button class="btn btn-sm btn-primary" onclick="dmAskAi()" title="让 AI 智能体分析此表(资产/质量/血缘/敏感)">🤖 AI 分析此表</button>
               <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">收藏</button>
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
               <button class="btn btn-sm" onclick="dmGenSelect()">生成查询语句</button>
@@ -6829,7 +6836,8 @@ var ROUTES = {
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { var x = window.__navCtx;
       window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter();
       if (x && x.openDetail) { setTimeout(function(){ try { window.dbsyncOpenDetail(x.openDetail); } catch(e){} }, 800); } } },
-  'assistant':   { view: 'viewAssistant',           layout: 'page',   init: function() { if (window.initAiAssistant) initAiAssistant(); } }
+  'assistant':   { view: 'viewAssistant',           layout: 'page',   init: function() { var x = window.__navCtx;
+      if (window.initAiAssistant) initAiAssistant(x ? { prefill: x.agentPrefill, ctx: x.agentCtx, autoSend: x.agentAutoSend } : null); } }
 };
 
 var currentRoute = null;
@@ -6860,6 +6868,29 @@ function navRenderBack() {
   } else { chip.style.display = 'none'; }
 }
 var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', governance:'数据治理', mdm:'主数据', dbsync:'数据同步', metrics:'指标管理', project:'项目管理', settings:'系统管理', assistant:'AI助手' };
+
+// 全局 AI 唤起器: 任意页可达, 自动带当前路由情境, 跳 AI助手(天工司辰)。蓝图 window.openAiAgent 别名同此。
+function openAiLauncher(prefill, ctx) {
+  navigateTo('assistant', { agentPrefill: prefill || '', agentCtx: ctx || defaultAiCtx(), agentAutoSend: !!(prefill && prefill.length) });
+}
+window.openAiLauncher = openAiLauncher;
+window.openAiAgent = openAiLauncher;
+// 按当前路由拼默认情境(typeof 守卫, 只读已有全局变量, 不存在则跳过)
+function defaultAiCtx() {
+  var r = currentRoute || 'home';
+  var c = { route: r };
+  try {
+    if (r === 'catalog') {
+      if (typeof dmCurrentDb !== 'undefined' && dmCurrentDb) c.db = dmCurrentDb;
+      if (typeof dmCurrentTable !== 'undefined' && dmCurrentTable) c.table = dmCurrentTable;
+    } else if (r === 'governance') {
+      var g = window.__govCtx; if (g) { if (g.gov) c.gov = g.gov; if (g.table) { c.db = g.table.db; c.table = g.table.table; } }
+    } else if (r === 'develop') {
+      var ca = document.getElementById('codeArea'); if (ca && ca.value) c.currentSql = String(ca.value).slice(0, 4000);
+    }
+  } catch (e) {}
+  return c;
+}
 
 function navigateTo(route, ctx) {
   // R28: 深链跳转(带 ctx)时把当前来源压栈, 供「返回来源」
@@ -7689,6 +7720,12 @@ function dmGenSelect() {
 function dmGotoGov(govKey) {
   if (!dmCurrentDb || !dmCurrentTable) return;
   navigateTo('governance', { gov: govKey, table: { db: dmCurrentDb, table: dmCurrentTable }, db: dmCurrentDb, tableName: dmCurrentTable });
+}
+// 情境入口: 把当前表交给 AI 智能体深度分析(预填+情境ctx, 进 assistant 自动发起一轮)
+function dmAskAi() {
+  if (!dmCurrentDb || !dmCurrentTable) { if (window.DN && DN.toast) DN.toast('请先打开一张表', 'warn'); return; }
+  var prefill = '分析表 ' + dmCurrentDb + '.' + dmCurrentTable + '：它的资产详情、下游影响面、上游来源与质量状况，并给出改进建议。';
+  navigateTo('assistant', { agentPrefill: prefill, agentCtx: { route: 'catalog', db: dmCurrentDb, table: dmCurrentTable }, agentAutoSend: true });
 }
 // R21 联动: 资产影响面指标 → 消费驾驶舱聚焦该指标
 function dmGotoMetric(code) {
@@ -9880,6 +9917,11 @@ document.addEventListener('keydown', function(e) {
     var pv = document.getElementById('viewProject');
     var active = pv && pv.offsetParent !== null;
     if (active) { e.preventDefault(); projQuickSwitch(); }
+    else if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      // 全局唤起 AI 助手(天工司辰): 非项目视图、无输入焦点时
+      e.preventDefault();
+      if (window.openAiLauncher) openAiLauncher();
+    }
   }
   // ESC 关闭动态覆盖层(对比/模板/快速切换), 提升键盘可达性
   if (e.key === 'Escape') {

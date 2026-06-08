@@ -82,10 +82,11 @@ public class AiAgentService {
 
         String manifest = toolRegistry.toToolsManifestJson();
         String today = LocalDate.now().toString();
+        String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
         boolean first = true;
 
         for (int i = 0; i < MAX_STEPS && !st.done && !st.blocked; i++) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText);
             String userPrompt = first
                     ? userMessage
                     : "请根据上面的『已执行步骤与工具结果』继续：若仍需信息就只输出一个 <tool_call>，否则直接给出最终中文答复（不要再输出 tool_call）。";
@@ -164,7 +165,7 @@ public class AiAgentService {
 
         // 达步数上限仍无终答 → 一次 grace call 收尾
         if (!st.done && !st.blocked) {
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText);
             String raw = aiAssistService.chat(
                     "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
             st.finalAnswer = AgentTextUtil.sanitize(raw);
@@ -297,6 +298,44 @@ public class AiAgentService {
             out.add(m);
         }
         return out;
+    }
+
+    /** 把业务情境 bizCtx 渲染为中文一段(供 prompt 注入)，缺省返回 null。 */
+    private String buildBizCtxText(Map<String, Object> bizCtx) {
+        if (bizCtx == null || bizCtx.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        Object route = bizCtx.get("route");
+        if (route != null) sb.append("用户当前在『").append(routeLabel(String.valueOf(route))).append("』模块。");
+        Object db = bizCtx.get("db"), table = bizCtx.get("table");
+        if (db != null && table != null) sb.append("正在查看数据表 ").append(db).append('.').append(table).append('。');
+        else if (table != null) sb.append("正在查看表 ").append(table).append('。');
+        Object ruleId = bizCtx.get("ruleId");
+        if (ruleId != null) sb.append("关注质量规则 ruleId=").append(ruleId).append('。');
+        Object jobId = bizCtx.get("jobId"), jobName = bizCtx.get("jobName");
+        if (jobId != null) sb.append("关注同步任务 #").append(jobId).append(jobName != null ? ("(" + jobName + ")") : "").append('。');
+        Object runId = bizCtx.get("runId"), taskName = bizCtx.get("taskName");
+        if (runId != null) sb.append("关注调度运行 run#").append(runId).append(taskName != null ? ("(" + taskName + ")") : "").append('。');
+        Object metricId = bizCtx.get("metricId");
+        if (metricId != null) sb.append("关注指标 metricId=").append(metricId).append('。');
+        sb.append("回答时优先围绕该情境；如涉及具体表/规则/任务，在结论中用 [表:库.表] / [规则:#id] / [任务:#id] 标记以便用户一键跳转。");
+        String s = sb.toString().trim();
+        return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
+    }
+
+    private String routeLabel(String route) {
+        switch (route == null ? "" : route) {
+            case "catalog": return "数据地图";
+            case "governance": return "数据治理";
+            case "dbsync": return "数据同步";
+            case "operations": return "数据运维";
+            case "develop": return "数据开发";
+            case "metrics": return "指标管理";
+            case "mdm": return "主数据";
+            case "project": return "项目管理";
+            case "quality": return "数据质量";
+            case "home": return "首页";
+            default: return route;
+        }
     }
 
     private String argsToStr(JsonNode args) {

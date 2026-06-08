@@ -5,6 +5,7 @@
 
   var sessionId = null;
   var sending = false;
+  var pendingCtx = null;   // 情境入口透传的业务上下文, 随下一次 chat 上送
   var flowEl = null, inputEl = null, sendBtn = null, built = false;
 
   function groupColor(g) {
@@ -17,12 +18,39 @@
       [DN.h('div', { style: 'max-width:78%;background:var(--primary,#1890ff);color:#fff;padding:9px 13px;border-radius:12px 12px 2px 12px;white-space:pre-wrap;word-break:break-word;font-size:13px;', text: text })]);
   }
 
-  // 助手终答气泡
+  // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
   function assistantBubble(text, tone) {
     var bg = tone === 'err' ? 'var(--bg-body,#fff2f0)' : 'var(--bg-card,#fff)';
     var bd = tone === 'err' ? '#ffccc7' : 'var(--border,#e5e6eb)';
-    return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:10px 0;' },
-      [DN.h('div', { style: 'max-width:84%;background:' + bg + ';border:1px solid ' + bd + ';padding:10px 14px;border-radius:12px 12px 12px 2px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.6;color:var(--text-primary);', text: text })]);
+    var inner = DN.h('div', { style: 'max-width:84%;background:' + bg + ';border:1px solid ' + bd + ';padding:10px 14px;border-radius:12px 12px 12px 2px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.7;color:var(--text-primary);' });
+    renderRich(inner, String(text == null ? '' : text));
+    return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:10px 0;' }, [inner]);
+  }
+
+  // 富文本：把深链 token 转成可点 chip，其余按纯文本节点拼（绝不 innerHTML 拼 LLM 文本，防 XSS）
+  var RICH_RE = /\[表:([^\]\.]+)\.([^\]]+)\]|\[规则:#?(\d+)\]|\[任务:#?(\d+)\]/g;
+  function renderRich(container, text) {
+    var last = 0, m;
+    RICH_RE.lastIndex = 0;
+    while ((m = RICH_RE.exec(text)) !== null) {
+      if (m.index > last) container.appendChild(document.createTextNode(text.slice(last, m.index)));
+      if (m[1] != null) container.appendChild(linkChip('🔗 ' + m[1] + '.' + m[2], function () { go('catalog', { openTable: { db: m[1], table: m[2] } }); }));
+      else if (m[3] != null) container.appendChild(linkChip('🔗 规则#' + m[3], function () { go('governance', { gov: 'quality', ruleId: Number(m[3]) }); }));
+      else if (m[4] != null) container.appendChild(linkChip('🔗 任务#' + m[4], function () { go('dbsync', { openDetail: Number(m[4]) }); }));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function linkChip(label, onclick) {
+    return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
+      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:10px;background:var(--primary,#1890ff);color:#fff;font-size:12px;text-decoration:none;' });
+  }
+
+  // 统一深链跳转（复用全局 navigateTo, 自动压栈可一键返回 AI助手）
+  function go(route, ctx) {
+    try { if (window.navigateTo) window.navigateTo(route, ctx || {}); else if (window.location) window.location.hash = '#/' + route; }
+    catch (e) { if (DN && DN.toast) DN.toast('跳转失败', 'err'); }
   }
 
   // 工具调用卡（天工开物·逐道工序详记）
@@ -45,7 +73,26 @@
     var resultText = summarizeResult(step.resultData, ok);
     var pre = DN.h('div', { style: 'font-size:12px;color:var(--text-regular,#4e5969);white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;background:var(--bg-body,#f7f8fa);border-radius:6px;padding:8px 10px;', text: resultText });
     card.body.appendChild(pre);
+    // 工具结果若带 _deeplink, 渲染"跳转到模块"按钮(天工开物·一图可复核 + 自由意志·人机协同回链)
+    var dl = extractDeeplink(step.resultData);
+    if (dl && dl.route) {
+      card.body.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '↗ 在' + routeName(dl.route) + '中查看', style: 'margin-top:8px;font-size:12px;',
+        onclick: function () { go(dl.route, dl.ctx || {}); } }));
+    }
     return card.el;
+  }
+
+  function extractDeeplink(resultData) {
+    if (!resultData) return null;
+    try {
+      var obj = JSON.parse(String(resultData));
+      var data = obj && obj.data != null ? obj.data : obj;
+      return data && data._deeplink ? data._deeplink : null;
+    } catch (e) { return null; }
+  }
+
+  function routeName(r) {
+    return ({ catalog: '数据地图', governance: '数据治理', dbsync: '数据同步', operations: '数据运维', metrics: '指标管理', mdm: '主数据', project: '项目管理', quality: '数据质量', home: '首页' })[r] || r;
   }
 
   // 结果摘要：JSON 解析后取关键字段，过长折叠
@@ -80,7 +127,7 @@
     inputEl.value = '';
     var th = thinking(); flowEl.appendChild(th); scrollBottom();
 
-    DN.post('/api/ai/agent/chat', { sessionId: sessionId, message: msg }).then(function (res) {
+    DN.post('/api/ai/agent/chat', { sessionId: sessionId, message: msg, ctx: pendingCtx }).then(function (res) {
       if (th.parentNode) th.parentNode.removeChild(th);
       res = res || {};
       sessionId = res.sessionId || sessionId;
@@ -149,9 +196,15 @@
     }).catch(function () {});
   }
 
-  global.initAiAssistant = function () {
+  global.initAiAssistant = function (opts) {
     if (!built) build();
+    if (opts) {
+      if (opts.prefill && inputEl) inputEl.value = opts.prefill;
+      if (opts.ctx) pendingCtx = opts.ctx;
+    }
     setTimeout(function () { if (inputEl) try { inputEl.focus(); } catch (e) {} }, 60);
+    // 情境入口可要求进入后自动发起一轮(全局唤起器恒不自动发, 由调用方控制)
+    if (opts && opts.autoSend && inputEl && (inputEl.value || '').trim()) setTimeout(send, 150);
   };
 
 })(window);
