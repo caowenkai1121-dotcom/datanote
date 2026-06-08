@@ -1147,7 +1147,18 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">AI 配置</h2>
             </div>
-            <div style="padding:24px;"><button class="btn btn-primary btn-sm" onclick="openAiConfig()">打开 AI 配置</button></div>
+            <div style="padding:24px;display:flex;gap:24px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:280px;border:1px solid var(--border);border-radius:10px;padding:16px;">
+                <div style="font-weight:600;margin-bottom:6px;">💬 对话模型(普通任务)</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">智能体多步推理、NL2SQL、解释优化等。推荐 DeepSeek。</div>
+                <button class="btn btn-primary btn-sm" onclick="openAiConfig()">配置对话模型</button>
+              </div>
+              <div style="flex:1;min-width:280px;border:1px solid var(--border);border-radius:10px;padding:16px;">
+                <div style="font-weight:600;margin-bottom:6px;">🧠 嵌入/向量库/图库</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">语义检索的向量嵌入(DeepSeek 不支持,推荐阿里百炼)+ 向量库/图库运行态。</div>
+                <button class="btn btn-primary btn-sm" onclick="openStoreConfig()">配置嵌入与存储</button>
+              </div>
+            </div>
           </div>
           <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -13045,6 +13056,77 @@ function testAiConfig() {
   }).catch(function() {
     status.innerHTML = '<span style="color:var(--error);">✗ 请求失败</span>';
   });
+}
+
+// 嵌入/向量库/图库 配置(嵌入独立于对话模型: 对话可用 DeepSeek, 嵌入用百炼等支持 embeddings 的 provider)
+function openStoreConfig() {
+  api('/api/ai/store/config').then(function(res) {
+    var d = (res.code === 0 && res.data) ? res.data : {};
+    var e = d.embedding || {}, v = d.vector || {}, g = d.graph || {};
+    var prov = e.provider || 'bailian';
+    showModal('嵌入 / 向量库 / 图库 配置', '<div style="display:flex;flex-direction:column;gap:10px;">'
+      + '<div style="font-weight:600;font-size:13px;color:var(--primary);">嵌入服务 Embedding</div>'
+      + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Provider</label>'
+      + '<select id="embCfgProvider" class="prop-select" style="width:100%;" onchange="onEmbProviderChange()">'
+      + '<option value="bailian"' + (prov === 'bailian' ? ' selected' : '') + '>阿里百炼 DashScope (text-embedding-v3)</option>'
+      + '<option value="openai"' + (prov === 'openai' ? ' selected' : '') + '>OpenAI (text-embedding-3-small)</option>'
+      + '<option value="siliconflow"' + (prov === 'siliconflow' ? ' selected' : '') + '>硅基流动 (BAAI/bge-m3)</option>'
+      + '<option value="custom"' + (prov === 'custom' ? ' selected' : '') + '>自定义(OpenAI兼容)</option></select></div>'
+      + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">API Key</label>'
+      + '<input id="embCfgKey" class="prop-input" type="password" style="width:100%;" placeholder="' + (e.apiKeyMasked || 'sk-...') + '"></div>'
+      + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Base URL</label>'
+      + '<input id="embCfgBaseUrl" class="prop-input" style="width:100%;" value="' + escapeHtml(e.baseUrl || '') + '"></div>'
+      + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">模型</label>'
+      + '<input id="embCfgModel" class="prop-input" style="width:100%;" value="' + escapeHtml(e.model || '') + '"></div>'
+      + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">维度(须与模型一致,换模型/维度需重建索引)</label>'
+      + '<input id="embCfgDim" class="prop-input" style="width:100%;" value="' + escapeHtml(String(e.dim || '1024')) + '"></div>'
+      + '<div style="border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--text-muted);">运行态: 嵌入 '
+      + (e.available ? '<span style="color:#52c41a">✓可用</span>' : '<span style="color:#cf1322">✗未配置</span>')
+      + ' · 向量库 ' + (v.ready ? ('<span style="color:#52c41a">✓就绪(' + escapeHtml(v.collection || '') + ')</span>') : '<span style="color:#cf1322">✗未连</span>')
+      + ' · 图库 ' + (g.ready ? '<span style="color:#52c41a">✓就绪</span>' : '<span style="color:#cf1322">✗未连</span>') + '</div>'
+      + '<div id="embCfgStatus" style="font-size:12px;"></div></div>',
+      '<button class="btn btn-sm" onclick="reindexStore()" style="margin-right:8px;" title="把表/术语/指标重新嵌入向量库+血缘镜像图库">重建索引</button>'
+      + '<button class="btn btn-primary btn-sm" onclick="saveStoreConfig()">保存</button>'
+      + '<button class="btn btn-sm" onclick="closeModal()" style="margin-left:4px;">取消</button>',
+      { width: '460px' });
+  });
+}
+function onEmbProviderChange() {
+  var p = document.getElementById('embCfgProvider').value;
+  var url = document.getElementById('embCfgBaseUrl'), model = document.getElementById('embCfgModel'), dim = document.getElementById('embCfgDim');
+  var defs = {
+    bailian: { u: 'https://dashscope.aliyuncs.com/compatible-mode/v1', m: 'text-embedding-v3', d: '1024' },
+    openai: { u: 'https://api.openai.com/v1', m: 'text-embedding-3-small', d: '1536' },
+    siliconflow: { u: 'https://api.siliconflow.cn/v1', m: 'BAAI/bge-m3', d: '1024' },
+    custom: { u: '', m: '', d: '1024' }
+  };
+  var x = defs[p] || defs.custom;
+  var known = ['https://dashscope.aliyuncs.com/compatible-mode/v1', 'https://api.openai.com/v1', 'https://api.siliconflow.cn/v1'];
+  if (!url.value || known.indexOf(url.value) >= 0) url.value = x.u;
+  var knownM = ['text-embedding-v3', 'text-embedding-3-small', 'BAAI/bge-m3'];
+  if (!model.value || knownM.indexOf(model.value) >= 0) { model.value = x.m; dim.value = x.d; }
+}
+function saveStoreConfig() {
+  var key = document.getElementById('embCfgKey').value;
+  var payload = {
+    provider: document.getElementById('embCfgProvider').value,
+    baseUrl: document.getElementById('embCfgBaseUrl').value,
+    model: document.getElementById('embCfgModel').value,
+    dim: document.getElementById('embCfgDim').value
+  };
+  if (key && key.indexOf('***') === -1 && key.indexOf('已配置') === -1) payload.apiKey = key;
+  apiPost('/api/ai/store/config', payload).then(function(res) {
+    if (res.code === 0) { closeModal(); msgBox('嵌入配置已保存并热生效'); }
+    else msgBox('保存失败: ' + (res.msg || '未知错误'));
+  });
+}
+function reindexStore() {
+  var st = document.getElementById('embCfgStatus');
+  st.innerHTML = '<span style="color:var(--text-muted);">重建中(向量嵌入较慢,请稍候)...</span>';
+  apiPost('/api/ai/store/sync', {}).then(function(res) {
+    var d = res.data || {};
+    st.innerHTML = '<span style="color:#52c41a;">✓ 图库边 ' + (d.graphEdges != null ? d.graphEdges : '-') + ' · 向量点 ' + (d.vectorPoints != null ? d.vectorPoints : '-') + '</span>';
+  }).catch(function() { st.innerHTML = '<span style="color:var(--error);">✗ 重建失败</span>'; });
 }
 
 // ===== Hash 路由 =====
