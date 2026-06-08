@@ -33,6 +33,7 @@
 <script src="js/mdm-quality.js?v=q100r101"></script>
 <script src="js/mdm-pubsub.js?v=q100r101"></script>
 <script src="js/mdm-hierarchy.js?v=q100r101"></script>
+<script src="js/ai-agent.js?v=q100r103"></script>
 <style>
   #govModuleContent .gov-h1 { font-size:18px; font-weight:600; margin-bottom:6px; color:var(--text-regular,#1f2329); }
   #govModuleContent .gov-desc { color:var(--text-muted,#86909c); font-size:13px; margin-bottom:16px; }
@@ -100,6 +101,10 @@
     <a class="header-tab" href="#/settings" data-route="settings">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M13.4 10a5.8 5.8 0 00.5-2 5.8 5.8 0 00-.5-2l1.5-1.2a.4.4 0 00.1-.5l-1.4-2.4a.4.4 0 00-.5-.2L11.2 2.6a5.5 5.5 0 00-1.7-1L9.2.4a.4.4 0 00-.4-.4H6.2a.4.4 0 00-.4.3L5.5 1.6a5.5 5.5 0 00-1.7 1L2 1.7a.4.4 0 00-.5.2L.1 4.3a.4.4 0 00.1.5L1.6 6a5.8 5.8 0 000 4L.2 11.2a.4.4 0 00-.1.5l1.4 2.4a.4.4 0 00.5.2l1.9-.9a5.5 5.5 0 001.7 1l.3 1.3a.4.4 0 00.4.3h2.8a.4.4 0 00.4-.3l.3-1.3a5.5 5.5 0 001.7-1l1.9.9a.4.4 0 00.5-.2l1.4-2.4a.4.4 0 00-.1-.5z"/></svg>
       系统管理
+    </a>
+    <a class="header-tab" href="#/assistant" data-route="assistant">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a4 4 0 014 4c0 1.5-.8 2.4-1.6 3.2-.6.6-.9 1-.9 1.8H6.5c0-.8-.3-1.2-.9-1.8C4.8 8.4 4 7.5 4 6a4 4 0 014-4z"/><path d="M6.5 13h3M7 15h2"/></svg>
+      AI助手
     </a>
   </nav>
   <div class="header-right">
@@ -2098,6 +2103,11 @@
       <div id="govModuleContent"></div>
     </div>
   </div>
+</div>
+
+<!-- AI 助手(天工司辰) Page -->
+<div id="viewAssistant" class="page-view" style="display:none; max-width:none; padding:0;">
+  <div id="aiAgentRoot" style="height:100%; display:flex; flex-direction:column;"></div>
 </div>
 
 <!-- 主数据管理(MDM) Page -->
@@ -6818,7 +6828,8 @@ var ROUTES = {
       } catch(e){} }, 200); } } },
   'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { var x = window.__navCtx;
       window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter();
-      if (x && x.openDetail) { setTimeout(function(){ try { window.dbsyncOpenDetail(x.openDetail); } catch(e){} }, 800); } } }
+      if (x && x.openDetail) { setTimeout(function(){ try { window.dbsyncOpenDetail(x.openDetail); } catch(e){} }, 800); } } },
+  'assistant':   { view: 'viewAssistant',           layout: 'page',   init: function() { if (window.initAiAssistant) initAiAssistant(); } }
 };
 
 var currentRoute = null;
@@ -6848,7 +6859,7 @@ function navRenderBack() {
     chip.style.display = 'inline-flex';
   } else { chip.style.display = 'none'; }
 }
-var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', governance:'数据治理', mdm:'主数据', dbsync:'数据同步', metrics:'指标管理', project:'项目管理', settings:'系统管理' };
+var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', governance:'数据治理', mdm:'主数据', dbsync:'数据同步', metrics:'指标管理', project:'项目管理', settings:'系统管理', assistant:'AI助手' };
 
 function navigateTo(route, ctx) {
   // R28: 深链跳转(带 ctx)时把当前来源压栈, 供「返回来源」
