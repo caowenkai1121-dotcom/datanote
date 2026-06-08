@@ -42,6 +42,8 @@ public class MetadataCrawlerService {
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnMetaCollectLogMapper collectLogMapper;
     private final HiveConfig hiveConfig;
+    private final com.datanote.platform.ai.graph.GraphMirrorService graphMirrorService;
+    private final com.datanote.platform.ai.vector.VectorIndexService vectorIndexService;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -279,5 +281,8 @@ public class MetadataCrawlerService {
     public void scheduledCrawl() {
         log.info("启动每日元数据采集");
         crawlAll();
+        // 采集后增量同步派生库(各自隔离, 失败不影响采集主流程)
+        try { graphMirrorService.fullSync(); } catch (Exception e) { log.warn("采集后图库镜像失败: {}", e.getMessage()); }
+        try { vectorIndexService.fullReindex(); } catch (Exception e) { log.warn("采集后向量重建失败: {}", e.getMessage()); }
     }
 }
