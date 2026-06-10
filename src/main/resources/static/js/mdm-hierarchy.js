@@ -24,15 +24,15 @@
   }
 
   window.MDM_RENDERERS.hierarchy = function (c) {
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '层级管理维护黄金记录之间的树形父子关系(如组织架构、地区、产品分类)。父子均为同一实体下的黄金记录,根节点父可空。下方以树形展示层级,并可新增父→子关系。' }));
+    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '父子均为同一实体下的黄金记录,根节点父可空。下方以树形展示层级,并可新增父→子关系。' }));
 
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px' });
+    var entSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:240px' });
     entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
     selWrap.appendChild(entSel);
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '层级类型：' }));
-    var typeSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:140px' });
+    var typeSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:140px' });
     TYPES.forEach(function (t) { typeSel.appendChild(DN.h('option', { value: t.code, text: t.label })); });
     typeSel.value = _type;
     selWrap.appendChild(typeSel);
@@ -131,12 +131,12 @@
             { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
             { key: '_op', label: '操作', render: function (r) {
                 var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看子记录', style: 'color:var(--primary,#3457d5)', title: '在黄金记录中打开子节点记录', onclick: function () { goGolden(r.childRecordId); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看子记录', style: 'color:var(--primary)', title: '在黄金记录中打开子节点记录', onclick: function () { goGolden(r.childRecordId); } }));
                 if (r.parentRecordId != null) {
-                  w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看父记录', style: 'color:var(--primary,#3457d5)', title: '在黄金记录中打开父节点记录', onclick: function () { goGolden(r.parentRecordId); } }));
+                  w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看父记录', style: 'color:var(--primary)', title: '在黄金记录中打开父节点记录', onclick: function () { goGolden(r.parentRecordId); } }));
                 }
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { saveDrawer(r, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRel(r, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { saveDrawer(r, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRel(r, box); } }));
                 return w;
               } }
           ],
@@ -180,7 +180,7 @@
     if (depth > MAX_TREE_DEPTH) return; // 触底即停
     var key = node.childRecordId;
     if (key != null && seen[key]) return; // 数据成环:已渲染过的节点不再展开
-    var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;border-bottom:1px solid var(--border,rgba(0,0,0,.06))' });
+    var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;border-bottom:1px solid var(--border)' });
     if (depth > 0) row.style.paddingLeft = (depth * 22 + 4) + 'px';
     var hasChildren = node.children && node.children.length;
     row.appendChild(DN.h('span', { text: hasChildren ? '▸' : '·', style: 'color:var(--text-muted);width:12px;display:inline-block;text-align:center' }));
@@ -189,9 +189,9 @@
     if (hasChildren) row.appendChild(DN.pill(node.children.length + ' 子', 'info'));
     var ops = DN.h('span', { style: 'margin-left:auto;display:inline-flex;gap:12px;align-items:center' });
     if (node.childRecordId != null) {
-      ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看黄金记录', style: 'color:var(--primary,#3457d5);font-size:12px', title: '在黄金记录中打开该节点对应记录', onclick: function () { goGolden(node.childRecordId); } }));
+      ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看黄金记录', style: 'color:var(--primary);font-size:12px', title: '在黄金记录中打开该节点对应记录', onclick: function () { goGolden(node.childRecordId); } }));
     }
-    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131;font-size:12px', onclick: function () { delRel(node, box); } }));
+    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error);font-size:12px', onclick: function () { delRel(node, box); } }));
     row.appendChild(ops);
     wrap.appendChild(row);
     if (key != null) seen[key] = 1;
@@ -210,12 +210,15 @@
   function delRel(r, box) {
     if (!r || r.id == null) { DN.toast('该关系缺少标识,无法删除', 'err'); return; }
     if (_deleting) return;
-    if (!window.confirm('确定删除该层级关系？\n（仅解除父子关系，不删除黄金记录本身）')) return;
-    _deleting = true;
-    DN.del('/api/mdm/hierarchy/' + encodeURIComponent(r.id)).then(function () {
-      DN.toast('已删除', 'ok'); loadHierarchy(box);
-    }).catch(function (e) { DN.toast(e && e.message ? e.message : '删除失败', 'err'); })
-      .then(function () { _deleting = false; });
+    DN.confirm('确定删除该层级关系？\n（仅解除父子关系，不删除黄金记录本身）', { title: '删除确认', danger: true }).then(function (ok) {
+      if (!ok) return;
+      if (_deleting) return;
+      _deleting = true;
+      DN.del('/api/mdm/hierarchy/' + encodeURIComponent(r.id)).then(function () {
+        DN.toast('已删除', 'ok'); loadHierarchy(box);
+      }).catch(function (e) { DN.toast(e && e.message ? e.message : '删除失败', 'err'); })
+        .then(function () { _deleting = false; });
+    });
   }
 
   // 黄金记录下拉文案:超长业务主键截断,避免下拉项过宽撑破抽屉布局
@@ -238,10 +241,10 @@
     }
 
     // 父黄金记录(可空)
-    var pSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var pSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     pSel.appendChild(DN.h('option', { value: '', text: '(无 / 作为根节点)' }));
     // 子黄金记录(必填)
-    var cSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var cSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     cSel.appendChild(DN.h('option', { value: '', text: '(请选择子黄金记录)' }));
     _records.forEach(function (g) {
       if (!g || g.id == null) return;
@@ -255,7 +258,7 @@
     }
     if (noRecords) { pSel.disabled = true; cSel.disabled = true; }
 
-    var fSort = DN.h('input', { class: 'iw-form-select', style: 'width:100%', type: 'number', step: '1', placeholder: '同级排序(默认0)', value: (isEdit && rec.sortOrder != null) ? String(rec.sortOrder) : '0' });
+    var fSort = DN.h('input', { class: 'dn-form-input', style: 'width:100%', type: 'number', step: '1', placeholder: '同级排序(默认0)', value: (isEdit && rec.sortOrder != null) ? String(rec.sortOrder) : '0' });
     if (noRecords) fSort.disabled = true;
 
     var sec = DN.formSection('关系配置');

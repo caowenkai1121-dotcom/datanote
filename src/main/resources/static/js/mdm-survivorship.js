@@ -35,10 +35,9 @@
     // 深链上下文：mdmGoModule('survivorship', { entityId }) 进入时自动选中该实体（与其他 MDM 模块一致）
     var ctx = window.__mdmCtx || {};
     var wantEntityId = ctx.entityId != null ? String(ctx.entityId) : '';
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '存活性规则定义某实体每个属性在黄金记录合并时的存活策略，用于多源冲突时自动选最佳值。最新值/最完整/源系统优先三选一，源系统优先可指定优先级清单。' }));
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px', disabled: 'disabled' });
+    var entSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:240px', disabled: 'disabled' });
     entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
     selWrap.appendChild(entSel);
     c.appendChild(selWrap);
@@ -146,8 +145,8 @@
         { key: '_op', label: '操作', render: function (r) {
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
             var ru = _svRules[r.attrCode];
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: ru ? '编辑' : '配置', style: 'color:var(--primary,#3457d5)', onclick: function () { ruleForm(r, ru, box); } }));
-            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRule(ru, box); } }));
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: ru ? '编辑' : '配置', style: 'color:var(--primary)', onclick: function () { ruleForm(r, ru, box); } }));
+            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRule(ru, box); } }));
             return w;
           } }
       ],
@@ -173,11 +172,11 @@
         { key: 'sourcePriority', label: '源系统优先级', render: function (r) { return r.sourcePriority ? truncCell(r.sourcePriority, 48) : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
         { key: '_op', label: '操作', render: function (r) {
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () {
                 var attr = _svAttrs.filter(function (a) { return a.attrCode === r.attrCode; })[0] || { attrCode: r.attrCode, attrName: r.attrName };
                 ruleForm(attr, r, box);
               } }));
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delRule(r, box); } }));
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRule(r, box); } }));
             return w;
           } }
       ],
@@ -186,14 +185,14 @@
     box.appendChild(card.el);
   }
 
-  function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
+  function inp(val, ph) { return DN.h('input', { class: 'dn-form-input', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
 
   function ruleForm(attr, rule, box) {
     attr = attr || {};
     if (!_svEntity || _svEntity.id == null) { DN.toast('请先选择实体', 'err'); return; }
     if (!attr.attrCode) { DN.toast('该属性缺少编码，无法配置规则', 'err'); return; }
     var isEdit = !!rule; rule = rule || {};
-    var stratSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var stratSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     _strategies.forEach(function (s) {
       var op = DN.h('option', { value: s.value, text: s.label });
       if (String(rule.strategy || 'latest') === s.value) op.selected = true;
@@ -206,13 +205,13 @@
 
     var secInfo = DN.formSection('所属信息');
     secInfo.add(DN.formGrid2([
-      DN.field('所属实体', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: _svEntity.entityName, disabled: 'disabled' })),
-      DN.field('属性', DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: (attr.attrName || '') + ' (' + attr.attrCode + ')', disabled: 'disabled' }))
+      DN.field('所属实体', DN.h('input', { class: 'dn-form-input', style: 'width:100%', value: _svEntity.entityName, disabled: 'disabled' })),
+      DN.field('属性', DN.h('input', { class: 'dn-form-input', style: 'width:100%', value: (attr.attrName || '') + ' (' + attr.attrCode + ')', disabled: 'disabled' }))
     ]));
     body.appendChild(secInfo.el);
 
     var secStrat = DN.formSection('策略配置');
-    var stratHint = DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:-6px;margin-bottom:8px' });
+    var stratHint = DN.h('div', { style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:-6px;margin-bottom:8px' });
     var srcRow = DN.field('源系统优先级清单', fSrc, { hint: '仅「源系统优先」策略需要，逗号分隔' });
     secStrat.add(DN.field('存活策略', stratSel, { required: true }));
     secStrat.add(stratHint);
@@ -269,9 +268,11 @@
   function delRule(rule, box) {
     if (!rule || rule.id == null) { DN.toast('该规则缺少 id，无法删除', 'err'); return; }
     if (_delBusy) return;
-    if (!window.confirm('删除属性「' + (rule.attrName || rule.attrCode) + '」的存活规则？')) return;
-    _delBusy = true;
-    DN.del('/api/mdm/survivorship/' + encodeURIComponent(rule.id)).then(function () { _delBusy = false; DN.toast('已删除', 'ok'); loadSurvivorship(box); })
-      .catch(function (e) { _delBusy = false; DN.toast((e && e.message) || '删除失败', 'err'); });
+    DN.confirm('删除属性「' + (rule.attrName || rule.attrCode) + '」的存活规则？', { title: '删除确认', danger: true }).then(function (ok) {
+      if (!ok) return;
+      _delBusy = true;
+      DN.del('/api/mdm/survivorship/' + encodeURIComponent(rule.id)).then(function () { _delBusy = false; DN.toast('已删除', 'ok'); loadSurvivorship(box); })
+        .catch(function (e) { _delBusy = false; DN.toast((e && e.message) || '删除失败', 'err'); });
+    });
   }
 })();

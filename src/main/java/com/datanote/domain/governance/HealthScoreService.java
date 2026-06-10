@@ -175,7 +175,7 @@ public class HealthScoreService {
     private Map<String, Object> qualityScore() {
         try {
             QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
-            qw.eq("run_status", "SUCCESS").isNotNull("pass_rate")
+            qw.eq("run_status", "success").isNotNull("pass_rate") // run_status 落库小写, 修大小写不匹配致质量维度恒为空
                     .orderByDesc("finished_at").last("LIMIT 20");
             List<DnQualityRun> runs = qualityMapper.selectList(qw);
             if (runs != null && !runs.isEmpty()) {

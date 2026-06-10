@@ -3,11 +3,11 @@
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
-  // SVG 用具体色值（CSS 变量在 SVG 内解析不可靠），与系统令牌对齐
-  var C = { primary: '#3457d5', up: '#e03131', down: '#2f9e44', node: '#f2f3f5', nodeBorder: '#d4d7de', text: '#1f2329' };
+  // SVG 颜色走 v3 令牌：presentation 属性不支持 var()，统一经 style 属性写入
+  var C = { primary: 'var(--primary)', up: 'var(--error)', down: 'var(--success)', node: 'var(--bg-sunken)', nodeBorder: 'var(--divider)', text: 'var(--text-primary)' };
 
-  // 三处库表选择器（替代自由文本框，级联真实元数据）
-  var lnPicker = null, impPicker = null, grPicker = null;
+  // 共享库表选择器（血缘探查：查询/溯源/图谱共用一组，级联真实元数据）
+  var lnPicker = null;
   // centerGraphOn 的轮询定时器句柄: 新一次聚焦前先清掉上一次, 避免多个轮询竞争/泄漏
   var centerWaitTimer = null;
   // 进行中的 GET 去重: 同 url 复用同一 Promise, 杜绝重复点击产生的并发同请求
@@ -56,12 +56,15 @@
     bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
       onclick: function (e) {
         // 重建会全量覆盖血缘边(破坏性), 二次确认; 期间锁按钮防重复提交
-        if (!window.confirm('将依据同步任务全量重建血缘边, 可能覆盖现有边数据。确认继续？')) return;
-        var done = lockBtn(e.currentTarget);
-        DN.post('/api/lineage/rebuild-edges').then(function (r) {
-          DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边', 'success');
-        }).catch(function (err) { DN.toast(err && err.message ? err.message : '重建失败', 'error'); })
-          .then(done);
+        var btn = e.currentTarget;
+        DN.confirm('将依据同步任务全量重建血缘边, 可能覆盖现有边数据。确认继续？', { title: '重建确认', danger: true }).then(function (ok) {
+          if (!ok) return;
+          var done = lockBtn(btn);
+          DN.post('/api/lineage/rebuild-edges').then(function (r) {
+            DN.toast('已重建 ' + (r && r.edgeCount != null ? r.edgeCount : 0) + ' 条血缘边', 'success');
+          }).catch(function (err) { DN.toast(err && err.message ? err.message : '重建失败', 'error'); })
+            .then(done);
+        });
       } }));
     bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘',
       onclick: function (e) {
@@ -73,57 +76,39 @@
       } }));
     c.appendChild(bar);
 
-    // 1. 血缘查询（表级 + 字段级）
-    var qCard = DN.card({ title: '血缘查询', icon: 'lineage' });
+    // 1. 血缘探查（查询/影响溯源/图谱合一：共享一组库表选择器 + 共享结果区）
+    var qCard = DN.card({ title: '血缘探查', icon: 'lineage' });
     c.appendChild(qCard.el);
     lnPicker = DN.dbTablePicker({});
     var q = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
     q.appendChild(lnPicker.el);
-    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '查询血缘', onclick: function (e) { queryLineage(e); } }));
-    qCard.body.appendChild(q);
-    qCard.body.appendChild(DN.h('div', { id: 'lnResult' }));
-
-    // 2. 影响 / 溯源（表级 BFS）
-    var iCard = DN.card({ title: '影响溯源', icon: 'chart' });
-    c.appendChild(iCard.el);
-    impPicker = DN.dbTablePicker({});
-    var iq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
-    iq.appendChild(impPicker.el);
-    iq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '下游影响',
-      onclick: function (e) { queryFlow('impact', e); } }));
-    iq.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上游溯源',
-      onclick: function (e) { queryFlow('trace', e); } }));
-    iCard.body.appendChild(iq);
-    iCard.body.appendChild(DN.h('div', { id: 'impResult' }));
-
-    // 3. 血缘图谱（交互式 SVG 有向图）
-    var gCard = DN.card({ title: '血缘图谱', icon: 'grid' });
-    c.appendChild(gCard.el);
-    grPicker = DN.dbTablePicker({});
-    var gq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
-    gq.appendChild(grPicker.el);
-    gq.appendChild(DN.h('span', { text: '跳数', style: 'color:var(--text-muted,#86909c);font-size:13px' }));
+    q.appendChild(DN.h('span', { text: '跳数', style: 'color:var(--text-muted);font-size:13px' }));
     var gDep = DN.h('input', { id: 'grDepth', type: 'number', value: '2', min: '1', max: '6',
-      class: 'iw-form-input', title: '跳数', style: 'width:60px' });
-    gq.appendChild(gDep);
-    gq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '画血缘图', onclick: function (e) { queryGraph(e); } }));
-    gCard.body.appendChild(gq);
+      class: 'dn-form-input', title: '跳数（仅画血缘图用）', style: 'width:60px' });
+    q.appendChild(gDep);
+    q.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '查询血缘', onclick: function (e) { queryLineage(e); } }));
+    q.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '下游影响',
+      onclick: function (e) { queryFlow('impact', e); } }));
+    q.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '上游溯源',
+      onclick: function (e) { queryFlow('trace', e); } }));
+    q.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '画血缘图', onclick: function (e) { queryGraph(e); } }));
+    qCard.body.appendChild(q);
     // 图例
-    gCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:8px',
+    qCard.body.appendChild(DN.h('div', { style: 'color:var(--text-muted);font-size:12px;margin-bottom:8px',
       html: '<span style="display:inline-block;width:12px;height:12px;background:' + C.primary + ';border-radius:var(--radius-sm);vertical-align:middle;margin-right:4px"></span>★ 中心表 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.up + ';vertical-align:middle;margin:0 4px 0 12px"></span>上游边 ' +
         '<span style="display:inline-block;width:18px;border-top:2px solid ' + C.down + ';vertical-align:middle;margin:0 4px 0 12px"></span>下游边 · 单击节点高亮相邻，双击节点设为中心，悬停边看来源/层级' }));
-    gCard.body.appendChild(DN.h('div', { id: 'graphResult' }));
+    qCard.body.appendChild(DN.h('div', { id: 'lnResult' }));
 
     // R21 深链：接收 ctx.table({db,table}) → 自动以该表为中心加载并绘制血缘图谱
     var ctx = window.__govCtx || {};
     if (ctx.table && ctx.table.db && ctx.table.table) {
       var cd = ctx.table.db, ct = ctx.table.table;
-      // 在“血缘图谱”卡片标题下提示当前聚焦中心
-      gCard.body.insertBefore(DN.h('div', { id: 'lnFocusHint',
+      // 在“血缘探查”卡片标题下提示当前聚焦中心
+      qCard.body.insertBefore(DN.h('div', { id: 'lnFocusHint',
         style: 'color:var(--primary);font-size:12px;margin-bottom:8px',
-        text: '已按深链聚焦：以 ' + cd + '.' + ct + ' 为中心' }), gq);
-      // 复用 grPicker 填表 + 触发画图（与孤儿表下钻同一逻辑）
+        text: '已按深链聚焦：以 ' + cd + '.' + ct + ' 为中心' }), q);
+      // 复用 lnPicker 填表 + 触发画图（与孤儿表下钻同一逻辑）
       centerGraphOn(cd, ct);
     }
 
@@ -131,9 +116,9 @@
     var oCard = DN.card({ title: '孤儿表检测', icon: 'alert' });
     c.appendChild(oCard.el);
     oCard.body.appendChild(DN.h('div', { class: 'gov-desc',
-      style: 'color:var(--text-muted,#86909c);font-size:12px;margin-bottom:10px',
+      style: 'color:var(--text-muted);font-size:12px;margin-bottom:10px',
       text: '扫描所选库下所有表的表级血缘，列出既无上游来源、也无下游去向的表（疑似废弃或未接入血缘），供治理清理参考。' }));
-    var oSel = DN.h('select', { id: 'orphanDb', class: 'iw-form-select', style: 'min-width:160px' });
+    var oSel = DN.h('select', { id: 'orphanDb', class: 'dn-form-select', style: 'width:auto;min-width:240px' });
     oSel.innerHTML = '<option value="">选择库</option>';
     DN.metaDatabases().then(function (dbs) {
       (dbs || []).forEach(function (d) {
@@ -141,7 +126,7 @@
       });
     }).catch(function () {});
     var oq = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' });
-    oq.appendChild(DN.h('span', { text: '库', style: 'color:var(--text-muted,#86909c);font-size:13px' }));
+    oq.appendChild(DN.h('span', { text: '库', style: 'color:var(--text-muted);font-size:13px' }));
     oq.appendChild(oSel);
     oq.appendChild(DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检测孤儿表', onclick: function (e) { detectOrphans(e); } }));
     oCard.body.appendChild(oq);
@@ -200,15 +185,15 @@
       .then(done);
   }
 
-  /** 把指定库表填入“血缘图谱”选择器并触发画图（以该表为中心）。
-      复用现有 grPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。
+  /** 把指定库表填入“血缘探查”选择器并触发画图（以该表为中心）。
+      复用现有 lnPicker(其 el 内含库/表两个 select)与 queryGraph，不臆造接口。
       用于：孤儿表下钻核验、R21 深链聚焦、图节点双击切换中心。 */
   function centerGraphOn(db, table) {
     if (!db || !table) { DN.toast('缺少库或表, 无法聚焦图谱', 'error'); return; }
-    if (!grPicker || !grPicker.el) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
-    var sels = grPicker.el.querySelectorAll('select');
+    if (!lnPicker || !lnPicker.el) { DN.toast('请到“血缘探查”手动查询', 'info'); return; }
+    var sels = lnPicker.el.querySelectorAll('select');
     var dbSel = sels[0], tbSel = sels[1];
-    if (!dbSel || !tbSel) { DN.toast('请到“血缘图谱”手动查询', 'info'); return; }
+    if (!dbSel || !tbSel) { DN.toast('请到“血缘探查”手动查询', 'info'); return; }
     // 新一次聚焦前清掉上一次未完成的轮询, 避免多个 waitTable 定时器同时跑(竞争 + 泄漏)
     if (centerWaitTimer) { clearTimeout(centerWaitTimer); centerWaitTimer = null; }
     dbSel.value = db;
@@ -221,15 +206,15 @@
         centerWaitTimer = null;
         tbSel.value = table;
         tbSel.dispatchEvent(new Event('change'));
-        var gr = document.getElementById('graphResult');
+        var gr = document.getElementById('lnResult');
         if (gr && gr.scrollIntoView) gr.scrollIntoView({ behavior: 'smooth', block: 'center' });
         queryGraph();
       } else if (tries++ < 40) {
         centerWaitTimer = setTimeout(waitTable, 100); // 表列表为异步加载，轮询至多约 4 秒
       } else {
         centerWaitTimer = null;
-        DN.toast('已为你选择「' + db + '」库，请在“血缘图谱”手动选表查询', 'info');
-        if (grPicker.el.scrollIntoView) grPicker.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        DN.toast('已为你选择「' + db + '」库，请在“血缘探查”手动选表查询', 'info');
+        if (lnPicker.el.scrollIntoView) lnPicker.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     })();
   }
@@ -292,8 +277,6 @@
       columns: [
         { label: '孤儿表', copyable: true, render: function (s) { return clip(db + '.' + s.table, 64); },
           exportValue: function (s) { return db + '.' + s.table; } },
-        { label: '上游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
-        { label: '下游边', align: 'center', render: function () { return DN.pill('0', 'muted'); }, exportValue: function () { return '0'; } },
         { label: '判定', align: 'center', render: function () { return DN.pill('孤儿表', 'err'); }, exportValue: function () { return '孤儿表'; } },
         { label: '操作', align: 'center', render: function (s) {
             // R25：孤儿表是治理清理的首要对象，除核验血缘外，直接提供质量/工单/目录下钻
@@ -317,15 +300,15 @@
   }
 
   function queryGraph(e) {
-    if (!grPicker) { DN.toast('图谱选择器未就绪', 'error'); return; }
-    var db = grPicker.db();
-    var table = grPicker.table();
+    if (!lnPicker) { DN.toast('图谱选择器未就绪', 'error'); return; }
+    var db = lnPicker.db();
+    var table = lnPicker.table();
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
     var depEl = document.getElementById('grDepth');
     var depth = parseInt(depEl ? depEl.value : '', 10);
     if (isNaN(depth)) depth = 2;
     if (depth < 1 || depth > 6) { DN.toast('跳数需在 1-6 之间', 'error'); if (depEl) depEl.focus(); return; }
-    var box = document.getElementById('graphResult');
+    var box = document.getElementById('lnResult');
     if (!box) return;
     var done = lockBtn(e && e.currentTarget ? e.currentTarget : null);
     box.innerHTML = '';
@@ -393,13 +376,13 @@
 
     var s = svg('svg', { width: String(width), height: String(height),
       viewBox: '0 0 ' + width + ' ' + height,
-      style: 'background:#fff;border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg);max-width:100%' });
+      style: 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:100%' });
     // 箭头标记（上游红 / 下游绿）
     var defs = svg('defs');
     [['arrU', C.up], ['arrD', C.down]].forEach(function (a) {
       var m = svg('marker', { id: a[0], viewBox: '0 0 10 10', refX: '9', refY: '5',
         markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' });
-      m.appendChild(svg('path', { d: 'M0,0 L10,5 L0,10 z', fill: a[1] }));
+      m.appendChild(svg('path', { d: 'M0,0 L10,5 L0,10 z', style: 'fill:' + a[1] }));
       defs.appendChild(m);
     });
     s.appendChild(defs);
@@ -416,7 +399,7 @@
       // 若目标在左侧（上游边方向反向），从左边出、右边入
       if (b.x < a.x) { x1 = a.x; x2 = b.x + NW; }
       var line = svg('line', { x1: x1, y1: y1, x2: x2, y2: y2,
-        stroke: color, 'stroke-width': '1.6', 'marker-end': marker });
+        style: 'stroke:' + color, 'stroke-width': '1.6', 'marker-end': marker });
       var tip = (downstream ? '下游' : '上游') + ' · 来源:' + (e.source || '-') + ' · ' + (e.level || 'TABLE');
       var title = svg('title'); title.textContent = tip; line.appendChild(title);
       gEdges.appendChild(line);
@@ -433,12 +416,12 @@
       var isCenter = n.id === centerId;
       var nid = String(n.id == null ? '' : n.id); // 防御: id 异常时不抛 .length/.slice 错
       var rect = svg('rect', { x: p.x, y: p.y, width: NW, height: NH, rx: '8',
-        fill: isCenter ? C.primary : C.node,
-        stroke: isCenter ? C.primary : C.nodeBorder, 'stroke-width': '1' });
+        style: 'fill:' + (isCenter ? C.primary : C.node) + ';stroke:' + (isCenter ? C.primary : C.nodeBorder),
+        'stroke-width': '1' });
       var label = nid.length > 22 ? nid.slice(0, 21) + '…' : nid;
       // 非色cue(WCAG 1.4.1)：中心表此前仅靠蓝色填充区分，色盲不可辨，前缀★标记
       var txt = svg('text', { x: p.x + NW / 2, y: p.y + NH / 2 + 4, 'text-anchor': 'middle',
-        'font-size': '12', fill: isCenter ? '#fff' : C.text });
+        'font-size': '12', style: 'fill:' + (isCenter ? 'var(--text-inverse)' : C.text) });
       txt.textContent = isCenter ? '★ ' + label : label;
       var ttl = svg('title'); ttl.textContent = nid + (isCenter ? '（当前中心）' : '（单击高亮 · 双击设为中心）'); rect.appendChild(ttl);
       g.appendChild(rect); g.appendChild(txt);
@@ -490,6 +473,12 @@
     function exportSvg() {
       try {
         var xml = new XMLSerializer().serializeToString(s);
+        // 导出的独立 SVG 无页面 CSS 上下文, 把 var(--*) 解析为当前主题具体色值, 保证脱机打开颜色正确
+        var rootCs = getComputedStyle(document.documentElement);
+        xml = xml.replace(/var\((--[\w-]+)\)/g, function (m0, name) {
+          var v = rootCs.getPropertyValue(name);
+          return v ? v.trim() : m0;
+        });
         var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + xml], { type: 'image/svg+xml' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a'); a.href = url; a.download = 'lineage_' + String(centerId || '').replace(/[^a-zA-Z0-9]/g, '_') + '.svg';
@@ -497,7 +486,7 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
       } catch (e) { DN.toast('导出失败', 'error'); }
     }
-    var scroll = DN.h('div', { style: 'overflow:auto;max-width:100%;max-height:600px;border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' }, [s]);
+    var scroll = DN.h('div', { style: 'overflow:auto;max-width:100%;max-height:600px;border:1px solid var(--border);border-radius:var(--radius-lg)' }, [s]);
     scroll.addEventListener('wheel', function (e) {
       if (!e.ctrlKey) return; e.preventDefault(); zoom(e.deltaY < 0 ? 0.1 : -0.1);
     }, { passive: false });
@@ -506,15 +495,15 @@
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '－', title: '缩小', onclick: function () { zoom(-0.2); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复位', onclick: function () { scale = 1; applyScale(); } }),
       DN.h('a', { class: 'btn btn-sm btn-ghost', href: 'javascript:void(0)', text: '导出 SVG', onclick: exportSvg }),
-      DN.h('span', { style: 'font-size:11px;color:var(--text-muted)', text: 'Ctrl+滚轮缩放 · 拖动滚动条平移 · 双击节点设为中心' })
+      DN.h('span', { style: 'font-size:var(--fs-xs);color:var(--text-muted)', text: 'Ctrl+滚轮缩放 · 拖动滚动条平移 · 双击节点设为中心' })
     ]);
     var out = DN.h('div', {}, [tb, scroll]);
     // R25：中心表的跨模块下钻条，让图谱不再是“看完即止”的死胡同
     var dot = String(centerId || '').indexOf('.');
     if (dot > 0 && window.navigateTo) {   // 独立页(无路由)中心表无跨模块去处, 不渲染空下钻条
       var cdb = centerId.slice(0, dot), ctb = centerId.slice(dot + 1);
-      var drill = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--bg-hover,#f6f7f9);border:1px solid var(--border,#eceef1);border-radius:var(--radius-lg)' });
-      drill.appendChild(DN.h('span', { text: '中心表 ' + centerId + ' 下钻：', style: 'font-size:12px;font-weight:600;color:var(--text-muted,#86909c)' }));
+      var drill = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 12px;background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius-lg)' });
+      drill.appendChild(DN.h('span', { text: '中心表 ' + centerId + ' 下钻：', style: 'font-size:12px;font-weight:600;color:var(--text-muted)' }));
       drill.appendChild(tableActionMenu(cdb, ctb, { skipGraph: true }));
       out.appendChild(drill);
     }
@@ -541,18 +530,30 @@
     // 按层级分组芯片
     var lvWrap = DN.h('div', { style: 'margin-top:8px' });
     Object.keys(byDepth).map(Number).sort(function (a, b) { return a - b; }).forEach(function (d) {
-      var row = DN.h('div', { style: 'display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' });
-      row.appendChild(DN.h('span', { style: 'flex-shrink:0;font-size:11px;color:var(--text-muted);width:54px;padding-top:2px', text: '第 ' + d + ' 层' }));
+      var row = DN.h('div', { style: 'display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--divider)' });
+      row.appendChild(DN.h('span', { style: 'flex-shrink:0;font-size:var(--fs-xs);color:var(--text-muted);width:54px;padding-top:2px', text: '第 ' + d + ' 层' }));
       var chips = DN.h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px' });
       var group = byDepth[d];
-      group.slice(0, CHIPS_PER_LEVEL).forEach(function (n) {
+      // 芯片可点(消除"看到了却去不了"): 有路由时点击跳资产目录打开该表(复用 tableActionMenu「目录」同款契约), 独立页降级为纯文本
+      var mkChip = function (n) {
         var fqn = (n.db || '') + '.' + (n.table || '');
-        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover,#f0f1f3);color:var(--text-regular)',
-          text: fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, title: fqn })); // 超长 FQN 截断 + title 看全
-      });
+        var attrs = { style: 'font-size:var(--fs-xs);padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover);color:var(--text-regular)',
+          text: fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, title: fqn }; // 超长 FQN 截断 + title 看全
+        if (window.navigateTo) {
+          attrs.href = 'javascript:void(0)';
+          attrs.title = fqn + ' · 点击在资产目录打开';
+          attrs.style += ';cursor:pointer;text-decoration:none';
+          attrs.onclick = function () { navigateTo('catalog', { openTable: { db: n.db, table: n.table } }); };
+          return DN.h('a', attrs);
+        }
+        return DN.h('span', attrs);
+      };
+      group.slice(0, CHIPS_PER_LEVEL).forEach(function (n) { chips.appendChild(mkChip(n)); });
       if (group.length > CHIPS_PER_LEVEL) {
-        chips.appendChild(DN.h('span', { style: 'font-size:11px;padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover,#f0f1f3);color:var(--text-muted)',
-          text: '+' + (group.length - CHIPS_PER_LEVEL) + ' 张…', title: '该层共 ' + group.length + ' 张, 详见下方表格' }));
+        var more = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:var(--fs-xs);padding:1px 8px;border-radius:var(--radius-lg);background:var(--bg-hover);color:var(--text-muted);cursor:pointer;text-decoration:none',
+          text: '+' + (group.length - CHIPS_PER_LEVEL) + ' 张…', title: '点击展开该层其余 ' + (group.length - CHIPS_PER_LEVEL) + ' 张',
+          onclick: function () { group.slice(CHIPS_PER_LEVEL).forEach(function (n) { chips.insertBefore(mkChip(n), more); }); more.remove(); } });
+        chips.appendChild(more);
       }
       row.appendChild(chips);
       lvWrap.appendChild(row);
@@ -563,7 +564,7 @@
     if (kind === 'impact') {
       var n = list.length;
       var risk = (n > 10 || maxDepth >= 4) ? ['高风险', 'err'] : (n > 3 || maxDepth >= 2) ? ['中风险', 'warn'] : ['低风险', 'ok'];
-      var rc = DN.h('div', { style: 'margin-top:12px;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-hover,#f7f8fa)' });
+      var rc = DN.h('div', { style: 'margin-top:12px;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-hover)' });
       rc.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px' }, [
         DN.h('span', { style: 'font-weight:600;font-size:13px', text: '变更风险评估' }), DN.pill(risk[0], risk[1])
       ]));
@@ -578,11 +579,11 @@
   }
 
   function queryFlow(kind, e) {
-    if (!impPicker) { DN.toast('选择器未就绪', 'error'); return; }
-    var db = impPicker.db();
-    var table = impPicker.table();
+    if (!lnPicker) { DN.toast('选择器未就绪', 'error'); return; }
+    var db = lnPicker.db();
+    var table = lnPicker.table();
     if (!db || !table) { DN.toast('请先选择库与表', 'error'); return; }
-    var box = document.getElementById('impResult');
+    var box = document.getElementById('lnResult');
     if (!box) return;
     var done = lockBtn(e && e.currentTarget ? e.currentTarget : null);
     box.innerHTML = '';
@@ -670,7 +671,7 @@
     var tone = dir === 'up' ? 'err' : 'ok';
     var row = DN.h('div', { style: 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px' });
     row.appendChild(DN.h('b', { text: label + '（' + arr.length + '）：', style: 'font-size:13px;flex:none' }));
-    if (!arr.length) { row.appendChild(DN.h('span', { text: '无', style: 'color:var(--text-muted,#86909c);font-size:13px' })); return row; }
+    if (!arr.length) { row.appendChild(DN.h('span', { text: '无', style: 'color:var(--text-muted);font-size:13px' })); return row; }
     arr.slice(0, NEIGHBOR_CAP).forEach(function (t) {
       var fqn = (t.db || '') + '.' + (t.table || '');
       var p = DN.pill(fqn.length > 48 ? fqn.slice(0, 47) + '…' : fqn, tone);
@@ -681,7 +682,7 @@
     });
     if (arr.length > NEIGHBOR_CAP) {
       row.appendChild(DN.h('span', { text: '+' + (arr.length - NEIGHBOR_CAP) + ' 张…',
-        title: '共 ' + arr.length + ' 张, 可用上方“血缘图谱”查看全部', style: 'color:var(--text-muted,#86909c);font-size:12px' }));
+        title: '共 ' + arr.length + ' 张, 可点上方“画血缘图”查看全部', style: 'color:var(--text-muted);font-size:12px' }));
     }
     return row;
   }

@@ -42,13 +42,13 @@ public class OverviewService {
         int n = 0;
         for (DnQualityRun r : runs) {
             if (r == null) continue;
-            if (!"SUCCESS".equals(r.getRunStatus())) continue;
+            if (!"success".equalsIgnoreCase(r.getRunStatus())) continue; // run_status 落库为小写 success, 大小写不敏感比对
             if (r.getPassRate() == null) continue;
             sum += r.getPassRate().doubleValue();
             n++;
         }
         if (n == 0) return 0.0;
-        return round1(sum / n * 100.0);
+        return round1(sum / n); // pass_rate 落库即 0-100 百分数, 直接取均值, 不再 *100(原双重放大致 10000%)
     }
 
     // ========== 聚合 ==========
@@ -147,7 +147,7 @@ public class OverviewService {
         long runs24h = 0;
         try {
             QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
-            qw.eq("run_status", "SUCCESS").isNotNull("pass_rate")
+            qw.eq("run_status", "success").isNotNull("pass_rate") // 落库小写 success
                     .orderByDesc("finished_at").last("LIMIT 50");
             recentPassRate = recentPassRate(qualityRunMapper.selectList(qw));
         } catch (Exception e) {

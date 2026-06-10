@@ -44,14 +44,20 @@ public class AiToolRegistry {
 
     /** 生成机读工具清单（注入 prompt 供 LLM 自发现）。 */
     public String toToolsManifestJson() {
+        return toToolsManifestJson(null);
+    }
+
+    /** 按谓词过滤的机读工具清单(子代理只读受限清单复用)。filter=null 则全量。 */
+    public String toToolsManifestJson(java.util.function.Predicate<AiTool> filter) {
         List<Map<String, Object>> list = new ArrayList<>();
         for (AiTool t : byName.values()) {
+            if (filter != null && !filter.test(t)) continue;
+            // caveman 精简: 只留 LLM 选工具真正需要的字段(name/description/readOnly/params);
+            // group/risk LLM 不参考(审批由后端护栏强制), 去掉省每轮 prompt token
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("name", t.name());
-            m.put("group", t.group());
             m.put("description", t.description());
             m.put("readOnly", t.readOnly());
-            m.put("risk", t.risk() == null ? "LOW" : t.risk().name());
             Object params;
             try {
                 params = objectMapper.readTree(t.paramsSchemaJson() == null ? "{}" : t.paramsSchemaJson());

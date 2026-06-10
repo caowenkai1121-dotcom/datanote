@@ -30,7 +30,6 @@
   window.MDM_RENDERERS.pubsub = function (c) {
     _logSubId = '';            // 每次进入模块重置日志筛选，避免上次的“按订阅筛选”状态残留
     _goldenCache = {};         // 重置黄金记录缓存，确保取最新数据
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '发布订阅将黄金记录变更（新增/修改/删除）向下游订阅系统推送。订阅方按实体与变更类型订阅，模拟发布时对匹配的启用订阅写入发布日志，可追溯每次推送结果。' }));
     var statBox = DN.h('div', { id: 'psStats' });
     statBox.appendChild(DN.skeleton(2));
     c.appendChild(statBox);
@@ -103,9 +102,9 @@
           { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '日志', style: 'color:var(--primary,#3457d5)', onclick: function () { _logSubId = String(r.id); loadLogs(logBox); logBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { subDrawer(r, box, statBox, logBox); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131', onclick: function () { delSub(r, box, statBox, logBox); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '日志', style: 'color:var(--primary)', onclick: function () { _logSubId = String(r.id); loadLogs(logBox); logBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { subDrawer(r, box, statBox, logBox); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delSub(r, box, statBox, logBox); } }));
               return w;
             } }
         ],
@@ -119,10 +118,12 @@
   }
 
   function delSub(r, box, statBox, logBox) {
-    if (!window.confirm('确认删除订阅「' + (r.subscriberSystem || ('#' + r.id)) + '」？发布日志将保留。')) return;
-    DN.del('/api/mdm/pubsub/subscription/' + r.id).then(function () {
-      DN.toast('已删除', 'ok'); loadSubscriptions(box, statBox, logBox); loadStats(statBox);
-    }).catch(function (e) { DN.toast(errMsg(e, '删除失败'), 'err'); });
+    DN.confirm('确认删除订阅「' + (r.subscriberSystem || ('#' + r.id)) + '」？发布日志将保留。', { title: '删除确认', danger: true }).then(function (ok) {
+      if (!ok) return;
+      DN.del('/api/mdm/pubsub/subscription/' + r.id).then(function () {
+        DN.toast('已删除', 'ok'); loadSubscriptions(box, statBox, logBox); loadStats(statBox);
+      }).catch(function (e) { DN.toast(errMsg(e, '删除失败'), 'err'); });
+    });
   }
 
   // ---- 新建/编辑 订阅抽屉 ----
@@ -131,9 +132,9 @@
     var body = DN.h('div', {});
 
     var secBase = DN.formSection('基本信息');
-    var fSubscriber = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: '订阅方系统名称', maxlength: '64' });
+    var fSubscriber = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: '订阅方系统名称', maxlength: '64' });
     if (isEdit) fSubscriber.value = r.subscriberSystem || '';
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var entSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     if (!_entities.length) {
       entSel.appendChild(DN.h('option', { value: '', text: '(暂无实体，请先在”域与实体建模”创建)' }));
     } else {
@@ -158,12 +159,12 @@
       var lab = DN.h('label', { style: 'display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer' }, [cb, DN.h('span', { text: TYPE_LABEL[t] })]);
       typesWrap.appendChild(lab);
     });
-    var fEndpoint = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: 'http(s):// 推送地址', maxlength: '512' });
+    var fEndpoint = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: 'http(s):// 推送地址', maxlength: '512' });
     if (isEdit) fEndpoint.value = r.endpoint || '';
-    var statusSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var statusSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     [['1', '启用'], ['0', '停用']].forEach(function (o) { statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     statusSel.value = isEdit ? String(r.status) : '1';
-    var fDesc = DN.h('textarea', { class: 'iw-form-select', style: 'width:100%;min-height:64px;resize:vertical', placeholder: '订阅说明（可选）', maxlength: '500' });
+    var fDesc = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:64px;resize:vertical', placeholder: '订阅说明（可选）', maxlength: '500' });
     if (isEdit) fDesc.value = r.description || '';
     secConf.add(DN.field('订阅变更类型', typesWrap, { required: true }));
     secConf.add(DN.field('推送地址', fEndpoint, { required: true }));
@@ -215,11 +216,11 @@
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: '选择实体与一条黄金记录，模拟一次变更发布。系统将对该实体下启用且订阅了对应变更类型的订阅写入发布日志。' }));
 
     var sec = DN.formSection('发布参数');
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var entSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     entSel.appendChild(DN.h('option', { value: '', text: _entities.length ? '(请选择实体)' : '(暂无实体)' }));
     _entities.forEach(function (e) { entSel.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + e.entityName })); });
 
-    var recSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var recSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     recSel.appendChild(DN.h('option', { value: '', text: '(先选择实体)' }));
 
     function fillRecs(recs) {
@@ -247,7 +248,7 @@
       });
     };
 
-    var typeSel = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var typeSel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     [['update', '修改'], ['create', '新增'], ['delete', '删除']].forEach(function (o) { typeSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
 
     sec.add(DN.formGrid2([

@@ -7,10 +7,12 @@ import com.datanote.common.model.R;
 import com.datanote.domain.mdm.MdmMatchService;
 import com.datanote.domain.mdm.mapper.DnMdmAttributeMapper;
 import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
+import com.datanote.domain.mdm.mapper.DnMdmGoldenHistoryMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.domain.mdm.mapper.DnMdmSurvivorshipRuleMapper;
 import com.datanote.domain.mdm.model.DnMdmAttribute;
 import com.datanote.domain.mdm.model.DnMdmEntity;
+import com.datanote.domain.mdm.model.DnMdmGoldenHistory;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
 import com.datanote.domain.mdm.model.DnMdmSurvivorshipRule;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,11 +37,13 @@ import org.springframework.web.bind.annotation.*;
 public class MdmGoldenController {
 
     private final DnMdmGoldenRecordMapper goldenMapper;
+    private final DnMdmGoldenHistoryMapper historyMapper;   // R126 变更历史快照
     private final DnMdmAttributeMapper attributeMapper;
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmSurvivorshipRuleMapper ruleMapper;
     private final MdmMatchService matchService;
     private final MdmPublishService mdmPublishService;   // R32 黄金记录发布→自动扇出订阅
+    private final MdmService mdmService;                 // R128 快照逻辑收敛到 service 共用
 
     // ===== 源自 MdmGoldenController.java =====
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -119,13 +123,23 @@ public class MdmGoldenController {
             rec.setVersion((old != null && old.getVersion() != null ? old.getVersion() : 1) + 1);
             rec.setUpdatedAt(LocalDateTime.now());
             goldenMapper.updateById(rec);
+            snapshot(rec, "update");
         } else {
             rec.setVersion(1);
             rec.setCreatedAt(LocalDateTime.now());
             rec.setUpdatedAt(LocalDateTime.now());
             goldenMapper.insert(rec);
+            snapshot(rec, "create");
         }
         return R.ok(rec);
+    }
+
+    @Operation(summary = "黄金记录变更历史（新→旧）")
+    @GetMapping("/api/mdm/golden/{id}/history")
+    public R<List<DnMdmGoldenHistory>> history(@PathVariable Long id) {
+        QueryWrapper<DnMdmGoldenHistory> qw = new QueryWrapper<>();
+        qw.eq("golden_id", id).orderByDesc("id").last("LIMIT 100");
+        return R.ok(historyMapper.selectList(qw));
     }
 
     @Operation(summary = "发布黄金记录（草稿→生效）")
@@ -136,8 +150,13 @@ public class MdmGoldenController {
         rec.setStatus("active");
         rec.setUpdatedAt(LocalDateTime.now());
         goldenMapper.updateById(rec);
+        snapshot(rec, "publish");
         // R32 闭环: 发布即自动向匹配订阅扇出(update 事件), 不再依赖手动 pubsub/publish
-        try { mdmPublishService.fanOut(rec, "update"); } catch (Exception ignore) {}
+        // R127: 扇出含逐订阅 HTTP 推送(各3s超时), 同步会拖死发布响应 — 改后台异步, 推送结果照落 publish_log 可查
+        final DnMdmGoldenRecord pubRec = rec;
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try { mdmPublishService.fanOut(pubRec, "update"); } catch (Exception ignore) {}
+        });
         return R.ok(rec);
     }
 
@@ -149,6 +168,7 @@ public class MdmGoldenController {
         rec.setStatus("inactive");
         rec.setUpdatedAt(LocalDateTime.now());
         goldenMapper.updateById(rec);
+        snapshot(rec, "deactivate");
         return R.ok(rec);
     }
 
@@ -160,6 +180,11 @@ public class MdmGoldenController {
     }
 
     // ------- 工具 -------
+    /** R126: 写一条变更后快照（R128 收敛到 MdmService 与审批应用链路共用） */
+    private void snapshot(DnMdmGoldenRecord rec, String changeType) {
+        mdmService.snapshotGolden(rec, changeType);
+    }
+
     private Map<String, Object> parseJson(String json) {
         if (json == null || json.trim().isEmpty()) return new HashMap<>();
         try {
@@ -286,6 +311,7 @@ public class MdmGoldenController {
         survivor.setVersion((survivor.getVersion() == null ? 1 : survivor.getVersion()) + 1);
         survivor.setUpdatedAt(LocalDateTime.now());
         goldenMapper.updateById(survivor);
+        snapshot(survivor, "merge");
 
         Map<String, Object> data = new HashMap<>();
         data.put("survivorId", survivorId);

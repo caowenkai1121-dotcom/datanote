@@ -36,6 +36,7 @@ public class AssetDetailService {
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnGlossaryTermMapper glossaryTermMapper;
     private final HiveConfig hiveConfig;
+    private final com.datanote.domain.integration.connector.ConnectionManager connectionManager; // 源库取数(看真实表数据)
 
     /** Profiler 单次探查的最大字段数，防止数仓聚合查询过慢 */
     static final int MAX_PROFILE_FIELDS = 30;
@@ -128,6 +129,108 @@ public class AssetDetailService {
         result.put("profiledCount", max);
         result.put("fields", fields);
         return result;
+    }
+
+    /**
+     * 取一张表的样例数据行(SELECT * LIMIT n); 供会话内直接查看表数据。limit 默认20上限50, 单元格超长截断。
+     * 数据源路由: MySQL 源库(有 datasourceId 且 dbType=MYSQL)连【源库】取真实数据; 否则连【数仓】(Doris)。
+     */
+    public Map<String, Object> sampleRows(String db, String table, int limit) throws SQLException {
+        return read(db, table, limit <= 0 ? 20 : Math.min(limit, 50));
+    }
+
+    /** 批量读源表行(供 MDM 源表导入); limit 默认200上限2000。与 sampleRows 同路由(MySQL源库/数仓)。 */
+    public Map<String, Object> readRows(String db, String table, int limit) throws SQLException {
+        return read(db, table, limit <= 0 ? 200 : Math.min(limit, 2000));
+    }
+
+    private Map<String, Object> read(String db, String table, int n) throws SQLException {
+        requireIdentifier(db, "数据库名");   // db/table 拼入原生 SQL,先校验防注入
+        requireIdentifier(table, "表名");
+        DnTableMeta meta = findTableMeta(db, table);
+        boolean useSource = meta != null && meta.getDatasourceId() != null
+                && meta.getDbType() != null && meta.getDbType().toUpperCase().contains("MYSQL");
+        List<String> columns = new ArrayList<String>();
+        List<List<Object>> rows = new ArrayList<List<Object>>();
+        Connection conn = null;
+        try {
+            conn = useSource ? connectionManager.getConnection(meta.getDatasourceId(), db) : hiveConfig.getConnection();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT * FROM `" + db + "`.`" + table + "` LIMIT " + n)) {
+                java.sql.ResultSetMetaData md = rs.getMetaData();
+                int cc = md.getColumnCount();
+                for (int i = 1; i <= cc; i++) columns.add(md.getColumnLabel(i));
+                while (rs.next()) {
+                    List<Object> row = new ArrayList<Object>();
+                    for (int i = 1; i <= cc; i++) {
+                        Object v = rs.getObject(i);
+                        String s = v == null ? null : String.valueOf(v);
+                        if (s != null && s.length() > 200) s = s.substring(0, 200) + "…"; // 防超长单元格撑爆
+                        row.add(s);
+                    }
+                    rows.add(row);
+                }
+            }
+        } finally {
+            if (conn != null) try { conn.close(); } catch (Exception ignore) {} // 源库为 Hikari 池连接, close 即归还
+        }
+        Map<String, Object> out = new HashMap<String, Object>();
+        out.put("columns", columns);
+        out.put("rows", rows);
+        out.put("returned", rows.size());
+        out.put("limit", n);
+        out.put("source", useSource ? "源库" : "数仓");
+        return out;
+    }
+
+    /** 找相近的【真实】表(供"表未找到"时给候选, 让 agent 据真实清单求证而非臆造): 同表名(可能库写错)→表名模糊→同库其它表。 */
+    public List<String> findSimilarTables(String db, String table, int limit) {
+        List<String> out = new ArrayList<String>();
+        java.util.Set<String> seen = new java.util.HashSet<String>();
+        int lim = Math.max(1, Math.min(limit, 20));
+        try {
+            if (table != null && !table.isEmpty()) {                 // 1) 同表名(库名可能写错)
+                QueryWrapper<DnTableMeta> q = new QueryWrapper<DnTableMeta>();
+                q.eq("table_name", table).last("LIMIT " + lim);
+                collectNames(tableMetaMapper.selectList(q), out, seen, lim);
+            }
+            if (out.size() < lim && table != null && table.length() >= 2) { // 2) 表名模糊包含
+                QueryWrapper<DnTableMeta> q = new QueryWrapper<DnTableMeta>();
+                q.like("table_name", table).last("LIMIT " + lim);
+                collectNames(tableMetaMapper.selectList(q), out, seen, lim);
+            }
+            if (out.size() < lim && db != null && !db.isEmpty()) {   // 3) 同库其它表
+                QueryWrapper<DnTableMeta> q = new QueryWrapper<DnTableMeta>();
+                q.eq("database_name", db).last("LIMIT " + lim);
+                collectNames(tableMetaMapper.selectList(q), out, seen, lim);
+            }
+        } catch (Exception ignore) {}
+        return out;
+    }
+
+    /** 按 库.表 解析其所属数据源ID(供建表/同步等【自动补全】datasourceId, 免去反问用户); 精确表优先, 退化为同库任一表。 */
+    public Long resolveDatasourceId(String db, String table) {
+        try {
+            if (db != null && table != null) {
+                DnTableMeta m = findTableMeta(db, table);
+                if (m != null && m.getDatasourceId() != null) return m.getDatasourceId();
+            }
+            if (db != null && !db.isEmpty()) {
+                DnTableMeta m = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
+                        .eq("database_name", db).isNotNull("datasource_id").last("LIMIT 1"));
+                if (m != null) return m.getDatasourceId();
+            }
+        } catch (Exception ignore) {}
+        return null;
+    }
+
+    private static void collectNames(List<DnTableMeta> ms, List<String> out, java.util.Set<String> seen, int lim) {
+        if (ms == null) return;
+        for (DnTableMeta m : ms) {
+            if (out.size() >= lim) break;
+            String k = m.getDatabaseName() + "." + m.getTableName();
+            if (seen.add(k)) out.add(k);
+        }
     }
 
     /** 优先取已采集的字段元数据列名，缺失则降级 information_schema */

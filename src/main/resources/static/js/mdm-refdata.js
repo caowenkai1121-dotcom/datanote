@@ -12,7 +12,6 @@
     // R26 深链：mdmGoModule('refdata', {category}) 可定位到指定码表类别
     var ctx = window.__mdmCtx || {};
     _selCategory = ctx.category ? String(ctx.category) : '';
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '参考数据是系统级枚举与码表（客户类型/地区/行业分类等），支持 parent_code 树形结构，供主数据属性引用以保证取值一致。' }));
     var tileBox = DN.h('div', { id: 'rdTiles' });
     tileBox.appendChild(DN.skeleton(1));
     c.appendChild(tileBox);
@@ -109,21 +108,23 @@
             } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary,#3457d5)', onclick: function () { detailDrawer(r, nameByCode); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)', onclick: function () { codeForm(r, tileBox, box); } }));
-              var delLink = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:#e03131' });
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary)', onclick: function () { detailDrawer(r, nameByCode); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { codeForm(r, tileBox, box); } }));
+              var delLink = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
               delLink.onclick = function () {
                 if (delLink._busy) return; // 防重复点击（删除请求在途时忽略再次点击）
                 // 本地预检：存在子级码值则先提示，避免无意义的破坏性请求（与后端规则一致）
                 var hasChild = (_rows || []).some(function (x) { return x && x.parentCode === r.code; });
                 if (hasChild) { DN.toast('该码值存在子级，请先删除其下级码值', 'warn'); return; }
-                if (!window.confirm('确认删除码值「' + (r.name || '') + '（' + (r.code || '') + '）」？此操作不可恢复。')) return;
-                delLink._busy = true; delLink.style.opacity = '0.5'; delLink.style.pointerEvents = 'none';
-                DN.del('/api/mdm/refdata/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadCategories(tileBox, box); })
-                  .catch(function (e) {
-                    DN.toast(e && e.message ? e.message : '删除失败', 'err');
-                    delLink._busy = false; delLink.style.opacity = ''; delLink.style.pointerEvents = '';
-                  });
+                DN.confirm('确认删除码值「' + (r.name || '') + '（' + (r.code || '') + '）」？此操作不可恢复。', { title: '删除确认', danger: true }).then(function (ok) {
+                  if (!ok) return;
+                  delLink._busy = true; delLink.style.opacity = '0.5'; delLink.style.pointerEvents = 'none';
+                  DN.del('/api/mdm/refdata/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadCategories(tileBox, box); })
+                    .catch(function (e) {
+                      DN.toast(e && e.message ? e.message : '删除失败', 'err');
+                      delLink._busy = false; delLink.style.opacity = ''; delLink.style.pointerEvents = '';
+                    });
+                });
               };
               w.appendChild(delLink);
               return w;
@@ -140,9 +141,9 @@
   }
 
   // ===================== 表单（DN.drawer） =====================
-  function inp(val, ph) { return DN.h('input', { class: 'iw-form-select', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
+  function inp(val, ph) { return DN.h('input', { class: 'dn-form-input', style: 'width:100%', value: val == null ? '' : String(val), placeholder: ph || '' }); }
   function sel(opts, val) {
-    var s = DN.h('select', { class: 'iw-form-select', style: 'width:100%' });
+    var s = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
     opts.forEach(function (o) { var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; var op = DN.h('option', { value: ov, text: ol }); if (String(val) === String(ov)) op.selected = true; s.appendChild(op); });
     return s;
   }
@@ -247,8 +248,8 @@
   function detailDrawer(r, nameByCode) {
     if (!r) { DN.toast('记录不存在', 'err'); return; }
     var body = DN.h('div');
-    function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--divider,#eee);font-size:13px' }, [
-      DN.h('span', { style: 'width:90px;color:var(--text-muted)', text: k }), DN.h('span', { style: 'flex:1', text: (v == null || v === '') ? '-' : String(v) }) ]); }
+    function row(k, v) { return DN.h('div', { class: 'dn-kv' }, [
+      DN.h('span', { class: 'k', text: k }), DN.h('span', { class: 'v', text: (v == null || v === '') ? '-' : String(v) }) ]); }
     body.appendChild(row('类别', r.category));
     body.appendChild(row('码值', r.code));
     body.appendChild(row('名称', r.name));

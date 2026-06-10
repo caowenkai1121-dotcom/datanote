@@ -21,6 +21,7 @@ public class DnMdmAttribute {
     private Integer isKey;        // 是否关键字段（用于匹配去重） 1/0
     private Integer isUnique;     // 是否唯一 1/0
     private String enumValues;    // ENUM 类型的候选值（逗号分隔）
+    private String elementCode;   // 绑定数据元编码（dn_data_element.element_code，落标用）
     private String defaultValue;
     private String description;
     private Integer sortOrder;

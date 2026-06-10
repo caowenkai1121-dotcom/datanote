@@ -20,31 +20,31 @@
   function mv(key) { return function () { safeGo('navigateTo', function () { navigateTo('mdm', { mdm: key }); }, 'mdm/' + key); }; }
 
   var CHAINS = [
-    { name: '① 数据质量闭环', color: '#1d6fff', steps: [
+    { name: '① 数据质量闭环', color: 'var(--chart-1)', steps: [
       { t: '资产/探查发现问题', go: nv('catalog') },
       { t: '一键建质量规则', go: gv('quality') },
       { t: '规则失败自动工单', go: gv('health') },
       { t: '修复→关单→健康分回升', go: gv('overview') }
     ]},
-    { name: '② 指标可信度闭环', color: '#2f9e44', steps: [
+    { name: '② 指标可信度闭环', color: 'var(--chart-2)', steps: [
       { t: '消费驾驶舱看指标', go: gv('consumption') },
       { t: '输入质量查来源表', go: gv('quality') },
       { t: '来源表血缘定位脏源', go: gv('lineage') },
       { t: '修复后重算指标', go: nv('metrics') }
     ]},
-    { name: '③ 变更影响闭环', color: '#fa8c16', steps: [
+    { name: '③ 变更影响闭环', color: 'var(--chart-3)', steps: [
       { t: '数据地图改表', go: nv('catalog') },
       { t: '反查下游消费指标', go: gv('consumption') },
       { t: '血缘影响面评估', go: gv('lineage') },
       { t: '同步/调度联动', go: nv('dbsync') }
     ]},
-    { name: '④ 敏感数据治理闭环', color: '#722ed1', steps: [
+    { name: '④ 敏感数据治理闭环', color: 'var(--chart-4)', steps: [
       { t: '分类分级识别敏感', go: gv('classification') },
       { t: '数据安全脱敏策略', go: gv('security') },
       { t: '消费查询自动脱敏', go: gv('consumption') },
       { t: '审计中心留痕核查', go: gv('audit') }
     ]},
-    { name: '⑤ 主数据消费闭环', color: '#eb2f96', steps: [
+    { name: '⑤ 主数据消费闭环', color: 'var(--chart-5)', steps: [
       { t: '建模定义实体属性', go: mv('modeling') },
       { t: '黄金记录录入', go: mv('goldenrecord') },
       { t: '质量监控→修复', go: mv('quality') },
@@ -81,8 +81,8 @@
       chainCard.body.appendChild(DN.empty('暂无业务闭环链配置', 'inbox'));
     } else CHAINS.forEach(function (ch) {
       if (!ch) return;
-      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider,#eee);border-left:4px solid ' + (ch.color || 'var(--primary,#3457d5)') + ';border-radius:var(--radius-lg);' });
-      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary,#3457d5)'), text: ch.name || '未命名链' }));
+      var row = DN.h('div', { style: 'margin:10px 0;padding:10px 12px;border:1px solid var(--divider);border-left:4px solid ' + (ch.color || 'var(--primary)') + ';border-radius:var(--radius-lg);' });
+      row.appendChild(DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:8px;color:' + (ch.color || 'var(--primary)'), text: ch.name || '未命名链' }));
       var flow = DN.h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;' });
       var steps = Array.isArray(ch.steps) ? ch.steps : [];
       if (!steps.length) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:12px;', text: '（暂无步骤）' }));
@@ -90,9 +90,9 @@
         if (!s) return;
         var full = String(s.t == null ? '' : s.t);
         var pill = DN.h('a', { href: 'javascript:void(0)', text: clip(full, 18), title: full, role: 'button',
-          style: 'display:inline-block;padding:5px 12px;border-radius:16px;background:var(--bg-body,#f5f6fa);border:1px solid var(--border,#e5e6eb);font-size:12px;color:var(--text-primary);cursor:pointer;transition:all .15s;' });
-        pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary,#3457d5)'; pill.style.color = '#fff'; pill.style.borderColor = ch.color || 'var(--primary,#3457d5)'; };
-        pill.onmouseout = function () { pill.style.background = 'var(--bg-body,#f5f6fa)'; pill.style.color = 'var(--text-primary)'; pill.style.borderColor = 'var(--border,#e5e6eb)'; };
+          style: 'display:inline-block;padding:5px 12px;border-radius:var(--radius-xl);background:var(--bg-body);border:1px solid var(--border);font-size:12px;color:var(--text-primary);cursor:pointer;transition:all var(--dur);' });
+        pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary)'; pill.style.color = 'var(--text-inverse)'; pill.style.borderColor = ch.color || 'var(--primary)'; };
+        pill.onmouseout = function () { pill.style.background = 'var(--bg-body)'; pill.style.color = 'var(--text-primary)'; pill.style.borderColor = 'var(--border)'; };
         if (typeof s.go === 'function') bindActivate(pill, s.go);
         flow.appendChild(pill);
         if (i < steps.length - 1) flow.appendChild(DN.h('span', { style: 'color:var(--text-muted);font-size:13px;', text: '→' }));
@@ -111,7 +111,7 @@
       HUBS.forEach(function (h) {
         if (!h) return;
         var box = DN.h('div', { role: 'button', tabindex: '0', title: (h.t || '') + ' → ' + (h.d || ''),
-          style: 'padding:12px;border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);cursor:pointer;transition:all .15s;background:var(--bg-card,#fff);outline-offset:2px;' });
+          style: 'padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:all var(--dur);background:var(--bg-card);outline-offset:2px;' });
         box.onmouseover = function () { box.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'; box.style.transform = 'translateY(-2px)'; };
         box.onmouseout = function () { box.style.boxShadow = ''; box.style.transform = ''; };
         if (typeof h.go === 'function') bindActivate(box, h.go);

@@ -3,11 +3,14 @@ package com.datanote.domain.governance;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.governance.mapper.DnGovernanceIssueMapper;
+import com.datanote.domain.governance.mapper.DnQualityRuleMapper;
 import com.datanote.domain.governance.model.DnGovernanceIssue;
 import com.datanote.domain.governance.model.DnQualityRule;
 import com.datanote.domain.governance.model.DnQualityRun;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +26,11 @@ import java.util.*;
 public class IssueService {
 
     private final DnGovernanceIssueMapper issueMapper;
+    private final DnQualityRuleMapper qualityRuleMapper;
+    // @Lazy 打破环: QualityService 依赖 IssueService(失败建单), 此处反向惰性注入用于"解决/关闭前复检规则"
+    @Lazy
+    @Autowired
+    private QualityService qualityService;
 
     /** 状态机：源态 -> 合法目标态集合 */
     private static final Map<String, Set<String>> FLOW = new HashMap<>();
@@ -102,10 +110,48 @@ public class IssueService {
         if (!isLegalTransition(issue.getStatus(), toStatus)) {
             throw new IllegalStateException("非法流转: " + issue.getStatus() + " -> " + toStatus);
         }
+        // 质量工单"已解决/关闭"前【复检规则】: 重跑规则, 数据仍未达标则拦下——防"假关闭"(工单关了但数据还坏)
+        if (QUALITY_ISSUE_TYPE.equals(issue.getIssueType()) && ("RESOLVED".equals(toStatus) || "CLOSED".equals(toStatus))) {
+            String block = reverifyQualityRule(issue, toStatus);
+            if (block != null) throw new IllegalStateException(block);
+        }
         issue.setStatus(toStatus);
         issue.setUpdatedAt(LocalDateTime.now());
         issueMapper.updateById(issue);
         return issue;
+    }
+
+    /**
+     * 复检质量工单关联的规则(objectRef=qrule:{id}): 重跑该规则, 若数据仍未达标(failed)则返回拦截原因。
+     * 复检无法执行(规则已删/数据源不通=error)或非规则关联工单则放行(不因基础设施问题困住整改)。
+     */
+    private String reverifyQualityRule(DnGovernanceIssue issue, String toStatus) {
+        Long ruleId = parseQRuleId(issue.getObjectRef());
+        if (ruleId == null) return null;                 // 非规则关联工单, 不拦
+        DnQualityRule rule = qualityRuleMapper.selectById(ruleId);
+        if (rule == null) return null;                   // 规则已删, 不拦
+        DnQualityRun run;
+        try { run = qualityService.executeRule(rule); }  // 复跑校验
+        catch (Exception e) {
+            log.warn("工单复检规则执行异常 ruleId={}: {}", ruleId, e.getMessage());
+            return null;                                 // 无法复检(数据源不通等)→放行, 不困住用户
+        }
+        if (run != null && "failed".equalsIgnoreCase(run.getRunStatus())) {
+            String rate = run.getPassRate() != null ? run.getPassRate().toPlainString() : "?";
+            String th = rule.getPassThreshold() != null ? rule.getPassThreshold().toPlainString() : "100";
+            String label = "RESOLVED".equals(toStatus) ? "已解决" : "关闭";
+            return "数据复检未通过: 规则「" + nvl(rule.getRuleName()) + "」当前通过率 " + rate + "% < 阈值 " + th
+                    + "%, 不能标记为" + label + "; 请先修复数据再操作。";
+        }
+        return null; // 复检通过(或 error)→放行
+    }
+
+    /** 解析工单对象引用 qrule:{id} → ruleId; 非该前缀返回 null。 */
+    static Long parseQRuleId(String objectRef) {
+        if (objectRef == null) return null;
+        String p = objectRef.trim();
+        if (!p.startsWith("qrule:")) return null;
+        try { return Long.parseLong(p.substring("qrule:".length()).trim()); } catch (Exception e) { return null; }
     }
 
     /** 按 owner 路由：指派负责人 */

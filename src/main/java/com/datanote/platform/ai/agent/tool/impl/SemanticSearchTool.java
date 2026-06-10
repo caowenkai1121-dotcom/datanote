@@ -19,7 +19,7 @@ public class SemanticSearchTool implements AiTool {
     @Override public String name() { return "semantic_search"; }
     @Override public String group() { return "metadata"; }
     @Override public String description() {
-        return "按语义检索数据资产(表/列/术语/指标)。不知道确切表名时用自然语言找,如'用户支付相关的表'可召回付款/交易/订单等同义表。参数 query 必填(检索词), kind 可选(table/column/glossary/metric 过滤), limit 可选(默认10)。向量库未配置时自动降级关键字检索。";
+        return "按语义检索知识库(数据表/业务术语/指标/数据标准/命名词根)。不知道确切表名或想查业务术语口径/数据标准时用自然语言找,如'用户支付相关的表'召回付款/交易/订单同义表,'手机号字段标准'召回对应数据元。参数 query 必填(检索词), kind 可选(table/glossary/metric/dataelement/wordroot 过滤), limit 可选(默认10)。向量库未配置时自动降级关键字检索。";
     }
     @Override public String paramsSchemaJson() {
         return "{\"query\":{\"type\":\"string\",\"required\":true,\"desc\":\"检索词(自然语言)\"},\"kind\":{\"type\":\"string\",\"required\":false,\"desc\":\"table/column/glossary/metric\"},\"limit\":{\"type\":\"number\",\"required\":false,\"desc\":\"返回数,默认10\"}}";

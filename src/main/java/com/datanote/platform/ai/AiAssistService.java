@@ -41,28 +41,38 @@ public class AiAssistService {
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
 
-    // 运行时配置（数据库优先，环境变量兜底）
-    private String apiKey;
-    private String model;
-    private String baseUrl;
-    private String provider;  // anthropic / openai / deepseek / bailian / custom
+    /** 运行时配置不可变快照: volatile 单引用原子发布, 消除并发可见性 + 跨字段撕裂读(被主/子代理/cron/learn 多线程并发读 chat) */
+    private static final class AiConf {
+        final String apiKey, model, baseUrl, provider;
+        AiConf(String k, String m, String b, String p) { apiKey = k; model = m; baseUrl = b; provider = p; }
+    }
+    private volatile AiConf conf = new AiConf("", "claude-sonnet-4-6", "https://api.anthropic.com", "anthropic");
+
+    /** 每请求模型热切覆盖(同 provider 下换 model 档位): 由 Controller 在请求边界 set/clear, chat 读取优先于快照。 */
+    private static final ThreadLocal<String> MODEL_OVERRIDE = new ThreadLocal<>();
+    public static void setModelOverride(String m) { if (m != null && !m.trim().isEmpty()) MODEL_OVERRIDE.set(m.trim()); }
+    public static void clearModelOverride() { MODEL_OVERRIDE.remove(); }
+    /** 读当前线程模型档位(供子代理在新线程上继承父的档位, 让⚡快速对子代理也生效) */
+    public static String getModelOverride() { return MODEL_OVERRIDE.get(); }
 
     @PostConstruct
     public void reloadConfig() {
         String dbKey = getDbConfig("ai.api-key");
+        String key;
         if (dbKey != null && !dbKey.isEmpty()) {
             String decrypted = CryptoUtil.decryptSafe(dbKey, cryptoKey); // Safe:解密失败回退原值,避免@PostConstruct抛异常致启动崩溃
-            this.apiKey = decrypted != null ? decrypted : dbKey;
+            key = decrypted != null ? decrypted : dbKey;
         } else {
-            this.apiKey = envApiKey;
+            key = envApiKey;
         }
         String dbModel = getDbConfig("ai.model");
-        this.model = (dbModel != null && !dbModel.isEmpty()) ? dbModel : envModel;
+        String m = (dbModel != null && !dbModel.isEmpty()) ? dbModel : envModel;
         String dbUrl = getDbConfig("ai.base-url");
-        this.baseUrl = (dbUrl != null && !dbUrl.isEmpty()) ? dbUrl : envBaseUrl;
+        String b = (dbUrl != null && !dbUrl.isEmpty()) ? dbUrl : envBaseUrl;
         String dbProvider = getDbConfig("ai.provider");
-        this.provider = (dbProvider != null && !dbProvider.isEmpty()) ? dbProvider : "anthropic";
-        log.info("AI config loaded: provider={}, model={}, baseUrl={}, keyConfigured={}", provider, model, baseUrl, apiKey != null && !apiKey.isEmpty());
+        String p = (dbProvider != null && !dbProvider.isEmpty()) ? dbProvider : "anthropic";
+        this.conf = new AiConf(key, m, b, p); // 单次 volatile 写: 原子发布自洽快照
+        log.info("AI config loaded: provider={}, model={}, baseUrl={}, keyConfigured={}", p, m, b, key != null && !key.isEmpty());
     }
 
     /**
@@ -103,7 +113,8 @@ public class AiAssistService {
      * @return AI 回复文本
      */
     public String chat(String userMessage, String context) {
-        if (apiKey == null || apiKey.isEmpty()) {
+        AiConf c = this.conf; // 单次 volatile 读, 全程用自洽快照
+        if (c.apiKey == null || c.apiKey.isEmpty()) {
             return "AI 功能未配置。请在【系统配置 → AI 配置】中设置 API Key。";
         }
         if (userMessage == null || userMessage.trim().isEmpty()) {
@@ -117,11 +128,12 @@ public class AiAssistService {
                 fullMessage = "当前上下文：\n" + context + "\n\n用户问题：" + userMessage;
             }
 
+            String activeModel = MODEL_OVERRIDE.get() != null ? MODEL_OVERRIDE.get() : c.model; // 会话级热切优先
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", model);
+            requestBody.put("model", activeModel);
 
             List<Map<String, String>> messages = new ArrayList<>();
-            if (isOpenAiCompatible(provider)) {
+            if (isOpenAiCompatible(c.provider)) {
                 // OpenAI 兼容格式（百炼/OpenAI/DeepSeek）：system 作为 message
                 requestBody.put("max_tokens", 4096);
                 Map<String, String> sysMsg = new HashMap<>();
@@ -139,9 +151,9 @@ public class AiAssistService {
             messages.add(msg);
             requestBody.put("messages", messages);
 
-            String responseBody = callApi(objectMapper.writeValueAsString(requestBody), provider, apiKey, baseUrl);
+            String responseBody = callApi(objectMapper.writeValueAsString(requestBody), c.provider, c.apiKey, c.baseUrl);
             if (responseBody == null || responseBody.isEmpty()) {
-                log.error("AI API 返回空响应: provider={}, model={}", provider, model);
+                log.error("AI API 返回空响应: provider={}, model={}", c.provider, c.model);
                 return "AI 返回格式异常";
             }
             JsonNode root = objectMapper.readTree(responseBody);
@@ -168,10 +180,10 @@ public class AiAssistService {
             if (errorNode != null) {
                 JsonNode errMsgNode = errorNode.get("message");
                 String errorMsg = errMsgNode != null ? errMsgNode.asText() : errorNode.toString();
-                log.error("AI API 错误: provider={}, msg={}", provider, errorMsg);
+                log.error("AI API 错误: provider={}, msg={}", c.provider, errorMsg);
                 return "AI 请求失败: " + errorMsg;
             }
-            log.warn("AI 返回格式异常,无法解析响应: provider={}, body(截断)={}", provider,
+            log.warn("AI 返回格式异常,无法解析响应: provider={}, body(截断)={}", c.provider,
                     responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody);
             return "AI 返回格式异常";
         } catch (Exception e) {
@@ -248,7 +260,8 @@ public class AiAssistService {
      * 检查 AI 功能是否可用
      */
     public boolean isAvailable() {
-        return apiKey != null && !apiKey.isEmpty();
+        AiConf c = this.conf;
+        return c.apiKey != null && !c.apiKey.isEmpty();
     }
 
     /**

@@ -32,8 +32,8 @@
     var box = DN.h('div', { class: 'gov-form', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px' });
     var name = inp('主题名称');
     name.setAttribute('maxlength', String(NAME_MAX));     // 超长输入硬截断,避免提交超限名称
-    var parent = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
-    var layer = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
+    var parent = DN.h('select', { class: 'dn-form-select', style: 'width:auto' });
+    var layer = DN.h('select', { class: 'dn-form-select', style: 'width:auto' });
     LAYERS.forEach(function (l) { layer.appendChild(DN.h('option', { value: l, text: l })); });
     var sort = inp('排序');
     sort.style.width = '70px';
@@ -67,7 +67,7 @@
           .then(function () { setBtnBusy(add, false, '新增主题'); });
       }
     });
-    box.appendChild(DN.h('span', { text: '父主题：', style: 'color:var(--text-muted,#86909c);margin-right:4px' }));
+    box.appendChild(DN.h('span', { text: '父主题：', style: 'color:var(--text-muted);margin-right:4px' }));
     box.appendChild(parent);
     box.appendChild(name);
     box.appendChild(layer);
@@ -144,7 +144,7 @@
     list.appendChild(ul);
     if (counter.truncated) {
       list.appendChild(DN.h('div', {
-        style: 'padding:10px 12px;font-size:12px;color:var(--text-muted,#86909c);text-align:center',
+        style: 'padding:10px 12px;font-size:12px;color:var(--text-muted);text-align:center',
         text: '主题较多，已显示前 ' + TREE_PAGE + ' 个节点，请使用上方搜索精确定位。'
       }));
     }
@@ -161,15 +161,15 @@
     }
     fbox.style.display = '';
     fbox.innerHTML = '';
-    var input = DN.h('input', { class: 'iw-form-input', placeholder: '搜索主题名称…', style: 'width:240px;max-width:100%' });
-    var clr = DN.h('a', { href: 'javascript:void(0)', text: '清除', style: 'margin-left:8px;color:var(--text-muted,#86909c);font-size:12px;display:none', onclick: function () { input.value = ''; trigger(); input.focus(); } });
+    var input = DN.h('input', { class: 'dn-form-input', placeholder: '搜索主题名称…', style: 'width:240px;max-width:100%' });
+    var clr = DN.h('a', { href: 'javascript:void(0)', text: '清除', style: 'margin-left:8px;color:var(--text-muted);font-size:12px;display:none', onclick: function () { input.value = ''; trigger(); input.focus(); } });
     var _t = null;
     function trigger() {
       clr.style.display = input.value ? '' : 'none';
       renderTree(_allNodes || data, input.value, list, reloadFn);
     }
     input.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(trigger, 250); });
-    fbox.appendChild(DN.h('span', { html: DN.icon('search'), style: 'display:inline-flex;width:15px;height:15px;color:var(--text-muted,#86909c);vertical-align:middle;margin-right:6px' }));
+    fbox.appendChild(DN.h('span', { html: DN.icon('search'), style: 'display:inline-flex;width:15px;height:15px;color:var(--text-muted);vertical-align:middle;margin-right:6px' }));
     fbox.appendChild(input);
     fbox.appendChild(clr);
     fbox.setAttribute('data-bound', '1');
@@ -261,14 +261,14 @@
       if (typeof tip.go === 'function') {
         line.appendChild(DN.h('a', {
           href: 'javascript:void(0)', text: ' ' + tip.label + ' →',
-          style: 'color:var(--primary,#3457d5);text-decoration:none;white-space:nowrap',
+          style: 'color:var(--primary);text-decoration:none;white-space:nowrap',
           onclick: tip.go
         }));
       }
       tipBox.appendChild(DN.h('div', {
-        style: 'display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text-regular,#4e5969);line-height:1.5'
+        style: 'display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text-regular);line-height:1.5'
       }, [
-        DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary,#3457d5);margin-top:2px;flex:none' }),
+        DN.h('span', { html: DN.icon('info'), style: 'display:inline-flex;width:15px;height:15px;color:var(--primary);margin-top:2px;flex:none' }),
         line
       ]));
     });
@@ -303,20 +303,20 @@
       var kids = childrenOf(n);
       var hasChild = kids.length > 0;
       var row = DN.h('div', {
-        style: 'display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--divider,#f3f4f6);' +
+        style: 'display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--divider);' +
           'padding-left:' + (12 + depth * 22) + 'px'
       });
       // 层级图标：父节点用 layers，叶子用 doc
       row.appendChild(DN.h('span', {
         class: 'subj-ic', html: DN.icon(hasChild ? 'layers' : 'doc'),
-        style: 'display:inline-flex;width:16px;height:16px;color:var(--primary,#3457d5);margin-right:8px;flex:none'
+        style: 'display:inline-flex;width:16px;height:16px;color:var(--primary);margin-right:8px;flex:none'
       }));
       // 主题名 → 下钻到资产目录按该主题域筛资产(gov-assets 收 ctx.subjectId), 消除纯展示死胡同
       // 超长名称用省略号+完整 title;无名兜底占位,避免链接空白不可点
       var nm = (n.name == null || n.name === '') ? '(未命名)' : String(n.name);
       var nameEl = DN.h('a', {
         href: 'javascript:void(0)', text: nm, title: nm + ' · 点击按此主题域查看资产',
-        style: 'flex:1;min-width:0;font-size:13px;color:var(--text-regular,#1f2329);text-decoration:none;' +
+        style: 'flex:1;min-width:0;font-size:13px;color:var(--text-regular);text-decoration:none;' +
           'overflow:hidden;text-overflow:ellipsis;white-space:nowrap',
         onclick: function () { if (window.govGoModule) govGoModule('assets', { subjectId: n.id }); }
       });
@@ -324,11 +324,11 @@
       row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
       var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
       ops.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5);font-size:13px;margin-right:12px',
+        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary);font-size:13px;margin-right:12px',
         onclick: function () { editNode(n, reloadFn); }
       }));
       var delLink = DN.h('a', {
-        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#e03131);font-size:13px',
+        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error);font-size:13px',
         onclick: function () {
           if (delLink.getAttribute('data-busy') === '1') return;   // 删除中防重复触发
           var tip = hasChild
@@ -353,8 +353,8 @@
 
   // ========== 编辑（弹窗改名 + 分层下拉） ==========
   function editNode(n, reloadFn) {
-    var nameInput = DN.h('input', { class: 'iw-form-input', value: n.name || '', placeholder: '主题名称', maxlength: String(NAME_MAX) });
-    var layerSel = DN.h('select', { class: 'iw-form-select' },
+    var nameInput = DN.h('input', { class: 'dn-form-input', value: n.name || '', placeholder: '主题名称', maxlength: String(NAME_MAX) });
+    var layerSel = DN.h('select', { class: 'dn-form-select' },
       LAYERS.map(function (l) { return DN.h('option', { value: l, text: l }); }));
     layerSel.value = LAYERS.indexOf(n.layer) >= 0 ? n.layer : 'ALL';  // 历史脏分层值回落 ALL,避免下拉空选
     modal('编辑主题', [formRow('主题名称', nameInput), formRow('适用分层', layerSel)], function (close, okBtn) {
@@ -375,7 +375,7 @@
 
   // ========== 小工具 ==========
   function inp(ph) {
-    return DN.h('input', { class: 'iw-form-input', placeholder: ph, style: 'width:auto' });
+    return DN.h('input', { class: 'dn-form-input', placeholder: ph, style: 'width:auto' });
   }
 
   function formRow(label, control) {
@@ -385,13 +385,13 @@
   }
 
   function confirmModal(text, onOk) {
-    modal('确认操作', [DN.h('div', { style: 'font-size:13px;color:var(--text-regular,#4e5969)', text: text })],
+    modal('确认操作', [DN.h('div', { style: 'font-size:13px;color:var(--text-regular)', text: text })],
       function (close) { close(); onOk(); });
   }
 
   function modal(title, bodyNodes, onOk) {
     var mask = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center' });
-    var box = DN.h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '对话框', style: 'background:var(--bg-card,#fff);border-radius:var(--radius-lg);min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.2)' });
+    var box = DN.h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '对话框', style: 'background:var(--bg-card);border-radius:var(--radius-lg);min-width:360px;max-width:90vw;max-height:80vh;overflow:auto;padding:20px;box-shadow:var(--shadow-md)' });
     box.appendChild(DN.h('div', { style: 'font-size:16px;font-weight:600;margin-bottom:16px', text: title }));
     bodyNodes.forEach(function (n) { box.appendChild(n); });
     var _closed = false;

@@ -19,21 +19,35 @@ import java.util.Map;
 public class CreateSyncJobTool implements AiTool {
 
     private final SyncJobService syncJobService;
+    private final com.datanote.domain.governance.AssetDetailService assetDetailService; // 自动补全 sourceDsId(由 sourceDb 查所属数据源)
+    private final com.datanote.domain.datasource.mapper.DnDatasourceMapper datasourceMapper; // 自动补全 targetDsId(数仓 Doris 数据源)
+
+    /** 找数仓(Doris)数据源 ID, 供"抽到ODS/数仓"时自动补全 targetDsId, 免反问用户。 */
+    private Long resolveWarehouseDsId() {
+        try {
+            com.datanote.domain.datasource.model.DnDatasource d = datasourceMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.domain.datasource.model.DnDatasource>()
+                            .eq("type", "Doris").last("LIMIT 1"));
+            return d == null ? null : d.getId();
+        } catch (Exception e) { return null; }
+    }
 
     @Override public String name() { return "create_sync_job"; }
     @Override public String group() { return "sync"; }
     @Override public String description() {
-        return "新建数据同步任务(写操作, 需人工审批)。建成后在数据同步模块列表可见, 可手动运行/定时调度。"
-                + "参数 jobName、sourceDsId、targetDsId、syncMode(FULL/INCREMENTAL/CDC) 必填; "
-                + "sourceDb/targetDb/writeMode(UPSERT/INSERT/INSERT_IGNORE)/scheduleCron/tableConfig(表配置JSON数组) 可选。"
-                + "需先用只读工具确认数据源ID与库表存在。";
+        return "新建『数据同步』模块的同步任务(库到库/异构源通用同步, 写操作, 需人工审批)。"
+                + "【注意: 若是『把表抽到Doris数仓ODS层/新建ODS任务/拉数到数仓』, 请改用 create_ods_table(数据开发ODS层), 不要用本工具】。"
+                + "建成后在数据同步模块列表可见, 可手动运行/定时调度。"
+                + "参数 jobName、syncMode(FULL/INCREMENTAL/CDC) 必填; sourceDsId 可不填(给 sourceDb 即按库自动识别); "
+                + "targetDsId 可不填(默认数仓 Doris 数据源); targetDb/writeMode(UPSERT/INSERT/INSERT_IGNORE)/scheduleCron/tableConfig 可选。"
+                + "【这些可推导/可默认的参数不必反问用户, 直接调用即可】。";
     }
     @Override public String paramsSchemaJson() {
         return "{\"jobName\":{\"type\":\"string\",\"required\":true,\"desc\":\"任务名称\"},"
-                + "\"sourceDsId\":{\"type\":\"number\",\"required\":true,\"desc\":\"源数据源ID\"},"
-                + "\"targetDsId\":{\"type\":\"number\",\"required\":true,\"desc\":\"目标数据源ID\"},"
+                + "\"targetDsId\":{\"type\":\"number\",\"required\":false,\"desc\":\"目标数据源ID, 不填默认数仓Doris\"},"
                 + "\"syncMode\":{\"type\":\"string\",\"required\":true,\"desc\":\"FULL/INCREMENTAL/CDC\"},"
-                + "\"sourceDb\":{\"type\":\"string\",\"required\":false},"
+                + "\"sourceDb\":{\"type\":\"string\",\"required\":false,\"desc\":\"源库名(给此即自动识别 sourceDsId)\"},"
+                + "\"sourceDsId\":{\"type\":\"number\",\"required\":false,\"desc\":\"源数据源ID, 不填则按 sourceDb 自动识别\"},"
                 + "\"targetDb\":{\"type\":\"string\",\"required\":false},"
                 + "\"writeMode\":{\"type\":\"string\",\"required\":false,\"desc\":\"UPSERT/INSERT/INSERT_IGNORE\"},"
                 + "\"scheduleCron\":{\"type\":\"string\",\"required\":false,\"desc\":\"Spring cron\"},"
@@ -49,15 +63,21 @@ public class CreateSyncJobTool implements AiTool {
             Long sourceDsId = AgentArgs.longVal(args, "sourceDsId");
             Long targetDsId = AgentArgs.longVal(args, "targetDsId");
             String syncMode = AgentArgs.str(args, "syncMode");
+            String sourceDb = AgentArgs.str(args, "sourceDb");
             if (jobName == null) return AiToolResult.fail("bad_arguments", "jobName 不能为空");
-            if (sourceDsId == null || targetDsId == null) return AiToolResult.fail("bad_arguments", "sourceDsId/targetDsId 不能为空");
+            // 自动补全: sourceDsId 未给则按 sourceDb 从元数据识别(免反问用户)
+            if (sourceDsId == null && sourceDb != null) sourceDsId = assetDetailService.resolveDatasourceId(sourceDb, null);
+            if (sourceDsId == null) return AiToolResult.fail("bad_arguments", "无法确定源数据源: 请给 sourceDb(将按库自动识别源数据源)或直接给 sourceDsId");
+            // 自动补全: targetDsId 未给则默认数仓(Doris)数据源(抽到ODS/数仓的常见目标), 免反问用户
+            if (targetDsId == null) targetDsId = resolveWarehouseDsId();
+            if (targetDsId == null) return AiToolResult.fail("bad_arguments", "无法确定目标数据源: 未找到数仓(Doris)数据源, 请直接给 targetDsId");
             if (syncMode == null) return AiToolResult.fail("bad_arguments", "syncMode 不能为空(FULL/INCREMENTAL/CDC)");
             DnSyncJob job = new DnSyncJob();
             job.setJobName(jobName);
             job.setSourceDsId(sourceDsId);
             job.setTargetDsId(targetDsId);
             job.setSyncMode(syncMode.toUpperCase());
-            job.setSourceDb(AgentArgs.str(args, "sourceDb"));
+            job.setSourceDb(sourceDb);
             job.setTargetDb(AgentArgs.str(args, "targetDb"));
             job.setWriteMode(AgentArgs.str(args, "writeMode"));
             job.setScheduleCron(AgentArgs.str(args, "scheduleCron"));

@@ -21,18 +21,16 @@
   }
 
   window.GOV_RENDERERS.classification = function (c) {
-    // 1. 分级模型
-    var schemeSel = DN.h('select', { id: 'clScheme', class: 'iw-form-select', style: 'width:auto;min-width:140px' });
+    // 1. 分级模型(等级药丸作图例并入热力卡,模型切换挂卡头 actions)
+    var schemeSel = DN.h('select', { id: 'clScheme', class: 'dn-form-select', style: 'width:auto;min-width:140px' });
     schemeSel.appendChild(DN.h('option', { value: 'NATIONAL', text: '国家三级' }));
     schemeSel.appendChild(DN.h('option', { value: 'FINANCE', text: '金融五级' }));
     schemeSel.addEventListener('change', loadLevels);
-    var lvCard = DN.card({ title: '分级模型', icon: 'layers', actions: schemeSel });
-    c.appendChild(lvCard.el);
-    lvCard.body.appendChild(DN.h('div', { id: 'clLevels' }, [DN.skeleton(1)]));
 
     // 敏感分布热力（按表敏感列数 Top30）
-    var heatCard = DN.card({ title: '敏感分布热力（按表敏感列数）', icon: 'tag' });
+    var heatCard = DN.card({ title: '敏感分布热力（按表敏感列数）', icon: 'tag', actions: schemeSel });
     heatCard.el.classList.add('primary');
+    heatCard.body.appendChild(DN.h('div', { id: 'clLevels' }, [DN.skeleton(1)]));
     heatCard.body.appendChild(DN.h('div', { id: 'clHeat' }, [DN.skeleton(2)]));
     c.appendChild(heatCard.el);
 
@@ -83,8 +81,7 @@
     }
   };
 
-  var _clHeatRows = [], _clHeatView = 'heat';
-  window.govClSetHeatView = function (v) { _clHeatView = v; renderClHeat(); };
+  var _clHeatRows = [];
   function loadHeatmap() {
     var box = document.getElementById('clHeat');
     if (box) { box.innerHTML = ''; box.appendChild(DN.skeleton(2)); }
@@ -109,12 +106,6 @@
       { icon: 'db', label: '涉及表数', value: rows.length },
       { icon: 'alert', label: '单表最多', value: (Number(maxRow.count) || 0) + ' 列', sub: maxRow.db + '.' + maxRow.table }
     ]));
-    // 视图切换: 热力 / 矩形树图
-    var tog = DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:6px 0' });
-    var mk = function (v, t) { return DN.h('a', { href: 'javascript:void(0)', text: t, style: 'padding:3px 10px;font-size:12px;text-decoration:none;border:1px solid var(--border,#e5e6eb);' + (v === 'heat' ? 'border-radius:var(--radius) 0 0 6px;' : 'border-left:0;border-radius:0 6px 6px 0;') + (_clHeatView === v ? 'background:var(--primary,#3457d5);color:#fff;' : 'color:var(--text-regular)'), onclick: function () { govClSetHeatView(v); } }); };
-    tog.appendChild(mk('heat', '热力')); tog.appendChild(mk('treemap', '矩形图'));
-    box.appendChild(tog);
-    if (_clHeatView === 'treemap') { box.appendChild(buildClTreemap(rows)); return; }
     box.appendChild(DN.heat(rows.map(function (r) {
       return { label: r.db + '.' + r.table, value: Number(r.count) || 0, _db: r.db, _table: r.table };
     }), {
@@ -122,30 +113,6 @@
       onClick: function (it) { showAuditTrail(it._db, it._table); }
     }));
   }
-  // 敏感分布矩形树图: 按库分带, 表块按敏感列数占比
-  function buildClTreemap(rows) {
-    var byDb = {}; rows.forEach(function (r) { (byDb[r.db || '(库)'] = byDb[r.db || '(库)'] || []).push(r); });
-    var groups = Object.keys(byDb).map(function (k) { var ts = byDb[k]; return { db: k, tables: ts, sum: ts.reduce(function (s, t) { return s + (Number(t.count) || 0); }, 0) }; }).sort(function (a, b) { return b.sum - a.sum; });
-    var grand = groups.reduce(function (s, g) { return s + g.sum; }, 0) || 1;
-    var maxT = rows.reduce(function (m, r) { return Math.max(m, Number(r.count) || 0); }, 1);
-    var colorOf = function (v) { var rr = v / maxT; return rr > 0.66 ? '#cf1322' : rr > 0.33 ? '#e03131' : rr > 0.1 ? '#ff7875' : '#ffccc7'; };
-    var wrap = DN.h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-top:6px' });
-    groups.forEach(function (g) {
-      var bandH = Math.max(26, Math.round(g.sum / grand * 220));
-      wrap.appendChild(DN.h('div', { style: 'font-size:12px;margin-bottom:2px', html: '<b>' + DN.esc(g.db) + '</b> <span style="color:var(--text-muted)">' + g.tables.length + ' 表 · ' + g.sum + ' 敏感列</span>' }));
-      var band = DN.h('div', { style: 'display:flex;width:100%;height:' + bandH + 'px;gap:2px;border-radius:var(--radius);overflow:hidden' });
-      g.tables.slice().sort(function (a, b) { return (b.count || 0) - (a.count || 0); }).forEach(function (t) {
-        var w = (Number(t.count) || 0) / (g.sum || 1) * 100;
-        var cell = DN.h('div', { title: t.table + ' · ' + (t.count || 0) + ' 敏感列', style: 'flex:0 0 ' + w.toFixed(2) + '%;background:' + colorOf(Number(t.count) || 0) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;white-space:nowrap' });
-        cell.textContent = w > 10 ? t.table : '';
-        cell.addEventListener('click', function () { showAuditTrail(t.db, t.table); });
-        band.appendChild(cell);
-      });
-      wrap.appendChild(band);
-    });
-    return wrap;
-  }
-
   function showAuditTrail(db, table) {
     if (!db || !table) { DN.toast('缺少库或表信息，无法查看打标历史', 'error'); return; }
     var d = DN.drawer('打标审计溯源 · ' + db + '.' + table, DN.skeleton(4));
@@ -233,7 +200,7 @@
     var wrap = DN.h('span', {});
     var toggleA = DN.h('a', {
       href: 'javascript:void(0)', text: r.enabled === 1 ? '停用' : '启用',
-      style: 'color:var(--primary,#3457d5);margin-right:12px',
+      style: 'color:var(--primary);margin-right:12px',
       onclick: function () {
         var restore = lockBtn(toggleA, '处理中…');
         DN.post('/api/gov/classification/rules/' + r.id + '/toggle')
@@ -243,13 +210,15 @@
     });
     wrap.appendChild(toggleA);
     var delA = DN.h('a', {
-      href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#e03131)',
+      href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)',
       onclick: function () {
-        if (!window.confirm('确定删除规则「' + (r.ruleName || '') + '」吗？删除后将不再用于敏感识别，且无法撤销。')) return;
-        var restore = lockBtn(delA, '删除中…');
-        DN.del('/api/gov/classification/rules/' + r.id)
-          .then(function () { DN.toast('已删除', 'success'); loadRules(); })
-          .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
+        DN.confirm('确定删除规则「' + (r.ruleName || '') + '」吗？删除后将不再用于敏感识别，且无法撤销。', { title: '删除确认', danger: true }).then(function (ok) {
+          if (!ok) return;
+          var restore = lockBtn(delA, '删除中…');
+          DN.del('/api/gov/classification/rules/' + r.id)
+            .then(function () { DN.toast('已删除', 'success'); loadRules(); })
+            .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
+        });
       }
     });
     wrap.appendChild(delA);
@@ -263,14 +232,14 @@
     if (box.firstChild) { box.innerHTML = ''; return; }
     box.innerHTML = '';
 
-    var name = DN.h('input', { class: 'iw-form-input', placeholder: '规则名' });
-    var matchSel = DN.h('select', { class: 'iw-form-select' });
+    var name = DN.h('input', { class: 'dn-form-input', placeholder: '规则名' });
+    var matchSel = DN.h('select', { class: 'dn-form-select' });
     [['COLUMN_NAME', '按列名关键词'], ['REGEX', '按正则'], ['VALIDATOR', '按校验器']].forEach(function (m) {
       matchSel.appendChild(DN.h('option', { value: m[0], text: m[1] + '(' + m[0] + ')' }));
     });
-    var pattern = DN.h('input', { class: 'iw-form-input', placeholder: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)' });
-    var sensitiveType = DN.h('input', { class: 'iw-form-input', placeholder: '敏感类型(如 PHONE)' });
-    var suggestLevel = DN.h('input', { class: 'iw-form-input', placeholder: '建议密级(如 重要，可空)' });
+    var pattern = DN.h('input', { class: 'dn-form-input', placeholder: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)' });
+    var sensitiveType = DN.h('input', { class: 'dn-form-input', placeholder: '敏感类型(如 PHONE)' });
+    var suggestLevel = DN.h('input', { class: 'dn-form-input', placeholder: '建议密级(如 重要，可空)' });
 
     var panel = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
 
@@ -342,10 +311,10 @@
         rows.sort(function (a, b) { return (Number(b.confidence) || 0) - (Number(a.confidence) || 0); }); // 高置信度优先
 
         var opts = (levelNames || []).map(function (n) { return '<option value="' + DN.esc(n) + '">' + DN.esc(n) + '</option>'; }).join('');
-        if (!levelNames || !levelNames.length) { box.appendChild(DN.alertNode('密级清单尚未加载，建议密级暂不可选，请先刷新「分级模型」。', 'warn')); }
+        if (!levelNames || !levelNames.length) { box.appendChild(DN.alertNode('密级清单尚未加载，建议密级暂不可选，请在「敏感分布热力」卡右上角切换分级模型重新加载。', 'warn')); }
         var selAll = DN.h('input', { type: 'checkbox', title: '全选' });
         var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)' });
-        var minConfSel = DN.h('select', { class: 'iw-form-select', style: 'width:auto' });
+        var minConfSel = DN.h('select', { class: 'dn-form-select', style: 'width:auto' });
         [['0', '全部置信度'], ['50', '≥50%'], ['70', '≥70%'], ['80', '≥80%']].forEach(function (o) { minConfSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
         minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; rows.forEach(function (r) { if (r._cb) r._cb.checked = false; }); tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };
         var checkBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '勾选≥阈值', onclick: function () {
@@ -368,7 +337,7 @@
             { label: '操作', render: function (r) {
               return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
                 title: '回到数据地图查看 ' + db + '.' + table + ' 的字段与血缘',
-                style: 'color:var(--primary,#3457d5);text-decoration:none',
+                style: 'color:var(--primary);text-decoration:none',
                 onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: table } }); } });
             } }
           ],
@@ -379,7 +348,7 @@
         // 为每行就近构造勾选框与密级下拉（render 时已引用，先在 reload 前装配）
         rows.forEach(function (r) {
           r._cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (r.db || '') + '.' + (r.table || '') + '.' + (r.column || '') });
-          var s = DN.h('select', { class: 'iw-form-select', style: 'width:auto;min-width:110px' });
+          var s = DN.h('select', { class: 'dn-form-select', style: 'width:auto;min-width:110px' });
           s.innerHTML = opts;
           if (r.suggestLevel) s.value = r.suggestLevel;
           r._levelSel = s;
@@ -391,7 +360,7 @@
           rows.forEach(function (r) { r._cb.checked = checked; });
         };
         // 把全选放进表头第一列标签位（toolbar 旁补一个全选开关，避免依赖表头渲染）
-        var selAllWrap = DN.h('label', { style: 'display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text-muted,#86909c)' },
+        var selAllWrap = DN.h('label', { style: 'display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text-muted)' },
           [selAll, DN.h('span', { text: '全选' })]);
         if (confirmBtn.parentNode) confirmBtn.parentNode.insertBefore(selAllWrap, confirmBtn);
 
@@ -410,19 +379,21 @@
     // 校验：勾选的每列都必须选定新密级，否则打标无意义
     var noLevel = picked.filter(function (r) { return !r._levelSel || !r._levelSel.value; });
     if (noLevel.length) { DN.toast('有 ' + noLevel.length + ' 列未选择「建议密级」，请先选定密级', 'error'); return; }
-    if (!window.confirm('将对 ' + picked.length + ' 列写入新密级标记，确认打标？')) return;
-    var restore = lockBtn(btn, '打标中…');
-    var tasks = picked.map(function (r) {
-      return DN.post('/api/gov/classification/confirm', {
-        db: db, table: table, column: r.column, newLevel: r._levelSel.value,
-        sensitiveType: r.sensitiveType, reason: '采样识别确认'
+    DN.confirm('将对 ' + picked.length + ' 列写入新密级标记，确认打标？', { title: '打标确认' }).then(function (ok) {
+      if (!ok) return;
+      var restore = lockBtn(btn, '打标中…');
+      var tasks = picked.map(function (r) {
+        return DN.post('/api/gov/classification/confirm', {
+          db: db, table: table, column: r.column, newLevel: r._levelSel.value,
+          sensitiveType: r.sensitiveType, reason: '采样识别确认'
+        });
       });
+      Promise.all(tasks).then(function () {
+        DN.toast('已打标 ' + tasks.length + ' 列', 'success');
+        loadHeatmap(); // 打标后敏感分布热力同步刷新(联动)
+        scanTable();
+      }).catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
     });
-    Promise.all(tasks).then(function () {
-      DN.toast('已打标 ' + tasks.length + ' 列', 'success');
-      loadHeatmap(); // 打标后敏感分布热力同步刷新(联动)
-      scanTable();
-    }).catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
   }
 
   // 待确认敏感列：对热力涉及的表逐表采样识别，聚合置信度 50%~80% 的列（复用 scan 端点）
@@ -434,7 +405,7 @@
       box.innerHTML = '';
       var em0 = DN.empty('暂无已标敏感表可供扫描', 'tag');
       em0.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '前往「对表采样识别」打标',
-        style: 'color:var(--primary,#3457d5);font-size:12px;text-decoration:none',
+        style: 'color:var(--primary);font-size:12px;text-decoration:none',
         onclick: function () { if (clPicker && clPicker.el && clPicker.el.closest) { var card = clPicker.el.closest('.gov-card'); if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }));
       box.appendChild(em0);
       return;
@@ -523,7 +494,7 @@
           render: function (r) {
             return DN.h('a', { href: 'javascript:void(0)', text: r.table || '-',
               title: '定位到「对表采样识别」复核 ' + (r.db || '') + '.' + (r.table || '') + ' 后打标',
-              style: 'color:var(--primary,#3457d5);text-decoration:none',
+              style: 'color:var(--primary);text-decoration:none',
               onclick: function () { focusScanOnTable(r.db, r.table); } });
           } },
         { key: 'column', label: '列', sortable: true, copyable: true, exportValue: function (r) { return r.column; } },
@@ -534,7 +505,7 @@
         { label: '操作', render: function (r) {
           return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
             title: '回到数据地图查看 ' + (r.db || '') + '.' + (r.table || '') + ' 的字段与血缘',
-            style: 'color:var(--primary,#3457d5);text-decoration:none',
+            style: 'color:var(--primary);text-decoration:none',
             onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: r.db, table: r.table } }); } });
         } }
       ],

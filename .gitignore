@@ -3,6 +3,11 @@
 # Playwright MCP 临时快照
 .playwright-mcp/
 
+# UI 巡检截图与临时脚本(工作产物, 勿提交)
+*.jpeg
+*.jpg
+tmp_*.py
+
 # Maven build output
 target/
 
@@ -39,3 +44,21 @@ data/
 logs/
 
 deploy_jar.py
+
+# 本地部署/测试脚本(含明文凭据, 勿提交)
+deploy_jar2.py
+deploy_jar3.py
+_e2e_*.py
+_apply_*.py
+
+# R19 本地验证产物(截图/日志/临时脚本)
+r19-*.png
+*.png
+local_app.log
+_merge_mdm.py
+
+# AI 数据中心上传文件(不入库)
+ai-files/
+
+# 业主本地工作流资料(不入库)
+启动提示词.md

@@ -67,6 +67,7 @@ public class SemanticSearchService {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("kind", p == null ? null : p.get("kind"));
             m.put("db", p == null ? null : p.get("db"));
+            m.put("table", p == null ? null : p.get("table")); // 列(column)所属表, 供"字段 X 在表 Y"呈现
             m.put("name", p == null ? null : p.get("name"));
             m.put("title", p == null ? null : p.get("title"));
             m.put("score", h.get("score"));

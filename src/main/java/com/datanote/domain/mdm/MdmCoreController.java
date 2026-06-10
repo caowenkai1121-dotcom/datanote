@@ -16,6 +16,7 @@ import com.datanote.domain.mdm.model.DnMdmChangeRequest;
 import com.datanote.domain.mdm.model.DnMdmDomain;
 import com.datanote.domain.mdm.model.DnMdmEntity;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -41,6 +42,7 @@ public class MdmCoreController {
     private final DnMdmChangeRequestMapper changeMapper;
     private final DnMdmGoldenRecordMapper goldenMapper;
     private final MdmMatchService matchService;
+    private final ObjectMapper objectMapper;
 
     // ===== 源自 MdmController.java =====
     // ===================== 总览 =====================
@@ -284,6 +286,11 @@ public class MdmCoreController {
         }
         String reviewer = body != null && body.getReviewer() != null ? body.getReviewer().trim() : "";
         if (reviewer.isEmpty()) throw new BusinessException("审批人不能为空");
+        // 关键闭环: 批准即【应用】变更到黄金记录(创建/修改/软删), 否则审批形同虚设。
+        // 应用先于改状态: 应用失败(如找不到记录)则抛错, 请求保持 pending, 不误判已批准。
+        if ("approved".equals(target)) {
+            applyChange(req);
+        }
         req.setReviewer(reviewer);
         req.setReviewComment(body != null && body.getReviewComment() != null ? body.getReviewComment().trim() : null);
         req.setStatus(target);
@@ -291,6 +298,73 @@ public class MdmCoreController {
         changeMapper.updateById(req);
         return R.ok(req);
     }
+
+    /** 批准后把变更请求真正应用到黄金记录: create=新建, update=合并 payloadJson, delete=软删(inactive)。 */
+    private void applyChange(DnMdmChangeRequest req) {
+        LocalDateTime now = LocalDateTime.now();
+        String type = req.getChangeType() == null ? "" : req.getChangeType();
+        if ("create".equals(type)) {
+            DnMdmGoldenRecord g = new DnMdmGoldenRecord();
+            g.setEntityId(req.getEntityId());
+            g.setDataJson(req.getPayloadJson() != null && !req.getPayloadJson().trim().isEmpty() ? req.getPayloadJson() : "{}");
+            g.setBizKey(req.getBizKey() != null && !req.getBizKey().trim().isEmpty() ? req.getBizKey().trim() : ("记录-" + System.currentTimeMillis()));
+            g.setStatus("active");
+            g.setVersion(1);
+            g.setCreatedAt(now);
+            g.setUpdatedAt(now);
+            goldenMapper.insert(g);
+            req.setGoldenRecordId(g.getId());
+            mdmService.snapshotGolden(g, "create");   // R128: 审批应用也写历史快照, 否则历史断链
+        } else if ("update".equals(type)) {
+            DnMdmGoldenRecord g = findGolden(req);
+            if (g == null) throw new BusinessException("找不到要修改的黄金记录(bizKey=" + safeStr(req.getBizKey()) + ")，无法应用变更");
+            g.setDataJson(mergeJson(g.getDataJson(), req.getPayloadJson()));
+            g.setVersion((g.getVersion() == null ? 1 : g.getVersion()) + 1);
+            g.setUpdatedAt(now);
+            goldenMapper.updateById(g);
+            req.setGoldenRecordId(g.getId());
+            mdmService.snapshotGolden(g, "update");
+        } else if ("delete".equals(type)) {
+            DnMdmGoldenRecord g = findGolden(req);
+            if (g == null) throw new BusinessException("找不到要删除的黄金记录(bizKey=" + safeStr(req.getBizKey()) + ")，无法应用变更");
+            g.setStatus("inactive"); // 软删, 保留可追溯
+            g.setUpdatedAt(now);
+            goldenMapper.updateById(g);
+            req.setGoldenRecordId(g.getId());
+            mdmService.snapshotGolden(g, "deactivate");
+        }
+    }
+
+    /** 定位变更目标黄金记录: 优先 goldenRecordId, 退化 (entityId + bizKey 且未停用)。 */
+    private DnMdmGoldenRecord findGolden(DnMdmChangeRequest req) {
+        if (req.getGoldenRecordId() != null) {
+            DnMdmGoldenRecord g = goldenMapper.selectById(req.getGoldenRecordId());
+            if (g != null) return g;
+        }
+        if (req.getEntityId() != null && req.getBizKey() != null && !req.getBizKey().trim().isEmpty()) {
+            return goldenMapper.selectOne(new QueryWrapper<DnMdmGoldenRecord>()
+                    .eq("entity_id", req.getEntityId()).eq("biz_key", req.getBizKey().trim())
+                    .ne("status", "inactive").last("LIMIT 1"));
+        }
+        return null;
+    }
+
+    /** 把 patchJson 合并进 baseJson(patch 覆盖同名键); 任一非法则退化为 patch 或 base。 */
+    @SuppressWarnings("unchecked")
+    private String mergeJson(String baseJson, String patchJson) {
+        try {
+            Map<String, Object> base = (baseJson == null || baseJson.trim().isEmpty())
+                    ? new LinkedHashMap<>() : objectMapper.readValue(baseJson, Map.class);
+            if (patchJson != null && !patchJson.trim().isEmpty()) {
+                base.putAll(objectMapper.readValue(patchJson, Map.class));
+            }
+            return objectMapper.writeValueAsString(base);
+        } catch (Exception e) {
+            return (patchJson != null && !patchJson.trim().isEmpty()) ? patchJson : (baseJson != null ? baseJson : "{}");
+        }
+    }
+
+    private static String safeStr(String s) { return s == null ? "" : s; }
 
     // ===== 源自 MdmStewardController.java =====
     @Operation(summary = "数据管家工作台总览（各实体待办聚合）")

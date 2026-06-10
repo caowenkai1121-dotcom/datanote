@@ -28,4 +28,56 @@ public class AiAsyncConfig {
         ex.initialize();
         return ex;
     }
+
+    /**
+     * 子代理并行执行器(借鉴 hermes 委派并行): delegate_task 批量子任务并发跑。
+     * core2/max4 限并发, 调用方 CompletableFuture 提交; 满则调用线程自跑(CallerRuns)保不丢任务。
+     */
+    @Bean("aiChildExecutor")
+    public ThreadPoolTaskExecutor aiChildExecutor() {
+        ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
+        ex.setCorePoolSize(2);
+        ex.setMaxPoolSize(4);
+        ex.setQueueCapacity(8);
+        ex.setThreadNamePrefix("ai-child-");
+        // AbortPolicy(非 CallerRuns): 满则抛, 由 runBatch 显式降级标记; 避免把整段子循环压到父 servlet 线程并绕过超时保护
+        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        ex.setWaitForTasksToCompleteOnShutdown(true);
+        ex.setAwaitTerminationSeconds(30);
+        ex.initialize();
+        return ex;
+    }
+
+    /**
+     * cron 任务执行器: 占行后异步跑 agent, 使 @Scheduled tick 线程快速返回, 不阻塞全局调度器(CDC/同步/对账等)。
+     */
+    @Bean("aiCronExecutor")
+    public ThreadPoolTaskExecutor aiCronExecutor() {
+        ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
+        ex.setCorePoolSize(2);
+        ex.setMaxPoolSize(2);
+        ex.setQueueCapacity(20);
+        ex.setThreadNamePrefix("ai-cron-");
+        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy()); // 满则丢, 下次 tick 再领(next_run 已推进, 不重复)
+        ex.setWaitForTasksToCompleteOnShutdown(false);
+        ex.initialize();
+        return ex;
+    }
+
+    /**
+     * 重型索引执行器(单线程): 列级向量重建等大批量嵌入作业不阻塞 HTTP 请求线程。
+     * 单线程串行 + 浅队列(满则丢弃), 同一时刻至多一个重建在跑。
+     */
+    @Bean("aiIndexExecutor")
+    public ThreadPoolTaskExecutor aiIndexExecutor() {
+        ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
+        ex.setCorePoolSize(1);
+        ex.setMaxPoolSize(1);
+        ex.setQueueCapacity(2);
+        ex.setThreadNamePrefix("ai-index-");
+        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        ex.setWaitForTasksToCompleteOnShutdown(false);
+        ex.initialize();
+        return ex;
+    }
 }

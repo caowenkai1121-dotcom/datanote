@@ -6,25 +6,24 @@
   var sessionId = null;
   var sending = false;
   var pendingCtx = null;   // 情境入口透传的业务上下文, 随下一次 chat 上送
+  var selectedModel = '';  // 模型热切档位(空=默认), 随 chat 上送 model 覆盖
+  var fileListEl = null;   // 数据中心文件列表容器
   var flowEl = null, inputEl = null, sendBtn = null, built = false;
 
   function groupColor(g) {
-    return ({ gov: '#1d6fff', quality: '#2f9e44', lineage: '#fa8c16', sync: '#722ed1', metadata: '#13c2c2' })[g] || '#86909c';
+    return ({ gov: 'var(--chart-1)', quality: 'var(--chart-6)', lineage: 'var(--chart-3)', sync: 'var(--chart-4)', metadata: 'var(--chart-2)' })[g] || 'var(--chart-5)';
   }
 
   // 用户气泡
   function userBubble(text) {
-    return DN.h('div', { style: 'display:flex;justify-content:flex-end;margin:10px 0;' },
-      [DN.h('div', { style: 'max-width:78%;background:var(--primary,#3457d5);color:#fff;padding:9px 13px;border-radius:12px 12px 2px 12px;white-space:pre-wrap;word-break:break-word;font-size:13px;', text: text })]);
+    return DN.h('div', { class: 'dn-ai-bubble user', style: 'width:fit-content;white-space:pre-wrap;', text: text });
   }
 
   // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
   function assistantBubble(text, tone) {
-    var bg = tone === 'err' ? 'var(--bg-body,#fff2f0)' : 'var(--bg-card,#fff)';
-    var bd = tone === 'err' ? '#ffccc7' : 'var(--border,#e5e6eb)';
-    var inner = DN.h('div', { class: 'ai-md', style: 'max-width:84%;background:' + bg + ';border:1px solid ' + bd + ';padding:10px 15px;border-radius:12px 12px 12px 2px;word-break:break-word;font-size:13px;line-height:1.7;color:var(--text-primary);overflow-x:auto;' });
+    var inner = DN.h('div', { class: 'ai-md dn-ai-bubble assistant' + (tone === 'err' ? ' err' : ''), style: 'width:fit-content;overflow-x:auto;' });
     renderMarkdown(inner, String(text == null ? '' : text));
-    return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:10px 0;' }, [inner]);
+    return inner;
   }
 
   // 富文本：把深链 token 转成可点 chip，其余按纯文本节点拼（绝不 innerHTML 拼 LLM 文本，防 XSS）
@@ -44,24 +43,36 @@
 
   function linkChip(label, onclick) {
     return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
-      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:var(--radius-lg);background:var(--primary,#3457d5);color:#fff;font-size:12px;text-decoration:none;' });
+      style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:var(--radius-lg);background:var(--primary);color:var(--text-inverse);font-size:12px;text-decoration:none;' });
   }
 
   // ===== 轻量 Markdown → DOM 渲染(零依赖, XSS 安全: 全程 DOM 构造不用 innerHTML 拼 LLM 文本) =====
   // 支持: # 标题 / **粗体** / `行内码` / ```代码块``` / - 与 1. 列表 / | 表格 | / > 引用 / 段落换行 + 深链 chip
-  var INLINE_RE = /\*\*([^*]+?)\*\*|`([^`]+?)`|\[表:([^\]\.]+)\.([^\]]+)\]|\[规则:#?(\d+)\]|\[任务:#?(\d+)\]/g;
+  // 追加: [文本](url) markdown 链接(7,8) 与 裸下载链接(9) → 渲染为可点 <a>(修复下载链接不可点)
+  var INLINE_RE = /\*\*([^*]+?)\*\*|`([^`]+?)`|\[表:([^\]\.]+)\.([^\]]+)\]|\[规则:#?(\d+)\]|\[任务:#?(\d+)\]|\[([^\]]+)\]\(([^)\s]+)\)|(\/api\/ai\/agent\/files\/\d+\/download)/g;
   function appendInline(el, str) {
-    var last = 0, m; INLINE_RE.lastIndex = 0;
-    while ((m = INLINE_RE.exec(str)) !== null) {
+    var last = 0, m, re = new RegExp(INLINE_RE.source, 'g'); // 独立实例: 防递归(粗体内联)共享 lastIndex 串台
+    while ((m = re.exec(str)) !== null) {
       if (m.index > last) el.appendChild(document.createTextNode(str.slice(last, m.index)));
-      if (m[1] != null) el.appendChild(DN.h('strong', { text: m[1], style: 'font-weight:650;' }));
-      else if (m[2] != null) el.appendChild(DN.h('code', { text: m[2], style: 'background:var(--bg-main,#f1f4fa);border-radius:var(--radius-sm);padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' }));
+      if (m[1] != null) { var _b = DN.h('strong', { style: 'font-weight:650;' }); appendInline(_b, m[1]); el.appendChild(_b); } // 递归: 粗体内的[链接](url)也要可点(agent常写**[文件](url)**)
+      else if (m[2] != null) el.appendChild(DN.h('code', { text: m[2], style: 'background:var(--bg-main);border-radius:var(--radius-sm);padding:1px 5px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' }));
       else if (m[3] != null) (function (db, tb) { el.appendChild(linkChip('🔗 ' + db + '.' + tb, function () { go('catalog', { openTable: { db: db, table: tb } }); })); })(m[3], m[4]);
       else if (m[5] != null) (function (id) { el.appendChild(linkChip('🔗 规则#' + id, function () { go('governance', { gov: 'quality', ruleId: Number(id) }); })); })(m[5]);
       else if (m[6] != null) (function (id) { el.appendChild(linkChip('🔗 任务#' + id, function () { go('dbsync', { openDetail: Number(id) }); })); })(m[6]);
+      else if (m[7] != null) el.appendChild(urlChip(m[7], m[8]));
+      else if (m[9] != null) el.appendChild(urlChip('下载文件', m[9]));
       last = m.index + m[0].length;
     }
     if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
+  }
+
+  // 真实 <a href> 链接(下载/外链可点); 下载类加 download 属性, 其余新标签页打开
+  function urlChip(label, url) {
+    var isDl = /\/api\/ai\/agent\/files\//.test(url) || /\/download(\?|$)/.test(url);
+    var a = DN.h('a', { href: url, text: (isDl && !/^[⬇↓]/.test(label) ? '⬇ ' : '') + label,
+      style: 'display:inline-block;margin:0 3px;padding:2px 10px;border-radius:var(--radius-lg);background:var(--primary);color:var(--text-inverse);font-size:12px;text-decoration:none;' });
+    if (isDl) a.setAttribute('download', ''); else a.setAttribute('target', '_blank');
+    return a;
   }
   function renderMarkdown(container, text) {
     var lines = String(text == null ? '' : text).replace(/\r\n/g, '\n').split('\n');
@@ -74,7 +85,7 @@
         var buf = []; i++;
         while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
         i++; // 跳过收尾 ```
-        var pre = DN.h('pre', { style: 'background:var(--bg-main,#f1f4fa);border:1px solid var(--divider,#eef1f7);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
+        var pre = DN.h('pre', { style: 'background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
         pre.appendChild(DN.h('code', { text: buf.join('\n'), style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
         container.appendChild(pre); continue;
       }
@@ -94,7 +105,7 @@
         rows.forEach(function (cells, ri) {
           var tr = DN.h('tr', {});
           cells.forEach(function (cell) {
-            var td = DN.h(ri === 0 ? 'th' : 'td', { style: 'border:1px solid var(--border,#e3e7f0);padding:5px 9px;text-align:left;' + (ri === 0 ? 'background:var(--bg-main,#f1f4fa);font-weight:600;' : '') });
+            var td = DN.h(ri === 0 ? 'th' : 'td', { style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;' + (ri === 0 ? 'background:var(--bg-main);font-weight:600;' : '') });
             appendInline(td, cell); tr.appendChild(td);
           });
           tbl.appendChild(tr);
@@ -119,12 +130,12 @@
       }
       // 引用
       if (/^>\s?/.test(line)) {
-        var bq = DN.h('div', { style: 'border-left:3px solid var(--border,#e3e7f0);padding:2px 0 2px 10px;margin:6px 0;color:var(--text-muted,#5b6472);' });
+        var bq = DN.h('div', { style: 'border-left:3px solid var(--border);padding:2px 0 2px 10px;margin:6px 0;color:var(--text-muted);' });
         appendInline(bq, line.replace(/^>\s?/, '')); container.appendChild(bq); i++; continue;
       }
       // 分隔线
       if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
-        container.appendChild(DN.h('div', { style: 'border-top:1px solid var(--divider,#eef1f7);margin:10px 0;' })); i++; continue;
+        container.appendChild(DN.h('div', { style: 'border-top:1px solid var(--divider);margin:10px 0;' })); i++; continue;
       }
       // 空行
       if (isBlank(line)) { i++; continue; }
@@ -156,18 +167,23 @@
     card.el.style.cssText = (card.el.style.cssText || '') + ';margin:8px 0 8px 18px;border-left:3px solid ' + col + ';';
     // 头部标签
     var tags = DN.h('span', { style: 'margin-left:8px;display:inline-flex;gap:6px;vertical-align:middle;' });
-    if (step.skillGroup) tags.appendChild(DN.h('span', { text: step.skillGroup, style: 'font-size:11px;color:#fff;background:' + col + ';padding:1px 7px;border-radius:9px;' }));
+    if (step.skillGroup) tags.appendChild(DN.h('span', { text: step.skillGroup, class: 'dn-ai-badge', style: 'background:' + col + ';color:var(--text-inverse);' }));
     if (Number(step.readOnly) === 1) tags.appendChild(DN.pill('只读', 'info'));
     var ok = step.resultStatus === 'ok';
     tags.appendChild(DN.pill(ok ? '成功' : (step.resultStatus || '-'), ok ? 'ok' : 'err'));
     // 把标签塞进卡头
     try { card.el.querySelector('.gov-card-hd').appendChild(tags); } catch (e) {}
 
+    // 决策推理留痕(天工开物·逐道工序透明; 后端从 <think> 抽取, 不混入终答)
+    if (step.thinkContent) {
+      card.body.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);font-style:italic;margin-bottom:6px;padding:6px 10px;border-left:2px solid ' + col + ';background:var(--bg-body);border-radius:var(--radius);', text: '💭 ' + step.thinkContent }));
+    }
+
     if (step.argsJson && step.argsJson !== '{}' && step.argsJson !== 'null') {
       card.body.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:6px;', text: '参数：' + step.argsJson }));
     }
     var resultText = summarizeResult(step.resultData, ok);
-    var pre = DN.h('div', { style: 'font-size:12px;color:var(--text-regular,#4e5969);white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;background:var(--bg-body,#f7f8fa);border-radius:var(--radius);padding:8px 10px;', text: resultText });
+    var pre = DN.h('div', { style: 'font-size:12px;color:var(--text-regular);white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;background:var(--bg-body);border-radius:var(--radius);padding:8px 10px;', text: resultText });
     card.body.appendChild(pre);
     // 工具结果若带 _deeplink, 渲染"跳转到模块"按钮(天工开物·一图可复核 + 自由意志·人机协同回链)
     var dl = extractDeeplink(step.resultData);
@@ -185,6 +201,45 @@
       var data = obj && obj.data != null ? obj.data : obj;
       return data && data._deeplink ? data._deeplink : null;
     } catch (e) { return null; }
+  }
+
+  // 从工具结果里抽取 _preview(table_data 样例行), 供会话内直接渲染数据表格
+  function extractPreview(resultData) {
+    if (!resultData) return null;
+    try {
+      var obj = JSON.parse(String(resultData));
+      var data = obj && obj.data != null ? obj.data : obj;
+      var pv = data && data._preview;
+      if (pv && pv.columns && pv.rows) return { pv: pv, db: data.db, table: data.table };
+      return null;
+    } catch (e) { return null; }
+  }
+
+  // 数据表格卡(会话内直接看表数据, 醒目常显不折叠): 表头 sticky + 横纵滚动
+  function dataGridCard(p) {
+    var pv = p.pv;
+    var rows = pv.rows || [], cols = pv.columns || [];
+    var title = '📋 ' + (p.db ? p.db + '.' : '') + (p.table || '表') + ' 数据预览（' + (pv.returned != null ? pv.returned : rows.length) + ' 行）';
+    var card = DN.h('div', { style: 'margin:8px 0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;' });
+    card.appendChild(DN.h('div', { text: title, style: 'padding:8px 12px;font-weight:600;font-size:12.5px;color:var(--text-primary);background:var(--bg-main);border-bottom:1px solid var(--divider);' }));
+    if (!rows.length) { card.appendChild(DN.h('div', { text: '（表中无数据行）', style: 'padding:10px 12px;color:var(--text-muted);font-size:12px;' })); return card; }
+    var scroll = DN.h('div', { style: 'overflow:auto;max-height:340px;' });
+    var tbl = DN.h('table', { style: 'border-collapse:collapse;width:100%;font-size:12px;' });
+    var thr = DN.h('tr', {});
+    thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;color:var(--text-muted);' }));
+    cols.forEach(function (c) { thr.appendChild(DN.h('th', { text: String(c), style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;' })); });
+    tbl.appendChild(thr);
+    rows.forEach(function (row, ri) {
+      var tr = DN.h('tr', {});
+      tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;' }));
+      (row || []).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
+      tbl.appendChild(tr);
+    });
+    scroll.appendChild(tbl); card.appendChild(scroll);
+    return card;
+  }
+  function renderPreviews(steps) {
+    (steps || []).forEach(function (s) { if (s && s.resultData) { var p = extractPreview(s.resultData); if (p) flowEl.appendChild(dataGridCard(p)); } });
   }
 
   function routeName(r) {
@@ -207,12 +262,258 @@
     return s;
   }
 
+  // 工具→简略友好名(进度副标题用, 不暴露参数/结果)
+  // 工具→人性化进度短语(接在"正在…"后, 简短告诉用户在干嘛)
+  var TOOL_LABEL = {
+    semantic_search: '检索相关的表', gov_overview: '查看治理总览', quality_score: '分析质量分',
+    lineage_impact: '梳理血缘影响', graph_impact: '梳理血缘影响', graph_trace: '溯源数据来路', graph_neighbors: '看血缘邻居',
+    file_read: '阅读你上传的文件', export_file: '生成可下载文件', sync_dashboard: '查看同步态势', sync_job_detail: '查看同步任务',
+    sched_today_status: '查看今日调度', sched_run_log: '翻看调度日志', table_profile: '翻看字段明细', asset_detail: '查看表的详情',
+    todo: '拆解任务计划', delegate_task: '并行分派子任务', read_tool_result: '取回完整结果', metric_detail: '查看指标口径', table_data: '查看表的数据',
+    project_overview: '查看项目', issue_stats: '统计工单', health_trend: '看健康趋势', skill_library: '翻阅操作技能', tool_search: '寻找合适工具',
+    create_ods_table: '新建ODS同步任务(抽到数仓)', create_sync_job: '准备建同步任务', create_quality_rule: '准备建质量规则', create_metric: '准备建指标',
+    create_project: '准备建项目', create_script: '准备建脚本'
+  };
+  function toolLabel(n) { return TOOL_LABEL[n] || (n ? n + ' 处理中' : '处理'); }
+
   function thinking() {
-    return DN.h('div', { id: 'aiThinking', style: 'display:flex;justify-content:flex-start;margin:10px 0;' },
-      [DN.h('div', { style: 'background:var(--bg-card,#fff);border:1px solid var(--border,#e5e6eb);padding:9px 14px;border-radius:12px;font-size:13px;color:var(--text-muted);', text: '天工司辰思考中…（自主规划并调用只读工具）' })]);
+    var box = DN.h('div', { style: 'background:var(--bg-card);border:1px solid var(--border);padding:10px 16px;border-radius:var(--radius-lg);font-size:13px;color:var(--text-regular);display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-sm);' });
+    box.appendChild(DN.h('span', { class: 'dn-ai-spin' }));
+    box.appendChild(DN.h('span', { text: '天工司辰运行中' }));
+    box.appendChild(DN.h('span', { id: 'aiThinkSub', style: 'color:var(--text-muted);font-size:12px;', text: '' }));
+    return DN.h('div', { id: 'aiThinking', style: 'display:flex;justify-content:flex-start;margin:10px 0;' }, [box]);
+  }
+
+  // 统一带动画进度的请求执行器(send 与 ask_user 提交共用): 动画 + 运行中轮询简略进度 + 结果优先渲染
+  function runRequest(url, body) {
+    sessionId = sessionId || genSid();
+    body.sessionId = body.sessionId || sessionId;
+    saveSid(sessionId);
+    var th = thinking(); flowEl.appendChild(th); scrollBottom();
+    var s0 = document.getElementById('aiThinkSub'); if (s0) s0.textContent = '· 正在理解你的问题…';
+    var stopped = false;
+    var t0 = Date.now();
+    function poll() {
+      if (stopped) return;
+      DN.get('/api/ai/agent/session/' + sessionId).then(function (d) {
+        if (stopped) return;
+        var sub = document.getElementById('aiThinkSub');
+        if (!sub) return;
+        var steps = (d && d.steps) || [];
+        // 已完成工具步 + 当前正在跑的工具(RUNNING 标记, 后端调用前埋点); 取最近一个动作展示
+        var done = steps.filter(function (s) { return s && s.stepType === 'SKILL_CALL' && s.skillName; });
+        var running = null;
+        for (var i = steps.length - 1; i >= 0; i--) { if (steps[i] && steps[i].stepType === 'RUNNING' && steps[i].skillName) { running = steps[i]; break; } }
+        var el = Math.round((Date.now() - t0) / 1000);
+        if (running) sub.textContent = '· 正在' + toolLabel(running.skillName) + '（第' + (done.length + 1) + '步 · 已' + el + 's）';
+        else if (done.length) sub.textContent = '· 正在' + toolLabel(done[done.length - 1].skillName) + '（第' + done.length + '步 · 已' + el + 's）';
+        else sub.textContent = '· 正在理解你的问题…（已' + el + 's）'; // 始终带计时, 让用户知道仍在运行不是卡死
+      }).catch(function () {}).then(function () { if (!stopped) setTimeout(poll, 1500); });
+    }
+    setTimeout(poll, 1200);
+    return DN.post(url, body).then(function (res) {
+      stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      renderTurn(res || {}, Math.round((Date.now() - t0) / 1000)); loadFiles(); scrollBottom();
+      return res;
+    }).catch(function (e) {
+      stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      flowEl.appendChild(assistantBubble('请求失败：' + (e && e.message ? e.message : e), 'err')); scrollBottom();
+      throw e;
+    });
+  }
+
+  // 终答前的决策推理气泡(从 FINAL 步 thinkContent 渲染; 过程透明, 与结论分离)
+  function thinkBubble(text) {
+    return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:6px 0;' },
+      [DN.h('div', { style: 'max-width:80%;background:var(--bg-body);border:1px dashed var(--border);padding:7px 12px;border-radius:var(--radius-full);font-size:12px;font-style:italic;color:var(--text-muted);white-space:pre-wrap;word-break:break-word;', text: '💭 ' + text })]);
+  }
+
+  // 任务计划清单卡(自主规划透明化, 天工开物·逐道工序): 渲染 plan_json 的有序步骤+状态
+  function planCard(planJson) {
+    var steps = null;
+    try { var o = (typeof planJson === 'string') ? JSON.parse(planJson) : planJson; steps = Array.isArray(o) ? o : (o && o.steps); } catch (e) { return null; }
+    if (!steps || !steps.length) return null;
+    var done = steps.filter(function (s) { return s && s.status === 'done'; }).length;
+    var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:var(--radius-lg);padding:10px 14px;background:var(--bg-card);' });
+    card.appendChild(DN.h('div', { style: 'font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;' }, [
+      DN.h('span', { text: '🧭 任务计划' }),
+      DN.h('span', { text: done + '/' + steps.length, style: 'font-size:var(--fs-xs);color:var(--text-inverse);background:var(--primary);padding:1px 8px;border-radius:var(--radius-full);' })
+    ]));
+    steps.forEach(function (s, i) {
+      var status = s.status || 'pending';
+      var mark = status === 'done' ? '✓' : (status === 'doing' ? '▶' : '○');
+      var col = status === 'done' ? 'var(--success)' : (status === 'doing' ? 'var(--primary)' : 'var(--text-muted)');
+      var deco = status === 'done' ? 'text-decoration:line-through;opacity:.7;' : '';
+      card.appendChild(DN.h('div', { style: 'font-size:12.5px;color:var(--text-regular);line-height:1.9;' + deco }, [
+        DN.h('span', { text: mark + ' ', style: 'color:' + col + ';font-weight:700;' }),
+        DN.h('span', { text: (i + 1) + '. ' + (s.step || '') })
+      ]));
+    });
+    return card;
+  }
+
+  // ===== ask_user 决策/协助卡片(人在环交互, 复刻 AskUserQuestion 卡片提示框) =====
+  function askingPreview(questions) {
+    var wrap = DN.h('div', { style: 'margin:6px 0 2px 0;font-size:13px;color:var(--text-muted);' });
+    wrap.appendChild(DN.h('div', { text: '需要你确认：', style: 'font-weight:600;color:var(--text-regular);margin-bottom:2px;' }));
+    questions.forEach(function (q) { wrap.appendChild(DN.h('div', { text: '· ' + (q.question || ''), style: 'line-height:1.7;' })); });
+    return wrap;
+  }
+
+  function questionCard(res) {
+    var questions = (res.questions || []).slice(0, 4);
+    var sid = res.sessionId;
+    var picks = questions.map(function () { return { set: {}, custom: '' }; }); // 每问的选择态
+    var idx = 0;
+    var card = DN.h('div', { style: 'margin:8px 0 8px 0;border:1px solid var(--border);border-radius:var(--radius-xl,14px);padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow-sm);' });
+    var submitting = false;
+
+    function answerOf(i) {
+      var q = questions[i], p = picks[i];
+      var labels = (q.options || []).filter(function (o) { return p.set[o.label]; }).map(function (o) { return o.label; });
+      if (p.custom && p.custom.trim()) labels.push(p.custom.trim());
+      return labels.join('、');
+    }
+    function hasPick(i) { var p = picks[i]; return Object.keys(p.set).length > 0 || (p.custom && p.custom.trim()); }
+
+    function finish(skipAll) {
+      if (submitting) return; submitting = true;
+      var answers = questions.map(function (q, i) {
+        return { header: q.header || '', question: q.question || '', answer: skipAll ? '(跳过)' : (hasPick(i) ? answerOf(i) : '(跳过)') };
+      });
+      card.remove(); // 移除卡片, 由 runRequest 显示运行动画+进度, 答后渲染结果(修复提交后无反馈)
+      runRequest('/api/ai/agent/' + sid + '/answer', { answers: answers }).catch(function () {});
+    }
+
+    function render() {
+      card.innerHTML = '';
+      var q = questions[idx];
+      var multi = !!q.multiSelect;
+      // 头部: N/M 徽标 + 问题 + 关闭
+      var hd = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-bottom:12px;' });
+      hd.appendChild(DN.h('span', { text: (idx + 1) + '/' + questions.length, class: 'dn-ai-badge warn', style: 'flex:0 0 auto;' }));
+      hd.appendChild(DN.h('span', { text: q.question || '', style: 'flex:1;font-weight:700;font-size:14.5px;color:var(--text-primary);' }));
+      var x = DN.h('span', { text: '✕', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 6px;' });
+      x.onclick = function () { card.remove(); };
+      hd.appendChild(x);
+      card.appendChild(hd);
+
+      // 选项行
+      (q.options || []).forEach(function (o, oi) {
+        var selected = !!picks[idx].set[o.label];
+        var row = DN.h('div', { class: 'dn-ai-opt' + (selected ? ' selected' : '') });
+        var txt = DN.h('div', { style: 'flex:1;min-width:0;' }, [
+          DN.h('div', { text: o.label, style: 'font-size:14px;color:var(--text-primary);font-weight:500;' })
+        ]);
+        if (o.desc) txt.appendChild(DN.h('div', { text: o.desc, style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' }));
+        row.appendChild(txt);
+        // 右侧: 单选=序号键, 多选=复选框
+        if (multi) {
+          row.appendChild(DN.h('span', { text: selected ? '☑' : '☐', style: 'flex:0 0 auto;font-size:16px;color:' + (selected ? 'var(--primary)' : 'var(--text-muted)') + ';' }));
+        } else {
+          row.appendChild(DN.h('span', { text: String(oi + 1), style: 'flex:0 0 auto;font-size:12px;color:var(--text-muted);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;' }));
+        }
+        row.onclick = function () {
+          if (multi) { if (picks[idx].set[o.label]) delete picks[idx].set[o.label]; else picks[idx].set[o.label] = true; }
+          else { picks[idx].set = {}; picks[idx].set[o.label] = true; }
+          render();
+        };
+        card.appendChild(row);
+      });
+
+      // Other 自填
+      var otherWrap = DN.h('div', { style: 'background:var(--bg-body);border-radius:var(--radius,8px);padding:10px 14px;margin-bottom:4px;' });
+      otherWrap.appendChild(DN.h('div', { text: 'Other', style: 'font-size:14px;color:var(--text-primary);font-weight:500;margin-bottom:6px;' }));
+      var inp = DN.h('input', { type: 'text', placeholder: '在此填写你自己的答案…', value: picks[idx].custom || '',
+        style: 'width:100%;box-sizing:border-box;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius,8px);background:var(--bg-card);font-size:13px;color:var(--text-primary);outline:none;' });
+      inp.oninput = function () { picks[idx].custom = inp.value; };
+      inp.onfocus = function () { inp.style.boxShadow = '0 0 0 2px var(--ring)'; inp.style.borderColor = 'var(--primary)'; };
+      inp.onblur = function () { inp.style.boxShadow = 'none'; inp.style.borderColor = 'var(--border)'; };
+      otherWrap.appendChild(inp);
+      card.appendChild(otherWrap);
+
+      // 底栏: Back / Skip / Next|Submit
+      var foot = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:12px;' });
+      if (idx > 0) {
+        var back = DN.h('button', { class: 'btn btn-sm', text: '上一题' });
+        back.onclick = function () { idx--; render(); };
+        foot.appendChild(back);
+      }
+      foot.appendChild(DN.h('div', { style: 'flex:1;' }));
+      var skip = DN.h('button', { class: 'btn btn-sm', text: '跳过' });
+      skip.onclick = function () { if (idx < questions.length - 1) { idx++; render(); } else { finish(false); } };
+      foot.appendChild(skip);
+      var isLast = idx === questions.length - 1;
+      var next = DN.h('button', { class: 'btn btn-primary btn-sm', text: isLast ? '提交' : '下一题',
+        style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+      next.onclick = function () { if (isLast) finish(false); else { idx++; render(); } };
+      foot.appendChild(next);
+      card.appendChild(foot);
+      scrollBottom();
+    }
+
+    render();
+    return card;
+  }
+
+  // 模型热切档位选择(空=默认; 同 provider 下切 model 档位, 随 chat 上送 model 覆盖); 选择持久化到 localStorage, 刷新不丢
+  function modelPicker() {
+    try { var saved = localStorage.getItem('aiModel'); if (saved != null) selectedModel = saved; } catch (e) {}
+    var sel = DN.h('select', { title: '模型档位(快速省时/高质量更强)', style: 'margin-left:auto;flex:0 0 auto;height:30px;border:1px solid var(--border);border-radius:var(--radius,6px);background:var(--bg-card);color:var(--text-regular);font-size:12px;padding:0 6px;cursor:pointer;' });
+    [['', '默认模型'], ['deepseek-v4-flash', '⚡ 快速'], ['deepseek-v4-pro', '🎯 高质量']].forEach(function (o) {
+      var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if (o[0] === selectedModel) op.selected = true; sel.appendChild(op);
+    });
+    sel.onchange = function () { selectedModel = sel.value; try { localStorage.setItem('aiModel', selectedModel); } catch (e) {} };
+    return sel;
   }
 
   function scrollBottom() { if (flowEl) flowEl.scrollTop = flowEl.scrollHeight; }
+
+  function genSid() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, ''); } catch (e) {}
+    var s = ''; for (var i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16); return s;
+  }
+  function saveSid(id) { try { if (id) localStorage.setItem('aiSessionId', id); } catch (e) {} }
+
+  // 刷新后恢复历史对话: 拉上次会话所有步骤, 按"用户气泡→执行过程折叠→终答气泡"重建(只读, 不重跑)
+  function restoreHistory() {
+    var id; try { id = localStorage.getItem('aiSessionId'); } catch (e) { id = null; }
+    if (!id) return;
+    sessionId = id;
+    DN.get('/api/ai/agent/session/' + id).then(function (d) {
+      var steps = (d && d.steps) || [];
+      if (!steps.length) return;
+      if (flowEl.firstChild) flowEl.innerHTML = ''; // 移除欢迎语
+      var sess = (d && d.session) || {};
+      var pend = [], lastAsk = null;
+      function flush() { if (pend.length) { flowEl.appendChild(processToggle(pend.slice(), null)); pend = []; } }
+      steps.forEach(function (s) {
+        if (!s) return;
+        if (s.stepType === 'USER') { flush(); if (s.content) flowEl.appendChild(userBubble(s.content)); }
+        else if (s.stepType === 'SKILL_CALL' && s.skillName) { pend.push(s); }
+        else if (s.stepType === 'FINAL') { var pv = pend.slice(); flush(); renderPreviews(pv); flowEl.appendChild(assistantBubble(s.content || '（无答复）')); }
+        else if (s.stepType === 'ASK_USER') { flush(); if (s.content) flowEl.appendChild(assistantBubble(s.content)); lastAsk = s; }
+      });
+      flush();
+      // 待用户输入: 重建决策/协助卡片(修复刷新后卡片消失无法继续); 从最后一条 ASK_USER 的 argsJson 取问题
+      if (sess.status === 'wait_input' && lastAsk) {
+        var qs = null;
+        try { var a = JSON.parse(lastAsk.argsJson || '{}'); qs = a.questions; } catch (e) {}
+        if (qs && qs.length) {
+          flowEl.appendChild(askingPreview(qs));
+          flowEl.appendChild(questionCard({ sessionId: id, questions: qs }));
+        }
+      }
+      scrollBottom();
+    }).catch(function () {});
+  }
+
+  // 开新会话: 清历史, 重置 flow 与 sessionId(下一次发送生成新 id)
+  function newSession() {
+    sessionId = null;
+    try { localStorage.removeItem('aiSessionId'); } catch (e) {}
+    if (flowEl) { flowEl.innerHTML = ''; flowEl.appendChild(welcome()); }
+  }
 
   function send() {
     if (sending || !inputEl) return;
@@ -221,28 +522,62 @@
     sending = true; sendBtn.disabled = true; sendBtn.textContent = '思考中…';
     flowEl.appendChild(userBubble(msg));
     inputEl.value = '';
-    var th = thinking(); flowEl.appendChild(th); scrollBottom();
-
-    DN.post('/api/ai/agent/chat', { sessionId: sessionId, message: msg, ctx: pendingCtx }).then(function (res) {
-      if (th.parentNode) th.parentNode.removeChild(th);
-      renderTurn(res || {});
-      scrollBottom();
-    }).catch(function (e) {
-      if (th.parentNode) th.parentNode.removeChild(th);
-      flowEl.appendChild(assistantBubble('请求失败：' + (e && e.message ? e.message : e), 'err'));
-      scrollBottom();
-    }).then(function () {
-      sending = false; sendBtn.disabled = false; sendBtn.textContent = '发送'; if (inputEl) inputEl.focus();
-    });
+    runRequest('/api/ai/agent/chat', { message: msg, ctx: pendingCtx, model: selectedModel || undefined })
+      .then(function () {}).catch(function () {}).then(function () {
+        sending = false; sendBtn.disabled = false; sendBtn.textContent = '发送'; if (inputEl) inputEl.focus();
+      });
   }
 
   // 渲染一轮结果(对话/恢复共用): 工具卡 + 终答; 若挂起待审批则出审批卡
-  function renderTurn(res) {
+  function renderTurn(res, elapsed) {
     sessionId = res.sessionId || sessionId;
-    (res.steps || []).forEach(function (st) { if (st && st.stepType === 'SKILL_CALL') flowEl.appendChild(toolCard(st)); });
+    saveSid(sessionId);
+    // 等待用户输入: 渲染决策/协助卡片(人在环交互), 优先, 不出普通终答气泡
+    if (res.status === 'wait_input' && res.questions && res.questions.length) {
+      flowEl.appendChild(askingPreview(res.questions));
+      flowEl.appendChild(questionCard(res));
+      return;
+    }
+    // 结果优先: 执行过程(工具步)默认折叠为一行, 只突出最终结果; 不默认铺思考过程/计划数据
+    var toolSteps = (res.steps || []).filter(function (s) { return s && s.stepType === 'SKILL_CALL' && s.skillName; });
+    if (toolSteps.length) flowEl.appendChild(processToggle(toolSteps, res.plan, elapsed));
+    // 表数据预览常显(不折叠): 优先用未截断的 previews 通道(宽表完整); 回退到步骤结果解析
+    if (res.previews && res.previews.length) {
+      res.previews.forEach(function (d) { if (d && d._preview && d._preview.columns) flowEl.appendChild(dataGridCard({ pv: d._preview, db: d.db, table: d.table })); });
+    } else {
+      renderPreviews(res.steps);
+    }
     var tone = res.status === 'blocked' ? 'err' : null;
     flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
     if (res.status === 'wait_approval') loadApproval(res.sessionId);
+  }
+
+  function fmtDur(sec) {
+    sec = Number(sec) || 0;
+    if (sec < 60) return sec + 's';
+    return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
+  }
+  // 执行过程折叠(默认收起"已处理 Xs · 执行了N步"一行; 点开看工具卡+计划), 实现"最后只展示结果数据"
+  function processToggle(steps, plan, elapsed) {
+    var wrap = DN.h('div', { style: 'margin:4px 0 8px 0;' });
+    var bar = DN.h('div', { class: 'dn-ai-fold', style: 'user-select:none;' });
+    var head = (elapsed != null ? '✅ 已处理 ' + fmtDur(elapsed) + ' · ' : '🔧 ') + '执行了 ' + steps.length + ' 步 · 点击查看过程';
+    bar.appendChild(DN.h('span', { text: head }));
+    var caret = DN.h('span', { text: '▾' });
+    bar.appendChild(caret);
+    var detail = DN.h('div', { style: 'display:none;margin-top:8px;' });
+    var loaded = false;
+    bar.onclick = function () {
+      var open = detail.style.display === 'none';
+      detail.style.display = open ? 'block' : 'none'; caret.textContent = open ? '▴' : '▾';
+      if (open && !loaded) {
+        if (plan) { var pc = planCard(plan); if (pc) detail.appendChild(pc); }
+        steps.forEach(function (s) { detail.appendChild(toolCard(s)); });
+        loaded = true; scrollBottom();
+      }
+    };
+    wrap.appendChild(bar); wrap.appendChild(detail);
+    return wrap;
   }
 
   // 写操作待审批: 拉本会话待审项, 出批准/拒绝卡; 批准→decide+resume, 拒绝→decide
@@ -252,11 +587,11 @@
       var ap = null;
       for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
       if (!ap) return;
-      var card = DN.h('div', { style: 'margin:8px 0 8px 18px;border:1px solid #e8930c;background:var(--bg-body,#fffbe6);border-radius:var(--radius-lg);padding:12px 14px;' });
-      card.appendChild(DN.h('div', { style: 'font-weight:600;color:#9a5b00;margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
+      var card = DN.h('div', { class: 'dn-ai-approval', style: 'margin-left:18px;' });
+      card.appendChild(DN.h('div', { style: 'font-weight:600;color:var(--warning-text);margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
-      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });
+      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
       okBtn.onclick = function () {
         okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
@@ -284,18 +619,43 @@
   function openDrawer(kind) {
     var root = document.getElementById('aiAgentRoot'); if (!root) return;
     closeDrawer();
-    var mask = DN.h('div', { id: 'aiDrawerMask', style: 'position:absolute;inset:0;background:rgba(0,0,0,.18);z-index:20;', onclick: closeDrawer });
-    var panel = DN.h('div', { id: 'aiDrawer', style: 'position:absolute;top:0;right:0;bottom:0;width:400px;max-width:88%;background:var(--bg-card,#fff);border-left:1px solid var(--border,#e5e6eb);box-shadow:-8px 0 32px rgba(15,20,40,.14);z-index:21;display:flex;flex-direction:column;' });
-    var title = kind === 'memory' ? '🧠 AI 自学习记忆' : '🛡️ 待审批写操作';
-    panel.appendChild(DN.h('div', { style: 'padding:16px 20px;background:var(--bg-card,#fff);border-bottom:1px solid var(--divider,#eef1f7);display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
+    var mask = DN.h('div', { id: 'aiDrawerMask', class: 'dn-ai-mask', onclick: closeDrawer });
+    var panel = DN.h('div', { id: 'aiDrawer', class: 'dn-ai-drawer' });
+    var title = kind === 'memory' ? '🧠 AI 自学习记忆' : (kind === 'cron' ? '⏰ 定时自治任务' : '🛡️ 待审批写操作');
+    panel.appendChild(DN.h('div', { style: 'padding:16px 20px;background:var(--bg-card);border-bottom:1px solid var(--divider);display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
       DN.h('div', { text: title, style: 'font-weight:600;font-size:16px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-      DN.h('button', { text: '✕', title: '关闭', onclick: closeDrawer, style: 'margin-left:auto;flex-shrink:0;width:32px;height:32px;border:0;background:none;cursor:pointer;color:var(--text-muted,#86909c);font-size:20px;line-height:1;border-radius:var(--radius,6px);display:inline-flex;align-items:center;justify-content:center;' })
+      DN.h('button', { text: '✕', title: '关闭', onclick: closeDrawer, style: 'margin-left:auto;flex-shrink:0;width:32px;height:32px;border:0;background:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;border-radius:var(--radius,6px);display:inline-flex;align-items:center;justify-content:center;' })
     ]));
     var body = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:18px 20px;' });
     body.appendChild(DN.h('div', { text: '加载中…', style: 'color:var(--text-muted);font-size:13px;' }));
     panel.appendChild(body);
     root.appendChild(mask); root.appendChild(panel);
-    if (kind === 'memory') renderMemories(body); else renderApprovals(body);
+    if (kind === 'memory') renderMemories(body); else if (kind === 'cron') renderCrons(body); else renderApprovals(body);
+  }
+  function renderCrons(body) {
+    DN.get('/api/ai/agent/crons').then(function (list) {
+      body.innerHTML = '';
+      var arr = list || [];
+      if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无定时任务。可对 AI 说“每天9点生成治理简报”等让它自动排程。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
+      arr.forEach(function (j) {
+        var on = Number(j.enabled) === 1;
+        var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--bg-body);' + (on ? '' : 'opacity:.62;') });
+        card.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' }, [
+          DN.h('span', { text: '⏰ ' + (j.name || '(未命名)'), style: 'font-weight:600;font-size:13px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+          DN.h('span', { text: on ? '启用' : '停用', class: 'dn-ai-badge' + (on ? ' ok' : ''), style: 'flex:0 0 auto;' })
+        ]));
+        card.appendChild(DN.h('div', { text: '计划: ' + (j.scheduleCron || ''), style: 'font-size:12px;color:var(--text-secondary);' }));
+        card.appendChild(DN.h('div', { text: '下次 ' + (j.nextRun || '-') + '  ·  上次 ' + (j.lastStatus || '未运行') + ' (' + (j.runCount || 0) + '次)', style: 'font-size:var(--fs-xs);color:var(--text-muted);margin:3px 0 7px;' }));
+        var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
+        var toggle = DN.h('button', { class: 'btn btn-sm', text: on ? '停用' : '启用' });
+        toggle.onclick = function () { toggle.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/toggle', { enabled: on ? 0 : 1 }).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); toggle.disabled = false; }); };
+        var del = DN.h('button', { class: 'btn btn-sm', text: '删除' });
+        del.onclick = function () { del.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/remove', {}).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); del.disabled = false; }); };
+        btns.appendChild(toggle); btns.appendChild(del);
+        card.appendChild(btns);
+        body.appendChild(card);
+      });
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
   }
   function renderMemories(body) {
     DN.get('/api/ai/agent/memories').then(function (list) {
@@ -303,16 +663,28 @@
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
       arr.forEach(function (m) {
-        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--bg-body,#f7f8fa);' });
-        card.appendChild(DN.h('div', { text: m.title || '(无标题)', style: 'font-weight:600;font-size:13px;color:var(--text-primary);margin-bottom:4px;' }));
-        card.appendChild(DN.h('div', { text: m.content || '', style: 'font-size:12.5px;color:var(--text-secondary,#4e5969);line-height:1.7;' }));
+        var isSkill = m.type === 'skill';
+        var isReview = m.type === 'review';
+        var icon = isSkill ? '🛠 ' : (isReview ? '🔍 ' : '🧠 ');
+        var label = isSkill ? '操作技能' : (isReview ? '复盘改进' : '经验');
+        var badgeCls = isSkill ? 'dn-ai-badge info' : (isReview ? 'dn-ai-badge warn' : 'dn-ai-badge');
+        var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--bg-body);' });
+        var hd = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' }, [
+          DN.h('span', { text: icon + (m.title || '(无标题)'), style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
+          DN.h('span', { text: label, class: badgeCls, style: 'flex:0 0 auto;' })
+        ]);
+        card.appendChild(hd);
+        // 技能含有序步骤 → 等宽 pre 保留换行/缩进, 便于照做; 经验普通文本
+        card.appendChild(isSkill
+          ? DN.h('pre', { text: m.content || '', style: 'font-size:12px;color:var(--text-secondary);line-height:1.7;white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;' })
+          : DN.h('div', { text: m.content || '', style: 'font-size:12.5px;color:var(--text-secondary);line-height:1.7;' }));
         var meta = [];
         if (m.triggerHint) meta.push('适用: ' + m.triggerHint);
         meta.push('命中 ' + (m.hitCount || 0));
-        card.appendChild(DN.h('div', { text: meta.join(' · '), style: 'font-size:11px;color:var(--text-muted);margin-top:6px;' }));
+        card.appendChild(DN.h('div', { text: meta.join(' · '), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px;' }));
         body.appendChild(card);
       });
-    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger,#f53f3f);font-size:13px;' })); });
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
   }
   function renderApprovals(body) {
     DN.get('/api/ai/agent/approvals?status=pending').then(function (list) {
@@ -320,13 +692,13 @@
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '没有待审批的写操作。', style: 'color:var(--text-muted);font-size:13px;' })); return; }
       arr.forEach(function (a) {
-        var card = DN.h('div', { style: 'border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;' });
+        var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;' });
         card.appendChild(DN.h('div', {}, [
           DN.h('span', { text: a.skillName || '?', style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
-          DN.h('span', { text: a.riskLevel || '', style: 'margin-left:8px;font-size:11px;padding:1px 7px;border-radius:9px;background:' + (a.riskLevel === 'HIGH' ? '#ffece8;color:#f53f3f' : '#fff7e8;color:#ff7d00') + ';' })
+          DN.h('span', { text: a.riskLevel || '', class: 'dn-ai-badge ' + (a.riskLevel === 'HIGH' ? 'err' : 'warn'), style: 'margin-left:8px;' })
         ]));
-        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:11px;color:var(--text-secondary,#4e5969);background:var(--bg-body,#f7f8fa);border-radius:var(--radius);padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
-        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);' });
+        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:var(--fs-xs);color:var(--text-secondary);background:var(--bg-body);border-radius:var(--radius);padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
+        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
         var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
         ok.onclick = function () {
           ok.disabled = no.disabled = true; ok.textContent = '执行中…';
@@ -343,7 +715,85 @@
         card.appendChild(DN.h('div', { style: 'display:flex;align-items:center;' }, [ok, no]));
         body.appendChild(card);
       });
-    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger,#f53f3f);font-size:13px;' })); });
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
+  }
+
+  // ===== 数据中心: 文件上传/下载/列表(参考企业智脑布局) =====
+  function dataCenter() {
+    var panel = DN.h('div', { class: 'dn-ai-side' });
+    var hd = DN.h('div', { style: 'padding:16px 18px 10px;flex:0 0 auto;' });
+    hd.appendChild(DN.h('div', { text: '📚 数据中心', style: 'font-size:15px;font-weight:650;color:var(--text-primary);' }));
+    hd.appendChild(DN.h('div', { text: '上传文件留存, 可随时下载', style: 'font-size:12px;color:var(--text-muted);margin-top:3px;' }));
+    panel.appendChild(hd);
+
+    // 拖拽/点击上传区
+    var dz = DN.h('div', { class: 'dn-ai-drop' });
+    dz.appendChild(DN.h('div', { html: DN.icon('upload') || '⬆', style: 'font-size:26px;color:var(--primary);opacity:.8;margin-bottom:8px;display:flex;justify-content:center;' }));
+    dz.appendChild(DN.h('div', { text: '点击或拖拽文件到此区域', style: 'font-size:13px;color:var(--text-regular);' }));
+    dz.appendChild(DN.h('div', { text: '支持 xlsx/pdf/csv/txt/图片 等, ≤20MB', style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;' }));
+    var fileInput = DN.h('input', { type: 'file', multiple: 'multiple', style: 'display:none;' });
+    fileInput.onchange = function () { uploadFiles(fileInput.files); fileInput.value = ''; };
+    dz.onclick = function () { fileInput.click(); };
+    function dzOn() { dz.classList.add('is-drag'); }
+    function dzOff() { dz.classList.remove('is-drag'); }
+    dz.ondragover = function (e) { e.preventDefault(); dzOn(); };
+    dz.ondragleave = function () { dzOff(); };
+    dz.ondrop = function (e) { e.preventDefault(); dzOff(); if (e.dataTransfer && e.dataTransfer.files) uploadFiles(e.dataTransfer.files); };
+    panel.appendChild(DN.h('div', { style: 'padding:0 18px;flex:0 0 auto;' }, [dz, fileInput]));
+
+    panel.appendChild(DN.h('div', { text: '已上传文件', style: 'padding:14px 18px 6px;font-size:12.5px;font-weight:600;color:var(--text-regular);flex:0 0 auto;' }));
+    fileListEl = DN.h('div', { id: 'aiFileList', style: 'flex:1;min-height:0;overflow-y:auto;padding:0 18px 16px;' });
+    panel.appendChild(fileListEl);
+    return panel;
+  }
+
+  function uploadFiles(files) {
+    if (!files || !files.length) return;
+    var fd = new FormData();
+    for (var i = 0; i < files.length; i++) fd.append('files', files[i]);
+    if (sessionId) fd.append('sessionId', sessionId);
+    if (DN.toast) DN.toast('上传中…', 'info');
+    fetch('/api/ai/agent/files/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        var data = res && res.data ? res.data : [];
+        var errs = data.filter(function (x) { return x && x.error; });
+        if (errs.length) DN.toast('部分未成功: ' + errs[0].error, 'warn');
+        else DN.toast('上传成功', 'ok');
+        loadFiles();
+      })
+      .catch(function (e) { DN.toast('上传失败: ' + (e && e.message ? e.message : e), 'err'); });
+  }
+
+  function loadFiles() {
+    if (!fileListEl) return;
+    DN.get('/api/ai/agent/files').then(function (list) {
+      fileListEl.innerHTML = '';
+      var arr = list || [];
+      if (!arr.length) { fileListEl.appendChild(DN.h('div', { text: '暂无文件。上传后在此查看与下载。', style: 'color:var(--text-muted);font-size:12px;line-height:1.8;' })); return; }
+      arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
+    }).catch(function () {});
+  }
+
+  function fileRow(f) {
+    var agent = f.source === 'agent';
+    var row = DN.h('div', { class: 'dn-ai-file' });
+    var info = DN.h('div', { style: 'flex:1;min-width:0;' }, [
+      DN.h('div', { text: (agent ? '🤖 ' : '📄 ') + (f.fileName || ''), title: f.fileName, style: 'font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+      DN.h('div', { text: fmtSize(f.size) + (agent ? ' · AI生成' : ''), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;' })
+    ]);
+    var dl = DN.h('a', { href: '/api/ai/agent/files/' + f.id + '/download', title: '下载', text: '↓', style: 'flex:0 0 auto;text-decoration:none;color:var(--primary);font-size:17px;font-weight:700;padding:0 5px;' });
+    var del = DN.h('span', { title: '删除', text: '✕', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });
+    del.onclick = function () { DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); };
+    row.appendChild(info); row.appendChild(dl); row.appendChild(del);
+    return row;
+  }
+
+  function fmtSize(b) {
+    b = Number(b) || 0;
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
   }
 
   function build() {
@@ -351,43 +801,53 @@
     if (!root) return;
     root.innerHTML = '';
 
-    root.style.position = 'relative'; // 供经验/审批抽屉绝对定位
+    root.classList.add('dn-ai-wrap'); // 左数据中心 + 右聊天
+
+    root.appendChild(dataCenter());
+
+    var rightCol = DN.h('div', { class: 'dn-ai-main' });
     // 顶栏
-    var head = DN.h('div', { style: 'padding:16px 24px;border-bottom:1px solid var(--border,#e5e6eb);display:flex;align-items:center;gap:12px;flex:0 0 auto;' }, [
-      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary,#3457d5);display:flex;' }),
+    var head = DN.h('div', { class: 'dn-ai-topbar' }, [
+      DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary);display:flex;' }),
       DN.h('div', { style: 'min-width:0;' }, [
         DN.h('div', { text: '天工·自由意志数据智能体', style: 'font-size:16px;font-weight:650;color:var(--text-primary);' }),
         DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主编排工具，写操作经人工审批，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
       ]),
-      DN.h('button', { class: 'btn btn-sm', text: '🧠 经验', title: 'AI 自学习记忆', style: 'margin-left:auto;flex:0 0 auto;', onclick: function () { openDrawer('memory'); } }),
+      modelPicker(),
+      DN.h('button', { class: 'btn btn-sm', text: '✚ 新会话', title: '清空当前对话, 开始新会话', style: 'flex:0 0 auto;', onclick: newSession }),
+      DN.h('button', { class: 'btn btn-sm', text: '🧠 经验', title: 'AI 自学习记忆', style: 'flex:0 0 auto;', onclick: function () { openDrawer('memory'); } }),
+      DN.h('button', { class: 'btn btn-sm', text: '⏰ 定时', title: '定时自治任务', style: 'flex:0 0 auto;', onclick: function () { openDrawer('cron'); } }),
       DN.h('button', { class: 'btn btn-sm', text: '🛡️ 审批', title: '待审批写操作', style: 'flex:0 0 auto;', onclick: function () { openDrawer('approval'); } })
     ]);
-    root.appendChild(head);
+    rightCol.appendChild(head);
 
     // 对话流
-    flowEl = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:16px 24px;background:var(--bg-body,#f7f8fa);' });
+    flowEl = DN.h('div', { class: 'dn-ai-chat' });
     flowEl.appendChild(welcome());
-    root.appendChild(flowEl);
+    rightCol.appendChild(flowEl);
 
     // 输入区
-    inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2',
-      style: 'flex:1;resize:none;border:1px solid var(--border,#e5e6eb);border-radius:var(--radius-lg);padding:9px 12px;font-size:13px;font-family:inherit;outline:none;' });
+    inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
     });
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary,#3457d5);color:#fff;border-color:var(--primary,#3457d5);', onclick: send });
-    var inputBar = DN.h('div', { style: 'flex:0 0 auto;padding:12px 24px;border-top:1px solid var(--border,#e5e6eb);display:flex;gap:10px;align-items:flex-end;background:var(--bg-card,#fff);' }, [inputEl, sendBtn]);
-    root.appendChild(inputBar);
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: send });
+    var inputBar = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
+    rightCol.appendChild(inputBar);
+
+    root.appendChild(rightCol);
 
     built = true;
     loadToolsHint();
+    loadFiles();
+    restoreHistory(); // 刷新后恢复上次会话历史
   }
 
   function welcome() {
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
-    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary,#3457d5);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
+    box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
     box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
-    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary,#3457d5);margin-top:6px;' }));
+    box.appendChild(DN.h('div', { text: '试试：「看下治理总览，再查 dwd_order 的下游影响」 或 「建一个名为风控的项目」', style: 'color:var(--primary);margin-top:6px;' }));
     return box;
   }
 

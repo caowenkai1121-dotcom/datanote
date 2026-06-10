@@ -146,7 +146,7 @@
   };
 
   /**
-   * 级联库/表(/列)下拉选择器，用系统原生 .iw-form-select 样式，避免用户手输。
+   * 级联库/表(/列)下拉选择器，用 dn-form-select 表单体系，避免用户手输。
    * opts: { withColumn, defaultDb, onChange(db,table,column) }
    * 返回 { el, db(), table(), column() }
    */
@@ -154,12 +154,12 @@
     opts = opts || {};
     var withColumn = !!opts.withColumn;
     function sel(ph) {
-      // width:auto 覆盖 .iw-form-select{width:100%}, 否则每个 select 占满 100% 致 flex 容器换行竖排(库/表错位)
-      var s = DN.h('select', { class: 'iw-form-select', style: 'width:auto;min-width:150px;margin-right:4px;' });
+      // width:auto 覆盖表单类的 width:100%, 否则每个 select 占满整行致 flex 容器换行竖排(库/表错位)
+      var s = DN.h('select', { class: 'dn-form-select', style: 'width:auto;min-width:150px;margin-right:4px;' });
       s.innerHTML = '<option value="">' + ph + '</option>';
       return s;
     }
-    function lbl(t) { return DN.h('span', { text: t, style: 'color:var(--text-muted,#86909c);font-size:13px;margin-right:4px;' }); }
+    function lbl(t) { return DN.h('span', { text: t, style: 'color:var(--text-muted);font-size:13px;margin-right:4px;' }); }
     function addOpts(s, items, val, text) {
       (items || []).forEach(function (it) {
         var o = document.createElement('option');
@@ -210,7 +210,10 @@
     user: '<circle cx="10" cy="6.5" r="3"/><path d="M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5"/>',
     lock: '<rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 016 0V9"/>',
     layers: '<path d="M10 3l7 3.5-7 3.5-7-3.5L10 3z"/><path d="M3 10l7 3.5 7-3.5M3 13.5l7 3.5 7-3.5"/>',
-    list: '<path d="M6 5h11M6 10h11M6 15h11"/><circle cx="3" cy="5" r="1"/><circle cx="3" cy="10" r="1"/><circle cx="3" cy="15" r="1"/>'
+    list: '<path d="M6 5h11M6 10h11M6 15h11"/><circle cx="3" cy="5" r="1"/><circle cx="3" cy="10" r="1"/><circle cx="3" cy="15" r="1"/>',
+    pin: '<path d="M10 17v-4M6 13h8l-1-4 1.5-3h-9L7 9l-1 4z"/>',
+    flag: '<path d="M5 3v14M5 4h9l-2 3 2 3H5"/>',
+    bot: '<rect x="4" y="7" width="12" height="9" rx="2"/><path d="M10 4v3M7.5 11h.01M12.5 11h.01"/><circle cx="10" cy="3" r="1"/>'
   };
   DN.icon = function (name, attrs) {
     var p = ICONS[name] || ICONS.grid;
@@ -268,7 +271,7 @@
   };
   DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
 
-  function toneColor(t) { return t === 'ok' ? '#2f9e44' : t === 'warn' ? '#e8930c' : t === 'err' ? '#e03131' : 'var(--primary,#3457d5)'; }
+  function toneColor(t) { return t === 'ok' ? 'var(--success)' : t === 'warn' ? 'var(--warning)' : t === 'err' ? 'var(--error)' : 'var(--primary)'; }
   DN.bars = function (items) {
     items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
     var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));
@@ -286,13 +289,13 @@
   /** 环形仪表：值 0-100，按分值着色(红<60/黄<80/绿) */
   DN.gauge = function (val, opts) {
     opts = opts || {}; var size = opts.size || 124, sw = 11, r = (size - sw) / 2, c = 2 * Math.PI * r;
-    var v = Math.max(0, Math.min(100, Number(val) || 0)); var col = v < 60 ? '#e03131' : v < 80 ? '#e8930c' : '#2f9e44';
+    var v = Math.max(0, Math.min(100, Number(val) || 0)); var col = v < 60 ? 'var(--error)' : v < 80 ? 'var(--warning)' : 'var(--success)';
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">'
-      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>'
-      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - v / 100)) + '" transform="rotate(-90 ' + (size / 2) + ' ' + (size / 2) + ')" style="transition:stroke-dashoffset .6s ease"/></svg>';
+      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" style="stroke:var(--bg-sunken)" stroke-width="' + sw + '"/>'
+      + '<circle cx="' + (size / 2) + '" cy="' + (size / 2) + '" r="' + r + '" fill="none" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - v / 100)) + '" transform="rotate(-90 ' + (size / 2) + ' ' + (size / 2) + ')" style="stroke:' + col + ';transition:stroke-dashoffset .6s var(--ease)"/></svg>';
     var ring = DN.h('div', { style: 'position:relative;width:' + size + 'px;height:' + size + 'px', html: svg });
     ring.appendChild(DN.h('div', { style: 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center' },
-      [DN.h('div', { class: 'gv', style: 'color:' + col, text: (opts.decimals ? v.toFixed(opts.decimals) : Math.round(v)) }), opts.label ? DN.h('div', { class: 'gl', text: opts.label }) : null]));
+      [DN.h('div', { class: 'gv num', style: 'color:' + col, text: (opts.decimals ? v.toFixed(opts.decimals) : Math.round(v)) }), opts.label ? DN.h('div', { class: 'gl', text: opts.label }) : null]));
     return DN.h('div', { class: 'gov-gauge' }, [ring]);
   };
 
@@ -482,7 +485,7 @@
   /** 抽屉底部操作栏: 取消(ghost) + 主按钮。opts {okText, onOk, onCancel(默认关闭), extra(左侧节点)}; 返回 {el, ok, busy(text), reset(text)} */
   DN.drawerFoot = function (opts) {
     opts = opts || {};
-    var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: opts.okText || '保存', style: 'background:var(--primary);color:#fff;border-color:var(--primary);height:32px;padding:0 18px;' });
+    var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: opts.okText || '保存', style: 'height:32px;padding:0 18px;' });
     var cancel = DN.h('button', { class: 'btn btn-sm', text: opts.cancelText || '取消', style: 'height:32px;padding:0 16px;' });
     var foot = DN.h('div', {});
     if (opts.extra) foot.appendChild(DN.h('span', { class: 'foot-grow' }, [opts.extra]));
@@ -500,21 +503,21 @@
   DN.radar = function (dims, opts) {
     opts = opts || {}; dims = dims || [];
     var n = dims.length; if (!n) return DN.empty('暂无维度数据', 'chart');
-    var size = opts.size || 230, cx = size / 2, cy = size / 2, r = size / 2 - 38, color = opts.color || 'var(--primary,#3457d5)';
+    var size = opts.size || 230, cx = size / 2, cy = size / 2, r = size / 2 - 38, color = opts.color || 'var(--primary)';
     function pt(i, frac) { var a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + r * frac * Math.cos(a), cy + r * frac * Math.sin(a)]; }
     var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
     [0.25, 0.5, 0.75, 1].forEach(function (fr) {
       var ps = []; for (var i = 0; i < n; i++) { var p = pt(i, fr); ps.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); }
-      svg += '<polygon points="' + ps.join(' ') + '" fill="none" stroke="#eceef1" stroke-width="1"/>';
+      svg += '<polygon points="' + ps.join(' ') + '" fill="none" style="stroke:var(--divider)" stroke-width="1"/>';
     });
     for (var i = 0; i < n; i++) {
-      var pe = pt(i, 1); svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pe[0].toFixed(1) + '" y2="' + pe[1].toFixed(1) + '" stroke="#eceef1"/>';
+      var pe = pt(i, 1); svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pe[0].toFixed(1) + '" y2="' + pe[1].toFixed(1) + '" style="stroke:var(--divider)"/>';
       var lp = pt(i, 1.18); var anchor = Math.abs(lp[0] - cx) < 6 ? 'middle' : (lp[0] > cx ? 'start' : 'end');
-      svg += '<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" font-size="11" fill="#86909c" text-anchor="' + anchor + '" dominant-baseline="middle">' + DN.esc(dims[i].label) + '</text>';
+      svg += '<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" font-size="11" style="fill:var(--text-faint)" text-anchor="' + anchor + '" dominant-baseline="middle">' + DN.esc(dims[i].label) + '</text>';
     }
     var dp = []; for (var i = 0; i < n; i++) { var v = Math.max(0, Math.min(100, dims[i].value || 0)) / 100; var p = pt(i, v); dp.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); }
-    svg += '<polygon points="' + dp.join(' ') + '" fill="rgba(52,87,213,.16)" stroke="' + color + '" stroke-width="2"/>';
-    for (var i = 0; i < n; i++) { var v = Math.max(0, Math.min(100, dims[i].value || 0)) / 100; var p = pt(i, v); svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + color + '"/>'; }
+    svg += '<polygon points="' + dp.join(' ') + '" style="fill:rgba(var(--primary-rgb),.16);stroke:' + color + '" stroke-width="2"/>';
+    for (var i = 0; i < n; i++) { var v = Math.max(0, Math.min(100, dims[i].value || 0)) / 100; var p = pt(i, v); svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" style="fill:' + color + '"/>'; }
     return DN.h('div', { class: 'gov-radar', html: svg + '</svg>' });
   };
 
@@ -525,13 +528,13 @@
     var h = opts.height || 72, pad = 6, vw = 300, n = data.length;
     var max = opts.max != null ? opts.max : Math.max.apply(null, data.concat([1])), min = opts.min != null ? opts.min : Math.min.apply(null, data.concat([0]));
     if (max === min) max = min + 1;
-    var stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0, col = opts.color || 'var(--primary,#3457d5)';
+    var stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0, col = opts.color || 'var(--primary)';
     function X(i) { return pad + i * stepX; } function Y(v) { return (h - pad) - ((v - min) / (max - min)) * (h - pad * 2); }
     var pts = data.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
     var svg = '<svg width="100%" height="' + h + '" viewBox="0 0 ' + vw + ' ' + h + '" preserveAspectRatio="none">';
-    svg += '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (vw - pad) + '" y2="' + (h - pad) + '" stroke="#f0f1f3" vector-effect="non-scaling-stroke"/>';
-    if (opts.area !== false) svg += '<path d="M' + pts.join(' L') + ' L' + X(n - 1).toFixed(1) + ',' + (h - pad) + ' L' + X(0).toFixed(1) + ',' + (h - pad) + ' Z" fill="' + col + '" opacity="0.10"/>';
-    svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>';
+    svg += '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (vw - pad) + '" y2="' + (h - pad) + '" style="stroke:var(--divider)" vector-effect="non-scaling-stroke"/>';
+    if (opts.area !== false) svg += '<path d="M' + pts.join(' L') + ' L' + X(n - 1).toFixed(1) + ',' + (h - pad) + ' L' + X(0).toFixed(1) + ',' + (h - pad) + ' Z" style="fill:' + col + '" opacity="0.10"/>';
+    svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" style="stroke:' + col + '"/></svg>';
     return DN.h('div', { class: 'gov-line', html: svg });
   };
 
@@ -540,17 +543,17 @@
     opts = opts || {}; var segs = (segments || []).filter(function (s) { return s && (s.value || 0) > 0; });
     var total = segs.reduce(function (a, s) { return a + (s.value || 0); }, 0);
     var size = opts.size || 120, sw = opts.stroke || 14, r = (size - sw) / 2, c = 2 * Math.PI * r, cx = size / 2;
-    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="#f0f1f3" stroke-width="' + sw + '"/>';
+    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" style="stroke:var(--bg-sunken)" stroke-width="' + sw + '"/>';
     var off = 0;
-    segs.forEach(function (s) { var len = c * (total ? s.value / total : 0); svg += '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + (s.color || '#3457d5') + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cx + ')" style="transition:stroke-dasharray .5s"/>'; off += len; });
+    segs.forEach(function (s) { var len = c * (total ? s.value / total : 0); svg += '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cx + ')" style="stroke:' + (s.color || 'var(--chart-1)') + ';transition:stroke-dasharray .5s"/>'; off += len; });
     svg += '</svg>';
     var ring = DN.h('div', { style: 'position:relative;width:' + size + 'px;height:' + size + 'px', html: svg });
     if (opts.centerLabel != null || opts.centerSub != null) ring.appendChild(DN.h('div', { style: 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center' },
-      [opts.centerLabel != null ? DN.h('div', { style: 'font-size:20px;font-weight:750;line-height:1', text: String(opts.centerLabel) }) : null, opts.centerSub ? DN.h('div', { style: 'font-size:11px;color:#86909c;margin-top:2px', text: opts.centerSub }) : null]));
+      [opts.centerLabel != null ? DN.h('div', { style: 'font-size:20px;font-weight:750;line-height:1', text: String(opts.centerLabel) }) : null, opts.centerSub ? DN.h('div', { style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px', text: opts.centerSub }) : null]));
     if (!opts.legend) return ring;
     // 可选内置图例：环 + 图例并排
     var lg = DN.h('div', { class: 'gov-legend' });
-    segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + (s.color || '#3457d5') }), DN.h('span', { text: (s.label != null ? s.label : '') + ' ' + (s.value || 0) })])); });
+    segs.forEach(function (s) { lg.appendChild(DN.h('span', {}, [DN.h('i', { style: 'background:' + (s.color || 'var(--chart-1)') }), DN.h('span', { text: (s.label != null ? s.label : '') + ' ' + (s.value || 0) })])); });
     return DN.h('div', { style: 'display:flex;align-items:center;gap:18px;flex-wrap:wrap' }, [ring, lg]);
   };
 
@@ -559,7 +562,7 @@
     opts = opts || {}; items = (items || []).filter(function (i) { return i != null; }); if (!items.length) return DN.empty('暂无数据');
     var vals = items.map(function (i) { return Number(i.value) || 0; });
     var max = Math.max.apply(null, vals.concat([1]));
-    var base = opts.rgb || [24, 144, 255];
+    var base = opts.rgb || [64, 81, 211];
     var w = DN.h('div', { class: 'gov-heat' });
     items.forEach(function (it) {
       var a = (0.1 + (it.value || 0) / max * 0.8).toFixed(2);
@@ -592,6 +595,48 @@
 
   /** 小节标题 */
   DN.sectionTitle = function (text) { return DN.h('div', { class: 'gov-section-title', text: text }); };
+
+  /**
+   * v3 统一确认弹窗(取代 window.confirm)。返回 Promise<boolean>。
+   * opts: { title, danger(危险操作红色主按钮), okText, cancelText }
+   * 用法: DN.confirm('删除任务「xx」?', {danger:true}).then(ok => { if (ok) ... })
+   */
+  DN.confirm = function (message, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var prevFocus = document.activeElement;
+      var ok = DN.h('button', { class: 'btn ' + (opts.danger ? 'btn-confirm-danger' : 'btn-primary'), text: opts.okText || '确认' });
+      var cancel = DN.h('button', { class: 'btn', text: opts.cancelText || '取消' });
+      var modal = DN.h('div', { class: 'dn-modal', role: 'alertdialog', 'aria-modal': 'true', 'aria-label': opts.title || '确认操作' }, [
+        DN.h('div', { class: 'dm-title', text: opts.title || '确认操作' }),
+        DN.h('div', { class: 'dm-body', text: message || '' }),
+        DN.h('div', { class: 'dm-foot' }, [cancel, ok])
+      ]);
+      var mask = DN.h('div', { class: 'dn-modal-mask' }, [modal]);
+      var done = false;
+      function close(result) {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey);
+        mask.classList.remove('show');
+        try { if (prevFocus && prevFocus.focus) prevFocus.focus(); } catch (e) {}
+        setTimeout(function () { if (mask.parentNode) mask.remove(); }, 200);
+        resolve(result);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { close(false); return; }
+        if (e.key === 'Tab') {  // 双按钮焦点循环
+          e.preventDefault();
+          (document.activeElement === ok ? cancel : ok).focus();
+        }
+      }
+      ok.onclick = function () { close(true); };
+      cancel.onclick = function () { close(false); };
+      mask.onclick = function (e) { if (e.target === mask) close(false); };
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(mask);
+      requestAnimationFrame(function () { mask.classList.add('show'); try { ok.focus(); } catch (e) {} });
+    });
+  };
 
   global.DN = DN;
   // 治理模块渲染器注册表：各 js/gov-<key>.js 注册 render 到此，governance.html 据此渲染

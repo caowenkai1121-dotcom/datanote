@@ -49,12 +49,12 @@
     if (p && typeof p.then === 'function') p.then(done, done); else done();
   }
 
-  // R25 联动：概览磁贴/成熟度构成不再是纯展示死胡同 —— 点击切到本模块对应 Tab。
-  // 渲染器进入时把内部 Tab 切换函数挂到 _activeGoTab，供概览(buildStdOverview/buildStdMaturity)调用。
+  // R25 联动：概览磁贴不再是纯展示死胡同 —— 点击切到本模块对应 Tab。
+  // 渲染器进入时把内部 Tab 切换函数挂到 _activeGoTab，供概览(buildStdOverview)调用。
   var _activeGoTab = null;
   function goTab(key) { if (typeof _activeGoTab === 'function') _activeGoTab(key); }
 
-  // 数据标准总览(大功能): 数据元/词根/码表/落标率 聚合磁贴
+  // 数据标准总览: 数据元/词根/码表/最新落标率/定密率/敏感标注率 聚合磁贴(6 个)
   function buildStdOverview(box) {
     if (box._loading) return;             // 去重：避免重复并发拉取(快速重进/重复调用)
     box._loading = true;
@@ -72,83 +72,27 @@
       var latest = runs.slice().sort(function (a, b) { return (b.id || 0) - (a.id || 0); })[0];
       var rate = latest && latest.passRate != null ? Number(latest.passRate) : null;
       var rTone = rate == null ? 'muted' : rate >= 80 ? 'ok' : rate >= 60 ? 'warn' : 'err';
+      // 数据元覆盖度: 已定密级/已标敏感类型 的占比(原"落地概览"卡迁来)
+      var elTotal = els.length;
+      var sensCnt = els.filter(function (e) { return e.sensitiveType; }).length;
+      var secCnt = els.filter(function (e) { return e.securityLevel; }).length;
+      var sensRate = Math.round(sensCnt / (elTotal || 1) * 100);
+      var secRate = Math.round(secCnt / (elTotal || 1) * 100);
       box.innerHTML = '';
       box.appendChild(DN.statRow([
         { icon: 'list', label: '数据元', value: els.length, title: '查看数据元', onClick: function () { goTab('element'); } },
         { icon: 'tag', label: '命名词根', value: roots.length, title: '查看命名词根', onClick: function () { goTab('root'); } },
         { icon: 'grid', label: '码表', value: dicts.length, title: '查看码表', onClick: function () { goTab('dict'); } },
-        { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核', title: '查看落标稽核', onClick: function () { goTab('check'); } }
+        { icon: 'check', label: '最新落标率', value: fmtRate(rate), tone: rTone, sub: latest ? ('稽核#' + latest.id) : '尚未稽核', title: '查看落标稽核', onClick: function () { goTab('check'); } },
+        { icon: 'shield', label: '数据元定密率', value: secRate + '%', tone: secRate >= 60 ? 'ok' : 'warn', sub: secCnt + '/' + elTotal + ' 已定密', title: '去数据元补全密级', onClick: function () { goTab('element'); } },
+        { icon: 'list', label: '敏感标注率', value: sensRate + '%', tone: sensRate >= 50 ? 'ok' : 'warn', sub: sensCnt + '/' + elTotal + ' 已标', title: '去数据元补全敏感标注', onClick: function () { goTab('element'); } }
       ]));
-      box.appendChild(buildStdMaturity(els, roots, dicts, runs).el);
     }).catch(function () {                 // 兜底：内层均已 catch，理论不会进；防御性错误重试
       box._loading = false;
       if (!document.body.contains(box)) return;
       box.innerHTML = '';
       box.appendChild(DN.errorBox('总览加载失败', function () { buildStdOverview(box); }));
     });
-  }
-
-  // 创新功能"数据标准落地概览": 基于已加载数据前端聚合, 展示标准体系成熟度(不调新 API)
-  function buildStdMaturity(els, roots, dicts, runs) {
-    var card = DN.card({ title: '数据标准落地概览', icon: 'check' });
-    // —— 1) 数据元覆盖度: 已标敏感类型/已定密级 的占比, 反映元数据填充完整度 ——
-    var elTotal = els.length;
-    var sensCnt = els.filter(function (e) { return e.sensitiveType; }).length;
-    var secCnt = els.filter(function (e) { return e.securityLevel; }).length;
-    var sensRate = Math.round(sensCnt / (elTotal || 1) * 100);
-    var secRate = Math.round(secCnt / (elTotal || 1) * 100);
-    // —— 2) 词根复用度: 唯一缩写覆盖率, 衡量命名规范沉淀程度 ——
-    var rootTotal = roots.length;
-    var abbrSet = {};
-    roots.forEach(function (r) { var a = (r.abbr || r.wordEn || '').toLowerCase(); if (a) abbrSet[a] = 1; });
-    var uniqAbbr = Object.keys(abbrSet).length;
-    var reuseRate = Math.round(uniqAbbr / (rootTotal || 1) * 100);
-    // —— 3) 落标率: 最新一次 + 趋势(多次稽核) ——
-    var ratePts = runs.filter(function (r) { return r.passRate != null; })
-      .slice().sort(function (a, b) { return (a.id || 0) - (b.id || 0); })
-      .map(function (r) { return Number(r.passRate) || 0; });
-    var latestRate = ratePts.length ? ratePts[ratePts.length - 1] : null;
-
-    card.body.appendChild(DN.statRow([
-      { icon: 'list', label: '数据元敏感标注', value: sensRate + '%', tone: sensRate >= 50 ? 'ok' : 'warn', sub: sensCnt + '/' + elTotal + ' 已标', title: '去数据元补全敏感标注', onClick: function () { goTab('element'); } },
-      { icon: 'shield', label: '数据元定密率', value: secRate + '%', tone: secRate >= 60 ? 'ok' : 'warn', sub: secCnt + '/' + elTotal + ' 已定密', title: '去数据元补全密级', onClick: function () { goTab('element'); } },
-      { icon: 'tag', label: '词根唯一复用度', value: reuseRate + '%', tone: reuseRate >= 80 ? 'ok' : 'info', sub: uniqAbbr + ' 个唯一缩写', title: '查看命名词根', onClick: function () { goTab('root'); } },
-      { icon: 'grid', label: '码表沉淀', value: dicts.length, tone: dicts.length > 0 ? 'ok' : 'muted', sub: '套标准码表', title: '查看码表', onClick: function () { goTab('dict'); } }
-    ]));
-
-    // 标准体系成熟度构成(各维度归一到 0~100 用 DN.bars)
-    card.body.appendChild(DN.sectionTitle('标准体系成熟度构成'));
-    card.body.appendChild(DN.bars([
-      { label: '数据元敏感标注', value: sensRate, tone: sensRate >= 50 ? 'ok' : 'warn', display: sensRate + '%', onClick: function () { goTab('element'); } },
-      { label: '数据元定密率', value: secRate, tone: secRate >= 60 ? 'ok' : 'warn', display: secRate + '%', onClick: function () { goTab('element'); } },
-      { label: '词根唯一复用度', value: reuseRate, tone: reuseRate >= 80 ? 'ok' : 'info', display: reuseRate + '%', onClick: function () { goTab('root'); } },
-      { label: '最新落标率', value: latestRate == null ? 0 : Math.round(latestRate), tone: latestRate == null ? 'muted' : (latestRate >= 80 ? 'ok' : latestRate >= 60 ? 'warn' : 'err'), display: fmtRate(latestRate), onClick: function () { goTab('check'); } }
-    ]));
-
-    // 落标率趋势曲线(>=2 次稽核才有意义)
-    if (ratePts.length >= 2) {
-      card.body.appendChild(DN.sectionTitle('近期落标率趋势'));
-      var avg = ratePts.reduce(function (x, y) { return x + y; }, 0) / (ratePts.length || 1);
-      card.body.appendChild(DN.line(ratePts, { height: 60, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
-    }
-
-    // —— 标准建设简评 ——
-    var notes = [];
-    if (elTotal === 0) notes.push('尚未录入数据元，建议先沉淀核心字段标准');
-    else if (sensRate < 50) notes.push('敏感字段标注偏低，建议补全敏感类型以支撑分级保护');
-    if (elTotal > 0 && secRate < 60) notes.push('数据元定密覆盖不足，建议完善密级以满足合规要求');
-    if (rootTotal === 0) notes.push('暂无命名词根，建议建立词根库统一英文命名');
-    else if (reuseRate >= 80) notes.push('命名词根复用规范，沉淀良好');
-    if (dicts.length === 0) notes.push('暂无标准码表，建议沉淀公共枚举值');
-    if (latestRate == null) notes.push('尚未执行落标稽核，建议运行稽核检验标准落地情况');
-    else if (latestRate >= 80) notes.push('最新落标率达标，标准落地情况良好');
-    else notes.push('落标率有待提升，可结合违规 Top 库表针对性整改');
-    if (!notes.length) notes.push('各项标准建设指标健康');
-    card.body.appendChild(DN.sectionTitle('标准建设简评'));
-    var ul = DN.h('ul', { class: 'gov-desc', style: 'margin:0;padding-left:18px;line-height:1.9' });
-    notes.forEach(function (t) { ul.appendChild(DN.h('li', { text: t })); });
-    card.body.appendChild(ul);
-    return card;
   }
 
   window.GOV_RENDERERS.standard = function (c) {
@@ -184,7 +128,7 @@
     });
     c.appendChild(sub);
     c.appendChild(body);
-    _activeGoTab = switchTab;   // 概览磁贴/成熟度构成点击经此切 Tab，消除纯展示死胡同
+    _activeGoTab = switchTab;   // 概览磁贴点击经此切 Tab，消除纯展示死胡同
     var initTab = (ctx.tab && tabEls[ctx.tab]) ? ctx.tab : 'element';
     switchTab(initTab);
   };
@@ -204,12 +148,34 @@
     row.appendChild(control);
     return row;
   }
-  function input(ph) { return DN.h('input', { class: 'iw-form-input', placeholder: ph }); }
+  function input(ph) { return DN.h('input', { class: 'dn-form-input', placeholder: ph }); }
   function select(opts, placeholder) {
-    var s = DN.h('select', { class: 'iw-form-select' });
+    var s = DN.h('select', { class: 'dn-form-select' });
     if (placeholder) s.appendChild(DN.h('option', { value: '', text: placeholder }));
     opts.forEach(function (o) { s.appendChild(DN.h('option', { value: o, text: o })); });
     return s;
+  }
+
+  /** 行级编辑链接：点击后由调用方回填表单进入编辑态 */
+  function editLink(fn) {
+    return DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm', text: '编辑', onclick: fn });
+  }
+
+  /** 下拉回显：值不在既有选项时临时补一个 option，避免编辑回显丢失原值 */
+  function setSelect(sel, val) {
+    val = val == null ? '' : String(val);
+    sel.value = val;
+    if (val && sel.value !== val) {
+      sel.appendChild(DN.h('option', { value: val, text: val }));
+      sel.value = val;
+    }
+  }
+
+  /** 操作列容器：编辑 + 删除并排 */
+  function opCell(nodes) {
+    var span = DN.h('span', { style: 'display:inline-flex;gap:6px;white-space:nowrap' });
+    nodes.forEach(function (n) { span.appendChild(n); });
+    return span;
   }
 
   /** 内联确认删除链接（不用 window.confirm），返回 Node 供 DN.table 渲染 */
@@ -232,6 +198,7 @@
 
   // ========== 数据元 ==========
   function renderElements(body) {
+    var editingId = null;   // 非空 = 编辑态，提交 payload 带 id 走后端 upsert 更新
     var form = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
     var f = {
       element_code: input('如 USER_NAME'),
@@ -251,6 +218,27 @@
     form.appendChild(formRow('敏感类型', f.sensitive_type));
     form.appendChild(formRow('密级', f.security_level));
     form.appendChild(formRow('描述', f.description));
+    // 取消编辑：整体重渲染回到新增态
+    var cancelEdit = DN.h('a', {
+      class: 'btn', href: 'javascript:void(0)', text: '取消编辑', style: 'display:none;margin-left:8px',
+      onclick: function () { body.innerHTML = ''; renderElements(body); }
+    });
+    // 行级编辑：回填表单进入编辑态；编码为唯一引用键，编辑时禁改
+    function startEdit(e) {
+      editingId = e.id;
+      f.element_code.value = e.elementCode || '';
+      f.element_code.disabled = true;
+      f.name_cn.value = e.nameCn || '';
+      setSelect(f.data_type, e.dataType);
+      f.length.value = e.length == null ? '' : e.length;
+      f.value_domain.value = e.valueDomain || '';
+      setSelect(f.sensitive_type, e.sensitiveType);
+      setSelect(f.security_level, e.securityLevel);
+      f.description.value = e.description || '';
+      save.textContent = '保存修改';
+      cancelEdit.style.display = '';
+      if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     var save = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增数据元', onclick: function () {
         var code = f.element_code.value.trim();
@@ -269,6 +257,7 @@
           valueDomain: f.value_domain.value.trim(), sensitiveType: f.sensitive_type.value ? f.sensitive_type.value.trim() : null,
           securityLevel: f.security_level.value ? f.security_level.value.trim() : null, description: f.description.value.trim()
         };
+        if (editingId != null) payload.id = editingId;
         guardSubmit(save, '保存中…', function () {
           return DN.post(API + '/element/save', payload).then(function () {
             DN.toast('已保存', 'ok'); renderElements(body);
@@ -276,7 +265,7 @@
         });
       }
     });
-    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save, cancelEdit]));
     DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '数据元清单', icon: 'doc' });
@@ -297,7 +286,10 @@
           { key: 'sensitiveType', label: '敏感', render: function (e) { return e.sensitiveType ? DN.pill(e.sensitiveType, 'warn') : ''; } },
           { key: 'securityLevel', label: '密级' },
           { key: '_op', label: '操作', render: function (e) {
-              return delLink(function () { return DN.del(API + '/element/' + e.id); }, function () { renderElements(body); });
+              return opCell([
+                editLink(function () { startEdit(e); }),
+                delLink(function () { return DN.del(API + '/element/' + e.id); }, function () { renderElements(body); })
+              ]);
             } }
         ],
         rows: data || [], searchKeys: ['elementCode', 'nameCn'], searchPlaceholder: '搜索编码/中文名',
@@ -308,6 +300,7 @@
 
   // ========== 命名词根 ==========
   function renderRoots(body) {
+    var editingId = null;   // 非空 = 编辑态，提交 payload 带 id 走后端 upsert 更新
     var form = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
     var f = {
       word_cn: input('中文'),
@@ -319,12 +312,29 @@
     form.appendChild(formRow('英文', f.word_en));
     form.appendChild(formRow('缩写', f.abbr));
     form.appendChild(formRow('分类', f.category));
+    // 取消编辑：整体重渲染回到新增态
+    var cancelEdit = DN.h('a', {
+      class: 'btn', href: 'javascript:void(0)', text: '取消编辑', style: 'display:none;margin-left:8px',
+      onclick: function () { body.innerHTML = ''; renderRoots(body); }
+    });
+    // 行级编辑：回填表单进入编辑态
+    function startEdit(r) {
+      editingId = r.id;
+      f.word_cn.value = r.wordCn || '';
+      f.word_en.value = r.wordEn || '';
+      f.abbr.value = r.abbr || '';
+      setSelect(f.category, r.category);
+      save.textContent = '保存修改';
+      cancelEdit.style.display = '';
+      if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     var save = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增词根', onclick: function () {
         var payload = {
           wordCn: f.word_cn.value.trim(), wordEn: f.word_en.value.trim(),
           abbr: f.abbr.value.trim(), category: f.category.value.trim()
         };
+        if (editingId != null) payload.id = editingId;
         if (!payload.wordEn && !payload.abbr) { DN.toast('英文或缩写至少填一个', 'err'); f.word_en.focus(); return; }
         // 英文/缩写格式校验：仅允许英文字母（命名词根用于生成英文字段名）
         if (payload.wordEn && !/^[A-Za-z]+$/.test(payload.wordEn)) { DN.toast('英文仅允许字母', 'err'); f.word_en.focus(); return; }
@@ -336,7 +346,7 @@
         });
       }
     });
-    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save, cancelEdit]));
     DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '命名词根', icon: 'tag' });
@@ -354,7 +364,10 @@
           { key: 'abbr', label: '缩写' },
           { key: 'category', label: '分类', render: function (r) { return r.category ? DN.pill(r.category, 'info') : ''; } },
           { key: '_op', label: '操作', render: function (r) {
-              return delLink(function () { return DN.del(API + '/root/' + r.id); }, function () { renderRoots(body); });
+              return opCell([
+                editLink(function () { startEdit(r); }),
+                delLink(function () { return DN.del(API + '/root/' + r.id); }, function () { renderRoots(body); })
+              ]);
             } }
         ],
         rows: data || [], searchKeys: ['wordCn', 'wordEn', 'abbr'], searchPlaceholder: '搜索中文/英文/缩写',
@@ -365,14 +378,32 @@
 
   // ========== 码表 ==========
   function renderDicts(body) {
+    var editingId = null;   // 非空 = 编辑态，提交 payload 带 id 走后端 upsert 更新
     var form = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
     var f = { dict_code: input('如 GENDER'), dict_name: input('名称'), description: input('描述（可选）') };
     form.appendChild(formRow('编码', f.dict_code));
     form.appendChild(formRow('名称', f.dict_name));
     form.appendChild(formRow('描述', f.description));
+    // 取消编辑：整体重渲染回到新增态
+    var cancelEdit = DN.h('a', {
+      class: 'btn', href: 'javascript:void(0)', text: '取消编辑', style: 'display:none;margin-left:8px',
+      onclick: function () { body.innerHTML = ''; renderDicts(body); }
+    });
+    // 行级编辑：回填表单进入编辑态；编码为枚举引用键，编辑时禁改
+    function startEdit(d) {
+      editingId = d.id;
+      f.dict_code.value = d.dictCode || '';
+      f.dict_code.disabled = true;
+      f.dict_name.value = d.dictName || '';
+      f.description.value = d.description || '';
+      save.textContent = '保存修改';
+      cancelEdit.style.display = '';
+      if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     var save = DN.h('a', {
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增码表', onclick: function () {
         var payload = { dictCode: f.dict_code.value.trim(), dictName: f.dict_name.value.trim(), description: f.description.value.trim() };
+        if (editingId != null) payload.id = editingId;
         if (!payload.dictCode) { DN.toast('编码必填', 'err'); f.dict_code.focus(); return; }
         // 编码格式校验：字母开头，仅含字母/数字/下划线（码表编码作为枚举引用键）
         if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(payload.dictCode)) { DN.toast('编码须字母开头，仅含字母/数字/下划线', 'err'); f.dict_code.focus(); return; }
@@ -382,7 +413,7 @@
         });
       }
     });
-    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save]));
+    form.appendChild(DN.h('div', { class: 'ds-form-row' }, [DN.h('label', { text: '' }), save, cancelEdit]));
     DN.enterSubmit(form);
 
     var listCard = DN.card({ title: '码表', icon: 'list' });
@@ -397,12 +428,15 @@
         columns: [
           { key: 'dictCode', label: '编码', render: function (d) {
               return DN.h('a', { href: 'javascript:void(0)', text: d.dictCode || '',
-                style: 'color:var(--primary,#3457d5)', onclick: function () { openDictItems(d); } });
+                style: 'color:var(--primary)', onclick: function () { openDictItems(d); } });
             } },
           { key: 'dictName', label: '名称', render: function (d) { return truncCell(d.dictName, 24); } },
           { key: 'description', label: '描述', render: function (d) { return truncCell(d.description, 36); } },
           { key: '_op', label: '操作', render: function (d) {
-              return delLink(function () { return DN.del(API + '/dict/' + d.id); }, function () { renderDicts(body); });
+              return opCell([
+                editLink(function () { startEdit(d); }),
+                delLink(function () { return DN.del(API + '/dict/' + d.id); }, function () { renderDicts(body); })
+              ]);
             } }
         ],
         rows: data || [], searchKeys: ['dictCode', 'dictName'], searchPlaceholder: '搜索编码/名称',
@@ -414,6 +448,7 @@
   /** 码表明细项：用抽屉承载（表单 + 明细表） */
   function openDictItems(dict) {
     var dictId = dict.id;
+    var editingItemId = null;   // 非空 = 编辑态，提交 payload 带 id 走后端 upsert 更新
     // 输入字段
     var k = input('码值'), v = input('含义'), s = input('排序');
 
@@ -421,6 +456,28 @@
     var sec = DN.formSection('新增码表项');
     sec.add(DN.field('码值', k, { required: true }));
     sec.add(DN.formGrid2([DN.field('含义', v), DN.field('排序', s, { hint: '非负整数，越小越靠前' })]));
+    // 取消编辑：清空表单回到新增态
+    var cancelEdit = DN.h('a', {
+      class: 'btn btn-sm', href: 'javascript:void(0)', text: '取消编辑', style: 'display:none;margin-bottom:8px',
+      onclick: function () { resetItemForm(); }
+    });
+    sec.add(cancelEdit);
+    function resetItemForm() {
+      editingItemId = null;
+      k.value = ''; v.value = ''; s.value = '';
+      cancelEdit.style.display = 'none';
+      foot.reset('新增项');
+    }
+    // 行级编辑：回填表单进入编辑态
+    function startEditItem(it) {
+      editingItemId = it.id;
+      k.value = it.itemKey || '';
+      v.value = it.itemValue || '';
+      s.value = it.sort == null ? '' : it.sort;
+      cancelEdit.style.display = '';
+      foot.reset('保存修改');
+      k.focus();
+    }
 
     var listEl = DN.h('div');
     listEl.appendChild(DN.skeleton(3));
@@ -439,18 +496,20 @@
         if (!/^\d+$/.test(sortRaw)) { DN.toast('排序须为非负整数', 'err'); s.focus(); return; }
         sortVal = parseInt(sortRaw, 10);
       }
+      var payload = { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal };
+      if (editingItemId != null) payload.id = editingItemId;
       foot.busy('保存中…');
-      DN.post(API + '/dict/item/save', { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal })
-        .then(function () { DN.toast('已保存', 'ok'); foot.reset('新增项'); refreshDictItems(listEl, dictId); })
-        .catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); foot.reset('新增项'); });
+      DN.post(API + '/dict/item/save', payload)
+        .then(function () { DN.toast('已保存', 'ok'); resetItemForm(); refreshDictItems(listEl, dictId, startEditItem); })
+        .catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); foot.reset(editingItemId != null ? '保存修改' : '新增项'); });
     };
     foot = DN.drawerFoot({ okText: '新增项', onOk: doAdd, onCancel: function () { dr.close(); } });
     dr = DN.drawer('码表项 — ' + dict.dictCode, body, foot.el);
     DN.enterSubmit(body, doAdd);
-    refreshDictItems(listEl, dictId);
+    refreshDictItems(listEl, dictId, startEditItem);
   }
 
-  function refreshDictItems(listEl, dictId) {
+  function refreshDictItems(listEl, dictId, onEdit) {
     listEl.innerHTML = '';
     listEl.appendChild(DN.skeleton(3));
     DN.get(API + '/dict/' + dictId).then(function (data) {
@@ -461,12 +520,15 @@
           { key: 'itemValue', label: '含义', render: function (it) { return truncCell(it.itemValue, 36); } },
           { key: 'sort', label: '排序', align: 'right', render: function (it) { return it.sort == null ? 0 : it.sort; } },
           { key: '_op', label: '操作', render: function (it) {
-              return delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(listEl, dictId); });
+              var ops = [];
+              if (onEdit) ops.push(editLink(function () { onEdit(it); }));
+              ops.push(delLink(function () { return DN.del(API + '/dict/item/' + it.id); }, function () { refreshDictItems(listEl, dictId, onEdit); }));
+              return opCell(ops);
             } }
         ],
         rows: (data && data.items) || [], search: false, empty: '暂无明细项，使用上方表单新增', emptyIcon: 'list'
       }));
-    }).catch(function (e) { listEl.innerHTML = ''; listEl.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { refreshDictItems(listEl, dictId); })); });
+    }).catch(function (e) { listEl.innerHTML = ''; listEl.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { refreshDictItems(listEl, dictId, onEdit); })); });
   }
 
   // ========== 落标稽核 ==========
@@ -482,16 +544,20 @@
       class: 'btn btn-primary', href: 'javascript:void(0)', text: '执行落标稽核', onclick: function () {
         var scope = picker.db() ? (picker.table() ? picker.db() + '.' + picker.table() : picker.db()) : '';
         // 全量稽核为较重操作，二次确认防误触
-        if (!scope && !window.confirm('未选择范围，将对全量字段执行落标稽核，可能耗时较久，是否继续？')) return;
-        var url = API + '/check/run' + (scope ? '?scope=' + encodeURIComponent(scope) : '');
-        guardSubmit(runBtn, '稽核中…', function () {
-          return DN.post(url).then(function (run) {
-            run = run || {};
-            DN.toast('稽核完成，落标率 ' + fmtRate(run.passRate), 'ok');
-            showRun(result, run);
-            loadRuns(historyBody);
-            loadTop();                 // 同步刷新违规 Top，与本次结果联动一致
-          }).catch(function (e) { DN.toast(e && e.message || '稽核失败', 'err'); });
+        var pre = scope ? Promise.resolve(true)
+          : DN.confirm('未选择范围，将对全量字段执行落标稽核，可能耗时较久，是否继续？', { title: '稽核确认' });
+        pre.then(function (ok) {
+          if (!ok) return;
+          var url = API + '/check/run' + (scope ? '?scope=' + encodeURIComponent(scope) : '');
+          guardSubmit(runBtn, '稽核中…', function () {
+            return DN.post(url).then(function (run) {
+              run = run || {};
+              DN.toast('稽核完成，落标率 ' + fmtRate(run.passRate), 'ok');
+              showRun(result, run);
+              loadRuns(historyBody);
+              loadTop();                 // 同步刷新违规 Top，与本次结果联动一致
+            }).catch(function (e) { DN.toast(e && e.message || '稽核失败', 'err'); });
+          });
         });
       }
     });
@@ -544,12 +610,12 @@
       if (pts.length >= 2) {
         box.appendChild(DN.sectionTitle('落标率趋势 · 治理改善曲线'));
         var avg = pts.reduce(function (x, y) { return x + y; }, 0) / pts.length;
-        box.appendChild(DN.line(pts, { height: 70, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
+        box.appendChild(DN.line(pts, { height: 70, max: 100, min: 0, color: avg >= 80 ? 'var(--success)' : avg >= 60 ? 'var(--warning)' : 'var(--error)' }));
       }
       box.appendChild(DN.table({
         columns: [
           { key: 'id', label: 'ID', render: function (r) {
-              return DN.h('a', { href: 'javascript:void(0)', text: '#' + r.id, style: 'color:var(--primary,#3457d5)',
+              return DN.h('a', { href: 'javascript:void(0)', text: '#' + r.id, style: 'color:var(--primary)',
                 onclick: function () {
                   DN.get(API + '/check/run/' + r.id).then(function (run) {
                     var rb = document.getElementById('checkResult');

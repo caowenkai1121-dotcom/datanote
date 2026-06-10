@@ -40,6 +40,6 @@ B34(CDC 增量快照 signal 表) / B35(SqlDialect 方言层)。
 
 - 服务器 38.76.183.50 / Ubuntu 24.04 / Java 17，datanote 跑 systemd `datanote.service`
 - jar=`/opt/datanote/target/datanote-1.0.0.jar`，-Xmx1g
-- 元数据 MySQL 8.0.46 @127.0.0.1:3307(容器)，root/datanote123，binlog=ON/ROW/FULL(CDC 就绪)
-- Doris FE 9030 ods 库；CRYPTO_KEY=DataNote_AES_Key
+- 元数据 MySQL 8.0.46 @127.0.0.1:3307(容器)，root/<DB_PASSWORD>，binlog=ON/ROW/FULL(CDC 就绪)
+- Doris FE 9030 ods 库；CRYPTO_KEY=<DATANOTE_CRYPTO_KEY>
 - 部署方式：本地编译 jar → scp 替换 → 跑新 DDL(25) → 重启 service → 验证

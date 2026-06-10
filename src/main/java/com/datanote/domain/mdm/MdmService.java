@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.domain.mdm.mapper.DnMdmAttributeMapper;
 import com.datanote.domain.mdm.mapper.DnMdmDomainMapper;
 import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
+import com.datanote.domain.mdm.mapper.DnMdmGoldenHistoryMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.domain.mdm.model.DnMdmAttribute;
 import com.datanote.domain.mdm.model.DnMdmDomain;
 import com.datanote.domain.mdm.model.DnMdmEntity;
+import com.datanote.domain.mdm.model.DnMdmGoldenHistory;
+import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,7 @@ public class MdmService {
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmAttributeMapper attributeMapper;
     private final DnMdmGoldenRecordMapper goldenMapper;
+    private final DnMdmGoldenHistoryMapper goldenHistoryMapper;
 
     /** 主数据总览统计：域/实体/属性数量、按类别分布、各域实体数。 */
     public Map<String, Object> overview() {
@@ -105,6 +109,22 @@ public class MdmService {
         aqw.eq("entity_id", entityId);
         attributeMapper.delete(aqw);
         entityMapper.deleteById(entityId);
+    }
+
+    /** R128: 黄金记录变更后快照(写 dn_mdm_golden_history)。黄金记录直改与审批应用两条链路共用; 失败不影响主流程。 */
+    public void snapshotGolden(DnMdmGoldenRecord rec, String changeType) {
+        try {
+            DnMdmGoldenHistory h = new DnMdmGoldenHistory();
+            h.setGoldenId(rec.getId());
+            h.setEntityId(rec.getEntityId());
+            h.setVersion(rec.getVersion());
+            h.setBizKey(rec.getBizKey());
+            h.setStatus(rec.getStatus());
+            h.setDataJson(rec.getDataJson());
+            h.setChangeType(changeType);
+            h.setCreatedAt(java.time.LocalDateTime.now());
+            goldenHistoryMapper.insert(h);
+        } catch (Exception ignore) {}
     }
 
     /** 同步实体的冗余属性计数。 */

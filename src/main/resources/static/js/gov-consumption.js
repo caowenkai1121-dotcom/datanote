@@ -37,17 +37,19 @@
     calcAll.onclick = function () {
       // 注意：<a> 元素的 disabled 不阻止点击，必须用 dataset.busy 标志位防重复提交
       if (calcAll.dataset.busy) return;
-      if (!window.confirm('将计算全部启用指标的当前值，可能耗时，确认？')) return;
-      setLinkBusy(calcAll, true, '计算中…');
-      DN.post('/api/consumption/metric/calc-all?operator=ui').then(function (r) {
-        r = r || {};
-        DN.toast('计算完成：成功 ' + (r.success || 0) + ' / 失败 ' + (r.failed || 0) + ' / 共 ' + (r.total || 0), 'ok');
-        setLinkBusy(calcAll, false, '一键计算全部指标');
-        // 计算后多张卡片数据均变化：概览/看板/热度/排行/僵尸全部刷新保持联动
-        loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies();
-      }).catch(function (e) {
-        DN.toast('计算失败：' + errMsg(e), 'err');
-        setLinkBusy(calcAll, false, '一键计算全部指标');
+      DN.confirm('将计算全部启用指标的当前值，可能耗时，确认？', { title: '计算确认' }).then(function (ok) {
+        if (!ok) return;
+        setLinkBusy(calcAll, true, '计算中…');
+        DN.post('/api/consumption/metric/calc-all?operator=ui').then(function (r) {
+          r = r || {};
+          DN.toast('计算完成：成功 ' + (r.success || 0) + ' / 失败 ' + (r.failed || 0) + ' / 共 ' + (r.total || 0), 'ok');
+          setLinkBusy(calcAll, false, '一键计算全部指标');
+          // 计算后多张卡片数据均变化：概览/看板/热度/排行/僵尸全部刷新保持联动
+          loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies();
+        }).catch(function (e) {
+          DN.toast('计算失败：' + errMsg(e), 'err');
+          setLinkBusy(calcAll, false, '一键计算全部指标');
+        });
       });
     };
 
@@ -119,13 +121,15 @@
       }).catch(function (e) { setLinkBusy(run, false, '运行'); DN.toast('运行失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(run);
-    var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)' });
+    var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
     del.onclick = function () {
       if (r.id == null) { DN.toast('数据集缺少 ID，无法删除', 'err'); return; }
       if (del.dataset.busy) return;
-      if (!window.confirm('确认删除数据集「' + (r.datasetName || r.datasetCode || r.id) + '」？删除后不可恢复。')) return;
-      setLinkBusy(del, true, '删除中…');
-      DN.del('/api/consumption/dataset/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadDatasets(); }).catch(function (e) { setLinkBusy(del, false, '删除'); DN.toast('删除失败：' + errMsg(e), 'err'); });
+      DN.confirm('确认删除数据集「' + (r.datasetName || r.datasetCode || r.id) + '」？删除后不可恢复。', { title: '删除确认', danger: true }).then(function (ok) {
+        if (!ok) return;
+        setLinkBusy(del, true, '删除中…');
+        DN.del('/api/consumption/dataset/' + r.id).then(function () { DN.toast('已删除', 'ok'); loadDatasets(); }).catch(function (e) { setLinkBusy(del, false, '删除'); DN.toast('删除失败：' + errMsg(e), 'err'); });
+      });
     };
     wrap.appendChild(del);
     return wrap;
@@ -149,12 +153,12 @@
 
   function addDataset(prefill) {
     prefill = prefill || {};
-    var nameI = DN.h('input', { class: 'iw-form-input', placeholder: '数据集名称' });
-    var codeI = DN.h('input', { class: 'iw-form-input', placeholder: '编码(唯一,如 daily_gmv)' });
-    var dbI = DN.h('input', { class: 'iw-form-input', placeholder: '默认库(如 ods,可空)', value: prefill.defaultDb || '' });
-    var sqlI = DN.h('textarea', { class: 'iw-form-input', rows: '4', placeholder: '精选 SELECT 查询' });
+    var nameI = DN.h('input', { class: 'dn-form-input', placeholder: '数据集名称' });
+    var codeI = DN.h('input', { class: 'dn-form-input', placeholder: '编码(唯一,如 daily_gmv)' });
+    var dbI = DN.h('input', { class: 'dn-form-input', placeholder: '默认库(如 ods,可空)', value: prefill.defaultDb || '' });
+    var sqlI = DN.h('textarea', { class: 'dn-form-input', rows: '4', placeholder: '精选 SELECT 查询' });
     if (prefill.querySql) sqlI.value = prefill.querySql; // R21 深链预填 SQL
-    var ownerI = DN.h('input', { class: 'iw-form-input', placeholder: '负责人(可空)' });
+    var ownerI = DN.h('input', { class: 'dn-form-input', placeholder: '负责人(可空)' });
 
     var body = DN.h('div');
     var secBase = DN.formSection('基本信息');
@@ -246,7 +250,7 @@
     };
     wrap.appendChild(calc);
     if (r.metricId != null) {
-      var exp = DN.h('a', { href: '/api/consumption/metric/' + r.metricId + '/export?format=csv', text: '导出', style: 'color:var(--primary,#3457d5)', title: '导出该指标历史值 CSV' });
+      var exp = DN.h('a', { href: '/api/consumption/metric/' + r.metricId + '/export?format=csv', text: '导出', style: 'color:var(--primary)', title: '导出该指标历史值 CSV' });
       wrap.appendChild(exp);
     }
     var al = DN.h('a', { href: 'javascript:void(0)', text: '预警', onclick: function () { alertRulesDrawer(r); } });
@@ -352,8 +356,8 @@
     body.appendChild(listBox);
     // 新增表单
     var opSel = selectOf(['GT', 'LT', 'GE', 'LE', 'NE', 'OUT', 'IN'], 'GT');
-    var minI = DN.h('input', { class: 'iw-form-input', placeholder: '阈值/区间下界' });
-    var maxI = DN.h('input', { class: 'iw-form-input', placeholder: '区间上界(OUT/IN用,可空)' });
+    var minI = DN.h('input', { class: 'dn-form-input', placeholder: '阈值/区间下界' });
+    var maxI = DN.h('input', { class: 'dn-form-input', placeholder: '区间上界(OUT/IN用,可空)' });
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
     var secAdd = DN.formSection('新增规则');
     secAdd.add(DN.formGrid2([
@@ -402,13 +406,15 @@
           var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
           line.appendChild(DN.pill(rule.severity || 'MEDIUM', rule.severity === 'HIGH' ? 'err' : (rule.severity === 'LOW' ? 'info' : 'warn')));
           line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px', text: (rule.op || '?') + ' ' + (rule.thresholdMin != null ? rule.thresholdMin : '') + (rule.thresholdMax != null ? ('~' + rule.thresholdMax) : '') }));
-          var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error,#f53f3f)' });
+          var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
           del.onclick = function () {
             if (rule.id == null) { DN.toast('规则缺少 ID，无法删除', 'err'); return; }
             if (del.dataset.busy) return;
-            if (!window.confirm('确认删除该预警规则？')) return; // 破坏性操作二次确认
-            setLinkBusy(del, true, '删除中…');
-            DN.del('/api/consumption/metric/alert-rule/' + rule.id).then(function () { DN.toast('已删除', 'ok'); reload(); }).catch(function (e) { setLinkBusy(del, false, '删除'); DN.toast('删除失败：' + errMsg(e), 'err'); });
+            DN.confirm('确认删除该预警规则？', { title: '删除确认', danger: true }).then(function (ok) { // 破坏性操作二次确认
+              if (!ok) return;
+              setLinkBusy(del, true, '删除中…');
+              DN.del('/api/consumption/metric/alert-rule/' + rule.id).then(function () { DN.toast('已删除', 'ok'); reload(); }).catch(function (e) { setLinkBusy(del, false, '删除'); DN.toast('删除失败：' + errMsg(e), 'err'); });
+            });
           };
           line.appendChild(del);
           listBox.appendChild(line);
@@ -419,7 +425,7 @@
   }
 
   function selectOf(opts, def) {
-    var s = DN.h('select', { class: 'iw-form-select' });
+    var s = DN.h('select', { class: 'dn-form-select' });
     opts.forEach(function (o) { var op = DN.h('option', { value: o, text: o }); if (o === def) op.selected = true; s.appendChild(op); });
     return s;
   }
@@ -482,7 +488,7 @@
       }).catch(function (e) { setLinkBusy(calc, false, '立即计算'); DN.toast('计算失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(calc);
-    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary,#3457d5)' });
+    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)' });
     edit.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法编辑', 'err'); return; }
       if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id });
@@ -551,7 +557,7 @@
   function ensureFlashStyle() {
     if (document.getElementById('consFlashStyle')) return;
     var st = document.createElement('style'); st.id = 'consFlashStyle';
-    st.textContent = '@keyframes consFlash{0%{background:rgba(52,87,213,.22)}100%{background:transparent}}'
+    st.textContent = '@keyframes consFlash{0%{background:rgba(var(--primary-rgb),.22)}100%{background:transparent}}'
       + '.cons-flash{animation:consFlash 1.5s ease-out;border-radius:var(--radius)}';
     document.head.appendChild(st);
   }

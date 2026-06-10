@@ -32,10 +32,9 @@
 
   window.MDM_RENDERERS.quality = function (c) {
     var ctx = window.__mdmCtx || {};   // R26/R37 深链：上游(govmap/工作台)可带 entityId 直达指定实体
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '质量监控逐条校验黄金记录是否符合其实体的属性约束：必填项是否填写、枚举值是否在候选范围、唯一属性是否重复、数据类型格式(DATE/INT/DECIMAL/BOOLEAN)是否合法。仅统计生效/草稿记录，输出整体合规率与不合规清单。' }));
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
-    var entSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:240px', disabled: 'disabled' });
+    var entSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:240px', disabled: 'disabled' });
     entSel.appendChild(DN.h('option', { value: '', text: '加载中…' }));
     selWrap.appendChild(entSel);
     c.appendChild(selWrap);
@@ -178,11 +177,30 @@
             return w;
           } },
         { key: '_fix', label: '操作', render: function (r) {
+            var w = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
             // R26 闭环：检测→修复。跳回黄金记录处理，直接打开该不合规记录编辑
-            return DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '修复', title: '前往黄金记录处理并打开该记录修复', onclick: function () {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '修复', title: '前往黄金记录处理并打开该记录修复', onclick: function () {
               if (!window.mdmGoModule) { DN.toast('暂不支持跳转', 'err'); return; }
               mdmGoModule('goldenrecord', { editId: r.id, entityId: (_qEntity ? _qEntity.id : null) });
-            } });
+            } }));
+            // R123 联动: 把主数据不合规记录【升级为治理工单】, 纳入全局治理工单闭环(分配/流转/关单), 破 MDM↔治理 隔离
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '升级工单', title: '生成治理工单纳入统一闭环跟踪', onclick: function () {
+              var bk = r.bizKey || ('#' + r.id);
+              DN.confirm('为不合规记录「' + bk + '」生成治理工单(纳入治理工单闭环跟踪)？', { title: '升级工单确认' }).then(function (ok) {
+                if (!ok) return;
+                var ent = _qEntity || {}, issues = Array.isArray(r.issues) ? r.issues : [];
+                DN.post('/api/gov/health/issues', {
+                  issueType: 'MDM', dimension: '主数据质量',
+                  severity: ((r.issueCount || issues.length) > 2 ? 'HIGH' : 'MEDIUM'),
+                  title: '[主数据质量] ' + (ent.entityName || ('实体#' + (ent.id || ''))) + ' 记录 ' + bk + ' 不合规(' + (r.issueCount || issues.length) + '项)',
+                  description: issues.join('; ') + '\n来源: 主数据质量监控\n实体: ' + (ent.entityName || '') + ' (#' + (ent.id || '') + ') 记录 #' + r.id,
+                  objectRef: 'mdm:' + (ent.id || '') + ':' + r.id
+                }).then(function (res) {
+                  DN.toast('已生成治理工单' + (res && res.id ? ' #' + res.id : '') + '，可在 治理→治理健康分→工单 跟踪', 'ok');
+                }).catch(function (e) { DN.toast('生成失败: ' + (e && e.message ? e.message : ''), 'err'); });
+              });
+            } }));
+            return w;
           } }
       ],
       rows: bad, pageSize: 15, searchKeys: ['bizKey'], searchPlaceholder: '搜索业务主键', exportName: '质量不合规记录'

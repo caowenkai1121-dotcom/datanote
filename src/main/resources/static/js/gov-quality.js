@@ -44,17 +44,19 @@
     runAllBtn.onclick = function () {
       var enabledN = allRules.filter(function (r) { return r.status === 1; }).length;
       if (enabledN === 0) { DN.toast('暂无已启用规则可复跑', 'warn'); return; }
-      if (!window.confirm('将执行全部 ' + enabledN + ' 条已启用规则的质量检查，可能耗时较久，确认继续？')) return;
-      runAllBtn.disabled = true; runAllBtn.textContent = '复跑中…';
-      DN.post('/api/quality/run-all').then(function (msg) {
-        DN.toast(typeof msg === 'string' ? msg : '批量复跑完成', 'ok');
-        runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
-        loadScore(scoreCard.body);            // 刷新质量分
-        loadOverview(ovCard.body);            // 刷新 24h 概览
-        loadRules(rulesBody);                 // 刷新规则与失败聚焦
-      }).catch(function (e) {
-        DN.toast('批量复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
-        runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
+      DN.confirm('将执行全部 ' + enabledN + ' 条已启用规则的质量检查，可能耗时较久，确认继续？', { title: '复跑确认' }).then(function (ok) {
+        if (!ok) return;
+        runAllBtn.disabled = true; runAllBtn.textContent = '复跑中…';
+        DN.post('/api/quality/run-all').then(function (msg) {
+          DN.toast(typeof msg === 'string' ? msg : '批量复跑完成', 'ok');
+          runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
+          loadScore(scoreCard.body);            // 刷新质量分
+          loadOverview(ovCard.body);            // 刷新 24h 概览
+          loadRules(rulesBody);                 // 刷新规则与失败聚焦
+        }).catch(function (e) {
+          DN.toast('批量复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
+          runAllBtn.disabled = false; runAllBtn.textContent = '一键全量复跑';
+        });
       });
     };
 
@@ -100,9 +102,9 @@
       }
       var wrap = DN.h('div', { style: 'display:flex;align-items:center;gap:20px;flex-wrap:wrap' });
       var segs = [
-        { label: '成功', value: ok, color: '#2f9e44' },
-        { label: '失败', value: failed, color: '#e8930c' },
-        { label: '异常', value: err, color: '#e03131' }
+        { label: '成功', value: ok, color: 'var(--success)' },
+        { label: '失败', value: failed, color: 'var(--warning)' },
+        { label: '异常', value: err, color: 'var(--error)' }
       ].filter(function (s) { return s.value > 0; });
       wrap.appendChild(DN.donut(segs, { size: 104, stroke: 14, centerLabel: total, centerSub: '次', legend: true }));
       // 成功率健康解读
@@ -136,15 +138,15 @@
     var grid = {}, max = 0;
     allRules.forEach(function (r) { var k = (r.dimension || '未分类') + '||' + (r.ruleType || '未分类'); grid[k] = (grid[k] || 0) + 1; if (grid[k] > max) max = grid[k]; });
     var card = DN.card({ title: '规则覆盖矩阵（维度 × 类型）', icon: 'grid' });
-    var colorOf = function (n) { if (!n) return 'var(--bg-hover,#f0f1f3)'; var rr = n / (max || 1); return rr > 0.66 ? '#3457d5' : rr > 0.33 ? '#7e97ee' : '#c3cef5'; };
+    var colorOf = function (n) { if (!n) return 'var(--bg-hover)'; var rr = n / (max || 1); return rr > 0.66 ? 'var(--primary)' : rr > 0.33 ? 'rgba(var(--primary-rgb),.6)' : 'rgba(var(--primary-rgb),.3)'; };
     var tbl = DN.h('table', { class: 'gov-tbl', style: 'width:auto' });
-    var thead = '<thead><tr><th></th>' + types.map(function (t) { return '<th style="font-size:11px;text-align:center">' + DN.esc(t) + '</th>'; }).join('') + '</tr></thead>';
+    var thead = '<thead><tr><th></th>' + types.map(function (t) { return '<th style="font-size:var(--fs-xs);text-align:center">' + DN.esc(t) + '</th>'; }).join('') + '</tr></thead>';
     var tb = '<tbody>';
     dims.forEach(function (d) {
       tb += '<tr><td style="font-size:12px;font-weight:500;white-space:nowrap">' + DN.esc(d) + '</td>';
       types.forEach(function (t) {
         var n = grid[d + '||' + t] || 0;
-        tb += '<td style="text-align:center;padding:2px"><div data-dim="' + DN.esc(d) + '" data-type="' + DN.esc(t) + '" title="' + DN.esc(d) + ' · ' + DN.esc(t) + ' · ' + n + ' 条规则' + (n ? ' (点击筛选)' : '') + '" style="width:42px;height:28px;line-height:28px;border-radius:var(--radius-sm);margin:0 auto;background:' + colorOf(n) + ';color:' + (n ? '#fff' : 'var(--text-muted)') + ';font-size:12px;cursor:' + (n ? 'pointer' : 'default') + '">' + (n || '') + '</div></td>';
+        tb += '<td style="text-align:center;padding:2px"><div data-dim="' + DN.esc(d) + '" data-type="' + DN.esc(t) + '" title="' + DN.esc(d) + ' · ' + DN.esc(t) + ' · ' + n + ' 条规则' + (n ? ' (点击筛选)' : '') + '" style="width:42px;height:28px;line-height:28px;border-radius:var(--radius-sm);margin:0 auto;background:' + colorOf(n) + ';color:' + (n ? 'var(--text-inverse)' : 'var(--text-muted)') + ';font-size:12px;cursor:' + (n ? 'pointer' : 'default') + '">' + (n || '') + '</div></td>';
       });
       tb += '</tr>';
     });
@@ -235,7 +237,7 @@
     var summary = blockedN
       ? '共 ' + fails.length + ' 条规则未通过，其中 ' + blockedN + ' 条为强阻断（已置顶，会阻断下游流程，请优先处理），点规则名查看趋势根因'
       : '共 ' + fails.length + ' 条规则最近一次未通过, 按通过率从低到高展示, 点规则名查看趋势根因';
-    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px' + (blockedN ? ';color:#e03131;font-weight:500' : ''), text: summary }));
+    resultBox.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px' + (blockedN ? ';color:var(--error);font-weight:500' : ''), text: summary }));
     // 扁平化为行数据(供 DN.table 渲染 + CSV 导出取 key)
     var rows = fails.map(function (f) {
       var run = f.run, st = run.runStatus || '';
@@ -257,7 +259,7 @@
           } },
         { key: 'ruleName', label: '规则', render: function (r) {
             var link = DN.h('a', { href: 'javascript:void(0)', text: trunc(r.ruleName, 36),
-              style: 'color:var(--primary,#3457d5)', title: r.ruleName + ' · 点击查看该规则趋势与失败根因',
+              style: 'color:var(--primary)', title: r.ruleName + ' · 点击查看该规则趋势与失败根因',
               onclick: function () { loadRuleDetail(r._f.rule.id, r._f.rule.ruleName); } });
             if (r._f.rule.blockDownstream !== 1) return link;
             var wrap = DN.h('span', { style: 'display:inline-flex;align-items:center;gap:6px' });
@@ -279,6 +281,8 @@
                 var ok = nr && nr.runStatus === 'success';
                 DN.toast('复跑完成: ' + (f.rule.ruleName || ('#' + f.rule.id)) + ' 通过率 ' + (nrate == null ? '-' : nrate + '%') + (ok ? '' : '，已自动生成治理工单'), ok ? 'ok' : 'warn');
                 rerunBtn.disabled = false; rerunBtn.textContent = ok ? '已通过' : '重新复跑';
+                // 修复: 复跑通过后重新扫描, 让已通过规则从"未通过"列表移除(原仅改按钮文案致列表与真实状态不一致)
+                if (ok && typeof btn.onclick === 'function') setTimeout(function () { if (!btn.disabled) btn.onclick(); }, 400);
               }).catch(function (e) {
                 DN.toast('复跑失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
                 rerunBtn.disabled = false; rerunBtn.textContent = '立即复跑';
@@ -289,19 +293,19 @@
             // 影响面(创新功能): 按需查该失败规则目标表的下游受影响范围, 助按影响排序修复优先级(质量↔血缘联动)
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
             wrap.appendChild(rerunBtn);
-            var impBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--primary,#3457d5)', title: '查看该表下游受影响范围(评估修复优先级)', text: '影响面' });
+            var impBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--primary)', title: '查看该表下游受影响范围(评估修复优先级)', text: '影响面' });
             impBtn.onclick = function () {
               impBtn.textContent = '查询中…';
               DN.get('/api/lineage/impact?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(tbl)).then(function (list) {
                 var n = (list || []).length;
                 impBtn.textContent = n > 0 ? ('下游 ' + n + ' 表') : '无下游';
-                impBtn.style.color = n > 5 ? 'var(--error,#cf1322)' : n > 0 ? 'var(--warning,#9a5b00)' : 'var(--text-muted)';
+                impBtn.style.color = n > 5 ? 'var(--error)' : n > 0 ? 'var(--warning)' : 'var(--text-muted)';
                 impBtn.title = n > 0 ? ('该表异常将波及 ' + n + ' 张下游表，建议优先修复') : '该表无下游血缘';
                 impBtn.onclick = null; impBtn.style.cursor = 'default';
               }).catch(function () { impBtn.textContent = '影响面'; DN.toast('影响面查询失败(可先在血缘模块解析脚本血缘)', 'warn'); });
             };
             wrap.appendChild(impBtn);
-            var aiBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:#722ed1', title: '让AI诊断该规则失败根因与下游影响', text: '🤖AI诊断' });
+            var aiBtn = DN.h('a', { href: 'javascript:void(0)', style: 'font-size:12px;color:var(--chart-5)', title: '让AI诊断该规则失败根因与下游影响', text: '🤖AI诊断' });
             aiBtn.onclick = function () {
               if (window.dnAskAi) window.dnAskAi('诊断质量规则「' + (f.rule.ruleName || ('#' + f.rule.id)) + '」(#' + f.rule.id + ', 维度 ' + (f.rule.dimension || r.dimension || '') + ', 目标表 ' + db + '.' + tbl + ') 最近一次未通过(通过率 ' + (r.rateText || '') + ', 失败 ' + r.failCount + ' 行): 分析失败根因、状态分布趋势、对下游的影响面, 给修复建议与优先级。[规则:#' + f.rule.id + '] [表:' + db + '.' + tbl + ']',
                 { route: 'governance', gov: 'quality', ruleId: f.rule.id, db: db, table: tbl });
@@ -329,7 +333,7 @@
       box.innerHTML = '';
       // R21 深链: 按库表过滤时, 顶部提示 + 可清除
       if (ctxTableFilter) {
-        var hint = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;color:var(--primary,#3457d5)' }, [
+        var hint = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;color:var(--primary)' }, [
           DN.h('span', { text: '按 ' + ctxTableFilter.db + '.' + ctxTableFilter.table + ' 过滤' }),
           DN.h('a', { href: 'javascript:void(0)', style: 'margin-left:10px', text: '清除过滤',
             onclick: function () { ctxTableFilter = null; hint.remove(); if (tableEl) tableEl.reload(filtered()); DN.toast('已清除库表过滤', 'info'); } })
@@ -384,19 +388,19 @@
       row.appendChild(input);
       return row;
     }
-    var nameIn = DN.h('input', { class: 'iw-form-input', placeholder: '如：订单表主键非空检查',
+    var nameIn = DN.h('input', { class: 'dn-form-input', placeholder: '如：订单表主键非空检查',
       value: pf.db && pf.table ? ((pf.column ? pf.column + ' ' : '') + (pf.dimension || '') + '检查').trim() : '' });
-    var typeSel = DN.h('select', { class: 'iw-form-select' });
+    var typeSel = DN.h('select', { class: 'dn-form-select' });
     [['null_check', '空值检查'], ['unique_check', '唯一性检查'], ['value_range', '值域检查'], ['regex_check', '正则检查'], ['custom_sql', '自定义SQL']]
       .forEach(function (o) { typeSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
-    var dsSel = DN.h('select', { class: 'iw-form-select' });
+    var dsSel = DN.h('select', { class: 'dn-form-select' });
     dsSel.appendChild(DN.h('option', { value: '0', text: 'Doris 数仓' }));
-    var dbIn = DN.h('input', { class: 'iw-form-input', value: pf.db || '', placeholder: '数据库名' });
-    var tblIn = DN.h('input', { class: 'iw-form-input', value: pf.table || '', placeholder: '表名' });
-    var colIn = DN.h('input', { class: 'iw-form-input', value: pf.column || '', placeholder: '字段名(可空)' });
-    var dimIn = DN.h('input', { class: 'iw-form-input', value: pf.dimension || '', placeholder: '如：完整性/唯一性/准确性' });
-    var thrIn = DN.h('input', { class: 'iw-form-input', type: 'number', value: pf.threshold != null ? pf.threshold : 100, placeholder: '通过率阈值 0-100' });
-    var sevSel = DN.h('select', { class: 'iw-form-select' });
+    var dbIn = DN.h('input', { class: 'dn-form-input', value: pf.db || '', placeholder: '数据库名' });
+    var tblIn = DN.h('input', { class: 'dn-form-input', value: pf.table || '', placeholder: '表名' });
+    var colIn = DN.h('input', { class: 'dn-form-input', value: pf.column || '', placeholder: '字段名(可空)' });
+    var dimIn = DN.h('input', { class: 'dn-form-input', value: pf.dimension || '', placeholder: '如：完整性/唯一性/准确性' });
+    var thrIn = DN.h('input', { class: 'dn-form-input', type: 'number', value: pf.threshold != null ? pf.threshold : 100, placeholder: '通过率阈值 0-100' });
+    var sevSel = DN.h('select', { class: 'dn-form-select' });
     [['info', '信息'], ['warning', '警告'], ['error', '错误']].forEach(function (o) { sevSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     sevSel.value = 'warning';
 
@@ -462,19 +466,19 @@
 
   function buildToolbarAndTable() {
     // 状态筛选下拉（放进 DN.table 工具条）
-    var statusSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+    var statusSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:120px' });
     [['', '全部状态'], ['1', '启用'], ['0', '停用']].forEach(function (o) {
       statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] }));
     });
     statusSel.value = filterStatus;
     statusSelEl = statusSel;
     statusSel.onchange = function () { filterStatus = statusSel.value; if (tableEl) tableEl.reload(filtered()); };
-    var dimSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+    var dimSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:120px' });
     dimSel.appendChild(DN.h('option', { value: '', text: '全部维度' }));
     uniq(allRules.map(function (r) { return r.dimension; })).forEach(function (d) { dimSel.appendChild(DN.h('option', { value: d, text: d })); });
     dimSel.value = filterDim;
     dimSel.onchange = function () { filterDim = dimSel.value; if (tableEl) tableEl.reload(filtered()); };
-    var typeSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+    var typeSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:120px' });
     typeSel.appendChild(DN.h('option', { value: '', text: '全部类型' }));
     uniq(allRules.map(function (r) { return r.ruleType; })).forEach(function (t) { typeSel.appendChild(DN.h('option', { value: t, text: t })); });
     typeSel.value = filterType;
@@ -485,7 +489,7 @@
         { key: 'ruleName', label: '规则', render: function (r) {
             var nm = r.ruleName || '-';
             return DN.h('a', { href: 'javascript:void(0)', text: trunc(nm, 40), title: nm, // 超长规则名截断+title 防撑表
-              style: 'color:var(--primary,#3457d5)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
+              style: 'color:var(--primary)', onclick: function () { loadRuleDetail(r.id, r.ruleName); } });
           } },
         { key: 'ruleType', label: '类型', render: function (r) { return r.ruleType || '-'; } },
         { key: 'dimension', label: '维度', render: function (r) { return r.dimension || '-'; } },
@@ -510,16 +514,16 @@
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap' });
             // R21 深链下钻: 跳健康/工单, 按该规则 id 过滤其触发的治理工单(质量↔工单联动)
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
-              style: 'color:var(--primary,#3457d5)', title: '查看该规则触发生成的治理工单',
+              style: 'color:var(--primary)', title: '查看该规则触发生成的治理工单',
               onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'health', issueFilter: { ruleId: r.id } }); } }));
             // R22 深链下钻: 规则↔血缘↔数据地图闭环(仅当规则含目标库表时提供)
             var db = r.databaseName || r.dbName, tbl = r.tableName;
             if (db && tbl) {
               wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '看来源表血缘',
-                style: 'color:var(--primary,#3457d5)', title: '在血缘模块查看该来源表的血缘关系',
+                style: 'color:var(--primary)', title: '在血缘模块查看该来源表的血缘关系',
                 onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: db, table: tbl } }); } }));
               wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '数据地图',
-                style: 'color:var(--primary,#3457d5)', title: '在数据地图中打开该来源表',
+                style: 'color:var(--primary)', title: '在数据地图中打开该来源表',
                 onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
             }
             return wrap;
@@ -560,12 +564,12 @@
         DN.pill(eff[0], eff[1])
       ]);
       trendBody.appendChild(head);
-      trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? '#2f9e44' : avg >= 60 ? '#e8930c' : '#e03131' }));
+      trendBody.appendChild(DN.line(rates, { height: 76, max: 100, min: 0, color: avg >= 80 ? 'var(--success)' : avg >= 60 ? 'var(--warning)' : 'var(--error)' }));
       // 状态分布环 + 失败根因样本
       var sc = Array.isArray(fa.statusCounts) ? fa.statusCounts : [];
       if (sc.length) {
         trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
-        var colorOf = function (s) { return s === 'PASS' ? '#2f9e44' : s === 'FAIL' ? '#e8930c' : s === 'ERROR' ? '#e03131' : '#8c8c8c'; };
+        var colorOf = function (s) { return s === 'PASS' ? 'var(--success)' : s === 'FAIL' ? 'var(--warning)' : s === 'ERROR' ? 'var(--error)' : 'var(--text-faint)'; };
         var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
         trendBody.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次', legend: true }));
       }
@@ -577,7 +581,7 @@
           var ts = String(f.startedAt || '').replace('T', ' ').slice(0, 19);
           var rawReason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
           var reason = rawReason.length > 80 ? rawReason.slice(0, 80) + '…' : rawReason; // 超长根因截断+title 兜底
-          ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider,#f0f1f3)' }, [
+          ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider)' }, [
             DN.pill(f.runStatus || '未知', f.runStatus === 'ERROR' ? 'err' : 'warn'),
             DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: DN.fmtAgo(f.startedAt), title: ts }),
             DN.h('span', { text: reason, title: rawReason })

@@ -1,5 +1,5 @@
 /* DataNote 首页「数据资产驾驶舱大屏」
-   8 个 KPI 磁贴 + 12 张可视化卡片，多源并发拉数、单卡独立 try/catch 降级。
+   7 个 KPI 磁贴 + 4 张可视化卡片，多源并发拉数、单卡独立 try/catch 降级。
    全量复用 window.DN 套件（dn-common.js）+ gov-modern.css（作用域已含 #homeCockpit）。
    入口：window.renderHomeDashboard(container) —— 由 workspace.html 路由 init 调用。 */
 (function () {
@@ -46,8 +46,8 @@
     box.appendChild(DN.sectionTitle('数据资产驾驶舱'));
     var grid = DN.h('div', { class: 'dash-grid' }); box.appendChild(grid);
 
-    loadKpis(kpiSlot);                                // 8 KPI（多源并发，各源 .catch 降级）
-    mountCards(grid);                                 // 12 卡片分批挂载 + 独立加载
+    loadKpis(kpiSlot);                                // 7 KPI（多源并发，各源 .catch 降级）
+    mountCards(grid);                                 // 4 卡片分批挂载 + 独立加载
     setupAuto(box);                                   // 60s 自动刷新，离开首页自停
     _refreshing = false;
   };
@@ -66,7 +66,7 @@
     var greet = h < 6 ? '夜深了' : h < 12 ? '上午好' : h < 18 ? '下午好' : '晚上好';
     var refreshBtn = DN.h('a', {
       class: 'btn btn-sm', href: 'javascript:void(0)', text: '刷新',
-      style: 'background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35)',
+      style: 'background:rgba(255,255,255,.18);color:var(--text-inverse);border-color:rgba(255,255,255,.35)',
       onclick: function () {
         if (_refreshing) return;                       // 防抖：刷新进行中忽略重复点击
         _refreshing = true;
@@ -76,7 +76,7 @@
     });
     var briefBtn = DN.h('a', {
       class: 'btn btn-sm', href: 'javascript:void(0)', text: '🤖 今日简报',
-      style: 'background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35);margin-right:8px;',
+      style: 'background:rgba(255,255,255,.18);color:var(--text-inverse);border-color:rgba(255,255,255,.35);margin-right:8px;',
       onclick: function () { if (window.homeAskAi) window.homeAskAi(); }
     });
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
@@ -91,7 +91,7 @@
     ]));
   }
 
-  // ========== 8 KPI：多源并发，各源独立 .catch 降级为 {} ==========
+  // ========== 7 KPI：多源并发，各源独立 .catch 降级为 {} ==========
   function loadKpis(slot) {
     // 4 源并发，单源失败各自 .catch 降级为 {}，不拖垮整排；gov/overview 复用单轮缓存
     Promise.all([
@@ -110,8 +110,7 @@
         { icon: 'list', label: '字段数', value: fmtInt(a.columnCount), title: '进入资产目录', onClick: go('catalog') },
         { icon: 'shield', label: '治理健康分', value: round1(ht), sub: '满分100', tone: tone(ht), title: '进入数据治理', onClick: go('governance') },
         { icon: 'check', label: '质量通过率', value: round1(qScore) + '%', sub: '近7天', tone: tone(qScore), title: '进入数据质量', onClick: go('quality') },
-        { icon: 'chart', label: '启用指标数', value: fmtInt(cs.enabledMetrics), title: '进入数据消费', onClick: go('metrics') },
-        { icon: 'layers', label: '近7天消费量', value: fmtInt(cs.consume7d), sub: '次调用', title: '进入数据消费', onClick: go('metrics') },
+        { icon: 'chart', label: '启用指标数', value: fmtInt(cs.enabledMetrics), title: '进入指标管理', onClick: go('metrics') },
         { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', title: '进入数据治理', onClick: go('governance') },
         { icon: 'grid', label: '同步运行中', value: fmtInt(sy.running), sub: '共' + fmtInt(sy.jobsTotal), tone: num(sy.failed) > 0 ? 'warn' : 'ok', title: '进入数据同步', onClick: go('dbsync') }
       ]));
@@ -121,23 +120,15 @@
     });
   }
 
-  // ========== 12 卡片：声明式表，每张独立 col 跨度 + 标题 + loader ==========
+  // ========== 4 卡片：声明式表，每张独立 col 跨度 + 标题 + loader ==========
   function mountCards(grid) {
     var defs = [
       { col: 8, title: '治理健康总分', icon: 'shield', primary: true, build: cardHealth },   // C1 主卡 跨8列
       { col: 4, title: '健康分趋势', icon: 'chart', build: cardHealthTrend },                  // C2
-      { col: 6, title: '热门指标 Top10', icon: 'chart', build: cardMetricRank },               // C3
-      { col: 6, title: '近24h质量执行', icon: 'check', build: cardQualityRuns },               // C4
-      { col: 4, title: '资产分布·按库', icon: 'db', build: cardAssetDist },                     // C5
-      { col: 8, title: '指标新鲜度·陈旧告警', icon: 'clock', build: cardFreshness },           // C6
-      { col: 6, title: '待治理僵尸指标', icon: 'alert', build: cardZombies },                   // C7
-      { col: 6, title: '同步任务监控大盘', icon: 'grid', build: cardSyncBoard },               // C8
       { col: 6, title: '最新治理工单', icon: 'inbox', build: cardIssues },                      // C9
-      { col: 6, title: '系统资源监控', icon: 'layers', build: cardSysMetrics },                // C10
-      { col: 6, title: '敏感字段最多的表', icon: 'lock', build: cardSensitive },               // C11
-      { col: 6, title: '最近消费活动', icon: 'list', build: cardConsumeLog }                    // C12
+      { col: 6, title: '同步任务监控大盘', icon: 'grid', build: cardSyncBoard }                // C8
     ];
-    // 先同步铺好 12 个卡壳 + 骨架（占位不抖动），再分批触发 fetch，避免一次性 12 并发卡顿
+    // 先同步铺好 4 个卡壳 + 骨架（占位不抖动），再分批触发 fetch，避免一次性并发卡顿
     defs.forEach(function (d) {
       var c = DN.card({ title: d.title, icon: d.icon });
       if (d.primary) c.el.classList.add('dash-primary');
@@ -204,99 +195,6 @@
     }).catch(function (e) { fail(c, d, e); });
   }
 
-  // ---- C3 热门指标 Top10（消费排行条形图）----
-  function cardMetricRank(c, d) {
-    loading(c, 4);
-    DN.get('/api/consumption/metric-ranking').then(function (list) {
-      c.body.innerHTML = '';
-      list = (Array.isArray(list) ? list : []).slice(0, 10);
-      if (!list.length) { c.body.appendChild(DN.empty('暂无指标消费记录', 'chart')); return; }
-      c.body.appendChild(DN.bars(list.map(function (i) {
-        var full = pick(i.metricName, i.target_code, i.targetCode) || '-';
-        var cnt = num(pick(i.cnt, i.count));
-        return { label: trunc(full, 16), value: cnt, display: fmtInt(cnt), onClick: go('metrics') };
-      })));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
-  // ---- C4 近24h质量执行分布（环形）----
-  function cardQualityRuns(c, d) {
-    loading(c, 3);
-    DN.get('/api/quality/overview').then(function (q) {
-      q = q || {};
-      c.body.innerHTML = '';
-      var ok = num(q.successRuns), bad = num(q.failedRuns), err = num(q.errorRuns);
-      var total = ok + bad + err;
-      if (!total) { c.body.appendChild(DN.empty('近24h暂无质量执行', 'check')); return; }
-      c.body.appendChild(DN.donut([
-        { label: '成功', value: ok, color: '#2f9e44' },
-        { label: '失败', value: bad, color: '#e03131' },
-        { label: '异常', value: err, color: '#e8930c' }
-      ], { centerLabel: fmtInt(total), centerSub: '近24h', legend: true }));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
-  // ---- C5 资产分布·按库（前端按 databaseName group 取 Top6+其他，环形）----
-  function cardAssetDist(c, d) {
-    loading(c, 3);
-    DN.get('/api/metadata-center/tables').then(function (resp) {
-      c.body.innerHTML = '';
-      var rows = unwrap(resp);
-      if (!rows.length) { c.body.appendChild(DN.empty('暂无表元数据', 'db')); return; }
-      var byDb = {};
-      rows.forEach(function (t) {
-        var k = pick(t.databaseName, t.dbName, t.dbType) || '未知';
-        byDb[k] = (byDb[k] || 0) + 1;
-      });
-      var arr = Object.keys(byDb).map(function (k) { return { label: k, value: byDb[k] }; });
-      arr.sort(function (x, y) { return y.value - x.value; });
-      var palette = ['#3457d5', '#2f9e44', '#e8930c', '#722ed1', '#13c2c2', '#eb2f96'];
-      var segs = arr.slice(0, 6).map(function (s, i) { return { label: trunc(s.label, 14), value: s.value, color: palette[i % palette.length] }; });
-      if (arr.length > 6) {
-        var other = arr.slice(6).reduce(function (a, s) { return a + s.value; }, 0);
-        segs.push({ label: '其他', value: other, color: '#bfbfbf' });
-      }
-      var totalT = arr.reduce(function (a, s) { return a + s.value; }, 0);
-      c.body.appendChild(DN.donut(segs, { centerLabel: fmtInt(totalT), centerSub: '表(样本)', legend: true }));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
-  // ---- C6 指标新鲜度·陈旧告警（表格，仅 stale===true）----
-  function cardFreshness(c, d) {
-    loading(c, 4);
-    DN.get('/api/consumption/metric/freshness').then(function (list) {
-      c.body.innerHTML = '';
-      var stale = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.stale === true; });
-      if (!stale.length) { c.body.appendChild(DN.empty('全部指标新鲜，无陈旧', 'check')); return; }
-      c.body.appendChild(DN.table({
-        columns: [
-          { key: 'metricName', label: '指标名称', render: function (r) { return DN.h('span', { text: trunc(pick(r.metricName, r.metricCode) || '-', 24), title: pick(r.metricName, r.metricCode) || '' }); } },
-          { key: 'lastValueAt', label: '最近取值', render: function (r) { return r.lastValueAt ? DN.timeAgo(r.lastValueAt) : '-'; } },
-          { key: 'ageHours', label: '陈旧', align: 'right', render: function (r) { return DN.pill(round1(r.ageHours) + 'h', 'err'); } }
-        ],
-        rows: stale, pageSize: 8, search: false, emptyIcon: 'check'
-      }));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
-  // ---- C7 待治理僵尸指标（表格 + 导出）----
-  function cardZombies(c, d) {
-    loading(c, 4);
-    DN.get('/api/consumption/metric/zombies').then(function (list) {
-      c.body.innerHTML = '';
-      list = Array.isArray(list) ? list : [];
-      if (!list.length) { c.body.appendChild(DN.empty('无僵尸指标，状态良好', 'check')); return; }
-      c.body.appendChild(DN.table({
-        columns: [
-          { key: 'metricName', label: '指标名称', copyable: true, exportValue: function (r) { return pick(r.metricCode, r.metricName) || ''; }, render: function (r) { return r.metricName || r.metricCode || '-'; } },
-          { key: 'category', label: '分类', render: function (r) { return r.category || '-'; } },
-          { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } }
-        ],
-        rows: list, pageSize: 8, search: false, exportName: 'zombies', emptyIcon: 'check'
-      }));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
   // ---- C8 同步任务监控大盘（环形状态 + 成功率仪表）----
   function cardSyncBoard(c, d) {
     loading(c, 3);
@@ -309,9 +207,9 @@
       }
       var wrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:center' });
       wrap.appendChild(DN.donut([
-        { label: '运行', value: running, color: '#3457d5' },
-        { label: '暂停', value: paused, color: '#e8930c' },
-        { label: '失败', value: failed, color: '#e03131' }
+        { label: '运行', value: running, color: 'var(--primary)' },
+        { label: '暂停', value: paused, color: 'var(--warning)' },
+        { label: '失败', value: failed, color: 'var(--error)' }
       ], { legend: true }));
       // successRate 约定为 0-1，gauge 前 *100；若后端已给百分数(>1)则原样用，避免被钳到 100
       var sr = num(s.successRate); var srPct = sr > 1 ? sr : sr * 100;
@@ -342,69 +240,6 @@
   function sevTone(s) {
     s = String(s || '').toUpperCase();
     return s === 'HIGH' ? 'err' : s === 'MEDIUM' ? 'warn' : 'muted';
-  }
-
-  // ---- C10 系统资源监控（3 个仪表横排）----
-  function cardSysMetrics(c, d) {
-    loading(c, 3);
-    DN.get('/api/dashboard/metrics').then(function (m) {
-      m = m || {};
-      c.body.innerHTML = '';
-      var jvm = m.jvm || {}, sys = m.system || {};
-      var heap = num(jvm.heapPct), cpu = sys.cpuPct, disk = num(sys.diskUsedPct);
-      var wrap = DN.h('div', { style: 'display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-around' });
-      wrap.appendChild(gaugeBlock(heap, '堆内存', false));
-      wrap.appendChild(gaugeBlock(cpu, 'CPU', Number(cpu) === -1));   // cpuPct===-1 显"不可用"
-      wrap.appendChild(gaugeBlock(disk, '磁盘', false));
-      c.body.appendChild(wrap);
-    }).catch(function (e) { fail(c, d, e); });
-  }
-  function gaugeBlock(pct, label, unavailable) {
-    var block = DN.h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px' });
-    if (unavailable) {
-      block.appendChild(DN.h('div', { style: 'width:96px;height:96px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;border:1px dashed var(--border,#e0e0e6);border-radius:50%', text: '不可用' }));
-    } else {
-      block.appendChild(DN.gauge(num(pct), { size: 96, decimals: 0 }));
-    }
-    block.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted)', text: label }));
-    return block;
-  }
-
-  // ---- C11 敏感字段最多的表 Top（热力清单）----
-  function cardSensitive(c, d) {
-    loading(c, 4);
-    DN.get('/api/gov/classification/heatmap').then(function (list) {
-      c.body.innerHTML = '';
-      var items = unwrap(list).slice(0, 12);
-      if (!items.length) { c.body.appendChild(DN.empty('暂无敏感字段标注', 'lock')); return; }
-      c.body.appendChild(DN.heat(items.map(function (i) {
-        var tbl = pick(i.table, i.tableName);
-        var dbn = pick(i.db, i.database);
-        var lbl = (dbn ? dbn : '') + (tbl ? (dbn ? '.' : '') + tbl : '');
-        return { label: trunc(lbl || tbl || '-', 22), value: num(pick(i.count, i.cnt)) };
-      }), { rgb: [255, 77, 79] }));
-    }).catch(function (e) { fail(c, d, e); });
-  }
-
-  // ---- C12 最近消费活动流水（表格 + 导出）----
-  function cardConsumeLog(c, d) {
-    loading(c, 4);
-    DN.get('/api/consumption/log/list').then(function (resp) {
-      c.body.innerHTML = '';
-      var rows = unwrap(resp);
-      if (!rows.length) { c.body.appendChild(DN.empty('暂无消费活动', 'list')); return; }
-      c.body.appendChild(DN.table({
-        columns: [
-          { key: 'consumer', label: '消费方', render: function (r) { return r.consumer || '-'; } },
-          { key: 'targetCode', label: '对象', copyable: true, render: function (r) { return r.targetCode || '-'; } },
-          { key: 'action', label: '动作', render: function (r) { return r.action || '-'; } },
-          { key: 'success', label: '结果', align: 'center', render: function (r) { return num(r.success) === 1 ? DN.pill('成功', 'ok') : DN.pill('失败', 'err'); } },
-          { key: 'durationMs', label: '耗时', align: 'right', render: function (r) { return (r.durationMs != null ? fmtInt(r.durationMs) : '-') + 'ms'; } },
-          { key: 'createdAt', label: '时间', render: function (r) { return r.createdAt ? DN.timeAgo(r.createdAt) : '-'; } }
-        ],
-        rows: rows, pageSize: 10, search: false, exportName: 'consume_log'
-      }));
-    }).catch(function (e) { fail(c, d, e); });
   }
 
   // ========== 自动刷新：60s，离开首页自停 ==========

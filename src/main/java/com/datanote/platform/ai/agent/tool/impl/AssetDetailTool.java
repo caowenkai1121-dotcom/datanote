@@ -36,8 +36,17 @@ public class AssetDetailTool implements AiTool {
             String db = AgentArgs.str(args, "db");
             String table = AgentArgs.str(args, "table");
             if (db == null || table == null) return AiToolResult.fail("bad_arguments", "db 与 table 不能为空");
+            Map<String, Object> detail = assetDetailService.assetDetail(db, table);
+            // 表不存在: 返回【真实】相近表候选, 让 agent 据此求证/求助, 严禁臆造一个表名
+            if (detail == null || detail.get("table") == null) {
+                java.util.List<String> cands = assetDetailService.findSimilarTables(db, table, 8);
+                String msg = "未找到表 " + db + "." + table + "。"
+                        + (cands.isEmpty() ? "元数据库中无相近表。请勿臆造表名, 用 semantic_search 检索或 ask_user 向用户澄清。"
+                        : "相近的真实表有: " + String.join("、", cands) + "。请确认正确库表名, 或用 ask_user 让用户选择, 切勿臆造。");
+                return AiToolResult.fail("not_found", msg);
+            }
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("detail", assetDetailService.assetDetail(db, table));
+            out.put("detail", detail);
             out.put("_deeplink", AgentArgs.openTableLink(db, table));
             return AiToolResult.ok(out);
         } catch (Exception e) {

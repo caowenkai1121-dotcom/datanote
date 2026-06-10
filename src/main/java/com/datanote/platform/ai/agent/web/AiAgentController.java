@@ -38,6 +38,7 @@ public class AiAgentController {
     private final DnAiStepMapper stepMapper;
     private final DnAiApprovalMapper approvalMapper;
     private final DnAiMemorySkillMapper memoryMapper;
+    private final com.datanote.platform.ai.agent.mapper.DnAiCronJobMapper cronMapper;
     private final ObjectMapper objectMapper;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
@@ -52,7 +53,26 @@ public class AiAgentController {
         Object ctxObj = body == null ? null : body.get("ctx");
         Map<String, Object> bizCtx = (ctxObj instanceof Map) ? (Map<String, Object>) ctxObj : null;
         AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, bizCtx);
-        return R.ok(aiAgentService.run(sessionId, message.trim(), ctx));
+        // 模型热切: 本请求覆盖模型档位(同 provider), 边界 set/clear 防泄漏到其它请求
+        String modelOverride = body == null || body.get("model") == null ? null : String.valueOf(body.get("model"));
+        com.datanote.platform.ai.AiAssistService.setModelOverride(modelOverride);
+        try {
+            return R.ok(aiAgentService.run(sessionId, message.trim(), ctx));
+        } finally {
+            com.datanote.platform.ai.AiAssistService.clearModelOverride();
+        }
+    }
+
+    /** /goal 有界自驱: 围绕目标连续推进多周期(每周期受 budget+墙钟约束), 达成/停滞/上限即止。body {message, sessionId?, maxCycles?}。 */
+    @PostMapping("/pursue")
+    public R<Map<String, Object>> pursue(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+        String message = (body == null || body.get("message") == null) ? null : String.valueOf(body.get("message"));
+        if (message == null || message.trim().isEmpty()) return R.fail("目标不能为空");
+        String sessionId = (body == null || body.get("sessionId") == null) ? null : String.valueOf(body.get("sessionId"));
+        int maxCycles = 2;
+        try { if (body != null && body.get("maxCycles") != null) maxCycles = Integer.parseInt(String.valueOf(body.get("maxCycles"))); } catch (Exception ignore) {}
+        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        return R.ok(aiAgentService.pursue(sessionId, message.trim(), ctx, maxCycles));
     }
 
     /** 查会话与全量步骤轨迹（可回放）。 */
@@ -62,6 +82,11 @@ public class AiAgentController {
                 new QueryWrapper<DnAiSession>().eq("session_id", id).last("LIMIT 1"));
         if (s == null) {
             return R.fail("会话不存在");
+        }
+        // 越权隔离: 仅会话发起人可读其轨迹(匿名态放行)
+        String me = currentUser();
+        if (me != null && !"anonymous".equals(me) && s.getUserName() != null && !me.equals(s.getUserName())) {
+            return R.fail("无权访问该会话");
         }
         List<DnAiStep> steps = stepMapper.selectList(
                 new QueryWrapper<DnAiStep>().eq("session_id", id).orderByAsc("seq"));
@@ -125,6 +150,101 @@ public class AiAgentController {
             sessionMapper.updateById(s);
         }
         return R.ok();
+    }
+
+    /** 用户回答 ask_user 卡片: 把选择注入为续跑消息, agent 继续完成原任务(seed 在途上下文保连贯)。 */
+    @PostMapping("/{sessionId}/answer")
+    @SuppressWarnings("unchecked")
+    public R<Map<String, Object>> answer(@PathVariable("sessionId") String sessionId,
+                                         @RequestBody Map<String, Object> body, HttpServletRequest req) {
+        Object ansObj = body == null ? null : body.get("answers");
+        String msg = formatAnswers(ansObj);
+        if (msg == null) return R.fail("answers 不能为空");
+        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        return R.ok(aiAgentService.run(sessionId, msg, ctx));
+    }
+
+    /** 把卡片回答拼成续跑消息(问→答)。 */
+    @SuppressWarnings("unchecked")
+    private String formatAnswers(Object answers) {
+        if (!(answers instanceof List)) return null;
+        List<Object> list = (List<Object>) answers;
+        if (list.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder("（我已在卡片中做出选择）\n");
+        boolean any = false;
+        for (Object o : list) {
+            if (!(o instanceof Map)) continue;
+            Map<String, Object> m = (Map<String, Object>) o;
+            Object q = m.get("question");
+            Object a = m.get("answer");
+            if (q == null) continue;
+            String ans = (a == null || String.valueOf(a).trim().isEmpty()) ? "(跳过)" : String.valueOf(a);
+            sb.append("- 问：").append(q).append("  答：").append(ans).append('\n');
+            any = true;
+        }
+        if (!any) return null;
+        sb.append("请据此继续完成原任务。");
+        return sb.toString();
+    }
+
+    /** 定时自治任务清单(cron 面板数据源); 按 owner 作用域(匿名态看全部)。 */
+    @GetMapping("/crons")
+    public R<java.util.List<com.datanote.platform.ai.agent.model.DnAiCronJob>> crons() {
+        String me = ownerScope();
+        return R.ok(cronMapper.selectList(new QueryWrapper<com.datanote.platform.ai.agent.model.DnAiCronJob>()
+                .eq(me != null, "owner", me)
+                .orderByDesc("enabled").orderByAsc("next_run").last("LIMIT 100")));
+    }
+
+    /** 启用/停用定时任务(owner 作用域 + 容错解析)。 */
+    @PostMapping("/cron/{id}/toggle")
+    public R<Void> toggleCron(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, Object> body) {
+        Object e = body == null ? null : body.get("enabled");
+        Integer enabled = null;
+        if (e != null) {
+            if (e instanceof Number) enabled = ((Number) e).intValue() == 1 ? 1 : 0;
+            else { String s = String.valueOf(e).trim(); enabled = ("1".equals(s) || "true".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s)) ? 1 : 0; }
+        }
+        String me = ownerScope();
+        com.datanote.platform.ai.agent.model.DnAiCronJob j = cronMapper.selectById(id);
+        if (j == null || (me != null && !me.equals(j.getOwner()))) return R.fail("任务不存在");
+        int en = enabled != null ? enabled : (j.getEnabled() != null && j.getEnabled() == 1 ? 0 : 1);
+        cronMapper.update(null, new UpdateWrapper<com.datanote.platform.ai.agent.model.DnAiCronJob>()
+                .eq("id", id).eq(me != null, "owner", me).set("enabled", en).set("updated_at", LocalDateTime.now()));
+        return R.ok();
+    }
+
+    /** 删除定时任务(owner 作用域)。 */
+    @PostMapping("/cron/{id}/remove")
+    public R<Void> removeCron(@PathVariable("id") Long id) {
+        String me = ownerScope();
+        int n = cronMapper.delete(new QueryWrapper<com.datanote.platform.ai.agent.model.DnAiCronJob>()
+                .eq("id", id).eq(me != null, "owner", me));
+        return n > 0 ? R.ok() : R.fail("任务不存在");
+    }
+
+    /** 当前用户作用域: 匿名/未登录返 null(看全部, 兼容鉴权关闭态), 否则返用户名。 */
+    private String ownerScope() {
+        String me = currentUser();
+        return (me == null || "anonymous".equals(me)) ? null : me;
+    }
+
+    /** 协作式中断: 置中断标志, 运行中的 agent 在下一轮工序边界自行停止(替代SSE的DB标志位)。 */
+    @PostMapping("/{sessionId}/interrupt")
+    public R<Void> interrupt(@PathVariable("sessionId") String sessionId) {
+        int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId).set("interrupt_flag", 1).set("updated_at", LocalDateTime.now()));
+        return n > 0 ? R.ok() : R.fail("会话不存在");
+    }
+
+    /** 中途转向: 写入引导插话, 运行中的 agent 在下一轮工序边界并入上下文(不打断当前轮)。 */
+    @PostMapping("/{sessionId}/steer")
+    public R<Void> steer(@PathVariable("sessionId") String sessionId, @RequestBody Map<String, String> body) {
+        String text = body == null ? null : body.get("text");
+        if (text == null || text.trim().isEmpty()) return R.fail("引导内容不能为空");
+        int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId).set("steer_text", text.trim()).set("updated_at", LocalDateTime.now()));
+        return n > 0 ? R.ok() : R.fail("会话不存在");
     }
 
     /** 恢复执行: 按已批 args 精确重放已批准未执行的写动作(不重跑 LLM 规划, 消除 args 漂移)。 */

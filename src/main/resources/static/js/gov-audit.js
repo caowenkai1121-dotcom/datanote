@@ -71,11 +71,11 @@
     c.appendChild(statBox);
 
     // 过滤工具条
-    els.from = DN.h('input', { type: 'date', title: '起始日期', class: 'iw-form-select', style: 'height:34px;' });
-    els.to = DN.h('input', { type: 'date', title: '截止日期', class: 'iw-form-select', style: 'height:34px;' });
-    els.type = DN.h('select', { class: 'iw-form-select', style: 'height:34px;' });
+    els.from = DN.h('input', { type: 'date', title: '起始日期', class: 'dn-form-input', style: 'height:34px;' });
+    els.to = DN.h('input', { type: 'date', title: '截止日期', class: 'dn-form-input', style: 'height:34px;' });
+    els.type = DN.h('select', { class: 'dn-form-select', style: 'height:34px;' });
     TYPES.forEach(function (t) { els.type.appendChild(DN.h('option', { value: t, text: t || '全部类型' })); });
-    els.user = DN.h('input', { placeholder: '操作人', class: 'iw-form-select', style: 'height:34px;width:120px;' });
+    els.user = DN.h('input', { placeholder: '操作人', class: 'dn-form-input', style: 'height:34px;width:120px;' });
     // 操作人输入框回车即检索；类型/日期变更不自动触发，由「检索」按钮统一提交，避免误触发请求
     els.user.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); runSearch(); }
@@ -186,7 +186,7 @@
       tc.el.classList.add('primary');
       if (trend.length >= 2) {
         var vals = trend.map(function (x) { return Number(x && x.cnt) || 0; });
-        tc.body.appendChild(DN.line(vals, { height: 80, color: '#3457d5' }));
+        tc.body.appendChild(DN.line(vals, { height: 80, color: 'var(--primary)' }));
         var d0 = (trend[0] && trend[0].day) || '', dn = (trend[trend.length - 1] && trend[trend.length - 1].day) || '';
         var sum = vals.reduce(function (a, b) { return a + b; }, 0);
         tc.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0;text-align:center', text: (d0 && dn ? d0 + ' ~ ' + dn + ' · ' : '') + '合计 ' + sum + ' 条' }));
@@ -362,29 +362,6 @@
     load();
   }
 
-  // 下钻（消除"纯展示死胡同"）：状态码分布/操作时段热力是基于当前页 lastRows 计算的，
-  // 点击后用同一份数据在前端过滤并复用审计表格展示具体记录，给出下钻横幅 + 一键返回全部。
-  function applyDrill(predicate, label) {
-    if (!auditTbl || typeof predicate !== 'function') return;
-    var rows = (Array.isArray(lastRows) ? lastRows : []).filter(predicate);
-    auditTbl.reload(rows);
-    renderStats(rows);                 // 统计区随下钻子集刷新，保持联动
-    renderDrillBanner(label, rows.length);
-    // 0 命中时用 warn 提示(下钻口径基于当前页)，非 0 用普通信息提示
-    DN.toast('已下钻：' + label + '（' + rows.length + ' 条）', rows.length ? 'info' : 'warn');
-  }
-
-  // 用下钻横幅替换服务端分页条；提供"返回全部"链接，调用 load() 恢复完整服务端结果与正常分页。
-  function renderDrillBanner(label, count) {
-    var existing = document.getElementById('auSrvPager');
-    if (existing) existing.remove();
-    var box = DN.h('div', { id: 'auSrvPager', class: 'gov-pager' });
-    box.appendChild(DN.h('span', { text: '下钻：' + label + ' · 当前页命中 ' + count + ' 条' }));
-    box.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '返回全部',
-      onclick: function () { state.page = 1; load(); } }));
-    if (auditTbl && auditTbl.parentNode) auditTbl.parentNode.appendChild(box);
-  }
-
   // 按类型统计（本页数据）用 DN.bars
   function renderStats(rows) {
     var box = document.getElementById('auStats');
@@ -401,95 +378,6 @@
     var card = DN.card({ title: '本页操作类型分布', icon: 'chart' });
     card.body.appendChild(DN.bars(items));
     box.appendChild(card.el);
-    // HTTP 状态码分布(2xx/3xx/4xx/5xx)
-    box.appendChild(buildStatusDistCard(rows));
-    // 行为时段热力(时×星期)
-    box.appendChild(buildHourHeatCard(rows));
-  }
-
-  // HTTP 状态码分布(大功能): 成功/重定向/客户端错/服务端错 占比
-  function buildStatusDistCard(rows) {
-    var grp = { '2xx 成功': 0, '3xx 重定向': 0, '4xx 客户端错误': 0, '5xx 服务端错误': 0, '其它': 0 };
-    (Array.isArray(rows) ? rows : []).forEach(function (r) {
-      if (!r) return;
-      var n = Number(r.status);
-      if (isNaN(n)) grp['其它']++;
-      else if (n >= 200 && n < 300) grp['2xx 成功']++;
-      else if (n >= 300 && n < 400) grp['3xx 重定向']++;
-      else if (n >= 400 && n < 500) grp['4xx 客户端错误']++;
-      else if (n >= 500) grp['5xx 服务端错误']++;
-      else grp['其它']++;
-    });
-    var toneMap = { '2xx 成功': 'ok', '3xx 重定向': 'info', '4xx 客户端错误': 'warn', '5xx 服务端错误': 'err', '其它': 'muted' };
-    // 各状态码区间对应的命中判定（下钻用），与上面分组口径一致。
-    var matchOf = {
-      '2xx 成功': function (n) { return !isNaN(n) && n >= 200 && n < 300; },
-      '3xx 重定向': function (n) { return !isNaN(n) && n >= 300 && n < 400; },
-      '4xx 客户端错误': function (n) { return !isNaN(n) && n >= 400 && n < 500; },
-      '5xx 服务端错误': function (n) { return !isNaN(n) && n >= 500; },
-      '其它': function (n) { return isNaN(n); }
-    };
-    var items = Object.keys(grp).filter(function (k) { return grp[k] > 0; }).map(function (k) {
-      return { label: k, value: grp[k], tone: toneMap[k],
-        // 点击下钻：按该状态码区间过滤当前页审计记录并刷新表格
-        onClick: function () { applyDrill(function (r) { return matchOf[k](Number(r.status)); }, '状态码 ' + k); } };
-    });
-    var card = DN.card({ title: '本页 HTTP 状态码分布', icon: 'shield' });
-    if (!items.length) card.body.appendChild(DN.empty('无状态码数据', 'shield'));
-    else card.body.appendChild(DN.bars(items));
-    return card.el;
-  }
-
-  // 行为时段热力图(大功能): 7星期 × 24小时 操作密度
-  function buildHourHeatCard(rows) {
-    rows = Array.isArray(rows) ? rows : [];
-    var card = DN.card({ title: '操作时段热力（星期 × 小时）', icon: 'clock' });
-    var grid = {}; var max = 0;
-    rows.forEach(function (r) {
-      if (!r) return;
-      var s = r.createdAt; if (!s) return;
-      var d = new Date(String(s).replace(' ', 'T'));
-      if (isNaN(d.getTime())) return;
-      var key = d.getDay() + '_' + d.getHours();
-      grid[key] = (grid[key] || 0) + 1; if (grid[key] > max) max = grid[key];
-    });
-    var dows = ['日', '一', '二', '三', '四', '五', '六'];
-    var colorOf = function (n) { if (!n) return '#f0f1f3'; var r = n / (max || 1); return r > 0.66 ? '#1677ff' : r > 0.33 ? '#7e97ee' : '#c3cef5'; };
-    var wrap = DN.h('div', { style: 'overflow-x:auto' });
-    var tbl = DN.h('div', { style: 'display:inline-block;min-width:100%' });
-    // 表头(小时)
-    var head = DN.h('div', { style: 'display:flex;gap:2px;margin-bottom:2px;padding-left:22px' });
-    for (var hH = 0; hH < 24; hH += 2) head.appendChild(DN.h('div', { style: 'width:26px;font-size:9px;color:#5b6472;text-align:left', text: hH }));
-    tbl.appendChild(head);
-    for (var w = 0; w < 7; w++) {
-      var row = DN.h('div', { style: 'display:flex;gap:2px;align-items:center;margin-bottom:2px' });
-      row.appendChild(DN.h('div', { style: 'width:20px;font-size:10px;color:#5b6472', text: dows[w] }));
-      for (var hr = 0; hr < 24; hr++) {
-        var n = grid[w + '_' + hr] || 0;
-        var cell = DN.h('div', { title: dows[w] + ' ' + hr + ':00 · ' + n + ' 次' + (n ? '（点击下钻）' : ''), style: 'width:11px;height:11px;border-radius:2px;background:' + colorOf(n) });
-        // 点击下钻：按该时段(星期×小时)过滤当前页审计记录并刷新表格；空格不可点。
-        if (n) {
-          (function (dow, hour) {
-            cell.style.cursor = 'pointer';
-            cell.addEventListener('click', function () {
-              applyDrill(function (r) {
-                if (!r) return false;
-                var s = r.createdAt; if (!s) return false;
-                var d = new Date(String(s).replace(' ', 'T'));
-                if (isNaN(d.getTime())) return false;
-                return d.getDay() === dow && d.getHours() === hour;
-              }, '周' + dows[dow] + ' ' + hour + ':00 时段');
-            });
-          })(w, hr);
-        }
-        row.appendChild(cell);
-      }
-      tbl.appendChild(row);
-    }
-    wrap.appendChild(tbl);
-    card.body.appendChild(wrap);
-    card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '基于本页 ' + rows.length + ' 条审计记录, 颜色越深该时段操作越密集(峰值 ' + max + ' 次)' }));
-    return card.el;
   }
 
   // 服务端分页（总数由后端给出，单独追加在表格下方）
@@ -502,7 +390,7 @@
     var box = DN.h('div', { id: 'auSrvPager', class: 'gov-pager' });
     box.appendChild(DN.h('span', { text: total ? ('服务端共 ' + total + ' 条 · 第 ' + state.page + '/' + pages + ' 页 · 本页 ' + (Number(pageCount) || 0) + ' 条') : '服务端无审计记录' }));
     // 每页条数选择器
-    var sizeSel = DN.h('select', { class: 'iw-form-select', style: 'height:30px;width:auto;' });
+    var sizeSel = DN.h('select', { class: 'dn-form-select', style: 'height:30px;width:auto;' });
     [20, 50, 100, 200].forEach(function (n) { sizeSel.appendChild(DN.h('option', { value: String(n), text: n + ' 条/页' })); });
     sizeSel.value = String(state.size);
     sizeSel.onchange = function () { if (loading) return; state.size = Number(sizeSel.value) || 50; state.page = 1; rebuildTable(); load(); };

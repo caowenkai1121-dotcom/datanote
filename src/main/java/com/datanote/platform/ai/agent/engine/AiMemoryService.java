@@ -40,7 +40,7 @@ public class AiMemoryService {
     private final ObjectMapper objectMapper;
 
     private static final int CONTENT_CAP = 600;
-    private static final int RECALL_TEXT_CAP = 700;
+    private static final int RECALL_TEXT_CAP = 900; // 容纳技能的有序步骤(R89)
 
     // ===================== 召回 =====================
 
@@ -56,12 +56,16 @@ public class AiMemoryService {
             List<Long> hitIds = new ArrayList<>();
             for (DnAiMemorySkill m : hits) {
                 if (m == null || m.getContent() == null) continue;
-                sb.append("- ");
-                if (m.getTitle() != null) sb.append("【").append(m.getTitle()).append("】");
-                sb.append(cap(m.getContent(), 200));
+                boolean isSkill = "skill".equals(m.getType());
+                boolean isReview = "review".equals(m.getType());
+                sb.append(isSkill ? "- 【操作技能" : (isReview ? "- 【复盘改进" : "- 【经验"));
+                if (m.getTitle() != null) sb.append("·").append(m.getTitle());
+                sb.append("】");
                 if (m.getTriggerHint() != null && !m.getTriggerHint().trim().isEmpty()) {
-                    sb.append(" (适用: ").append(cap(m.getTriggerHint(), 60)).append(")");
+                    sb.append("(适用: ").append(cap(m.getTriggerHint(), 60)).append(") ");
                 }
+                // 技能=可照做的有序步骤(放宽呈现长度); 经验=简短事实
+                sb.append(cap(m.getContent(), isSkill ? 320 : 200));
                 sb.append('\n');
                 if (m.getId() != null) hitIds.add(m.getId());
                 if (sb.length() >= RECALL_TEXT_CAP) break;
@@ -156,10 +160,13 @@ public class AiMemoryService {
                 log.info("[memory] 会话无沉淀价值, 跳过: session={}", sessionId);
                 return;
             }
+            String type = clean(j.path("type").asText(null));
+            type = "skill".equals(type) ? "skill" : "memory"; // 仅 memory/skill, 默认 memory
             String title = clean(j.path("title").asText(null));
             String content = clean(j.path("content").asText(null));
             String trigger = clean(j.path("trigger").asText(null));
             if (content == null || content.isEmpty()) return;
+            int contentCap = "skill".equals(type) ? 900 : CONTENT_CAP; // 技能含有序步骤, 放宽上限
 
             // 去重: 同 owner 同 title 已有 active → 仅 bump, 不重复入库(防 100 轮迭代刷屏)
             if (title != null) {
@@ -175,10 +182,11 @@ public class AiMemoryService {
             }
 
             DnAiMemorySkill m = new DnAiMemorySkill();
-            m.setType("memory");
-            m.setTitle(cap(title, 240));
-            m.setContent(cap(content, CONTENT_CAP));
-            m.setTriggerHint(cap(trigger, 240));
+            m.setType(type);
+            // 落库前确定性脱敏(防模型把 trace 中凭据回带进持久化记忆 + 向量化扩散)
+            m.setTitle(cap(AgentTextUtil.redactSecrets(title), 240));
+            m.setContent(cap(AgentTextUtil.redactSecrets(content), contentCap));
+            m.setTriggerHint(cap(AgentTextUtil.redactSecrets(trigger), 240));
             m.setOwner(owner);
             m.setStatus("active");
             m.setHitCount(0);
@@ -193,6 +201,62 @@ public class AiMemoryService {
         }
     }
 
+    /**
+     * 后台复盘(W6 自我改进): 复杂会话异步复盘执行质量, 找可改进点(绕路/冗余/遗漏/更优路径),
+     * 沉淀为 type=review 记忆, 未来 recall 注入提醒"下次更好"。区别于 learn(沉淀成功经验)。失败静默。
+     */
+    @Async("aiLearnExecutor")
+    public void reviewAsync(String sessionId, String goal, String owner, String traceSummary, String finalAnswer) {
+        try {
+            if (!aiAssistService.isAvailable() || goal == null || goal.trim().isEmpty()) return;
+            String raw = aiAssistService.chat(buildReviewPrompt(goal, traceSummary, finalAnswer), "");
+            if (raw == null) return;
+            JsonNode j = extractJson(raw);
+            if (j == null || !j.path("worthSaving").asBoolean(false)) return;
+            String title = clean(j.path("title").asText(null));
+            String pitfall = clean(j.path("pitfall").asText(null));
+            if (pitfall == null || pitfall.isEmpty()) return;
+            // 去重: 同 owner 同 title 的 review 已存 → 仅 bump
+            if (title != null) {
+                DnAiMemorySkill dup = memoryMapper.selectOne(new QueryWrapper<DnAiMemorySkill>()
+                        .eq("title", title).eq("type", "review").eq("status", "active")
+                        .apply(owner != null, "owner = {0}", owner).last("LIMIT 1"));
+                if (dup != null) {
+                    dup.setHitCount((dup.getHitCount() == null ? 0 : dup.getHitCount()) + 1);
+                    dup.setUpdatedAt(LocalDateTime.now());
+                    memoryMapper.updateById(dup);
+                    return;
+                }
+            }
+            DnAiMemorySkill m = new DnAiMemorySkill();
+            m.setType("review");
+            m.setTitle(cap(AgentTextUtil.redactSecrets(title), 240));
+            m.setContent(cap(AgentTextUtil.redactSecrets(pitfall), CONTENT_CAP));
+            m.setTriggerHint(cap(AgentTextUtil.redactSecrets(clean(j.path("trigger").asText(null))), 240));
+            m.setOwner(owner);
+            m.setStatus("active");
+            m.setHitCount(0);
+            m.setCreatedAt(LocalDateTime.now());
+            m.setUpdatedAt(LocalDateTime.now());
+            memoryMapper.insert(m);
+            indexVector(m);
+            log.info("[review] 复盘改进沉淀: id={}, title={}", m.getId(), m.getTitle());
+        } catch (Exception e) {
+            log.warn("[review] 复盘失败 session={}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    private String buildReviewPrompt(String goal, String trace, String finalAnswer) {
+        return "你是 DataNote 智能体的『执行复盘员』。复盘本次任务执行质量, 找出【可改进点】(绕路/冗余或重复工具调用/遗漏关键步骤/有更优路径), 提炼一条下次可迁移的改进建议。\n"
+                + "只输出一个 JSON, 不要多余文字: "
+                + "{\"worthSaving\":true/false,\"title\":\"简短改进点标题\",\"trigger\":\"什么场景下注意\",\"pitfall\":\"下次怎样做更好(中文,120字内,可迁移)\"}\n"
+                + "要求:\n1. 若本次执行已高效合理、无明显可改进处, worthSaving=false(不要硬挑)。\n"
+                + "2. pitfall 写可迁移的改进做法, 不复述具体数值, 绝不含任何密钥/口令/token。\n\n"
+                + "【会话目标】" + cap(AgentTextUtil.redactSecrets(goal), 500) + "\n"
+                + "【执行轨迹(工具与结果摘要)】\n" + cap(trace == null ? "(无)" : AgentTextUtil.redactSecrets(trace), 2500) + "\n"
+                + "【最终答复】" + cap(finalAnswer == null ? "" : AgentTextUtil.redactSecrets(finalAnswer), 600);
+    }
+
     /** 向量化 upsert 到共享集合(kind=memory), 与资产同库异 kind, 召回时按 kind 过滤。 */
     private void indexVector(DnAiMemorySkill m) {
         try {
@@ -205,6 +269,7 @@ public class AiMemoryService {
             if (vec == null) return;
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("kind", "memory");
+            payload.put("type", m.getType());
             payload.put("mysqlId", m.getId());
             payload.put("title", m.getTitle());
             payload.put("content", m.getContent());
@@ -225,14 +290,18 @@ public class AiMemoryService {
     private String buildDistillPrompt(String goal, String trace, String finalAnswer) {
         return "你是 DataNote 智能体的『经验沉淀器』。请从本次会话中提炼【一条】对未来同类任务可复用的经验或操作技能。\n"
                 + "只输出一个 JSON, 不要任何多余文字, 格式: "
-                + "{\"worthSaving\":true/false,\"title\":\"简短标题\",\"trigger\":\"什么场景下用得上\",\"content\":\"具体做法/坑/结论(中文,120字内)\"}\n"
+                + "{\"worthSaving\":true/false,\"type\":\"memory|skill\",\"title\":\"简短标题\",\"trigger\":\"什么场景下用得上\",\"content\":\"...\"}\n"
                 + "要求:\n"
                 + "1. 若本次会话琐碎/无信息量/纯闲聊/纯失败无结论, worthSaving=false。\n"
-                + "2. content 写可迁移的方法或注意点, 不要复述用户原话, 不要写一次性的具体数值。\n"
-                + "3. 绝不包含任何密钥/密码/口令/token 等敏感信息。\n\n"
-                + "【会话目标】" + cap(goal, 500) + "\n"
-                + "【执行轨迹(工具与结果摘要)】\n" + cap(trace == null ? "(无工具调用)" : trace, 2500) + "\n"
-                + "【最终答复】" + cap(finalAnswer == null ? "" : finalAnswer, 600);
+                + "2. type=skill: 本次体现了一套【可复用的多步操作流程】(固定套路/标准做法, 如『建ODS表→建同步任务→配质量规则』),"
+                + " content 写成有序步骤(1) 2) 3)…), 每步含关键动作与注意点 —— 可被未来直接照做的操作手册。\n"
+                + "   type=memory: 只是一条结论/事实/坑, content 写一两句可迁移的方法或注意点即可。\n"
+                + "3. content 写可迁移的内容, 不要复述用户原话, 不要写一次性的具体数值。\n"
+                + "4. 绝不包含任何密钥/密码/口令/token 等敏感信息。\n\n"
+                // 确定性脱敏: 不让原文凭据进 LLM(纵深防御, 不只靠上面第4条文字约束)
+                + "【会话目标】" + cap(AgentTextUtil.redactSecrets(goal), 500) + "\n"
+                + "【执行轨迹(工具与结果摘要)】\n" + cap(trace == null ? "(无工具调用)" : AgentTextUtil.redactSecrets(trace), 2500) + "\n"
+                + "【最终答复】" + cap(finalAnswer == null ? "" : AgentTextUtil.redactSecrets(finalAnswer), 600);
     }
 
     /** 从 LLM 回复中抽取首个完整 JSON 对象。 */

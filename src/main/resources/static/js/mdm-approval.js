@@ -29,7 +29,6 @@
   window.MDM_RENDERERS.approval = function (c) {
     if (!c) return;
     _loading = false; // 重新进入模块时清掉可能残留的加载锁（上次加载被切走未完成）
-    c.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:14px', text: '对黄金记录的变更（新增/修改/删除）发起审批请求；审批人可批准或驳回并填写意见，保证主数据变更可追溯、可管控。' }));
     var statBox = DN.h('div', { id: 'apStats' });
     statBox.appendChild(DN.skeleton(2));
     c.appendChild(statBox);
@@ -59,11 +58,13 @@
         { icon: 'list', label: '变更总数', value: stats.total || 0 }
       ]));
 
-      var statusSel = DN.h('select', { class: 'iw-form-select', style: 'min-width:120px' });
+      var statusSel = DN.h('select', { class: 'dn-form-select', style: 'min-width:120px' });
       [['', '全部状态'], ['pending', '待审批'], ['approved', '已批准'], ['rejected', '已驳回']].forEach(function (o) { statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
       statusSel.value = _filter;
       statusSel.onchange = function () { _filter = statusSel.value; loadApproval(statBox, box); };
-      var card = DN.card({ title: '变更请求', icon: 'inbox', actions: statusSel });
+      var newBtn = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '＋ 新建变更申请', onclick: function () { submitDrawer(statBox, box); } });
+      var acts = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center' }, [newBtn, statusSel]);
+      var card = DN.card({ title: '变更请求', icon: 'inbox', actions: acts });
       box.innerHTML = '';
       if (!rows.length) { card.body.appendChild(DN.empty(_filter ? '该状态下暂无变更请求' : '暂无变更请求', 'inbox')); box.appendChild(card.el); return; }
       card.body.appendChild(DN.table({
@@ -91,10 +92,14 @@
           { key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } },
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary,#3457d5)', onclick: function () { detailDrawer(r); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary)', onclick: function () { detailDrawer(r); } }));
               if (r.status === 'pending') {
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '批准', style: 'color:#389e0d', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:#e03131', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '批准', style: 'color:var(--success)', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:var(--error)', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
+              }
+              // R128 联动: 已关联黄金记录的请求可直跳该记录的变更历史(diff)
+              if (r.goldenRecordId != null && window.mdmGoModule) {
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '记录历史', style: 'color:var(--primary)', title: '查看该黄金记录的变更历史与版本diff', onclick: function () { window.mdmGoModule('goldenrecord', { entityId: r.entityId, historyId: r.goldenRecordId }); } }));
               }
               return w;
             } }
@@ -107,6 +112,55 @@
       statBox.innerHTML = ''; box.innerHTML = '';
       box.appendChild(DN.errorBox('加载失败: ' + (e && e.message ? e.message : e), function () { loadApproval(statBox, box); }));
     });
+  }
+
+  // ---- 新建变更申请抽屉(补齐审批闭环的"发起"端) ----
+  function submitDrawer(statBox, box) {
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: '对某实体的黄金记录发起变更申请(新增/修改/删除), 提交后进入待审批, 由审批人批准或驳回。' }));
+    var sec = DN.formSection('申请信息');
+    var fEntity = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
+    fEntity.appendChild(DN.h('option', { value: '', text: '加载实体中…' }));
+    var fType = DN.h('select', { class: 'dn-form-select', style: 'width:100%' });
+    [['create', '新增'], ['update', '修改'], ['delete', '删除']].forEach(function (o) { fType.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
+    var fBizKey = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: '业务主键(如客户编码, 修改/删除时填)' });
+    var fReason = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:64px;resize:vertical', placeholder: '变更原因(必填)' });
+    var fBy = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: '申请人姓名/工号' });
+    var fPayload = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:72px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace', placeholder: '变更内容(JSON, 可选; 如 {"客户名":"新值"})' });
+    sec.add(DN.field('所属实体', fEntity, { required: true }));
+    sec.add(DN.field('变更类型', fType, { required: true }));
+    sec.add(DN.field('业务主键', fBizKey));
+    sec.add(DN.field('变更原因', fReason, { required: true }));
+    sec.add(DN.field('申请人', fBy));
+    sec.add(DN.field('变更内容', fPayload));
+    body.appendChild(sec.el);
+    // 拉实体下拉
+    DN.get('/api/mdm/entities').then(function (list) {
+      fEntity.innerHTML = '';
+      var arr = Array.isArray(list) ? list : [];
+      if (!arr.length) { fEntity.appendChild(DN.h('option', { value: '', text: '(暂无实体, 请先在域与实体建模中创建)' })); return; }
+      fEntity.appendChild(DN.h('option', { value: '', text: '请选择实体' }));
+      arr.forEach(function (e) { fEntity.appendChild(DN.h('option', { value: e.id, text: (e.domainName ? e.domainName + ' / ' : '') + (e.entityName || ('#' + e.id)) })); });
+    }).catch(function () { fEntity.innerHTML = ''; fEntity.appendChild(DN.h('option', { value: '', text: '(实体加载失败)' })); });
+
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
+      var entityId = fEntity.value;
+      var reason = fReason.value.trim();
+      if (!entityId) { DN.toast('请选择所属实体', 'err'); fEntity.focus(); return; }
+      if (!reason) { DN.toast('请填写变更原因', 'err'); fReason.focus(); return; }
+      var payload = fPayload.value.trim();
+      if (payload) { try { JSON.parse(payload); } catch (e) { DN.toast('变更内容不是合法 JSON', 'err'); fPayload.focus(); return; } }
+      var reqBody = { entityId: Number(entityId), changeType: fType.value, bizKey: fBizKey.value.trim() || null, reason: reason, requestedBy: fBy.value.trim() || null, payloadJson: payload || null };
+      foot.busy('提交中...');
+      DN.post('/api/mdm/approval/submit', reqBody).then(function () {
+        DN.toast('变更申请已提交, 进入待审批', 'ok'); dr.close(); loadApproval(statBox, box);
+      }).catch(function (e) { DN.toast((e && e.message) || '提交失败', 'err'); foot.reset('提交申请'); });
+    };
+    foot = DN.drawerFoot({ okText: '提交申请', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('新建变更申请', body, foot.el);
+    DN.enterSubmit(body, doSave);
   }
 
   // ---- 变更详情抽屉 ----
@@ -123,17 +177,54 @@
     if (r.reviewer) body.appendChild(kv('审批人', DN.h('span', { text: r.reviewer })));
     if (r.reviewComment) body.appendChild(kv('审批意见', DN.h('span', { text: r.reviewComment })));
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:14px 0 6px', text: '变更内容(JSON)：' }));
-    var pre = DN.h('pre', { style: 'margin:0;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-soft,rgba(0,0,0,.04));font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto' });
+    var pre = DN.h('pre', { style: 'margin:0;padding:10px 12px;border-radius:var(--radius-lg);background:var(--bg-soft);font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto' });
     pre.textContent = prettyJson(r.payloadJson);
     body.appendChild(pre);
+    // R128 联动: 已关联黄金记录 → 直达变更历史; 待审批的 update → 预览「当前值→新值」diff
+    if (r.goldenRecordId != null && window.mdmGoModule) {
+      body.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看该黄金记录的变更历史 →', style: 'display:inline-block;margin-top:12px;color:var(--primary);font-size:13px', onclick: function () { window.mdmGoModule('goldenrecord', { entityId: r.entityId, historyId: r.goldenRecordId }); } }));
+    }
+    if (r.status === 'pending' && r.changeType === 'update' && r.payloadJson) {
+      var diffBox = DN.h('div', { style: 'margin-top:14px' });
+      body.appendChild(diffBox);
+      previewDiff(r, diffBox);
+    }
     DN.drawer('变更请求详情', body);
   }
 
+  // R128: 待审批 update 请求的变更预览 — 拉当前黄金记录, 按 payload 键展示「当前值→新值」
+  function previewDiff(r, box) {
+    var patch;
+    try { patch = JSON.parse(r.payloadJson); } catch (e) { return; }
+    if (!patch || typeof patch !== 'object') return;
+    DN.get('/api/mdm/golden/list?entityId=' + encodeURIComponent(r.entityId)).then(function (rows) {
+      rows = rows || [];
+      var rec = null;
+      if (r.goldenRecordId != null) rec = rows.filter(function (g) { return String(g.id) === String(r.goldenRecordId); })[0];
+      if (!rec && r.bizKey) rec = rows.filter(function (g) { return g.bizKey === r.bizKey && g.status !== 'inactive'; })[0];
+      if (!rec) return;   // 找不到目标记录则不展示预览(审批时后端会再校验)
+      var cur;
+      try { cur = rec.dataJson ? JSON.parse(rec.dataJson) : {}; } catch (e) { cur = {}; }
+      box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 6px', text: '变更预览（批准后将应用，当前值 → 新值）：' }));
+      Object.keys(patch).forEach(function (k) {
+        var a = cur[k] == null ? '' : String(cur[k]);
+        var b = patch[k] == null ? '' : String(patch[k]);
+        var same = a === b;
+        box.appendChild(DN.h('div', { class: 'dn-diff-row' }, [
+          DN.h('span', { class: 'dk', text: k }),
+          DN.h('span', same ? { style: 'color:var(--text-muted)', text: a === '' ? '(空)' : a } : { class: 'da', text: a === '' ? '(空)' : a }),
+          DN.h('span', { text: '→' }),
+          DN.h('span', same ? { style: 'color:var(--text-muted)', text: (b === '' ? '(空)' : b) + '（无变化）' } : { class: 'db', text: b === '' ? '(空)' : b })
+        ]));
+      });
+    }).catch(function () { /* 预览失败静默, 不影响详情主体 */ });
+  }
+
   function kv(label, valNode) {
-    var row = DN.h('div', { style: 'display:flex;gap:10px;margin-bottom:8px;font-size:13px' });
-    row.appendChild(DN.h('span', { text: label, style: 'min-width:72px;color:var(--text-muted)' }));
-    row.appendChild(valNode);
-    return row;
+    return DN.h('div', { class: 'dn-kv' }, [
+      DN.h('span', { class: 'k', text: label }),
+      DN.h('span', { class: 'v' }, [valNode])
+    ]);
   }
 
   function prettyJson(s) {
@@ -154,8 +245,8 @@
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: (isApprove ? '批准' : '驳回') + '变更请求：' + bizLabel + '（' + typeLabel + '）' }));
 
     var sec = DN.formSection('审批信息');
-    var fReviewer = DN.h('input', { class: 'iw-form-select', style: 'width:100%', placeholder: '审批人姓名/工号' });
-    var fComment = DN.h('textarea', { class: 'iw-form-select', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
+    var fReviewer = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: '审批人姓名/工号' });
+    var fComment = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
     sec.add(DN.field('审批人', fReviewer, { required: true }));
     sec.add(DN.field('审批意见', fComment));
     body.appendChild(sec.el);
@@ -165,8 +256,6 @@
       if (foot.ok.disabled) return;
       var reviewer = fReviewer.value.trim();
       if (!reviewer) { DN.toast('请填写审批人', 'err'); fReviewer.focus(); return; }
-      // 破坏性/不可逆操作（审批结果落库）二次确认
-      if (!window.confirm((isApprove ? '确认批准' : '确认驳回') + '该变更请求？\n' + bizLabel + '（' + typeLabel + '）\n审批人：' + reviewer)) return;
       var payload = { reviewer: reviewer, reviewComment: fComment.value.trim() };
       foot.busy(submitText === '确认批准' ? '批准中...' : '驳回中...');
       DN.post('/api/mdm/approval/' + encodeURIComponent(r.id) + '/' + action, payload).then(function () {

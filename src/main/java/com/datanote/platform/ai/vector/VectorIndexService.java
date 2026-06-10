@@ -2,22 +2,30 @@ package com.datanote.platform.ai.vector;
 
 import com.datanote.domain.governance.mapper.DnGlossaryTermMapper;
 import com.datanote.domain.governance.mapper.DnMetricMapper;
+import com.datanote.domain.governance.mapper.DnDataElementMapper;
+import com.datanote.domain.governance.mapper.DnWordRootMapper;
 import com.datanote.domain.governance.model.DnGlossaryTerm;
 import com.datanote.domain.governance.model.DnMetric;
+import com.datanote.domain.governance.model.DnDataElement;
+import com.datanote.domain.governance.model.DnWordRoot;
 import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
+import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
 import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.domain.metadata.model.DnColumnMeta;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * 元数据 → 向量库 索引。本轮覆盖表元数据(kind=table); 列/术语/指标顺延下一轮。
+ * 元数据/知识 → 向量库 索引。覆盖 表(table)/业务术语(glossary)/指标(metric)/数据标准(dataelement)/命名词根(wordroot); 列级顺延。
  * 降级: 向量库或 embedding 不可用 → fullReindex 直接 return 0, 采集主流程零感知。
  */
 @Slf4j
@@ -28,10 +36,17 @@ public class VectorIndexService {
     private final VectorStoreClient vector;
     private final EmbeddingService embedding;
     private final DnTableMetaMapper tableMetaMapper;
+    private final DnColumnMetaMapper columnMetaMapper;
     private final DnGlossaryTermMapper glossaryTermMapper;
     private final DnMetricMapper metricMapper;
+    private final DnDataElementMapper dataElementMapper;
+    private final DnWordRootMapper wordRootMapper;
 
     private static final int BATCH = 64;
+
+    // 列级重建状态(异步作业, 供 /sync-columns/status 轮询)
+    private volatile boolean columnIndexing = false;
+    private volatile int lastColumnPoints = -1;
 
     /** 全量重建索引。返回写入向量点数(不可用返 0)。 */
     public int fullReindex() {
@@ -48,7 +63,100 @@ public class VectorIndexService {
         try { n += indexTables(); } catch (Exception e) { log.warn("[vector] 表索引失败: {}", e.getMessage()); }
         try { n += indexGlossary(); } catch (Exception e) { log.warn("[vector] 术语索引失败: {}", e.getMessage()); }
         try { n += indexMetric(); } catch (Exception e) { log.warn("[vector] 指标索引失败: {}", e.getMessage()); }
+        try { n += indexDataElement(); } catch (Exception e) { log.warn("[vector] 数据元索引失败: {}", e.getMessage()); }
+        try { n += indexWordRoot(); } catch (Exception e) { log.warn("[vector] 词根索引失败: {}", e.getMessage()); }
         return n;
+    }
+
+    /**
+     * 列级重建(独立入口): 列量大(数千~万), 不并进常规 fullReindex 以免拖慢; 由 /store/sync-columns 单独触发。
+     * 返回写入点数(不可用返 0)。
+     */
+    public int reindexColumns() {
+        if (!vector.available() || !embedding.isAvailable()) {
+            log.info("[vector] reindexColumns 跳过(vector={}, embedding={})", vector.available(), embedding.isAvailable());
+            return 0;
+        }
+        if (!vector.ensureCollection(embedding.dim())) return 0;
+        try { return indexColumns(); } catch (Exception e) { log.warn("[vector] 列索引失败: {}", e.getMessage()); return 0; }
+    }
+
+    /** 异步触发列级重建(返回即走, 后台串行跑, 状态见 {@link #columnIndexStatus()})。已在跑则忽略。 */
+    @Async("aiIndexExecutor")
+    public void reindexColumnsAsync() {
+        if (columnIndexing) return;
+        columnIndexing = true;
+        try {
+            lastColumnPoints = reindexColumns();
+        } catch (Exception e) {
+            log.warn("[vector] 列级异步重建异常: {}", e.getMessage());
+        } finally {
+            columnIndexing = false;
+        }
+    }
+
+    /** 列级重建状态(供前端/轮询)。 */
+    public Map<String, Object> columnIndexStatus() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("indexing", columnIndexing);
+        m.put("lastColumnPoints", lastColumnPoints);
+        return m;
+    }
+
+    private int indexColumns() {
+        List<DnColumnMeta> all = columnMetaMapper.selectList(null);
+        if (all == null || all.isEmpty()) return 0;
+        // 表id → [db, name] 映射(列文本需带所属表上下文, 一次性载入避免逐列回查)
+        Map<Long, String[]> tmap = new HashMap<>();
+        List<DnTableMeta> tabs = tableMetaMapper.selectList(null);
+        if (tabs != null) for (DnTableMeta t : tabs) {
+            if (t != null && t.getId() != null) tmap.put(t.getId(), new String[]{nz(t.getDatabaseName()), nz(t.getTableName())});
+        }
+        int total = 0;
+        for (int i = 0; i < all.size(); i += BATCH) {
+            List<DnColumnMeta> chunk = all.subList(i, Math.min(i + BATCH, all.size()));
+            List<String> texts = new ArrayList<>();
+            List<DnColumnMeta> valid = new ArrayList<>();
+            for (DnColumnMeta c : chunk) {
+                if (c == null || c.getId() == null || c.getColumnName() == null) continue;
+                texts.add(columnText(c, tmap.get(c.getTableMetaId())));
+                valid.add(c);
+            }
+            if (texts.isEmpty()) continue;
+            List<float[]> vecs = embedding.embedBatch(texts);
+            if (vecs == null || vecs.size() != valid.size()) { log.warn("[vector] 列批次嵌入数不匹配, 跳过"); continue; }
+            List<Map<String, Object>> points = new ArrayList<>();
+            for (int k = 0; k < valid.size(); k++) {
+                DnColumnMeta c = valid.get(k);
+                String[] dt = tmap.get(c.getTableMetaId());
+                String title = (c.getBusinessName() != null && !c.getBusinessName().trim().isEmpty())
+                        ? c.getBusinessName() : nz(c.getBusinessDesc());
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("kind", "column");
+                payload.put("db", dt == null ? "" : dt[0]);
+                payload.put("table", dt == null ? "" : dt[1]);
+                payload.put("name", c.getColumnName());
+                payload.put("title", title);
+                payload.put("text", texts.get(k));
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("id", pointId("column", c.getId()));
+                p.put("vector", vecs.get(k));
+                p.put("payload", payload);
+                points.add(p);
+            }
+            if (vector.upsert(points)) total += points.size();
+        }
+        log.info("[vector] 列元数据索引完成: {} 点", total);
+        return total;
+    }
+
+    private static String columnText(DnColumnMeta c, String[] dt) {
+        StringBuilder sb = new StringBuilder("字段 ").append(c.getColumnName());
+        if (c.getBusinessName() != null && !c.getBusinessName().trim().isEmpty()) sb.append("(").append(c.getBusinessName()).append(")");
+        if (dt != null) sb.append(" 属于表 ").append(dt[0]).append('.').append(dt[1]);
+        if (c.getDataType() != null && !c.getDataType().trim().isEmpty()) sb.append(" 类型:").append(c.getDataType());
+        if (c.getBusinessDesc() != null && !c.getBusinessDesc().trim().isEmpty()) sb.append(" 说明:").append(c.getBusinessDesc());
+        return sb.toString();
     }
 
     private int indexTables() {
@@ -162,6 +270,97 @@ public class VectorIndexService {
         }
         log.info("[vector] 指标索引完成: {} 点", total);
         return total;
+    }
+
+    private int indexDataElement() {
+        List<DnDataElement> all = dataElementMapper.selectList(null);
+        if (all == null || all.isEmpty()) return 0;
+        int total = 0;
+        for (int i = 0; i < all.size(); i += BATCH) {
+            List<DnDataElement> chunk = all.subList(i, Math.min(i + BATCH, all.size()));
+            List<String> texts = new ArrayList<>();
+            List<DnDataElement> valid = new ArrayList<>();
+            for (DnDataElement d : chunk) {
+                if (d == null || d.getId() == null || d.getNameCn() == null) continue;
+                texts.add(dataElementText(d));
+                valid.add(d);
+            }
+            if (texts.isEmpty()) continue;
+            List<float[]> vecs = embedding.embedBatch(texts);
+            if (vecs == null || vecs.size() != valid.size()) { log.warn("[vector] 数据元批次嵌入数不匹配, 跳过"); continue; }
+            List<Map<String, Object>> points = new ArrayList<>();
+            for (int k = 0; k < valid.size(); k++) {
+                DnDataElement d = valid.get(k);
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("kind", "dataelement");
+                payload.put("name", d.getNameCn());
+                payload.put("code", nz(d.getElementCode()));
+                payload.put("title", nz(d.getDescription()));
+                payload.put("text", texts.get(k));
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("id", pointId("dataelement", d.getId()));
+                p.put("vector", vecs.get(k));
+                p.put("payload", payload);
+                points.add(p);
+            }
+            if (vector.upsert(points)) total += points.size();
+        }
+        log.info("[vector] 数据元(数据标准)索引完成: {} 点", total);
+        return total;
+    }
+
+    private int indexWordRoot() {
+        List<DnWordRoot> all = wordRootMapper.selectList(null);
+        if (all == null || all.isEmpty()) return 0;
+        int total = 0;
+        for (int i = 0; i < all.size(); i += BATCH) {
+            List<DnWordRoot> chunk = all.subList(i, Math.min(i + BATCH, all.size()));
+            List<String> texts = new ArrayList<>();
+            List<DnWordRoot> valid = new ArrayList<>();
+            for (DnWordRoot w : chunk) {
+                if (w == null || w.getId() == null || w.getWordCn() == null) continue;
+                texts.add(wordRootText(w));
+                valid.add(w);
+            }
+            if (texts.isEmpty()) continue;
+            List<float[]> vecs = embedding.embedBatch(texts);
+            if (vecs == null || vecs.size() != valid.size()) { log.warn("[vector] 词根批次嵌入数不匹配, 跳过"); continue; }
+            List<Map<String, Object>> points = new ArrayList<>();
+            for (int k = 0; k < valid.size(); k++) {
+                DnWordRoot w = valid.get(k);
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("kind", "wordroot");
+                payload.put("name", w.getWordCn());
+                payload.put("code", nz(w.getWordEn()));
+                payload.put("title", nz(w.getAbbr()));
+                payload.put("text", texts.get(k));
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("id", pointId("wordroot", w.getId()));
+                p.put("vector", vecs.get(k));
+                p.put("payload", payload);
+                points.add(p);
+            }
+            if (vector.upsert(points)) total += points.size();
+        }
+        log.info("[vector] 命名词根索引完成: {} 点", total);
+        return total;
+    }
+
+    private static String dataElementText(DnDataElement d) {
+        StringBuilder sb = new StringBuilder("数据标准 ").append(d.getNameCn());
+        if (d.getElementCode() != null && !d.getElementCode().trim().isEmpty()) sb.append("(").append(d.getElementCode()).append(")");
+        if (d.getDataType() != null && !d.getDataType().trim().isEmpty()) sb.append(" 类型:").append(d.getDataType());
+        if (d.getValueDomain() != null && !d.getValueDomain().trim().isEmpty()) sb.append(" 值域:").append(d.getValueDomain());
+        if (d.getDescription() != null && !d.getDescription().trim().isEmpty()) sb.append(" 说明:").append(d.getDescription());
+        return sb.toString();
+    }
+
+    private static String wordRootText(DnWordRoot w) {
+        StringBuilder sb = new StringBuilder("命名词根 ").append(w.getWordCn());
+        if (w.getWordEn() != null && !w.getWordEn().trim().isEmpty()) sb.append("=").append(w.getWordEn());
+        if (w.getAbbr() != null && !w.getAbbr().trim().isEmpty()) sb.append("(缩写:").append(w.getAbbr()).append(")");
+        if (w.getCategory() != null && !w.getCategory().trim().isEmpty()) sb.append(" 分类:").append(w.getCategory());
+        return sb.toString();
     }
 
     private static String glossaryText(DnGlossaryTerm g) {

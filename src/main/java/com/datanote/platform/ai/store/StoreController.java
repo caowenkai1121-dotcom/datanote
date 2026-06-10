@@ -77,6 +77,28 @@ public class StoreController {
         return R.ok(out);
     }
 
+    /** 列级语义索引重建(异步: 列量大, 后台串行跑, 立即返回; 进度查 /sync-columns/status)。 */
+    @PostMapping("/sync-columns")
+    public R<Map<String, Object>> syncColumns() {
+        Map<String, Object> st = vectorIndex.columnIndexStatus();
+        if (Boolean.TRUE.equals(st.get("indexing"))) {
+            st.put("started", false);
+            st.put("note", "列级重建已在进行中");
+            return R.ok(st);
+        }
+        vectorIndex.reindexColumnsAsync();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("started", true);
+        out.put("note", "列级重建已在后台启动, 进度查 /api/ai/store/sync-columns/status");
+        return R.ok(out);
+    }
+
+    /** 列级索引进度。 */
+    @GetMapping("/sync-columns/status")
+    public R<Map<String, Object>> syncColumnsStatus() {
+        return R.ok(vectorIndex.columnIndexStatus());
+    }
+
     /** 读 嵌入/向量库/图库 配置(密钥脱敏)+ 运行态。 */
     @GetMapping("/config")
     public R<Map<String, Object>> getStoreConfig() {
