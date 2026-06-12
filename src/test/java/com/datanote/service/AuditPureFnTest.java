@@ -55,6 +55,8 @@ class AuditPureFnTest {
         // 审计自身变更路径(login-record 等)不再记，避免递归；检索 GET 天然不记
         assertFalse(AuditService.shouldAudit("POST", "/api/gov/audit/search"));
         assertFalse(AuditService.shouldAudit("POST", "/api/gov/audit/login-record"));
+        // 登录由 AuthController 自审计, filter 跳过避免重复
+        assertFalse(AuditService.shouldAudit("POST", "/api/auth/login"));
         assertFalse(AuditService.shouldAudit("GET", "/api/gov/audit/search"));
         // 批4: 审计日志导出本身是高敏感动作，反而必须留痕
         assertTrue(AuditService.shouldAudit("GET", "/api/gov/audit/export"));

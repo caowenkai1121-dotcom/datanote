@@ -21,6 +21,8 @@ public class DnUser {
     private String nickname;
     /** 状态：1启用/0停用 */
     private Integer status;
+    /** 最后登录时间(每次登录成功更新) */
+    private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

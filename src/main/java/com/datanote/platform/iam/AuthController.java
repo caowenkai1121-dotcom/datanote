@@ -34,6 +34,8 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final AuthProperties authProperties;
     private final RbacService rbacService;
+    private final LoginAttemptService loginAttemptService;
+    private final com.datanote.platform.audit.AuditService auditService;
 
     /**
      * 登录
@@ -45,23 +47,58 @@ public class AuthController {
             return R.fail(R.CODE_BAD_REQUEST, "认证未启用");
         }
 
+        String username = request.getUsername();
+        String ip = clientIp(httpRequest);
+
+        // 防暴力破解: 锁定中直接拒绝, 不消耗认证
+        long lockedSec = loginAttemptService.lockedRemainingSeconds(username);
+        if (lockedSec > 0) {
+            auditService.record(username, "LOGIN_LOCKED", "POST", "/api/auth/login", ip, 423,
+                    "账号锁定中, 剩余 " + lockedSec + "s");
+            return R.fail(R.CODE_FORBIDDEN, "账号已锁定, 请 " + ((lockedSec + 59) / 60) + " 分钟后再试");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
             );
 
-            // 认证成功，创建 Session
+            // 认证成功: 清失败计数 + 换 SessionId 防会话固定 + 建 Session
+            loginAttemptService.recordSuccess(username);
+            HttpSession old = httpRequest.getSession(false);
+            if (old != null) old.invalidate();   // 防会话固定攻击: 登录后换新 session
             SecurityContextHolder.getContext().setAuthentication(authentication);
             HttpSession session = httpRequest.getSession(true);
             session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
+
+            rbacService.touchLastLogin(authentication.getName());
+            auditService.record(authentication.getName(), "LOGIN", "POST", "/api/auth/login", ip, 200, "登录成功");
 
             Map<String, Object> data = new HashMap<>();
             data.put("username", authentication.getName());
             data.put("perms", resolvePerms(authentication));
             return R.ok(data);
         } catch (AuthenticationException e) {
-            return R.fail(R.CODE_UNAUTHORIZED, "用户名或密码错误");
+            boolean nowLocked = loginAttemptService.recordFailure(username);
+            int left = loginAttemptService.remainingAttempts(username);
+            auditService.record(username, "LOGIN_FAIL", "POST", "/api/auth/login", ip, 401,
+                    "登录失败" + (nowLocked ? "(触发锁定)" : ", 剩余尝试 " + left + " 次"));
+            if (nowLocked) {
+                long sec = loginAttemptService.lockedRemainingSeconds(username);
+                return R.fail(R.CODE_FORBIDDEN, "密码错误次数过多, 账号已锁定 " + ((sec + 59) / 60) + " 分钟");
+            }
+            return R.fail(R.CODE_UNAUTHORIZED, "用户名或密码错误" + (left <= 2 ? "(还可尝试 " + left + " 次后锁定)" : ""));
         }
+    }
+
+    /** 客户端 IP: 优先 X-Forwarded-For 首段。 */
+    private String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isEmpty()) {
+            int c = xff.indexOf(',');
+            return c > 0 ? xff.substring(0, c).trim() : xff.trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /**

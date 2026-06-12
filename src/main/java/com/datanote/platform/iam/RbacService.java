@@ -69,6 +69,20 @@ public class RbacService {
         return users;
     }
 
+    /** 登录成功后刷新最后登录时间(失败静默, 不影响登录主流程)。 */
+    public void touchLastLogin(String username) {
+        try {
+            DnUser u = findByUsername(username);
+            if (u == null) return;   // 内存兜底 admin 不在表中, 跳过
+            DnUser up = new DnUser();
+            up.setId(u.getId());
+            up.setLastLoginAt(LocalDateTime.now());
+            userMapper.updateById(up);
+        } catch (Exception e) {
+            log.warn("更新最后登录时间失败: {}", username, e);
+        }
+    }
+
     public DnUser findByUsername(String username) {
         // 用户名空白时无可查之据，直接返回 null（与"找不到用户"语义一致，避免无效全表 selectOne）
         if (username == null || username.trim().isEmpty()) {

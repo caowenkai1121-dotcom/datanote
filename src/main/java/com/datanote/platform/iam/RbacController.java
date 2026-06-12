@@ -30,6 +30,12 @@ import java.util.stream.Collectors;
 public class RbacController {
 
     private final RbacService rbacService;
+    private final com.datanote.platform.audit.AuditService auditService;
+
+    /** 当前操作人(用于权限变更审计)。 */
+    private String actor() {
+        return com.datanote.platform.iam.CurrentUserUtil.currentUser();
+    }
 
     // ---------------- 当前用户 ----------------
 
@@ -80,6 +86,9 @@ public class RbacController {
     @GetMapping("/users")
     public R<List<Map<String, Object>>> listUsers() {
         List<DnUser> users = rbacService.listUsers();
+        // 角色 id→name 映射(一次查全, 避免每用户查库)
+        Map<Long, String> roleNameById = new HashMap<>();
+        for (DnRole r : rbacService.listRoles()) roleNameById.put(r.getId(), r.getRoleName());
         List<Map<String, Object>> result = new ArrayList<>();
         for (DnUser u : users) {
             Map<String, Object> m = new HashMap<>();
@@ -88,7 +97,12 @@ public class RbacController {
             m.put("nickname", u.getNickname());
             m.put("status", u.getStatus());
             m.put("createdAt", u.getCreatedAt());
-            m.put("roleIds", rbacService.getUserRoleIds(u.getId()));
+            m.put("lastLoginAt", u.getLastLoginAt());
+            List<Long> roleIds = rbacService.getUserRoleIds(u.getId());
+            m.put("roleIds", roleIds);
+            List<String> roleNames = new ArrayList<>();
+            for (Long rid : roleIds) { String n = roleNameById.get(rid); if (n != null) roleNames.add(n); }
+            m.put("roleNames", roleNames);
             result.add(m);
         }
         return R.ok(result);
@@ -128,6 +142,8 @@ public class RbacController {
     @PostMapping("/users/{id}/roles")
     public R<String> assignRoles(@PathVariable Long id, @RequestBody AssignRolesRequest req) {
         rbacService.assignRoles(id, req.getRoleIds());
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/" + id + "/roles", null, 200,
+                "为用户#" + id + " 分配角色 " + req.getRoleIds());
         return R.ok("分配成功");
     }
 
@@ -177,6 +193,8 @@ public class RbacController {
     @PostMapping("/roles/{id}/perms")
     public R<String> setRolePerms(@PathVariable Long id, @RequestBody SetPermsRequest req) {
         rbacService.setRolePerms(id, req.getPerms());
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/roles/" + id + "/perms", null, 200,
+                "设置角色#" + id + " 权限点 " + (req.getPerms() == null ? 0 : req.getPerms().size()) + " 个");
         return R.ok("设置成功");
     }
 

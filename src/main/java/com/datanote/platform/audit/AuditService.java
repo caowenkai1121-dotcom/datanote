@@ -59,6 +59,10 @@ public class AuditService {
         if (path.startsWith(SELF_PREFIX)) {
             return false;
         }
+        // 登录由 AuthController 显式审计(LOGIN/LOGIN_FAIL/LOGIN_LOCKED 含真实用户与原因), filter 不重复记
+        if (path.equals("/api/auth/login")) {
+            return false;
+        }
         return true;
     }
 
