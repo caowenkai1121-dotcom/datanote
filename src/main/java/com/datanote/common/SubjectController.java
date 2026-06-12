@@ -73,9 +73,8 @@ public class SubjectController {
     @Operation(summary = "创建主题域")
     @PostMapping
     public R<DnSubject> create(@RequestBody DnSubject subject) {
-        subject.setCreatedAt(LocalDateTime.now());
-        subjectMapper.insert(subject);
-        return R.ok(subject);
+        // 走 service 以自动计算 L1-L5 层级(按父节点 level+1, 超 5 级拒绝)
+        return R.ok(subjectService.create(subject));
     }
 
     /**

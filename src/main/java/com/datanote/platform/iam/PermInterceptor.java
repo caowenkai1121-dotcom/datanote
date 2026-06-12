@@ -65,6 +65,8 @@ public class PermInterceptor implements HandlerInterceptor {
             regex("^/api/project/.*/releases/\\d+/approve$", "project:approve"),
             regex("^/api/project/releases/\\d+/approve$", "project:approve"),
             prefix("/api/ai/agent/approval", "assistant:approve"),
+            regex("^/api/datamodel/change/\\d+/(approve|reject)$", "datamodel:approve"),
+            prefix("/api/datamodel", "datamodel:edit"),
             // 密钥/敏感配置写: AI 模型密钥(embedding/chat key)、连接测试 须 settings:config(原仅 assistant:use 过低)
             prefix("/api/ai/store/config", "settings:config"),
             prefix("/api/ai/config", "settings:config"),

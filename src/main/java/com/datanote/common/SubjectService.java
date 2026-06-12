@@ -40,6 +40,15 @@ public class SubjectService {
      */
     public DnSubject create(DnSubject subject) {
         if (subject == null) throw new IllegalArgumentException("主题域不能为空");
+        // L1-L5 层级: 按父节点 level+1 自动计算, 超 5 层拒绝(主题域业务分层最多 5 级)
+        int level = 1;
+        if (subject.getParentId() != null) {
+            DnSubject parent = subjectMapper.selectById(subject.getParentId());
+            if (parent != null && parent.getLevel() != null) level = parent.getLevel() + 1;
+            else if (parent != null) level = 2;
+        }
+        if (level > 5) throw new IllegalArgumentException("主题域层级最多 5 级(L1-L5)");
+        subject.setLevel(level);
         subject.setCreatedAt(LocalDateTime.now());
         subjectMapper.insert(subject);
         return subject;

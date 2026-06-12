@@ -18,6 +18,8 @@ public class DnSubject {
     private String name;
     private Long parentId;
     private String layer;
+    private Integer level;          // L1-L5 树深度(create 时按 parent 自动计算)
+    private String layerType;       // 数仓分层 ODS/DWD/DIM/DWS/ADS
     private Integer sortOrder;
     private LocalDateTime createdAt;
 }
