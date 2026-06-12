@@ -130,37 +130,50 @@ public class PermInterceptor implements HandlerInterceptor {
         return null;
     }
 
-    // ---------- 权限集缓存(30s) ----------
+    // ---------- 权限集+账号有效性缓存(30s, 账号/权限变更时主动全清立即生效) ----------
 
     private static final long CACHE_TTL_MS = 30_000L;
 
     private static final class CacheEntry {
         final Set<String> perms;
+        final boolean active;   // 账号是否有效(表内须启用; 表外仅内存兜底引导账号)
         final long expireAt;
-        CacheEntry(Set<String> perms, long expireAt) { this.perms = perms; this.expireAt = expireAt; }
+        CacheEntry(Set<String> perms, boolean active, long expireAt) { this.perms = perms; this.active = active; this.expireAt = expireAt; }
     }
 
     private final Map<String, CacheEntry> permCache = new ConcurrentHashMap<>();
 
-    private Set<String> permsOf(String username) {
+    /** 停用/删除用户、改角色/权限后调用, 使变更立即生效(否则最迟 30s)。 */
+    public void evictAll() {
+        permCache.clear();
+    }
+
+    private CacheEntry entryOf(String username) {
         long now = System.currentTimeMillis();
         CacheEntry e = permCache.get(username);
-        if (e != null && e.expireAt > now) return e.perms;
+        if (e != null && e.expireAt > now) return e;
         Set<String> perms;
+        boolean active;
         try {
-            perms = rbacService.getUserPermsByUsername(username);
+            com.datanote.platform.iam.model.DnUser u = rbacService.findByUsername(username);
+            if (u != null) {
+                // 表内用户: 须启用; 停用/被删后存量会话立刻失效(防离职/盗号账号继续用旧 session)
+                active = u.getStatus() != null && u.getStatus() == 1;
+                perms = active ? rbacService.getUserPerms(u.getId()) : Collections.emptySet();
+            } else {
+                // 不在表: 仅内存兜底引导账号有效且等同超级管理员;
+                // 其余(如已被删除用户的旧会话)一律无效。
+                active = username.equals(authProperties.getUsername());
+                perms = active ? Collections.singleton("*") : Collections.emptySet();
+            }
         } catch (Exception ex) {
-            log.warn("查询用户权限失败, 按空权限处理: {}", username, ex);
+            log.warn("查询用户权限失败, 按空权限处理(不踢会话): {}", username, ex);
             perms = Collections.emptySet();
+            active = true;   // 查询异常 fail-open 读, 与原行为一致
         }
-        // 内存兜底 admin(仅当该用户名不在 dn_user 表时): 配置引导账号等同超级管理员;
-        // dn_user 中真实存在但无角色的同名账号不再白拿超管(提权漏洞修复)。
-        if (perms.isEmpty() && username != null && username.equals(authProperties.getUsername())
-                && !rbacService.existsInDb(username)) {
-            perms = Collections.singleton("*");
-        }
-        permCache.put(username, new CacheEntry(perms, now + CACHE_TTL_MS));
-        return perms;
+        CacheEntry ne = new CacheEntry(perms, active, now + CACHE_TTL_MS);
+        permCache.put(username, ne);
+        return ne;
     }
 
     // ---------- 拦截 ----------
@@ -169,16 +182,29 @@ public class PermInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!authProperties.isEnabled()) return true;   // 开放模式不鉴权
 
-        String need = requiredPerm(request.getMethod(), request.getRequestURI());
-        if (need == null) return true;                  // 只要求登录(SecurityConfig 已保证)
-
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = (auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) ? auth.getName() : null;
         if (username == null) return true;              // 未登录由 SecurityConfig 401, 此处不重复处理
 
-        Set<String> perms = permsOf(username);
-        if (RbacService.hasPermission(perms, need)) return true;
+        // 账号有效性: 停用/被删用户的存量会话立刻失效(含普通 GET), 防离职/盗号账号继续用旧 session
+        CacheEntry entry = entryOf(username);
+        if (!entry.active) {
+            log.info("失效会话拒绝 user={} {} {}", username, request.getMethod(), request.getRequestURI());
+            javax.servlet.http.HttpSession session = request.getSession(false);
+            if (session != null) session.invalidate();
+            SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(JSON.toJSONString(R.fail(R.CODE_UNAUTHORIZED, "账号已停用或删除, 请重新登录")));
+            return false;
+        }
+
+        String need = requiredPerm(request.getMethod(), request.getRequestURI());
+        if (need == null) return true;                  // 只要求登录(SecurityConfig 已保证)
+
+        if (RbacService.hasPermission(entry.perms, need)) return true;
 
         log.info("权限拒绝 user={} need={} {} {}", username, need, request.getMethod(), request.getRequestURI());
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);

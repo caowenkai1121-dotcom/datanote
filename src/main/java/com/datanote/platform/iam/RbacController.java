@@ -32,6 +32,7 @@ public class RbacController {
 
     private final RbacService rbacService;
     private final com.datanote.platform.audit.AuditService auditService;
+    private final PermInterceptor permInterceptor;   // 账号/权限变更后清缓存, 使停用·删除·改权限立即生效
 
     /** 当前操作人(用于权限变更审计)。 */
     private String actor() {
@@ -141,6 +142,7 @@ public class RbacController {
         user.setId(id);
         user.setUsername(null); // 用户名不可改
         DnUser r = rbacService.updateUser(user);
+        permInterceptor.evictAll();   // 停用立即生效(存量会话下个请求即被踢)
         if (user.getPassword() != null) {
             auditService.record(actor(), "PERM_CHANGE", "PUT", "/api/rbac/users/" + id, null, 200, "重置用户#" + id + " 密码");
         }
@@ -158,6 +160,7 @@ public class RbacController {
             return R.fail(R.CODE_BAD_REQUEST, "不能删除最后一名超级管理员");
         }
         rbacService.deleteUser(id);
+        permInterceptor.evictAll();   // 删除立即生效
         auditService.record(actor(), "PERM_CHANGE", "DELETE", "/api/rbac/users/" + id, null, 200, "删除用户#" + id);
         return R.ok("删除成功");
     }
@@ -179,6 +182,7 @@ public class RbacController {
             }
         }
         rbacService.assignRoles(id, req.getRoleIds());
+        permInterceptor.evictAll();   // 角色变更立即生效(原最迟 30s)
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/" + id + "/roles", null, 200,
                 "为用户#" + id + " 分配角色 " + req.getRoleIds());
         return R.ok("分配成功");
@@ -205,6 +209,7 @@ public class RbacController {
             DnUser u = new DnUser(); u.setId(id); u.setStatus(req.getStatus());
             rbacService.updateUser(u); ok++;
         }
+        permInterceptor.evictAll();
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-status", null, 200,
                 "批量" + (req.getStatus() == 0 ? "停用" : "启用") + " " + ok + " 个用户" + (skipped.isEmpty() ? "" : ", 跳过 " + skipped.size() + " 个"));
         return R.ok(result(ok, skipped));
@@ -224,6 +229,7 @@ public class RbacController {
             if (rbacService.isSuperAdmin(id) && rbacService.countActiveSuperAdmins() <= 1) { skipped.add(skip(id, "最后一名超级管理员")); continue; }
             rbacService.deleteUser(id); ok++;
         }
+        permInterceptor.evictAll();
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-delete", null, 200,
                 "批量删除 " + ok + " 个用户" + (skipped.isEmpty() ? "" : ", 跳过 " + skipped.size() + " 个"));
         return R.ok(result(ok, skipped));
@@ -257,6 +263,7 @@ public class RbacController {
             rbacService.assignRoles(uid, new ArrayList<>(merged));
             ok++;
         }
+        permInterceptor.evictAll();
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-roles", null, 200,
                 "批量为 " + ok + " 个用户追加角色 " + req.getRoleIds());
         return R.ok(result(ok, new ArrayList<>()));
@@ -316,6 +323,7 @@ public class RbacController {
     @DeleteMapping("/roles/{id}")
     public R<String> deleteRole(@PathVariable Long id) {
         rbacService.deleteRole(id);
+        permInterceptor.evictAll();   // 绑定用户的权限随角色删除立即收回
         return R.ok("删除成功");
     }
 
@@ -323,6 +331,7 @@ public class RbacController {
     @PostMapping("/roles/{id}/perms")
     public R<String> setRolePerms(@PathVariable Long id, @RequestBody SetPermsRequest req) {
         rbacService.setRolePerms(id, req.getPerms());
+        permInterceptor.evictAll();   // 权限点变更立即生效
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/roles/" + id + "/perms", null, 200,
                 "设置角色#" + id + " 权限点 " + (req.getPerms() == null ? 0 : req.getPerms().size()) + " 个");
         return R.ok("设置成功");
