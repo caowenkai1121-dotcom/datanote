@@ -118,10 +118,25 @@ public class DataModelController {
 
     // -------- 生成 --------
 
+    @Operation(summary = "由业务模型生成逻辑模型")
+    @PostMapping("/model/{id}/generate-logical")
+    public R<DnModel> generateLogical(@PathVariable Long id) {
+        return R.ok(service.generateLogical(id));
+    }
+
     @Operation(summary = "由逻辑模型生成物理模型")
     @PostMapping("/model/{id}/generate-physical")
     public R<DnModel> generatePhysical(@PathVariable Long id) {
         return R.ok(service.generatePhysical(id));
+    }
+
+    @Operation(summary = "从物理表元数据逆向生成物理模型")
+    @PostMapping("/reverse")
+    public R<DnModel> reverse(@RequestBody Map<String, Object> body) {
+        Long tableMetaId = body.get("tableMetaId") == null ? null : Long.valueOf(String.valueOf(body.get("tableMetaId")));
+        Long subjectId = body.get("subjectId") == null ? null : Long.valueOf(String.valueOf(body.get("subjectId")));
+        if (tableMetaId == null) return R.fail(R.CODE_BAD_REQUEST, "请指定物理表");
+        return R.ok(service.reverseFromTable(tableMetaId, subjectId));
     }
 
     @Operation(summary = "物理模型生成建表 DDL")

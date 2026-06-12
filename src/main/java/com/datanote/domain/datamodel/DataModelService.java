@@ -31,6 +31,8 @@ public class DataModelService {
     private final DnModelRelationMapper relMapper;
     private final DnModelChangeMapper changeMapper;
     private final NotificationService notificationService;
+    private final com.datanote.domain.metadata.mapper.DnTableMetaMapper tableMetaMapper;
+    private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;
 
     // ---------------- 模型 ----------------
 
@@ -256,7 +258,7 @@ public class DataModelService {
         if (!"LOGIC".equals(logical.getModelType())) throw new BusinessException("仅逻辑模型可生成物理模型");
 
         DnModel phys = new DnModel();
-        phys.setModelCode(logical.getModelCode() + "_PHY");
+        phys.setModelCode(uniqueCode(logical.getModelCode() + "_PHY"));
         phys.setModelName(logical.getModelName() + " (物理)");
         phys.setModelType("PHYS");
         phys.setSubjectId(logical.getSubjectId());
@@ -267,10 +269,6 @@ public class DataModelService {
         phys.setOwner(CurrentUserUtil.currentUser());
         phys.setCreatedBy(CurrentUserUtil.currentUser());
         phys.setDescription("由逻辑模型「" + logical.getModelName() + "」自动生成");
-        // 编码冲突时追加时间戳后缀
-        if (modelMapper.selectCount(new QueryWrapper<DnModel>().eq("model_code", phys.getModelCode())) > 0) {
-            phys.setModelCode(phys.getModelCode() + "_" + System.currentTimeMillis() % 100000);
-        }
         modelMapper.insert(phys);
 
         List<DnModelEntity> logicEntities = entityMapper.selectList(
@@ -306,6 +304,107 @@ public class DataModelService {
                 pa.setSortOrder(la.getSortOrder());
                 attrMapper.insert(pa);
             }
+        }
+        return phys;
+    }
+
+    /** 由业务模型生成逻辑模型(业务对象 L3→逻辑实体 L4, 复制属性, 溯源回填)。 */
+    @Transactional(rollbackFor = Exception.class)
+    public DnModel generateLogical(Long bizModelId) {
+        DnModel biz = modelMapper.selectById(bizModelId);
+        if (biz == null) throw new BusinessException("源业务模型不存在");
+        if (!"BIZ".equals(biz.getModelType())) throw new BusinessException("仅业务模型可生成逻辑模型");
+
+        DnModel logic = new DnModel();
+        logic.setModelCode(uniqueCode(biz.getModelCode() + "_LM"));
+        logic.setModelName(biz.getModelName() + " (逻辑)");
+        logic.setModelType("LOGIC");
+        logic.setSubjectId(biz.getSubjectId());
+        logic.setSourceModelId(biz.getId());
+        logic.setDwLayer(biz.getDwLayer());
+        logic.setVersion(1);
+        logic.setStatus("DRAFT");
+        logic.setOwner(CurrentUserUtil.currentUser());
+        logic.setCreatedBy(CurrentUserUtil.currentUser());
+        logic.setDescription("由业务模型「" + biz.getModelName() + "」自动生成");
+        modelMapper.insert(logic);
+
+        List<DnModelEntity> bizEntities = entityMapper.selectList(
+                new QueryWrapper<DnModelEntity>().eq("model_id", bizModelId).orderByAsc("sort_order", "id"));
+        for (DnModelEntity be : bizEntities) {
+            DnModelEntity le = new DnModelEntity();
+            le.setModelId(logic.getId());
+            le.setEntityCode(be.getEntityCode());
+            le.setEntityName(be.getEntityName());
+            le.setLevel(4);   // 业务对象 L3 → 逻辑实体 L4
+            le.setSourceEntityId(be.getId());
+            le.setBizDefinition(be.getBizDefinition());
+            le.setSortOrder(be.getSortOrder());
+            entityMapper.insert(le);
+            List<DnModelAttribute> attrs = attrMapper.selectList(
+                    new QueryWrapper<DnModelAttribute>().eq("entity_id", be.getId()).orderByAsc("sort_order", "id"));
+            for (DnModelAttribute ba : attrs) {
+                DnModelAttribute la = new DnModelAttribute();
+                la.setEntityId(le.getId());
+                la.setAttrCode(ba.getAttrCode());
+                la.setAttrName(ba.getAttrName());
+                la.setDataType(ba.getDataType());
+                la.setDataLength(ba.getDataLength());
+                la.setIsPk(ba.getIsPk());
+                la.setIsNullable(ba.getIsNullable());
+                la.setDefaultValue(ba.getDefaultValue());
+                la.setElementCode(ba.getElementCode());
+                la.setDictCode(ba.getDictCode());
+                la.setBizDefinition(ba.getBizDefinition());
+                la.setSortOrder(ba.getSortOrder());
+                attrMapper.insert(la);
+            }
+        }
+        return logic;
+    }
+
+    /** 从已采集的物理表元数据逆向生成物理模型(表→实体, 列→属性, 类型反归一化, 主键/可空识别)。 */
+    @Transactional(rollbackFor = Exception.class)
+    public DnModel reverseFromTable(Long tableMetaId, Long subjectId) {
+        com.datanote.domain.metadata.model.DnTableMeta tbl = tableMetaMapper.selectById(tableMetaId);
+        if (tbl == null) throw new BusinessException("物理表元数据不存在, 请先在数据地图采集该表");
+
+        DnModel phys = new DnModel();
+        phys.setModelCode(uniqueCode(toModelCode("REV_" + tbl.getTableName())));
+        phys.setModelName((tbl.getTableComment() != null && !tbl.getTableComment().isEmpty()) ? tbl.getTableComment() : tbl.getTableName());
+        phys.setModelType("PHYS");
+        phys.setSubjectId(subjectId != null ? subjectId : tbl.getSubjectId());
+        phys.setVersion(1);
+        phys.setStatus("DRAFT");
+        phys.setOwner(CurrentUserUtil.currentUser());
+        phys.setCreatedBy(CurrentUserUtil.currentUser());
+        phys.setDescription("逆向自物理表 " + tbl.getDatabaseName() + "." + tbl.getTableName());
+        modelMapper.insert(phys);
+
+        DnModelEntity e = new DnModelEntity();
+        e.setModelId(phys.getId());
+        e.setEntityCode(toCamel(tbl.getTableName()));
+        e.setEntityName(phys.getModelName());
+        e.setLevel(4);
+        e.setPhysicalTable(tbl.getTableName());
+        e.setBizDefinition(tbl.getTableComment());
+        entityMapper.insert(e);
+
+        List<com.datanote.domain.metadata.model.DnColumnMeta> cols = columnMetaMapper.selectList(
+                new QueryWrapper<com.datanote.domain.metadata.model.DnColumnMeta>().eq("table_meta_id", tableMetaId).orderByAsc("ordinal", "id"));
+        int order = 0;
+        for (com.datanote.domain.metadata.model.DnColumnMeta c : cols) {
+            DnModelAttribute a = new DnModelAttribute();
+            a.setEntityId(e.getId());
+            a.setAttrCode(c.getColumnName());
+            a.setAttrName((c.getBusinessName() != null && !c.getBusinessName().isEmpty()) ? c.getBusinessName() : c.getColumnName());
+            a.setDataType(normalizeType(c.getDataType()));
+            a.setPhysicalColumn(c.getColumnName());
+            a.setIsPk(c.getColumnKey() != null && c.getColumnKey().toUpperCase().contains("PRI") ? 1 : 0);
+            a.setIsNullable("NO".equalsIgnoreCase(c.getIsNullable()) ? 0 : 1);
+            a.setBizDefinition(c.getBusinessDesc());
+            a.setSortOrder(order++);
+            attrMapper.insert(a);
         }
         return phys;
     }
@@ -372,6 +471,47 @@ public class DataModelService {
     private String toSnake(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.replaceAll("([a-z0-9])([A-Z])", "$1_$2").replaceAll("[\\s-]+", "_").toLowerCase();
+    }
+
+    /** snake_case → CamelCase(逆向实体编码)。 */
+    private String toCamel(String s) {
+        if (s == null || s.isEmpty()) return s;
+        String[] parts = s.split("[_\\s-]+");
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) { if (p.isEmpty()) continue; sb.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1).toLowerCase()); }
+        return sb.length() == 0 ? toModelCode(s) : sb.toString();
+    }
+
+    /** 物理类型 → 逻辑类型(逆向归一化)。 */
+    private String normalizeType(String physType) {
+        if (physType == null) return "STRING";
+        String t = physType.trim().toUpperCase();
+        if (t.startsWith("VARCHAR") || t.startsWith("CHAR") || t.startsWith("NVARCHAR")) return "STRING";
+        if (t.startsWith("TEXT") || t.startsWith("CLOB") || t.contains("LONGTEXT")) return "TEXT";
+        if (t.startsWith("BIGINT")) return "BIGINT";
+        if (t.startsWith("INT") || t.startsWith("TINYINT") || t.startsWith("SMALLINT") || t.startsWith("MEDIUMINT")) return "INT";
+        if (t.startsWith("DECIMAL") || t.startsWith("NUMERIC") || t.startsWith("NUMBER")) return "DECIMAL";
+        if (t.startsWith("DOUBLE")) return "DOUBLE";
+        if (t.startsWith("FLOAT")) return "FLOAT";
+        if (t.startsWith("DATETIME") || t.startsWith("TIMESTAMP")) return "DATETIME";
+        if (t.startsWith("DATE")) return "DATE";
+        if (t.startsWith("TIME")) return "TIME";
+        if (t.startsWith("BOOL") || t.equals("BIT")) return "BOOLEAN";
+        return "STRING";
+    }
+
+    /** 规范化为合法模型编码(大写, 非字母数字下划线→下划线, 字母开头)。 */
+    private String toModelCode(String s) {
+        if (s == null || s.isEmpty()) return "MODEL";
+        String c = s.toUpperCase().replaceAll("[^A-Za-z0-9_]", "_");
+        if (!c.matches("[A-Za-z].*")) c = "M_" + c;
+        return c;
+    }
+
+    /** 编码唯一化(冲突时追加短时间戳后缀)。 */
+    private String uniqueCode(String base) {
+        if (modelMapper.selectCount(new QueryWrapper<DnModel>().eq("model_code", base)) == 0) return base;
+        return base + "_" + (System.currentTimeMillis() % 100000);
     }
 
     /** 编码规范: 非空 + 仅字母数字下划线 + 字母开头。 */

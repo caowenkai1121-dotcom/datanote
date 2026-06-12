@@ -1,7 +1,7 @@
 /* 数据模型 — 三层建模(业务/逻辑/物理) + L1-L5 主题域分层 + 数仓分层 + 申请审批流转 + 模型生成。
    独立顶部菜单(datamodel)。权限: datamodel:edit(建模) / datamodel:approve(审批)。 */
 (function () {
-  var DM = { subjects: [], models: [], curType: '', curSubject: null };
+  var DM = { subjects: [], models: [], curType: '', curSubject: null, elements: [] };
   var TYPE_LABEL = { BIZ: '业务模型', LOGIC: '逻辑模型', PHYS: '物理模型' };
   var TYPE_COLOR = { BIZ: 'var(--primary)', LOGIC: '#2f9e44', PHYS: '#e8590c' };
   var STATUS_LABEL = { DRAFT: '草稿', PENDING: '待审批', PUBLISHED: '已发布', REJECTED: '已驳回', ARCHIVED: '已归档' };
@@ -28,7 +28,8 @@
       + '    <h2 style="font-size:17px;font-weight:600;margin:0;">数据模型</h2>'
       + '    <div id="dmTypeTabs" style="display:flex;gap:6px;margin-left:8px;"></div>'
       + '    <span id="dmCurSubject" style="font-size:12px;color:var(--text-muted);"></span>'
-      + '    <button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="dmNewModel()" style="margin-left:auto;">+ 新建模型</button>'
+      + '    <button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmReverseImport()" style="margin-left:auto;">⬇ 逆向导入</button>'
+      + '    <button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="dmNewModel()">+ 新建模型</button>'
       + '  </div>'
       + '  <div id="dmModelList"></div>'
       + '</div></div>';
@@ -36,7 +37,17 @@
     dmLoadSubjects();
     dmLoadModels();
     dmLoadChangeBadge();
+    dmLoadElements();
   };
+  // 数据标准(数据元)加载为 datalist, 供属性绑标准 + 联动带出类型/长度
+  function dmLoadElements() {
+    api('/api/gov/standard/elements').then(function (res) {
+      DM.elements = (res && res.code === 0 && res.data) || [];
+      var dl = document.getElementById('dmElementList');
+      if (!dl) { dl = document.createElement('datalist'); dl.id = 'dmElementList'; document.body.appendChild(dl); }
+      dl.innerHTML = DM.elements.map(function (e) { return '<option value="' + esc(e.elementCode) + '" label="' + esc(e.nameCn || '') + '">'; }).join('');
+    }).catch(function () {});
+  }
 
   function renderTypeTabs() {
     var box = document.getElementById('dmTypeTabs'); if (!box) return;
@@ -139,6 +150,7 @@
       var subName = findSubjectName(DM.subjects, m.subjectId) || '-';
       var ops = '<a href="#" onclick="dmOpenModel(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>';
       if (m.status === 'DRAFT' || m.status === 'REJECTED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmSubmit(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">提交审批</a>';
+      if (m.modelType === 'BIZ') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenLogical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成逻辑</a>';
       if (m.modelType === 'LOGIC') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenPhysical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成物理</a>';
       if (m.modelType === 'PHYS') ops += '<a href="#" onclick="dmShowDdl(' + m.id + ');return false;" style="color:#e8590c;margin-right:8px;">DDL</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
@@ -282,7 +294,7 @@
         + '<td><input class="dbsync-form-input dmA-len" style="width:60px;" value="' + esc(a.dataLength || '') + '"></td>'
         + '<td style="text-align:center;"><input type="checkbox" class="dmA-pk"' + (a.isPk == 1 ? ' checked' : '') + '></td>'
         + '<td style="text-align:center;"><input type="checkbox" class="dmA-null"' + (a.isNullable != 0 ? ' checked' : '') + '></td>'
-        + '<td><input class="dbsync-form-input dmA-elem" style="width:100px;" value="' + esc(a.elementCode || '') + '" placeholder="数据标准码"></td>'
+        + '<td><input class="dbsync-form-input dmA-elem" list="dmElementList" onchange="dmElemChanged(this)" style="width:120px;" value="' + esc(a.elementCode || '') + '" placeholder="选数据标准"></td>'
         + '<td><a href="#" onclick="dmAttrDelRow(' + i + ');return false;" style="color:var(--error);">×</a></td></tr>';
     }).join('');
     var h = '<div style="min-width:640px;">'
@@ -358,6 +370,14 @@
   };
 
   // ---------- 生成 ----------
+  window.dmGenLogical = function (id) {
+    DN.confirm('由该业务模型生成逻辑模型？将复制业务对象为逻辑实体(L3→L4)。', { title: '生成逻辑模型' }).then(function (ok) {
+      if (!ok) return;
+      apiPost('/api/datamodel/model/' + id + '/generate-logical', {}).then(function (res) {
+        if (res && res.code === 0) { toast('已生成逻辑模型: ' + (res.data && res.data.modelName), 'success'); dmLoadModels(); } else toast((res && res.msg) || '生成失败', 'error');
+      }).catch(function () { toast('生成失败', 'error'); });
+    });
+  };
   window.dmGenPhysical = function (id) {
     DN.confirm('由该逻辑模型生成物理模型？将复制实体/属性并按规范映射物理表名与字段。', { title: '生成物理模型' }).then(function (ok) {
       if (!ok) return;
@@ -378,4 +398,35 @@
     }).catch(function () { toast('生成失败', 'error'); });
   };
   window.dmCopyDdl = function () { try { navigator.clipboard.writeText(window.__dmDdl || ''); toast('已复制', 'success'); } catch (e) { toast('复制失败', 'error'); } };
+
+  // ---------- 逆向导入(物理表 → 物理模型) ----------
+  window.dmReverseImport = function () {
+    api('/api/metadata-center/tables?limit=300').then(function (res) {
+      var d = (res && res.code === 0) ? res.data : null;
+      var list = Array.isArray(d) ? d : (d && (d.list || d.rows || d.records) || []);
+      var rows = list.map(function (t) {
+        return '<tr><td style="font-family:monospace;">' + esc(t.databaseName || '') + '.' + esc(t.tableName || '') + '</td><td style="font-size:12px;">' + esc(t.tableComment || '') + '</td><td><a href="#" onclick="dmDoReverse(' + t.id + ');return false;" style="color:var(--primary);">逆向</a></td></tr>';
+      }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:16px;">无已采集物理表，请先在「数据地图」采集表元数据</td></tr>';
+      var h = '<div style="min-width:540px;max-height:440px;overflow:auto;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">选择已采集的物理表，逆向生成物理模型(表→实体, 列→属性, 类型反归一化, 主键/可空识别)。' + (DM.curSubject != null ? ' 归属当前主题域。' : '') + '</div>'
+        + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>库.表</th><th>注释</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      projShowModalBox('逆向导入物理模型', h);
+    }).catch(function () { toast('加载物理表失败', 'error'); });
+  };
+  window.dmDoReverse = function (tableMetaId) {
+    apiPost('/api/datamodel/reverse', { tableMetaId: tableMetaId, subjectId: DM.curSubject }).then(function (res) {
+      if (res && res.code === 0) { toast('已逆向生成: ' + (res.data && res.data.modelName), 'success'); projCloseModalBox(); DM.curType = ''; renderTypeTabs(); dmLoadModels(); }
+      else toast((res && res.msg) || '逆向失败', 'error');
+    }).catch(function () { toast('逆向失败', 'error'); });
+  };
+  window.dmElemChanged = function (input) {
+    var code = (input.value || '').trim(); if (!code) return;
+    var el = DM.elements.filter(function (e) { return e.elementCode === code; })[0];
+    if (!el) return;
+    var tr = input.closest('tr'); if (!tr) return;
+    if (el.dataType) {
+      var ts = tr.querySelector('.dmA-type'), dt = String(el.dataType).toUpperCase();
+      for (var i = 0; i < ts.options.length; i++) { if (ts.options[i].value === dt || dt.indexOf(ts.options[i].value) >= 0) { ts.value = ts.options[i].value; break; } }
+    }
+    if (el.length) { var le = tr.querySelector('.dmA-len'); if (le) le.value = el.length; }
+  };
 })();

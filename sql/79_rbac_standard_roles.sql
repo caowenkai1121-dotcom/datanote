@@ -23,6 +23,7 @@ INSERT IGNORE INTO dn_role_perm (role_id, perm_code) VALUES
   (@rid,'develop:view'),(@rid,'develop:edit'),(@rid,'develop:run'),
   (@rid,'operations:view'),(@rid,'operations:schedule'),(@rid,'operations:backfill'),(@rid,'operations:baseline'),
   (@rid,'catalog:view'),(@rid,'catalog:edit'),
+  (@rid,'datamodel:view'),(@rid,'datamodel:edit'),
   (@rid,'dbsync:view'),(@rid,'dbsync:edit'),(@rid,'dbsync:run'),
   (@rid,'metrics:view'),(@rid,'metrics:edit'),
   (@rid,'assistant:view'),(@rid,'assistant:use');
@@ -33,6 +34,7 @@ INSERT IGNORE INTO dn_role_perm (role_id, perm_code) VALUES
   (@rid,'home:view'),
   (@rid,'governance:view'),(@rid,'governance:quality'),(@rid,'governance:issue'),(@rid,'governance:standard'),(@rid,'governance:manage'),(@rid,'governance:audit'),
   (@rid,'catalog:view'),
+  (@rid,'datamodel:view'),(@rid,'datamodel:edit'),(@rid,'datamodel:approve'),
   (@rid,'mdm:view'),(@rid,'mdm:manage'),(@rid,'mdm:approve'),
   (@rid,'metrics:view'),
   (@rid,'assistant:view'),(@rid,'assistant:use');
