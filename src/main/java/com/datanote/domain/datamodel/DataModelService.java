@@ -116,6 +116,7 @@ public class DataModelService {
         entityMapper.delete(new QueryWrapper<DnModelEntity>().eq("model_id", id));
         relMapper.delete(new QueryWrapper<DnModelRelation>().eq("model_id", id));
         changeMapper.delete(new QueryWrapper<DnModelChange>().eq("model_id", id));
+        versionMapper.delete(new QueryWrapper<DnModelVersion>().eq("model_id", id));
         modelMapper.deleteById(id);
     }
 
@@ -214,7 +215,7 @@ public class DataModelService {
         DnModel m = modelMapper.selectById(modelId);
         if (m == null) throw new BusinessException("模型不存在");
         if ("PENDING".equals(m.getStatus())) throw new BusinessException("模型已在审批中, 请勿重复提交");
-        if ("PUBLISHED".equals(m.getStatus())) throw new BusinessException("模型已发布, 如需变更请直接修改后再提交");
+        // 已发布模型允许变更后重新提交(迭代新版本), 不阻断
         // 规范强校验: 有 error 阻断提交
         java.util.Map<String, Object> v = validateModel(modelId);
         @SuppressWarnings("unchecked")
@@ -512,6 +513,69 @@ public class DataModelService {
 
     public DnModelVersion getVersion(Long versionId) {
         return versionMapper.selectById(versionId);
+    }
+
+    /** 两版本字段级差异对比(实体增删 + 属性增删改)。 */
+    public java.util.Map<String, Object> compareVersions(Long fromVid, Long toVid) {
+        DnModelVersion fromV = versionMapper.selectById(fromVid);
+        DnModelVersion toV = versionMapper.selectById(toVid);
+        if (fromV == null || toV == null) throw new BusinessException("版本不存在");
+        DnModel fm = JSON.parseObject(fromV.getSnapshotJson(), DnModel.class);
+        DnModel tm = JSON.parseObject(toV.getSnapshotJson(), DnModel.class);
+        java.util.Map<String, DnModelEntity> fe = indexEntities(fm), te = indexEntities(tm);
+
+        List<String> addedEntities = new ArrayList<>(), removedEntities = new ArrayList<>();
+        for (String code : te.keySet()) if (!fe.containsKey(code)) addedEntities.add(te.get(code).getEntityName());
+        for (String code : fe.keySet()) if (!te.containsKey(code)) removedEntities.add(fe.get(code).getEntityName());
+
+        List<java.util.Map<String, Object>> entityDiffs = new ArrayList<>();
+        for (String code : te.keySet()) {
+            if (!fe.containsKey(code)) continue;   // 新增实体单列, 不进 diff
+            DnModelEntity fEnt = fe.get(code), tEnt = te.get(code);
+            java.util.Map<String, DnModelAttribute> fa = indexAttrs(fEnt), ta = indexAttrs(tEnt);
+            List<String> addedAttrs = new ArrayList<>(), removedAttrs = new ArrayList<>();
+            List<java.util.Map<String, Object>> changedAttrs = new ArrayList<>();
+            for (String ac : ta.keySet()) if (!fa.containsKey(ac)) addedAttrs.add(ac);
+            for (String ac : fa.keySet()) if (!ta.containsKey(ac)) removedAttrs.add(ac);
+            for (String ac : ta.keySet()) {
+                if (!fa.containsKey(ac)) continue;
+                DnModelAttribute fAttr = fa.get(ac), tAttr = ta.get(ac);
+                String ft = typeStr(fAttr), tt = typeStr(tAttr);
+                boolean fPk = fAttr.getIsPk() != null && fAttr.getIsPk() == 1, tPk = tAttr.getIsPk() != null && tAttr.getIsPk() == 1;
+                if (!ft.equals(tt) || fPk != tPk) {
+                    java.util.Map<String, Object> ch = new java.util.HashMap<>();
+                    ch.put("attr", ac); ch.put("from", ft + (fPk ? " PK" : "")); ch.put("to", tt + (tPk ? " PK" : ""));
+                    changedAttrs.add(ch);
+                }
+            }
+            if (!addedAttrs.isEmpty() || !removedAttrs.isEmpty() || !changedAttrs.isEmpty()) {
+                java.util.Map<String, Object> d = new java.util.HashMap<>();
+                d.put("entity", tEnt.getEntityName());
+                d.put("addedAttrs", addedAttrs); d.put("removedAttrs", removedAttrs); d.put("changedAttrs", changedAttrs);
+                entityDiffs.add(d);
+            }
+        }
+        java.util.Map<String, Object> r = new java.util.HashMap<>();
+        r.put("fromVersion", fromV.getVersion()); r.put("toVersion", toV.getVersion());
+        r.put("addedEntities", addedEntities); r.put("removedEntities", removedEntities);
+        r.put("entityDiffs", entityDiffs);
+        r.put("identical", addedEntities.isEmpty() && removedEntities.isEmpty() && entityDiffs.isEmpty());
+        return r;
+    }
+
+    private java.util.Map<String, DnModelEntity> indexEntities(DnModel m) {
+        java.util.Map<String, DnModelEntity> map = new java.util.LinkedHashMap<>();
+        if (m != null && m.getEntities() != null) for (DnModelEntity e : m.getEntities()) map.put(e.getEntityCode(), e);
+        return map;
+    }
+    private java.util.Map<String, DnModelAttribute> indexAttrs(DnModelEntity e) {
+        java.util.Map<String, DnModelAttribute> map = new java.util.LinkedHashMap<>();
+        if (e != null && e.getAttributes() != null) for (DnModelAttribute a : e.getAttributes()) map.put(a.getAttrCode(), a);
+        return map;
+    }
+    private String typeStr(DnModelAttribute a) {
+        String t = a.getDataType() == null ? "" : a.getDataType();
+        return (a.getDataLength() != null && !a.getDataLength().isEmpty()) ? t + "(" + a.getDataLength() + ")" : t;
     }
 
     // ---------------- 资产落地(物理模型 → 数据地图元数据) ----------------

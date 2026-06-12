@@ -165,6 +165,12 @@ public class DataModelController {
         return R.ok(service.getVersion(vid));
     }
 
+    @Operation(summary = "两版本字段级差异对比")
+    @GetMapping("/compare")
+    public R<Map<String, Object>> compare(@RequestParam Long from, @RequestParam Long to) {
+        return R.ok(service.compareVersions(from, to));
+    }
+
     @Operation(summary = "物理模型落地为数据资产")
     @PostMapping("/model/{id}/publish-asset")
     public R<Map<String, Object>> publishAsset(@PathVariable Long id) {

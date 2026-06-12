@@ -538,11 +538,36 @@
     api('/api/datamodel/model/' + modelId + '/versions').then(function (res) {
       var vers = (res && res.code === 0 && res.data) || [];
       var rows = vers.map(function (v) {
-        return '<tr><td><b>v' + v.version + '</b></td><td style="font-size:12px;">' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(v.publishedBy || '') + '</td><td style="font-size:12px;">' + esc(v.changeSummary || '-') + '</td><td><a href="#" onclick="dmViewVersion(' + v.id + ');return false;" style="color:var(--primary);">查看快照</a></td></tr>';
-      }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:18px;">暂无发布版本(模型审批通过后产生版本快照)</td></tr>';
-      var h = '<div style="min-width:540px;max-height:440px;overflow:auto;"><table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>版本</th><th>发布时间</th><th>发布人</th><th>说明</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+        return '<tr><td><input type="checkbox" class="dmVerChk" value="' + v.id + '"></td><td><b>v' + v.version + '</b></td><td style="font-size:12px;">' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(v.publishedBy || '') + '</td><td style="font-size:12px;">' + esc(v.changeSummary || '-') + '</td><td><a href="#" onclick="dmViewVersion(' + v.id + ');return false;" style="color:var(--primary);">查看快照</a></td></tr>';
+      }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:18px;">暂无发布版本(模型审批通过后产生版本快照)</td></tr>';
+      var cmp = vers.length >= 2 ? '<div style="margin-bottom:8px;"><button class="btn btn-sm" onclick="dmCompareSelected()">⇄ 对比所选两版</button> <span style="font-size:12px;color:var(--text-muted);">勾选两个版本对比字段差异</span></div>' : '';
+      var h = '<div style="min-width:560px;max-height:440px;overflow:auto;">' + cmp + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:28px;"></th><th>版本</th><th>发布时间</th><th>发布人</th><th>说明</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       projShowModalBox('版本历史', h);
     });
+  };
+  window.dmCompareSelected = function () {
+    var ids = Array.prototype.slice.call(document.querySelectorAll('.dmVerChk:checked')).map(function (c) { return parseInt(c.value); });
+    if (ids.length !== 2) { toast('请勾选两个版本', 'error'); return; }
+    ids.sort(function (a, b) { return a - b; });   // 旧→新, 使「新增/删除」方向直观
+    api('/api/datamodel/compare?from=' + ids[0] + '&to=' + ids[1]).then(function (res) {
+      if (!res || res.code !== 0) { toast((res && res.msg) || '对比失败', 'error'); return; }
+      var d = res.data;
+      var h = '<div style="min-width:480px;max-height:440px;overflow:auto;font-size:13px;"><div style="margin-bottom:10px;color:var(--text-muted);">v' + d.fromVersion + ' → v' + d.toVersion + '</div>';
+      if (d.identical) { h += '<div style="color:var(--success);">✓ 两版本无差异</div>'; }
+      else {
+        if (d.addedEntities && d.addedEntities.length) h += '<div style="margin-bottom:6px;"><b style="color:#2f9e44;">＋ 新增实体</b>: ' + d.addedEntities.map(esc).join('、') + '</div>';
+        if (d.removedEntities && d.removedEntities.length) h += '<div style="margin-bottom:6px;"><b style="color:var(--error);">－ 删除实体</b>: ' + d.removedEntities.map(esc).join('、') + '</div>';
+        (d.entityDiffs || []).forEach(function (ed) {
+          h += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b>' + esc(ed.entity) + '</b>';
+          if (ed.addedAttrs && ed.addedAttrs.length) h += '<div style="color:#2f9e44;">＋ ' + ed.addedAttrs.map(esc).join('、') + '</div>';
+          if (ed.removedAttrs && ed.removedAttrs.length) h += '<div style="color:var(--error);">－ ' + ed.removedAttrs.map(esc).join('、') + '</div>';
+          (ed.changedAttrs || []).forEach(function (ch) { h += '<div style="color:#b8860b;">～ ' + esc(ch.attr) + ': ' + esc(ch.from) + ' → ' + esc(ch.to) + '</div>'; });
+          h += '</div>';
+        });
+      }
+      h += '</div>';
+      projShowModalBox('版本对比 v' + d.fromVersion + ' → v' + d.toVersion, h);
+    }).catch(function () { toast('对比失败', 'error'); });
   };
   window.dmViewVersion = function (vid) {
     api('/api/datamodel/version/' + vid).then(function (res) {
