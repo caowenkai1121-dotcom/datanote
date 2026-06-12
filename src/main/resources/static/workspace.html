@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u49">
-<link rel="stylesheet" href="css/gov-modern.css?v=u49">
-<link rel="stylesheet" href="css/redesign.css?v=u49">
-<link rel="stylesheet" href="css/dn-design.css?v=u49">
+<link rel="stylesheet" href="css/app.css?v=u50">
+<link rel="stylesheet" href="css/gov-modern.css?v=u50">
+<link rel="stylesheet" href="css/redesign.css?v=u50">
+<link rel="stylesheet" href="css/dn-design.css?v=u50">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u49"></script>
-<script src="js/gov-assets.js?v=u49"></script>
-<script src="js/gov-lineage.js?v=u49"></script>
-<script src="js/gov-quality.js?v=u49"></script>
-<script src="js/gov-standard.js?v=u49"></script>
-<script src="js/gov-classification.js?v=u49"></script>
-<script src="js/gov-security.js?v=u49"></script>
-<script src="js/gov-health.js?v=u49"></script>
-<script src="js/gov-audit.js?v=u49"></script>
-<script src="js/gov-overview.js?v=u49"></script>
-<script src="js/gov-subject.js?v=u49"></script>
-<script src="js/gov-consumption.js?v=u49"></script>
-<script src="js/gov-govmap.js?v=u49"></script>
-<script src="js/project.js?v=u49"></script>
-<script src="js/home-dashboard.js?v=u49"></script>
-<script src="js/mdm.js?v=u49"></script>
-<script src="js/mdm-ingest.js?v=u49"></script>
-<script src="js/mdm-survivorship.js?v=u49"></script>
-<script src="js/mdm-approval.js?v=u49"></script>
-<script src="js/mdm-refdata.js?v=u49"></script>
-<script src="js/mdm-quality.js?v=u49"></script>
-<script src="js/mdm-pubsub.js?v=u49"></script>
-<script src="js/mdm-hierarchy.js?v=u49"></script>
-<script src="js/ai-agent.js?v=u49"></script>
+<script src="js/dn-common.js?v=u50"></script>
+<script src="js/gov-assets.js?v=u50"></script>
+<script src="js/gov-lineage.js?v=u50"></script>
+<script src="js/gov-quality.js?v=u50"></script>
+<script src="js/gov-standard.js?v=u50"></script>
+<script src="js/gov-classification.js?v=u50"></script>
+<script src="js/gov-security.js?v=u50"></script>
+<script src="js/gov-health.js?v=u50"></script>
+<script src="js/gov-audit.js?v=u50"></script>
+<script src="js/gov-overview.js?v=u50"></script>
+<script src="js/gov-subject.js?v=u50"></script>
+<script src="js/gov-consumption.js?v=u50"></script>
+<script src="js/gov-govmap.js?v=u50"></script>
+<script src="js/project.js?v=u50"></script>
+<script src="js/home-dashboard.js?v=u50"></script>
+<script src="js/mdm.js?v=u50"></script>
+<script src="js/mdm-ingest.js?v=u50"></script>
+<script src="js/mdm-survivorship.js?v=u50"></script>
+<script src="js/mdm-approval.js?v=u50"></script>
+<script src="js/mdm-refdata.js?v=u50"></script>
+<script src="js/mdm-quality.js?v=u50"></script>
+<script src="js/mdm-pubsub.js?v=u50"></script>
+<script src="js/mdm-hierarchy.js?v=u50"></script>
+<script src="js/ai-agent.js?v=u50"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -11395,7 +11395,7 @@ function closeAiScriptNameModal() {
       DN.h('span', { text: (window.__perms || []).indexOf('*') >= 0 ? ' (超级管理员)' : '' })
     ]));
     var oldP = DN.formInput({ type: 'password', placeholder: '当前密码' });
-    var newP = DN.formInput({ type: 'password', placeholder: '新密码(至少 6 位)' });
+    var newP = DN.formInput({ type: 'password', placeholder: '新密码(≥8位,字母/数字/符号至少两类)' });
     var newP2 = DN.formInput({ type: 'password', placeholder: '再输一遍新密码' });
     var sec = DN.formSection('修改密码');
     sec.add(DN.field('原密码', oldP, { required: true }));
@@ -11408,7 +11408,7 @@ function closeAiScriptNameModal() {
     };
     var foot = DN.drawerFoot({ okText: '保存新密码', extra: logoutBtn, onOk: function(){
       if (!oldP.value) { DN.toast('请输入原密码', 'err'); return; }
-      if (!newP.value || newP.value.length < 6) { DN.toast('新密码至少 6 位', 'err'); return; }
+      if (!newP.value || newP.value.length < 8) { DN.toast('新密码至少 8 位', 'err'); return; }
       if (newP.value !== newP2.value) { DN.toast('两次输入的新密码不一致', 'err'); return; }
       foot.busy('保存中…');
       apiPost('/api/auth/change-password', { oldPassword: oldP.value, newPassword: newP.value }).then(function(res){
@@ -11418,11 +11418,46 @@ function closeAiScriptNameModal() {
     }, onCancel: function(){ dr.close(); } });
     var dr = DN.drawer('账号设置', body, foot.el);
   };
+  // 首登强制改密: 不可关闭的全屏遮罩(管理员设的是临时口令, 必须改掉才能用系统), 唯一逃生口=登出
+  window.dnForceChangePwd = function(){
+    if (document.getElementById('dnForcePwdMask')) return;   // 防重复弹
+    var mask = document.createElement('div');
+    mask.id = 'dnForcePwdMask';
+    mask.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;';
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-card,#fff);border-radius:var(--radius-lg,10px);box-shadow:var(--shadow-lg,0 12px 40px rgba(0,0,0,.25));width:420px;max-width:92vw;padding:24px;';
+    card.innerHTML =
+      '<div style="font-size:16px;font-weight:600;margin-bottom:6px;">首次登录 · 请修改初始密码</div>'
+      + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">为保障账号安全，管理员设置的初始密码仅供首次登录。请立即设置仅你本人知晓的新密码（≥8位，含字母/数字/符号至少两类）。</div>'
+      + '<input id="dnFpOld" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:10px;" placeholder="当前(初始)密码">'
+      + '<input id="dnFpNew" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:10px;" placeholder="新密码">'
+      + '<input id="dnFpNew2" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:16px;" placeholder="再输一遍新密码">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+      + '<a href="#" id="dnFpLogout" style="font-size:13px;color:var(--error);">登出</a>'
+      + '<button id="dnFpSave" class="btn btn-sm btn-primary">保存并继续</button></div>';
+    mask.appendChild(card); document.body.appendChild(mask);
+    document.getElementById('dnFpLogout').onclick = function(e){ e.preventDefault();
+      fetch('/api/auth/logout', { method: 'POST' }).then(function(){ location.replace('login.html'); }).catch(function(){ location.replace('login.html'); });
+    };
+    document.getElementById('dnFpSave').onclick = function(){
+      var o = document.getElementById('dnFpOld').value, n = document.getElementById('dnFpNew').value, n2 = document.getElementById('dnFpNew2').value;
+      if (!o) { showToast('请输入当前密码', 'error'); return; }
+      if (!n || n.length < 8) { showToast('新密码至少 8 位', 'error'); return; }
+      if (n !== n2) { showToast('两次输入的新密码不一致', 'error'); return; }
+      var btn = document.getElementById('dnFpSave'); btn.disabled = true; btn.textContent = '保存中…';
+      apiPost('/api/auth/change-password', { oldPassword: o, newPassword: n }).then(function(res){
+        if (res && res.code === 0) { showToast('密码已更新', 'success'); setTimeout(function(){ location.reload(); }, 600); }
+        else { showToast((res && res.msg) || '修改失败', 'error'); btn.disabled = false; btn.textContent = '保存并继续'; }
+      }).catch(function(e){ showToast((e && e.message) || '修改失败', 'error'); btn.disabled = false; btn.textContent = '保存并继续'; });
+    };
+    setTimeout(function(){ var f = document.getElementById('dnFpOld'); if (f) f.focus(); }, 50);
+  };
   // 启动门禁: 先查登录态, 强制登录模式未登录则跳 login; 否则拿 perms 后再渲染
   window.dnBootGate = function(cb){
     fetch('/api/auth/status').then(function(r){ return r.json(); }).then(function(res){
       var d = (res && res.code === 0) ? (res.data || {}) : {};
       window.__authEnabled = d.authEnabled === true;
+      window.__mustChangePwd = d.mustChangePwd === true;
       if (d.authEnabled && !d.authenticated) { location.replace('login.html'); return; }
       fetch('/api/rbac/me').then(function(r){ return r.json(); }).then(function(me){
         var data = (me && me.code === 0) ? (me.data || {}) : {};
@@ -11430,6 +11465,7 @@ function closeAiScriptNameModal() {
         window.__user = data.username || d.username || null;
         try { window.dnApplyMenuPerms(); window.dnApplyBtnPerms(); window.dnRenderUserBox(); window.dnFillUserDatalist(); } catch(e){}
         cb();
+        if (window.__mustChangePwd) { try { window.dnForceChangePwd(); } catch(e){} }  // 首登须改密: 渲染后弹强制遮罩
       }).catch(function(){ window.__perms = []; cb(); });
     }).catch(function(){ cb(); }); // status 失败(网络)放行, 不锁死页面
   };

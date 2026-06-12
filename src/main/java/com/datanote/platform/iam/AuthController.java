@@ -119,6 +119,7 @@ public class AuthController {
         if (authenticated) {
             data.put("username", authentication.getName());
             data.put("perms", resolvePerms(authentication));
+            data.put("mustChangePwd", rbacService.mustChangePwd(authentication.getName()));
         }
         return R.ok(data);
     }

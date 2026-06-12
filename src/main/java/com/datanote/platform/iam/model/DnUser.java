@@ -23,6 +23,8 @@ public class DnUser {
     private Integer status;
     /** 最后登录时间(每次登录成功更新) */
     private LocalDateTime lastLoginAt;
+    /** 首登强制改密标志: 1需改/0正常(管理员建号或重置密码后置1, 用户自助改密后清0) */
+    private Integer mustChangePwd;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

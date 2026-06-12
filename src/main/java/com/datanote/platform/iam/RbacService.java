@@ -133,6 +133,7 @@ public class RbacService {
         if (user.getStatus() == null) {
             user.setStatus(1);
         }
+        user.setMustChangePwd(1);   // 管理员设的是临时口令, 强制用户首登改密(防管理员长期知晓他人密码)
         user.setId(null);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -154,6 +155,7 @@ public class RbacService {
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             PasswordPolicy.validate(user.getPassword());   // 管理员重置密码同样走强度校验
             user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setMustChangePwd(1);   // 管理员重置后亦为临时口令, 强制对方下次登录改密
         } else {
             user.setPassword(null); // null 字段 MyBatis-Plus 默认不更新
         }
@@ -179,8 +181,19 @@ public class RbacService {
         DnUser up = new DnUser();
         up.setId(u.getId());
         up.setPassword(passwordEncoder.encode(newPassword));
+        up.setMustChangePwd(0);   // 自助改密后清除强制改密标志
         up.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(up);
+    }
+
+    /** 该用户名是否被标记为首登须改密(内存兜底账号 / 找不到 一律 false)。 */
+    public boolean mustChangePwd(String username) {
+        try {
+            DnUser u = findByUsername(username);
+            return u != null && u.getMustChangePwd() != null && u.getMustChangePwd() == 1;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
