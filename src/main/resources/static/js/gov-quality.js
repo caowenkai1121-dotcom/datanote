@@ -512,6 +512,21 @@
           } },
         { key: '_op', label: '操作', render: function (r) {
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap' });
+            // 批2#13: 编辑(复用工作台质量弹窗, 同一 SPA 全局函数)与启停
+            wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑',
+              style: 'color:var(--primary)',
+              onclick: function () { if (window.editQualityRule) editQualityRule(r.id); } }));
+            var togText = r.status === 1 ? '停用' : '启用';
+            wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: togText,
+              style: r.status === 1 ? 'color:var(--text-muted)' : 'color:var(--success)',
+              onclick: function () {
+                var next = r.status === 1 ? 0 : 1;
+                DN.post('/api/quality/rule/save', Object.assign({}, r, { status: next })).then(function () {
+                  r.status = next;
+                  if (tableEl) tableEl.reload(filtered());
+                  DN.toast((next === 1 ? '已启用: ' : '已停用: ') + (r.ruleName || r.id), next === 1 ? 'ok' : 'info');
+                }).catch(function (e) { DN.toast('操作失败: ' + (e && e.message || ''), 'err'); });
+              } }));
             // R21 深链下钻: 跳健康/工单, 按该规则 id 过滤其触发的治理工单(质量↔工单联动)
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看相关工单',
               style: 'color:var(--primary)', title: '查看该规则触发生成的治理工单',
@@ -569,8 +584,9 @@
       var sc = Array.isArray(fa.statusCounts) ? fa.statusCounts : [];
       if (sc.length) {
         trendBody.appendChild(DN.sectionTitle('执行状态分布（近100次）'));
-        var colorOf = function (s) { return s === 'PASS' ? 'var(--success)' : s === 'FAIL' ? 'var(--warning)' : s === 'ERROR' ? 'var(--error)' : 'var(--text-faint)'; };
-        var segs = sc.map(function (x) { return { label: x.status, value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
+        var colorOf = function (s) { s = String(s || '').toLowerCase(); return s === 'success' ? 'var(--success)' : s === 'failed' ? 'var(--warning)' : s === 'error' ? 'var(--error)' : 'var(--text-faint)'; };
+        var labelOf = function (s) { s = String(s || '').toLowerCase(); return s === 'success' ? '通过' : s === 'failed' ? '未达标' : s === 'error' ? '异常' : (s || '未知'); };
+        var segs = sc.map(function (x) { return { label: labelOf(x.status), value: Number(x.cnt) || 0, color: colorOf(x.status) }; });
         trendBody.appendChild(DN.donut(segs, { size: 96, stroke: 13, centerLabel: fa.totalRuns || '', centerSub: '次', legend: true }));
       }
       var fails = Array.isArray(fa.recentFailures) ? fa.recentFailures : [];

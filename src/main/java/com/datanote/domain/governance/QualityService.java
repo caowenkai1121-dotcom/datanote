@@ -62,7 +62,7 @@ public class QualityService {
             if (r == null) continue;
             String st = r.getRunStatus() == null ? "UNKNOWN" : r.getRunStatus();
             byStatus.merge(st, 1, Integer::sum);
-            if (("FAIL".equalsIgnoreCase(st) || "ERROR".equalsIgnoreCase(st)) && failures.size() < 20) {
+            if (("failed".equalsIgnoreCase(st) || "ERROR".equalsIgnoreCase(st)) && failures.size() < 20) {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("ruleId", r.getRuleId());
                 m.put("startedAt", r.getStartedAt());
@@ -81,6 +81,31 @@ public class QualityService {
         out.put("recentFailures", failures);
         out.put("totalRuns", runs.size());
         return out;
+    }
+
+    /**
+     * 整体质量分：近 7 天执行的通过率均值（0-100，无数据返回 100）。
+     * 质量页 /quality/score、治理总览、首页统一调用此口径，保证三处同数。
+     */
+    public Map<String, Object> computeScore() {
+        QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
+        qw.ge("started_at", LocalDateTime.now().minusDays(7)).isNotNull("pass_rate");
+        List<DnQualityRun> runs = qualityRunMapper.selectList(qw);
+        double sum = 0;
+        int n = 0;
+        if (runs != null) {
+            for (DnQualityRun r : runs) {
+                if (r != null && r.getPassRate() != null) {
+                    sum += r.getPassRate().doubleValue();
+                    n++;
+                }
+            }
+        }
+        double score = n == 0 ? 100.0 : Math.round(sum / n * 100.0) / 100.0;
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("score", score);
+        data.put("sampleRuns", n);
+        return data;
     }
 
     /**

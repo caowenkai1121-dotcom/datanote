@@ -226,6 +226,8 @@ public class LifecycleService {
             if (m == null) continue;
             String db = m.getDatabaseName();
             String table = m.getTableName();
+            // 全站#9: 系统库不进无用表候选(mysql.user 等出现过"标记销毁"按钮)
+            if (db != null && com.datanote.domain.datasource.DatasourceExploreService.SYS_DBS.contains(db.toLowerCase())) continue;
             String key = lineageKey(db, table);
             long lastAccessDays = m.getLastCollectedAt() == null
                     ? 36500 : ChronoUnit.DAYS.between(m.getLastCollectedAt(), now);
@@ -286,6 +288,10 @@ public class LifecycleService {
     public DnLifecyclePolicy markForDrop(String db, String table, String approver, String reason) {
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("库名/表名不能为空");
+        }
+        // 全站#9: 系统库禁止标记销毁
+        if (com.datanote.domain.datasource.DatasourceExploreService.SYS_DBS.contains(db.trim().toLowerCase())) {
+            throw new BusinessException("系统库不可标记销毁: " + db);
         }
         if (approver == null || approver.trim().isEmpty()) {
             throw new BusinessException("销毁必须填写审批人(留痕)");

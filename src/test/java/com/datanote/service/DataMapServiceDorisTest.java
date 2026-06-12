@@ -59,7 +59,7 @@ class DataMapServiceDorisTest {
         when(rs.getString("COLUMN_KEY")).thenReturn("");
         when(rs.getString("EXTRA")).thenReturn("");
 
-        DatasourceExploreService explore = new DatasourceExploreService(hiveConfig);
+        DatasourceExploreService explore = new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class));
         List<ColumnInfo> columns = explore.getHiveColumns("ods", "ods_xh_dms_t_after_sales_order_detail_df");
 
         assertEquals(1, columns.size());
@@ -122,7 +122,7 @@ class DataMapServiceDorisTest {
                 tableFavoriteMapper,
                 searchHistoryMapper,
                 tableMetaMapper,
-                new DatasourceExploreService(hiveConfig)
+                new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class))
         );
     }
 }

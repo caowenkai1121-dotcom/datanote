@@ -24,15 +24,14 @@ public class ProjectController {
     private final com.datanote.domain.project.ProjectAssetService projectAssetService;
     private final com.datanote.domain.project.ProjectOverviewService projectOverviewService;
     private final com.datanote.domain.project.ProjectReleaseService projectReleaseService;
-    private final com.datanote.domain.project.ProjectSettingService projectSettingService;
     private final com.datanote.domain.project.ProjectTagService projectTagService;
     private final com.datanote.domain.project.ProjectFavoriteService projectFavoriteService;
     private final com.datanote.domain.project.ProjectActivityService projectActivityService;
     private final com.datanote.domain.project.ProjectTaskService projectTaskService;
-    private final com.datanote.domain.project.ProjectCollabService projectCollabService;
     private final com.datanote.domain.project.ProjectWikiService projectWikiService;
     private final com.datanote.domain.project.ProjectTemplateService projectTemplateService;
     private final com.datanote.domain.project.ProjectHomeService projectHomeService;
+    private final com.datanote.domain.project.ProjectHealthService projectHealthService;   // P2 健康分下沉
 
     @Operation(summary = "项目列表")
     @GetMapping("/list")
@@ -263,20 +262,6 @@ public class ProjectController {
         return R.ok(projectHomeService.home());
     }
 
-    @Operation(summary = "多项目对比")
-    @PostMapping("/compare")
-    public R<List<java.util.Map<String, Object>>> compare(@RequestBody java.util.Map<String, Object> body) {
-        java.util.List<Long> ids = new java.util.ArrayList<>();
-        Object arr = body.get("ids");
-        if (arr instanceof java.util.List) {
-            for (Object o : (java.util.List<?>) arr) {
-                try { ids.add(Long.valueOf(String.valueOf(o))); } catch (NumberFormatException ignore) {}
-            }
-        }
-        if (ids.size() > 50) return R.fail("最多对比 50 个项目");
-        return R.ok(projectHomeService.compare(ids));
-    }
-
     // ===== PM2-M5：文档 Wiki =====
 
     @Operation(summary = "文档页面列表")
@@ -307,56 +292,7 @@ public class ProjectController {
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
-    // ===== PM2-M4：公告 + 成员邀请 =====
-
-    @Operation(summary = "公告列表")
-    @GetMapping("/{id}/announcements")
-    public R<List<com.datanote.domain.project.model.DnProjectAnnouncement>> announcements(@PathVariable Long id) {
-        try { return R.ok(projectCollabService.listAnnouncements(id)); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "发布公告")
-    @PostMapping("/{id}/announcements")
-    public R<com.datanote.domain.project.model.DnProjectAnnouncement> createAnnouncement(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectAnnouncement a) {
-        try { return R.ok(projectCollabService.createAnnouncement(id, a)); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "删除公告")
-    @DeleteMapping("/{id}/announcements/{annId}")
-    public R<String> deleteAnnouncement(@PathVariable Long id, @PathVariable Long annId) {
-        try { projectCollabService.deleteAnnouncement(id, annId); return R.ok("已删除"); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "邀请列表")
-    @GetMapping("/{id}/invites")
-    public R<List<com.datanote.domain.project.model.DnProjectInvite>> invites(@PathVariable Long id) {
-        try { return R.ok(projectCollabService.listInvites(id)); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "创建邀请")
-    @PostMapping("/{id}/invites")
-    public R<com.datanote.domain.project.model.DnProjectInvite> createInvite(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
-        try { return R.ok(projectCollabService.createInvite(id, body.get("role"), body.get("invitee"))); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "接受邀请")
-    @PostMapping("/invites/accept")
-    public R<String> acceptInvite(@RequestBody java.util.Map<String, String> body) {
-        try { projectCollabService.acceptInvite(body.get("token")); return R.ok("已加入"); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
-
-    @Operation(summary = "处理邀请(拒绝/取消)")
-    @PostMapping("/{id}/invites/{inviteId}/status")
-    public R<String> inviteStatus(@PathVariable Long id, @PathVariable Long inviteId, @RequestBody java.util.Map<String, String> body) {
-        try { projectCollabService.updateInviteStatus(id, inviteId, body.get("status")); return R.ok("已更新"); }
-        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
-    }
+    // (PM2-M4 公告/邀请 已清退: 前端入口 P2 砍除, 后端端点 P4 随之下线——invites/accept 曾是无鉴权加入项目的攻击面)
 
     // ===== PM2-M3：任务待办 + 里程碑 =====
 
@@ -369,8 +305,8 @@ public class ProjectController {
 
     @Operation(summary = "保存任务")
     @PostMapping("/{id}/tasks")
-    public R<com.datanote.domain.project.model.DnProjectTask> saveTask(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectTask task) {
-        try { return R.ok(projectTaskService.saveTask(id, task)); }
+    public R<java.util.Map<String, Object>> saveTask(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectTask task) {
+        try { return R.ok(projectTaskService.saveTaskAndSync(id, task)); }
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
@@ -402,27 +338,20 @@ public class ProjectController {
         catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
     }
 
-    @Operation(summary = "项目健康分")
+    @Operation(summary = "项目健康分(P2 下沉 ProjectHealthService: 终态运行/仅success通过率/超期/积压/近30天协作)")
     @GetMapping("/{id}/health")
     public R<java.util.Map<String, Object>> health(@PathVariable Long id) {
         try {
-            java.util.Map<String, Object> ov = projectOverviewService.overview(id);
-            long assetTotal = ((Number) ov.getOrDefault("assetTotal", 0L)).longValue();
-            long memberCount = ((Number) ov.getOrDefault("memberCount", 0L)).longValue();
-            long releaseTotal = ((Number) ov.getOrDefault("releaseTotal", 0L)).longValue();
-            long actCnt = ov.get("activity") instanceof java.util.List ? ((java.util.List<?>) ov.get("activity")).size() : 0;
-            long jobSuccess = 0, jobFailed = 0;
-            Object jr = ov.get("jobRuns");
-            if (jr instanceof java.util.Map) {
-                java.util.Map<?, ?> m = (java.util.Map<?, ?>) jr;
-                Object s = m.get("success"), f = m.get("failed");
-                if (s instanceof Number) jobSuccess = ((Number) s).longValue();
-                if (f instanceof Number) jobFailed = ((Number) f).longValue();
-            }
-            return R.ok(com.datanote.domain.project.ProjectHealthScorer.score(assetTotal, memberCount, releaseTotal, jobSuccess, jobFailed, actCnt));
+            return R.ok(projectHealthService.score(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    @Operation(summary = "健康分批量(N7: 项目列表/工作台徽标, 仅活跃项目)")
+    @GetMapping("/health/batch")
+    public R<java.util.Map<Long, java.util.Map<String, Object>>> healthBatch() {
+        return R.ok(projectHealthService.scoreBatch());
     }
 
     @Operation(summary = "项目活动审计")
@@ -480,6 +409,43 @@ public class ProjectController {
         return R.ok(projectAssetService.projectsOfAsset(type, assetId));
     }
 
+    @Operation(summary = "任务评论列表(IV-1)")
+    @GetMapping("/{id}/tasks/{taskId}/comments")
+    public R<List<com.datanote.domain.project.model.DnProjectTaskComment>> taskComments(@PathVariable Long id, @PathVariable Long taskId) {
+        try { return R.ok(projectTaskService.listComments(id, taskId)); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "新增任务评论(IV-1, author 服务端写入)")
+    @PostMapping("/{id}/tasks/{taskId}/comments")
+    public R<com.datanote.domain.project.model.DnProjectTaskComment> addTaskComment(@PathVariable Long id, @PathVariable Long taskId, @RequestBody java.util.Map<String, String> body) {
+        try { return R.ok(projectTaskService.addComment(id, taskId, body == null ? null : body.get("content"))); }
+        catch (IllegalArgumentException e) { return R.fail(e.getMessage()); }
+    }
+
+    @Operation(summary = "按关联实体批量反查任务(N5: 工单/资产侧任务徽标, 防N+1)")
+    @GetMapping("/task-refs/batch")
+    public R<java.util.Map<Long, List<java.util.Map<String, Object>>>> taskRefsBatch(
+            @RequestParam String refType, @RequestParam String ids,
+            @RequestParam(required = false, defaultValue = "false") boolean excludeDone) {
+        java.util.List<Long> idList = new java.util.ArrayList<>();
+        for (String s : ids.split(",")) {
+            try { idList.add(Long.valueOf(s.trim())); } catch (NumberFormatException ignore) {}
+        }
+        return R.ok(projectTaskService.taskRefsBatch(refType, idList, excludeDone));
+    }
+
+    @Operation(summary = "资产批量反查所属项目(P1: 列表页归属徽标, 防N+1)")
+    @GetMapping("/asset-projects/batch")
+    public R<java.util.Map<Long, List<java.util.Map<String, Object>>>> assetProjectsBatch(
+            @RequestParam String type, @RequestParam String ids) {
+        java.util.List<Long> idList = new java.util.ArrayList<>();
+        for (String s : ids.split(",")) {
+            try { idList.add(Long.valueOf(s.trim())); } catch (NumberFormatException ignore) {}
+        }
+        return R.ok(projectAssetService.projectsOfAssetsBatch(type, idList));
+    }
+
     @Operation(summary = "可绑定资产候选")
     @GetMapping("/{id}/asset-candidates")
     public R<List<java.util.Map<String, Object>>> assetCandidates(@PathVariable Long id, @RequestParam String type) {
@@ -490,59 +456,7 @@ public class ProjectController {
         }
     }
 
-    // ===== PM-E3：项目设置（资源配额 + 环境参数映射） =====
-
-    @Operation(summary = "项目资源配额")
-    @GetMapping("/{id}/quota")
-    public R<com.datanote.domain.project.model.DnProjectQuota> getQuota(@PathVariable Long id) {
-        try {
-            return R.ok(projectSettingService.getQuota(id));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
-
-    @Operation(summary = "保存资源配额")
-    @PostMapping("/{id}/quota")
-    public R<com.datanote.domain.project.model.DnProjectQuota> saveQuota(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectQuota quota) {
-        try {
-            return R.ok(projectSettingService.saveQuota(id, quota));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
-
-    @Operation(summary = "环境参数列表")
-    @GetMapping("/{id}/env-params")
-    public R<List<com.datanote.domain.project.model.DnProjectEnvParam>> envParams(@PathVariable Long id) {
-        try {
-            return R.ok(projectSettingService.listEnvParams(id));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
-
-    @Operation(summary = "保存环境参数")
-    @PostMapping("/{id}/env-params")
-    public R<com.datanote.domain.project.model.DnProjectEnvParam> saveEnvParam(@PathVariable Long id, @RequestBody com.datanote.domain.project.model.DnProjectEnvParam param) {
-        try {
-            return R.ok(projectSettingService.saveEnvParam(id, param));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
-
-    @Operation(summary = "删除环境参数")
-    @DeleteMapping("/{id}/env-params/{paramId}")
-    public R<String> deleteEnvParam(@PathVariable Long id, @PathVariable Long paramId) {
-        try {
-            projectService.getById(id);
-            projectSettingService.deleteEnvParam(id, paramId);
-            return R.ok("已删除");
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
+    // (PM-E3 项目设置已整体清退: 资源配额/环境参数映射均为配置摆设无真实消费方, 表保留弃用)
 
     // ===== PM-M5：发布管理 =====
 
@@ -560,15 +474,15 @@ public class ProjectController {
     @PostMapping("/{id}/releases")
     public R<com.datanote.domain.project.model.DnProjectRelease> submitRelease(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try {
-            return R.ok(projectReleaseService.submit(id, body.get("title"), body.get("content"), body.get("targetEnv")));
+            return R.ok(projectReleaseService.submit(id, body.get("title"), body.get("content"), body.get("targetEnv"), body.get("assetJson")));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
     }
 
-    @Operation(summary = "跨项目发布中心")
+    @Operation(summary = "跨项目发布中心(回填 projectName)")
     @GetMapping("/releases/all")
-    public R<List<com.datanote.domain.project.model.DnProjectRelease>> allReleases(@RequestParam(required = false) String status) {
+    public R<List<java.util.Map<String, Object>>> allReleases(@RequestParam(required = false) String status) {
         return R.ok(projectReleaseService.listAll(status));
     }
 
@@ -594,11 +508,18 @@ public class ProjectController {
         }
     }
 
-    @Operation(summary = "发布上线")
+    @Operation(summary = "我可审批的项目(P5: 发布中心按钮角色化)")
+    @GetMapping("/my-approvable")
+    public R<List<Long>> myApprovable() {
+        return R.ok(projectReleaseService.myApprovableProjects());
+    }
+
+    @Operation(summary = "发布上线(N6 门禁: 资产核验, 警示项可 force, 强规则失败不可)")
     @PostMapping("/releases/{releaseId}/release")
-    public R<String> doRelease(@PathVariable Long releaseId) {
+    public R<String> doRelease(@PathVariable Long releaseId,
+                               @RequestParam(required = false, defaultValue = "false") boolean force) {
         try {
-            projectReleaseService.release(releaseId);
+            projectReleaseService.release(releaseId, force);
             return R.ok("已发布");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());

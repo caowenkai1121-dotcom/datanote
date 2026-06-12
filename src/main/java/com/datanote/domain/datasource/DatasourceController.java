@@ -35,6 +35,7 @@ public class DatasourceController {
     private final DnDatasourceMapper datasourceMapper;
     private final MetadataService metadataService;
     private final ConnectionManager connectionManager;
+    private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -117,6 +118,7 @@ public class DatasourceController {
         datasourceMapper.deleteById(id);
         // 删除后关闭并移除该数据源的所有连接池，避免池泄漏
         connectionManager.evict(id);
+        projectAssetCleaner.onAssetDeleted("DATASOURCE", id);
         return R.ok("删除成功");
     }
 

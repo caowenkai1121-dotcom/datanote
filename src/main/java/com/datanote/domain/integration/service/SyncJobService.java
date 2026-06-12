@@ -17,6 +17,7 @@ import com.datanote.domain.integration.connector.TableMeta;
 import com.datanote.domain.integration.dto.TableSyncConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +45,8 @@ public class SyncJobService {
     private final DnSyncChunkCheckpointMapper chunkCheckpointMapper;
     private final AuditLogService auditLogService;
     private final DnSyncJobDependencyMapper dependencyMapper;
+    private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
+    private final ApplicationEventPublisher eventPublisher;   // #17 任务变更发事件, 血缘侧监听重建(解耦, 不直接注入 orchestration)
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -146,6 +149,8 @@ public class SyncJobService {
             syncJobMapper.insert(job);
             auditLogService.record(job.getId(), job.getJobName(), "CREATE", summary(job));
         }
+        // #17 保存成功后发布变更事件, 血缘侧异步重建 MAPPING 边
+        eventPublisher.publishEvent(new com.datanote.domain.orchestration.SyncJobChangedEvent(job.getId()));
         return job;
     }
 
@@ -167,6 +172,9 @@ public class SyncJobService {
             throw new BusinessException("任务 id 不能为空");
         }
         syncJobMapper.deleteById(id);
+        projectAssetCleaner.onAssetDeleted("SYNC_JOB", id);
+        // #17 删除成功后发布变更事件, 血缘侧异步重建(清掉该任务来源的 MAPPING 边)
+        eventPublisher.publishEvent(new com.datanote.domain.orchestration.SyncJobChangedEvent(id));
     }
 
     /** 仅更新任务状态（RUNNING/SUCCESS/FAILED 等），不动其他字段。 */

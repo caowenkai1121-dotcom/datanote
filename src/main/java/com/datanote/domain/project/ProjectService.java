@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 项目 CRUD：校验、自动编码、owner 自动入成员、归档/软删除。 */
+/** 项目 CRUD：校验、自动编码、owner 自动入成员、归档/软删除、数据级权限(行级范围)。 */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,13 +23,63 @@ public class ProjectService {
 
     private final DnProjectMapper projectMapper;
     private final DnProjectMemberMapper memberMapper;
+    private final com.datanote.platform.config.AuthProperties authProperties;
+    private final com.datanote.platform.iam.RbacService rbacService;
 
-    /** 列表（默认排除已删除；status 非空再过滤），按创建倒序。 */
+    // ---------------- 数据级权限(项目维度行级范围) ----------------
+
+    /**
+     * 当前用户是否可见全部项目。开放模式/超管(*)/拥有 project:all-data 时可见全部;
+     * 否则只可见自己负责(owner)、自己创建(created_by)或参与(成员表)的项目。
+     */
+    boolean canSeeAllProjects() {
+        if (!authProperties.isEnabled()) return true;
+        String u = currentUser();
+        if (u == null || "anonymous".equals(u)) return true;   // 未认证由 SecurityConfig 拦, 此处不重复
+        java.util.Set<String> perms;
+        try {
+            perms = rbacService.getUserPermsByUsername(u);
+        } catch (Exception e) {
+            return true;   // 权限查询异常时不阻断业务(fail-open 读场景)
+        }
+        if (perms.isEmpty() && u.equals(authProperties.getUsername())) return true;   // 内存兜底 admin
+        return com.datanote.platform.iam.RbacService.hasPermission(perms, "project:all-data");
+    }
+
+    /** 当前用户参与的项目 ID 集(成员表)。 */
+    private List<Long> memberProjectIds(String user) {
+        List<DnProjectMember> rows = memberMapper.selectList(
+                new LambdaQueryWrapper<DnProjectMember>().eq(DnProjectMember::getUsername, user));
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        if (rows != null) for (DnProjectMember m : rows) if (m != null && m.getProjectId() != null) ids.add(m.getProjectId());
+        return ids;
+    }
+
+    /** 当前用户能否访问指定项目(负责/创建/成员之一)。 */
+    boolean canAccessProject(DnProject p) {
+        if (canSeeAllProjects()) return true;
+        String u = currentUser();
+        if (u == null) return false;
+        if (u.equals(p.getOwner()) || u.equals(p.getCreatedBy())) return true;
+        Long cnt = memberMapper.selectCount(new LambdaQueryWrapper<DnProjectMember>()
+                .eq(DnProjectMember::getProjectId, p.getId()).eq(DnProjectMember::getUsername, u));
+        return cnt != null && cnt > 0;
+    }
+
+    /** 列表（默认排除已删除；status 非空再过滤），按创建倒序。数据级: 无 project:all-data 只看自己相关的。 */
     public List<DnProject> list(String status) {
         LambdaQueryWrapper<DnProject> w = new LambdaQueryWrapper<DnProject>()
                 .ne(DnProject::getStatus, "DELETED");
         if (status != null && !status.trim().isEmpty()) {
             w.eq(DnProject::getStatus, status.trim());
+        }
+        if (!canSeeAllProjects()) {
+            String u = currentUser();
+            List<Long> ids = memberProjectIds(u);
+            w.and(x -> {
+                x.eq(DnProject::getOwner, u).or().eq(DnProject::getCreatedBy, u);
+                if (!ids.isEmpty()) x.or().in(DnProject::getId, ids);
+            });
         }
         w.orderByDesc(DnProject::getId);
         return projectMapper.selectList(w);
@@ -42,6 +92,9 @@ public class ProjectService {
         DnProject p = projectMapper.selectById(id);
         if (p == null || "DELETED".equals(p.getStatus())) {
             throw new BusinessException("项目不存在: " + id);
+        }
+        if (!canAccessProject(p)) {
+            throw new BusinessException("无权访问该项目(非项目成员), 请联系项目负责人添加");
         }
         return p;
     }

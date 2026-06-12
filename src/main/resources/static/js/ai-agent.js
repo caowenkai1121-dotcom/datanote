@@ -5,10 +5,11 @@
 
   var sessionId = null;
   var sending = false;
+  var _epoch = 0;          // 会话纪元: 新会话自增; 在途异步回调(轮询/发送响应/审批结果)凭发起时纪元识别陈旧并丢弃
   var pendingCtx = null;   // 情境入口透传的业务上下文, 随下一次 chat 上送
   var selectedModel = '';  // 模型热切档位(空=默认), 随 chat 上送 model 覆盖
   var fileListEl = null;   // 数据中心文件列表容器
-  var flowEl = null, inputEl = null, sendBtn = null, built = false;
+  var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
     return ({ gov: 'var(--chart-1)', quality: 'var(--chart-6)', lineage: 'var(--chart-3)', sync: 'var(--chart-4)', metadata: 'var(--chart-2)' })[g] || 'var(--chart-5)';
@@ -284,19 +285,29 @@
     return DN.h('div', { id: 'aiThinking', style: 'display:flex;justify-content:flex-start;margin:10px 0;' }, [box]);
   }
 
+  // 旧会话止损: 纪元更替后对旧会话补发协作式中断(fail-safe, 失败静默不打扰)
+  function interruptSession(sid) {
+    if (!sid) return;
+    try { DN.post('/api/ai/agent/' + sid + '/interrupt', {}).catch(function () {}); } catch (e) {}
+  }
+
   // 统一带动画进度的请求执行器(send 与 ask_user 提交共用): 动画 + 运行中轮询简略进度 + 结果优先渲染
   function runRequest(url, body) {
     sessionId = sessionId || genSid();
     body.sessionId = body.sessionId || sessionId;
     saveSid(sessionId);
+    var ep = _epoch, sid = sessionId, staled = false; // 捕获发起时纪元与会话: 新会话后旧回调据此丢弃
+    function dropStale() { if (!staled) { staled = true; interruptSession(sid); } } // 止损只发一次中断
+    setSending(true); // 运行中: 按钮变"⏹ 停止", 回车改走 steer 插话
     var th = thinking(); flowEl.appendChild(th); scrollBottom();
     var s0 = document.getElementById('aiThinkSub'); if (s0) s0.textContent = '· 正在理解你的问题…';
     var stopped = false;
     var t0 = Date.now();
     function poll() {
       if (stopped) return;
-      DN.get('/api/ai/agent/session/' + sessionId).then(function (d) {
-        if (stopped) return;
+      if (ep !== _epoch) { stopped = true; dropStale(); return; } // 已开新会话: 旧轮询立即终止
+      DN.get('/api/ai/agent/session/' + sid).then(function (d) {
+        if (stopped || ep !== _epoch) return;
         var sub = document.getElementById('aiThinkSub');
         if (!sub) return;
         var steps = (d && d.steps) || [];
@@ -313,10 +324,14 @@
     setTimeout(poll, 1200);
     return DN.post(url, body).then(function (res) {
       stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      if (ep !== _epoch) { dropStale(); return res; } // 旧会话响应: 丢弃渲染, 不写 saveSid, 不碰锁
+      setSending(false);
       renderTurn(res || {}, Math.round((Date.now() - t0) / 1000)); loadFiles(); scrollBottom();
       return res;
     }).catch(function (e) {
       stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      if (ep !== _epoch) { dropStale(); throw e; } // 旧会话失败: 同样静默丢弃
+      setSending(false);
       flowEl.appendChild(assistantBubble('请求失败：' + (e && e.message ? e.message : e), 'err')); scrollBottom();
       throw e;
     });
@@ -366,7 +381,16 @@
     var picks = questions.map(function () { return { set: {}, custom: '' }; }); // 每问的选择态
     var idx = 0;
     var card = DN.h('div', { style: 'margin:8px 0 8px 0;border:1px solid var(--border);border-radius:var(--radius-xl,14px);padding:14px 16px;background:var(--bg-card);box-shadow:var(--shadow-sm);' });
-    var submitting = false;
+
+    // ✕ 不销毁卡片: 折叠并在输入条上方挂常驻找回条, 点击恢复(防误关后问题无法回答、会话卡死)
+    function collapseCard() {
+      card.style.display = 'none';
+      var old = document.getElementById('aiPendingAsk'); if (old) old.remove();
+      var bar = DN.h('div', { id: 'aiPendingAsk', text: '⏸ 有问题待回答（点击展开）',
+        style: 'flex:0 0 auto;margin:0 16px 6px;padding:7px 14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card);color:var(--warning-text);font-size:12.5px;cursor:pointer;box-shadow:var(--shadow-sm);' });
+      bar.onclick = function () { bar.remove(); card.style.display = ''; scrollBottom(); };
+      if (inputBarEl && inputBarEl.parentNode) inputBarEl.parentNode.insertBefore(bar, inputBarEl);
+    }
 
     function answerOf(i) {
       var q = questions[i], p = picks[i];
@@ -377,11 +401,12 @@
     function hasPick(i) { var p = picks[i]; return Object.keys(p.set).length > 0 || (p.custom && p.custom.trim()); }
 
     function finish(skipAll) {
-      if (submitting) return; submitting = true;
+      if (sending) return; // 共用全局发送锁: 与 send/resume 互斥, 防重复提交
       var answers = questions.map(function (q, i) {
         return { header: q.header || '', question: q.question || '', answer: skipAll ? '(跳过)' : (hasPick(i) ? answerOf(i) : '(跳过)') };
       });
       card.remove(); // 移除卡片, 由 runRequest 显示运行动画+进度, 答后渲染结果(修复提交后无反馈)
+      var pb = document.getElementById('aiPendingAsk'); if (pb) pb.remove(); // 找回条随提交一并清掉
       runRequest('/api/ai/agent/' + sid + '/answer', { answers: answers }).catch(function () {});
     }
 
@@ -394,7 +419,7 @@
       hd.appendChild(DN.h('span', { text: (idx + 1) + '/' + questions.length, class: 'dn-ai-badge warn', style: 'flex:0 0 auto;' }));
       hd.appendChild(DN.h('span', { text: q.question || '', style: 'flex:1;font-weight:700;font-size:14.5px;color:var(--text-primary);' }));
       var x = DN.h('span', { text: '✕', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 6px;' });
-      x.onclick = function () { card.remove(); };
+      x.onclick = collapseCard; // 改为折叠+找回条, 不再直接销毁
       hd.appendChild(x);
       card.appendChild(hd);
 
@@ -480,7 +505,9 @@
     var id; try { id = localStorage.getItem('aiSessionId'); } catch (e) { id = null; }
     if (!id) return;
     sessionId = id;
+    var ep = _epoch; // 捕获发起纪元: 恢复期间若已开新会话, 放弃重建旧历史
     DN.get('/api/ai/agent/session/' + id).then(function (d) {
+      if (ep !== _epoch) return;
       var steps = (d && d.steps) || [];
       if (!steps.length) return;
       if (flowEl.firstChild) flowEl.innerHTML = ''; // 移除欢迎语
@@ -510,22 +537,52 @@
 
   // 开新会话: 清历史, 重置 flow 与 sessionId(下一次发送生成新 id)
   function newSession() {
+    _epoch++;          // 纪元自增: 在途旧回调(轮询/发送响应/审批结果)全部失效, 由各回调自行丢弃并止损
     sessionId = null;
+    setSending(false); // 释放发送锁, 按钮复原为"发送"
+    var pb = document.getElementById('aiPendingAsk'); if (pb) pb.remove(); // 旧会话的待回答找回条一并清掉
     try { localStorage.removeItem('aiSessionId'); } catch (e) {}
     if (flowEl) { flowEl.innerHTML = ''; flowEl.appendChild(welcome()); }
   }
 
+  // 统一发送锁: send / 决策卡answer / 审批resume 三入口共用; 运行中按钮变"⏹ 停止"(保持可点), 输入框可用走插话
+  function setSending(on) {
+    sending = !!on;
+    if (!sendBtn) return;
+    sendBtn.disabled = false;
+    sendBtn.textContent = sending ? '⏹ 停止' : '发送';
+  }
+
+  // 发送按钮统一入口: 空闲=发送, 运行中=请求停止(协作式中断, agent 在下一工序边界停下)
+  function onSendClick() { if (sending) doInterrupt(); else send(); }
+
+  function doInterrupt() {
+    if (!sessionId) return;
+    sendBtn.disabled = true; sendBtn.textContent = '停止中…'; // 防连点; 待运行结束由 setSending(false) 复原
+    DN.post('/api/ai/agent/' + sessionId + '/interrupt', {})
+      .then(function () { DN.toast('已请求停止, 将在当前步骤完成后停下', 'ok'); })
+      .catch(function (e) { DN.toast('停止失败：' + (e && e.message ? e.message : e), 'err'); })
+      .then(function () { if (sending) { sendBtn.disabled = false; sendBtn.textContent = '⏹ 停止'; } });
+  }
+
+  // 运行中回车: 不发新消息, 把输入作为插话引导 POST /steer(下一工序边界并入上下文)
+  function steer() {
+    if (!inputEl || !sessionId) return;
+    var msg = (inputEl.value || '').trim();
+    if (!msg) return;
+    DN.post('/api/ai/agent/' + sessionId + '/steer', { text: msg })
+      .then(function () { if (inputEl) inputEl.value = ''; DN.toast('已插话', 'ok'); })
+      .catch(function (e) { DN.toast('插话失败：' + (e && e.message ? e.message : e), 'err'); });
+  }
+
   function send() {
-    if (sending || !inputEl) return;
+    if (sending || !inputEl) return; // 共用发送锁: 锁定期间不可重复提交
     var msg = (inputEl.value || '').trim();
     if (!msg) { DN.toast('请输入问题', 'warn'); return; }
-    sending = true; sendBtn.disabled = true; sendBtn.textContent = '思考中…';
     flowEl.appendChild(userBubble(msg));
     inputEl.value = '';
     runRequest('/api/ai/agent/chat', { message: msg, ctx: pendingCtx, model: selectedModel || undefined })
-      .then(function () {}).catch(function () {}).then(function () {
-        sending = false; sendBtn.disabled = false; sendBtn.textContent = '发送'; if (inputEl) inputEl.focus();
-      });
+      .then(function () {}).catch(function () {}).then(function () { if (inputEl) inputEl.focus(); });
   }
 
   // 渲染一轮结果(对话/恢复共用): 工具卡 + 终答; 若挂起待审批则出审批卡
@@ -594,16 +651,23 @@
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
       okBtn.onclick = function () {
+        if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
+        var ep = _epoch; setSending(true); // 捕获发起纪元: 新会话后丢弃旧审批结果
         okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
         DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'approved' })
           .then(function () { return DN.post('/api/ai/agent/' + sid + '/resume', {}); })
-          .then(function (res) { card.remove(); renderTurn(res || {}); scrollBottom(); })
-          .catch(function (e) { DN.toast('审批/恢复失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; okBtn.textContent = '批准并继续'; });
+          .then(function (res) {
+            if (ep !== _epoch) { interruptSession(sid); return; } // 旧会话: 丢弃渲染并止损, 不碰锁
+            setSending(false);
+            card.remove(); renderTurn(res || {}); scrollBottom();
+          })
+          .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('审批/恢复失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; okBtn.textContent = '批准并继续'; });
       };
       noBtn.onclick = function () {
+        var ep = _epoch; // 捕获发起纪元: 新会话后不再往新消息流写旧拒绝提示
         okBtn.disabled = true; noBtn.disabled = true;
         DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'rejected' })
-          .then(function () { card.remove(); flowEl.appendChild(assistantBubble('已拒绝该写操作。', 'err')); scrollBottom(); })
+          .then(function () { card.remove(); if (ep !== _epoch) return; flowEl.appendChild(assistantBubble('已拒绝该写操作。', 'err')); scrollBottom(); })
           .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; });
       };
       btns.appendChild(okBtn); btns.appendChild(noBtn); card.appendChild(btns);
@@ -611,25 +675,13 @@
     }).catch(function () {});
   }
 
-  // ===== 经验/审批 抽屉 =====
-  function closeDrawer() {
-    var d = document.getElementById('aiDrawer'); if (d) d.remove();
-    var m = document.getElementById('aiDrawerMask'); if (m) m.remove();
-  }
+  // ===== 经验/审批 抽屉(全站统一: 改用 DN.drawer 工厂, 与 gov/mdm 抽屉同一套视觉/动画/Esc·遮罩关闭/焦点陷阱/closeAllDrawers 管理) =====
+  function closeDrawer() { if (window.DN && DN.closeAllDrawers) DN.closeAllDrawers(); }
   function openDrawer(kind) {
-    var root = document.getElementById('aiAgentRoot'); if (!root) return;
-    closeDrawer();
-    var mask = DN.h('div', { id: 'aiDrawerMask', class: 'dn-ai-mask', onclick: closeDrawer });
-    var panel = DN.h('div', { id: 'aiDrawer', class: 'dn-ai-drawer' });
     var title = kind === 'memory' ? '🧠 AI 自学习记忆' : (kind === 'cron' ? '⏰ 定时自治任务' : '🛡️ 待审批写操作');
-    panel.appendChild(DN.h('div', { style: 'padding:16px 20px;background:var(--bg-card);border-bottom:1px solid var(--divider);display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
-      DN.h('div', { text: title, style: 'font-weight:600;font-size:16px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-      DN.h('button', { text: '✕', title: '关闭', onclick: closeDrawer, style: 'margin-left:auto;flex-shrink:0;width:32px;height:32px;border:0;background:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;border-radius:var(--radius,6px);display:inline-flex;align-items:center;justify-content:center;' })
-    ]));
-    var body = DN.h('div', { style: 'flex:1;min-height:0;overflow-y:auto;padding:18px 20px;' });
+    var body = DN.h('div', {});
     body.appendChild(DN.h('div', { text: '加载中…', style: 'color:var(--text-muted);font-size:13px;' }));
-    panel.appendChild(body);
-    root.appendChild(mask); root.appendChild(panel);
+    DN.drawer(title, body);   // 统一抽屉外壳(.gov-drawer): 滑入/滑出动画 + Esc/遮罩点击/×关闭 + a11y
     if (kind === 'memory') renderMemories(body); else if (kind === 'cron') renderCrons(body); else renderApprovals(body);
   }
   function renderCrons(body) {
@@ -701,11 +753,24 @@
         var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
         var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
         ok.onclick = function () {
+          if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
+          var ep = _epoch; setSending(true); // 捕获发起纪元
           ok.disabled = no.disabled = true; ok.textContent = '执行中…';
           DN.post('/api/ai/agent/approval/' + a.id + '/decide', { decision: 'approved' })
             .then(function () { return DN.post('/api/ai/agent/' + a.sessionId + '/resume', {}); })
-            .then(function (res) { card.remove(); if (flowEl) { renderTurn(res || {}); scrollBottom(); } DN.toast('已执行', 'ok'); })
-            .catch(function (e) { DN.toast('执行失败：' + (e && e.message ? e.message : e), 'err'); ok.disabled = no.disabled = false; ok.textContent = '批准并执行'; });
+            .then(function (res) {
+              if (ep === _epoch) setSending(false); // 旧纪元不碰锁(newSession 已复原)
+              res = res || {};
+              // 跨会话隔离: 仅当结果属于当前会话才渲染进消息流; 否则提示并把摘要写在审批卡底部, 不污染当前对话
+              if (ep === _epoch && flowEl && res.sessionId === sessionId) {
+                card.remove(); renderTurn(res); scrollBottom(); DN.toast('已执行', 'ok');
+              } else {
+                DN.toast('该审批属于其他会话, 已在后台执行', 'info');
+                ok.textContent = '已执行';
+                card.appendChild(DN.h('div', { text: '执行结果: ' + String(res.finalAnswer || res.status || '已完成').slice(0, 80), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px;word-break:break-all;' }));
+              }
+            })
+            .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('执行失败：' + (e && e.message ? e.message : e), 'err'); ok.disabled = no.disabled = false; ok.textContent = '批准并执行'; });
         };
         no.onclick = function () {
           ok.disabled = no.disabled = true;
@@ -829,11 +894,11 @@
     // 输入区
     inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
     inputEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
     });
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: send });
-    var inputBar = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
-    rightCol.appendChild(inputBar);
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
+    inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
+    rightCol.appendChild(inputBarEl);
 
     root.appendChild(rightCol);
 

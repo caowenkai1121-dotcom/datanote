@@ -7,17 +7,14 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 项目公告（dn_project_announcement）。 */
+/** 项目任务评论（dn_project_task_comment）。IV-1 协作触达第一步。 */
 @Data
-@TableName("dn_project_announcement")
-public class DnProjectAnnouncement {
+@TableName("dn_project_task_comment")
+public class DnProjectTaskComment {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long projectId;
-    private String title;
+    private Long taskId;
+    private String author;
     private String content;
-    private String priority;
-    private LocalDateTime expireAt;
-    private String createdBy;
     private LocalDateTime createdAt;
 }

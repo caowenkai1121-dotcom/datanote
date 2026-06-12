@@ -89,7 +89,8 @@ class TaskExecutionServiceDorisTest {
                 metadataService,
                 mock(TaskDependencyService.class),
                 mock(LogBroadcastService.class),
-                mock(TaskSchedulerService.class));
+                mock(TaskSchedulerService.class),
+                mock(com.datanote.platform.notify.NotificationService.class));
         ReflectionTestUtils.setField(service, "cryptoKey", "DataNote_AES_Key");
 
         ReflectionTestUtils.invokeMethod(service, "executeSyncTask", 7L, "2026-05-25", new StringBuilder());

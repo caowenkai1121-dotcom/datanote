@@ -78,6 +78,11 @@ public class HiveDdlController {
         }
         if (newName == null || newName.isEmpty()) newName = oldName;
         if (newType == null || newType.isEmpty()) return R.fail("类型不能为空");
+        // 全站#10 服务端兜底: 此端点仅服务于数据地图"维护注释", 改名/改类型一律拒绝(直调也拦)——
+        // 表结构变更须走数据开发 DDL 流程, 防绕过前端收敛裸改生产表结构
+        if (!newName.equals(oldName)) {
+            return R.fail("此接口仅支持维护字段注释, 不允许修改字段名(请走数据开发 DDL 流程)");
+        }
         // 防 SQL 注入:库/表/列名直拼入 ALTER TABLE,仅允许标识符;类型仅允许类型定义字符
         if (!db.matches("[a-zA-Z0-9_]+") || !table.matches("[a-zA-Z0-9_]+")
                 || !oldName.matches("[a-zA-Z0-9_]+") || !newName.matches("[a-zA-Z0-9_]+")) {

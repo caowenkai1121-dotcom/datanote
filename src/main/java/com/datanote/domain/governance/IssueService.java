@@ -27,6 +27,7 @@ public class IssueService {
 
     private final DnGovernanceIssueMapper issueMapper;
     private final DnQualityRuleMapper qualityRuleMapper;
+    private final com.datanote.platform.notify.NotificationService notificationService;   // 全站#25 工单通知
     // @Lazy 打破环: QualityService 依赖 IssueService(失败建单), 此处反向惰性注入用于"解决/关闭前复检规则"
     @Lazy
     @Autowired
@@ -163,6 +164,10 @@ public class IssueService {
         issue.setOwner(owner);
         issue.setUpdatedAt(LocalDateTime.now());
         issueMapper.updateById(issue);
+        // 全站#25: 指派即时通知被指派人, 铃铛深链工单详情
+        notificationService.notify(owner.trim(), "QUALITY_ISSUE",
+                "治理工单已指派给你: " + (issue.getTitle() == null ? ("#" + issue.getId()) : issue.getTitle()),
+                "govissue", issue.getId(), null);
         return issue;
     }
 
@@ -247,6 +252,11 @@ public class IssueService {
             issue.setUpdatedAt(LocalDateTime.now());
             issueMapper.insert(issue);
             log.info("质量失败自动生成治理工单 ruleId={} severity={} issueId={}", rule.getId(), severity, issue.getId());
+            // 全站#25: 新建工单通知规则负责人(无则 admin), 刷新已有工单不重复扰动
+            String receiver = notBlank(issue.getOwner()) ? issue.getOwner() : "admin";
+            notificationService.notify(receiver, "QUALITY_ISSUE",
+                    "质量规则未达标已建工单: " + (rule.getRuleName() == null ? ("规则#" + rule.getId()) : rule.getRuleName()),
+                    "govissue", issue.getId(), null);
         } catch (Exception e) {
             log.warn("质量工单自动生成失败(不影响质量执行) ruleId={}: {}",
                     rule != null ? rule.getId() : null, e.getMessage());
@@ -284,10 +294,13 @@ public class IssueService {
         return "qrule:" + ruleId;
     }
 
-    /** 规范化严重度，仅接受 HIGH/MEDIUM/LOW，否则返回 null */
+    /** 规范化严重度，接受 HIGH/MEDIUM/LOW 及质量规则小写词表 error/warning/info（映射到工单大写词表），否则返回 null */
     static String normalizeSeverity(String s) {
         if (s == null) return null;
         String u = s.trim().toUpperCase();
+        if ("ERROR".equals(u)) return "HIGH";
+        if ("WARNING".equals(u)) return "MEDIUM";
+        if ("INFO".equals(u)) return "LOW";
         return ("HIGH".equals(u) || "MEDIUM".equals(u) || "LOW".equals(u)) ? u : null;
     }
 

@@ -29,6 +29,11 @@ public class MetricController {
 
     private final DnMetricMapper metricMapper;
     private final DnMetricRefMapper metricRefMapper;
+    private final com.datanote.domain.consumption.mapper.DnMetricAlertRuleMapper alertRuleMapper;
+    private final com.datanote.domain.consumption.mapper.DnMetricValueMapper metricValueMapper;
+    private final com.datanote.domain.governance.mapper.DnGovernanceIssueMapper issueMapper;
+    private final IssueService issueService;
+    private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;
 
     /**
      * 指标列表（支持关键词搜索和分类筛选）
@@ -85,12 +90,40 @@ public class MetricController {
     }
 
     /**
-     * 删除指标
+     * 删除指标（级联清理: 关联/预警规则/值快照/未关闭工单/项目绑定——停用保历史, 删除彻底清）
      */
-    @Operation(summary = "删除指标")
+    @Operation(summary = "删除指标(级联清理引用)")
     @DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public R<String> delete(@PathVariable Long id) {
         metricMapper.deleteById(id);
+        metricRefMapper.delete(new QueryWrapper<DnMetricRef>().eq("metric_id", id));
+        alertRuleMapper.delete(new QueryWrapper<com.datanote.domain.consumption.model.DnMetricAlertRule>().eq("metric_id", id));
+        metricValueMapper.delete(new QueryWrapper<com.datanote.domain.consumption.model.DnMetricValue>().eq("metric_id", id));
+        // 关闭该指标未闭环工单(objectRef=metric:{metricId}), 附删除备注
+        try {
+            List<com.datanote.domain.governance.model.DnGovernanceIssue> issues = issueMapper.selectList(
+                    new QueryWrapper<com.datanote.domain.governance.model.DnGovernanceIssue>()
+                            .eq("issue_type", "METRIC").eq("object_ref", "metric:" + id).ne("status", "CLOSED"));
+            if (issues != null) {
+                for (com.datanote.domain.governance.model.DnGovernanceIssue iss : issues) {
+                    try {
+                        // 沿状态机最短路径关单: OPEN→CLOSED 直达, 其余 →FIXING→OPEN→CLOSED
+                        String st = iss.getStatus();
+                        if (!"OPEN".equals(st)) {
+                            if (!"FIXING".equals(st)) issueService.transition(iss.getId(), "FIXING", "metric-delete");
+                            issueService.transition(iss.getId(), "OPEN", "metric-delete");
+                        }
+                        issueService.transition(iss.getId(), "CLOSED", "metric-delete");
+                        // 只补备注(整对象回写会用旧 status 覆盖 CLOSED)
+                        issueMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<com.datanote.domain.governance.model.DnGovernanceIssue>()
+                                .eq("id", iss.getId())
+                                .set("description", "[指标已删除] " + (iss.getDescription() == null ? "" : iss.getDescription())));
+                    } catch (Exception ignore) {}
+                }
+            }
+        } catch (Exception ignore) {}
+        projectAssetCleaner.onAssetDeleted("METRIC", id);
         return R.ok("删除成功");
     }
 
@@ -110,19 +143,7 @@ public class MetricController {
         return R.ok(cats);
     }
 
-    /**
-     * 指标统计概览
-     */
-    @Operation(summary = "指标统计")
-    @GetMapping("/stats")
-    public R<Map<String, Object>> stats() {
-        Map<String, Object> data = new HashMap<>();
-        data.put("totalMetrics", metricMapper.selectCount(null));
-        QueryWrapper<DnMetric> activeQw = new QueryWrapper<>();
-        activeQw.eq("status", 1);
-        data.put("activeMetrics", metricMapper.selectCount(activeQw));
-        return R.ok(data);
-    }
+    // (原 /stats 端点已清退: 前端无消费, 概览数字由消费层 overview 提供)
 
     // ==================== 指标-资产关联 ====================
 

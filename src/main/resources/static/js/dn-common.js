@@ -439,6 +439,23 @@
     return { close: close, body: bd };
   };
 
+  /**
+   * 关闭全站所有抽屉(统一清理点)。供 navigateTo 在切换视图前调用,
+   * 防止任何抽屉(DN.drawer 的 .gov-drawer / 项目详情 / 同步详情 / AI 抽屉)在跳转后
+   * 残留遮罩盖住新视图、并泄漏键盘监听。覆盖三套抽屉实现。
+   */
+  DN.closeAllDrawers = function () {
+    // 1) DN.drawer 动态抽屉(.gov-drawer + #govDrawerMask)+ 解绑其 keydown 监听(防泄漏)
+    if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
+    var gm = document.getElementById('govDrawerMask'); if (gm) gm.remove();
+    Array.prototype.forEach.call(document.querySelectorAll('.gov-drawer'), function (d) { if (d.parentNode) d.remove(); });
+    // 2) AI 智能体抽屉(局部 closeDrawer 不可外部调用,直接移除其 DOM)
+    Array.prototype.forEach.call(document.querySelectorAll('.dn-ai-mask, .dn-ai-drawer'), function (d) { if (d.parentNode) d.remove(); });
+    // 3) 静态抽屉(项目详情/同步详情)走各自 close(含其状态清理),不存在则忽略
+    try { if (typeof window.projCloseDetail === 'function') window.projCloseDetail(); } catch (e) {}
+    try { if (typeof window.dbsyncCloseDetail === 'function') window.dbsyncCloseDetail(); } catch (e) {}
+  };
+
   // ===== 表单组件(配合 app.css .dn-* 表单设计系统, 让抽屉/弹窗表单美观人性化) =====
   /** 输入框: opts {placeholder, type, value, disabled, textarea} */
   DN.formInput = function (opts) {

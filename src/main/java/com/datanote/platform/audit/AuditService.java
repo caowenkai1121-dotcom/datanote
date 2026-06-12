@@ -35,18 +35,25 @@ public class AuditService {
     // ======================= 纯函数（可单测） =======================
 
     /**
-     * 是否应审计：仅变更类（POST/PUT/DELETE）且落在 /api/** 下；
-     * 排除审计自身路径避免递归；GET 等只读一律不记（避免风暴）。
+     * 是否应审计：变更类（POST/PUT/DELETE）落在 /api/** 下；
+     * 批4审计专项: GET 中敏感只读操作(导出/下载/数据预览/探查)也留痕——含审计自身导出
+     * (谁导出了审计日志本身是最该留痕的动作)；其余 GET 一律不记（避免风暴）。
+     * 审计自身变更类路径(login-record)仍排除避免递归。
      */
     public static boolean shouldAudit(String method, String path) {
         if (method == null || path == null) {
             return false;
         }
         String m = method.toUpperCase(Locale.ROOT);
-        if (!("POST".equals(m) || "PUT".equals(m) || "DELETE".equals(m))) {
+        if (!path.startsWith("/api/")) {
             return false;
         }
-        if (!path.startsWith("/api/")) {
+        if ("GET".equals(m)) {
+            String p = path.toLowerCase(Locale.ROOT);
+            return p.contains("/export") || p.contains("/download")
+                    || p.contains("/preview") || p.contains("/profile");
+        }
+        if (!("POST".equals(m) || "PUT".equals(m) || "DELETE".equals(m))) {
             return false;
         }
         if (path.startsWith(SELF_PREFIX)) {
@@ -65,6 +72,9 @@ public class AuditService {
         }
         if (p.contains("/export") || p.contains("/download")) {
             return "EXPORT";
+        }
+        if (p.contains("/preview") || p.contains("/profile")) {
+            return "DATA_PREVIEW";
         }
         if (p.contains("/rbac") || p.contains("/perm") || p.contains("/role") || p.contains("/user")) {
             return "PERM_CHANGE";
@@ -235,6 +245,21 @@ public class AuditService {
     /** 统计结果判空：selectMaps 理论可返回 null,统一兜底空列表,前端不再处理 null。 */
     private static List<Map<String, Object>> safeMaps(List<Map<String, Object>> maps) {
         return maps == null ? Collections.emptyList() : maps;
+    }
+
+    /** 实际出现过的动作类型(批4: 前端筛选下拉动态化, 不再写死枚举)。 */
+    public List<String> distinctTypes() {
+        QueryWrapper<DnAuditLog> qw = new QueryWrapper<>();
+        qw.select("DISTINCT action_type").isNotNull("action_type").ne("action_type", "");
+        List<Map<String, Object>> maps = safeMaps(auditMapper.selectMaps(qw));
+        List<String> out = new java.util.ArrayList<>();
+        for (Map<String, Object> m : maps) {
+            Object v = m.get("action_type");
+            if (v == null) v = m.get("actionType");
+            if (v != null) out.add(String.valueOf(v));
+        }
+        Collections.sort(out);
+        return out;
     }
 
     /** 按动作类型统计计数。 */

@@ -245,18 +245,16 @@
     body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: (isApprove ? '批准' : '驳回') + '变更请求：' + bizLabel + '（' + typeLabel + '）' }));
 
     var sec = DN.formSection('审批信息');
-    var fReviewer = DN.h('input', { class: 'dn-form-input', style: 'width:100%', placeholder: '审批人姓名/工号' });
+    // #19: 审批人由后端取当前登录用户记录, 不再手填(防冒名审批); 自己提交的申请后端会拦截自批
     var fComment = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
-    sec.add(DN.field('审批人', fReviewer, { required: true }));
+    sec.add(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '审批人将自动记录为当前登录用户。' }));
     sec.add(DN.field('审批意见', fComment));
     body.appendChild(sec.el);
 
     var dr, foot;
     var doSave = function () {
       if (foot.ok.disabled) return;
-      var reviewer = fReviewer.value.trim();
-      if (!reviewer) { DN.toast('请填写审批人', 'err'); fReviewer.focus(); return; }
-      var payload = { reviewer: reviewer, reviewComment: fComment.value.trim() };
+      var payload = { reviewComment: fComment.value.trim() };
       foot.busy(submitText === '确认批准' ? '批准中...' : '驳回中...');
       DN.post('/api/mdm/approval/' + encodeURIComponent(r.id) + '/' + action, payload).then(function () {
         DN.toast(isApprove ? '已批准' : '已驳回', 'ok'); dr.close(); loadApproval(statBox, box);

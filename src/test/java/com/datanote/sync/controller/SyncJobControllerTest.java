@@ -32,6 +32,7 @@ class SyncJobControllerTest {
             mock(com.datanote.domain.integration.service.DataReconciliationService.class),
             mock(com.datanote.domain.integration.service.CdcEngineManager.class),
             mock(com.datanote.domain.integration.mapper.DnSyncErrorRowMapper.class),
+            mock(com.datanote.domain.integration.mapper.DnCdcDeadLetterMapper.class),
             mock(com.datanote.domain.integration.schema.TableSchemaService.class),
             mock(com.datanote.domain.integration.schema.SchemaDriftService.class));
 

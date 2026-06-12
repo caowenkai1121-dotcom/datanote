@@ -8,7 +8,6 @@ import com.datanote.domain.metadata.mapper.DnColumnMetaMapper;
 import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.orchestration.mapper.DnLineageEdgeMapper;
 import com.datanote.domain.governance.model.DnGovernanceMetric;
-import com.datanote.domain.governance.model.DnMaturityAssessment;
 import com.datanote.domain.governance.model.DnGovernanceScore;
 import com.datanote.domain.governance.model.DnQualityRun;
 import com.datanote.domain.governance.model.DnStandardCheckRun;
@@ -44,7 +43,6 @@ public class HealthScoreService {
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnTableMetaMapper tableMetaMapper;
     private final DnLineageEdgeMapper lineageMapper;
-    private final MaturityService maturityService;   // R33 DCMM 自评汇入健康分
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -60,7 +58,9 @@ public class HealthScoreService {
     public static final String DIM_SECURITY = "安全";
     public static final String DIM_LIFECYCLE = "生命周期";
     public static final String DIM_LINEAGE = "血缘";
-    public static final String DIM_MATURITY = "组织成熟度";   // R33 DCMM 自评维度
+
+    /** 批4#33: 健康分口径版本。v2 = 还原真五维(移除 DCMM 自评汇入, 自评属主观问卷不入客观分), 总分较 v1 会跳变。 */
+    public static final String SCORE_VERSION = "v2-五维(2026-06-12 移除组织成熟度汇入)";
 
     // ========== 纯函数：加权打分（权重归一化，可单测） ==========
 
@@ -110,8 +110,6 @@ public class HealthScoreService {
             map.put(DIM_LIFECYCLE, 15.0);
             map.put(DIM_LINEAGE, 15.0);
         }
-        // R33: 确保 DCMM 组织成熟度始终有权重(配置表通常无此维度), 否则其分不计入总分
-        map.putIfAbsent(DIM_MATURITY, 10.0);
         return map;
     }
 
@@ -125,28 +123,7 @@ public class HealthScoreService {
         detail.put(DIM_SECURITY, securityScore());
         detail.put(DIM_LIFECYCLE, lifecycleScore());
         detail.put(DIM_LINEAGE, lineageScore());
-        detail.put(DIM_MATURITY, maturityScore());
         return detail;
-    }
-
-    /** R33 组织成熟度维度：取 DCMM 八大域最新自评 score 均值；未自评给中性分。 */
-    private Map<String, Object> maturityScore() {
-        try {
-            List<DnMaturityAssessment> list = maturityService.latest();
-            if (list == null || list.isEmpty()) return dim(NEUTRAL, "未做 DCMM 自评(中性分)");
-            double sum = 0; int n = 0;
-            for (DnMaturityAssessment a : list) {
-                if (a == null) continue;
-                if (a.getScore() != null) { sum += a.getScore().doubleValue(); n++; }
-                else if (a.getLevel() != null) { sum += a.getLevel() * 20.0; n++; }  // level 1-5 → 0-100
-            }
-            if (n == 0) return dim(NEUTRAL, "DCMM 自评无评分(中性分)");
-            return dim(sum / n, "DCMM 八大域自评均值(" + n + "域)");
-        } catch (Exception e) {
-            // 取数失败降级为中性分，但记录上下文便于排查（不静默吞错）
-            log.warn("组织成熟度维度取数失败, 降级中性分: {}", e.getMessage());
-            return dim(NEUTRAL, "DCMM 取数失败(中性分)");
-        }
     }
 
     private Map<String, Object> dim(double score, String source) {
@@ -278,6 +255,7 @@ public class HealthScoreService {
         result.put("totalScore", total);
         result.put("dimensions", detail);
         result.put("weights", weights);
+        result.put("scoreVersion", SCORE_VERSION);   // 批4#33 口径版本标注(v1→v2 总分跳变可解释)
         return result;
     }
 

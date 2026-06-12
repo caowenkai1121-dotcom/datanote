@@ -26,4 +26,6 @@ public class DnProjectRelease {
     private String approveComment;
     private LocalDateTime releasedAt;
     private LocalDateTime createdAt;
+    /** 本次发布的资产清单 JSON: [{assetType,assetId,assetName}] */
+    private String assetJson;
 }

@@ -2,11 +2,9 @@ package com.datanote.platform.portal;
 
 import com.datanote.domain.governance.model.DnGovernanceIssue;
 import com.datanote.domain.governance.model.DnGovernanceMetric;
-import com.datanote.domain.governance.model.DnMaturityAssessment;
 import com.datanote.common.model.R;
 import com.datanote.domain.governance.HealthScoreService;
 import com.datanote.domain.governance.IssueService;
-import com.datanote.domain.governance.MaturityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,18 +15,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 治理健康分 Controller —— 健康分(当前/趋势/明细) + 工单(CRUD/流转/路由/排行) + DCMM 成熟度自评。
+ * 治理健康分 Controller —— 健康分(当前/趋势/明细) + 工单(CRUD/流转/路由/排行)。
+ * 批4#33: DCMM 成熟度自评(前端零调用孤岛)随汇入移除一并下架。
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/gov/health")
 @RequiredArgsConstructor
-@Tag(name = "治理健康分", description = "五维健康分、治理工单闭环、DCMM 成熟度自评")
+@Tag(name = "治理健康分", description = "五维健康分、治理工单闭环")
 public class HealthController {
 
     private final HealthScoreService healthScoreService;
     private final IssueService issueService;
-    private final MaturityService maturityService;
 
     // ========== 健康分 ==========
 
@@ -141,27 +139,4 @@ public class HealthController {
                 .body(body);
     }
 
-    // ========== DCMM 成熟度自评 ==========
-
-    @Operation(summary = "DCMM 八大域名称")
-    @GetMapping("/maturity/domains")
-    public R<List<String>> maturityDomains() {
-        return R.ok(maturityService.domains());
-    }
-
-    @Operation(summary = "DCMM 八大域最新自评(供雷达)")
-    @GetMapping("/maturity")
-    public R<List<DnMaturityAssessment>> maturity() {
-        return R.ok(maturityService.latest());
-    }
-
-    @Operation(summary = "录入 DCMM 自评(同域覆盖最新)")
-    @PostMapping("/maturity")
-    public R<DnMaturityAssessment> assess(@RequestBody DnMaturityAssessment a) {
-        try {
-            return R.ok(maturityService.assess(a));
-        } catch (IllegalArgumentException e) {
-            return R.fail(e.getMessage());
-        }
-    }
 }

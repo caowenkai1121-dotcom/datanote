@@ -50,6 +50,14 @@ public class MetricValueService {
      */
     @Transactional
     public DnMetricValue calc(Long metricId, String operator) {
+        return calc(metricId, operator, null);
+    }
+
+    /**
+     * @param bizDate 业务日期: null=当日(手动计算); 调度方显式传昨日(T+1 口径由调用方决定, 平台不猜)
+     */
+    @Transactional
+    public DnMetricValue calc(Long metricId, String operator, java.time.LocalDate bizDate) {
         if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         DnMetric m = metricMapper.selectById(metricId);
         if (m == null) throw new BusinessException("指标不存在: " + metricId);
@@ -60,19 +68,28 @@ public class MetricValueService {
         DnMetricValue v = new DnMetricValue();
         v.setMetricId(metricId); v.setMetricCode(m.getMetricCode()); v.setDims(m.getDimensions());
         v.setCalcSql(sql); v.setCreatedBy(operator); v.setCreatedAt(LocalDateTime.now());
+        v.setBizDate(bizDate == null ? java.time.LocalDate.now() : bizDate);
         long start = System.currentTimeMillis();
         BigDecimal num = null;
-        try {
-            Map<String, Object> r = hiveService.executeSQL(sql);
-            Object firstCell = firstCell(r);
-            num = parseMetricValue(firstCell);
-            if (num != null) v.setMetricValue(num);
-            else v.setValueText(firstCell == null ? null : String.valueOf(firstCell));
-            v.setRunStatus("success");
-        } catch (Exception e) {
+        // 安全守卫: 公式只放行只读查询(SELECT/WITH 单语句), 防存储型任意 SQL 被调度每日执行
+        String guard = readOnlyViolation(sql);
+        if (guard != null) {
             v.setRunStatus("error");
-            v.setErrorMsg(e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage()));
-            log.warn("指标取值失败 metricId={} code={}: {}", metricId, m.getMetricCode(), e.getMessage());
+            v.setErrorMsg(guard);
+            log.warn("指标公式被只读守卫拦截 metricId={} code={}: {}", metricId, m.getMetricCode(), guard);
+        } else {
+            try {
+                Map<String, Object> r = hiveService.executeSQL(sql, true);   // 纵深防御: 只读连接
+                Object firstCell = firstCell(r);
+                num = parseMetricValue(firstCell);
+                if (num != null) v.setMetricValue(num);
+                else v.setValueText(firstCell == null ? null : String.valueOf(firstCell));
+                v.setRunStatus("success");
+            } catch (Exception e) {
+                v.setRunStatus("error");
+                v.setErrorMsg(e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage()));
+                log.warn("指标取值失败 metricId={} code={}: {}", metricId, m.getMetricCode(), e.getMessage());
+            }
         }
         v.setDurationMs(System.currentTimeMillis() - start);
         valueMapper.insert(v);
@@ -83,6 +100,40 @@ public class MetricValueService {
         logConsumption(operator, "CALC", m.getMetricCode(), "CALC", null, v.getDurationMs(),
                 "success".equals(v.getRunStatus()), "success".equals(v.getRunStatus()) ? "计算成功" : v.getErrorMsg());
         return v;
+    }
+
+    /**
+     * 一键/调度 计算全部启用指标(收敛 ConsumptionController 与 ScheduleService 的重复循环)。
+     * operator='schedule' 时按 metric+bizDate 幂等: 同日已有 success 快照则跳过(防同日重复触发刷快照);
+     * 手动来源保留追加语义(快照流水即审计)。
+     */
+    public Map<String, Object> calcAllEnabled(String operator, java.time.LocalDate bizDate) {
+        List<DnMetric> metrics = enabledMetrics();
+        int ok = 0, fail = 0, skip = 0;
+        boolean idempotent = "schedule".equals(operator);
+        java.time.LocalDate bd = bizDate == null ? java.time.LocalDate.now() : bizDate;
+        for (DnMetric m : metrics) {
+            try {
+                if (idempotent && hasSuccessSnapshot(m.getId(), bd)) { skip++; continue; }
+                DnMetricValue v = calc(m.getId(), operator, bizDate);
+                if ("success".equals(v.getRunStatus())) ok++; else fail++;
+            } catch (Exception e) {
+                fail++;
+                log.warn("指标批量计算异常 metricId={}: {}", m.getId(), e.getMessage());
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", metrics.size());
+        out.put("success", ok);
+        out.put("failed", fail);
+        if (skip > 0) out.put("skipped", skip);
+        return out;
+    }
+
+    private boolean hasSuccessSnapshot(Long metricId, java.time.LocalDate bizDate) {
+        Long n = valueMapper.selectCount(new QueryWrapper<DnMetricValue>()
+                .eq("metric_id", metricId).eq("biz_date", bizDate).eq("run_status", "success"));
+        return n != null && n > 0;
     }
 
     /** 指标最新一次成功值 */
@@ -300,13 +351,17 @@ public class MetricValueService {
         return out;
     }
 
-    /** 指标消费排行：按消费日志计数，Top 指标(含名称)。批量查名称消除逐 code N+1。 */
-    public List<Map<String, Object>> metricRanking() {
+    /**
+     * 指标消费排行：按消费日志计数，Top 指标(含名称)。口径=真实消费白名单, CALC(计算)不计——防调度刷平排行。
+     * @param days 时间窗(天); null=全部历史。原 /log/heat 近30天能力并入本口径(单卡双窗口)。
+     */
+    public List<Map<String, Object>> metricRanking(Integer days) {
         QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
         qw.select("target_code", "COUNT(*) AS cnt")
-          .in("target_type", java.util.Arrays.asList("METRIC_VALUE", "METRIC_HISTORY", "CALC"))
-          .isNotNull("target_code").ne("target_code", "")
-          .groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
+          .in("target_type", java.util.Arrays.asList("METRIC_VALUE", "METRIC_HISTORY", "EXPORT"))
+          .isNotNull("target_code").ne("target_code", "");
+        if (days != null && days > 0) qw.ge("created_at", LocalDateTime.now().minusDays(days));
+        qw.groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
         List<Map<String, Object>> rows = logMapper.selectMaps(qw);
         if (rows == null || rows.isEmpty()) return new ArrayList<>();
         // 收集本批 code, 一次查名称, 内存映射 code -> metricName
@@ -408,6 +463,29 @@ public class MetricValueService {
             return cells.isEmpty() ? null : cells.get(0);
         }
         return first;
+    }
+
+    /**
+     * 只读守卫(纯函数): 剥离行/块注释后, 首词须 SELECT/WITH 且去尾分号后不得再含分号(拒多语句)。
+     * 违规返回拦截原因; 合规返回 null。
+     */
+    static String readOnlyViolation(String sql) {
+        if (sql == null) return "仅允许只读查询(SELECT/WITH)";
+        String s = sql.replaceAll("/\\*[\\s\\S]*?\\*/", " ");
+        StringBuilder sb = new StringBuilder();
+        for (String line : s.split("\n")) {
+            int i = line.indexOf("--");
+            sb.append(i >= 0 ? line.substring(0, i) : line).append('\n');
+        }
+        String body = sb.toString().trim();
+        if (body.endsWith(";")) body = body.substring(0, body.length() - 1).trim();
+        if (body.isEmpty()) return "仅允许只读查询(SELECT/WITH)";
+        if (body.indexOf(';') >= 0) return "仅允许只读查询: 不允许多语句(检测到分号)";
+        String first = body.split("\\s+", 2)[0].toUpperCase();
+        if (!"SELECT".equals(first) && !"WITH".equals(first)) {
+            return "仅允许只读查询(SELECT/WITH), 检测到: " + first;
+        }
+        return null;
     }
 
     /** 解析指标值为数字；非数字返回 null（落 value_text 兜底） */

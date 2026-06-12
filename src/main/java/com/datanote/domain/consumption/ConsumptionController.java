@@ -52,20 +52,10 @@ public class ConsumptionController {
     @Operation(summary = "批量计算全部启用指标")
     @PostMapping("/metric/calc-all")
     public R<Map<String, Object>> calcAll(@RequestParam(required = false) String operator) {
-        List<DnMetric> all = metricMapper.selectList(new QueryWrapper<DnMetric>().eq("status", 1));
-        int ok = 0, fail = 0;
-        for (DnMetric m : all) {
-            try {
-                DnMetricValue v = valueService.calc(m.getId(), operator == null ? "calc-all" : operator);
-                if ("success".equals(v.getRunStatus())) ok++; else fail++;
-            } catch (Exception e) { fail++; }
-        }
-        Map<String, Object> r = new LinkedHashMap<>();
-        r.put("total", all.size()); r.put("success", ok); r.put("failed", fail);
-        return R.ok(r);
+        return R.ok(valueService.calcAllEnabled(operator == null ? "calc-all" : operator, null));
     }
 
-    @Operation(summary = "指标最新值")
+    @Operation(summary = "指标最新值(开放取数 API: 供外部系统/看板按指标拉数, 含消费审计)")
     @GetMapping("/metric/{id}/value")
     public R<DnMetricValue> value(@PathVariable Long id, @RequestParam(required = false) String consumer) {
         DnMetricValue v = valueService.latest(id);
@@ -80,11 +70,18 @@ public class ConsumptionController {
                                           @RequestParam(defaultValue = "30") int limit,
                                           @RequestParam(required = false) String consumer) {
         List<DnMetricValue> rows = valueService.history(id, limit);
-        valueService.logConsumption(consumer, "METRIC_HISTORY", null, "QUERY", (long) rows.size(), null, true, "history " + rows.size());
+        // 落 targetCode: 趋势查看计入消费排行/热度(行有 code 直取, 空历史回查指标)
+        String code = null;
+        for (DnMetricValue v : rows) { if (v != null && v.getMetricCode() != null) { code = v.getMetricCode(); break; } }
+        if (code == null) {
+            DnMetric m = metricMapper.selectById(id);
+            if (m != null) code = m.getMetricCode();
+        }
+        valueService.logConsumption(consumer, "METRIC_HISTORY", code, "QUERY", (long) rows.size(), null, true, "history " + rows.size());
         return R.ok(rows);
     }
 
-    @Operation(summary = "按 code 批量取最新值")
+    @Operation(summary = "按 code 批量取最新值(开放取数 API: 看板批量拉数, 上限200)")
     @PostMapping("/metric/values")
     public R<List<Map<String, Object>>> batchValues(@RequestBody Map<String, Object> body) {
         @SuppressWarnings("unchecked")
@@ -116,10 +113,10 @@ public class ConsumptionController {
         return R.ok(valueService.assetImpact(db, table));
     }
 
-    @Operation(summary = "指标消费排行(按消费日志计数 Top20)")
+    @Operation(summary = "指标消费排行(真实消费口径 Top20, days 时间窗可选)")
     @GetMapping("/metric-ranking")
-    public R<List<Map<String, Object>>> metricRanking() {
-        return R.ok(valueService.metricRanking());
+    public R<List<Map<String, Object>>> metricRanking(@RequestParam(required = false) Integer days) {
+        return R.ok(valueService.metricRanking(days));
     }
 
     @Operation(summary = "指标输入质量: 来源表质量规则+最新通过率, 给指标可信度信号")
@@ -128,24 +125,9 @@ public class ConsumptionController {
         return R.ok(valueService.inputQuality(id));
     }
 
-    @Operation(summary = "消费审计流水(近100, 可按 targetCode 过滤)")
-    @GetMapping("/log/list")
-    public R<List<DnConsumptionLog>> logList(@RequestParam(required = false) String targetCode) {
-        QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
-        if (targetCode != null && !targetCode.isEmpty()) qw.eq("target_code", targetCode);
-        qw.orderByDesc("created_at").last("LIMIT 100");
-        return R.ok(logMapper.selectList(qw));
-    }
+    // (原 /log/list 端点已清退: 前端无消费, 审计流水经全局审计中心查看)
 
-    @Operation(summary = "消费热度(按指标 Top, 近30天调用数)")
-    @GetMapping("/log/heat")
-    public R<List<Map<String, Object>>> logHeat() {
-        QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
-        qw.select("target_code", "COUNT(*) AS cnt")
-          .isNotNull("target_code").ne("target_code", "")
-          .groupBy("target_code").orderByDesc("cnt").last("LIMIT 20");
-        return R.ok(logMapper.selectMaps(qw));
-    }
+    // (原 /log/heat 已并入 /metric-ranking?days=30: 单一真实消费口径, 不再两卡两口径)
 
     @Operation(summary = "指标预警规则列表")
     @GetMapping("/metric/{id}/alert-rules")

@@ -52,6 +52,13 @@ public class ScriptController {
         return R.ok(null);
     }
 
+    @Operation(summary = "重命名脚本(全站#4: 原前端假动作刷新即回弹)")
+    @PutMapping("/{id}/rename")
+    public R<Void> rename(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        scriptService.rename(id, body == null ? null : body.get("name"));
+        return R.ok(null);
+    }
+
     @Operation(summary = "更新脚本库名")
     @PutMapping("/{id}/database-name")
     public R<Void> updateDatabaseName(@PathVariable Long id, @RequestBody Map<String, String> body) {

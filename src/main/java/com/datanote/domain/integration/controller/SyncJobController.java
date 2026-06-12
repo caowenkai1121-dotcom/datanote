@@ -38,6 +38,7 @@ public class SyncJobController {
     private final com.datanote.domain.integration.service.DataReconciliationService reconciliationService;
     private final com.datanote.domain.integration.service.CdcEngineManager cdcEngineManager;
     private final DnSyncErrorRowMapper syncErrorRowMapper;
+    private final com.datanote.domain.integration.mapper.DnCdcDeadLetterMapper cdcDeadLetterMapper;   // 全站#21 CDC死信合并展示
     private final com.datanote.domain.integration.schema.TableSchemaService tableSchemaService;
     private final com.datanote.domain.integration.schema.SchemaDriftService schemaDriftService;
 
@@ -76,7 +77,7 @@ public class SyncJobController {
         return R.ok("删除成功");
     }
 
-    @Operation(summary = "坏行(DLQ)列表")
+    @Operation(summary = "坏行(DLQ)列表(全站#21: 合并 CDC 死信, stage=CDC)")
     @GetMapping("/{id}/error-rows")
     public R<List<DnSyncErrorRow>> errorRows(@PathVariable Long id,
                                              @RequestParam(defaultValue = "200") int limit) {
@@ -86,15 +87,47 @@ public class SyncJobController {
                         .eq(DnSyncErrorRow::getJobId, id)
                         .orderByDesc(DnSyncErrorRow::getId)
                         .last("limit " + n));
+        if (rows == null) rows = new java.util.ArrayList<>();
+        // 全站#21: CDC 死信原先只写 dn_cdc_dead_letter 无任何展示口——映射进同一坏行视图
+        List<com.datanote.domain.integration.model.DnCdcDeadLetter> dead = cdcDeadLetterMapper.selectList(
+                new LambdaQueryWrapper<com.datanote.domain.integration.model.DnCdcDeadLetter>()
+                        .eq(com.datanote.domain.integration.model.DnCdcDeadLetter::getJobId, id)
+                        .orderByDesc(com.datanote.domain.integration.model.DnCdcDeadLetter::getId)
+                        .last("limit " + n));
+        if (dead != null) {
+            for (com.datanote.domain.integration.model.DnCdcDeadLetter d : dead) {
+                if (d == null) continue;
+                DnSyncErrorRow r = new DnSyncErrorRow();
+                r.setId(d.getId());
+                r.setJobId(d.getJobId());
+                r.setSourceTable((d.getSourceDb() == null ? "" : d.getSourceDb() + ".") + (d.getSourceTable() == null ? "" : d.getSourceTable()));
+                r.setRawRow(d.getOriginValue());
+                r.setErrorCode(d.getErrorType());
+                r.setErrorMsg(d.getErrorReason());
+                r.setStage("CDC");
+                r.setCreatedAt(d.getCreatedAt());
+                rows.add(r);
+            }
+            rows.sort((a, b) -> {
+                if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+                if (a.getCreatedAt() == null) return 1;
+                if (b.getCreatedAt() == null) return -1;
+                return b.getCreatedAt().compareTo(a.getCreatedAt());
+            });
+            if (rows.size() > n) rows = new java.util.ArrayList<>(rows.subList(0, n));
+        }
         return R.ok(rows);
     }
 
-    @Operation(summary = "清空坏行(DLQ)")
+    @Operation(summary = "清空坏行(DLQ, 含 CDC 死信)")
     @DeleteMapping("/{id}/error-rows")
     public R<String> clearErrorRows(@PathVariable Long id) {
         int del = syncErrorRowMapper.delete(
                 new LambdaQueryWrapper<DnSyncErrorRow>().eq(DnSyncErrorRow::getJobId, id));
-        return R.ok("已清空 " + del + " 条");
+        int delCdc = cdcDeadLetterMapper.delete(
+                new LambdaQueryWrapper<com.datanote.domain.integration.model.DnCdcDeadLetter>()
+                        .eq(com.datanote.domain.integration.model.DnCdcDeadLetter::getJobId, id));
+        return R.ok("已清空 " + (del + delCdc) + " 条" + (delCdc > 0 ? "(含 CDC 死信 " + delCdc + " 条)" : ""));
     }
 
     @Operation(summary = "样本预览(前N行)")

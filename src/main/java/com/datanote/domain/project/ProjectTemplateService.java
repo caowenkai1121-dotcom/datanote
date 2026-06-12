@@ -22,6 +22,7 @@ public class ProjectTemplateService {
     private final DnProjectTemplateMapper templateMapper;
     private final DnProjectMemberMapper memberMapper;
     private final ProjectService projectService;
+    private final com.datanote.domain.project.mapper.DnProjectTaskMapper taskMapper;   // II-5 任务骨架快照/重建
 
     public List<DnProjectTemplate> list() {
         return templateMapper.selectList(new LambdaQueryWrapper<DnProjectTemplate>().orderByDesc(DnProjectTemplate::getId));
@@ -51,6 +52,26 @@ public class ProjectTemplateService {
             members.add(mm);
         }
         cfg.put("members", members);
+        // II-5 模板做厚: 快照任务骨架(SOP)——title/priority/相对截止天数, 不带指派人
+        com.alibaba.fastjson.JSONArray tasks = new com.alibaba.fastjson.JSONArray();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        List<com.datanote.domain.project.model.DnProjectTask> taskList = taskMapper.selectList(
+                new LambdaQueryWrapper<com.datanote.domain.project.model.DnProjectTask>()
+                        .eq(com.datanote.domain.project.model.DnProjectTask::getProjectId, projectId)
+                        .ne(com.datanote.domain.project.model.DnProjectTask::getStatus, "DONE")
+                        .last("LIMIT 50"));
+        if (taskList != null) for (com.datanote.domain.project.model.DnProjectTask tk : taskList) {
+            if (tk == null || tk.getTitle() == null) continue;
+            JSONObject tt = new JSONObject();
+            tt.put("title", tk.getTitle());
+            tt.put("priority", tk.getPriority());
+            if (tk.getDueDate() != null) {
+                long days = java.time.temporal.ChronoUnit.DAYS.between(today, tk.getDueDate());
+                if (days > 0) tt.put("dueDays", days);
+            }
+            tasks.add(tt);
+        }
+        cfg.put("tasks", tasks);
 
         DnProjectTemplate t = new DnProjectTemplate();
         t.setTemplateName(name);
@@ -93,6 +114,26 @@ public class ProjectTemplateService {
                 m.setProjectRole(role);
                 m.setAddedBy(ProjectService.currentUser());
                 memberMapper.insert(m);
+            }
+        }
+        // II-5: 模板任务骨架批量建 TODO(旧模板无 tasks 空数组兜底; 相对截止天数换算为绝对日期)
+        com.alibaba.fastjson.JSONArray tasks = cfg.getJSONArray("tasks");
+        if (tasks != null) {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            for (int i = 0; i < tasks.size(); i++) {
+                JSONObject tt = tasks.getJSONObject(i);
+                String title = tt.getString("title");
+                if (title == null || title.trim().isEmpty()) continue;
+                com.datanote.domain.project.model.DnProjectTask tk = new com.datanote.domain.project.model.DnProjectTask();
+                tk.setProjectId(p.getId());
+                tk.setTitle(title.trim());
+                tk.setStatus("TODO");
+                String prio = tt.getString("priority");
+                tk.setPriority(prio != null && java.util.Arrays.asList("HIGH", "MEDIUM", "LOW").contains(prio) ? prio : "MEDIUM");
+                Long dueDays = tt.getLong("dueDays");
+                if (dueDays != null && dueDays > 0) tk.setDueDate(today.plusDays(dueDays));
+                tk.setCreatedBy(ProjectService.currentUser());
+                taskMapper.insert(tk);
             }
         }
         return p;

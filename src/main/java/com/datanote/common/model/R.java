@@ -18,6 +18,7 @@ public class R<T> {
     public static final int CODE_FAIL = -1;
     public static final int CODE_NOT_FOUND = -404;
     public static final int CODE_UNAUTHORIZED = -401;
+    public static final int CODE_FORBIDDEN = -403;
     public static final int CODE_BAD_REQUEST = -400;
 
     /**

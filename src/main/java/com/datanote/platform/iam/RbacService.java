@@ -126,6 +126,27 @@ public class RbacService {
     }
 
     /**
+     * 用户自助改密: 校验原密码后 BCrypt 入库。内置内存账号(不在 dn_user)不支持。
+     */
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        DnUser u = findByUsername(username);
+        if (u == null) {
+            throw new BusinessException("内置账号不支持在线改密, 请通过环境变量 DATANOTE_PASSWORD 修改");
+        }
+        if (oldPassword == null || !passwordEncoder.matches(oldPassword, u.getPassword())) {
+            throw new BusinessException("原密码不正确");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new BusinessException("新密码至少 6 位");
+        }
+        DnUser up = new DnUser();
+        up.setId(u.getId());
+        up.setPassword(passwordEncoder.encode(newPassword));
+        up.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(up);
+    }
+
+    /**
      * 删除用户（级联删除其角色绑定）。
      */
     @Transactional(rollbackFor = Exception.class)

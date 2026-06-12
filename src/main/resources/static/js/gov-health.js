@@ -31,6 +31,7 @@
     var ctx = window.__govCtx || {};
     // 接收 ctx.issueFilter：按关联对象(质量规则/关系表/指标)过滤工单
     issueObjectFilter = parseIssueFilter(ctx.issueFilter);
+    _focusIssueId = ctx.focusIssue || null;   // P5 双向聚焦: 任务徽标/资产侧跳入定位具体工单
     boardOwnerFilter = '';
 
     // ---- 健康分 ----
@@ -262,12 +263,18 @@
 
   // ========== 工单 ==========
 
+  var _issueTaskRefs = {};   // N5: 工单id → 已转项目任务列表(批量反查缓存)
   function loadIssues() {
     var box0 = document.getElementById('hsIssues');
     if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(4)); } // 重载时也回到骨架，避免旧数据残留误导
     var status = (document.getElementById('hsIssueFilter') || {}).value || '';
     DN.get('/api/gov/health/issues' + (status ? '?status=' + encodeURIComponent(status) : '')).then(function (rows) {
-      renderIssues(Array.isArray(rows) ? rows : []);
+      rows = Array.isArray(rows) ? rows : [];
+      var ids = rows.map(function (r) { return r && r.id; }).filter(Boolean);
+      var p = ids.length
+        ? DN.get('/api/project/task-refs/batch?refType=GOV_ISSUE&ids=' + ids.join(',')).catch(function () { return {}; })
+        : Promise.resolve({});
+      p.then(function (map) { _issueTaskRefs = map || {}; renderIssues(rows); });
     }).catch(function (e) {
       var box = document.getElementById('hsIssues');
       if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('工单加载失败：' + (e && e.message || ''), loadIssues)); }
@@ -354,7 +361,26 @@
       ]
     });
     box.appendChild(issueTable);
+    // P5 双向聚焦: 携 focusIssue 跳入 → 高亮该工单行(当前页未命中给明确提示, 不静默)
+    if (_focusIssueId) {
+      var fid = String(_focusIssueId); _focusIssueId = null;
+      setTimeout(function () {
+        var trs = box.querySelectorAll('tbody tr');
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].querySelectorAll('td');
+          if (tds.length > 1 && tds[1].textContent.trim() === fid) {
+            trs[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            trs[i].style.transition = 'background 1.2s';
+            trs[i].style.background = 'var(--bg-hover)';
+            (function (t) { setTimeout(function () { t.style.background = ''; }, 1600); })(trs[i]);
+            return;
+          }
+        }
+        DN.toast('工单 #' + fid + ' 不在当前页, 可用搜索框输入编号定位', 'info');
+      }, 120);
+    }
   }
+  var _focusIssueId = null;
 
   function severityPill(sev) {
     if (!sev) return '-';
@@ -375,8 +401,69 @@
       wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看对象', onclick: function () { gotoIssueObject(it.objectRef); } }));
     }
     wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', onclick: function () { assignIssue(it.id); } }));
+    // N5: 已转任务→显示进度徽标(可跳项目任务页); 未转→"转任务"入口(创建前还有服务端反查双保险)
+    var refs = _issueTaskRefs[it.id] || _issueTaskRefs[String(it.id)] || [];
+    if (refs.length) {
+      var t0 = refs[0];
+      wrap.appendChild(DN.h('a', {
+        href: 'javascript:void(0)',
+        text: '已转任务#' + t0.taskId + '·' + (t0.status === 'DONE' ? '完成' : (t0.status === 'DOING' ? '进行中' : '待办')),
+        title: '项目「' + (t0.projectName || '') + '」任务: ' + (t0.title || '') + (refs.length > 1 ? ' 等' + refs.length + '条' : '') + ', 点击直达',
+        style: 'color:var(--primary)',
+        onclick: function () {
+          if (window.navigateTo) navigateTo('project');
+          setTimeout(function () { if (window.projOpenDetailById) projOpenDetailById(t0.projectId, 'task'); }, 800);
+        }
+      }));
+    } else {
+      wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '转任务', title: '转为项目任务跟进(任务与工单双向联动)', onclick: function () { issueToProjectTask(it); } }));
+    }
     wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delIssue(it.id); } }));
     return wrap;
+  }
+
+  // P1 联动: 治理工单 → 项目任务(选项目, 带 refType=GOV_ISSUE 回链, 消"两本账")
+  // N5 防重: 创建前服务端实时反查, 已有任务则提示直达, 不再建第二条
+  function issueToProjectTask(it) {
+    DN.get('/api/project/task-refs/batch?refType=GOV_ISSUE&ids=' + it.id).catch(function () { return {}; }).then(function (map) {
+      var refs = (map && (map[it.id] || map[String(it.id)])) || [];
+      if (refs.length) {
+        DN.toast('该工单已转为项目「' + (refs[0].projectName || '') + '」任务 #' + refs[0].taskId + ', 不再重复创建', 'warn');
+        _issueTaskRefs[it.id] = refs;
+        loadIssues();
+        return;
+      }
+      issueToProjectTaskCreate(it);
+    });
+  }
+  function issueToProjectTaskCreate(it) {
+    DN.get('/api/project/list?status=ACTIVE').then(function (ps) {
+      ps = ps || [];
+      if (!ps.length) { DN.toast('暂无活跃项目, 请先到项目空间创建', 'warn'); return; }
+      var sel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' },
+        ps.map(function (p) { return DN.h('option', { value: String(p.id), text: p.projectName || ('#' + p.id) }); }));
+      var assignee = DN.h('input', { class: 'dn-form-input', value: it.owner || '', placeholder: '默认为工单负责人', style: 'width:100%' });
+      var due = DN.h('input', { class: 'dn-form-input', type: 'date', style: 'width:100%' });
+      var body = DN.h('div', {}, [
+        DN.h('div', { class: 'dn-field' }, [DN.h('label', { text: '目标项目' }), sel]),
+        DN.h('div', { class: 'dn-field' }, [DN.h('label', { text: '指派给' }), assignee]),
+        DN.h('div', { class: 'dn-field' }, [DN.h('label', { text: '截止日期' }), due]),
+        DN.h('div', { class: 'gov-desc', text: '以工单标题创建项目任务并回链本工单; 工单级别 HIGH 对应任务高优先级。' })
+      ]);
+      var d;
+      var ok = DN.h('button', { class: 'btn btn-primary', text: '创建任务', onclick: function () {
+        var pid = sel.value; if (!pid) return;
+        ok.disabled = true; ok.textContent = '创建中...';
+        DN.post('/api/project/' + pid + '/tasks', {
+          title: '[治理工单#' + it.id + '] ' + (it.title || ''),
+          description: (it.dimension ? '维度: ' + it.dimension + '\n' : '') + '来源: 数据治理健康分工单 #' + it.id,
+          assignee: assignee.value || '', priority: it.severity === 'HIGH' ? 'HIGH' : 'MEDIUM',
+          status: 'TODO', dueDate: due.value || null, refType: 'GOV_ISSUE', refId: it.id
+        }).then(function () { DN.toast('已转为项目任务', 'success'); d.close(); loadIssues(); })
+          .catch(function (e) { DN.toast(errMsg(e), 'error'); ok.disabled = false; ok.textContent = '创建任务'; });
+      } });
+      d = DN.drawer('工单转项目任务', body, ok);
+    }).catch(function (e) { DN.toast(errMsg(e), 'error'); });
   }
 
   // 工单关联对象下钻：qrule:{ruleId}→治理质量(聚焦规则)；metric:{id}→数据消费(聚焦指标)
@@ -385,7 +472,14 @@
     if ((m = /^qrule:(\d+)/.exec(ref))) {
       if (window.govGoModule) govGoModule('quality', { ruleId: Number(m[1]) });
     } else if ((m = /^metric:(\d+)/.exec(ref))) {
-      if (window.navigateTo) navigateTo('governance', { gov: 'consumption', focusMetric: Number(m[1]) });
+      // objectRef 存指标ID, 取值看板按 code 定位 → 先换 code 再切指标管理取值签(失败退化为只跳页面)
+      DN.get('/api/metric/' + m[1]).then(function (mt) {
+        var code = mt && (mt.metricCode || (mt.data && mt.data.metricCode));
+        if (window.gotoMetricConsume) gotoMetricConsume({ focusMetric: code || Number(m[1]) });
+      }).catch(function () {
+        if (window.gotoMetricConsume) gotoMetricConsume(null);
+        DN.toast('指标不存在或已删除', 'warn');
+      });
     }
   }
 

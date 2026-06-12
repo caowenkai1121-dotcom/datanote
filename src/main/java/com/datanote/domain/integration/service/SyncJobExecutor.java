@@ -55,6 +55,9 @@ public class SyncJobExecutor {
     private final AuditLogService auditLogService;
     private final AlertService alertService;
     private final com.datanote.domain.integration.schema.SchemaDriftService schemaDriftService;
+    private final com.datanote.platform.notify.NotificationService notificationService;            // 全站#25 同步终败通知
+    private final com.datanote.domain.project.mapper.DnProjectAssetMapper projectAssetMapper;      // 反查任务归属项目
+    private final com.datanote.domain.project.mapper.DnProjectMapper projectMapper;
 
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
@@ -377,6 +380,7 @@ public class SyncJobExecutor {
                 logBroadcastService.broadcastSyncStatus(job.getId(), fi.finalStatus);
                 if ("FAILED".equals(fi.finalStatus)) {
                     alertService.alert(job.getId(), job.getJobName(), "FAILED", "同步失败");
+                    notifySyncFailed(job);
                 }
                 return;
             }
@@ -386,6 +390,30 @@ public class SyncJobExecutor {
             try { Thread.sleep(delay * 1000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
             attempt++;
             exec = newExecution(job.getId(), triggerType, attempt);
+        }
+    }
+
+    /** 全站#25: 同步终败通知。接收人=任务归属项目负责人, 回退任务创建人, 再回退 admin; 铃铛深链数据同步。 */
+    private void notifySyncFailed(DnSyncJob job) {
+        try {
+            String receiver = null;
+            com.datanote.domain.project.model.DnProjectAsset asset = projectAssetMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.domain.project.model.DnProjectAsset>()
+                            .eq("asset_type", "SYNC_JOB").eq("asset_id", job.getId()).last("LIMIT 1"));
+            if (asset != null && asset.getProjectId() != null) {
+                com.datanote.domain.project.model.DnProject proj = projectMapper.selectById(asset.getProjectId());
+                if (proj != null && proj.getOwner() != null && !proj.getOwner().trim().isEmpty()) {
+                    receiver = proj.getOwner().trim();
+                }
+            }
+            if (receiver == null && job.getCreatedBy() != null && !job.getCreatedBy().trim().isEmpty()) {
+                receiver = job.getCreatedBy().trim();
+            }
+            if (receiver == null) receiver = "admin";
+            notificationService.notify(receiver, "SYNC_FAILED",
+                    "同步任务失败(重试耗尽): " + job.getJobName(), "dbsync", job.getId(), null);
+        } catch (Exception ne) {
+            log.warn("同步失败通知发送失败, jobId={}", job.getId(), ne);
         }
     }
 

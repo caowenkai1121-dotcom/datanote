@@ -32,6 +32,7 @@ public class ScheduleMonitorController {
     private final TaskSchedulerService taskSchedulerService;
     private final DolphinService dolphinService;
     private final DnScriptMapper scriptMapper;
+    private final com.datanote.domain.orchestration.mapper.DnSchedulerRunMapper schedulerRunMapper;   // 全站#6 补数记录
 
     @GetMapping("/today")
     @Operation(summary = "获取今日调度状态")
@@ -39,6 +40,25 @@ public class ScheduleMonitorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LocalDate runDate = date != null ? date : LocalDate.now().minusDays(1);
         return R.ok(taskSchedulerService.getTodayStatus(runDate));
+    }
+
+    @GetMapping("/backfill-runs")
+    @Operation(summary = "补数运行记录(全站#6: 补数链路收敛 scheduler, 查 run_type=backfill)")
+    public R<List<com.datanote.domain.orchestration.model.DnSchedulerRun>> backfillRuns(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String batchId,
+            @RequestParam(required = false) Long taskId,
+            @RequestParam(required = false) String taskType,
+            @RequestParam(defaultValue = "200") int limit) {
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnSchedulerRun> qw =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        qw.eq(com.datanote.domain.orchestration.model.DnSchedulerRun::getRunType, "backfill");
+        if (date != null) qw.eq(com.datanote.domain.orchestration.model.DnSchedulerRun::getRunDate, date);
+        if (batchId != null && !batchId.trim().isEmpty()) qw.eq(com.datanote.domain.orchestration.model.DnSchedulerRun::getBatchId, batchId.trim());
+        if (taskId != null) qw.eq(com.datanote.domain.orchestration.model.DnSchedulerRun::getTaskId, taskId);
+        if (taskType != null && !taskType.trim().isEmpty()) qw.eq(com.datanote.domain.orchestration.model.DnSchedulerRun::getTaskType, taskType.trim());
+        qw.orderByDesc(com.datanote.domain.orchestration.model.DnSchedulerRun::getId).last("LIMIT " + Math.min(Math.max(limit, 1), 1000));
+        return R.ok(schedulerRunMapper.selectList(qw));
     }
 
     @GetMapping("/run-log/{runId}")

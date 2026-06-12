@@ -25,6 +25,13 @@ public class BaselineController {
 
     private final DnBaselineMapper baselineMapper;
     private final DnBaselineTaskMapper baselineTaskMapper;
+    private final BaselineCheckService baselineCheckService;   // 批4#14 基线做实
+
+    @GetMapping("/status-today")
+    @Operation(summary = "启用基线今日达成状况(met/broken/pending/empty + 未达任务明细)")
+    public R<List<Map<String, Object>>> statusToday() {
+        return R.ok(baselineCheckService.statusToday());
+    }
 
     @GetMapping("/list")
     @Operation(summary = "基线列表")

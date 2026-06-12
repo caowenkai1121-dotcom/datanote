@@ -10,6 +10,10 @@ server:
 spring:
   main:
     allow-circular-references: true  # TaskSchedulerService <-> TaskExecutionService 循环依赖
+  task:
+    scheduling:
+      pool:
+        size: 4   # @Scheduled 默认单线程, 指标计算/健康分快照/调度tick互相阻塞; fixedDelay 同任务不重入语义不变
   servlet:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE:20MB}      # AI 数据中心单文件上限

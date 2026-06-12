@@ -2,19 +2,29 @@ package com.datanote.platform.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Web MVC 配置 — 根路径重定向到 workspace
+ * Web MVC 配置 — 根路径重定向到 workspace + 接口级权限拦截
  */
 @Configuration
+@lombok.RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
+
+    private final com.datanote.platform.iam.PermInterceptor permInterceptor;
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addRedirectViewController("/", "/workspace.html");
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // 功能级鉴权: 写操作按 PermCatalog 权限点拦截(开放模式自动放行, 见 PermInterceptor)
+        registry.addInterceptor(permInterceptor).addPathPatterns("/api/**");
     }
 
     @Override

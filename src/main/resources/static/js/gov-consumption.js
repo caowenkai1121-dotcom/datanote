@@ -17,21 +17,27 @@
     boardCard.el.id = 'consBoardCard';
     boardCard.body.appendChild(DN.h('div', { id: 'consBoard' }, DN.skeleton(4)));
     c.appendChild(boardCard.el);
-    var heatCard = DN.card({ title: '消费热度 Top（近30天调用）', icon: 'bars' });
-    heatCard.el.id = 'consHeatCard';
-    heatCard.body.appendChild(DN.h('div', { id: 'consHeat' }, DN.skeleton(2)));
-    c.appendChild(heatCard.el);
-    var rankCard = DN.card({ title: '指标消费排行（按消费日志计数 Top20）', icon: 'bars' });
+    // I-1: 排行+热度合并为单卡双窗口(同一真实消费口径, days=30/全部切换)
+    var winBtns = [
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '近30天', onclick: function () { _rankDays = 30; markRankWin(); loadRanking(); } }),
+      DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '全部', onclick: function () { _rankDays = null; markRankWin(); loadRanking(); } })
+    ];
+    _rankWinBtns = winBtns;
+    var rankCard = DN.card({ title: '消费排行 Top20（查询/趋势/导出真实消费计数）', icon: 'bars', actions: winBtns });
+    rankCard.el.id = 'consHeatCard';   // 概览磁贴"近7天消费"锚点沿用
     rankCard.body.appendChild(DN.h('div', { id: 'consRank' }, DN.skeleton(2)));
     c.appendChild(rankCard.el);
+    markRankWin();
     var zCard = DN.card({ title: '僵尸指标（启用但从未被消费取值）', icon: 'shield' });
     zCard.el.id = 'consZombieCard';
     zCard.body.appendChild(DN.h('div', { id: 'consZombie' }, DN.skeleton(2)));
     c.appendChild(zCard.el);
 
+    // 数据集卡: 指标取值签默认隐藏(消费产物非指标主线); 深链 newDataset 时显示
     var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', onclick: function () { addDataset(); } });
     var dsCard = DN.card({ title: '数据集 / 数据产品（受治理可复用查询）', icon: 'list', actions: [newDs] });
     dsCard.body.appendChild(DN.h('div', { id: 'consDataset' }, DN.skeleton(3)));
+    if (!ctx.newDataset) dsCard.el.style.display = 'none';
     c.appendChild(dsCard.el);
 
     calcAll.onclick = function () {
@@ -44,8 +50,8 @@
           r = r || {};
           DN.toast('计算完成：成功 ' + (r.success || 0) + ' / 失败 ' + (r.failed || 0) + ' / 共 ' + (r.total || 0), 'ok');
           setLinkBusy(calcAll, false, '一键计算全部指标');
-          // 计算后多张卡片数据均变化：概览/看板/热度/排行/僵尸全部刷新保持联动
-          loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies();
+          // 计算后多张卡片数据均变化：概览/看板/排行/僵尸全部刷新保持联动
+          loadOverview(); loadBoard(); loadRanking(); loadZombies();
         }).catch(function (e) {
           DN.toast('计算失败：' + errMsg(e), 'err');
           setLinkBusy(calcAll, false, '一键计算全部指标');
@@ -53,7 +59,8 @@
       });
     };
 
-    loadOverview(); loadBoard(); loadHeat(); loadRanking(); loadZombies(); loadDatasets();
+    loadOverview(); loadBoard(); loadRanking(); loadZombies();
+    if (ctx.newDataset) loadDatasets();
 
     // R21 深链：从其他模块带 newDataset 进来 → 自动开「新建数据集」抽屉并预填 SQL
     if (ctx.newDataset) {
@@ -63,9 +70,16 @@
     }
   };
 
+  var _rankDays = 30;        // 默认近30天(原热度卡语义); 可切全部
+  var _rankWinBtns = null;
+  function markRankWin() {
+    if (!_rankWinBtns) return;
+    _rankWinBtns[0].classList.toggle('btn-primary', _rankDays === 30);
+    _rankWinBtns[1].classList.toggle('btn-primary', _rankDays == null);
+  }
   function loadRanking() {
     var box = document.getElementById('consRank'); if (box) { box.innerHTML = ''; box.appendChild(DN.skeleton(2)); }
-    DN.get('/api/consumption/metric-ranking').then(function (rows) {
+    DN.get('/api/consumption/metric-ranking' + (_rankDays ? '?days=' + _rankDays : '')).then(function (rows) {
       var box = document.getElementById('consRank'); if (!box) return; box.innerHTML = '';
       if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无消费排行，指标被查询/导出后这里按调用次数排序展示 Top20', 'bars')); return; }
       // 边界：仅取前 20 条，且过滤掉非正计数，避免空条形与超长列表卡顿
@@ -212,6 +226,7 @@
   }
 
   function loadBoard() {
+    var box0 = document.getElementById('consBoard'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(4)); }
     DN.get('/api/consumption/metric/freshness').then(function (rows) {
       var box = document.getElementById('consBoard'); if (!box) return; box.innerHTML = '';
       if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无启用指标，请先在指标管理中定义并启用', 'chart')); return; }
@@ -222,7 +237,7 @@
           // 名称单元标记 data-mcode，供 R21 深链/条形图下钻高亮定位本行；超长名称截断+title
           { key: 'metricName', label: '指标', render: function (r) { var t = r.metricName || r.metricCode || '-'; return DN.h('span', { 'data-mcode': r.metricCode || '', title: t, text: clip(t, 30) }); } },
           { key: 'metricCode', label: '编码', render: function (r) { var t = r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 24), style: 'display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;' }); } },
-          { key: 'lastValue', label: '最新值', align: 'right', render: function (r) { return r.lastValue == null || r.lastValue === '' ? '—' : String(r.lastValue); } },
+          { key: 'lastValue', label: '最新值', align: 'right', render: function (r) { return fmtNum(r.lastValue); } },
           { key: 'lastValueAt', label: '取值时间', render: function (r) { return r.lastValueAt ? DN.timeAgo(r.lastValueAt) : '从未'; } },
           { key: 'stale', label: '新鲜度', render: function (r) { return r.stale ? DN.pill('陈旧', 'warn') : DN.pill('新鲜', 'ok'); } },
           { key: '_op', label: '操作', render: function (r) { return opCell(r); } }
@@ -244,7 +259,7 @@
       if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
       DN.post('/api/consumption/metric/' + r.metricId + '/calc?operator=ui').then(function (v) {
         setLinkBusy(calc, false, '计算');
-        DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? v.metricValue : (v && v.runStatus === 'error' ? '计算异常' : '—')), v && v.runStatus === 'success' ? 'ok' : 'warn');
+        DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? fmtNum(v.metricValue) : (v && v.runStatus === 'error' ? '计算异常' : '—')), v && v.runStatus === 'success' ? 'ok' : 'warn');
         loadBoard(); loadOverview();
       }).catch(function (e) { setLinkBusy(calc, false, '计算'); DN.toast('计算失败：' + errMsg(e), 'err'); });
     };
@@ -430,27 +445,7 @@
     return s;
   }
 
-  function loadHeat() {
-    var box0 = document.getElementById('consHeat'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(2)); }
-    DN.get('/api/consumption/log/heat').then(function (rows) {
-      var box = document.getElementById('consHeat'); if (!box) return; box.innerHTML = '';
-      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无消费记录，指标被查询/导出后这里展示近30天调用热度', 'bars')); return; }
-      // 边界：仅取前 20 条，过滤非正计数，标签截断+title
-      var items = rows.slice(0, 20).map(function (x) {
-        x = x || {};
-        var n = Number(x.cnt || x.CNT || 0); if (isNaN(n) || n < 0) n = 0;
-        var code = x.target_code || x.targetCode || '';
-        return { code: code, label: code || '-', value: n };
-      }).filter(function (it) { return it.value > 0; });
-      if (!items.length) { box.appendChild(DN.empty('暂无有效消费计数', 'bars')); return; }
-      box.appendChild(DN.bars(items.map(function (it) {
-        return { label: clip(it.label, 28), value: it.value, tone: 'info', display: String(it.value),
-          onClick: function () { focusBoardRow(it.code); } };
-      })));
-    }).catch(function (e) {
-      var box = document.getElementById('consHeat'); if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('消费热度加载失败：' + errMsg(e), loadHeat)); }
-    });
-  }
+  // (原 loadHeat 已并入 loadRanking 单卡双窗口: 同一真实消费口径)
 
   function loadZombies() {
     var box0 = document.getElementById('consZombie'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(2)); }
@@ -483,7 +478,7 @@
       if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
       DN.post('/api/consumption/metric/' + r.id + '/calc?operator=ui').then(function (v) {
         setLinkBusy(calc, false, '立即计算');
-        DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? v.metricValue : '—'), v && v.runStatus === 'success' ? 'ok' : 'warn');
+        DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? fmtNum(v.metricValue) : '—'), v && v.runStatus === 'success' ? 'ok' : 'warn');
         loadZombies(); loadBoard(); loadOverview();
       }).catch(function (e) { setLinkBusy(calc, false, '立即计算'); DN.toast('计算失败：' + errMsg(e), 'err'); });
     };
@@ -495,6 +490,21 @@
       else DN.toast('当前环境不支持跳转指标管理', 'warn');
     };
     wrap.appendChild(edit);
+    // I-1: 僵尸处置闭环——确实不用的指标可就地停用(退出取值/新鲜度监控, 历史保留)
+    var off = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:var(--error)' });
+    off.onclick = function () {
+      if (r.id == null) { DN.toast('指标缺少 ID，无法停用', 'err'); return; }
+      if (off.dataset.busy) return;
+      DN.confirm('停用后将停止定时取值、退出消费看板与新鲜度监控(历史值与导出保留)。确认停用「' + (r.metricName || r.metricCode || r.id) + '」？', { title: '停用指标' }).then(function (ok) {
+        if (!ok) return;
+        setLinkBusy(off, true, '…');
+        DN.post('/api/metric/save', { id: r.id, status: 0 }).then(function () {
+          DN.toast('已停用', 'ok');
+          loadZombies(); loadOverview(); loadBoard();
+        }).catch(function (e) { setLinkBusy(off, false, '停用'); DN.toast('停用失败：' + errMsg(e), 'err'); });
+      });
+    };
+    wrap.appendChild(off);
     return wrap;
   }
 
@@ -534,6 +544,13 @@
   function clip(s, max) {
     s = (s == null ? '' : String(s)); max = max || 30;
     return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  }
+  // III-1: 数值格式化——千分位 + 最多4位小数(0.3333333… 不再撑表)
+  function fmtNum(v) {
+    if (v == null || v === '') return '—';
+    var n = Number(v);
+    if (!isFinite(n)) return String(v);
+    return n.toLocaleString('zh-CN', { maximumFractionDigits: 4 });
   }
   // 统一从异常对象提取可读信息，避免 “undefined”
   function errMsg(e) { return (e && e.message) ? e.message : '请稍后重试'; }

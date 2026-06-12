@@ -110,6 +110,24 @@ public class AuthController {
     }
 
     /**
+     * 自助修改密码(校验原密码)。
+     */
+    @Operation(summary = "修改当前用户密码")
+    @PostMapping("/change-password")
+    public R<String> changePassword(@RequestBody Map<String, String> body) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean authenticated = auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()));
+        if (!authenticated) {
+            return R.fail(R.CODE_UNAUTHORIZED, "未登录");
+        }
+        rbacService.changePassword(auth.getName(),
+                body == null ? null : body.get("oldPassword"),
+                body == null ? null : body.get("newPassword"));
+        return R.ok("密码已修改, 下次登录请使用新密码");
+    }
+
+    /**
      * 注销
      */
     @Operation(summary = "用户注销")

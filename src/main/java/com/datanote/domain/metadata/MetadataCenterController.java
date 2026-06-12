@@ -39,11 +39,13 @@ public class MetadataCenterController {
      */
     @Operation(summary = "搜索表元数据")
     @GetMapping("/tables")
-    public R<List<DnTableMeta>> searchTables(
+    public R<Map<String, Object>> searchTables(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long datasourceId,
             @RequestParam(required = false) Long subjectId,
-            @RequestParam(required = false) String tag) {
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Integer offset) {
         QueryWrapper<DnTableMeta> qw = new QueryWrapper<>();
         if (datasourceId != null) {
             qw.eq("datasource_id", datasourceId);
@@ -59,9 +61,18 @@ public class MetadataCenterController {
         if (tag != null && !tag.isEmpty()) {
             qw.like("tags", tag);
         }
+        // 同条件全量计数(须在 orderBy/limit 之前), 供前端展示真实总数, 不再静默截断
+        long total = tableMetaMapper.selectCount(qw);
         qw.orderByDesc("updated_at");
-        qw.last("LIMIT 100");
-        return R.ok(tableMetaMapper.selectList(qw));
+        int lim = (limit == null || limit <= 0) ? 100 : Math.min(limit, 5000);   // 无参默认 100 行为不变
+        int off = (offset == null || offset < 0) ? 0 : offset;
+        qw.last("LIMIT " + lim + " OFFSET " + off);
+        Map<String, Object> data = new HashMap<>();
+        data.put("rows", tableMetaMapper.selectList(qw));
+        data.put("total", total);
+        data.put("limit", lim);
+        data.put("offset", off);
+        return R.ok(data);
     }
 
     /**

@@ -25,12 +25,14 @@ public class CreateQualityRuleTool implements AiTool {
     @Override public String group() { return "gov"; }
     @Override public String description() {
         return "新建数据质量规则(写操作, 需人工审批)。把质量诉求落成可调度的检查规则。建成在治理健康-质量规则可见。"
-                + "参数 ruleName、ruleType、datasourceId 必填; databaseName/tableName/columnName/severity(HIGH/MEDIUM/LOW)/dimension/customSql/scheduleCron 可选。"
+                + "参数 ruleName、ruleType、datasourceId 必填; ruleType 合法枚举: null_check/unique_check/value_range/regex_check/custom_sql"
+                + "(兼容别名 NOT_NULL/UNIQUE/RANGE/REGEX/CUSTOM_SQL, 会自动归一为小写词表); "
+                + "databaseName/tableName/columnName/severity(HIGH/MEDIUM/LOW)/dimension/customSql/scheduleCron 可选。"
                 + "需先用只读工具确认数据源ID存在。";
     }
     @Override public String paramsSchemaJson() {
         return "{\"ruleName\":{\"type\":\"string\",\"required\":true,\"desc\":\"规则名\"},"
-                + "\"ruleType\":{\"type\":\"string\",\"required\":true,\"desc\":\"规则类型(NOT_NULL/UNIQUE/RANGE/REGEX/CUSTOM_SQL等)\"},"
+                + "\"ruleType\":{\"type\":\"string\",\"required\":true,\"desc\":\"规则类型(null_check/unique_check/value_range/regex_check/custom_sql)\"},"
                 + "\"datasourceId\":{\"type\":\"number\",\"required\":true,\"desc\":\"数据源ID\"},"
                 + "\"databaseName\":{\"type\":\"string\",\"required\":false},"
                 + "\"tableName\":{\"type\":\"string\",\"required\":false},"
@@ -44,6 +46,18 @@ public class CreateQualityRuleTool implements AiTool {
     @Override public boolean readOnly() { return false; }
     @Override public RiskLevel risk() { return RiskLevel.MEDIUM; }
 
+    /** 归一化规则类型: 大写别名与合法小写值统一映射到库内小写词表, 未知返回 null */
+    private static String normalizeRuleType(String t) {
+        switch (t.trim().toUpperCase()) {
+            case "NOT_NULL": case "NOTNULL": case "NULL_CHECK": return "null_check";
+            case "UNIQUE": case "UNIQUE_CHECK": return "unique_check";
+            case "RANGE": case "VALUE_RANGE": return "value_range";
+            case "REGEX": case "REGEX_CHECK": return "regex_check";
+            case "SQL": case "CUSTOM": case "CUSTOM_SQL": return "custom_sql";
+            default: return null;
+        }
+    }
+
     @Override
     public AiToolResult invoke(JsonNode args, AgentContext ctx) {
         try {
@@ -53,9 +67,14 @@ public class CreateQualityRuleTool implements AiTool {
             if (ruleName == null) return AiToolResult.fail("bad_arguments", "ruleName 不能为空");
             if (ruleType == null) return AiToolResult.fail("bad_arguments", "ruleType 不能为空");
             if (datasourceId == null) return AiToolResult.fail("bad_arguments", "datasourceId 不能为空(质量规则须绑定数据源)");
+            // 词表归一: 大写别名/合法小写值统一映射到库内小写词表, 未知类型直接拒绝
+            String normalizedType = normalizeRuleType(ruleType);
+            if (normalizedType == null) {
+                return AiToolResult.fail("bad_arguments", "ruleType 须为 null_check/unique_check/value_range/regex_check/custom_sql 之一");
+            }
             DnQualityRule rule = new DnQualityRule();
             rule.setRuleName(ruleName);
-            rule.setRuleType(ruleType);
+            rule.setRuleType(normalizedType);
             rule.setDatasourceId(datasourceId);
             rule.setDatabaseName(AgentArgs.str(args, "databaseName"));
             rule.setTableName(AgentArgs.str(args, "tableName"));

@@ -25,6 +25,8 @@ public class ProjectOverviewService {
     private final DnProjectAssetMapper assetMapper;
     private final DnProjectReleaseMapper releaseMapper;
     private final com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper taskExecutionMapper;
+    private final com.datanote.domain.governance.mapper.DnQualityRunMapper qualityRunMapper;
+    private final com.datanote.domain.consumption.mapper.DnMetricValueMapper metricValueMapper;
 
     public Map<String, Object> overview(Long projectId) {
         DnProject p = projectService.getById(projectId);
@@ -55,51 +57,122 @@ public class ProjectOverviewService {
         r.put("releaseReleased", released);
 
         r.put("activity", buildActivity(projectId, releases));
-        r.put("jobRuns", boundJobRuns(projectId));
+        // N8: 绑定资产运行四段(同步任务/脚本/质量规则/指标); jobRuns 键保留兼容旧前端
+        Map<String, Object> runs = boundAssetRuns(projectId);
+        r.put("jobRuns", runs.get("jobRuns"));
+        r.put("scriptRuns", runs.get("scriptRuns"));
+        r.put("qualityRuns", runs.get("qualityRuns"));
+        r.put("metricRuns", runs.get("metricRuns"));
         return r;
     }
 
-    /** 绑定的同步任务最近运行聚合：按最新一次执行统计成功/失败/运行中 + 最近列表。 */
-    private Map<String, Object> boundJobRuns(Long projectId) {
-        List<DnProjectAsset> jobs = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
-                .eq(DnProjectAsset::getProjectId, projectId).eq(DnProjectAsset::getAssetType, "SYNC_JOB"));
-        if (jobs == null) jobs = new ArrayList<>();   // selectList 理论可返回 null
-        long success = 0, failed = 0, running = 0, neverRun = 0, other = 0;
-        List<Object[]> recents = new ArrayList<>(); // [time, name, status]
-        // 收集绑定的同步任务 id(去重剔空),一次性批量查执行记录,消 N+1(原逐任务 selectOne)
-        Set<Long> jobIds = new LinkedHashSet<>();
-        for (DnProjectAsset job : jobs) {
-            if (job != null && job.getAssetId() != null) jobIds.add(job.getAssetId());
+    /**
+     * N8: 绑定资产运行聚合(泛化)——同步任务/脚本走 dn_task_execution, 质量规则走 dn_quality_run。
+     * B8: 每资产同时给"最近一次"(展示口径, 含 RUNNING)与"最近终态"(健康分口径, 仅 SUCCESS/FAILED)。
+     * 健康分(ProjectHealthService)复用本聚合, 防重复查询。
+     */
+    public Map<String, Object> boundAssetRuns(Long projectId) {
+        List<DnProjectAsset> assets = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getProjectId, projectId));
+        if (assets == null) assets = new ArrayList<>();
+        List<DnProjectAsset> jobs = new ArrayList<>(), scripts = new ArrayList<>(), rules = new ArrayList<>(), metrics = new ArrayList<>();
+        for (DnProjectAsset a : assets) {
+            if (a == null || a.getAssetId() == null) continue;
+            if ("SYNC_JOB".equals(a.getAssetType())) jobs.add(a);
+            else if ("SCRIPT".equals(a.getAssetType())) scripts.add(a);
+            else if ("QUALITY_RULE".equals(a.getAssetType())) rules.add(a);
+            else if ("METRIC".equals(a.getAssetType())) metrics.add(a);
         }
-        Map<Long, com.datanote.domain.orchestration.model.DnTaskExecution> latestByJob = new HashMap<>();
-        if (!jobIds.isEmpty()) {
-            List<com.datanote.domain.orchestration.model.DnTaskExecution> execs = taskExecutionMapper.selectList(
-                    new LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnTaskExecution>()
-                            .in(com.datanote.domain.orchestration.model.DnTaskExecution::getSyncTaskId, jobIds)
-                            .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getTaskType, "DbSync")
-                            .orderByDesc(com.datanote.domain.orchestration.model.DnTaskExecution::getId));
-            if (execs != null) {
-                for (com.datanote.domain.orchestration.model.DnTaskExecution e : execs) {
-                    if (e == null || e.getSyncTaskId() == null) continue;
-                    // id 倒序,每个任务首次出现即最新一条(等价原 LIMIT 1)
-                    latestByJob.putIfAbsent(e.getSyncTaskId(), e);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("jobRuns", execAgg(jobs, false));
+        out.put("scriptRuns", execAgg(scripts, true));
+        out.put("qualityRuns", qualityAgg(rules));
+        out.put("metricRuns", metricAgg(metrics));
+        return out;
+    }
+
+    /** 指标聚合(P4): 绑定指标各自最新取值快照, ok=success/bad=error/未取值; okPct 供健康分质量维合并 */
+    private Map<String, Object> metricAgg(List<DnProjectAsset> metrics) {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (DnProjectAsset a : metrics) ids.add(a.getAssetId());
+        Map<Long, com.datanote.domain.consumption.model.DnMetricValue> latest = new HashMap<>();
+        if (!ids.isEmpty()) {
+            List<com.datanote.domain.consumption.model.DnMetricValue> rows = metricValueMapper.selectList(
+                    new LambdaQueryWrapper<com.datanote.domain.consumption.model.DnMetricValue>()
+                            .in(com.datanote.domain.consumption.model.DnMetricValue::getMetricId, ids)
+                            .orderByDesc(com.datanote.domain.consumption.model.DnMetricValue::getId));
+            if (rows != null) {
+                for (com.datanote.domain.consumption.model.DnMetricValue v : rows) {
+                    if (v != null && v.getMetricId() != null) latest.putIfAbsent(v.getMetricId(), v);
                 }
             }
         }
-        for (DnProjectAsset job : jobs) {
-            if (job == null) continue;
-            com.datanote.domain.orchestration.model.DnTaskExecution e =
-                    job.getAssetId() == null ? null : latestByJob.get(job.getAssetId());
-            if (e == null) {
-                neverRun++;
-                continue;
+        long ok = 0, bad = 0, neverRun = 0;
+        List<Map<String, Object>> recent = new ArrayList<>();
+        for (DnProjectAsset a : metrics) {
+            com.datanote.domain.consumption.model.DnMetricValue v = latest.get(a.getAssetId());
+            if (v == null) { neverRun++; continue; }
+            if ("success".equalsIgnoreCase(v.getRunStatus())) ok++; else bad++;
+            if (recent.size() < 8) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("at", v.getCreatedAt() == null ? null : v.getCreatedAt().toString());
+                m.put("name", a.getAssetName());
+                m.put("status", "success".equalsIgnoreCase(v.getRunStatus()) ? "SUCCESS" : "FAILED");
+                m.put("value", v.getMetricValue());
+                recent.add(m);
             }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", metrics.size());
+        out.put("ok", ok);
+        out.put("bad", bad);
+        out.put("neverRun", neverRun);
+        out.put("okPct", (ok + bad) > 0 ? (int) Math.round(ok * 100.0 / (ok + bad)) : null);
+        out.put("recent", recent);
+        return out;
+    }
+
+    /** dn_task_execution 聚合: isScript=false 按 syncTaskId+DbSync, true 按 scriptId+script */
+    private Map<String, Object> execAgg(List<DnProjectAsset> assets, boolean isScript) {
+        long success = 0, failed = 0, running = 0, neverRun = 0, other = 0, termSuccess = 0, termFailed = 0;
+        List<Object[]> recents = new ArrayList<>(); // [time, name, status]
+        Set<Long> ids = new LinkedHashSet<>();
+        for (DnProjectAsset a : assets) ids.add(a.getAssetId());
+        Map<Long, com.datanote.domain.orchestration.model.DnTaskExecution> latest = new HashMap<>();
+        Map<Long, com.datanote.domain.orchestration.model.DnTaskExecution> latestTerminal = new HashMap<>();
+        if (!ids.isEmpty()) {
+            LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnTaskExecution> qw =
+                    new LambdaQueryWrapper<com.datanote.domain.orchestration.model.DnTaskExecution>()
+                            .orderByDesc(com.datanote.domain.orchestration.model.DnTaskExecution::getId);
+            if (isScript) qw.in(com.datanote.domain.orchestration.model.DnTaskExecution::getScriptId, ids)
+                    .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getTaskType, "script");
+            else qw.in(com.datanote.domain.orchestration.model.DnTaskExecution::getSyncTaskId, ids)
+                    .eq(com.datanote.domain.orchestration.model.DnTaskExecution::getTaskType, "DbSync");
+            List<com.datanote.domain.orchestration.model.DnTaskExecution> execs = taskExecutionMapper.selectList(qw);
+            if (execs != null) {
+                for (com.datanote.domain.orchestration.model.DnTaskExecution e : execs) {
+                    if (e == null) continue;
+                    Long key = isScript ? e.getScriptId() : e.getSyncTaskId();
+                    if (key == null) continue;
+                    latest.putIfAbsent(key, e); // id 倒序, 首次出现即最新一条
+                    if ("SUCCESS".equals(e.getStatus()) || "FAILED".equals(e.getStatus())) latestTerminal.putIfAbsent(key, e);
+                }
+            }
+        }
+        for (DnProjectAsset a : assets) {
+            com.datanote.domain.orchestration.model.DnTaskExecution e = latest.get(a.getAssetId());
+            if (e == null) { neverRun++; continue; }
             String st = e.getStatus();
             if ("SUCCESS".equals(st)) success++;
             else if ("FAILED".equals(st)) failed++;
             else if ("RUNNING".equals(st)) running++;
             else other++; // STOPPED 等其它状态，保证计数与 total 自洽
-            recents.add(new Object[]{e.getStartTime(), job.getAssetName(), st});
+            recents.add(new Object[]{e.getStartTime(), a.getAssetName(), st});
+            com.datanote.domain.orchestration.model.DnTaskExecution te = latestTerminal.get(a.getAssetId());
+            if (te != null) {
+                if ("SUCCESS".equals(te.getStatus())) termSuccess++;
+                else termFailed++;
+            }
         }
         recents.sort((x, y) -> {
             LocalDateTime a = (LocalDateTime) x[0], b = (LocalDateTime) y[0];
@@ -118,12 +191,66 @@ public class ProjectOverviewService {
             recent.add(m);
         }
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("total", jobs.size());
+        out.put("total", assets.size());
         out.put("success", success);
         out.put("failed", failed);
         out.put("running", running);
         out.put("other", other);
         out.put("neverRun", neverRun);
+        out.put("termSuccess", termSuccess);   // B8: 健康分 run 维口径(最近终态)
+        out.put("termFailed", termFailed);
+        out.put("recent", recent);
+        return out;
+    }
+
+    /** 质量规则聚合: rule_id in 批量取各规则最新一条与最新 success 一条(B5: 通过率仅取 success 口径) */
+    private Map<String, Object> qualityAgg(List<DnProjectAsset> rules) {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (DnProjectAsset a : rules) ids.add(a.getAssetId());
+        Map<Long, com.datanote.domain.governance.model.DnQualityRun> latest = new HashMap<>();
+        Map<Long, com.datanote.domain.governance.model.DnQualityRun> latestSuccess = new HashMap<>();
+        if (!ids.isEmpty()) {
+            List<com.datanote.domain.governance.model.DnQualityRun> runs = qualityRunMapper.selectList(
+                    new LambdaQueryWrapper<com.datanote.domain.governance.model.DnQualityRun>()
+                            .in(com.datanote.domain.governance.model.DnQualityRun::getRuleId, ids)
+                            .orderByDesc(com.datanote.domain.governance.model.DnQualityRun::getId));
+            if (runs != null) {
+                for (com.datanote.domain.governance.model.DnQualityRun run : runs) {
+                    if (run == null || run.getRuleId() == null) continue;
+                    latest.putIfAbsent(run.getRuleId(), run);
+                    if ("success".equalsIgnoreCase(run.getRunStatus())) latestSuccess.putIfAbsent(run.getRuleId(), run);
+                }
+            }
+        }
+        long ok = 0, bad = 0, neverRun = 0, abnormal = 0;
+        double sum = 0; int n = 0;
+        List<Map<String, Object>> recent = new ArrayList<>();
+        for (DnProjectAsset a : rules) {
+            com.datanote.domain.governance.model.DnQualityRun run = latest.get(a.getAssetId());
+            if (run == null) { neverRun++; continue; }
+            String st = run.getRunStatus() == null ? "" : run.getRunStatus().toLowerCase();
+            if ("success".equals(st)) ok++;
+            else if ("failed".equals(st)) bad++;
+            else abnormal++; // error 等执行异常
+            if (recent.size() < 8) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("at", run.getStartedAt() == null ? null : run.getStartedAt().toString());
+                m.put("name", a.getAssetName());
+                m.put("status", st.toUpperCase());
+                m.put("passRate", run.getPassRate());
+                recent.add(m);
+            }
+            com.datanote.domain.governance.model.DnQualityRun sr = latestSuccess.get(a.getAssetId());
+            if (sr != null && sr.getPassRate() != null) { sum += sr.getPassRate().doubleValue(); n++; }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", rules.size());
+        out.put("ok", ok);
+        out.put("bad", bad);
+        out.put("abnormal", abnormal);
+        out.put("neverRun", neverRun);
+        out.put("avgPassPct", n > 0 ? (int) Math.round(sum / n) : null); // B5: 健康分质量维口径
+        out.put("evaluable", n);
         out.put("recent", recent);
         return out;
     }

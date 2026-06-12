@@ -15,6 +15,7 @@ public class ProjectMemberService {
 
     private final DnProjectMemberMapper memberMapper;
     private final ProjectService projectService;
+    private final com.datanote.platform.iam.mapper.DnUserMapper userMapper;   // P4 成员须为 RBAC 真实用户
 
     public List<DnProjectMember> list(Long projectId) {
         projectService.getById(projectId); // 校验项目存在
@@ -28,6 +29,10 @@ public class ProjectMemberService {
         if (username == null || username.trim().isEmpty()) throw new IllegalArgumentException("用户名不能为空");
         username = username.trim();
         if (!ProjectRoles.isValid(role)) throw new IllegalArgumentException("非法项目角色: " + role);
+        // P4 防呆: 成员必须是 RBAC 真实用户(防手填错名→任务指派/审批权落空)
+        Long exists = userMapper.selectCount(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.datanote.platform.iam.model.DnUser>()
+                .eq("username", username));
+        if (exists == null || exists == 0) throw new IllegalArgumentException("用户不存在于用户体系: " + username + "(请先在系统管理-用户管理创建)");
         Long dup = memberMapper.selectCount(new LambdaQueryWrapper<DnProjectMember>()
                 .eq(DnProjectMember::getProjectId, projectId).eq(DnProjectMember::getUsername, username));
         if (dup != null && dup > 0) throw new IllegalArgumentException("成员已存在: " + username);

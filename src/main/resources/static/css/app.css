@@ -57,7 +57,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   color: var(--text-primary);
   text-decoration: none;
   flex-shrink: 0;
-  margin-right: 24px;
+  margin-right: 14px;
 }
 .dev-header .logo svg { width: 24px; height: 24px; }
 .header-tabs {
@@ -75,8 +75,8 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .header-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 20px;
+  gap: 5px;
+  padding: 0 11px;
   height: 100%;
   font-size: 14px;
   color: var(--text-regular);
@@ -104,7 +104,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -1100,7 +1100,10 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 
 /* Result Modal */
 .intg-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200;
+  /* 全站通用确认/告知/输入弹窗(#msgBox)共用此类。z-index 必须为顶层对话框层,
+     否则在已打开的抽屉(z=9000)/动态弹窗(z=10000)之上调 msgConfirm/msgPrompt 时
+     会被埋在下方,用户看不到也点不到按钮 → Promise 永挂 → 业务卡死。 */
+  position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: var(--z-spotlight);
   display: none; align-items: center; justify-content: center;
 }
 .intg-modal-overlay.show { display: flex; }
@@ -1113,11 +1116,14 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 
 /* ===== Global Modal ===== */
 .g-modal-overlay {
+  /* showModal/msgBox/confirmBox/promptBox 共用此层。必须为顶层对话框层,
+     否则在已打开的抽屉(z=9000)之上调用时弹窗被埋在抽屉下方点不到 → 卡死。
+     与 #msgBox(.intg-modal-overlay)同级 var(--z-spotlight)。 */
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,.35);
-  z-index: 2250;
+  z-index: var(--z-spotlight);
   align-items: center;
   justify-content: center;
 }
@@ -1514,9 +1520,12 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .datamap-detail-actions {
   display: flex;
+  flex-wrap: wrap;            /* 9 个操作按钮在中等宽度不溢出裁切, 自动换行 */
+  justify-content: flex-end;
   gap: 10px;
   margin-left: auto;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 .datamap-detail-actions .btn {
   font-size: 13px;
@@ -1532,12 +1541,16 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   gap: 0;
   padding: 0;
   background: var(--bg-card);
+  overflow-x: auto;          /* 7 个二级 tab 窄屏可横滚, 不裁掉「消费指标/评论」 */
+  scrollbar-width: thin;
 }
 .datamap-detail-tab {
   padding: 7px 18px;
   font-size: 13px;
   color: var(--text-muted);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   border-bottom: 2px solid transparent;
   transition: all var(--dur);
   background: none;
@@ -1968,8 +1981,6 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   font-size: 32px;
   opacity: .6;
 }
-  font-size: 13px;
-}
 
 /* ===== 数据质量 ===== */
 .view-quality {
@@ -2083,11 +2094,12 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.5);
-  display: flex;
+  display: none;             /* 统一显隐范式: 默认隐藏, .show 或内联 style.display 开启 */
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);   /* 提到弹窗层(原 1000 低于抽屉 9000, 抽屉上触发会被埋) */
 }
+.quality-modal-overlay.show { display: flex; }
 .quality-modal {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -2435,6 +2447,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .sched-btn.danger:hover { background: rgba(207,59,59,.05); }
 .sched-stats {
   display: flex;
+  flex-wrap: wrap;           /* 7 个统计项窄主区换行, 不裁掉「成功率」 */
   gap: 16px;
 }
 .sched-stat {
@@ -3177,13 +3190,14 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
 
 /* ===== 任务明细抽屉 ===== */
 .dbsync-drawer-mask {
-  position: fixed; inset: 0; background: var(--bg-mask); z-index: 2200;
+  /* 全站抽屉统一: 层级走 --z-drawer 令牌(原硬编码 2200/2210 远低于 DN.drawer 9000, 同屏会被压)*/
+  position: fixed; inset: 0; background: var(--bg-mask); z-index: var(--z-drawer);
   opacity: 0; visibility: hidden; transition: opacity var(--dur) var(--ease);
 }
 .dbsync-drawer-mask.show { opacity: 1; visibility: visible; }
 .dbsync-drawer {
   position: fixed; top: 0; right: 0; height: 100%; width: 740px; max-width: 94vw;
-  background: var(--bg-body); z-index: 2210; display: flex; flex-direction: column;
+  background: var(--bg-card); z-index: calc(var(--z-drawer) + 1); display: flex; flex-direction: column;
   box-shadow: var(--shadow-lg);
   transform: translateX(100%); transition: transform var(--dur-slow) var(--ease);
 }
@@ -3207,9 +3221,11 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
 .dbsync-drawer-tabs {
   display: flex; gap: 2px; padding: 0 16px; background: var(--bg-card);
   border-bottom: 1px solid var(--divider); flex-shrink: 0;
+  overflow-x: auto; scrollbar-width: thin;   /* 抽屉 7-8 个 tab 窄屏可横滚, 不裁「设置/错误行」 */
 }
 .dbsync-drawer-tabs button {
   position: relative; padding: 11px 14px; border: none; background: none; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
   font-size: 13px; color: var(--text-muted); font-weight: 500;
 }
 .dbsync-drawer-tabs button:hover { color: var(--text-regular); }
@@ -3244,7 +3260,7 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
 .dbsync-kv > dd { padding: 9px 0; font-size: 13px; color: var(--text-regular); border-top: 1px solid var(--divider); margin: 0; word-break: break-all; }
 .dbsync-kv > dt.nb, .dbsync-kv > dd.nb { border-top: none; }
 /* 抽屉内日志面板撑高 + 工具条 */
-.dbsync-drawer-log-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.dbsync-drawer-log-toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .dbsync-drawer-log { min-height: 300px; height: calc(100vh - 250px); max-height: none; }
 /* 配置：表映射小标签 */
 .dbsync-cfg-tag {

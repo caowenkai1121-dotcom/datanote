@@ -68,6 +68,7 @@
 
   // ===== 资产清单：统计 + 现代表格 =====
   var assetAll = [];
+  var assetTotal = 0;   // #16 同条件全量总数(服务端 selectCount), 列表只加载前 N 条时据此提示截断
   var assetState = { src: '', quick: '', subjectId: '', view: (function () { try { var v = localStorage.getItem('gov.assetView') || 'table'; return v === 'treemap' ? 'table' : v; } catch (e) { return 'table'; } })() };
   var assetTbl = null;
   var assetToolbar = null;
@@ -86,12 +87,20 @@
     // R39 主题域深链: 带 subjectId 服务端筛选(assetState.subjectId 来自主题树下钻 ctx.subjectId)
     var tablesUrl = '/api/metadata-center/tables' + (assetState.subjectId ? ('?subjectId=' + encodeURIComponent(assetState.subjectId)) : '');
     DN.get(tablesUrl).then(function (tables) {
-      assetAll = Array.isArray(tables) ? tables : [];
+      // #16 兼容两种返回: 新 {rows,total} / 旧数组
+      if (tables && !Array.isArray(tables) && Array.isArray(tables.rows)) {
+        assetAll = tables.rows;
+        assetTotal = Number(tables.total) || assetAll.length;
+      } else {
+        assetAll = Array.isArray(tables) ? tables : [];
+        assetTotal = assetAll.length;
+      }
       renderStats();
       renderAssetTable();
       renderColdAdvice();
     }).catch(function (e) {
       assetAll = [];
+      assetTotal = 0;
       renderStats();
       var b = document.getElementById('assetTbl');
       if (b) { b.innerHTML = ''; b.appendChild(DN.errorBox('资产清单加载失败: ' + (e && e.message || e), function () { loadAssets(); })); }
@@ -105,7 +114,8 @@
     var box = document.getElementById('assetStats');
     if (!box) return;
     if (!Array.isArray(assetAll)) assetAll = [];
-    var tableCount = assetAll.length;
+    // #16 表数用服务端全量 total(不被分页截断); 其余统计基于已加载部分
+    var tableCount = Math.max(assetTotal, assetAll.length);
     var dbSet = {}, colCount = 0, totalBytes = 0;
     assetAll.forEach(function (t) {
       if (t.databaseName) dbSet[t.databaseName] = 1;
@@ -124,7 +134,7 @@
     }
     box.innerHTML = '';
     box.appendChild(DN.statRow([
-      { icon: 'list', label: '表数', value: fmtInt(tableCount) },
+      { icon: 'list', label: '表数', value: fmtInt(tableCount), sub: assetTotal > assetAll.length ? ('已加载 ' + fmtInt(assetAll.length)) : '' },
       { icon: 'layers', label: '字段数', value: fmtInt(colCount) },
       { icon: 'db', label: '库数', value: fmtInt(Object.keys(dbSet).length) },
       { icon: 'chart', label: '总体量', value: DN.fmtBytes(totalBytes) },
@@ -300,7 +310,7 @@
     if (assetState.view === 'tree') { renderAssetTree(rows); return; }
     if (assetState.quick === 'bigsize') rows = rows.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); });
     else if (assetState.quick === 'bigrow') rows = rows.slice().sort(function (a, b) { return (b.rowCount || 0) - (a.rowCount || 0); });
-    if (assetTbl) { assetTbl.reload(rows); return; }
+    if (assetTbl) { assetTbl.reload(rows); updateLoadNote(box); return; }
     assetTbl = DN.table({
       columns: [
         { key: 'dbType', label: '来源', render: function (r) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(r.dbType || '-', cm[r.dbType] || 'muted'); } },
@@ -325,6 +335,23 @@
     });
     box.innerHTML = '';
     box.appendChild(assetTbl);
+    updateLoadNote(box);
+  }
+
+  // #16 列表尾截断提示: 服务端默认只返回前 N 条时, 标注「已加载 M / 共 N」并注明导出范围
+  function updateLoadNote(box) {
+    if (!box) return;
+    var note = document.getElementById('assetLoadNote');
+    if (assetTotal > assetAll.length) {
+      var txt = '已加载 ' + fmtInt(assetAll.length) + ' / 共 ' + fmtInt(assetTotal) + ' 张表（列表与 CSV 导出仅含已加载部分）';
+      if (!note) {
+        note = DN.h('div', { id: 'assetLoadNote', style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px' });
+        box.appendChild(note);
+      }
+      note.textContent = txt;
+    } else if (note && note.parentNode) {
+      note.parentNode.removeChild(note);
+    }
   }
 
   // ===== 资产目录树视图(大功能): 库→表 层级导航 =====
@@ -384,6 +411,7 @@
     });
     box.appendChild(wrap);
     box.appendChild(DN.h('div', { style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px', text: '共 ' + keys.length + ' 个库 · ' + rows.length + ' 张表 · 点击表名查看详情' }));
+    updateLoadNote(box);
   }
 
   // ===== 资产详情抽屉（字段元数据 + Profiler + 术语表 + 血缘） =====
@@ -407,7 +435,7 @@
       { text: '相关工单', go: function () { navigateTo('governance', { gov: 'health', issueFilter: { relTable: fqn } }); } },
       { text: '血缘图谱', go: function () { navigateTo('governance', { gov: 'lineage', table: { db: db, table: table } }); } },
       { text: '敏感分级', go: function () { navigateTo('governance', { gov: 'classification', table: { db: db, table: table } }); } },
-      { text: '消费指标', go: function () { navigateTo('governance', { gov: 'consumption', table: { db: db, table: table } }); } },
+      { text: '消费指标', go: function () { if (window.gotoMetricConsume) gotoMetricConsume({ table: { db: db, table: table } }); } },
       { text: '🤖AI分析', tone: 'btn-primary', go: function () {
         if (window.dnAskAi) window.dnAskAi('对表 ' + fqn + ' 做一次资产体检:元数据画像、字段密级、下游影响与质量状况。[表:' + fqn + ']',
           { route: 'catalog', db: db, table: table }); } }
@@ -483,10 +511,13 @@
 
       Promise.all([
         DN.get('/api/metadata/table/subject' + qs).catch(function () { return null; }),
-        DN.get('/api/gov/subject').catch(function () { return []; })
+        DN.get('/api/subject/list').catch(function () { return []; })   // 全站#8: 原 /api/gov/subject 死端点
       ]).then(function (res) {
         var cur = res[0]; curId = cur && cur.subjectId != null ? cur.subjectId : null;
-        subjects = Array.isArray(res[1]) ? res[1] : [];
+        var raw = res[1];
+        subjects = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.data) ? raw.data : []);
+        // 字段兼容: /api/subject/list 返回 subjectName, 归一为 {id,name}
+        subjects = subjects.map(function (s) { return { id: s.id, name: s.name || s.subjectName || ('#' + s.id) }; });
         renderRow();
       }).catch(function () {
         nameSpan.textContent = '加载失败';
@@ -831,7 +862,7 @@
         columns: [
           { key: '_t', label: '库.表', render: function (u) { return (u.db || '') + '.' + (u.table || ''); } },
           { key: 'score', label: '分数', align: 'right' },
-          { key: 'lastAccessDays', label: '未访问', align: 'right', render: function (u) { return u.lastAccessDays == null ? '-' : (u.lastAccessDays + '天'); } },
+          { key: 'lastAccessDays', label: '距上次采集', align: 'right', render: function (u) { return u.lastAccessDays == null ? '-' : (u.lastAccessDays >= 36500 ? '从未采集' : (u.lastAccessDays + '天')); } },
           { key: 'sizeBytes', label: '体量', align: 'right', render: function (u) { return DN.fmtBytes(u.sizeBytes); } },
           { key: '_down', label: '下游血缘', render: function (u) { return u.hasDownstreamLineage ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },
           { key: '_ref', label: '任务引用', render: function (u) { return u.hasTaskRef ? DN.pill('有', 'info') : DN.pill('无', 'muted'); } },

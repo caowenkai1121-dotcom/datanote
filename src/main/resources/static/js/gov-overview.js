@@ -44,7 +44,7 @@
     box.appendChild(DN.statRow([
       { icon: 'shield', label: '治理健康分', value: round1(total), sub: '满分 100', tone: tone(total), title: '进入治理健康分', onClick: jump('health') },
       { icon: 'db', label: '数据资产', value: fmtInt(assets.tableCount) + ' 表', sub: '字段 ' + fmtInt(assets.columnCount) + ' · 库 ' + fmtInt(assets.dbCount), title: '进入资产目录', onClick: jump('assets') },
-      { icon: 'check', label: '质量分', value: round1(rate) + '%', sub: '近期通过率', tone: tone(rate), title: '进入数据质量', onClick: jump('quality') },
+      { icon: 'check', label: '整体质量分', value: round1(rate) + '%', sub: '近 7 天通过率均值', tone: tone(rate), title: '进入数据质量', onClick: jump('quality') },
       { icon: 'inbox', label: '待办工单', value: fmtInt(pending), sub: '待处理+处理中', tone: pending > 0 ? 'warn' : 'ok', title: '进入治理工单', onClick: jump('health') }
     ]));
 

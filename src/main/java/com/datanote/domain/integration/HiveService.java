@@ -74,11 +74,19 @@ public class HiveService {
     }
 
     public Map<String, Object> executeSQL(String sql) throws Exception {
+        return executeSQL(sql, false);
+    }
+
+    /** readOnly=true 供只读消费路径(指标取数等)纵深防御; 开发脚本通道保持 false 不受影响 */
+    public Map<String, Object> executeSQL(String sql, boolean readOnly) throws Exception {
         Map<String, Object> result = new HashMap<>();
         long start = System.currentTimeMillis();
 
         try (Connection conn = hiveConfig.getRawConnection();
              Statement stmt = conn.createStatement()) {
+            if (readOnly) {
+                try { conn.setReadOnly(true); } catch (Exception ignore) { /* 驱动不支持时退化为仅依赖语句守卫 */ }
+            }
             String trimmed = trimSql(sql);
             String firstStatement = firstExecutableLine(trimmed);
 

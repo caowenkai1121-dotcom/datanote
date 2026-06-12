@@ -18,6 +18,8 @@
   function gv(key) { return function () { safeGo('govGoModule', function () { govGoModule(key, {}); }, key); }; }
   function nv(route, ctx) { return function () { safeGo('navigateTo', function () { navigateTo(route, ctx || {}); }, route); }; }
   function mv(key) { return function () { safeGo('navigateTo', function () { navigateTo('mdm', { mdm: key }); }, 'mdm/' + key); }; }
+  // I-1: 消费驾驶舱已并入 指标管理→指标取值
+  function cv() { return function () { safeGo('gotoMetricConsume', function () { gotoMetricConsume(null); }, 'metrics/consume'); }; }
 
   var CHAINS = [
     { name: '① 数据质量闭环', color: 'var(--chart-1)', steps: [
@@ -27,21 +29,21 @@
       { t: '修复→关单→健康分回升', go: gv('overview') }
     ]},
     { name: '② 指标可信度闭环', color: 'var(--chart-2)', steps: [
-      { t: '消费驾驶舱看指标', go: gv('consumption') },
+      { t: '消费驾驶舱看指标', go: cv() },
       { t: '输入质量查来源表', go: gv('quality') },
       { t: '来源表血缘定位脏源', go: gv('lineage') },
       { t: '修复后重算指标', go: nv('metrics') }
     ]},
     { name: '③ 变更影响闭环', color: 'var(--chart-3)', steps: [
       { t: '数据地图改表', go: nv('catalog') },
-      { t: '反查下游消费指标', go: gv('consumption') },
+      { t: '反查下游消费指标', go: cv() },
       { t: '血缘影响面评估', go: gv('lineage') },
       { t: '同步/调度联动', go: nv('dbsync') }
     ]},
     { name: '④ 敏感数据治理闭环', color: 'var(--chart-4)', steps: [
       { t: '分类分级识别敏感', go: gv('classification') },
       { t: '数据安全脱敏策略', go: gv('security') },
-      { t: '消费查询自动脱敏', go: gv('consumption') },
+      { t: '消费查询自动脱敏', go: cv() },
       { t: '审计中心留痕核查', go: gv('audit') }
     ]},
     { name: '⑤ 主数据消费闭环', color: 'var(--chart-5)', steps: [
@@ -58,9 +60,9 @@
     { t: '表元数据', d: '资产/质量/血缘/指标/项目', go: gv('assets') },
     { t: '质量规则', d: '工单/指标可信度/健康分', go: gv('quality') },
     { t: '治理工单', d: '质量/指标越界/健康短板', go: gv('health') },
-    { t: '指标', d: '消费/影响面/首页', go: gv('consumption') },
+    { t: '指标', d: '消费/影响面/首页', go: cv() },
     { t: '血缘边', d: '影响面/孤儿表/资产详情', go: gv('lineage') },
-    { t: '消费日志', d: '热度/排行/审计', go: gv('consumption') }
+    { t: '消费日志', d: '热度/排行/审计', go: cv() }
   ];
 
   // 超长文本截断：节点标题过长时截断并以 title 悬浮显示全文(避免撑破布局)

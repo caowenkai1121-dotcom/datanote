@@ -5,10 +5,11 @@
   'use strict';
   window.GOV_RENDERERS = window.GOV_RENDERERS || {};
 
-  var TYPES = ['', 'LOGIN', 'DATA_ACCESS', 'EXPORT', 'PERM_CHANGE', 'META_CHANGE', 'RULE_CHANGE', 'LABEL_CHANGE', 'OTHER'];
+  // 批4: 类型下拉动态化——默认枚举兜底, 渲染时拉 /types 合并实际出现过的类型
+  var TYPES = ['', 'LOGIN', 'DATA_ACCESS', 'DATA_PREVIEW', 'EXPORT', 'PERM_CHANGE', 'META_CHANGE', 'RULE_CHANGE', 'LABEL_CHANGE', 'OTHER'];
   // actionType -> 药丸色调
   var TYPE_TONE = {
-    LOGIN: 'info', DATA_ACCESS: 'ok', EXPORT: 'warn',
+    LOGIN: 'info', DATA_ACCESS: 'ok', DATA_PREVIEW: 'warn', EXPORT: 'warn',
     PERM_CHANGE: 'err', META_CHANGE: 'info', RULE_CHANGE: 'info', LABEL_CHANGE: 'info', OTHER: 'muted'
   };
   var state = { page: 1, size: 50, total: 0 };
@@ -75,6 +76,15 @@
     els.to = DN.h('input', { type: 'date', title: '截止日期', class: 'dn-form-input', style: 'height:34px;' });
     els.type = DN.h('select', { class: 'dn-form-select', style: 'height:34px;' });
     TYPES.forEach(function (t) { els.type.appendChild(DN.h('option', { value: t, text: t || '全部类型' })); });
+    // 批4: 合并库里实际出现过的类型(动态化), 新类型无需改前端
+    DN.get('/api/gov/audit/types').then(function (list) {
+      (Array.isArray(list) ? list : []).forEach(function (t) {
+        if (t && TYPES.indexOf(t) < 0) {
+          TYPES.push(t);
+          els.type.appendChild(DN.h('option', { value: t, text: t }));
+        }
+      });
+    }).catch(function () { /* 动态加载失败保持默认枚举 */ });
     els.user = DN.h('input', { placeholder: '操作人', class: 'dn-form-input', style: 'height:34px;width:120px;' });
     // 操作人输入框回车即检索；类型/日期变更不自动触发，由「检索」按钮统一提交，避免误触发请求
     els.user.addEventListener('keydown', function (e) {

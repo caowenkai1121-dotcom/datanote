@@ -29,15 +29,17 @@ public class ProjectAssetService {
     private final DnScriptMapper scriptMapper;
     private final DnDatasourceMapper datasourceMapper;
     private final DnQualityRuleMapper qualityRuleMapper;
+    private final com.datanote.domain.governance.mapper.DnMetricMapper metricMapper;
 
     public static final List<String> TYPES = Collections.unmodifiableList(
-            Arrays.asList("SYNC_JOB", "SCRIPT", "DATASOURCE", "QUALITY_RULE"));
+            Arrays.asList("SYNC_JOB", "SCRIPT", "DATASOURCE", "QUALITY_RULE", "METRIC"));
     private static final Map<String, String> TYPE_LABEL = new LinkedHashMap<>();
     static {
         TYPE_LABEL.put("SYNC_JOB", "同步任务");
         TYPE_LABEL.put("SCRIPT", "脚本");
         TYPE_LABEL.put("DATASOURCE", "数据源");
         TYPE_LABEL.put("QUALITY_RULE", "质量规则");
+        TYPE_LABEL.put("METRIC", "指标");
     }
 
     public List<DnProjectAsset> list(Long projectId) {
@@ -48,7 +50,8 @@ public class ProjectAssetService {
     }
 
     public DnProjectAsset bind(Long projectId, String type, Long assetId, String assetName) {
-        projectService.getById(projectId);
+        com.datanote.domain.project.model.DnProject proj = projectService.getById(projectId);
+        if ("ARCHIVED".equals(proj.getStatus())) throw new IllegalArgumentException("项目已归档, 仅可查看, 不能绑定资产");
         if (!TYPES.contains(type)) throw new IllegalArgumentException("非法资产类型: " + type);
         if (assetId == null) throw new IllegalArgumentException("资产ID不能为空");
         Long dup = assetMapper.selectCount(new LambdaQueryWrapper<DnProjectAsset>()
@@ -133,10 +136,40 @@ public class ProjectAssetService {
             com.datanote.domain.project.model.DnProject p = projById.get(b.getProjectId());
             if (p == null || "DELETED".equals(p.getStatus())) continue;
             Map<String, Object> m = new LinkedHashMap<>();
+            m.put("bindingId", b.getId());
             m.put("projectId", p.getId());
             m.put("projectName", p.getProjectName());
             m.put("projectCode", p.getProjectCode());
             out.add(m);
+        }
+        return out;
+    }
+
+    /** 批量反查：同类型一批资产各自被哪些项目绑定（列表页归属徽标，一次查询防 N+1）。 */
+    public Map<Long, List<Map<String, Object>>> projectsOfAssetsBatch(String type, List<Long> assetIds) {
+        Map<Long, List<Map<String, Object>>> out = new LinkedHashMap<>();
+        if (!TYPES.contains(type) || assetIds == null || assetIds.isEmpty()) return out;
+        List<DnProjectAsset> bindings = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getAssetType, type).in(DnProjectAsset::getAssetId, assetIds));
+        if (bindings == null || bindings.isEmpty()) return out;
+        Set<Long> pids = new LinkedHashSet<>();
+        for (DnProjectAsset b : bindings) {
+            if (b != null && b.getProjectId() != null) pids.add(b.getProjectId());
+        }
+        if (pids.isEmpty()) return out;
+        Map<Long, com.datanote.domain.project.model.DnProject> projById = new HashMap<>();
+        for (com.datanote.domain.project.model.DnProject p : nz(projectMapper.selectBatchIds(pids))) {
+            if (p != null && !"DELETED".equals(p.getStatus())) projById.put(p.getId(), p);
+        }
+        for (DnProjectAsset b : bindings) {
+            if (b == null || b.getProjectId() == null || b.getAssetId() == null) continue;
+            com.datanote.domain.project.model.DnProject p = projById.get(b.getProjectId());
+            if (p == null) continue;
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("projectId", p.getId());
+            m.put("projectName", p.getProjectName());
+            m.put("projectCode", p.getProjectCode());
+            out.computeIfAbsent(b.getAssetId(), k -> new ArrayList<>()).add(m);
         }
         return out;
     }
@@ -160,6 +193,9 @@ public class ProjectAssetService {
                 break;
             case "QUALITY_RULE":
                 for (DnQualityRule q : nz(qualityRuleMapper.selectList(null))) list.add(new Object[]{q.getId(), q.getRuleName()});
+                break;
+            case "METRIC":
+                for (com.datanote.domain.governance.model.DnMetric m : nz(metricMapper.selectList(null))) list.add(new Object[]{m.getId(), m.getMetricName()});
                 break;
             default:
                 break;

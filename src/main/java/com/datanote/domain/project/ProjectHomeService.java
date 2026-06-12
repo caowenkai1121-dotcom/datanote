@@ -25,6 +25,8 @@ public class ProjectHomeService {
     private final DnProjectMapper projectMapper;
     private final DnProjectReleaseMapper releaseMapper;
     private final DnProjectTaskMapper taskMapper;
+    private final ProjectReleaseService releaseService;   // N1: 审批权过滤
+    private final com.datanote.domain.governance.mapper.DnGovernanceIssueMapper issueMapper;   // II-2: 指给我的工单
 
     public Map<String, Object> home() {
         String user = ProjectService.currentUser();
@@ -61,14 +63,18 @@ public class ProjectHomeService {
             recent.add(m);
         }
         r.put("recent", recent);
-        // 待我审批（PENDING 发布）
+        // 待我审批（PENDING 发布; N1: 仅我有审批权的项目才算"待我"）
         List<DnProjectRelease> pending = releaseMapper.selectList(new LambdaQueryWrapper<DnProjectRelease>()
                 .eq(DnProjectRelease::getStatus, "PENDING").orderByDesc(DnProjectRelease::getId).last("LIMIT 50"));
+        Map<Long, Boolean> canApprove = new HashMap<>();
         List<Map<String, Object>> approvals = new ArrayList<>();
         if (pending != null) for (DnProjectRelease rel : pending) {
             if (rel == null) continue;
             DnProject p = byId.get(rel.getProjectId());
             if (p == null) continue; // 项目已删，跳过
+            Boolean ok = canApprove.computeIfAbsent(rel.getProjectId(),
+                    pid -> ProjectRoles.can(releaseService.roleOf(pid, user), "release:approve"));
+            if (!ok) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("releaseId", rel.getId());
             m.put("projectId", rel.getProjectId());
@@ -99,32 +105,46 @@ public class ProjectHomeService {
             myTasks.add(m);
         }
         r.put("myTasks", myTasks);
+        // II-2: 我提交的发布(待审批+被驳回, 驳回带意见——提交人最关心"为什么被拒")
+        List<DnProjectRelease> mine2 = releaseMapper.selectList(new LambdaQueryWrapper<DnProjectRelease>()
+                .eq(DnProjectRelease::getSubmittedBy, user)
+                .in(DnProjectRelease::getStatus, "PENDING", "REJECTED")
+                .orderByDesc(DnProjectRelease::getId).last("LIMIT 20"));
+        List<Map<String, Object>> mySubmissions = new ArrayList<>();
+        if (mine2 != null) for (DnProjectRelease rel : mine2) {
+            if (rel == null) continue;
+            DnProject p = byId.get(rel.getProjectId());
+            if (p == null) continue;
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("releaseId", rel.getId());
+            m.put("projectId", rel.getProjectId());
+            m.put("projectName", p.getProjectName());
+            m.put("versionNo", rel.getVersionNo());
+            m.put("title", rel.getTitle());
+            m.put("status", rel.getStatus());
+            m.put("approveComment", rel.getApproveComment());
+            mySubmissions.add(m);
+        }
+        r.put("mySubmissions", mySubmissions);
+        // II-2: 指给我的未闭环工单(服务端按 currentUser 过滤——前端拿不到当前用户)
+        List<com.datanote.domain.governance.model.DnGovernanceIssue> issues = issueMapper.selectList(
+                new LambdaQueryWrapper<com.datanote.domain.governance.model.DnGovernanceIssue>()
+                        .eq(com.datanote.domain.governance.model.DnGovernanceIssue::getOwner, user)
+                        .in(com.datanote.domain.governance.model.DnGovernanceIssue::getStatus, "OPEN", "FIXING")
+                        .orderByDesc(com.datanote.domain.governance.model.DnGovernanceIssue::getId).last("LIMIT 10"));
+        List<Map<String, Object>> myIssues = new ArrayList<>();
+        if (issues != null) for (com.datanote.domain.governance.model.DnGovernanceIssue i : issues) {
+            if (i == null) continue;
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", i.getId());
+            m.put("title", i.getTitle());
+            m.put("severity", i.getSeverity());
+            m.put("status", i.getStatus());
+            myIssues.add(m);
+        }
+        r.put("myIssues", myIssues);
         r.put("totalProjects", all.size());
         return r;
     }
 
-    /** 多项目对比（最多 8 个）。 */
-    public List<Map<String, Object>> compare(List<Long> ids) {
-        List<Map<String, Object>> out = new ArrayList<>();
-        if (ids == null) return out;
-        int n = 0;
-        for (Long id : ids) {
-            if (id == null || n++ >= 8) continue;
-            try {
-                Map<String, Object> ov = overviewService.overview(id);
-                DnProject p = (DnProject) ov.get("project");
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", id);
-                m.put("projectName", p == null ? ("#" + id) : p.getProjectName());
-                m.put("assetTotal", ov.get("assetTotal"));
-                m.put("memberCount", ov.get("memberCount"));
-                m.put("releaseTotal", ov.get("releaseTotal"));
-                m.put("releasePending", ov.get("releasePending"));
-                out.add(m);
-            } catch (Exception ignore) {
-                // 跳过无效项目
-            }
-        }
-        return out;
-    }
 }

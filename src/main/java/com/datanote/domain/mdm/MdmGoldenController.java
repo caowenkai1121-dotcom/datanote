@@ -5,17 +5,14 @@ import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.common.model.R;
 import com.datanote.domain.mdm.MdmMatchService;
-import com.datanote.domain.mdm.mapper.DnMdmAttributeMapper;
 import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenHistoryMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
 import com.datanote.domain.mdm.mapper.DnMdmSurvivorshipRuleMapper;
-import com.datanote.domain.mdm.model.DnMdmAttribute;
 import com.datanote.domain.mdm.model.DnMdmEntity;
 import com.datanote.domain.mdm.model.DnMdmGoldenHistory;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
 import com.datanote.domain.mdm.model.DnMdmSurvivorshipRule;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -38,7 +35,6 @@ public class MdmGoldenController {
 
     private final DnMdmGoldenRecordMapper goldenMapper;
     private final DnMdmGoldenHistoryMapper historyMapper;   // R126 变更历史快照
-    private final DnMdmAttributeMapper attributeMapper;
     private final DnMdmEntityMapper entityMapper;
     private final DnMdmSurvivorshipRuleMapper ruleMapper;
     private final MdmMatchService matchService;
@@ -46,8 +42,6 @@ public class MdmGoldenController {
     private final MdmService mdmService;                 // R128 快照逻辑收敛到 service 共用
 
     // ===== 源自 MdmGoldenController.java =====
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Operation(summary = "黄金记录列表（按实体）")
     @GetMapping("/api/mdm/golden/list")
     public R<List<DnMdmGoldenRecord>> list(@RequestParam Long entityId,
@@ -90,36 +84,17 @@ public class MdmGoldenController {
         DnMdmEntity entity = entityMapper.selectById(rec.getEntityId());
         if (entity == null) throw new ResourceNotFoundException("所属实体");
 
-        // 解析属性值 JSON
-        Map<String, Object> values = parseJson(rec.getDataJson());
-
-        // 加载实体属性，做必填校验 + 计算业务主键
-        List<DnMdmAttribute> attrs = loadAttrs(rec.getEntityId());
-        String bizKey = null;
-        for (DnMdmAttribute a : attrs) {
-            Object v = values.get(a.getAttrCode());
-            boolean empty = (v == null || String.valueOf(v).trim().isEmpty());
-            if (a.getRequired() != null && a.getRequired() == 1 && empty) {
-                throw new BusinessException("必填属性未填写：" + a.getAttrName());
-            }
-            // 业务主键优先取关键字段，其次唯一字段的首个非空值
-            if (bizKey == null && !empty && ((a.getIsKey() != null && a.getIsKey() == 1)
-                    || (a.getIsUnique() != null && a.getIsUnique() == 1))) {
-                bizKey = String.valueOf(v);
-            }
-        }
-        if (bizKey == null) {
-            // 退化：取第一个非空属性值
-            for (DnMdmAttribute a : attrs) {
-                Object v = values.get(a.getAttrCode());
-                if (v != null && !String.valueOf(v).trim().isEmpty()) { bizKey = String.valueOf(v); break; }
-            }
-        }
+        // #18: 必填/JSON 校验 + 业务主键计算收敛到 MdmService, 与审批 applyChange 共用同一道门禁
+        String bizKey = mdmService.validateGoldenData(rec.getEntityId(), rec.getDataJson());
         rec.setBizKey(bizKey != null ? bizKey : ("记录-" + System.currentTimeMillis()));
         if (rec.getStatus() == null || rec.getStatus().isEmpty()) rec.setStatus("draft");
 
         if (rec.getId() != null) {
             DnMdmGoldenRecord old = goldenMapper.selectById(rec.getId());
+            // #19: 已生效(active)存量记录禁止直改, 防绕过审批; 草稿/停用仍可直接编辑
+            if (old != null && "active".equals(old.getStatus())) {
+                throw new BusinessException("已生效记录请走变更申请");
+            }
             rec.setVersion((old != null && old.getVersion() != null ? old.getVersion() : 1) + 1);
             rec.setUpdatedAt(LocalDateTime.now());
             goldenMapper.updateById(rec);
@@ -183,21 +158,6 @@ public class MdmGoldenController {
     /** R126: 写一条变更后快照（R128 收敛到 MdmService 与审批应用链路共用） */
     private void snapshot(DnMdmGoldenRecord rec, String changeType) {
         mdmService.snapshotGolden(rec, changeType);
-    }
-
-    private Map<String, Object> parseJson(String json) {
-        if (json == null || json.trim().isEmpty()) return new HashMap<>();
-        try {
-            return objectMapper.readValue(json, Map.class);
-        } catch (Exception e) {
-            throw new BusinessException("属性值格式错误（非合法 JSON）");
-        }
-    }
-
-    private List<DnMdmAttribute> loadAttrs(Long entityId) {
-        QueryWrapper<DnMdmAttribute> qw = new QueryWrapper<>();
-        qw.eq("entity_id", entityId).orderByAsc("sort_order").orderByAsc("id");
-        return attributeMapper.selectList(qw);
     }
 
     // ===== 源自 MdmSurvivorshipController.java =====

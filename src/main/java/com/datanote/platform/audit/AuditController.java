@@ -66,6 +66,12 @@ public class AuditController {
         }
     }
 
+    @Operation(summary = "实际出现过的动作类型(供筛选下拉动态化)")
+    @GetMapping("/types")
+    public R<List<String>> types() {
+        return R.ok(auditService.distinctTypes());
+    }
+
     @Operation(summary = "按动作类型统计")
     @GetMapping("/stat/type")
     public R<List<Map<String, Object>>> statByType() {

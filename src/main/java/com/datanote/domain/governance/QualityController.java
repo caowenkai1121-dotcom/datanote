@@ -34,6 +34,7 @@ public class QualityController {
     private final DnQualityRunMapper runMapper;
     private final QualityService qualityService;
     private final IssueService issueService;
+    private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
 
     @Operation(summary = "质量失败根因分析(状态分布+失败样本)")
     @GetMapping("/failure-analysis")
@@ -92,6 +93,7 @@ public class QualityController {
     @DeleteMapping("/rule/{id}")
     public R<String> deleteRule(@PathVariable Long id) {
         ruleMapper.deleteById(id);
+        projectAssetCleaner.onAssetDeleted("QUALITY_RULE", id);
         return R.ok("删除成功");
     }
 
@@ -202,23 +204,8 @@ public class QualityController {
     @Operation(summary = "整体质量分")
     @GetMapping("/score")
     public R<Map<String, Object>> score() {
-        QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
-        qw.ge("started_at", LocalDateTime.now().minusDays(7)).isNotNull("pass_rate");
-        List<DnQualityRun> runs = runMapper.selectList(qw);
-
-        Map<String, Object> data = new HashMap<>();
-        double sum = 0;
-        int n = 0;
-        for (DnQualityRun r : runs) {
-            if (r.getPassRate() != null) {
-                sum += r.getPassRate().doubleValue();
-                n++;
-            }
-        }
-        double score = n == 0 ? 100.0 : Math.round(sum / n * 100.0) / 100.0;
-        data.put("score", score);
-        data.put("sampleRuns", n);
-        return R.ok(data);
+        // 口径统一: 质量页/治理总览/首页共用 QualityService.computeScore()
+        return R.ok(qualityService.computeScore());
     }
 
     /**

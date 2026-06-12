@@ -1,6 +1,7 @@
 package com.datanote.domain.mdm;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.mdm.mapper.DnMdmAttributeMapper;
 import com.datanote.domain.mdm.mapper.DnMdmDomainMapper;
 import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
@@ -11,6 +12,7 @@ import com.datanote.domain.mdm.model.DnMdmDomain;
 import com.datanote.domain.mdm.model.DnMdmEntity;
 import com.datanote.domain.mdm.model.DnMdmGoldenHistory;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class MdmService {
     private final DnMdmAttributeMapper attributeMapper;
     private final DnMdmGoldenRecordMapper goldenMapper;
     private final DnMdmGoldenHistoryMapper goldenHistoryMapper;
+    private final ObjectMapper objectMapper;
 
     /** 主数据总览统计：域/实体/属性数量、按类别分布、各域实体数。 */
     public Map<String, Object> overview() {
@@ -125,6 +128,45 @@ public class MdmService {
             h.setCreatedAt(java.time.LocalDateTime.now());
             goldenHistoryMapper.insert(h);
         } catch (Exception ignore) {}
+    }
+
+    /** #18: 黄金记录属性值统一校验(JSON 合法性 + 必填项)并计算业务主键。
+     *  golden/save 直存与审批 applyChange 两条落库通道共用同一道门禁, 杜绝审批通道绕过校验落脏数据。
+     *  校验失败抛 BusinessException(消息含缺失属性名); 通过返回业务主键(优先关键/唯一属性首个非空值, 可能为 null 由调用方兜底)。 */
+    @SuppressWarnings("unchecked")
+    public String validateGoldenData(Long entityId, String dataJson) {
+        Map<String, Object> values = new HashMap<>();
+        if (dataJson != null && !dataJson.trim().isEmpty()) {
+            try {
+                values = objectMapper.readValue(dataJson, Map.class);
+            } catch (Exception e) {
+                throw new BusinessException("属性值格式错误（非合法 JSON）");
+            }
+        }
+        QueryWrapper<DnMdmAttribute> aqw = new QueryWrapper<>();
+        aqw.eq("entity_id", entityId).orderByAsc("sort_order").orderByAsc("id");
+        List<DnMdmAttribute> attrs = attributeMapper.selectList(aqw);
+        String bizKey = null;
+        for (DnMdmAttribute a : attrs) {
+            Object v = values.get(a.getAttrCode());
+            boolean empty = (v == null || String.valueOf(v).trim().isEmpty());
+            if (a.getRequired() != null && a.getRequired() == 1 && empty) {
+                throw new BusinessException("必填属性未填写：" + a.getAttrName());
+            }
+            // 业务主键优先取关键字段，其次唯一字段的首个非空值
+            if (bizKey == null && !empty && ((a.getIsKey() != null && a.getIsKey() == 1)
+                    || (a.getIsUnique() != null && a.getIsUnique() == 1))) {
+                bizKey = String.valueOf(v);
+            }
+        }
+        if (bizKey == null) {
+            // 退化：取第一个非空属性值
+            for (DnMdmAttribute a : attrs) {
+                Object v = values.get(a.getAttrCode());
+                if (v != null && !String.valueOf(v).trim().isEmpty()) { bizKey = String.valueOf(v); break; }
+            }
+        }
+        return bizKey;
     }
 
     /** 同步实体的冗余属性计数。 */

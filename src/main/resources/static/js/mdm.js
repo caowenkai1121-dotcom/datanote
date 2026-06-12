@@ -567,7 +567,8 @@
       // 深链：autoEditId 命中则自动打开该记录编辑（只触发一次）
       if (autoEditId != null) {
         var hit = rows.filter(function (r) { return String(r.id) === String(autoEditId); })[0];
-        if (hit) goldenForm(hit, document.getElementById('grBox'));
+        // #19: 已生效记录不可直改, 深链命中 active 记录改打开变更申请抽屉
+        if (hit) { if (hit.status === 'active') goldenChangeRequest(hit); else goldenForm(hit, document.getElementById('grBox')); }
         else DN.toast('未找到指定黄金记录(可能已删除)', 'warn');
       }
       // R128 深链: 审批单「记录历史」跳入, 自动打开该记录的变更历史抽屉
@@ -591,12 +592,19 @@
       cols.push({ key: 'updatedAt', label: '更新', render: function (r) { return DN.timeAgo(r.updatedAt); } });
       cols.push({ key: '_op', label: '操作', render: function (r) {
           var w = DN.h('span', { style: 'display:inline-flex;gap:9px' });
-          w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
+          // #19: 已生效记录禁止直改/直删, 改为发起变更申请走审批; 草稿/停用仍可直接编辑删除
+          if (r.status === 'active') {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '发起变更申请', style: 'color:var(--primary)', title: '已生效记录需走变更审批, 批准后自动应用', onclick: function () { goldenChangeRequest(r); } }));
+          } else {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { goldenForm(r, document.getElementById('grBox')); } }));
+          }
           if (r.status !== 'active') { var pubA = DN.h('a', { href: 'javascript:void(0)', text: '发布', style: 'color:var(--success)', onclick: function () { DN.confirm('发布黄金记录「' + (r.bizKey || r.id) + '」？发布后将作为单一可信版本生效。', { title: '发布确认', danger: false }).then(function (ok) { if (!ok) return; busyLink(pubA, '发布中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/publish', '已发布'); }); }); } }); w.appendChild(pubA); }
           if (r.status === 'active') { var deA = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:var(--warning)', onclick: function () { DN.confirm('停用黄金记录「' + (r.bizKey || r.id) + '」？停用后将不再作为生效版本。', { title: '停用确认', danger: true }).then(function (ok) { if (!ok) return; busyLink(deA, '停用中...', function () { return goldenAction('/api/mdm/golden/' + r.id + '/deactivate', '已停用'); }); }); } }); w.appendChild(deA); }
           w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '历史', style: 'color:var(--primary)', title: '变更历史与版本diff', onclick: function () { goldenHistory(r); } }));
-          var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { DN.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？', { title: '删除确认', danger: true }).then(function (ok) { if (!ok) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); }); } });
-          w.appendChild(delA);
+          if (r.status !== 'active') {
+            var delA = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { DN.confirm('删除黄金记录「' + (r.bizKey || r.id) + '」？', { title: '删除确认', danger: true }).then(function (ok) { if (!ok) return; busyLink(delA, '删除中...', function () { return DN.del('/api/mdm/golden/' + r.id).then(function () { DN.toast('已删除', 'ok'); reloadGolden(); }).catch(function (e) { DN.toast(errMsg(e) || '删除失败', 'err'); }); }); }); } });
+            w.appendChild(delA);
+          }
           return w;
         } });
       listBox.appendChild(DN.table({
@@ -734,6 +742,61 @@
     };
     foot = DN.drawerFoot({ okText: isEdit ? '保存修改' : '创建记录', onOk: doSave, onCancel: function () { dr.close(); } });
     dr = DN.drawer((isEdit ? '编辑' : '新建') + '黄金记录', body, foot.el);
+    DN.enterSubmit(body, doSave);
+  }
+
+  // #19: 已生效记录不可直改 — 发起 update 变更申请(预填当前字段值), 提交进入变更审批, 批准后自动应用
+  function goldenChangeRequest(row) {
+    if (!_grEntity) { DN.toast('请先选择实体', 'warn'); return; }
+    if (!_grAttrs.length) { DN.toast('该实体尚无属性定义，请先在“域与实体建模”补充属性', 'warn'); return; }
+    var cur = row.dataJson ? safeParse(row.dataJson, (row._vals || {})) : (row._vals || {});
+    var inputs = {};
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: '已生效记录不可直接修改。请在下方调整字段值并提交变更申请，审批批准后自动应用到该记录。' }));
+    var secA = DN.formSection('变更后属性值 · ' + (row.bizKey || ('#' + row.id)));
+    _grAttrs.forEach(function (a) {
+      var input = grInput(a, cur[a.attrCode]);
+      inputs[a.attrCode] = input;
+      var hint = readableType(a.dataType, a.lengthLimit) + (a.isKey === 1 ? ' · 关键字段(匹配去重用)' : '');
+      secA.add(field(a.attrName, input, hint, a.required === 1));
+    });
+    body.appendChild(secA.el);
+    var secR = DN.formSection('申请信息');
+    var fReason = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:64px;resize:vertical', placeholder: '变更原因(必填)' });
+    secR.add(field('变更原因', fReason, null, true));
+    body.appendChild(secR.el);
+    var dr, foot;
+    var doSave = function () {
+      if (foot.ok.disabled) return;
+      var reason = fReason.value.trim();
+      if (!reason) { DN.toast('请填写变更原因', 'err'); fReason.focus(); return; }
+      // 与 goldenForm 同口径的必填/类型/长度校验; 仅把改动过的字段作为 patch 提交, 审批通过后合并进记录
+      var patch = {}, missing = null, invalid = null, changed = 0;
+      _grAttrs.forEach(function (a) {
+        if (invalid) return;
+        var el = inputs[a.attrCode];
+        var v = (el && el.value != null ? String(el.value).trim() : '');
+        if (a.required === 1 && !v && !missing) missing = a.attrName;
+        if (v !== '') {
+          var t = (a.dataType || 'STRING').toUpperCase();
+          if ((t === 'INT' || t === 'DECIMAL') && isNaN(Number(v))) { invalid = a.attrName + ' 需为数字'; return; }
+          if (t === 'INT' && !/^-?\d+$/.test(v)) { invalid = a.attrName + ' 需为整数'; return; }
+          if (a.lengthLimit && v.length > a.lengthLimit) { invalid = a.attrName + ' 超出长度限制(' + a.lengthLimit + ')'; return; }
+        }
+        var old = (cur[a.attrCode] == null ? '' : String(cur[a.attrCode]));
+        if (v !== old) { patch[a.attrCode] = v; changed++; }
+      });
+      if (invalid) { DN.toast('属性校验失败：' + invalid, 'err'); return; }
+      if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
+      if (!changed) { DN.toast('未修改任何字段，无需提交变更申请', 'warn'); return; }
+      var reqBody = { entityId: _grEntity.id, goldenRecordId: row.id, changeType: 'update', bizKey: row.bizKey || null, reason: reason, payloadJson: JSON.stringify(patch) };
+      foot.busy();
+      DN.post('/api/mdm/approval/submit', reqBody).then(function () {
+        DN.toast('变更申请已提交，批准后生效（可在“变更审批”查看进度）', 'ok'); dr.close();
+      }).catch(function (e) { DN.toast(errMsg(e) || '提交失败', 'err'); foot.reset(); });
+    };
+    foot = DN.drawerFoot({ okText: '提交变更申请', onOk: doSave, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('发起变更申请 · ' + (row.bizKey || ('#' + row.id)), body, foot.el);
     DN.enterSubmit(body, doSave);
   }
 

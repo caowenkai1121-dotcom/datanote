@@ -180,6 +180,12 @@ public class RbacController {
         return R.ok("设置成功");
     }
 
+    @Operation(summary = "全站权限点清单(按模块分组, 供角色配权限树勾选)")
+    @GetMapping("/perms/catalog")
+    public R<List<Map<String, Object>>> permsCatalog() {
+        return R.ok(PermCatalog.grouped());
+    }
+
     // ---------------- 请求体 ----------------
 
     @Data

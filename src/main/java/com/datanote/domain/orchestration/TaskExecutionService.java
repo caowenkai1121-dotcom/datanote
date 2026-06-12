@@ -52,6 +52,7 @@ public class TaskExecutionService {
     private final TaskDependencyService taskDependencyService;
     private final LogBroadcastService logBroadcastService;
     private final TaskSchedulerService taskSchedulerService;
+    private final com.datanote.platform.notify.NotificationService notificationService;   // 全站#25 调度终败通知
 
     @Value("${datax.job-dir}")
     private String jobDir;
@@ -210,6 +211,25 @@ public class TaskExecutionService {
             if (paused > 0) {
                 log.info("任务 {}:{} 失败，已自动暂停 {} 个下游任务",
                         run.getTaskType(), run.getTaskId(), paused);
+            }
+
+            // 全站#25: 终败(重试耗尽)通知任务创建人, 回退 admin; 铃铛深链运维中心
+            try {
+                String taskName = run.getTaskType() + "#" + run.getTaskId();
+                String receiver = null;
+                if ("script".equals(run.getTaskType())) {
+                    DnScript s = scriptMapper.selectById(run.getTaskId());
+                    if (s != null) { taskName = s.getScriptName(); receiver = s.getCreatedBy(); }
+                } else {
+                    DnSyncTask t = syncTaskMapper.selectById(run.getTaskId());
+                    if (t != null) { taskName = t.getTaskName(); receiver = t.getCreatedBy(); }
+                }
+                if (receiver == null || receiver.trim().isEmpty()) receiver = "admin";
+                notificationService.notify(receiver, "SCHED_FAILED",
+                        "调度任务失败: " + taskName + " (数据日期 " + run.getRunDate() + ")",
+                        "operations", run.getId(), null);
+            } catch (Exception ne) {
+                log.warn("调度失败通知发送失败, runId={}", run.getId(), ne);
             }
         }
     }

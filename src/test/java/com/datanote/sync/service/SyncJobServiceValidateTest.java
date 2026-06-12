@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 class SyncJobServiceValidateTest {
 
-    private final SyncJobService svc = new SyncJobService(null, null, null, null, null, null);
+    private final SyncJobService svc = new SyncJobService(null, null, null, null, null, null, null, null);
 
     private static DnSyncJob base() {
         DnSyncJob j = new DnSyncJob();

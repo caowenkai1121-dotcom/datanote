@@ -22,6 +22,9 @@ public class DnProjectTask {
     private String priority;
     private String status;
     private LocalDate dueDate;
+    /** 关联平台实体: SYNC_JOB/SCRIPT/QUALITY_RULE/GOV_ISSUE(任务不再是孤岛记录) */
+    private String refType;
+    private Long refId;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

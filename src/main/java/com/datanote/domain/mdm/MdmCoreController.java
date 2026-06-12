@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -43,6 +45,7 @@ public class MdmCoreController {
     private final DnMdmGoldenRecordMapper goldenMapper;
     private final MdmMatchService matchService;
     private final ObjectMapper objectMapper;
+    private final com.datanote.platform.notify.NotificationService notificationService;   // 全站#25 审批结果通知
 
     // ===== 源自 MdmController.java =====
     // ===================== 总览 =====================
@@ -284,8 +287,12 @@ public class MdmCoreController {
         if (!"pending".equals(req.getStatus())) {
             throw new BusinessException("仅待审批（pending）的请求可被审批，当前状态：" + req.getStatus());
         }
-        String reviewer = body != null && body.getReviewer() != null ? body.getReviewer().trim() : "";
-        if (reviewer.isEmpty()) throw new BusinessException("审批人不能为空");
+        // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批); 自己提交的申请禁止自批,
+        //      admin 用户例外放行(单管理员环境防锁死: 否则 admin 提交的申请无人能批)。
+        String reviewer = currentUser();
+        if (!"admin".equals(reviewer) && reviewer.equals(req.getRequestedBy())) {
+            throw new BusinessException("不能审批自己的变更申请");
+        }
         // 关键闭环: 批准即【应用】变更到黄金记录(创建/修改/软删), 否则审批形同虚设。
         // 应用先于改状态: 应用失败(如找不到记录)则抛错, 请求保持 pending, 不误判已批准。
         if ("approved".equals(target)) {
@@ -296,6 +303,18 @@ public class MdmCoreController {
         req.setStatus(target);
         req.setUpdatedAt(LocalDateTime.now());
         changeMapper.updateById(req);
+        // 全站#25: 审批终态通知申请人, 铃铛深链主数据中心
+        try {
+            String requester = req.getRequestedBy();
+            if (requester != null && !requester.trim().isEmpty()) {
+                String verdict = "approved".equals(target) ? "已批准" : "已驳回";
+                notificationService.notify(requester.trim(), "MDM_REVIEW",
+                        "主数据变更申请" + verdict + ": " + safeStr(req.getChangeType()) + " (审批人 " + reviewer + ")",
+                        "mdm", req.getId(), null);
+            }
+        } catch (Exception ne) {
+            // 通知失败不影响审批结果
+        }
         return R.ok(req);
     }
 
@@ -304,10 +323,14 @@ public class MdmCoreController {
         LocalDateTime now = LocalDateTime.now();
         String type = req.getChangeType() == null ? "" : req.getChangeType();
         if ("create".equals(type)) {
+            String dataJson = req.getPayloadJson() != null && !req.getPayloadJson().trim().isEmpty() ? req.getPayloadJson() : "{}";
+            // #18: 与 golden/save 同一道必填/JSON 校验, 不过关即抛错(消息含缺失属性名), 请求保持 pending 不落脏数据
+            String calcKey = mdmService.validateGoldenData(req.getEntityId(), dataJson);
             DnMdmGoldenRecord g = new DnMdmGoldenRecord();
             g.setEntityId(req.getEntityId());
-            g.setDataJson(req.getPayloadJson() != null && !req.getPayloadJson().trim().isEmpty() ? req.getPayloadJson() : "{}");
-            g.setBizKey(req.getBizKey() != null && !req.getBizKey().trim().isEmpty() ? req.getBizKey().trim() : ("记录-" + System.currentTimeMillis()));
+            g.setDataJson(dataJson);
+            g.setBizKey(req.getBizKey() != null && !req.getBizKey().trim().isEmpty() ? req.getBizKey().trim()
+                    : (calcKey != null ? calcKey : ("记录-" + System.currentTimeMillis())));
             g.setStatus("active");
             g.setVersion(1);
             g.setCreatedAt(now);
@@ -318,7 +341,10 @@ public class MdmCoreController {
         } else if ("update".equals(type)) {
             DnMdmGoldenRecord g = findGolden(req);
             if (g == null) throw new BusinessException("找不到要修改的黄金记录(bizKey=" + safeStr(req.getBizKey()) + ")，无法应用变更");
-            g.setDataJson(mergeJson(g.getDataJson(), req.getPayloadJson()));
+            String merged = mergeJson(g.getDataJson(), req.getPayloadJson());
+            // #18: 合并后整体校验, 防止变更把必填属性清空/塞入非法 JSON; 失败抛错保持 pending
+            mdmService.validateGoldenData(req.getEntityId(), merged);
+            g.setDataJson(merged);
             g.setVersion((g.getVersion() == null ? 1 : g.getVersion()) + 1);
             g.setUpdatedAt(now);
             goldenMapper.updateById(g);
@@ -365,6 +391,18 @@ public class MdmCoreController {
     }
 
     private static String safeStr(String s) { return s == null ? "" : s; }
+
+    /** #19: 当前登录用户(审批人身份), 写法参考 ProjectService.currentUser; 取不到身份按 admin 兜底(鉴权当前开放)。 */
+    private static String currentUser() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()
+                    && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
+                return auth.getName();
+            }
+        } catch (Exception ignore) {}
+        return "admin";
+    }
 
     // ===== 源自 MdmStewardController.java =====
     @Operation(summary = "数据管家工作台总览（各实体待办聚合）")

@@ -126,7 +126,8 @@
       { col: 8, title: '治理健康总分', icon: 'shield', primary: true, build: cardHealth },   // C1 主卡 跨8列
       { col: 4, title: '健康分趋势', icon: 'chart', build: cardHealthTrend },                  // C2
       { col: 6, title: '最新治理工单', icon: 'inbox', build: cardIssues },                      // C9
-      { col: 6, title: '同步任务监控大盘', icon: 'grid', build: cardSyncBoard }                // C8
+      { col: 6, title: '同步任务监控大盘', icon: 'grid', build: cardSyncBoard },               // C8
+      { col: 6, title: '我的项目待办', icon: 'doc', build: cardMyTodos }                       // N2 项目待办三合一入口
     ];
     // 先同步铺好 4 个卡壳 + 骨架（占位不抖动），再分批触发 fetch，避免一次性并发卡顿
     defs.forEach(function (d) {
@@ -195,26 +196,35 @@
     }).catch(function (e) { fail(c, d, e); });
   }
 
-  // ---- C8 同步任务监控大盘（环形状态 + 成功率仪表）----
+  // ---- C8 同步任务监控大盘（今日执行环 + 成功率仪表，批2#22 改今日口径）----
   function cardSyncBoard(c, d) {
     loading(c, 3);
     DN.get('/api/sync-job/dashboard/summary').then(function (s) {
       s = s || {};
       c.body.innerHTML = '';
-      var running = num(s.running), paused = num(s.paused), failed = num(s.failed);
-      if (!running && !paused && !failed && !num(s.jobsTotal)) {
+      if (!num(s.jobsTotal)) {
         c.body.appendChild(DN.empty('暂无同步任务', 'grid')); return;
       }
+      var runsToday = num(s.runsToday), okToday = num(s.successToday), failToday = num(s.failedToday);
+      if (!runsToday) {
+        var emp = DN.empty('今日暂无同步执行', 'clock');
+        emp.appendChild(DN.h('div', { style: 'margin-top:6px;font-size:12px;color:var(--text-muted)',
+          text: '共 ' + num(s.jobsTotal) + ' 个任务 · 运行中 ' + num(s.running) + ' · 失败 ' + num(s.failed) }));
+        c.body.appendChild(emp); return;
+      }
       var wrap = DN.h('div', { style: 'display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:center' });
+      var otherToday = Math.max(0, runsToday - okToday - failToday);
       wrap.appendChild(DN.donut([
-        { label: '运行', value: running, color: 'var(--primary)' },
-        { label: '暂停', value: paused, color: 'var(--warning)' },
-        { label: '失败', value: failed, color: 'var(--error)' }
-      ], { legend: true }));
+        { label: '今日成功', value: okToday, color: 'var(--success)' },
+        { label: '今日失败', value: failToday, color: 'var(--error)' },
+        { label: '运行/其他', value: otherToday, color: 'var(--primary)' }
+      ], { legend: true, centerLabel: runsToday, centerSub: '次' }));
       // successRate 约定为 0-1，gauge 前 *100；若后端已给百分数(>1)则原样用，避免被钳到 100
       var sr = num(s.successRate); var srPct = sr > 1 ? sr : sr * 100;
-      wrap.appendChild(DN.gauge(srPct, { label: '成功率', decimals: 1 }));
+      wrap.appendChild(DN.gauge(srPct, { label: '近200次成功率', decimals: 1 }));
       c.body.appendChild(wrap);
+      c.body.appendChild(DN.h('div', { style: 'margin-top:10px;text-align:center;font-size:12px;color:var(--text-muted)',
+        text: '任务 ' + num(s.jobsTotal) + ' · 运行中 ' + num(s.running) + ' · 暂停 ' + num(s.paused) + ' · 今日写入 ' + fmtInt(s.rowsToday) + ' 行' }));
     }).catch(function (e) { fail(c, d, e); });
   }
 
@@ -240,6 +250,40 @@
   function sevTone(s) {
     s = String(s || '').toUpperCase();
     return s === 'HIGH' ? 'err' : s === 'MEDIUM' ? 'warn' : 'muted';
+  }
+
+  // ---- N2 我的项目待办：任务(超期标红) + 待我审批发布, 点击直达项目对应页签 ----
+  function cardMyTodos(c, d) {
+    loading(c, 3);
+    DN.get('/api/project/home').then(function (resp) {
+      c.body.innerHTML = '';
+      var data = (resp && resp.code === 0 && resp.data) ? resp.data : (resp && (resp.myTasks || resp.pendingApprovals) ? resp : {});
+      var tasks = data.myTasks || [], appr = data.pendingApprovals || [];
+      if (!tasks.length && !appr.length) { c.body.appendChild(DN.empty('暂无项目待办', 'check')); return; }
+      var goProj = function (pid, tab) {
+        return function () {
+          if (window.navigateTo) navigateTo('project');
+          setTimeout(function () { if (window.projOpenDetailById) projOpenDetailById(pid, tab); }, 800);
+        };
+      };
+      var wrap = DN.h('div');
+      var today = new Date().toISOString().slice(0, 10);
+      appr.slice(0, 4).forEach(function (a) {
+        wrap.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer', onclick: goProj(a.projectId, 'release') }, [
+          DN.pill('待审批', 'warn'),
+          DN.h('span', { text: trunc((a.projectName || '') + ' v' + (a.versionNo == null ? '' : a.versionNo) + ' ' + (a.title || ''), 34) })
+        ]));
+      });
+      tasks.slice(0, 6).forEach(function (t) {
+        var od = t.dueDate && t.status !== 'DONE' && t.dueDate < today;
+        wrap.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer', onclick: goProj(t.projectId, 'task') }, [
+          DN.pill(od ? '超期' : (t.status === 'DOING' ? '进行中' : '待办'), od ? 'err' : (t.status === 'DOING' ? 'info' : 'muted')),
+          DN.h('span', { text: trunc(t.title || '-', 30), title: t.title || '' }),
+          DN.h('span', { class: 'gov-desc', style: 'margin-left:auto;white-space:nowrap', text: trunc(t.projectName || '', 12) + (t.dueDate ? ' · ' + t.dueDate : '') })
+        ]));
+      });
+      c.body.appendChild(wrap);
+    }).catch(function (e) { fail(c, d, e); });
   }
 
   // ========== 自动刷新：60s，离开首页自停 ==========

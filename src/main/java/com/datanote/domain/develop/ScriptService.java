@@ -33,6 +33,7 @@ public class ScriptService {
     private final DnDatasourceMapper datasourceMapper;
     private final DnScriptVersionMapper scriptVersionMapper;
     private final DnSyncTaskMapper syncTaskMapper;
+    private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
 
     // ========== 文件树 ==========
 
@@ -171,8 +172,30 @@ public class ScriptService {
         scriptMapper.updateById(script);
     }
 
+    /** 全站#4: 重命名落库——重名拒, 已上线脚本提示下游影响(不拦, 名称非依赖键) */
+    public void rename(Long id, String name) {
+        if (name == null || name.trim().isEmpty()) throw new com.datanote.common.exception.BusinessException("脚本名不能为空");
+        name = name.trim();
+        DnScript script = scriptMapper.selectById(id);
+        if (script == null) throw new ResourceNotFoundException("脚本");
+        if (name.equals(script.getScriptName())) return;
+        Long dup = scriptMapper.selectCount(new QueryWrapper<DnScript>().eq("script_name", name));
+        if (dup != null && dup > 0) throw new com.datanote.common.exception.BusinessException("已存在同名脚本: " + name);
+        DnScript update = new DnScript();
+        update.setId(id);
+        update.setScriptName(name);
+        update.setUpdatedAt(LocalDateTime.now());
+        scriptMapper.updateById(update);
+    }
+
     public void delete(Long id) {
+        // 全站#2 删除门禁: 已上线脚本(调度运行中)禁删, 先下线再删——防误删生产任务
+        DnScript script = scriptMapper.selectById(id);
+        if (script != null && "online".equalsIgnoreCase(script.getScheduleStatus())) {
+            throw new com.datanote.common.exception.BusinessException("脚本「" + script.getScriptName() + "」已上线调度, 请先下线再删除");
+        }
         scriptMapper.deleteById(id);
+        projectAssetCleaner.onAssetDeleted("SCRIPT", id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -236,6 +259,10 @@ public class ScriptService {
                 .orderByDesc("version", "id")
                 .last("LIMIT 1");
         DnScriptVersion latestVersion = scriptVersionMapper.selectOne(latestQuery);
+        // 全站#3: 同内容不重复建版——防连续 Ctrl+S 刷掉最近10个回滚点
+        if (latestVersion != null && content.equals(latestVersion.getContent())) {
+            return;
+        }
 
         DnScriptVersion version = new DnScriptVersion();
         version.setScriptId(script.getId());
@@ -286,9 +313,13 @@ public class ScriptService {
         if (children != null) for (DnScriptFolder child : children) {
             if (child != null) deleteFolderRecursively(child.getId());
         }
+        // 全站#2: 逐脚本走 delete(id) 统一门禁+项目资产清理(原批量 delete 绕过两者)
         QueryWrapper<DnScript> scriptQuery = new QueryWrapper<>();
         scriptQuery.eq("folder_id", folderId);
-        scriptMapper.delete(scriptQuery);
+        List<DnScript> scripts = scriptMapper.selectList(scriptQuery);
+        if (scripts != null) for (DnScript s : scripts) {
+            if (s != null) delete(s.getId());
+        }
         folderMapper.deleteById(folderId);
     }
 

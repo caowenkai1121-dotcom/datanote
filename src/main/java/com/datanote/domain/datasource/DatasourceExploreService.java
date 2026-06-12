@@ -24,10 +24,11 @@ import java.util.*;
 public class DatasourceExploreService {
 
     private final HiveConfig hiveConfig;
+    private final com.datanote.domain.governance.MaskingService maskingService;   // 全站#14 预览脱敏
 
-    /** 排除的 Hive 系统库 */
-    private static final Set<String> SYS_DBS = new HashSet<String>(Arrays.asList(
-            "default", "information_schema", "sys"
+    /** 排除的系统库(全站#9 统一黑名单: 含 Doris/MySQL 内部库, LifecycleService 共用) */
+    public static final Set<String> SYS_DBS = new HashSet<String>(Arrays.asList(
+            "default", "information_schema", "sys", "mysql", "__internal_schema", "performance_schema"
     ));
 
     /** 合法标识符(库名/表名)：仅允许字母数字下划线，底层防 SQL 注入 */
@@ -153,23 +154,29 @@ public class DatasourceExploreService {
     // ========== 全表摘要（供搜索/AI搜索/热门 复用） ==========
 
     public List<Map<String, Object>> getAllTablesSummary() throws SQLException {
+        // 全站#7 修根: 原逐库 SHOW TABLES 且注释/行数硬编码空——搜索按描述永不命中、热门全"-"。
+        // 改单条 information_schema.tables 查询(Doris 兼容), 一次拿全注释/行数。
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-        List<String> dbs = getHiveDatabases();
+        StringBuilder notIn = new StringBuilder();
+        for (String s : SYS_DBS) {
+            if (notIn.length() > 0) notIn.append(",");
+            notIn.append("'").append(s).append("'");
+        }
+        String sql = "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_COMMENT, TABLE_ROWS FROM information_schema.tables"
+                + " WHERE TABLE_SCHEMA NOT IN (" + notIn + ") ORDER BY TABLE_SCHEMA, TABLE_NAME";
         try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement()) {
-            for (String db : dbs) {
-                try (ResultSet rs = stmt.executeQuery("SHOW TABLES IN " + db)) {
-                    while (rs.next()) {
-                        String tableName = rs.getString(1);
-                        Map<String, Object> row = new LinkedHashMap<String, Object>();
-                        row.put("TABLE_SCHEMA", db);
-                        row.put("TABLE_NAME", tableName);
-                        row.put("TABLE_COMMENT", "");
-                        row.put("TABLE_ROWS", null);
-                        row.put("col_count", null);
-                        result.add(row);
-                    }
-                }
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<String, Object>();
+                row.put("TABLE_SCHEMA", rs.getString(1));
+                row.put("TABLE_NAME", rs.getString(2));
+                String comment = rs.getString(3);
+                row.put("TABLE_COMMENT", comment == null ? "" : comment.trim());
+                long rows = rs.getLong(4);
+                row.put("TABLE_ROWS", rs.wasNull() ? null : rows);
+                row.put("col_count", null);
+                result.add(row);
             }
         }
         return result;
@@ -202,11 +209,75 @@ public class DatasourceExploreService {
                 }
                 rows.add(row);
             }
+            applyPreviewMasks(db, table, headers, rows);
             Map<String, Object> result = new HashMap<String, Object>();
             result.put("headers", headers);
             result.put("rows", rows);
             result.put("rowCount", rows.size());
             return result;
+        }
+    }
+
+    /**
+     * 全站#14: 预览结果按脱敏策略打码(与 SqlMaskRewriter 的 SQL 语义对齐)。
+     * 策略装配失败时 fail-closed 中止预览, 宁可不可用不可泄露。
+     * profile 仅输出统计(null率/distinct), 无值泄露, 不需要接入。
+     */
+    private void applyPreviewMasks(String db, String table, List<String> headers, List<List<String>> rows) {
+        List<com.datanote.domain.governance.SqlMaskRewriter.ColumnMask> masks;
+        try {
+            masks = maskingService.resolveColumnMasks();
+        } catch (Exception e) {
+            log.error("脱敏策略装配失败, 预览中止(fail-closed)", e);
+            throw new BusinessException("脱敏策略装配失败, 为防泄露已中止预览, 请稍后重试");
+        }
+        if (masks == null || masks.isEmpty()) return;
+        Map<Integer, String> hitFunc = new HashMap<Integer, String>();
+        for (com.datanote.domain.governance.SqlMaskRewriter.ColumnMask m : masks) {
+            if (!db.equalsIgnoreCase(m.getDb()) || !table.equalsIgnoreCase(m.getTable())) continue;
+            for (int i = 0; i < headers.size(); i++) {
+                String h = headers.get(i);
+                if (h != null && h.equalsIgnoreCase(m.getColumn())) hitFunc.put(i, m.getFunc());
+            }
+        }
+        if (hitFunc.isEmpty()) return;
+        for (List<String> row : rows) {
+            for (Map.Entry<Integer, String> en : hitFunc.entrySet()) {
+                int idx = en.getKey();
+                if (idx < row.size()) row.set(idx, maskCell(row.get(idx), en.getValue()));
+            }
+        }
+    }
+
+    /** 值级脱敏, 函数语义与 SqlMaskRewriter.buildMaskExpr 一致; "NULL" 字面量(预览空值占位)原样保留。 */
+    static String maskCell(String v, String func) {
+        if (v == null || "NULL".equals(v)) return v;
+        String f = func == null ? "MASK" : func.trim().toUpperCase();
+        switch (f) {
+            case "HASH":
+                try {
+                    java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+                    StringBuilder sb = new StringBuilder();
+                    for (byte b : md.digest(v.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                        sb.append(String.format("%02x", b));
+                    }
+                    return sb.toString();
+                } catch (Exception e) {
+                    return "***";
+                }
+            case "REPLACE":
+                return "***";
+            case "RANGE":
+                try {
+                    long lo = (long) Math.floor(Double.parseDouble(v) / 10) * 10;
+                    return lo + "-" + (lo + 9);
+                } catch (NumberFormatException e) {
+                    return "***";
+                }
+            case "MASK":
+            default:
+                if (v.length() <= 7) return "***";
+                return v.substring(0, 3) + "****" + v.substring(v.length() - 4);
         }
     }
 

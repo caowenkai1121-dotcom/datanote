@@ -22,6 +22,10 @@ public class ProjectActivityService {
         int n = Math.min(Math.max(limit, 1), 200);
         return auditMapper.selectList(new LambdaQueryWrapper<DnAuditLog>()
                 .and(w -> w.eq(DnAuditLog::getPath, base).or().likeRight(DnAuditLog::getPath, base + "/"))
+                // N6 降噪: 访问/收藏/置顶属高频低信息事件, 不进活动流(热力图同源受益)
+                .notLike(DnAuditLog::getPath, "/visit")
+                .notLike(DnAuditLog::getPath, "/favorite")
+                .notLike(DnAuditLog::getPath, "/pin")
                 .orderByDesc(DnAuditLog::getId)
                 .last("LIMIT " + n));
     }

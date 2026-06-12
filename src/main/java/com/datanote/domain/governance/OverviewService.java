@@ -33,6 +33,7 @@ public class OverviewService {
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnQualityRunMapper qualityRunMapper;
     private final DnGovernanceIssueMapper issueMapper;
+    private final QualityService qualityService;
 
     // ========== 纯函数：近期通过率（仅 SUCCESS 且 passRate 非空，均值 *100，保留 1 位） ==========
 
@@ -140,18 +141,16 @@ public class OverviewService {
         return a;
     }
 
-    /** 质量：近期通过率(近 50 次 SUCCESS) + 近 24h 运行数 */
+    /** 质量：整体质量分(QualityService.computeScore 统一口径, 与质量页/首页同数) + 近 24h 运行数 */
     private Map<String, Object> quality() {
         Map<String, Object> q = new LinkedHashMap<>();
         double recentPassRate = 0.0;
         long runs24h = 0;
         try {
-            QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
-            qw.eq("run_status", "success").isNotNull("pass_rate") // 落库小写 success
-                    .orderByDesc("finished_at").last("LIMIT 50");
-            recentPassRate = recentPassRate(qualityRunMapper.selectList(qw));
+            Object s = qualityService.computeScore().get("score");
+            if (s instanceof Number) recentPassRate = ((Number) s).doubleValue();
         } catch (Exception e) {
-            log.warn("总览近期通过率取数失败: {}", e.getMessage());
+            log.warn("总览整体质量分取数失败: {}", e.getMessage());
         }
         try {
             QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();

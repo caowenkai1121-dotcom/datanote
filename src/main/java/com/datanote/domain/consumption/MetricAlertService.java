@@ -27,6 +27,7 @@ public class MetricAlertService {
     private final DnMetricAlertRuleMapper ruleMapper;
     private final DnGovernanceIssueMapper issueMapper;
     private final IssueService issueService;
+    private final com.datanote.platform.notify.NotificationService notificationService;   // IV-1 旁路通知(fail-safe)
 
     static final String ISSUE_TYPE = "METRIC";
 
@@ -50,11 +51,12 @@ public class MetricAlertService {
             List<DnMetricAlertRule> rules = ruleMapper.selectList(
                     new QueryWrapper<DnMetricAlertRule>().eq("metric_id", metricId).eq("enabled", 1));
             if (rules == null || rules.isEmpty()) return; // 空安全：无启用规则直接返回
+            DnMetricAlertRule worst = null;   // 越界规则中级别最重的一条(指标级去重: 多规则合并一单)
             for (DnMetricAlertRule r : rules) {
                 if (r == null) continue;
                 try {
                     if (isBreach(r.getOp(), value, r.getThresholdMin(), r.getThresholdMax())) {
-                        raiseIssue(metric, r, value);
+                        if (worst == null || severityRank(r.getSeverity()) > severityRank(worst.getSeverity())) worst = r;
                     }
                 } catch (Exception e) {
                     // 单条规则失败不拖累其余规则，记录上下文后继续
@@ -62,6 +64,8 @@ public class MetricAlertService {
                             metricId, r.getId(), e.getMessage());
                 }
             }
+            if (worst != null) raiseIssue(metric, worst, value);
+            else closeRecovered(metric, value);   // 全部启用规则均未越界 → 指标已恢复, 自动关 OPEN 单
         } catch (Exception e) {
             log.warn("指标预警判定失败(不影响计算) metricId={}: {}", metricId, e.getMessage());
         }
@@ -69,12 +73,9 @@ public class MetricAlertService {
 
     private void raiseIssue(DnMetric m, DnMetricAlertRule r, BigDecimal value) {
         if (m == null || r == null || value == null) return; // 空安全:理论不达,防御性兜底
-        // 去重键依赖 ruleId，为空则无法稳定去重(会与其它 null-id 规则碰撞)，跳过建单
-        if (r.getId() == null) {
-            log.warn("指标预警跳过建单：ruleId 为空，无法生成稳定去重键 metricId={}", m.getId());
-            return;
-        }
-        String objectRef = "metric:" + r.getId();
+        // objectRef 用指标ID(对齐 gov-health 手工建单 metric:{metricId} 全局约定, 下钻可达);
+        // 去重粒度同步为指标级: 同指标多规则越界合并为一单, 防刷单
+        String objectRef = "metric:" + m.getId();
         String valStr = value.toPlainString();
         // 指标名优先取 metricName，缺失退化到 metricCode，均空则占位，避免标题出现 "null"
         String metricLabel = notBlank(m.getMetricName()) ? m.getMetricName()
@@ -84,14 +85,23 @@ public class MetricAlertService {
         String sev = normalizeSeverity(r.getSeverity());
         String desc = "指标 " + (m.getMetricCode() == null ? ("#" + m.getId()) : m.getMetricCode())
                 + " 触发预警规则 #" + r.getId() + "，当前值 " + valStr;
-        // 去重:同规则未关闭工单存在则刷新(并发下取最近一条更新)
+        // 去重: 同指标存量单(含已闭环)取最近一条
         DnGovernanceIssue existing = issueMapper.selectOne(new QueryWrapper<DnGovernanceIssue>()
-                .eq("issue_type", ISSUE_TYPE).eq("object_ref", objectRef).ne("status", "CLOSED")
+                .eq("issue_type", ISSUE_TYPE).eq("object_ref", objectRef)
                 .orderByDesc("updated_at").last("LIMIT 1"));
-        if (existing != null) {
-            existing.setTitle(title); existing.setSeverity(sev); existing.setUpdatedAt(LocalDateTime.now());
-            existing.setDescription(desc);
-            issueMapper.updateById(existing);
+        if (existing != null && !"CLOSED".equals(existing.getStatus())) {
+            String st = existing.getStatus();
+            String newDesc = desc;
+            if ("RESOLVED".equals(st) || "VERIFIED".equals(st)) {
+                // 再次越界: 已解决/已验证的单重开(状态机合法路径 →FIXING→OPEN), 不另建新单防单量膨胀
+                reopen(existing.getId(), st);
+                newDesc = trunc("[再次越界] " + desc, 500);
+            }
+            // 只更内容字段, 不整对象回写(防旧 status 覆盖 transition 结果)
+            issueMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnGovernanceIssue>()
+                    .eq("id", existing.getId())
+                    .set("title", title).set("severity", sev).set("description", newDesc)
+                    .set("updated_at", LocalDateTime.now()));
             return;
         }
         DnGovernanceIssue issue = new DnGovernanceIssue();
@@ -101,6 +111,42 @@ public class MetricAlertService {
         issue.setCreatedAt(LocalDateTime.now()); issue.setUpdatedAt(LocalDateTime.now());
         issueService.create(issue);
         log.info("指标预警自动建工单 metricId={} ruleId={} value={}", m.getId(), r.getId(), valStr);
+        // IV-1 埋点③: 预警建单通知指标负责人
+        notificationService.notify(m.getOwner(), "METRIC_ALERT", title, "govissue", issue.getId(), null);
+    }
+
+    /** 指标恢复: 仅自动关 OPEN 单(不动 FIXING/RESOLVED, 尊重人工流程; 对齐质量侧自动关单语义) */
+    private void closeRecovered(DnMetric m, BigDecimal value) {
+        try {
+            DnGovernanceIssue open = issueMapper.selectOne(new QueryWrapper<DnGovernanceIssue>()
+                    .eq("issue_type", ISSUE_TYPE).eq("object_ref", "metric:" + m.getId())
+                    .eq("status", "OPEN").orderByDesc("updated_at").last("LIMIT 1"));
+            if (open == null) return;
+            issueService.transition(open.getId(), "CLOSED", "metric-alert");
+            // 只补备注, 不整对象回写(旧对象 status=OPEN 会覆盖掉刚置的 CLOSED)
+            issueMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnGovernanceIssue>()
+                    .eq("id", open.getId())
+                    .set("description", trunc("[自动关单] 指标已恢复, 当前值 " + value.toPlainString()
+                            + (open.getDescription() == null ? "" : "\n" + open.getDescription()), 500)));
+            log.info("指标恢复自动关单 metricId={} issueId={}", m.getId(), open.getId());
+        } catch (Exception e) {
+            log.warn("指标恢复自动关单失败 metricId={}: {}", m.getId(), e.getMessage());
+        }
+    }
+
+    /** 已闭环单重开: 走状态机合法两跳 RESOLVED/VERIFIED→FIXING→OPEN */
+    private void reopen(Long issueId, String fromStatus) {
+        try {
+            issueService.transition(issueId, "FIXING", "metric-alert");
+            issueService.transition(issueId, "OPEN", "metric-alert");
+        } catch (Exception e) {
+            log.warn("指标预警重开工单失败 issueId={} from={}: {}", issueId, fromStatus, e.getMessage());
+        }
+    }
+
+    static int severityRank(String s) {
+        String u = normalizeSeverity(s);
+        return "HIGH".equals(u) ? 3 : "MEDIUM".equals(u) ? 2 : 1;
     }
 
     /** 字符串非空白判定(私有小工具) */
