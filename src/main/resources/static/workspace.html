@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u48">
-<link rel="stylesheet" href="css/gov-modern.css?v=u48">
-<link rel="stylesheet" href="css/redesign.css?v=u48">
-<link rel="stylesheet" href="css/dn-design.css?v=u48">
+<link rel="stylesheet" href="css/app.css?v=u49">
+<link rel="stylesheet" href="css/gov-modern.css?v=u49">
+<link rel="stylesheet" href="css/redesign.css?v=u49">
+<link rel="stylesheet" href="css/dn-design.css?v=u49">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u48"></script>
-<script src="js/gov-assets.js?v=u48"></script>
-<script src="js/gov-lineage.js?v=u48"></script>
-<script src="js/gov-quality.js?v=u48"></script>
-<script src="js/gov-standard.js?v=u48"></script>
-<script src="js/gov-classification.js?v=u48"></script>
-<script src="js/gov-security.js?v=u48"></script>
-<script src="js/gov-health.js?v=u48"></script>
-<script src="js/gov-audit.js?v=u48"></script>
-<script src="js/gov-overview.js?v=u48"></script>
-<script src="js/gov-subject.js?v=u48"></script>
-<script src="js/gov-consumption.js?v=u48"></script>
-<script src="js/gov-govmap.js?v=u48"></script>
-<script src="js/project.js?v=u48"></script>
-<script src="js/home-dashboard.js?v=u48"></script>
-<script src="js/mdm.js?v=u48"></script>
-<script src="js/mdm-ingest.js?v=u48"></script>
-<script src="js/mdm-survivorship.js?v=u48"></script>
-<script src="js/mdm-approval.js?v=u48"></script>
-<script src="js/mdm-refdata.js?v=u48"></script>
-<script src="js/mdm-quality.js?v=u48"></script>
-<script src="js/mdm-pubsub.js?v=u48"></script>
-<script src="js/mdm-hierarchy.js?v=u48"></script>
-<script src="js/ai-agent.js?v=u48"></script>
+<script src="js/dn-common.js?v=u49"></script>
+<script src="js/gov-assets.js?v=u49"></script>
+<script src="js/gov-lineage.js?v=u49"></script>
+<script src="js/gov-quality.js?v=u49"></script>
+<script src="js/gov-standard.js?v=u49"></script>
+<script src="js/gov-classification.js?v=u49"></script>
+<script src="js/gov-security.js?v=u49"></script>
+<script src="js/gov-health.js?v=u49"></script>
+<script src="js/gov-audit.js?v=u49"></script>
+<script src="js/gov-overview.js?v=u49"></script>
+<script src="js/gov-subject.js?v=u49"></script>
+<script src="js/gov-consumption.js?v=u49"></script>
+<script src="js/gov-govmap.js?v=u49"></script>
+<script src="js/project.js?v=u49"></script>
+<script src="js/home-dashboard.js?v=u49"></script>
+<script src="js/mdm.js?v=u49"></script>
+<script src="js/mdm-ingest.js?v=u49"></script>
+<script src="js/mdm-survivorship.js?v=u49"></script>
+<script src="js/mdm-approval.js?v=u49"></script>
+<script src="js/mdm-refdata.js?v=u49"></script>
+<script src="js/mdm-quality.js?v=u49"></script>
+<script src="js/mdm-pubsub.js?v=u49"></script>
+<script src="js/mdm-hierarchy.js?v=u49"></script>
+<script src="js/ai-agent.js?v=u49"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -10151,6 +10151,7 @@ window.umRenderUsers = function() {
       + '<td style="white-space:nowrap;">' + lastLogin + '</td>'
       + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<a href="#" onclick="umViewUserPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
       + '<a href="#" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
       + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:var(--primary);margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
       + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
@@ -10196,7 +10197,7 @@ window.umSaveUser = function(id) {
 };
 window.umResetPwd = function(id) {
   var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
-  var p = prompt('为用户 [' + u.username + '] 设置新密码：', '');
+  var p = prompt('为用户 [' + u.username + '] 设置新密码（≥8位，含字母/数字/符号至少两类）：', '');
   if (p == null) return;
   if (!p.trim()) { showToast('密码不能为空', 'error'); return; }
   api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p }) })
@@ -10220,11 +10221,13 @@ window.umDeleteUser = function(id) {
 window.umRenderRoles = function() {
   var box = document.getElementById('umRoleBox'); if (!box) return;
   if (!_umRoles.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无角色，点击「+ 新建角色」</div>'; return; }
-  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>角色编码</th><th>名称</th><th>描述</th><th>权限点</th><th style="width:200px;">操作</th></tr></thead><tbody>';
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>角色编码</th><th>名称</th><th>使用</th><th>描述</th><th>权限点</th><th style="width:200px;">操作</th></tr></thead><tbody>';
   _umRoles.forEach(function(r) {
     var perms = (r.perms || []);
     var permChips = perms.length ? perms.map(function(p) { return '<span style="display:inline-block;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--radius-lg);margin:1px;background:' + (p === '*' ? 'rgba(47,158,68,.12);color:var(--success)' : 'var(--bg-hover);color:var(--text-regular)') + ';">' + escapeHtml(p === '*' ? '全部权限(*)' : p) + '</span>'; }).join('') : '<span style="color:var(--text-muted);">-</span>';
-    h += '<tr><td style="font-family:monospace;">' + escapeHtml(r.roleCode) + '</td><td><b>' + escapeHtml(r.roleName || '-') + '</b></td><td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.description || '-') + '</td><td>' + permChips + '</td>'
+    var uc = r.userCount || 0;
+    var ucBadge = uc > 0 ? '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);background:rgba(var(--primary-rgb),.1);color:var(--primary);">' + uc + ' 人</span>' : '<span style="color:var(--text-faint);">未使用</span>';
+    h += '<tr><td style="font-family:monospace;">' + escapeHtml(r.roleCode) + '</td><td><b>' + escapeHtml(r.roleName || '-') + '</b></td><td>' + ucBadge + '</td><td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.description || '-') + '</td><td>' + permChips + '</td>'
       + '<td><a href="#" onclick="umRoleModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umPermModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
       + '<a href="#" onclick="umDeleteRole(' + r.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
@@ -10300,10 +10303,44 @@ window.umSavePerms = function(id) {
   else perms = Array.prototype.slice.call(document.querySelectorAll('#umfPermTree .umf-perm:checked')).map(function(c) { return c.value; });
   apiPost('/api/rbac/roles/' + id + '/perms', { perms: perms }).then(function(res) { if (res && res.code === 0) { showToast('权限已保存', 'success'); projCloseModalBox(); loadUserMgmt(); } else showToast((res && res.msg) || '保存失败', 'error'); }).catch(function() { showToast('保存失败', 'error'); });
 };
+// 查看用户的有效权限(跨角色去重后, 按 PermCatalog 模块分组只读展示) —— 排障/审查用
+window.umViewUserPerms = function(id, username) {
+  Promise.all([api('/api/rbac/users/' + id + '/perms'), api('/api/rbac/perms/catalog')]).then(function(rs) {
+    var perms = (rs[0] && rs[0].code === 0 && rs[0].data) || [];
+    var groups = (rs[1] && rs[1].code === 0 && rs[1].data) || [];
+    var has = {}; perms.forEach(function(p) { has[p] = true; });
+    var hasAll = has['*'];
+    var h;
+    if (hasAll) {
+      h = '<div style="min-width:420px;"><div class="gov-pill is-ok" style="margin-bottom:8px;">超级管理员（* 全部权限）</div>'
+        + '<div style="font-size:13px;color:var(--text-muted);">该用户拥有全站所有权限点，无需逐项配置。</div></div>';
+    } else if (!perms.length) {
+      h = '<div style="min-width:420px;padding:12px;text-align:center;color:var(--text-muted);">该用户未分配任何权限（仅可访问登录后的公共页面）。</div>';
+    } else {
+      var seen = {};
+      var blocks = groups.map(function(g) {
+        var items = (g.perms || []).filter(function(p) { return has[p.code]; });
+        items.forEach(function(p) { seen[p.code] = true; });
+        if (!items.length) return '';
+        var chips = items.map(function(p) { return '<span style="display:inline-block;font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);margin:2px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(p.name) + ' <code style="color:var(--text-faint);">' + escapeHtml(p.code) + '</code></span>'; }).join('');
+        return '<div style="margin-bottom:10px;"><div style="font-weight:600;font-size:13px;margin-bottom:3px;">' + escapeHtml(g.moduleName) + '</div><div>' + chips + '</div></div>';
+      }).join('');
+      var extra = perms.filter(function(p) { return p !== '*' && !seen[p]; });
+      if (extra.length) {
+        blocks += '<div style="margin-bottom:10px;"><div style="font-weight:600;font-size:13px;margin-bottom:3px;color:var(--text-muted);">其他</div><div>'
+          + extra.map(function(p) { return '<span style="display:inline-block;font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);margin:2px;background:var(--bg-hover);"><code>' + escapeHtml(p) + '</code></span>'; }).join('') + '</div></div>';
+      }
+      h = '<div style="min-width:460px;max-width:600px;max-height:440px;overflow-y:auto;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">共 ' + perms.length + ' 个有效权限点（已跨角色去重）</div>' + blocks + '</div>';
+    }
+    projShowModalBox('用户有效权限 · ' + (username || ('#' + id)), h);
+  }).catch(function() { showToast('权限加载失败', 'error'); });
+};
 window.umDeleteRole = function(id) {
   var r = _umRoles.filter(function(x) { return x.id === id; })[0]; if (!r) return;
   if (r.roleCode === 'ADMIN') { showToast('内置 ADMIN 角色不可删除', 'error'); return; }
-  DN.confirm('确认删除角色 [' + (r.roleName || r.roleCode) + ']？将解除其用户绑定与权限。', { title: '删除确认', danger: true }).then(function (ok) {
+  var uc = r.userCount || 0;
+  var warn = uc > 0 ? '该角色当前绑定 ' + uc + ' 个用户，删除后这些用户将失去对应权限。' : '该角色暂未被任何用户使用。';
+  DN.confirm('确认删除角色 [' + (r.roleName || r.roleCode) + ']？' + warn, { title: '删除确认', danger: true }).then(function (ok) {
     if (!ok) return;
     api('/api/rbac/roles/' + id, { method: 'DELETE' }).then(function(res) { if (res && res.code === 0) { showToast('已删除', 'success'); loadUserMgmt(); } else showToast((res && res.msg) || '删除失败', 'error'); }).catch(function() { showToast('删除失败', 'error'); });
   });
