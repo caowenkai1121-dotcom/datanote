@@ -5,6 +5,12 @@
 
 server:
   port: 8099
+  servlet:
+    session:
+      timeout: 8h               # 会话空闲超时(防长期挂起会话被盗用)
+      cookie:
+        http-only: true         # JS 不可读会话 Cookie(防 XSS 窃取)
+        same-site: lax          # 跨站请求不带会话 Cookie(CSRF 兜底)
 
 # -------------------- MySQL 元数据库 --------------------
 spring:

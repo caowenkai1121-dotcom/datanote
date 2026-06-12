@@ -134,7 +134,9 @@ public class AuthController {
             // dn_user 表未建 / 查询异常时降级，避免登录/状态接口 500
             perms = new HashSet<>();
         }
-        if (perms.isEmpty()) {
+        // 内存兜底 admin('*') 仅对"不在 dn_user 表中的同名引导账号"生效;
+        // dn_user 中真实存在但无角色的同名账号不再白拿超管(原逻辑的提权漏洞)。
+        if (perms.isEmpty() && !rbacService.existsInDb(authentication.getName())) {
             boolean isAdmin = authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));

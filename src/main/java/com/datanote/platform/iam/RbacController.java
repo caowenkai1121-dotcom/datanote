@@ -68,7 +68,8 @@ public class RbacController {
         } catch (Exception e) {
             perms = new java.util.HashSet<>();
         }
-        if (perms.isEmpty()) {
+        // 内存兜底 admin('*') 仅对不在 dn_user 表的引导账号生效, 防同名无角色账号白拿超管
+        if (perms.isEmpty() && !rbacService.existsInDb(auth.getName())) {
             boolean isAdmin = auth.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));
@@ -126,21 +127,56 @@ public class RbacController {
     @Operation(summary = "更新用户")
     @PutMapping("/users/{id}")
     public R<DnUser> updateUser(@PathVariable Long id, @RequestBody DnUser user) {
+        // 停用保护: 不可停用自己; 不可停用最后一名启用的超级管理员
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            DnUser self = rbacService.findByUsername(actor());
+            if (self != null && self.getId().equals(id)) {
+                return R.fail(R.CODE_BAD_REQUEST, "不能停用当前登录的自己");
+            }
+            if (rbacService.isSuperAdmin(id) && rbacService.countActiveSuperAdmins() <= 1) {
+                return R.fail(R.CODE_BAD_REQUEST, "不能停用最后一名超级管理员, 系统将无人可管理");
+            }
+        }
         user.setId(id);
         user.setUsername(null); // 用户名不可改
-        return R.ok(rbacService.updateUser(user));
+        DnUser r = rbacService.updateUser(user);
+        if (user.getPassword() != null) {
+            auditService.record(actor(), "PERM_CHANGE", "PUT", "/api/rbac/users/" + id, null, 200, "重置用户#" + id + " 密码");
+        }
+        return R.ok(r);
     }
 
     @Operation(summary = "删除用户")
     @DeleteMapping("/users/{id}")
     public R<String> deleteUser(@PathVariable Long id) {
+        DnUser self = rbacService.findByUsername(actor());
+        if (self != null && self.getId().equals(id)) {
+            return R.fail(R.CODE_BAD_REQUEST, "不能删除当前登录的自己");
+        }
+        if (rbacService.isSuperAdmin(id) && rbacService.countActiveSuperAdmins() <= 1) {
+            return R.fail(R.CODE_BAD_REQUEST, "不能删除最后一名超级管理员");
+        }
         rbacService.deleteUser(id);
+        auditService.record(actor(), "PERM_CHANGE", "DELETE", "/api/rbac/users/" + id, null, 200, "删除用户#" + id);
         return R.ok("删除成功");
     }
 
     @Operation(summary = "给用户分配角色")
     @PostMapping("/users/{id}/roles")
     public R<String> assignRoles(@PathVariable Long id, @RequestBody AssignRolesRequest req) {
+        // 越权自提升防护: 非超管不得把"会带来自己没有的权限点"的角色授予他人
+        DnUser self = rbacService.findByUsername(actor());
+        boolean selfSuper = self != null && rbacService.isSuperAdmin(self.getId());
+        if (!selfSuper && self != null && req.getRoleIds() != null) {
+            java.util.Set<String> myPerms = rbacService.getUserPerms(self.getId());
+            for (Long rid : req.getRoleIds()) {
+                for (String p : rbacService.listRolePerms(rid)) {
+                    if (!RbacService.hasPermission(myPerms, p)) {
+                        return R.fail(R.CODE_FORBIDDEN, "不能授予你本人不具备的权限(" + p + ")");
+                    }
+                }
+            }
+        }
         rbacService.assignRoles(id, req.getRoleIds());
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/" + id + "/roles", null, 200,
                 "为用户#" + id + " 分配角色 " + req.getRoleIds());
@@ -161,9 +197,17 @@ public class RbacController {
             m.put("roleName", r.getRoleName());
             m.put("description", r.getDescription());
             m.put("perms", rbacService.listRolePerms(r.getId()));
+            m.put("userCount", rbacService.roleUserCount(r.getId()));   // 删角色前的影响提示
             result.add(m);
         }
         return R.ok(result);
+    }
+
+    @Operation(summary = "用户的有效权限汇总(跨角色去重, 排障/审查用)")
+    @GetMapping("/users/{id}/perms")
+    public R<List<String>> userEffectivePerms(@PathVariable Long id) {
+        java.util.Set<String> perms = rbacService.getUserPerms(id);
+        return R.ok(new ArrayList<>(perms));
     }
 
     @Operation(summary = "创建角色")

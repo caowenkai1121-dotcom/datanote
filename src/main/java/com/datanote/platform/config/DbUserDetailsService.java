@@ -34,8 +34,9 @@ public class DbUserDetailsService implements org.springframework.security.core.u
         List<String> roleCodes;
         try {
             user = rbacService.findByUsername(username);
-            if (user == null || user.getStatus() == null || user.getStatus() != 1) {
-                throw new UsernameNotFoundException("用户不存在或已停用: " + username);
+            // 用户不存在 → UsernameNotFoundException, 由内存兜底 provider 接管(仅供 dn_user 为空时引导)
+            if (user == null) {
+                throw new UsernameNotFoundException("用户不存在: " + username);
             }
             perms = rbacService.getUserPerms(user.getId());
             roleCodes = rbacService.getUserRoleCodesByUsername(username);
@@ -54,8 +55,13 @@ public class DbUserDetailsService implements org.springframework.security.core.u
             authorities.add(new SimpleGrantedAuthority(perm));
         }
 
+        // 安全关键: DB 中存在但被停用 → 返回 disabled 用户。DaoAuthenticationProvider 会抛
+        // DisabledException(AccountStatusException), ProviderManager 立即终止、不回落到内存兜底 admin,
+        // 从而保证"停用同名账号"真正生效(原来抛 UsernameNotFoundException 会被内存 admin 接管, 停用失效)。
+        boolean enabled = user.getStatus() != null && user.getStatus() == 1;
         return User.withUsername(user.getUsername())
                 .password(user.getPassword())
+                .disabled(!enabled)
                 .authorities(authorities)
                 .build();
     }

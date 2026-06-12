@@ -44,6 +44,29 @@ public class RbacService {
      *  (SecurityConfig→DbUserDetailsService→RbacService→PasswordEncoder)。哈希跨实例兼容。 */
     private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** 用户是否拥有 '*' 超级权限。 */
+    public boolean isSuperAdmin(Long userId) {
+        return userId != null && getUserPerms(userId).contains("*");
+    }
+
+    /** 启用状态且拥有 '*' 超级权限的用户数(最后管理员保护用)。 */
+    public long countActiveSuperAdmins() {
+        long n = 0;
+        for (DnUser u : listUsers()) {
+            if (u.getStatus() != null && u.getStatus() == 1 && isSuperAdmin(u.getId())) n++;
+        }
+        return n;
+    }
+
+    /** 该用户名是否为真实 dn_user 表中的账号(用于区分内存兜底 admin)。 */
+    public boolean existsInDb(String username) {
+        try {
+            return findByUsername(username) != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * 纯函数：判断权限集合是否满足某个权限点。
      * 含 '*' 通配则全通过；含精确匹配则通过；need 为空/null 一律拒绝。
@@ -104,6 +127,7 @@ public class RbacService {
             throw new BusinessException("创建用户失败：用户名不能为空");
         }
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            PasswordPolicy.validate(user.getPassword());   // 强度校验
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         if (user.getStatus() == null) {
@@ -128,6 +152,7 @@ public class RbacService {
             throw new BusinessException("更新用户失败：用户ID不能为空");
         }
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            PasswordPolicy.validate(user.getPassword());   // 管理员重置密码同样走强度校验
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         } else {
             user.setPassword(null); // null 字段 MyBatis-Plus 默认不更新
@@ -150,9 +175,7 @@ public class RbacService {
         if (oldPassword == null || !passwordEncoder.matches(oldPassword, u.getPassword())) {
             throw new BusinessException("原密码不正确");
         }
-        if (newPassword == null || newPassword.length() < 6) {
-            throw new BusinessException("新密码至少 6 位");
-        }
+        PasswordPolicy.validate(newPassword);   // 新密码强度校验(8位+两类字符+非弱口令)
         DnUser up = new DnUser();
         up.setId(u.getId());
         up.setPassword(passwordEncoder.encode(newPassword));
@@ -218,6 +241,13 @@ public class RbacService {
         rpQw.eq("role_id", roleId);
         rolePermMapper.delete(rpQw);
         roleMapper.deleteById(roleId);
+    }
+
+    /** 角色当前绑定的用户数(删角色前的影响提示)。 */
+    public long roleUserCount(Long roleId) {
+        if (roleId == null) return 0;
+        Long n = userRoleMapper.selectCount(new QueryWrapper<DnUserRole>().eq("role_id", roleId));
+        return n == null ? 0 : n;
     }
 
     /**

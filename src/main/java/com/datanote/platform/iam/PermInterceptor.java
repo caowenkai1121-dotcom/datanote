@@ -65,6 +65,10 @@ public class PermInterceptor implements HandlerInterceptor {
             regex("^/api/project/.*/releases/\\d+/approve$", "project:approve"),
             regex("^/api/project/releases/\\d+/approve$", "project:approve"),
             prefix("/api/ai/agent/approval", "assistant:approve"),
+            // 密钥/敏感配置写: AI 模型密钥(embedding/chat key)、连接测试 须 settings:config(原仅 assistant:use 过低)
+            prefix("/api/ai/store/config", "settings:config"),
+            prefix("/api/ai/config", "settings:config"),
+            prefix("/api/ai/test-connection", "settings:config"),
             prefix("/api/scheduler/backfill", "operations:backfill"),
             prefix("/api/baseline", "operations:baseline"),
             regex("^/api/sync-job/\\d+/(run|stop|online|offline)$", "dbsync:run"),
@@ -101,10 +105,15 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/ai", "assistant:use")
     );
 
-    /** 敏感 GET 规则(导出/权限管理数据)。 */
+    /** 敏感 GET 规则(导出/全量代码/权限管理数据)。 */
     private static final List<Rule> SENSITIVE_GET_RULES = Arrays.asList(
             prefix("/api/gov/audit/export", "governance:audit"),
-            regex("^/api/rbac/(users|roles)(/.*)?$", "settings:user")
+            regex("^/api/rbac/(users|roles)(/.*)?$", "settings:user"),
+            // 全脚本含完整 SQL(原 GET 仅要求登录, 任意用户可拉走所有脚本内容)
+            prefix("/api/script/all-with-content", "develop:view"),
+            // 各模块导出(审计已单列): 工单/指标/同步等导出按模块 view 保护
+            prefix("/api/gov/health/issues/export", "governance:view"),
+            prefix("/api/consumption/metric", "metrics:view")
     );
 
     /** 纯函数: 求该请求所需权限点(null=只要求登录)。包级可见便于单测。 */
@@ -142,8 +151,10 @@ public class PermInterceptor implements HandlerInterceptor {
             log.warn("查询用户权限失败, 按空权限处理: {}", username, ex);
             perms = Collections.emptySet();
         }
-        // 内存兜底 admin(不在 dn_user 表): 配置用户名等同超级管理员
-        if (perms.isEmpty() && username != null && username.equals(authProperties.getUsername())) {
+        // 内存兜底 admin(仅当该用户名不在 dn_user 表时): 配置引导账号等同超级管理员;
+        // dn_user 中真实存在但无角色的同名账号不再白拿超管(提权漏洞修复)。
+        if (perms.isEmpty() && username != null && username.equals(authProperties.getUsername())
+                && !rbacService.existsInDb(username)) {
             perms = Collections.singleton("*");
         }
         permCache.put(username, new CacheEntry(perms, now + CACHE_TTL_MS));
