@@ -150,4 +150,24 @@ public class DataModelController {
     public R<String> ddl(@PathVariable Long id) {
         return R.ok(service.generateDdl(id));
     }
+
+    // -------- 版本历史 / 资产落地 --------
+
+    @Operation(summary = "模型版本历史")
+    @GetMapping("/model/{id}/versions")
+    public R<List<com.datanote.domain.datamodel.model.DnModelVersion>> versions(@PathVariable Long id) {
+        return R.ok(service.listVersions(id));
+    }
+
+    @Operation(summary = "查看某版本快照")
+    @GetMapping("/version/{vid}")
+    public R<com.datanote.domain.datamodel.model.DnModelVersion> version(@PathVariable Long vid) {
+        return R.ok(service.getVersion(vid));
+    }
+
+    @Operation(summary = "物理模型落地为数据资产")
+    @PostMapping("/model/{id}/publish-asset")
+    public R<Map<String, Object>> publishAsset(@PathVariable Long id) {
+        return R.ok(service.publishToAsset(id));
+    }
 }

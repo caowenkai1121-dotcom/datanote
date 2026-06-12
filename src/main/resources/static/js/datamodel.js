@@ -153,6 +153,7 @@
       if (m.modelType === 'BIZ') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenLogical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成逻辑</a>';
       if (m.modelType === 'LOGIC') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenPhysical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成物理</a>';
       if (m.modelType === 'PHYS') ops += '<a href="#" onclick="dmShowDdl(' + m.id + ');return false;" style="color:#e8590c;margin-right:8px;">DDL</a>';
+      if (m.modelType === 'PHYS' && m.status === 'PUBLISHED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmPublishAsset(' + m.id + ');return false;" style="color:#1971c2;margin-right:8px;">落地资产</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
       h += '<tr><td style="font-family:monospace;">' + esc(m.modelCode) + '</td><td><b>' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
         + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;">' + esc(subName) + '</td><td>' + st + '</td>'
@@ -222,7 +223,12 @@
         + (m.description ? '<div style="margin-top:4px;">' + esc(m.description) + '</div>' : '') + '</div>'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><b style="font-size:13px;">实体</b>'
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddEntity(' + m.id + ')">+ 实体</button>' : '')
-        + '</div><div id="dmEntityBox"></div>';
+        + '<button class="btn btn-sm" onclick="dmShowER(' + m.id + ')" style="margin-left:auto;">🔗 ER 图</button>'
+        + '<button class="btn btn-sm" onclick="dmShowVersions(' + m.id + ')">🕑 版本历史</button>'
+        + '</div><div id="dmEntityBox"></div>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px;"><b style="font-size:13px;">关系</b>'
+        + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddRelation(' + m.id + ')">+ 关系</button>' : '')
+        + '</div><div id="dmRelBox"></div>';
       var foot = null;
       if (window.DN && DN.drawer) {
         var dr = DN.drawer('模型详情 · ' + esc(m.modelName), body, null);
@@ -249,8 +255,44 @@
         + '</div>'
         + '<table class="dbsync-exec-table" style="width:100%;font-size:12px;"><thead><tr><th>属性</th><th>名称</th><th>类型</th><th>可空</th><th>数据标准</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }).join('');
-    if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
+    // 关系渲染
+    var rbox = document.getElementById('dmRelBox');
+    if (rbox) {
+      var rels = m.relations || [];
+      rbox.innerHTML = rels.length ? rels.map(function (r) {
+        var sn = (m.entities.filter(function (e) { return e.id === r.sourceEntityId; })[0] || {}).entityName || ('#' + r.sourceEntityId);
+        var tn = (m.entities.filter(function (e) { return e.id === r.targetEntityId; })[0] || {}).entityName || ('#' + r.targetEntityId);
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;">' + esc(sn) + ' <span style="color:var(--primary);font-weight:600;">—' + esc(r.relationType) + '→</span> ' + esc(tn) + (r.description ? ' <span style="color:var(--text-muted);">(' + esc(r.description) + ')</span>' : '') + (canEdit ? ' <a href="#" data-perm="datamodel:edit" onclick="dmDelRelation(' + r.id + ',' + m.id + ');return false;" style="color:var(--error);margin-left:auto;">删除</a>' : '') + '</div>';
+      }).join('') : '<div style="color:var(--text-muted);font-size:12px;">暂无关系</div>';
+    }
+    if (window.dnApplyBtnPerms) { dnApplyBtnPerms(box); if (rbox) dnApplyBtnPerms(rbox); }
   }
+  window.dmAddRelation = function (modelId) {
+    api('/api/datamodel/model/' + modelId).then(function (res) {
+      var ents = (res.data && res.data.entities) || [];
+      if (ents.length < 1) { toast('请先创建实体', 'error'); return; }
+      var opts = ents.map(function (e) { return '<option value="' + e.id + '">' + esc(e.entityName) + '</option>'; }).join('');
+      var typeOpts = ['1:1', '1:N', 'M:N'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
+      var lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
+      var h = '<div style="display:flex;flex-direction:column;gap:10px;min-width:340px;">'
+        + '<div><label ' + lab + '>源实体</label><select id="dmrSrc" class="dbsync-form-select" style="width:100%;">' + opts + '</select></div>'
+        + '<div><label ' + lab + '>关系类型</label><select id="dmrType" class="dbsync-form-select" style="width:100%;">' + typeOpts + '</select></div>'
+        + '<div><label ' + lab + '>目标实体</label><select id="dmrTgt" class="dbsync-form-select" style="width:100%;">' + opts + '</select></div>'
+        + '<div><label ' + lab + '>说明</label><input id="dmrDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>'
+        + '<div style="text-align:right;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveRelation(' + modelId + ')">保存</button></div></div>';
+      projShowModalBox('新建关系', h);
+    });
+  };
+  window.dmSaveRelation = function (modelId) {
+    var src = parseInt(document.getElementById('dmrSrc').value), tgt = parseInt(document.getElementById('dmrTgt').value);
+    if (src === tgt) { toast('源与目标实体不能相同', 'error'); return; }
+    apiPost('/api/datamodel/relation', { modelId: modelId, sourceEntityId: src, targetEntityId: tgt, relationType: document.getElementById('dmrType').value, description: (document.getElementById('dmrDesc').value || '').trim() }).then(function (res) {
+      if (res && res.code === 0) { toast('关系已保存', 'success'); projCloseModalBox(); dmReopenModel(modelId); } else toast((res && res.msg) || '保存失败', 'error');
+    }).catch(function () { toast('保存失败', 'error'); });
+  };
+  window.dmDelRelation = function (relId, modelId) {
+    api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); });
+  };
   window.dmAddEntity = function (modelId) {
     var fi = 'class="dbsync-form-input" style="width:100%;"', lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
     var h = '<div style="display:flex;flex-direction:column;gap:10px;min-width:340px;">'
@@ -438,5 +480,78 @@
       for (var i = 0; i < ts.options.length; i++) { if (ts.options[i].value === dt || dt.indexOf(ts.options[i].value) >= 0) { ts.value = ts.options[i].value; break; } }
     }
     if (el.length) { var le = tr.querySelector('.dmA-len'); if (le) le.value = el.length; }
+  };
+
+  // ---------- 资产落地(物理模型 → 数据地图) ----------
+  window.dmPublishAsset = function (id) {
+    DN.confirm('将该物理模型落地为数据资产？实体/属性将注册到「数据地图」(库 model_<编码>)，可被治理/血缘消费。', { title: '落地数据资产' }).then(function (ok) {
+      if (!ok) return;
+      apiPost('/api/datamodel/model/' + id + '/publish-asset', {}).then(function (res) {
+        if (res && res.code === 0) toast('已落地 ' + res.data.tables + ' 表 / ' + res.data.columns + ' 字段 → 数据地图(' + res.data.database + ')', 'success');
+        else toast((res && res.msg) || '落地失败', 'error');
+      }).catch(function () { toast('落地失败', 'error'); });
+    });
+  };
+
+  // ---------- ER 图(实体-属性-关系可视化) ----------
+  window.dmShowER = function (modelId) {
+    api('/api/datamodel/model/' + modelId).then(function (res) {
+      var m = res.data; var ents = m.entities || [], rels = m.relations || [];
+      if (!ents.length) { toast('该模型暂无实体', 'error'); return; }
+      var boxes = ents.map(function (e) {
+        var attrs = (e.attributes || []).map(function (a) {
+          return '<div style="padding:2px 8px;font-size:11px;border-top:1px solid var(--border);white-space:nowrap;">' + (a.isPk == 1 ? '🔑 ' : '') + esc(a.attrCode) + ' <span style="color:var(--text-faint);">' + esc(a.dataType || '') + '</span></div>';
+        }).join('');
+        return '<div class="dm-er-ent" data-eid="' + e.id + '" style="display:inline-block;vertical-align:top;border:1.5px solid var(--primary);border-radius:6px;margin:14px;min-width:148px;background:var(--bg-card);box-shadow:var(--shadow-sm);position:relative;z-index:2;">'
+          + '<div style="background:var(--primary);color:#fff;padding:4px 10px;font-weight:600;font-size:12px;border-radius:4px 4px 0 0;">' + esc(e.entityName) + '</div>' + attrs + '</div>';
+      }).join('');
+      var relList = rels.length ? '<div style="margin-top:12px;font-size:12px;"><b>关系</b>' + rels.map(function (r) {
+        var sn = (ents.filter(function (e) { return e.id === r.sourceEntityId; })[0] || {}).entityName || ('#' + r.sourceEntityId);
+        var tn = (ents.filter(function (e) { return e.id === r.targetEntityId; })[0] || {}).entityName || ('#' + r.targetEntityId);
+        return '<div style="padding:2px 0;">' + esc(sn) + ' <span style="color:var(--primary);font-weight:600;">—' + esc(r.relationType) + '→</span> ' + esc(tn) + (r.description ? ' <span style="color:var(--text-muted);">(' + esc(r.description) + ')</span>' : '') + '</div>';
+      }).join('') + '</div>' : '<div style="margin-top:10px;color:var(--text-muted);font-size:12px;">暂无关系</div>';
+      var h = '<div style="min-width:580px;max-width:90vw;max-height:62vh;overflow:auto;"><div id="dmErCanvas" style="position:relative;"><svg id="dmErSvg" style="position:absolute;top:0;left:0;z-index:1;pointer-events:none;overflow:visible;"></svg>' + boxes + '</div>' + relList + '</div>';
+      projShowModalBox('ER 图 · ' + esc(m.modelName), h);
+      setTimeout(function () { dmDrawErLines(rels); }, 90);
+    });
+  };
+  function dmDrawErLines(rels) {
+    var canvas = document.getElementById('dmErCanvas'), svg = document.getElementById('dmErSvg');
+    if (!canvas || !svg || !rels || !rels.length) return;
+    var cr = canvas.getBoundingClientRect();
+    svg.setAttribute('width', canvas.scrollWidth); svg.setAttribute('height', canvas.scrollHeight);
+    function box(eid) { return canvas.querySelector('.dm-er-ent[data-eid="' + eid + '"]'); }
+    var lines = '';
+    rels.forEach(function (r) {
+      var s = box(r.sourceEntityId), t = box(r.targetEntityId); if (!s || !t) return;
+      var sr = s.getBoundingClientRect(), tr = t.getBoundingClientRect();
+      var x1 = sr.left + sr.width / 2 - cr.left, y1 = sr.top + sr.height / 2 - cr.top;
+      var x2 = tr.left + tr.width / 2 - cr.left, y2 = tr.top + tr.height / 2 - cr.top;
+      lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#4f6cf7" stroke-width="1.5" stroke-dasharray="4 3"/>';
+      lines += '<circle cx="' + x2 + '" cy="' + y2 + '" r="3.5" fill="#4f6cf7"/>';
+    });
+    svg.innerHTML = lines;
+  }
+
+  // ---------- 版本历史 ----------
+  window.dmShowVersions = function (modelId) {
+    api('/api/datamodel/model/' + modelId + '/versions').then(function (res) {
+      var vers = (res && res.code === 0 && res.data) || [];
+      var rows = vers.map(function (v) {
+        return '<tr><td><b>v' + v.version + '</b></td><td style="font-size:12px;">' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(v.publishedBy || '') + '</td><td style="font-size:12px;">' + esc(v.changeSummary || '-') + '</td><td><a href="#" onclick="dmViewVersion(' + v.id + ');return false;" style="color:var(--primary);">查看快照</a></td></tr>';
+      }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:18px;">暂无发布版本(模型审批通过后产生版本快照)</td></tr>';
+      var h = '<div style="min-width:540px;max-height:440px;overflow:auto;"><table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>版本</th><th>发布时间</th><th>发布人</th><th>说明</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      projShowModalBox('版本历史', h);
+    });
+  };
+  window.dmViewVersion = function (vid) {
+    api('/api/datamodel/version/' + vid).then(function (res) {
+      var v = res.data; var snap = {}; try { snap = JSON.parse(v.snapshotJson || '{}'); } catch (e) {}
+      var ents = (snap.entities || []).map(function (e) {
+        return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b>' + esc(e.entityName) + '</b> <span style="font-size:11px;color:var(--text-muted);">L' + (e.level || 4) + '</span><div style="font-size:12px;margin-top:4px;">' + ((e.attributes || []).map(function (a) { return (a.isPk == 1 ? '🔑' : '') + esc(a.attrCode) + ':' + esc(a.dataType || ''); }).join(' , ') || '无属性') + '</div></div>';
+      }).join('') || '<div style="color:var(--text-muted);">无实体</div>';
+      var h = '<div style="min-width:480px;max-height:440px;overflow:auto;"><div style="font-size:13px;margin-bottom:10px;"><b>v' + v.version + '</b> · ' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + ' · 发布人 ' + esc(v.publishedBy || '') + (v.changeSummary ? '<div style="color:var(--text-muted);margin-top:2px;">' + esc(v.changeSummary) + '</div>' : '') + '</div>' + ents + '</div>';
+      projShowModalBox('版本 v' + v.version + ' 快照', h);
+    });
   };
 })();

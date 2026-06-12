@@ -33,6 +33,7 @@ public class DataModelService {
     private final NotificationService notificationService;
     private final com.datanote.domain.metadata.mapper.DnTableMetaMapper tableMetaMapper;
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;
+    private final DnModelVersionMapper versionMapper;
 
     // ---------------- 模型 ----------------
 
@@ -267,6 +268,17 @@ public class DataModelService {
                 m.setStatus("REJECTED");
             }
             modelMapper.updateById(m);
+            // 发布即存版本快照(可追溯/对比)
+            if (approved) {
+                DnModelVersion ver = new DnModelVersion();
+                ver.setModelId(m.getId());
+                ver.setVersion(m.getVersion());
+                ver.setSnapshotJson(JSON.toJSONString(getModelDetail(m.getId())));
+                ver.setChangeSummary(c.getReason());
+                ver.setPublishedBy(reviewer);
+                ver.setPublishedAt(LocalDateTime.now());
+                versionMapper.insert(ver);
+            }
         }
         // 通知申请人
         try {
@@ -489,6 +501,81 @@ public class DataModelService {
             sb.append(";\n\n");
         }
         return sb.toString();
+    }
+
+    // ---------------- 版本历史 ----------------
+
+    public List<DnModelVersion> listVersions(Long modelId) {
+        return versionMapper.selectList(
+                new QueryWrapper<DnModelVersion>().eq("model_id", modelId).orderByDesc("version", "id"));
+    }
+
+    public DnModelVersion getVersion(Long versionId) {
+        return versionMapper.selectById(versionId);
+    }
+
+    // ---------------- 资产落地(物理模型 → 数据地图元数据) ----------------
+
+    /** 已发布物理模型落地为数据资产: 实体→表元数据, 属性→字段元数据, 注册到数据地图(可被治理/血缘消费)。 */
+    @Transactional(rollbackFor = Exception.class)
+    public java.util.Map<String, Object> publishToAsset(Long physModelId) {
+        DnModel m = modelMapper.selectById(physModelId);
+        if (m == null) throw new BusinessException("模型不存在");
+        if (!"PHYS".equals(m.getModelType())) throw new BusinessException("仅物理模型可落地为数据资产");
+        if (!"PUBLISHED".equals(m.getStatus())) throw new BusinessException("请先提交审批并发布该模型后再落地资产");
+
+        String db = "model_" + m.getModelCode();
+        LocalDateTime now = LocalDateTime.now();
+        List<DnModelEntity> entities = entityMapper.selectList(
+                new QueryWrapper<DnModelEntity>().eq("model_id", physModelId).orderByAsc("sort_order", "id"));
+        int tables = 0, cols = 0;
+        for (DnModelEntity e : entities) {
+            String tableName = (e.getPhysicalTable() != null && !e.getPhysicalTable().isEmpty())
+                    ? e.getPhysicalTable() : toSnake(e.getEntityCode());
+            com.datanote.domain.metadata.model.DnTableMeta tbl = tableMetaMapper.selectOne(
+                    new QueryWrapper<com.datanote.domain.metadata.model.DnTableMeta>()
+                            .eq("database_name", db).eq("table_name", tableName).last("limit 1"));
+            boolean isNew = (tbl == null);
+            if (isNew) {
+                tbl = new com.datanote.domain.metadata.model.DnTableMeta();
+                tbl.setDatasourceId(0L);
+                tbl.setDatabaseName(db);
+                tbl.setTableName(tableName);
+                tbl.setCreatedAt(now);
+            }
+            tbl.setTableComment(e.getEntityName());
+            tbl.setSubjectId(m.getSubjectId());
+            tbl.setOwner(m.getOwner());
+            tbl.setDbType("MODEL");
+            tbl.setTableType("MODEL");
+            tbl.setUpdatedAt(now);
+            if (isNew) tableMetaMapper.insert(tbl); else tableMetaMapper.updateById(tbl);
+            tables++;
+            columnMetaMapper.delete(new QueryWrapper<com.datanote.domain.metadata.model.DnColumnMeta>().eq("table_meta_id", tbl.getId()));
+            List<DnModelAttribute> attrs = attrMapper.selectList(
+                    new QueryWrapper<DnModelAttribute>().eq("entity_id", e.getId()).orderByAsc("sort_order", "id"));
+            int ord = 0;
+            for (DnModelAttribute a : attrs) {
+                com.datanote.domain.metadata.model.DnColumnMeta col = new com.datanote.domain.metadata.model.DnColumnMeta();
+                col.setTableMetaId(tbl.getId());
+                col.setColumnName((a.getPhysicalColumn() != null && !a.getPhysicalColumn().isEmpty()) ? a.getPhysicalColumn() : toSnake(a.getAttrCode()));
+                col.setBusinessName(a.getAttrName());
+                col.setBusinessDesc(a.getBizDefinition());
+                col.setDataType(sqlType(a.getDataType(), a.getDataLength()));
+                col.setColumnKey(a.getIsPk() != null && a.getIsPk() == 1 ? "PRI" : "");
+                col.setIsNullable(a.getIsNullable() != null && a.getIsNullable() == 0 ? "NO" : "YES");
+                col.setOrdinal(ord++);
+                col.setCreatedAt(now);
+                col.setUpdatedAt(now);
+                columnMetaMapper.insert(col);
+                cols++;
+            }
+        }
+        java.util.Map<String, Object> r = new java.util.HashMap<>();
+        r.put("database", db);
+        r.put("tables", tables);
+        r.put("columns", cols);
+        return r;
     }
 
     // ---------------- 规范 / 工具 ----------------
