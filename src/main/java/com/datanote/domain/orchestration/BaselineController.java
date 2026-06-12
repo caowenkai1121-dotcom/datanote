@@ -71,7 +71,7 @@ public class BaselineController {
         }
         baseline.setPriority(body.get("priority") != null ? ((Number) body.get("priority")).intValue() : 1);
         baseline.setStatus(DnBaseline.STATUS_ENABLED);
-        baseline.setCreatedBy("default");
+        baseline.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 多用户: BASELINE_BROKEN 通知据此找接收人
         baseline.setCreatedAt(LocalDateTime.now());
         baseline.setUpdatedAt(LocalDateTime.now());
         baselineMapper.insert(baseline);

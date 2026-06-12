@@ -139,6 +139,10 @@ public class ScriptService {
         } else {
             script.setCreatedAt(LocalDateTime.now());
             script.setUpdatedAt(LocalDateTime.now());
+            // 多用户: 记录创建人(调度失败通知 SCHED_FAILED 据此找接收人)
+            if (script.getCreatedBy() == null || script.getCreatedBy().trim().isEmpty()) {
+                script.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
+            }
             // 新建脚本默认：每天凌晨2点执行，失败告警，重试1次
             if (script.getScheduleCron() == null) script.setScheduleCron("0 0 2 * * ?");
             if (script.getWarningType() == null) script.setWarningType("FAILURE");

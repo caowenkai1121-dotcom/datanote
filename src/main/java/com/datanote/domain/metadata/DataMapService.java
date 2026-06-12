@@ -162,7 +162,7 @@ public class DataMapService {
             DnTableFavorite fav = new DnTableFavorite();
             fav.setDatabaseName(db);
             fav.setTableName(table);
-            fav.setCreatedBy("default");
+            fav.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
             fav.setCreatedAt(LocalDateTime.now());
             tableFavoriteMapper.insert(fav);
             return true;
@@ -251,7 +251,7 @@ public class DataMapService {
         DnTableComment comment = new DnTableComment();
         comment.setTableMetaId(tableMetaId);
         comment.setContent(content.trim());
-        comment.setCreatedBy("default");
+        comment.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 多用户: 评论显示真实作者
         comment.setCreatedAt(LocalDateTime.now());
         tableCommentMapper.insert(comment);
         return comment;

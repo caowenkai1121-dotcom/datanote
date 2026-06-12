@@ -186,6 +186,25 @@ public class RbacController {
         return R.ok(PermCatalog.grouped());
     }
 
+    /**
+     * 轻量用户名列表(仅 username/nickname, 启用用户)。登录即可访问(不受 settings:user 限制),
+     * 供项目添加成员/指派负责人等协作场景选人 —— 完整用户管理列表(/users)仍需 settings:user。
+     */
+    @Operation(summary = "可选用户名列表(协作选人, 登录即可)")
+    @GetMapping("/usernames")
+    public R<List<Map<String, Object>>> usernames() {
+        List<DnUser> users = rbacService.listUsers();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (DnUser u : users) {
+            if (u.getStatus() == null || u.getStatus() != 1) continue;   // 停用用户不可选
+            Map<String, Object> m = new HashMap<>();
+            m.put("username", u.getUsername());
+            m.put("nickname", u.getNickname());
+            result.add(m);
+        }
+        return R.ok(result);
+    }
+
     // ---------------- 请求体 ----------------
 
     @Data

@@ -143,6 +143,10 @@ public class SyncJobService {
         } else {
             job.setCreatedAt(LocalDateTime.now());
             job.setUpdatedAt(LocalDateTime.now());
+            // 多用户: 记录创建人(同步失败通知 SYNC_FAILED 回退链据此找接收人)
+            if (job.getCreatedBy() == null || job.getCreatedBy().trim().isEmpty()) {
+                job.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
+            }
             if (job.getStatus() == null) {
                 job.setStatus("CREATED");
             }

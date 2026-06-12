@@ -22,9 +22,10 @@ class PermInterceptorRuleTest {
         assertEquals("governance:audit", PermInterceptor.requiredPerm("GET", "/api/gov/audit/export"));
         assertEquals("settings:user", PermInterceptor.requiredPerm("GET", "/api/rbac/users"));
         assertEquals("settings:user", PermInterceptor.requiredPerm("GET", "/api/rbac/roles"));
-        // /api/rbac/me 与 perms/catalog 不在敏感 GET 内, 放行
+        // /api/rbac/me、perms/catalog、usernames(协作选人) 不在敏感 GET 内, 放行
         assertNull(PermInterceptor.requiredPerm("GET", "/api/rbac/me"));
         assertNull(PermInterceptor.requiredPerm("GET", "/api/rbac/perms/catalog"));
+        assertNull(PermInterceptor.requiredPerm("GET", "/api/rbac/usernames"));
     }
 
     @Test

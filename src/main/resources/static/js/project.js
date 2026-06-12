@@ -716,7 +716,8 @@ window.projRemoveMember = function(memberId) {
   });
 };
 window.projPickUser = function() {
-  api('/api/rbac/users').then(function(res) {
+  // 轻量用户名端点(登录即可), 不调 /users(需 settings:user, 普通负责人会 403)
+  api('/api/rbac/usernames').then(function(res) {
     var users = (res && res.code === 0) ? (res.data || []) : [];
     if (!users.length) { showToast('无可选用户', 'info'); return; }
     var rows = function(kw) {

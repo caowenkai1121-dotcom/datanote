@@ -81,6 +81,10 @@ public class MetricController {
         } else {
             metric.setCreatedAt(LocalDateTime.now());
             metric.setUpdatedAt(LocalDateTime.now());
+            // 多用户: 负责人未填时默认创建者本人(指标预警/通知据此路由)
+            if (metric.getOwner() == null || metric.getOwner().trim().isEmpty()) {
+                metric.setOwner(com.datanote.platform.iam.CurrentUserUtil.currentUser());
+            }
             if (metric.getStatus() == null) {
                 metric.setStatus(1);
             }

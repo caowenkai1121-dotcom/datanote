@@ -78,6 +78,10 @@ public class QualityController {
         } else {
             rule.setCreatedAt(LocalDateTime.now());
             rule.setUpdatedAt(LocalDateTime.now());
+            // 多用户: 记录创建人(质量工单 owner / QUALITY_ISSUE 通知接收人 据此路由)
+            if (rule.getCreatedBy() == null || rule.getCreatedBy().trim().isEmpty()) {
+                rule.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
+            }
             if (rule.getStatus() == null) {
                 rule.setStatus(1);
             }
