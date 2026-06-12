@@ -109,6 +109,8 @@ public class PermInterceptor implements HandlerInterceptor {
     private static final List<Rule> SENSITIVE_GET_RULES = Arrays.asList(
             prefix("/api/gov/audit/export", "governance:audit"),
             regex("^/api/rbac/(users|roles)(/.*)?$", "settings:user"),
+            // 全站权限点清单泄露系统 taxonomy, 仅配权限的管理员需要(原 GET 仅要求登录)
+            prefix("/api/rbac/perms/catalog", "settings:user"),
             // 全脚本含完整 SQL(原 GET 仅要求登录, 任意用户可拉走所有脚本内容)
             prefix("/api/script/all-with-content", "develop:view"),
             // 各模块导出(审计已单列): 工单/指标/同步等导出按模块 view 保护

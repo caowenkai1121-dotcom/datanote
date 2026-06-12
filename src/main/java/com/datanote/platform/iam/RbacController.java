@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -183,6 +184,91 @@ public class RbacController {
         return R.ok("分配成功");
     }
 
+    // ---------------- 批量用户操作 ----------------
+
+    @Operation(summary = "批量启用/停用用户")
+    @PostMapping("/users/batch-status")
+    public R<Map<String, Object>> batchStatus(@RequestBody BatchStatusRequest req) {
+        if (req.getIds() == null || req.getIds().isEmpty() || req.getStatus() == null) {
+            return R.fail(R.CODE_BAD_REQUEST, "缺少用户或目标状态");
+        }
+        DnUser self = rbacService.findByUsername(actor());
+        Long selfId = self != null ? self.getId() : null;
+        int ok = 0;
+        List<Map<String, Object>> skipped = new ArrayList<>();
+        for (Long id : new LinkedHashSet<>(req.getIds())) {
+            if (id == null) continue;
+            if (req.getStatus() == 0) {   // 停用护栏: 不可停自己 / 最后一名超管(逐个查, 停一个少一个语义正确)
+                if (selfId != null && selfId.equals(id)) { skipped.add(skip(id, "不能停用当前登录的自己")); continue; }
+                if (rbacService.isSuperAdmin(id) && rbacService.countActiveSuperAdmins() <= 1) { skipped.add(skip(id, "最后一名超级管理员")); continue; }
+            }
+            DnUser u = new DnUser(); u.setId(id); u.setStatus(req.getStatus());
+            rbacService.updateUser(u); ok++;
+        }
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-status", null, 200,
+                "批量" + (req.getStatus() == 0 ? "停用" : "启用") + " " + ok + " 个用户" + (skipped.isEmpty() ? "" : ", 跳过 " + skipped.size() + " 个"));
+        return R.ok(result(ok, skipped));
+    }
+
+    @Operation(summary = "批量删除用户")
+    @PostMapping("/users/batch-delete")
+    public R<Map<String, Object>> batchDelete(@RequestBody IdsRequest req) {
+        if (req.getIds() == null || req.getIds().isEmpty()) return R.fail(R.CODE_BAD_REQUEST, "未选择用户");
+        DnUser self = rbacService.findByUsername(actor());
+        Long selfId = self != null ? self.getId() : null;
+        int ok = 0;
+        List<Map<String, Object>> skipped = new ArrayList<>();
+        for (Long id : new LinkedHashSet<>(req.getIds())) {
+            if (id == null) continue;
+            if (selfId != null && selfId.equals(id)) { skipped.add(skip(id, "不能删除当前登录的自己")); continue; }
+            if (rbacService.isSuperAdmin(id) && rbacService.countActiveSuperAdmins() <= 1) { skipped.add(skip(id, "最后一名超级管理员")); continue; }
+            rbacService.deleteUser(id); ok++;
+        }
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-delete", null, 200,
+                "批量删除 " + ok + " 个用户" + (skipped.isEmpty() ? "" : ", 跳过 " + skipped.size() + " 个"));
+        return R.ok(result(ok, skipped));
+    }
+
+    @Operation(summary = "批量追加角色(叠加现有, 不覆盖)")
+    @PostMapping("/users/batch-roles")
+    public R<Map<String, Object>> batchRoles(@RequestBody BatchRolesRequest req) {
+        if (req.getIds() == null || req.getIds().isEmpty() || req.getRoleIds() == null || req.getRoleIds().isEmpty()) {
+            return R.fail(R.CODE_BAD_REQUEST, "缺少用户或角色");
+        }
+        // 越权自提升防护: 非超管不得授予自己不具备的权限点(与单个 assignRoles 一致)
+        DnUser self = rbacService.findByUsername(actor());
+        boolean selfSuper = self != null && rbacService.isSuperAdmin(self.getId());
+        if (!selfSuper && self != null) {
+            Set<String> myPerms = rbacService.getUserPerms(self.getId());
+            for (Long rid : req.getRoleIds()) {
+                for (String p : rbacService.listRolePerms(rid)) {
+                    if (!RbacService.hasPermission(myPerms, p)) {
+                        return R.fail(R.CODE_FORBIDDEN, "不能授予你本人不具备的权限(" + p + ")");
+                    }
+                }
+            }
+        }
+        int ok = 0;
+        for (Long uid : new LinkedHashSet<>(req.getIds())) {
+            if (uid == null) continue;
+            // 追加式: 现有角色 ∪ 新角色, 去重(批量场景多为"给这批人加某角色", 不应清掉各自其他角色)
+            Set<Long> merged = new LinkedHashSet<>(rbacService.getUserRoleIds(uid));
+            merged.addAll(req.getRoleIds());
+            rbacService.assignRoles(uid, new ArrayList<>(merged));
+            ok++;
+        }
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/batch-roles", null, 200,
+                "批量为 " + ok + " 个用户追加角色 " + req.getRoleIds());
+        return R.ok(result(ok, new ArrayList<>()));
+    }
+
+    private Map<String, Object> skip(Long id, String reason) {
+        Map<String, Object> m = new HashMap<>(); m.put("id", id); m.put("reason", reason); return m;
+    }
+    private Map<String, Object> result(int success, List<Map<String, Object>> skipped) {
+        Map<String, Object> m = new HashMap<>(); m.put("success", success); m.put("skipped", skipped); return m;
+    }
+
     // ---------------- 角色 ----------------
 
     @Operation(summary = "角色列表")
@@ -277,5 +363,22 @@ public class RbacController {
     @Data
     public static class SetPermsRequest {
         private List<String> perms;
+    }
+
+    @Data
+    public static class BatchStatusRequest {
+        private List<Long> ids;
+        private Integer status;
+    }
+
+    @Data
+    public static class IdsRequest {
+        private List<Long> ids;
+    }
+
+    @Data
+    public static class BatchRolesRequest {
+        private List<Long> ids;
+        private List<Long> roleIds;
     }
 }
