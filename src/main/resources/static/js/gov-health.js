@@ -442,7 +442,7 @@
       if (!ps.length) { DN.toast('暂无活跃项目, 请先到项目空间创建', 'warn'); return; }
       var sel = DN.h('select', { class: 'dn-form-select', style: 'width:100%' },
         ps.map(function (p) { return DN.h('option', { value: String(p.id), text: p.projectName || ('#' + p.id) }); }));
-      var assignee = DN.h('input', { class: 'dn-form-input', value: it.owner || '', placeholder: '默认为工单负责人', style: 'width:100%' });
+      var assignee = DN.h('input', { class: 'dn-form-input', value: it.owner || '', placeholder: '默认为工单负责人', list: 'dnUserList', style: 'width:100%' });
       var due = DN.h('input', { class: 'dn-form-input', type: 'date', style: 'width:100%' });
       var body = DN.h('div', {}, [
         DN.h('div', { class: 'dn-field' }, [DN.h('label', { text: '目标项目' }), sel]),
@@ -496,7 +496,7 @@
   function batchAssign() {
     var ids = Object.keys(selectedIssues);
     if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
-    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人', maxlength: '60' });
+    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人', list: 'dnUserList', maxlength: '60' });
     drawerForm('批量指派 ' + ids.length + ' 个工单', [formRow('负责人', ownerInput)], function (close, okBtn) {
       var owner = ownerInput.value.trim();
       if (!owner) { DN.toast('请填写负责人', 'error'); return; }
@@ -550,7 +550,7 @@
   }
 
   function assignIssue(id) {
-    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人', maxlength: '60' });
+    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人', list: 'dnUserList', maxlength: '60' });
     drawerForm('指派工单 #' + id, [formRow('负责人', ownerInput)], function (close, okBtn) {
       var owner = ownerInput.value.trim();
       if (!owner) { DN.toast('请填写负责人', 'error'); return; }
@@ -566,7 +566,7 @@
     var typeSel = selectOf(['STANDARD', 'QUALITY', 'SECURITY', 'LINEAGE', 'LIFECYCLE', 'OTHER'], 'OTHER');
     var dimSel = selectOf(DIMS, '', '（不限维度）');
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
-    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人（可空）', maxlength: '60' });
+    var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人（可空）', list: 'dnUserList', maxlength: '60' });
     var descInput = DN.h('input', { class: 'dn-form-input', placeholder: '描述（可空）', maxlength: '500' });
 
     var body = DN.h('div');

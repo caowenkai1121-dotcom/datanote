@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u45">
-<link rel="stylesheet" href="css/gov-modern.css?v=u45">
-<link rel="stylesheet" href="css/redesign.css?v=u45">
-<link rel="stylesheet" href="css/dn-design.css?v=u45">
+<link rel="stylesheet" href="css/app.css?v=u46">
+<link rel="stylesheet" href="css/gov-modern.css?v=u46">
+<link rel="stylesheet" href="css/redesign.css?v=u46">
+<link rel="stylesheet" href="css/dn-design.css?v=u46">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u45"></script>
-<script src="js/gov-assets.js?v=u45"></script>
-<script src="js/gov-lineage.js?v=u45"></script>
-<script src="js/gov-quality.js?v=u45"></script>
-<script src="js/gov-standard.js?v=u45"></script>
-<script src="js/gov-classification.js?v=u45"></script>
-<script src="js/gov-security.js?v=u45"></script>
-<script src="js/gov-health.js?v=u45"></script>
-<script src="js/gov-audit.js?v=u45"></script>
-<script src="js/gov-overview.js?v=u45"></script>
-<script src="js/gov-subject.js?v=u45"></script>
-<script src="js/gov-consumption.js?v=u45"></script>
-<script src="js/gov-govmap.js?v=u45"></script>
-<script src="js/project.js?v=u45"></script>
-<script src="js/home-dashboard.js?v=u45"></script>
-<script src="js/mdm.js?v=u45"></script>
-<script src="js/mdm-ingest.js?v=u45"></script>
-<script src="js/mdm-survivorship.js?v=u45"></script>
-<script src="js/mdm-approval.js?v=u45"></script>
-<script src="js/mdm-refdata.js?v=u45"></script>
-<script src="js/mdm-quality.js?v=u45"></script>
-<script src="js/mdm-pubsub.js?v=u45"></script>
-<script src="js/mdm-hierarchy.js?v=u45"></script>
-<script src="js/ai-agent.js?v=u45"></script>
+<script src="js/dn-common.js?v=u46"></script>
+<script src="js/gov-assets.js?v=u46"></script>
+<script src="js/gov-lineage.js?v=u46"></script>
+<script src="js/gov-quality.js?v=u46"></script>
+<script src="js/gov-standard.js?v=u46"></script>
+<script src="js/gov-classification.js?v=u46"></script>
+<script src="js/gov-security.js?v=u46"></script>
+<script src="js/gov-health.js?v=u46"></script>
+<script src="js/gov-audit.js?v=u46"></script>
+<script src="js/gov-overview.js?v=u46"></script>
+<script src="js/gov-subject.js?v=u46"></script>
+<script src="js/gov-consumption.js?v=u46"></script>
+<script src="js/gov-govmap.js?v=u46"></script>
+<script src="js/project.js?v=u46"></script>
+<script src="js/home-dashboard.js?v=u46"></script>
+<script src="js/mdm.js?v=u46"></script>
+<script src="js/mdm-ingest.js?v=u46"></script>
+<script src="js/mdm-survivorship.js?v=u46"></script>
+<script src="js/mdm-approval.js?v=u46"></script>
+<script src="js/mdm-refdata.js?v=u46"></script>
+<script src="js/mdm-quality.js?v=u46"></script>
+<script src="js/mdm-pubsub.js?v=u46"></script>
+<script src="js/mdm-hierarchy.js?v=u46"></script>
+<script src="js/ai-agent.js?v=u46"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -881,7 +881,7 @@
               </div>
             </div>
             <div class="ds-form-row"><label>单位</label><input id="mUnit" placeholder="人/元/次"></div>
-            <div class="ds-form-row"><label>负责人</label><input id="mOwner" placeholder="负责人"></div>
+            <div class="ds-form-row"><label>负责人</label><input id="mOwner" list="dnUserList" placeholder="负责人(可从用户列表选)"></div>
             <div class="ds-form-row"><label>标签</label><input id="mTags" placeholder="用逗号分隔"></div>
             <div class="ds-form-row"><label>所属项目</label><select id="mProject" class="prop-select"><option value="">（不归属项目）</option></select></div>
           </div>
@@ -8329,7 +8329,7 @@ function loadQualityRules() {
       var typeLabels = { null_check:'空值检查', unique_check:'唯一性检查', value_range:'值域检查', regex_check:'正则检查', custom_sql:'自定义SQL' };
       var severityColors = { info:'var(--primary)', warning:'var(--warning)', error:'var(--error)' };
       var html = '<table class="quality-rules-table"><thead><tr>' +
-        '<th>规则名称</th><th>类型</th><th>数据库.表</th><th>字段</th><th>级别</th><th>状态</th><th>操作</th>' +
+        '<th>规则名称</th><th>类型</th><th>数据库.表</th><th>字段</th><th>创建人</th><th>级别</th><th>状态</th><th>操作</th>' +
         '</tr></thead><tbody>';
       rules.forEach(function(r) {
         var sevColor = severityColors[r.severity] || 'var(--text-faint)';
@@ -8338,6 +8338,7 @@ function loadQualityRules() {
           '<td><span class="quality-type-badge">' + escapeHtml(typeLabels[r.ruleType] || r.ruleType) + '</span></td>' +
           '<td>' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</td>' +
           '<td>' + escapeHtml(r.columnName || '-') + '</td>' +
+          '<td style="color:var(--text-muted);">' + escapeHtml(r.createdBy || '-') + '</td>' +
           '<td><span style="color:' + sevColor + '">' + escapeHtml(r.severity || '') + '</span></td>' +
           '<td>' + (r.status === 1 ? '<span class="quality-status-on">启用</span>' : '<span class="quality-status-off">禁用</span>') + '</td>' +
           '<td class="quality-actions">' +
@@ -8958,6 +8959,7 @@ function loadBaselineList() {
         '<td>' + todayCell + '</td>' +
         '<td><span class="ops-rank-num">' + priorityLabel + '</span></td>' +
         '<td>' + statusBadge + '</td>' +
+        '<td style="color:var(--text-muted);">' + escapeHtml(b.createdBy || '-') + '</td>' +
         '<td>' + (b.taskCount || 0) + '</td>' +
         '<td>' +
           '<button class="btn btn-sm" data-perm="operations:baseline" onclick="toggleBaseline(' + b.id + ')" style="font-size:var(--fs-xs);padding:2px 8px;">' + (b.status === 'enabled' ? '禁用' : '启用') + '</button> ' +
@@ -8965,7 +8967,7 @@ function loadBaselineList() {
           '<button class="btn btn-sm" data-perm="operations:baseline" onclick="deleteBaseline(' + b.id + ',\'' + escapeHtml(b.baselineName) + '\')" style="font-size:var(--fs-xs);padding:2px 8px;color:var(--error);">删除</button>' +
         '</td></tr>';
     }).join('');
-    container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>类型</th><th>承诺时间</th><th>今日达成</th><th>优先级</th><th>状态</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>类型</th><th>承诺时间</th><th>今日达成</th><th>优先级</th><th>状态</th><th>创建人</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
   });
 }
@@ -11321,6 +11323,17 @@ function closeAiScriptNameModal() {
       el.style.display = window.dnHasPerm(el.getAttribute('data-perm')) ? '' : 'none';
     });
   };
+  // 全局用户 datalist: 任何"负责人/用户名"输入框挂 list="dnUserList" 即可下拉选真实用户
+  window.dnFillUserDatalist = function(){
+    var dl = document.getElementById('dnUserList');
+    if (!dl) { dl = document.createElement('datalist'); dl.id = 'dnUserList'; document.body.appendChild(dl); }
+    fetch('/api/rbac/usernames').then(function(r){ return r.json(); }).then(function(res){
+      var us = (res && res.code === 0 && res.data) || [];
+      dl.innerHTML = us.map(function(u){
+        return '<option value="' + escapeHtml(u.username) + '"' + (u.nickname ? ' label="' + escapeHtml(u.nickname) + '"' : '') + '>';
+      }).join('');
+    }).catch(function(){});
+  };
   // 顶部用户框: 显示用户名首字 + 点击打开账号抽屉(改密/登出)
   window.dnRenderUserBox = function(){
     var btn = document.querySelector('.user-btn'); if (!btn) return;
@@ -11374,7 +11387,7 @@ function closeAiScriptNameModal() {
         var data = (me && me.code === 0) ? (me.data || {}) : {};
         window.__perms = data.perms || [];
         window.__user = data.username || d.username || null;
-        try { window.dnApplyMenuPerms(); window.dnApplyBtnPerms(); window.dnRenderUserBox(); } catch(e){}
+        try { window.dnApplyMenuPerms(); window.dnApplyBtnPerms(); window.dnRenderUserBox(); window.dnFillUserDatalist(); } catch(e){}
         cb();
       }).catch(function(){ window.__perms = []; cb(); });
     }).catch(function(){ cb(); }); // status 失败(网络)放行, 不锁死页面
