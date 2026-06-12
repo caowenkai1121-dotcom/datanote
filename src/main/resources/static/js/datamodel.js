@@ -28,7 +28,8 @@
       + '    <h2 style="font-size:17px;font-weight:600;margin:0;">数据模型</h2>'
       + '    <div id="dmTypeTabs" style="display:flex;gap:6px;margin-left:8px;"></div>'
       + '    <span id="dmCurSubject" style="font-size:12px;color:var(--text-muted);"></span>'
-      + '    <button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmReverseImport()" style="margin-left:auto;">⬇ 逆向导入</button>'
+      + '    <button class="btn btn-sm" onclick="dmShowDashboard()" style="margin-left:auto;">📊 看板</button>'
+      + '    <button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmReverseImport()">⬇ 逆向导入</button>'
       + '    <button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="dmNewModel()">+ 新建模型</button>'
       + '  </div>'
       + '  <div id="dmModelList"></div>'
@@ -487,7 +488,7 @@
     DN.confirm('将该物理模型落地为数据资产？实体/属性将注册到「数据地图」(库 model_<编码>)，可被治理/血缘消费。', { title: '落地数据资产' }).then(function (ok) {
       if (!ok) return;
       apiPost('/api/datamodel/model/' + id + '/publish-asset', {}).then(function (res) {
-        if (res && res.code === 0) toast('已落地 ' + res.data.tables + ' 表 / ' + res.data.columns + ' 字段 → 数据地图(' + res.data.database + ')', 'success');
+        if (res && res.code === 0) toast('已落地 ' + res.data.tables + ' 表/' + res.data.columns + ' 字段，回填分级 ' + (res.data.gradedColumns || 0) + ' 列，派生质量规则建议 ' + (res.data.qualityRules || 0) + ' 条 → 数据地图(' + res.data.database + ')', 'success');
         else toast((res && res.msg) || '落地失败', 'error');
       }).catch(function () { toast('落地失败', 'error'); });
     });
@@ -578,5 +579,29 @@
       var h = '<div style="min-width:480px;max-height:440px;overflow:auto;"><div style="font-size:13px;margin-bottom:10px;"><b>v' + v.version + '</b> · ' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + ' · 发布人 ' + esc(v.publishedBy || '') + (v.changeSummary ? '<div style="color:var(--text-muted);margin-top:2px;">' + esc(v.changeSummary) + '</div>' : '') + '</div>' + ents + '</div>';
       projShowModalBox('版本 v' + v.version + ' 快照', h);
     });
+  };
+
+  // ---------- 建模覆盖度看板 ----------
+  window.dmShowDashboard = function () {
+    api('/api/datamodel/dashboard').then(function (res) {
+      var d = (res && res.code === 0 && res.data) || {};
+      function card(label, val, color) { return '<div style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;"><div style="font-size:22px;font-weight:700;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>'; }
+      var bt = d.byType || {}, bs = d.byStatus || {};
+      var typeBar = Object.keys(bt).map(function (k) { return '<span style="margin-right:14px;">' + (TYPE_LABEL[k] || k) + ': <b>' + bt[k] + '</b></span>'; }).join('');
+      var statusBar = Object.keys(bs).map(function (k) { return '<span style="margin-right:14px;">' + (STATUS_LABEL[k] || k) + ': <b>' + bs[k] + '</b></span>'; }).join('');
+      var h = '<div style="min-width:580px;">'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+        + card('模型总数', d.totalModels || 0)
+        + card('已发布', d.published || 0, 'var(--success)')
+        + card('落地资产表', d.landedTables || 0, '#1971c2')
+        + card('标准覆盖率', (d.standardCoverage || 0) + '%', '#e8590c')
+        + card('待审工单', d.pendingChanges || 0, '#b8860b')
+        + '</div>'
+        + '<div style="font-size:13px;margin-bottom:8px;"><b>类型分布</b>　' + typeBar + '</div>'
+        + '<div style="font-size:13px;margin-bottom:8px;"><b>状态分布</b>　' + statusBar + '</div>'
+        + '<div style="font-size:12.5px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;">实体 ' + (d.entities || 0) + ' · 关系 ' + (d.relations || 0) + ' · 属性 ' + (d.totalAttributes || 0) + '（绑数据标准 ' + (d.boundAttributes || 0) + '） · 覆盖主题域 ' + (d.subjectsWithModels || 0) + ' 个</div>'
+        + '</div>';
+      projShowModalBox('建模覆盖度看板', h);
+    }).catch(function () { toast('看板加载失败', 'error'); });
   };
 })();

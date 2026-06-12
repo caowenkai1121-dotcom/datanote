@@ -196,6 +196,21 @@
     return a;
   }
 
+  // 数据标准影响分析: 反查引用该数据元的模型属性(联动数据模型模块)
+  function govStdImpact(code) {
+    fetch('/api/datamodel/standard-impact?elementCode=' + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (res) {
+      var rows = (res && res.code === 0 && res.data) || [];
+      var tbl = rows.length
+        ? '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模型</th><th>类型</th><th>状态</th><th>实体</th><th>属性</th><th>当前类型</th></tr></thead><tbody>'
+          + rows.map(function (x) {
+            return '<tr><td><b>' + DN.esc(x.modelName) + '</b><br><span style="font-size:11px;color:var(--text-faint);font-family:monospace;">' + DN.esc(x.modelCode) + '</span></td><td>' + DN.esc(x.modelType) + '</td><td>' + DN.esc(x.status) + '</td><td>' + DN.esc(x.entityName) + '</td><td style="font-family:monospace;">' + DN.esc(x.attrCode) + '</td><td>' + DN.esc(x.dataType || '') + '</td></tr>';
+          }).join('') + '</tbody></table>'
+        : '<div style="padding:20px;color:var(--text-muted);text-align:center;">无数据模型引用该数据元</div>';
+      var h = '<div style="min-width:560px;max-height:440px;overflow:auto;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">引用数据元 <b>' + DN.esc(code) + '</b> 的模型属性（改动标准前评估影响面，共 <b>' + rows.length + '</b> 处）</div>' + tbl + '</div>';
+      if (window.projShowModalBox) window.projShowModalBox('数据标准影响分析 · ' + DN.esc(code), h);
+    }).catch(function () { DN.toast('影响分析加载失败', 'err'); });
+  }
+
   // ========== 数据元 ==========
   function renderElements(body) {
     var editingId = null;   // 非空 = 编辑态，提交 payload 带 id 走后端 upsert 更新
@@ -288,6 +303,7 @@
           { key: '_op', label: '操作', render: function (e) {
               return opCell([
                 editLink(function () { startEdit(e); }),
+                DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '影响', title: '查看引用该数据元的模型属性(改标准前评估影响)', onclick: function () { govStdImpact(e.elementCode); } }),
                 delLink(function () { return DN.del(API + '/element/' + e.id); }, function () { renderElements(body); })
               ]);
             } }

@@ -171,9 +171,21 @@ public class DataModelController {
         return R.ok(service.compareVersions(from, to));
     }
 
-    @Operation(summary = "物理模型落地为数据资产")
+    @Operation(summary = "物理模型落地为数据资产(派生质量规则+分级)")
     @PostMapping("/model/{id}/publish-asset")
     public R<Map<String, Object>> publishAsset(@PathVariable Long id) {
         return R.ok(service.publishToAsset(id));
+    }
+
+    @Operation(summary = "建模覆盖度看板")
+    @GetMapping("/dashboard")
+    public R<Map<String, Object>> dashboard() {
+        return R.ok(service.buildDashboard());
+    }
+
+    @Operation(summary = "数据标准影响分析(反查引用该数据元的模型属性)")
+    @GetMapping("/standard-impact")
+    public R<List<Map<String, Object>>> standardImpact(@RequestParam String elementCode) {
+        return R.ok(service.standardImpact(elementCode));
     }
 }

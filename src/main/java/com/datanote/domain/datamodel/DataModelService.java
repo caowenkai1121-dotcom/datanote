@@ -34,6 +34,9 @@ public class DataModelService {
     private final com.datanote.domain.metadata.mapper.DnTableMetaMapper tableMetaMapper;
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;
     private final DnModelVersionMapper versionMapper;
+    private final com.datanote.domain.governance.mapper.DnDataElementMapper dataElementMapper;
+    private final com.datanote.domain.governance.mapper.DnWordRootMapper wordRootMapper;
+    private final com.datanote.domain.governance.mapper.DnQualityRuleMapper qualityRuleMapper;
 
     // ---------------- 模型 ----------------
 
@@ -199,6 +202,18 @@ public class DataModelService {
                 if ("LOGIC".equals(m.getModelType()) && (a.getElementCode() == null || a.getElementCode().trim().isEmpty())) {
                     warnings.add("逻辑属性「" + en + "." + a.getAttrCode() + "」未绑定数据标准(建议绑定以统一口径)");
                 }
+                // 绑标准: 类型一致性强校验(不一致→error 阻断, 防"绑了标准却写错类型")
+                if (a.getElementCode() != null && !a.getElementCode().trim().isEmpty()) {
+                    com.datanote.domain.governance.model.DnDataElement de = dataElementMapper.selectOne(
+                            new QueryWrapper<com.datanote.domain.governance.model.DnDataElement>().eq("element_code", a.getElementCode().trim()).last("limit 1"));
+                    if (de != null && de.getDataType() != null && a.getDataType() != null
+                            && !de.getDataType().trim().equalsIgnoreCase(a.getDataType().trim())) {
+                        errors.add("属性「" + en + "." + a.getAttrCode() + "」绑定标准[" + a.getElementCode() + "]要求类型 " + de.getDataType() + ", 实际填 " + a.getDataType() + ", 不一致");
+                    }
+                }
+                // 命名词根校验
+                String nm = checkNaming(a.getAttrCode());
+                if (nm != null) warnings.add("属性「" + en + "." + a.getAttrCode() + "」" + nm);
             }
             if (needPk && !hasPk) errors.add("实体「" + en + "」缺少主键(至少一个主键属性)");
         }
@@ -511,6 +526,62 @@ public class DataModelService {
                 new QueryWrapper<DnModelVersion>().eq("model_id", modelId).orderByDesc("version", "id"));
     }
 
+    /** 建模覆盖度看板: 模型规模/类型状态分布/落地率/标准覆盖率/待审, 量化建模成熟度。 */
+    public java.util.Map<String, Object> buildDashboard() {
+        java.util.Map<String, Object> r = new java.util.HashMap<>();
+        List<DnModel> models = modelMapper.selectList(null);
+        r.put("totalModels", models.size());
+        java.util.Map<String, Integer> byType = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Integer> byStatus = new java.util.LinkedHashMap<>();
+        for (String t : new String[]{"BIZ", "LOGIC", "PHYS"}) byType.put(t, 0);
+        for (String s : new String[]{"DRAFT", "PENDING", "PUBLISHED", "REJECTED", "ARCHIVED"}) byStatus.put(s, 0);
+        java.util.Set<Long> subjWithModel = new java.util.HashSet<>();
+        for (DnModel m : models) {
+            byType.merge(m.getModelType() == null ? "?" : m.getModelType(), 1, Integer::sum);
+            byStatus.merge(m.getStatus() == null ? "?" : m.getStatus(), 1, Integer::sum);
+            if (m.getSubjectId() != null) subjWithModel.add(m.getSubjectId());
+        }
+        r.put("byType", byType);
+        r.put("byStatus", byStatus);
+        r.put("published", byStatus.getOrDefault("PUBLISHED", 0));
+        r.put("landedTables", nz(tableMetaMapper.selectCount(new QueryWrapper<com.datanote.domain.metadata.model.DnTableMeta>().likeRight("database_name", "model_"))));
+        long ta = nz(attrMapper.selectCount(null));
+        long ba = nz(attrMapper.selectCount(new QueryWrapper<DnModelAttribute>().isNotNull("element_code").ne("element_code", "")));
+        r.put("totalAttributes", ta);
+        r.put("boundAttributes", ba);
+        r.put("standardCoverage", ta == 0 ? 0 : Math.round(ba * 1000.0 / ta) / 10.0);
+        r.put("pendingChanges", nz(changeMapper.selectCount(new QueryWrapper<DnModelChange>().eq("status", "pending"))));
+        r.put("entities", nz(entityMapper.selectCount(null)));
+        r.put("relations", nz(relMapper.selectCount(null)));
+        r.put("subjectsWithModels", subjWithModel.size());
+        return r;
+    }
+    private long nz(Long v) { return v == null ? 0 : v; }
+
+    /** 数据标准影响分析: 反查引用某数据元(element_code)的所有模型属性, 治理专员改标准前看影响面。 */
+    public List<java.util.Map<String, Object>> standardImpact(String elementCode) {
+        List<java.util.Map<String, Object>> out = new ArrayList<>();
+        if (elementCode == null || elementCode.trim().isEmpty()) return out;
+        List<DnModelAttribute> attrs = attrMapper.selectList(new QueryWrapper<DnModelAttribute>().eq("element_code", elementCode.trim()));
+        for (DnModelAttribute a : attrs) {
+            DnModelEntity e = entityMapper.selectById(a.getEntityId());
+            if (e == null) continue;
+            DnModel m = modelMapper.selectById(e.getModelId());
+            if (m == null) continue;
+            java.util.Map<String, Object> row = new java.util.HashMap<>();
+            row.put("modelCode", m.getModelCode());
+            row.put("modelName", m.getModelName());
+            row.put("modelType", m.getModelType());
+            row.put("status", m.getStatus());
+            row.put("entityName", e.getEntityName());
+            row.put("attrCode", a.getAttrCode());
+            row.put("attrName", a.getAttrName());
+            row.put("dataType", a.getDataType());
+            out.add(row);
+        }
+        return out;
+    }
+
     public DnModelVersion getVersion(Long versionId) {
         return versionMapper.selectById(versionId);
     }
@@ -592,7 +663,7 @@ public class DataModelService {
         LocalDateTime now = LocalDateTime.now();
         List<DnModelEntity> entities = entityMapper.selectList(
                 new QueryWrapper<DnModelEntity>().eq("model_id", physModelId).orderByAsc("sort_order", "id"));
-        int tables = 0, cols = 0;
+        int tables = 0, cols = 0, graded = 0, qrules = 0;
         for (DnModelEntity e : entities) {
             String tableName = (e.getPhysicalTable() != null && !e.getPhysicalTable().isEmpty())
                     ? e.getPhysicalTable() : toSnake(e.getEntityCode());
@@ -620,26 +691,70 @@ public class DataModelService {
                     new QueryWrapper<DnModelAttribute>().eq("entity_id", e.getId()).orderByAsc("sort_order", "id"));
             int ord = 0;
             for (DnModelAttribute a : attrs) {
+                String physCol = (a.getPhysicalColumn() != null && !a.getPhysicalColumn().isEmpty()) ? a.getPhysicalColumn() : toSnake(a.getAttrCode());
                 com.datanote.domain.metadata.model.DnColumnMeta col = new com.datanote.domain.metadata.model.DnColumnMeta();
                 col.setTableMetaId(tbl.getId());
-                col.setColumnName((a.getPhysicalColumn() != null && !a.getPhysicalColumn().isEmpty()) ? a.getPhysicalColumn() : toSnake(a.getAttrCode()));
+                col.setColumnName(physCol);
                 col.setBusinessName(a.getAttrName());
                 col.setBusinessDesc(a.getBizDefinition());
                 col.setDataType(sqlType(a.getDataType(), a.getDataLength()));
                 col.setColumnKey(a.getIsPk() != null && a.getIsPk() == 1 ? "PRI" : "");
                 col.setIsNullable(a.getIsNullable() != null && a.getIsNullable() == 0 ? "NO" : "YES");
                 col.setOrdinal(ord++);
+                // 分级回填: 绑数据标准的属性带出密级/敏感类型 → 分级脱敏模块消费(否则这两列空着)
+                if (a.getElementCode() != null && !a.getElementCode().trim().isEmpty()) {
+                    com.datanote.domain.governance.model.DnDataElement de = dataElementMapper.selectOne(
+                            new QueryWrapper<com.datanote.domain.governance.model.DnDataElement>().eq("element_code", a.getElementCode().trim()).last("limit 1"));
+                    if (de != null && (de.getSecurityLevel() != null || de.getSensitiveType() != null)) {
+                        col.setSecurityLevel(de.getSecurityLevel());
+                        col.setSensitiveType(de.getSensitiveType());
+                        graded++;
+                    }
+                }
                 col.setCreatedAt(now);
                 col.setUpdatedAt(now);
                 columnMetaMapper.insert(col);
                 cols++;
+                // 质量规则建议(停用待治理专员审核): 建模约束→质量规则, 免手工填表名列名
+                qrules += deriveQualityRules(db, tableName, physCol, a);
             }
         }
         java.util.Map<String, Object> r = new java.util.HashMap<>();
         r.put("database", db);
         r.put("tables", tables);
         r.put("columns", cols);
+        r.put("gradedColumns", graded);
+        r.put("qualityRules", qrules);
         return r;
+    }
+
+    /** 由建模约束派生质量规则建议(停用态)。返回新建条数。 */
+    private int deriveQualityRules(String db, String table, String column, DnModelAttribute a) {
+        String user = CurrentUserUtil.currentUser();
+        int n = 0;
+        if (a.getIsNullable() != null && a.getIsNullable() == 0) n += insertSuggestRule(db, table, column, "null_check", "非空·" + column, user);
+        if (a.getIsPk() != null && a.getIsPk() == 1) n += insertSuggestRule(db, table, column, "unique_check", "唯一·" + column, user);
+        return n;
+    }
+    private int insertSuggestRule(String db, String table, String column, String ruleType, String ruleName, String user) {
+        Long exist = qualityRuleMapper.selectCount(new QueryWrapper<com.datanote.domain.governance.model.DnQualityRule>()
+                .eq("database_name", db).eq("table_name", table).eq("column_name", column).eq("rule_type", ruleType));
+        if (exist != null && exist > 0) return 0;   // 幂等
+        com.datanote.domain.governance.model.DnQualityRule r = new com.datanote.domain.governance.model.DnQualityRule();
+        r.setRuleName(ruleName);
+        r.setRuleType(ruleType);
+        r.setDatasourceId(0L);
+        r.setDatabaseName(db);
+        r.setTableName(table);
+        r.setColumnName(column);
+        r.setSeverity("medium");
+        r.setStatus(0);   // 停用: 派生建议规则, 治理专员确认目标库表(真建表后)再启用
+        r.setPassThreshold(new java.math.BigDecimal("1.00"));
+        r.setDimension("completeness");
+        r.setCreatedBy(user);
+        r.setCreatedAt(LocalDateTime.now());
+        qualityRuleMapper.insert(r);
+        return 1;
     }
 
     // ---------------- 规范 / 工具 ----------------
@@ -710,6 +825,24 @@ public class DataModelService {
     private String uniqueCode(String base) {
         if (modelMapper.selectCount(new QueryWrapper<DnModel>().eq("model_code", base)) == 0) return base;
         return base + "_" + (System.currentTimeMillis() % 100000);
+    }
+
+    /** 命名词根校验: attr_code 拆词比对 dn_word_root(word_en/abbr)。词根库为空则跳过(不产噪音)。 */
+    private String checkNaming(String code) {
+        if (code == null || code.isEmpty()) return null;
+        Long totalRoots = wordRootMapper.selectCount(null);
+        if (totalRoots == null || totalRoots == 0) return null;
+        String[] segs = code.toLowerCase().split("[_\\s]+");
+        int hit = 0, total = 0;
+        for (String s : segs) {
+            if (s.isEmpty()) continue;
+            total++;
+            Long c = wordRootMapper.selectCount(new QueryWrapper<com.datanote.domain.governance.model.DnWordRoot>()
+                    .apply("LOWER(word_en)={0} OR LOWER(abbr)={0}", s));
+            if (c != null && c > 0) hit++;
+        }
+        if (total == 0 || hit == total) return null;
+        return "命名含 " + (total - hit) + "/" + total + " 段未匹配标准词根(建议参照词根库规范化)";
     }
 
     /** 编码规范: 非空 + 仅字母数字下划线 + 字母开头。 */
