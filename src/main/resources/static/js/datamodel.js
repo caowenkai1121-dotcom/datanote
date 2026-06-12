@@ -328,10 +328,20 @@
 
   // ---------- 流转 ----------
   window.dmSubmit = function (id) {
-    var h = '<div style="min-width:340px;"><div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">提交后模型进入「待审批」，由审批人决定发布。</div>'
-      + '<textarea id="dmSubReason" class="dbsync-form-input" style="width:100%;min-height:72px;" placeholder="申请说明(可选)"></textarea>'
-      + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmDoSubmit(' + id + ')">提交</button></div></div>';
-    projShowModalBox('提交模型审批', h);
+    api('/api/datamodel/model/' + id + '/validate').then(function (res) {
+      var v = (res && res.code === 0 && res.data) || { valid: true, errors: [], warnings: [] };
+      var errs = v.errors || [], warns = v.warnings || [];
+      var chk = '';
+      if (errs.length) chk += '<div style="background:rgba(224,65,78,.08);border:1px solid var(--error);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b style="color:var(--error);font-size:12px;">✗ 须修正(' + errs.length + ')，修正后方可提交</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:var(--error);">' + errs.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>';
+      if (warns.length) chk += '<div style="background:rgba(245,159,0,.08);border:1px solid var(--warning,#f59f00);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b style="color:#b8860b;font-size:12px;">⚠ 建议(' + warns.length + ')</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:var(--text-regular);">' + warns.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
+      if (!errs.length && !warns.length) chk = '<div style="color:var(--success);font-size:12.5px;margin-bottom:8px;">✓ 规范校验通过</div>';
+      var btn = errs.length ? '<button class="btn btn-sm btn-primary" disabled style="opacity:.5;cursor:not-allowed;">提交</button>' : '<button class="btn btn-sm btn-primary" onclick="dmDoSubmit(' + id + ')">提交</button>';
+      var h = '<div style="min-width:400px;max-width:500px;">' + chk
+        + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">提交后模型进入「待审批」，由审批人决定发布。</div>'
+        + '<textarea id="dmSubReason" class="dbsync-form-input" style="width:100%;min-height:64px;" placeholder="申请说明(可选)"></textarea>'
+        + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> ' + btn + '</div></div>';
+      projShowModalBox('提交模型审批', h);
+    }).catch(function () { toast('规范校验失败', 'error'); });
   };
   window.dmDoSubmit = function (id) {
     apiPost('/api/datamodel/model/' + id + '/submit', { reason: (document.getElementById('dmSubReason').value || '').trim() }).then(function (res) {

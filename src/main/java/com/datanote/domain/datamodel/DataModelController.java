@@ -91,6 +91,12 @@ public class DataModelController {
 
     // -------- 流转(申请/审批) --------
 
+    @Operation(summary = "建模规范校验(提交前预检)")
+    @GetMapping("/model/{id}/validate")
+    public R<Map<String, Object>> validate(@PathVariable Long id) {
+        return R.ok(service.validateModel(id));
+    }
+
     @Operation(summary = "提交模型审批")
     @PostMapping("/model/{id}/submit")
     public R<DnModelChange> submit(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {

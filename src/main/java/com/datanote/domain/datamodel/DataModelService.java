@@ -167,13 +167,60 @@ public class DataModelService {
 
     // ---------------- 申请 / 审批 流转 ----------------
 
-    /** 提交模型审批: DRAFT/REJECTED → PENDING, 建变更工单(快照)。 */
+    /**
+     * 建模规范校验。errors 阻断提交, warnings 仅提示。
+     * 规则: 至少1实体; 每实体至少1属性; 逻辑/物理实体须有主键; 属性须有类型;
+     *      逻辑模型属性建议绑数据标准(warning)。
+     */
+    public java.util.Map<String, Object> validateModel(Long modelId) {
+        DnModel m = modelMapper.selectById(modelId);
+        if (m == null) throw new BusinessException("模型不存在");
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        List<DnModelEntity> entities = entityMapper.selectList(
+                new QueryWrapper<DnModelEntity>().eq("model_id", modelId).orderByAsc("sort_order", "id"));
+        if (entities.isEmpty()) {
+            errors.add("模型须至少包含 1 个实体");
+        }
+        boolean needPk = !"BIZ".equals(m.getModelType());   // 业务模型(概念)不强制主键
+        for (DnModelEntity e : entities) {
+            String en = e.getEntityName() == null ? e.getEntityCode() : e.getEntityName();
+            List<DnModelAttribute> attrs = attrMapper.selectList(
+                    new QueryWrapper<DnModelAttribute>().eq("entity_id", e.getId()));
+            if (attrs.isEmpty()) { errors.add("实体「" + en + "」无任何属性"); continue; }
+            boolean hasPk = false;
+            for (DnModelAttribute a : attrs) {
+                if (a.getIsPk() != null && a.getIsPk() == 1) hasPk = true;
+                if (a.getDataType() == null || a.getDataType().trim().isEmpty()) {
+                    errors.add("属性「" + en + "." + a.getAttrCode() + "」缺少数据类型");
+                }
+                if ("LOGIC".equals(m.getModelType()) && (a.getElementCode() == null || a.getElementCode().trim().isEmpty())) {
+                    warnings.add("逻辑属性「" + en + "." + a.getAttrCode() + "」未绑定数据标准(建议绑定以统一口径)");
+                }
+            }
+            if (needPk && !hasPk) errors.add("实体「" + en + "」缺少主键(至少一个主键属性)");
+        }
+        java.util.Map<String, Object> r = new java.util.HashMap<>();
+        r.put("valid", errors.isEmpty());
+        r.put("errors", errors);
+        r.put("warnings", warnings);
+        return r;
+    }
+
+    /** 提交模型审批: DRAFT/REJECTED → PENDING, 建变更工单(快照)。提交前强校验规范。 */
     @Transactional(rollbackFor = Exception.class)
     public DnModelChange submitForApproval(Long modelId, String reason) {
         DnModel m = modelMapper.selectById(modelId);
         if (m == null) throw new BusinessException("模型不存在");
         if ("PENDING".equals(m.getStatus())) throw new BusinessException("模型已在审批中, 请勿重复提交");
         if ("PUBLISHED".equals(m.getStatus())) throw new BusinessException("模型已发布, 如需变更请直接修改后再提交");
+        // 规范强校验: 有 error 阻断提交
+        java.util.Map<String, Object> v = validateModel(modelId);
+        @SuppressWarnings("unchecked")
+        List<String> errs = (List<String>) v.get("errors");
+        if (errs != null && !errs.isEmpty()) {
+            throw new BusinessException("模型未通过规范校验, 请先修正: " + String.join("; ", errs));
+        }
 
         String user = CurrentUserUtil.currentUser();
         DnModelChange c = new DnModelChange();
