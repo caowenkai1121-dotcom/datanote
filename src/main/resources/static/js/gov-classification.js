@@ -35,7 +35,7 @@
     c.appendChild(heatCard.el);
 
     // 待确认敏感列提醒（基于热力涉及的表，扫描出置信度中等待人工确认的列）
-    var pendBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '扫描待确认列', onclick: loadPendingCols });
+    var pendBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '扫描待确认列', 'data-perm': 'governance:manage', onclick: loadPendingCols });
     _pendBtn = pendBtn; // 供 loadPendingCols 加载中置灰防重复扫描
     var pendCard = DN.card({ title: '待确认敏感列提醒（置信度中等）', icon: 'alert', actions: pendBtn });
     c.appendChild(pendCard.el);
@@ -43,7 +43,7 @@
     pendCard.body.appendChild(DN.h('div', { id: 'clPending' }, [DN.empty('点击右上角「扫描待确认列」开始聚合', 'alert')]));
 
     // 2. 敏感规则管理
-    var addRuleBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', onclick: toggleRuleForm });
+    var addRuleBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增规则', 'data-perm': 'governance:manage', onclick: toggleRuleForm });
     var ruleCard = DN.card({ title: '敏感识别规则', icon: 'shield', actions: addRuleBtn });
     c.appendChild(ruleCard.el);
     ruleCard.body.appendChild(DN.h('div', { id: 'clRuleForm' })); // 就近 .gov-form 容器（替代 prompt）
@@ -52,7 +52,7 @@
 
     // 3. 对表识别
     clPicker = DN.dbTablePicker({});
-    var scanBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '识别', onclick: scanTable });
+    var scanBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '识别', 'data-perm': 'governance:manage', onclick: scanTable });
     _scanBtn = scanBtn; // 供 scanTable 加载中置灰防重复识别
     var trailBtn = DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '打标历史', onclick: function () {
       var db = clPicker.db(), table = clPicker.table();
@@ -200,6 +200,7 @@
     var wrap = DN.h('span', {});
     var toggleA = DN.h('a', {
       href: 'javascript:void(0)', text: r.enabled === 1 ? '停用' : '启用',
+      'data-perm': 'governance:manage',
       style: 'color:var(--primary);margin-right:12px',
       onclick: function () {
         var restore = lockBtn(toggleA, '处理中…');
@@ -210,7 +211,7 @@
     });
     wrap.appendChild(toggleA);
     var delA = DN.h('a', {
-      href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)',
+      href: 'javascript:void(0)', text: '删除', 'data-perm': 'governance:manage', style: 'color:var(--error)',
       onclick: function () {
         DN.confirm('确定删除规则「' + (r.ruleName || '') + '」吗？删除后将不再用于敏感识别，且无法撤销。', { title: '删除确认', danger: true }).then(function (ok) {
           if (!ok) return;
@@ -255,7 +256,7 @@
     ]));
     panel.appendChild(sec.el);
 
-    var saveBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存',
+    var saveBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存', 'data-perm': 'governance:manage',
       onclick: function () {
         var nm = name.value.trim(), pt = pattern.value.trim(), st = sensitiveType.value.trim();
         if (!nm) { DN.toast('规则名必填', 'error'); name.focus(); return; }
@@ -313,7 +314,7 @@
         var opts = (levelNames || []).map(function (n) { return '<option value="' + DN.esc(n) + '">' + DN.esc(n) + '</option>'; }).join('');
         if (!levelNames || !levelNames.length) { box.appendChild(DN.alertNode('密级清单尚未加载，建议密级暂不可选，请在「敏感分布热力」卡右上角切换分级模型重新加载。', 'warn')); }
         var selAll = DN.h('input', { type: 'checkbox', title: '全选' });
-        var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)' });
+        var confirmBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '确认打标(已勾选)', 'data-perm': 'governance:manage' });
         var minConfSel = DN.h('select', { class: 'dn-form-select', style: 'width:auto' });
         [['0', '全部置信度'], ['50', '≥50%'], ['70', '≥70%'], ['80', '≥80%']].forEach(function (o) { minConfSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
         minConfSel.onchange = function () { var mc = Number(minConfSel.value) || 0; rows.forEach(function (r) { if (r._cb) r._cb.checked = false; }); tbl.reload(rows.filter(function (r) { return (Number(r.confidence) || 0) >= mc; })); };

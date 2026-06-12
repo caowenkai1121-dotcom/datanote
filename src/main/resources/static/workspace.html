@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u51">
-<link rel="stylesheet" href="css/gov-modern.css?v=u51">
-<link rel="stylesheet" href="css/redesign.css?v=u51">
-<link rel="stylesheet" href="css/dn-design.css?v=u51">
+<link rel="stylesheet" href="css/app.css?v=u53">
+<link rel="stylesheet" href="css/gov-modern.css?v=u53">
+<link rel="stylesheet" href="css/redesign.css?v=u53">
+<link rel="stylesheet" href="css/dn-design.css?v=u53">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u51"></script>
-<script src="js/gov-assets.js?v=u51"></script>
-<script src="js/gov-lineage.js?v=u51"></script>
-<script src="js/gov-quality.js?v=u51"></script>
-<script src="js/gov-standard.js?v=u51"></script>
-<script src="js/gov-classification.js?v=u51"></script>
-<script src="js/gov-security.js?v=u51"></script>
-<script src="js/gov-health.js?v=u51"></script>
-<script src="js/gov-audit.js?v=u51"></script>
-<script src="js/gov-overview.js?v=u51"></script>
-<script src="js/gov-subject.js?v=u51"></script>
-<script src="js/gov-consumption.js?v=u51"></script>
-<script src="js/gov-govmap.js?v=u51"></script>
-<script src="js/project.js?v=u51"></script>
-<script src="js/home-dashboard.js?v=u51"></script>
-<script src="js/mdm.js?v=u51"></script>
-<script src="js/mdm-ingest.js?v=u51"></script>
-<script src="js/mdm-survivorship.js?v=u51"></script>
-<script src="js/mdm-approval.js?v=u51"></script>
-<script src="js/mdm-refdata.js?v=u51"></script>
-<script src="js/mdm-quality.js?v=u51"></script>
-<script src="js/mdm-pubsub.js?v=u51"></script>
-<script src="js/mdm-hierarchy.js?v=u51"></script>
-<script src="js/ai-agent.js?v=u51"></script>
+<script src="js/dn-common.js?v=u53"></script>
+<script src="js/gov-assets.js?v=u53"></script>
+<script src="js/gov-lineage.js?v=u53"></script>
+<script src="js/gov-quality.js?v=u53"></script>
+<script src="js/gov-standard.js?v=u53"></script>
+<script src="js/gov-classification.js?v=u53"></script>
+<script src="js/gov-security.js?v=u53"></script>
+<script src="js/gov-health.js?v=u53"></script>
+<script src="js/gov-audit.js?v=u53"></script>
+<script src="js/gov-overview.js?v=u53"></script>
+<script src="js/gov-subject.js?v=u53"></script>
+<script src="js/gov-consumption.js?v=u53"></script>
+<script src="js/gov-govmap.js?v=u53"></script>
+<script src="js/project.js?v=u53"></script>
+<script src="js/home-dashboard.js?v=u53"></script>
+<script src="js/mdm.js?v=u53"></script>
+<script src="js/mdm-ingest.js?v=u53"></script>
+<script src="js/mdm-survivorship.js?v=u53"></script>
+<script src="js/mdm-approval.js?v=u53"></script>
+<script src="js/mdm-refdata.js?v=u53"></script>
+<script src="js/mdm-quality.js?v=u53"></script>
+<script src="js/mdm-pubsub.js?v=u53"></script>
+<script src="js/mdm-hierarchy.js?v=u53"></script>
+<script src="js/ai-agent.js?v=u53"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -151,17 +151,17 @@
     <div class="view-sql" id="viewSql" style="display:none;">
       <!-- Toolbar -->
       <div class="editor-toolbar">
-        <button class="tool-btn run" onclick="runTask()">
+        <button class="tool-btn run" data-perm="develop:run" onclick="runTask()">
           <svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 2l9 5-9 5z"/></svg>
           运行
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" onclick="openParamRunModal()">
+        <button class="tool-btn" data-perm="develop:run" onclick="openParamRunModal()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l9 5-9 5z"/><path d="M11 2v10" stroke-dasharray="2 2"/></svg>
           传参运行
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" onclick="saveScript()">
+        <button class="tool-btn" data-perm="develop:edit" onclick="saveScript()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5h10"/></svg>
           保存
         </button>
@@ -170,7 +170,7 @@
           格式化
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" id="toolbarOnlineBtn" onclick="toolbarOnline()" style="display:none;">
+        <button class="tool-btn" id="toolbarOnlineBtn" data-perm="operations:schedule" onclick="toolbarOnline()" style="display:none;">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg>
           上线
         </button>
@@ -272,22 +272,22 @@
     <div class="view-integration" id="viewIntegration">
       <!-- Toolbar (same style as SQL editor) -->
       <div class="editor-toolbar">
-        <button class="tool-btn run" onclick="intgRunSync()">
+        <button class="tool-btn run" data-perm="dbsync:run" onclick="intgRunSync()">
           <svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 2l9 5-9 5z"/></svg>
           运行
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" onclick="intgCreateTable()">
+        <button class="tool-btn" data-perm="dbsync:edit" onclick="intgCreateTable()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4M7 5v4"/></svg>
           一键建表
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" onclick="intgSaveTask()">
+        <button class="tool-btn" data-perm="dbsync:edit" onclick="intgSaveTask()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5h10"/></svg>
           保存
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" id="syncOnlineBtn" onclick="toolbarOnline()" style="display:none;">
+        <button class="tool-btn" id="syncOnlineBtn" data-perm="dbsync:run" onclick="toolbarOnline()" style="display:none;">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg>
           上线
         </button>
@@ -462,7 +462,7 @@
         <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码"></div>
         <div class="ds-form-row"><label>所属项目</label><select id="dsProjectSel"><option value="">（不归属项目）</option></select></div>
         <div class="ds-form-actions">
-          <button class="btn btn-primary" onclick="saveDatasource()">
+          <button class="btn btn-primary" data-perm="settings:config" onclick="saveDatasource()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h8l2 2v8H2z"/><path d="M4 2v4h5V2"/><path d="M4 9h6v3H4z"/></svg>
             保存
           </button>
@@ -555,7 +555,7 @@
                   <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:4px;">
                     <input type="checkbox" id="schedSelectAll" onchange="schedToggleSelectAll(this.checked)"> 全选
                   </label>
-                  <button class="sched-btn primary" onclick="schedBatchRetry()" style="font-size:12px;padding:4px 12px;">一键重跑</button>
+                  <button class="sched-btn primary" data-perm="operations:schedule" onclick="schedBatchRetry()" style="font-size:12px;padding:4px 12px;">一键重跑</button>
                 </div>
               </div>
             </div>
@@ -676,7 +676,7 @@
               <button class="btn btn-sm" onclick="dmGotoGov('quality')" title="查看/新建此表质量规则">质量</button>
               <button class="btn btn-sm" onclick="dmGotoGov('classification')" title="查看此表敏感分级">敏感</button>
               <button class="btn btn-sm" onclick="dmGotoGov('assets')" title="在治理资产目录中查看">治理资产</button>
-              <button class="btn btn-sm" onclick="dmSetSubject()" title="设置此表所属主题域">主题域</button>
+              <button class="btn btn-sm" data-perm="governance:manage" onclick="dmSetSubject()" title="设置此表所属主题域">主题域</button>
             </div>
           </div>
           <div class="datamap-detail-tabs" id="dmDetailTabs">
@@ -815,7 +815,7 @@
           </div>
           <div class="quality-modal-footer">
             <button class="btn" onclick="closeRuleModal()">取消</button>
-            <button class="btn btn-primary" onclick="saveQualityRule(this)">保存</button>
+            <button class="btn btn-primary" data-perm="governance:quality" onclick="saveQualityRule(this)">保存</button>
           </div>
         </div>
       </div>
@@ -874,7 +874,7 @@
                   <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <input id="mRefDb" class="dbsync-form-input" style="width:130px;" placeholder="库名">
                     <input id="mRefTable" class="dbsync-form-input" style="width:150px;" placeholder="表名">
-                    <button class="btn btn-sm" onclick="metricAddRef()">登记来源表</button>
+                    <button class="btn btn-sm" data-perm="metrics:edit" onclick="metricAddRef()">登记来源表</button>
                   </div>
                   <div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px;">登记后可在数据地图该表看到"消费指标", 输入质量联动来源表质量规则</div>
                 </div>
@@ -887,7 +887,7 @@
           </div>
           <div class="quality-modal-footer">
             <button class="btn" onclick="closeMetricModal()">取消</button>
-            <button class="btn btn-primary" onclick="saveMetric()">保存</button>
+            <button class="btn btn-primary" data-perm="metrics:edit" onclick="saveMetric()">保存</button>
           </div>
         </div>
       </div>
@@ -916,7 +916,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">项目空间</h2>
               <span style="display:flex;gap:6px;">
-                <button class="btn btn-sm" onclick="projFromTemplateModal()">从模板新建</button>
+                <button class="btn btn-sm" data-perm="project:manage" onclick="projFromTemplateModal()">从模板新建</button>
                 <button class="btn btn-primary btn-sm" data-perm="project:manage" onclick="projOpenCreate()">+ 新建项目</button>
               </span>
             </div>
@@ -987,7 +987,7 @@
         </div>
         <div class="g-modal-footer">
           <button class="btn" onclick="projCloseModal()">取消</button>
-          <button class="btn btn-primary" onclick="projSave(this)">保存</button>
+          <button class="btn btn-primary" data-perm="project:manage" onclick="projSave(this)">保存</button>
         </div>
       </div>
     </div>
@@ -1020,7 +1020,7 @@
         </div>
         <div class="g-modal-footer">
           <button class="btn" onclick="projCloseReleaseModal()">取消</button>
-          <button class="btn btn-primary" id="projRelSubmitBtn" onclick="projSubmitRelease()">提交</button>
+          <button class="btn btn-primary" id="projRelSubmitBtn" data-perm="project:approve" onclick="projSubmitRelease()">提交</button>
         </div>
       </div>
     </div>
@@ -1125,7 +1125,7 @@
               <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="ods" value="ods"></div>
               <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-sm" onclick="testHiveConnection()">测试 Doris 连接</button>
-                <button class="btn btn-primary btn-sm" onclick="saveDatasourceConfig()">保存配置</button>
+                <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="saveDatasourceConfig()">保存配置</button>
               </div>
               <div id="hiveTestResult" style="margin-top:10px;font-size:13px;display:none;"></div>
             </div>
@@ -1139,7 +1139,7 @@
               <div class="ds-form-row"><label>安装路径</label><input id="cfgDataxHome" placeholder="/opt/datax" value="/opt/datax"></div>
               <div class="ds-form-row"><label>JVM 参数</label><input id="cfgDataxJvm" placeholder="-Xms1g -Xmx1g" value="-Xms1g -Xmx1g"></div>
               <div style="display:flex;gap:8px;margin-top:16px;">
-                <button class="btn btn-primary btn-sm" onclick="saveEnvConfig()">保存配置</button>
+                <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="saveEnvConfig()">保存配置</button>
               </div>
             </div>
           </div>
@@ -1162,12 +1162,12 @@
               <div style="flex:1;min-width:280px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;">
                 <div style="font-weight:600;margin-bottom:6px;">对话模型(普通任务)</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">智能体多步推理、NL2SQL、解释优化等。推荐 DeepSeek。</div>
-                <button class="btn btn-primary btn-sm" onclick="openAiConfig()">配置对话模型</button>
+                <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="openAiConfig()">配置对话模型</button>
               </div>
               <div style="flex:1;min-width:280px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;">
                 <div style="font-weight:600;margin-bottom:6px;">嵌入/向量库/图库</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">语义检索的向量嵌入(DeepSeek 不支持,推荐阿里百炼)+ 向量库/图库运行态。</div>
-                <button class="btn btn-primary btn-sm" onclick="openStoreConfig()">配置嵌入与存储</button>
+                <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="openStoreConfig()">配置嵌入与存储</button>
               </div>
             </div>
           </div>
@@ -1212,7 +1212,7 @@
                 </button>
               </div>
             </div>
-            <button type="button" class="dbsync-folder-create" onclick="dbsyncOpenCreateFolder()" title="新建文件夹">
+            <button type="button" class="dbsync-folder-create" data-perm="dbsync:edit" onclick="dbsyncOpenCreateFolder()" title="新建文件夹">
               <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
               新建文件夹
             </button>
@@ -1229,7 +1229,7 @@
               <div style="display:flex;gap:8px;align-items:center;">
                 <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobsDebounced()"
                   style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);">
-                <button class="btn btn-primary btn-sm" onclick="dbsyncOpenCreateModal()">
+                <button class="btn btn-primary btn-sm" data-perm="dbsync:edit" onclick="dbsyncOpenCreateModal()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
                   新建任务
                 </button>
@@ -1529,7 +1529,7 @@
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFormModal()">取消</button>
           <button class="btn" onclick="dbsyncTestConnection()" title="测试源/目标连通性与源表预检">测试连接</button>
-          <button class="btn btn-primary" onclick="dbsyncSaveJob()">保存</button>
+          <button class="btn btn-primary" data-perm="dbsync:edit" onclick="dbsyncSaveJob()">保存</button>
         </div>
       </div>
     </div>
@@ -1567,7 +1567,7 @@
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="document.getElementById('dbsyncMoveJobModal').classList.remove('show')">取消</button>
-          <button class="btn btn-primary" onclick="dbsyncConfirmMoveJob(this)">确定移动</button>
+          <button class="btn btn-primary" data-perm="dbsync:edit" onclick="dbsyncConfirmMoveJob(this)">确定移动</button>
         </div>
       </div>
     </div>
@@ -1724,7 +1724,7 @@
         </div>
         <div class="dbsync-modal-footer">
           <button class="btn" onclick="dbsyncCloseFolderModal()">取消</button>
-          <button class="btn btn-primary" onclick="dbsyncSubmitFolder(this)">保存</button>
+          <button class="btn btn-primary" data-perm="dbsync:edit" onclick="dbsyncSubmitFolder(this)">保存</button>
         </div>
       </div>
     </div>
@@ -1832,7 +1832,7 @@
           <div class="prop-row" style="margin-top:12px;">
             <span class="prop-label"></span>
             <div class="prop-value">
-              <button class="btn btn-primary btn-sm" onclick="saveBasicInfo()" style="font-size:12px;">保存基本信息</button>
+              <button class="btn btn-primary btn-sm" data-perm="develop:edit" onclick="saveBasicInfo()" style="font-size:12px;">保存基本信息</button>
             </div>
           </div>
         </div>
@@ -1978,7 +1978,7 @@
           </div>
         </div>
         <div style="margin-top:12px;padding:0 12px;">
-          <button class="btn btn-primary btn-sm" onclick="schedSaveConfig()" style="font-size:12px;">保存调度配置</button>
+          <button class="btn btn-primary btn-sm" data-perm="operations:schedule" onclick="schedSaveConfig()" style="font-size:12px;">保存调度配置</button>
         </div>
       </div>
 
@@ -2045,7 +2045,7 @@
             <span class="prop-label"></span>
             <div class="prop-value" style="display:flex;gap:6px;">
               <button class="btn btn-sm" onclick="previewBackfill()">预览日期</button>
-              <button class="btn btn-primary btn-sm" onclick="startBackfill()">开始补数据</button>
+              <button class="btn btn-primary btn-sm" data-perm="operations:backfill" onclick="startBackfill()">开始补数据</button>
             </div>
           </div>
           <div id="backfillPreview" style="display:none;padding:8px 12px;font-size:12px;color:var(--text-muted);line-height:1.8;"></div>
@@ -2080,7 +2080,7 @@
     <div id="moveFolderTree" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;margin-bottom:16px;"></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn" onclick="closeMoveModal()">取消</button>
-      <button class="btn btn-primary" onclick="confirmMoveScript()">确定</button>
+      <button class="btn btn-primary" data-perm="develop:edit" onclick="confirmMoveScript()">确定</button>
     </div>
   </div>
 </div>
@@ -2124,7 +2124,7 @@
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
       <button class="btn" onclick="closeAiScriptNameModal()">取消</button>
-      <button class="btn btn-primary" onclick="confirmAiScriptCreate()">创建</button>
+      <button class="btn btn-primary" data-perm="develop:edit" onclick="confirmAiScriptCreate()">创建</button>
     </div>
   </div>
 </div>
@@ -2336,11 +2336,11 @@
   <!-- Action Bar -->
   <div class="iw-action-bar" id="iwActionBar" style="display:none;">
     <button class="btn" onclick="history.back()">取消</button>
-    <button class="btn btn-primary" onclick="iwCreateTable()">
+    <button class="btn btn-primary" data-perm="dbsync:edit" onclick="iwCreateTable()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4M7 5v4"/></svg>
       一键建表
     </button>
-    <button class="btn btn-success" onclick="iwRunSync()">
+    <button class="btn btn-success" data-perm="dbsync:run" onclick="iwRunSync()">
       <svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 2l9 5-9 5z"/></svg>
       建表并同步
     </button>
@@ -2407,7 +2407,7 @@
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
       <button class="btn" onclick="document.getElementById('syncModal').classList.remove('show')">取消</button>
-      <button class="btn btn-primary" onclick="syncModalConfirm()">确认创建</button>
+      <button class="btn btn-primary" data-perm="dbsync:edit" onclick="syncModalConfirm()">确认创建</button>
     </div>
   </div>
 </div>
@@ -6265,7 +6265,7 @@ function depSearchTasks() {
           html += '<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;" '
             + 'onmouseover="this.style.background=\'rgba(var(--primary-rgb),.06)\'" onmouseout="this.style.background=\'\'">'
             + '<span>' + escapeHtml(t.taskName) + ' <span style="color:var(--text-muted);font-size:var(--fs-xs);">(' + escapeHtml(t.taskType) + ')</span></span>'
-            + '<button class="btn btn-sm" style="font-size:var(--fs-xs);padding:2px 8px;" onclick="depAddManual(' + t.taskId + ',\'' + escapeHtml(t.taskType) + '\',\'' + escapeHtml(t.taskName) + '\')">添加</button>'
+            + '<button class="btn btn-sm" style="font-size:var(--fs-xs);padding:2px 8px;" data-perm="develop:edit" onclick="depAddManual(' + t.taskId + ',\'' + escapeHtml(t.taskType) + '\',\'' + escapeHtml(t.taskName) + '\')">添加</button>'
             + '</div>';
         });
         document.getElementById('depSearchResults').innerHTML = html;
@@ -6499,7 +6499,7 @@ function renderVersionList(versions, emptyMsg) {
       + '<td class="ver-ops">'
       + '<a onclick="viewVersion(\'' + v.id + '\')">查看</a>'
       + '<a onclick="compareVersion(\'' + v.id + '\')">对比</a>'
-      + '<a onclick="restoreVersion(\'' + v.id + '\')">回滚</a>'
+      + '<a data-perm="develop:edit" onclick="restoreVersion(\'' + v.id + '\')">回滚</a>'
       + '</td></tr>';
   });
   html += '</tbody></table>';
@@ -6533,7 +6533,7 @@ function openParamRunModal() {
 
   showModal('传参运行', body,
     '<button class="btn" onclick="closeModal()">取消</button>'
-    + '<button class="btn btn-primary" onclick="doParamRun()">运行</button>', { width: 420 });
+    + '<button class="btn btn-primary" data-perm="develop:run" onclick="doParamRun()">运行</button>', { width: 420 });
 }
 
 function doParamRun() {
@@ -7632,8 +7632,8 @@ function dmRenderFields(columns) {
       + '<td id="dmFieldType_' + i + '" style="font-size:12px;color:var(--text-muted);">' + escapeHtml(col.type || '') + '</td>'
       + '<td title="' + escapeHtml(col.comment || '') + '" style="font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(col.comment || '') + '</td>'
       + '<td style="text-align:center;">'
-      + '<button class="btn btn-sm" onclick="dmEditField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;margin-right:2px;">编辑</button>'
-      + '<button class="btn btn-sm" onclick="dmSaveField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;display:none;" id="dmSaveBtn_' + i + '">保存</button>'
+      + '<button class="btn btn-sm" data-perm="catalog:edit" onclick="dmEditField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;margin-right:2px;">编辑</button>'
+      + '<button class="btn btn-sm" data-perm="catalog:edit" onclick="dmSaveField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;display:none;" id="dmSaveBtn_' + i + '">保存</button>'
       + '</td>'
       + '</tr>';
   });
@@ -7812,7 +7812,7 @@ function dmLoadDDL() {
       if (d.selectSql) {
         html += '<div class="dm-code-block"><div class="dm-code-block-header"><span>查询语句 (SELECT)</span>'
           + '<span><button class="dm-code-copy-btn" onclick="dmCopyCode(this)">复制</button> '
-          + '<button class="dm-code-copy-btn" onclick="dmTableToDataset()" title="把此查询注册为受治理可复用数据集">存为数据集</button></span></div>'
+          + '<button class="dm-code-copy-btn" data-perm="catalog:edit" onclick="dmTableToDataset()" title="把此查询注册为受治理可复用数据集">存为数据集</button></span></div>'
           + '<pre>' + escapeHtml(d.selectSql) + '</pre></div>';
       }
       if (!html) html = '<div class="datamap-empty">暂无可用的 DDL / SQL</div>';
@@ -7840,7 +7840,7 @@ function dmSetSubject() {
     ov.innerHTML = '<div style="background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;min-width:320px;box-shadow:var(--shadow-lg);">'
       + '<div style="font-weight:600;margin-bottom:12px;">设置主题域 · ' + escapeHtml(dmCurrentTable) + '</div>'
       + '<select id="dmSubjSel" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;">' + opts + '</select>'
-      + '<div style="text-align:right;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" id="dmSubjCancel">取消</button><button class="btn btn-sm btn-primary" id="dmSubjSave">保存</button></div></div>';
+      + '<div style="text-align:right;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" id="dmSubjCancel">取消</button><button class="btn btn-sm btn-primary" data-perm="governance:manage" id="dmSubjSave">保存</button></div></div>';
     document.body.appendChild(ov);
     ov.querySelector('#dmSubjCancel').onclick = function(){ ov.remove(); };
     ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
@@ -8038,7 +8038,7 @@ function renderMetricList(metrics) {
       '<td style="font-size:var(--fs-xs);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(m.dataSource || '') + '">' + escapeHtml(m.dataSource || '-') + '</td>' +
       '<td>' + escapeHtml(m.owner || '-') + '</td>' +
       // 启停开关: 复用 /api/metric/save 只传 {id,status}
-      '<td><a href="#" onclick="metricToggleStatus(' + m.id + ',' + (m.status === 1 ? 0 : 1) + ');return false;" title="点击' + (m.status === 1 ? '停用(停止取值/退出消费层)' : '启用') + '">' + (m.status === 1 ? '<span class="quality-status-on">启用</span>' : '<span class="quality-status-off">停用</span>') + '</a></td>' +
+      '<td><a href="#" data-perm="metrics:edit" onclick="metricToggleStatus(' + m.id + ',' + (m.status === 1 ? 0 : 1) + ');return false;" title="点击' + (m.status === 1 ? '停用(停止取值/退出消费层)' : '启用') + '">' + (m.status === 1 ? '<span class="quality-status-on">启用</span>' : '<span class="quality-status-off">停用</span>') + '</a></td>' +
       '<td class="quality-actions">' +
         '<button class="btn btn-sm" data-perm="metrics:edit" onclick="editMetric(' + m.id + ')">编辑</button>' +
         '<button class="btn btn-sm" onclick="metricGotoBoard(\'' + escapeHtml(m.metricCode || '') + '\')" title="在消费驾驶舱查看该指标值/新鲜度/输入质量">驾驶舱</button>' +
@@ -8092,7 +8092,7 @@ function metricLoadRefs(id) {
     box.innerHTML = refs.map(function(r) {
       return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-hover);border-radius:var(--radius-lg);padding:1px 8px;margin:2px 4px 2px 0;font-size:var(--fs-xs);white-space:nowrap;">'
         + escapeHtml((r.dbName || '') + '.' + (r.tableName || ''))
-        + '<a href="#" onclick="metricDelRef(' + r.id + ');return false;" style="color:var(--error);text-decoration:none;" title="删除该来源表登记">×</a></span>';
+        + '<a href="#" data-perm="metrics:edit" onclick="metricDelRef(' + r.id + ');return false;" style="color:var(--error);text-decoration:none;" title="删除该来源表登记">×</a></span>';
     }).join('');
   }).catch(function() { box.innerHTML = '<span style="color:var(--error);">来源表加载失败</span>'; });
 }
@@ -9016,7 +9016,7 @@ function showCreateBaselineDialog() {
         '</div>' +
         '<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">关联任务</label>' +
         '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;">' + (taskOpts || '<span style="color:var(--text-muted);">暂无可选任务</span>') + '</div></div>' +
-        '<button class="btn btn-primary" onclick="submitCreateBaseline(this)" style="width:100%;">创建基线</button>' +
+        '<button class="btn btn-primary" data-perm="operations:baseline" onclick="submitCreateBaseline(this)" style="width:100%;">创建基线</button>' +
       '</div></div>';
     document.body.appendChild(overlay);
   });
@@ -9388,11 +9388,11 @@ function renderSchedTasks(runs) {
 
       if (r.status === -1) {
         html += '<button style="color:var(--primary)" onclick="schedAskAi(' + r.id + ',' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\',\'' + escapeHtml(r.taskName) + '\')" title="AI根因:读日志+下游波及+补数建议">AI根因</button>';
-        html += '<button onclick="schedRetry(' + r.id + ')">重试</button>';
-        html += '<button onclick="schedPauseDown(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\')">暂停下游</button>';
+        html += '<button data-perm="operations:schedule" onclick="schedRetry(' + r.id + ')">重试</button>';
+        html += '<button data-perm="operations:schedule" onclick="schedPauseDown(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\')">暂停下游</button>';
       }
       if (r.status === 1 || r.status === -1) {
-        html += '<button onclick="schedBackfill(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\',\'' + escapeHtml(r.taskName) + '\')">补数据</button>';
+        html += '<button data-perm="operations:backfill" onclick="schedBackfill(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\',\'' + escapeHtml(r.taskName) + '\')">补数据</button>';
       }
       html += '<button onclick="schedViewLog(' + r.id + ',\'' + escapeHtml(r.taskName) + '\')">日志</button>';
       html += '</div></div>';
@@ -9631,7 +9631,7 @@ function showBackfillModal(rootTaskId, rootTaskType, rootTaskName, downstreamTre
 
   html += '<div style="margin-top:16px;text-align:right;">'
     + '<button class="sched-btn" onclick="this.closest(\'.sched-log-overlay\').remove()">取消</button> '
-    + '<button class="sched-btn primary" onclick="doBackfill(this,' + rootTaskId + ',\'' + rootTaskType + '\')">开始补数据</button>'
+    + '<button class="sched-btn primary" data-perm="operations:backfill" onclick="doBackfill(this,' + rootTaskId + ',\'' + rootTaskType + '\')">开始补数据</button>'
     + '</div></div></div>';
 
   overlay.innerHTML = html;
@@ -9775,7 +9775,7 @@ function compareVersion(versionId) {
     + diffHtml + '</pre>';
   showModal('版本对比', body,
     '<button class="btn" onclick="closeModal()">关闭</button>'
-    + '<button class="btn btn-primary" onclick="closeModal();restoreVersion(\'' + versionId + '\')">回滚到此版本</button>', { width: 720 });
+    + '<button class="btn btn-primary" data-perm="develop:edit" onclick="closeModal();restoreVersion(\'' + versionId + '\')">回滚到此版本</button>', { width: 720 });
 }
 
 // ===== 版本回滚 =====
@@ -9803,7 +9803,7 @@ function addUpstreamDep() {
     + '<input type="text" id="depTableInput" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-body);color:var(--text-regular);font-size:12px;" placeholder="表名">';
   openModal('添加上游依赖', body,
     '<button class="btn" onclick="closeModal()">取消</button>'
-    + '<button class="btn btn-primary" onclick="doAddUpstreamDep(\'' + taskId + '\',\'' + taskType + '\')">确定</button>');
+    + '<button class="btn btn-primary" data-perm="develop:edit" onclick="doAddUpstreamDep(\'' + taskId + '\',\'' + taskType + '\')">确定</button>');
 }
 
 function doAddUpstreamDep(taskId, taskType) {
@@ -10154,11 +10154,11 @@ window.umRenderUsers = function() {
       + '<td>' + chips + '</td>'
       + '<td style="white-space:nowrap;">' + lastLogin + '</td>'
       + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-      + '<td><a href="#" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<td><a href="#" data-perm="settings:user" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umViewUserPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
-      + '<a href="#" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
-      + '<a href="#" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:var(--primary);margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
-      + '<a href="#" onclick="umDeleteUser(' + u.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
+      + '<a href="#" data-perm="settings:user" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:var(--primary);margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umDeleteUser(' + u.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
   umRenderBatchBar(); umSyncSelAll();
@@ -10192,10 +10192,10 @@ window.umRenderBatchBar = function() {
   if (!n) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
   bar.style.display = 'flex';
   bar.innerHTML = '<span style="font-size:13px;">已选 <b>' + n + '</b> 个用户</span>'
-    + '<button class="btn btn-sm" onclick="umBatchStatus(1)" style="margin-left:8px;">批量启用</button>'
-    + '<button class="btn btn-sm" onclick="umBatchStatus(0)">批量停用</button>'
-    + '<button class="btn btn-sm" onclick="umBatchRoles()">追加角色</button>'
-    + '<button class="btn btn-sm" onclick="umBatchDelete()" style="color:var(--error);border-color:var(--error);">批量删除</button>'
+    + '<button class="btn btn-sm" data-perm="settings:user" onclick="umBatchStatus(1)" style="margin-left:8px;">批量启用</button>'
+    + '<button class="btn btn-sm" data-perm="settings:user" onclick="umBatchStatus(0)">批量停用</button>'
+    + '<button class="btn btn-sm" data-perm="settings:user" onclick="umBatchRoles()">追加角色</button>'
+    + '<button class="btn btn-sm" data-perm="settings:user" onclick="umBatchDelete()" style="color:var(--error);border-color:var(--error);">批量删除</button>'
     + '<a href="#" onclick="umClearSel();return false;" style="margin-left:auto;font-size:12px;color:var(--text-muted);">清除选择</a>';
 };
 function umSelIds() { return Object.keys(window._umSel || {}).map(Number); }
@@ -10231,7 +10231,7 @@ window.umBatchRoles = function() {
   var checks = _umRoles.map(function(r) { return '<label style="display:inline-block;margin:2px 12px 2px 0;font-size:13px;"><input type="checkbox" class="umBatchRoleChk" value="' + r.id + '"> ' + escapeHtml(r.roleName || r.roleCode) + '</label>'; }).join('') || '<span style="color:var(--text-muted);">暂无角色</span>';
   var h = '<div style="min-width:380px;"><div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">为选中的 <b>' + ids.length + '</b> 个用户<b>追加</b>以下角色(不影响其现有其他角色):</div>'
     + '<div style="max-height:200px;overflow:auto;">' + checks + '</div>'
-    + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umBatchRolesSubmit()">确定追加</button></div></div>';
+    + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umBatchRolesSubmit()">确定追加</button></div></div>';
   projShowModalBox('批量追加角色', h);
 };
 window.umBatchRolesSubmit = function() {
@@ -10254,7 +10254,7 @@ window.umUserModal = function(id) {
     + '<div><label ' + lab + '>密码' + (u ? '（留空不修改）' : '') + '</label><input id="umfPwd" type="password" ' + fi + ' placeholder="' + (u ? '留空保持原密码' : '登录密码') + '"></div>'
     + '<div><label ' + lab + '>状态</label><select id="umfStatus" class="dbsync-form-select" style="width:100%;"><option value="1"' + ((!u || u.status === 1) ? ' selected' : '') + '>启用</option><option value="0"' + (u && u.status === 0 ? ' selected' : '') + '>停用</option></select></div>'
     + '<div><label ' + lab + '>角色</label><div style="max-height:120px;overflow:auto;">' + roleChecks + '</div></div>'
-    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSaveUser(' + (id || 0) + ')">保存</button></div></div>';
+    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSaveUser(' + (id || 0) + ')">保存</button></div></div>';
   projShowModalBox(id ? '编辑用户' : '新建用户', h);
 };
 window.umSaveUser = function(id) {
@@ -10313,9 +10313,9 @@ window.umRenderRoles = function() {
     var uc = r.userCount || 0;
     var ucBadge = uc > 0 ? '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);background:rgba(var(--primary-rgb),.1);color:var(--primary);">' + uc + ' 人</span>' : '<span style="color:var(--text-faint);">未使用</span>';
     h += '<tr><td style="font-family:monospace;">' + escapeHtml(r.roleCode) + '</td><td><b>' + escapeHtml(r.roleName || '-') + '</b></td><td>' + ucBadge + '</td><td style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.description || '-') + '</td><td>' + permChips + '</td>'
-      + '<td><a href="#" onclick="umRoleModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
-      + '<a href="#" onclick="umPermModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
-      + '<a href="#" onclick="umDeleteRole(' + r.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
+      + '<td><a href="#" data-perm="settings:user" onclick="umRoleModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umPermModal(' + r.id + ');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umDeleteRole(' + r.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
   });
   box.innerHTML = h + '</tbody></table>';
 };
@@ -10326,7 +10326,7 @@ window.umRoleModal = function(id) {
     + '<div><label ' + lab + '>角色编码</label><input id="umfRoleCode" ' + fi + ' ' + (r ? 'value="' + escapeHtml(r.roleCode) + '" disabled' : 'placeholder="如 DATA_DEV"') + '></div>'
     + '<div><label ' + lab + '>角色名称</label><input id="umfRoleName" ' + fi + ' value="' + (r ? escapeHtml(r.roleName || '') : '') + '" placeholder="如 数据开发"></div>'
     + '<div><label ' + lab + '>描述</label><input id="umfRoleDesc" ' + fi + ' value="' + (r ? escapeHtml(r.description || '') : '') + '" placeholder="可选"></div>'
-    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSaveRole(' + (id || 0) + ')">保存</button></div></div>';
+    + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSaveRole(' + (id || 0) + ')">保存</button></div></div>';
   projShowModalBox(id ? '编辑角色' : '新建角色', h);
 };
 window.umSaveRole = function(id) {
@@ -10364,7 +10364,7 @@ window.umPermModal = function(id) {
     var h = '<div style="min-width:480px;max-width:560px;">'
       + '<div style="margin-bottom:10px;"><label style="font-size:13px;cursor:pointer;font-weight:600;"><input type="checkbox" id="umfPermAll"' + (hasAll ? ' checked' : '') + ' onchange="umToggleAll(this.checked)"> 全部权限（*，超级管理员）</label></div>'
       + '<div id="umfPermTree" style="max-height:380px;overflow-y:auto;">' + tree + '</div>'
-      + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="umSavePerms(' + id + ')">保存</button></div></div>';
+      + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSavePerms(' + id + ')">保存</button></div></div>';
     projShowModalBox('设置角色权限 · ' + (r.roleName || r.roleCode), h);
     // 初始化各组头勾选态
     document.querySelectorAll('#umfPermTree .umf-group').forEach(function(gck) { umSyncGroupHead(gck.dataset.module); });
@@ -10982,7 +10982,7 @@ function openAiConfig() {
       + '<div id="aiCfgStatus" style="font-size:12px;"></div>'
       + '</div>',
       '<button class="btn btn-sm" onclick="testAiConfig()" style="margin-right:8px;">测试连接</button>'
-      + '<button class="btn btn-primary btn-sm" onclick="saveAiConfig()">保存</button>'
+      + '<button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="saveAiConfig()">保存</button>'
       + '<button class="btn btn-sm" onclick="closeModal()" style="margin-left:4px;">取消</button>',
       { width: '420px' }
     );
@@ -11079,8 +11079,8 @@ function openStoreConfig() {
       + ' · 向量库 ' + (v.ready ? ('<span style="color:var(--success)">✓就绪(' + escapeHtml(v.collection || '') + ')</span>') : '<span style="color:var(--error-text)">✗未连</span>')
       + ' · 图库 ' + (g.ready ? '<span style="color:var(--success)">✓就绪</span>' : '<span style="color:var(--error-text)">✗未连</span>') + '</div>'
       + '<div id="embCfgStatus" style="font-size:12px;"></div></div>',
-      '<button class="btn btn-sm" onclick="reindexStore()" style="margin-right:8px;" title="把表/术语/指标重新嵌入向量库+血缘镜像图库">重建索引</button>'
-      + '<button class="btn btn-primary btn-sm" onclick="saveStoreConfig()">保存</button>'
+      '<button class="btn btn-sm" data-perm="settings:config" onclick="reindexStore()" style="margin-right:8px;" title="把表/术语/指标重新嵌入向量库+血缘镜像图库">重建索引</button>'
+      + '<button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="saveStoreConfig()">保存</button>'
       + '<button class="btn btn-sm" onclick="closeModal()" style="margin-left:4px;">取消</button>',
       { width: '460px' });
   });
@@ -11449,6 +11449,28 @@ function closeAiScriptNameModal() {
       el.style.display = window.dnHasPerm(el.getAttribute('data-perm')) ? '' : 'none';
     });
   };
+  // 动态渲染的 [data-perm] 自动应用权限: 监听 DOM 新增, 含 data-perm 即按权限隐藏。
+  // 根治"各模块列表/详情重渲染后按钮重新出现"的覆盖盲区, 无需每处 render 手动调 dnApplyBtnPerms。
+  window.dnObserveBtnPerms = function(){
+    if (!window.__authEnabled || window.__dnPermObserver || typeof MutationObserver === 'undefined') return;
+    var pending = false;
+    var obs = new MutationObserver(function(muts){
+      if (pending) return;
+      var hit = false;
+      for (var i = 0; i < muts.length && !hit; i++) {
+        var added = muts[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (n.nodeType === 1 && ((n.matches && n.matches('[data-perm]')) || (n.querySelector && n.querySelector('[data-perm]')))) { hit = true; break; }
+        }
+      }
+      if (!hit) return;
+      pending = true;
+      requestAnimationFrame(function(){ pending = false; try { window.dnApplyBtnPerms(); } catch(e){} });
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    window.__dnPermObserver = obs;
+  };
   // 全局用户 datalist: 任何"负责人/用户名"输入框挂 list="dnUserList" 即可下拉选真实用户
   window.dnFillUserDatalist = function(){
     var dl = document.getElementById('dnUserList');
@@ -11548,7 +11570,7 @@ function closeAiScriptNameModal() {
         var data = (me && me.code === 0) ? (me.data || {}) : {};
         window.__perms = data.perms || [];
         window.__user = data.username || d.username || null;
-        try { window.dnApplyMenuPerms(); window.dnApplyBtnPerms(); window.dnRenderUserBox(); window.dnFillUserDatalist(); } catch(e){}
+        try { window.dnApplyMenuPerms(); window.dnApplyBtnPerms(); window.dnObserveBtnPerms(); window.dnRenderUserBox(); window.dnFillUserDatalist(); } catch(e){}
         cb();
         if (window.__mustChangePwd) { try { window.dnForceChangePwd(); } catch(e){} }  // 首登须改密: 渲染后弹强制遮罩
       }).catch(function(){ window.__perms = []; cb(); });
@@ -12284,8 +12306,8 @@ window.dbsyncOpenTemplates = function() {
   var rows = tpls.length ? tpls.map(function(t, i) {
     return '<tr><td><b>' + escapeHtml(t.name) + '</b></td>'
       + '<td style="font-size:var(--fs-xs);color:var(--text-muted);">' + escapeHtml(t.syncMode) + ' · ' + escapeHtml(t.writeMode) + ' · ' + escapeHtml(t.writeChannel) + ' · 批' + (t.batchSize || '-') + (t.scheduleCron ? ' · ' + escapeHtml(t.scheduleCron) : '') + '</td>'
-      + '<td style="white-space:nowrap;"><a href="#" onclick="dbsyncNewFromTemplate(' + i + ');return false;" style="color:var(--primary);margin-right:8px;">新建</a>'
-      + '<a href="#" onclick="dbsyncDelTemplate(' + i + ');return false;" style="color:var(--error);">删除</a></td></tr>';
+      + '<td style="white-space:nowrap;"><a href="#" data-perm="dbsync:edit" onclick="dbsyncNewFromTemplate(' + i + ');return false;" style="color:var(--primary);margin-right:8px;">新建</a>'
+      + '<a href="#" data-perm="dbsync:edit" onclick="dbsyncDelTemplate(' + i + ');return false;" style="color:var(--error);">删除</a></td></tr>';
   }).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--text-muted);">暂无模板。可在任务行菜单「另存为模板」保存常用配置。</td></tr>';
   ov.innerHTML = '<div class="dbsync-modal" style="width:560px;max-width:94vw;">'
     + '<div class="dbsync-modal-header"><span>任务模板</span><button class="dbsync-modal-close" onclick="document.getElementById(\'dbsyncTplOverlay\').remove()">&times;</button></div>'
@@ -12708,9 +12730,9 @@ function dbsyncRenderFolderNodes(parentId, depth) {
       + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3a1 1 0 011-1h2.6a1 1 0 01.7.3L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
       + '<span class="dbsync-folder-name">' + escapeHtml(f.folderName || '') + '</span>' + _dbsyncCountBadge(_dbsyncFolderCount(f.id)) + '</button>'
       + '<div class="dbsync-folder-actions">'
-      + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenCreateChildFolder(' + f.id + ')" title="新建子文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v8M2 6h8"/></svg></button>'
-      + '<button class="dbsync-folder-action" onclick="event.stopPropagation(); dbsyncOpenRenameFolder(' + f.id + ')" title="重命名"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 2.5l2 2L4.2 9.8H2.2V7.8z"/><path d="M6.8 3.2l2 2"/></svg></button>'
-      + '<button class="dbsync-folder-delete" onclick="event.stopPropagation(); dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6M5 3V2h2v1M4 5v4M8 5v4M3.5 3.8l.4 6.2h4.2l.4-6.2"/></svg></button>'
+      + '<button class="dbsync-folder-action" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncOpenCreateChildFolder(' + f.id + ')" title="新建子文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v8M2 6h8"/></svg></button>'
+      + '<button class="dbsync-folder-action" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncOpenRenameFolder(' + f.id + ')" title="重命名"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 2.5l2 2L4.2 9.8H2.2V7.8z"/><path d="M6.8 3.2l2 2"/></svg></button>'
+      + '<button class="dbsync-folder-delete" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6M5 3V2h2v1M4 5v4M8 5v4M3.5 3.8l.4 6.2h4.2l.4-6.2"/></svg></button>'
       + '</div>'
       + '</div>'
       + dbsyncRenderFolderNodes(f.id, depth + 1);
@@ -12938,8 +12960,8 @@ function dbsyncJobsCards(list) {
       + '<div title="' + tgt + '">目标 ' + tgt + '</div></div>'
       + '<div style="margin-top:8px;display:flex;gap:6px;" onclick="event.stopPropagation()">'
       + (job.status === 'RUNNING'
-          ? '<button class="btn btn-sm btn-danger" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStop' : 'dbsyncStopJob') + '(' + job.id + ')">停止</button>'
-          : '<button class="btn btn-sm btn-success" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStart' : 'dbsyncRunJob') + '(' + job.id + ')">运行</button>')
+          ? '<button class="btn btn-sm btn-danger" data-perm="dbsync:run" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStop' : 'dbsyncStopJob') + '(' + job.id + ')">停止</button>'
+          : '<button class="btn btn-sm btn-success" data-perm="dbsync:run" onclick="' + (job.syncMode === 'CDC' ? 'dbsyncCdcStart' : 'dbsyncRunJob') + '(' + job.id + ')">运行</button>')
       + '<button class="btn btn-sm" onclick="dbsyncOpenDetail(' + job.id + ')">详情</button></div>'
       + '</div>';
   });
@@ -12996,8 +13018,8 @@ function dbsyncRenderJobs(list) {
   if (selIds.length) {
     bulkHtml = '<div style="display:flex;align-items:center;gap:10px;background:var(--primary-light,rgba(var(--primary-rgb),.08));border:1px solid var(--primary);border-radius:var(--radius-lg);padding:8px 14px;margin-bottom:12px;font-size:13px;animation:wsOverlayIn .15s ease;">'
       + '<span>已选 <b>' + selIds.length + '</b> 个任务</span>'
-      + '<button class="btn btn-sm btn-success" onclick="dbsyncBulkRun()">批量运行</button>'
-      + '<button class="btn btn-sm btn-danger" onclick="dbsyncBulkStop()">批量停止</button>'
+      + '<button class="btn btn-sm btn-success" data-perm="dbsync:run" onclick="dbsyncBulkRun()">批量运行</button>'
+      + '<button class="btn btn-sm btn-danger" data-perm="dbsync:run" onclick="dbsyncBulkStop()">批量停止</button>'
       + '<button class="btn btn-sm" onclick="dbsyncClearSel()">取消选择</button></div>';
   }
   var shown = _dbsyncStatusFilter === 'ALL' ? base : base.filter(function(j) { return (j.status || 'CREATED') === _dbsyncStatusFilter; });
@@ -13053,18 +13075,18 @@ function dbsyncRenderJobs(list) {
     // 主操作按钮：全量/增量=运行；CDC=启动/停止/重置
     if (job.syncMode === 'CDC') {
       if (job.status === 'RUNNING') {
-        html += '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')" title="停止 CDC">'
+        html += '<button class="btn btn-sm btn-danger" data-perm="dbsync:run" onclick="dbsyncCdcStop(' + job.id + ')" title="停止 CDC">'
           + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><rect x="2" y="2" width="8" height="8" rx="1"/></svg> 停止</button>';
       } else {
-        html += '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">'
+        html += '<button class="btn btn-sm btn-success" data-perm="dbsync:run" onclick="dbsyncCdcStart(' + job.id + ')" title="启动 CDC">'
           + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 启动</button>';
       }
-      html += '<button class="btn btn-sm btn-warning" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照">重置</button>';
+      html += '<button class="btn btn-sm btn-warning" data-perm="dbsync:run" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照">重置</button>';
     } else if (job.status === 'RUNNING') {
-      html += '<button class="btn btn-sm btn-danger" onclick="dbsyncStopJob(' + job.id + ')" title="停止运行">'
+      html += '<button class="btn btn-sm btn-danger" data-perm="dbsync:run" onclick="dbsyncStopJob(' + job.id + ')" title="停止运行">'
         + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><rect x="2" y="2" width="8" height="8" rx="1"/></svg> 停止</button>';
     } else {
-      html += '<button class="btn btn-sm" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
+      html += '<button class="btn btn-sm" data-perm="dbsync:run" onclick="dbsyncRunJob(' + job.id + ')" title="手动运行">'
         + '<svg viewBox="0 0 12 12" fill="currentColor" width="9" height="9"><path d="M2 1l9 5-9 5z"/></svg> 运行</button>';
     }
     // 详情（打开右侧明细抽屉，合并了原“历史/展开”）
@@ -13461,20 +13483,20 @@ window.dbsyncOpenRowMenu = function(evt, id) {
   var schedBtn = '';
   if (_job.scheduleCron) {
     var on = 'online' === (_job.scheduleStatus || '').toLowerCase();
-    schedBtn = '<button onclick="dbsyncRowMenuAct(\'' + (on ? 'schedOff' : 'schedOn') + '\',' + id + ')">' + icCheck + (on ? ' 下线调度' : ' 上线调度') + '</button>';
+    schedBtn = '<button data-perm="dbsync:run" onclick="dbsyncRowMenuAct(\'' + (on ? 'schedOff' : 'schedOn') + '\',' + id + ')">' + icCheck + (on ? ' 下线调度' : ' 上线调度') + '</button>';
   }
   menu.innerHTML =
-      '<button onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
+      '<button data-perm="dbsync:edit" onclick="dbsyncRowMenuAct(\'edit\',' + id + ')">' + icEdit + ' 编辑</button>'
     + schedBtn
-    + '<button onclick="dbsyncRowMenuAct(\'clone\',' + id + ')">' + icClone + ' 克隆任务</button>'
+    + '<button data-perm="dbsync:edit" onclick="dbsyncRowMenuAct(\'clone\',' + id + ')">' + icClone + ' 克隆任务</button>'
     + '<button onclick="dbsyncRowMenuAct(\'export\',' + id + ')">' + icExport + ' 导出配置</button>'
-    + '<button onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
+    + '<button data-perm="dbsync:edit" onclick="dbsyncRowMenuAct(\'move\',' + id + ')">' + icMove + ' 移动到…</button>'
     + '<button onclick="dbsyncRowMenuAct(\'reconcile\',' + id + ')">' + icCheck + ' 行数对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'checksum\',' + id + ')">' + icCheck + ' 深度对账</button>'
     + '<button onclick="dbsyncRowMenuAct(\'compare\',' + id + ')">' + icClone + ' 对比配置</button>'
-    + '<button onclick="dbsyncRowMenuAct(\'template\',' + id + ')">' + icExport + ' 另存为模板</button>'
+    + '<button data-perm="dbsync:edit" onclick="dbsyncRowMenuAct(\'template\',' + id + ')">' + icExport + ' 另存为模板</button>'
     + '<div class="dbsync-row-menu-sep"></div>'
-    + '<button class="danger" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
+    + '<button class="danger" data-perm="dbsync:edit" onclick="dbsyncRowMenuAct(\'del\',' + id + ')">' + icDel + ' 删除</button>';
   menu.setAttribute('data-job', String(id));
   // fixed 定位：与触发按钮右对齐、下方弹出（放不下则上翻）
   var r = evt.currentTarget.getBoundingClientRect();
@@ -13664,15 +13686,15 @@ function dbsyncRenderDetailHead(job) {
   var aiBtn = '<button class="btn btn-sm" style="margin-left:4px;color:var(--primary)" onclick="dbsyncAskAi(' + job.id + ',\'' + escapeHtml(job.jobName || '') + '\')" title="AI排障:配置/断点/对账/异常">AI排障</button>';
   if (job.syncMode === 'CDC') {
     var cdcBtns = (job.status === 'RUNNING')
-      ? '<button class="btn btn-sm btn-danger" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
-      : '<button class="btn btn-sm btn-success" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
-    cdcBtns += '<button class="btn btn-sm btn-warning" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照" style="margin-left:4px;">重置</button>';
-    cdcBtns += '<button class="btn btn-sm" onclick="dbsyncTriggerIncrSnapshot(' + job.id + ')" title="需先开启增量快照开关并在源库建 signal 表" style="margin-left:4px;">增量快照</button>';
+      ? '<button class="btn btn-sm btn-danger" data-perm="dbsync:run" onclick="dbsyncCdcStop(' + job.id + ')">停止</button>'
+      : '<button class="btn btn-sm btn-success" data-perm="dbsync:run" onclick="dbsyncCdcStart(' + job.id + ')">启动</button>';
+    cdcBtns += '<button class="btn btn-sm btn-warning" data-perm="dbsync:run" onclick="dbsyncCdcReset(' + job.id + ')" title="重置/重快照" style="margin-left:4px;">重置</button>';
+    cdcBtns += '<button class="btn btn-sm" data-perm="dbsync:run" onclick="dbsyncTriggerIncrSnapshot(' + job.id + ')" title="需先开启增量快照开关并在源库建 signal 表" style="margin-left:4px;">增量快照</button>';
     cdcBtns += reconcileBtn;
     cdcBtns += checksumBtn;
     pbtn.innerHTML = cdcBtns + aiBtn;
   } else {
-    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn + checksumBtn + aiBtn;
+    pbtn.innerHTML = '<button class="btn btn-sm btn-primary" data-perm="dbsync:run" onclick="dbsyncDetailRunJob(' + job.id + ')">▶ 运行</button>' + reconcileBtn + checksumBtn + aiBtn;
   }
 }
 // 状态变更后（列表刷新触发）同步刷新抽屉头部 + 概览/历史
@@ -13884,7 +13906,7 @@ function dbsyncRenderOverview(job, execs, cdcMetrics) {
     + '<div id="dbsyncDepsList" style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">加载中...</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
     + '<select id="dbsyncDepSelect" class="dbsync-form-input" style="flex:1;min-width:160px;"><option value="">-- 选择上游任务 --</option></select>'
-    + '<button class="btn btn-sm btn-primary" onclick="dbsyncAddDep(' + job.id + ')">添加上游</button>'
+    + '<button class="btn btn-sm btn-primary" data-perm="dbsync:edit" onclick="dbsyncAddDep(' + job.id + ')">添加上游</button>'
     + '</div></div>';
   pane.innerHTML = html;
   // 填充候选上游下拉 + 加载已配依赖
@@ -13956,7 +13978,7 @@ function dbsyncLoadDeps(jobId) {
       var label = upJob ? escapeHtml(upJob.jobName || ('任务#' + uid)) : ('任务#' + uid);
       html += '<li style="display:flex;align-items:center;gap:8px;padding:3px 0;">'
         + '<span style="font-size:12px;">' + label + ' <span style="color:var(--text-muted);font-size:var(--fs-xs);">(id:' + uid + ')</span></span>'
-        + '<button class="btn btn-sm" style="padding:1px 8px;font-size:var(--fs-xs);color:var(--error);" onclick="dbsyncRemoveDep(' + jobId + ',' + uid + ')">移除</button>'
+        + '<button class="btn btn-sm" style="padding:1px 8px;font-size:var(--fs-xs);color:var(--error);" data-perm="dbsync:edit" onclick="dbsyncRemoveDep(' + jobId + ',' + uid + ')">移除</button>'
         + '</li>';
     });
     html += '</ul>';
@@ -14726,7 +14748,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td>' + tbl + '</td>'
         + '<td style="font-family:monospace;">' + field + '</td>'
         + '<td style="font-family:monospace;">' + val + '</td>'
-        + '<td><button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="dbsyncResetIncrementalCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.table || '')) + ')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="dbsync:run" onclick="dbsyncResetIncrementalCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.table || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -14749,7 +14771,7 @@ function dbsyncRenderCheckpoints(pane, jobId, data) {
         + '<td style="font-family:monospace;">' + cursor + '</td>'
         + '<td>' + rows + '</td>'
         + '<td style="white-space:nowrap;">' + updAt + '</td>'
-        + '<td><button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="dbsyncResetChunkCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.sourceTable || '')) + ')">重置</button></td>'
+        + '<td><button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="dbsync:run" onclick="dbsyncResetChunkCp(' + jobId + ',' + escapeHtml(JSON.stringify(cp.sourceTable || '')) + ')">重置</button></td>'
         + '</tr>';
     });
     html += '</tbody></table>';
@@ -14838,7 +14860,7 @@ function dbsyncRenderErrorRows(pane, jobId, rows) {
     + '<span style="display:flex;gap:6px;">'
     + (rows.length ? '<select class="dbsync-form-select" style="width:auto;height:28px;font-size:12px;" onchange="dbsyncFilterErrorRows(' + jobId + ',this.value)"><option value="">全部源表</option>' + srcOpts + '</select>' : '')
     + (rows.length ? '<button class="btn btn-sm" onclick="dbsyncExportErrorRows()">导出CSV</button>' : '')
-    + (rows.length ? '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
+    + (rows.length ? '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="dbsync:run" onclick="dbsyncClearErrorRows(' + jobId + ')">清空错误行</button>' : '')
     + '</span></div>';
   if (!rows || rows.length === 0) {
     pane.innerHTML = bar + '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">暂无坏行记录</div>';

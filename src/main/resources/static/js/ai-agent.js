@@ -469,7 +469,7 @@
       skip.onclick = function () { if (idx < questions.length - 1) { idx++; render(); } else { finish(false); } };
       foot.appendChild(skip);
       var isLast = idx === questions.length - 1;
-      var next = DN.h('button', { class: 'btn btn-primary btn-sm', text: isLast ? '提交' : '下一题',
+      var next = DN.h('button', { class: 'btn btn-primary btn-sm', text: isLast ? '提交' : '下一题', 'data-perm': 'assistant:use',
         style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
       next.onclick = function () { if (isLast) finish(false); else { idx++; render(); } };
       foot.appendChild(next);
@@ -648,8 +648,8 @@
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:var(--warning-text);margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
-      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
-      var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝' });
+      var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+      var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve' });
       okBtn.onclick = function () {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
         var ep = _epoch; setSending(true); // 捕获发起纪元: 新会话后丢弃旧审批结果
@@ -699,9 +699,9 @@
         card.appendChild(DN.h('div', { text: '计划: ' + (j.scheduleCron || ''), style: 'font-size:12px;color:var(--text-secondary);' }));
         card.appendChild(DN.h('div', { text: '下次 ' + (j.nextRun || '-') + '  ·  上次 ' + (j.lastStatus || '未运行') + ' (' + (j.runCount || 0) + '次)', style: 'font-size:var(--fs-xs);color:var(--text-muted);margin:3px 0 7px;' }));
         var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
-        var toggle = DN.h('button', { class: 'btn btn-sm', text: on ? '停用' : '启用' });
+        var toggle = DN.h('button', { class: 'btn btn-sm', text: on ? '停用' : '启用', 'data-perm': 'assistant:use' });
         toggle.onclick = function () { toggle.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/toggle', { enabled: on ? 0 : 1 }).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); toggle.disabled = false; }); };
-        var del = DN.h('button', { class: 'btn btn-sm', text: '删除' });
+        var del = DN.h('button', { class: 'btn btn-sm', text: '删除', 'data-perm': 'assistant:use' });
         del.onclick = function () { del.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/remove', {}).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); del.disabled = false; }); };
         btns.appendChild(toggle); btns.appendChild(del);
         card.appendChild(btns);
@@ -750,8 +750,8 @@
           DN.h('span', { text: a.riskLevel || '', class: 'dn-ai-badge ' + (a.riskLevel === 'HIGH' ? 'err' : 'warn'), style: 'margin-left:8px;' })
         ]));
         card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:var(--fs-xs);color:var(--text-secondary);background:var(--bg-body);border-radius:var(--radius);padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
-        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
-        var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', style: 'margin-left:8px;' });
+        var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+        var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve', style: 'margin-left:8px;' });
         ok.onclick = function () {
           if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
           var ep = _epoch; setSending(true); // 捕获发起纪元
@@ -848,7 +848,7 @@
       DN.h('div', { text: fmtSize(f.size) + (agent ? ' · AI生成' : ''), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;' })
     ]);
     var dl = DN.h('a', { href: '/api/ai/agent/files/' + f.id + '/download', title: '下载', text: '↓', style: 'flex:0 0 auto;text-decoration:none;color:var(--primary);font-size:17px;font-weight:700;padding:0 5px;' });
-    var del = DN.h('span', { title: '删除', text: '✕', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });
+    var del = DN.h('span', { title: '删除', text: '✕', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });
     del.onclick = function () { DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); };
     row.appendChild(info); row.appendChild(dl); row.appendChild(del);
     return row;
@@ -896,7 +896,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
     });
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);
 

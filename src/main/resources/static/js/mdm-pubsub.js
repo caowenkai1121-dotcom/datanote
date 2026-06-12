@@ -80,8 +80,8 @@
     DN.get('/api/mdm/pubsub/subscriptions').then(function (rows) {
       rows = Array.isArray(rows) ? rows : [];
       _subs = rows;
-      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '+ 新建订阅', onclick: function () { subDrawer(null, box, statBox, logBox); } });
-      var pubBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-left:8px', text: '模拟发布', onclick: function () { publishDrawer(statBox, logBox); } });
+      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '+ 新建订阅', onclick: function () { subDrawer(null, box, statBox, logBox); } });
+      var pubBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-left:8px', 'data-perm': 'mdm:manage', text: '模拟发布', onclick: function () { publishDrawer(statBox, logBox); } });
       var actions = DN.h('span', { style: 'display:inline-flex;align-items:center' }, [addBtn, pubBtn]);
       var card = DN.card({ title: '订阅管理', icon: 'tag', actions: actions });
       box.innerHTML = '';
@@ -103,8 +103,8 @@
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '日志', style: 'color:var(--primary)', onclick: function () { _logSubId = String(r.id); loadLogs(logBox); logBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { subDrawer(r, box, statBox, logBox); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delSub(r, box, statBox, logBox); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '编辑', style: 'color:var(--primary)', onclick: function () { subDrawer(r, box, statBox, logBox); } }));
+              w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '删除', style: 'color:var(--error)', onclick: function () { delSub(r, box, statBox, logBox); } }));
               return w;
             } }
         ],

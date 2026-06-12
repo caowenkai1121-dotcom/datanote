@@ -184,7 +184,7 @@
               mdmGoModule('goldenrecord', { editId: r.id, entityId: (_qEntity ? _qEntity.id : null) });
             } }));
             // R123 联动: 把主数据不合规记录【升级为治理工单】, 纳入全局治理工单闭环(分配/流转/关单), 破 MDM↔治理 隔离
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', class: 'btn', text: '升级工单', title: '生成治理工单纳入统一闭环跟踪', onclick: function () {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', class: 'btn', 'data-perm': 'governance:issue', text: '升级工单', title: '生成治理工单纳入统一闭环跟踪', onclick: function () {
               var bk = r.bizKey || ('#' + r.id);
               DN.confirm('为不合规记录「' + bk + '」生成治理工单(纳入治理工单闭环跟踪)？', { title: '升级工单确认' }).then(function (ok) {
                 if (!ok) return;

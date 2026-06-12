@@ -53,7 +53,7 @@
     inflight = {};
     // 顶部操作条
     var bar = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px' });
-    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '从同步任务重建血缘',
+    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '从同步任务重建血缘', 'data-perm': 'governance:manage',
       onclick: function (e) {
         // 重建会全量覆盖血缘边(破坏性), 二次确认; 期间锁按钮防重复提交
         var btn = e.currentTarget;
@@ -66,7 +66,7 @@
             .then(done);
         });
       } }));
-    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘',
+    bar.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '解析脚本SQL血缘', 'data-perm': 'governance:manage',
       onclick: function (e) {
         var done = lockBtn(e.currentTarget);
         DN.post('/api/lineage/parse-scripts').then(function (r) {

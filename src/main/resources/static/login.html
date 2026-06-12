@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>登录 · DataNote 数据平台</title>
-<link rel="stylesheet" href="css/dn-design.css?v=u51">
+<link rel="stylesheet" href="css/dn-design.css?v=u53">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -105,7 +105,7 @@
   fetch('/api/auth/status').then(function (r) { return r.json(); }).then(function (res) {
     var d = (res && res.code === 0) ? (res.data || {}) : {};
     if (d.authEnabled === false) { hintEl.textContent = '当前为开放模式(未设置登录密码),可直接进入。'; }
-    if (d.authenticated === true) { location.replace('workspace.html'); }
+    if (d.authenticated === true) { location.replace('workspace.html#/home'); }
   }).catch(function () {});
 
   function fail(msg) { errEl.textContent = msg || '登录失败'; btn.disabled = false; btn.textContent = '登 录'; }
@@ -124,7 +124,7 @@
     }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
       .then(function (resp) {
         var b = resp.body || {};
-        if (b.code === 0) { location.replace('workspace.html'); return; }
+        if (b.code === 0) { location.replace('workspace.html#/home'); return; }
         fail(b.msg || (resp.status === 401 ? '用户名或密码错误' : '登录失败'));
       })
       .catch(function () { fail('网络错误,请稍后重试'); });

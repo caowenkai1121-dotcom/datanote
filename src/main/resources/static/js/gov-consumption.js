@@ -12,7 +12,7 @@
     // 每次进入重新取 ctx（switchGovModule 会在调用渲染器前设好 window.__govCtx）
     ctx = window.__govCtx || {};
     var ov = DN.h('div', { id: 'consOverview' }); c.appendChild(ov);
-    var calcAll = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '一键计算全部指标' });
+    var calcAll = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '一键计算全部指标', 'data-perm': 'metrics:edit' });
     var boardCard = DN.card({ title: '指标驾驶舱（最新值 / 新鲜度）', icon: 'chart', actions: [calcAll] });
     boardCard.el.id = 'consBoardCard';
     boardCard.body.appendChild(DN.h('div', { id: 'consBoard' }, DN.skeleton(4)));
@@ -34,7 +34,7 @@
     c.appendChild(zCard.el);
 
     // 数据集卡: 指标取值签默认隐藏(消费产物非指标主线); 深链 newDataset 时显示
-    var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', onclick: function () { addDataset(); } });
+    var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', 'data-perm': 'metrics:edit', onclick: function () { addDataset(); } });
     var dsCard = DN.card({ title: '数据集 / 数据产品（受治理可复用查询）', icon: 'list', actions: [newDs] });
     dsCard.body.appendChild(DN.h('div', { id: 'consDataset' }, DN.skeleton(3)));
     if (!ctx.newDataset) dsCard.el.style.display = 'none';
@@ -125,7 +125,7 @@
   function dsOps(r) {
     r = r || {};
     var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
-    var run = DN.h('a', { href: 'javascript:void(0)', text: '运行' });
+    var run = DN.h('a', { href: 'javascript:void(0)', text: '运行', 'data-perm': 'metrics:edit' });
     run.onclick = function () {
       if (r.id == null) { DN.toast('数据集缺少 ID，无法运行', 'err'); return; }
       if (run.dataset.busy) return; setLinkBusy(run, true, '运行中…'); // 防重复提交
@@ -135,7 +135,7 @@
       }).catch(function (e) { setLinkBusy(run, false, '运行'); DN.toast('运行失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(run);
-    var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
+    var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'metrics:edit' });
     del.onclick = function () {
       if (r.id == null) { DN.toast('数据集缺少 ID，无法删除', 'err'); return; }
       if (del.dataset.busy) return;
@@ -253,7 +253,7 @@
   function opCell(r) {
     r = r || {};
     var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
-    var calc = DN.h('a', { href: 'javascript:void(0)', text: '计算' });
+    var calc = DN.h('a', { href: 'javascript:void(0)', text: '计算', 'data-perm': 'metrics:edit' });
     calc.onclick = function () {
       if (r.metricId == null) { DN.toast('指标缺少 ID，无法计算', 'err'); return; }
       if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
@@ -421,7 +421,7 @@
           var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
           line.appendChild(DN.pill(rule.severity || 'MEDIUM', rule.severity === 'HIGH' ? 'err' : (rule.severity === 'LOW' ? 'info' : 'warn')));
           line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px', text: (rule.op || '?') + ' ' + (rule.thresholdMin != null ? rule.thresholdMin : '') + (rule.thresholdMax != null ? ('~' + rule.thresholdMax) : '') }));
-          var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
+          var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'metrics:edit' });
           del.onclick = function () {
             if (rule.id == null) { DN.toast('规则缺少 ID，无法删除', 'err'); return; }
             if (del.dataset.busy) return;
@@ -472,7 +472,7 @@
   function zombieOps(r) {
     r = r || {};
     var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center' });
-    var calc = DN.h('a', { href: 'javascript:void(0)', text: '立即计算' });
+    var calc = DN.h('a', { href: 'javascript:void(0)', text: '立即计算', 'data-perm': 'metrics:edit' });
     calc.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法计算', 'err'); return; }
       if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
@@ -483,7 +483,7 @@
       }).catch(function (e) { setLinkBusy(calc, false, '立即计算'); DN.toast('计算失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(calc);
-    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)' });
+    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', 'data-perm': 'metrics:edit' });
     edit.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法编辑', 'err'); return; }
       if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id });
@@ -491,7 +491,7 @@
     };
     wrap.appendChild(edit);
     // I-1: 僵尸处置闭环——确实不用的指标可就地停用(退出取值/新鲜度监控, 历史保留)
-    var off = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:var(--error)' });
+    var off = DN.h('a', { href: 'javascript:void(0)', text: '停用', style: 'color:var(--error)', 'data-perm': 'metrics:edit' });
     off.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法停用', 'err'); return; }
       if (off.dataset.busy) return;

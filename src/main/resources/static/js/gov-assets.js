@@ -14,7 +14,7 @@
     c.appendChild(statBox);
 
     // 资产清单卡片
-    var crawlBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集全部(源库+数仓)',
+    var crawlBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集全部(源库+数仓)', 'data-perm': 'catalog:edit',
       onclick: function () {
         DN.confirm('将对全部源库与数仓发起元数据采集，可能耗时较久，确认开始？', { title: '采集确认' }).then(function (ok) {
           if (!ok) return;
@@ -480,7 +480,7 @@
           o.value = String(s.id); o.textContent = s.name; o.selected = (String(s.id) === String(curId));
           sel.appendChild(o);
         });
-        var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存' });
+        var save = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存', 'data-perm': 'governance:manage' });
         var cancel = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '取消', onclick: function () { renderRow(); } });
         save.onclick = function () {
           var newId = sel.value === '' ? null : Number(sel.value);
@@ -505,7 +505,7 @@
         row.innerHTML = '';
         row.appendChild(DN.h('span', { text: '所属主题域', style: 'font-size:12px;font-weight:600;color:var(--text-muted);margin-right:2px' }));
         row.appendChild(nameSpan);
-        row.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '设置', onclick: startEdit }));
+        row.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '设置', 'data-perm': 'governance:manage', onclick: startEdit }));
         refresh();
       }
 
@@ -623,7 +623,7 @@
     sec.add(DN.field('定义', def));
     form.appendChild(sec.el);
 
-    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增术语',
+    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增术语', 'data-perm': 'catalog:edit',
       onclick: function () {
         var tv = term.value.trim(), cv = cat.value.trim(), dv = def.value.trim();
         if (!tv) { DN.toast('术语名必填', 'error'); term.focus(); return; }
@@ -653,7 +653,7 @@
           { key: 'category', label: '分类', render: function (g) { return g.category || '-'; } },
           { key: 'definition', label: '定义', render: function (g) { return clip(g.definition, 80) || '-'; } },
           { key: '_op', label: '操作', render: function (g) {
-              return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删',
+              return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', 'data-perm': 'catalog:edit',
                 onclick: function () {
                   DN.confirm('确认删除术语「' + (g.term || '') + '」？此操作不可撤销。', { title: '删除确认', danger: true }).then(function (ok) {
                     if (!ok) return;
@@ -712,7 +712,7 @@
     var type = DN.h('select', { class: 'dn-form-select', style: 'width:140px;' });
     ['TTL', 'HOT_COLD', 'ARCHIVE'].forEach(function (t) { type.appendChild(DN.h('option', { value: t, text: t })); });
     var days = DN.h('input', { class: 'dn-form-input', placeholder: 'TTL天/冷下沉天', style: 'width:160px;height:32px;' });
-    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增策略',
+    var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增策略', 'data-perm': 'governance:manage',
       onclick: function () {
         if (!picker.db() || !picker.table()) { DN.toast('请先选择库和表', 'error'); return; }
         var dv = days.value.trim();
@@ -777,7 +777,7 @@
           { key: 'status', label: '状态', render: function (p) { return p.status ? DN.pill(p.status, policyStatusTone(p.status)) : '-'; } },
           { key: 'lastMsg', label: '信息', render: function (p) { return p.lastMsg ? clip(p.lastMsg, 60) : '-'; } },
           { key: '_op', label: '操作', render: function (p) {
-              var apply = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '应用',
+              var apply = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '应用', 'data-perm': 'governance:manage',
                 onclick: function () {
                   DN.confirm('将对 ' + (p.dbName || '') + '.' + (p.tableName || '') + ' 下发 ' + (p.policyType || '') + ' 策略(可能改动 Doris DDL)，确认应用？', { title: '应用确认' }).then(function (ok) {
                     if (!ok) return;
@@ -787,7 +787,7 @@
                       .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                   });
                 } });
-              var del = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', style: 'margin-left:6px;',
+              var del = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', style: 'margin-left:6px;', 'data-perm': 'governance:manage',
                 onclick: function () {
                   DN.confirm('确认删除该生命周期策略？此操作不可撤销。', { title: '删除确认', danger: true }).then(function (ok) {
                     if (!ok) return;
@@ -814,13 +814,13 @@
   // ===== 无用表识别（DN.card + DN.table，就近确认销毁） =====
   var unusedTbl = null;
   function renderUnused(c) {
-    var collectBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集资产快照',
+    var collectBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '采集资产快照', 'data-perm': 'governance:manage',
       onclick: function () {
         var done = lockBtn(collectBtn);
         DN.post('/api/gov/lifecycle/stats/collect').then(function (m) { done(); DN.toast(m || '已采集快照', 'success'); loadUnused(); loadCost(); })
           .catch(function (e) { done(); DN.toast(e.message, 'error'); });
       } });
-    var dropBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '执行到期销毁', style: 'margin-left:6px;',
+    var dropBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '执行到期销毁', style: 'margin-left:6px;', 'data-perm': 'governance:manage',
       onclick: function () {
         DN.confirm('将对所有已过宽限期的表执行销毁，此操作不可逆，确认执行？', { title: '销毁确认', danger: true }).then(function (ok) {
           if (!ok) return;
@@ -874,7 +874,7 @@
                   if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: u.db, table: u.table } });
                   else DN.toast('当前页面无路由,请到资产详情查看血缘', 'info');
                 } });
-              var drop = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '标记销毁', style: 'margin-left:6px;',
+              var drop = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '标记销毁', style: 'margin-left:6px;', 'data-perm': 'governance:manage',
                 onclick: function () { openDropConfirm(u); } });
               return DN.h('span', {}, [detail, lineage, drop]);
             } }

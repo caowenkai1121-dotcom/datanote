@@ -145,8 +145,8 @@
         { key: '_op', label: '操作', render: function (r) {
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
             var ru = _svRules[r.attrCode];
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: ru ? '编辑' : '配置', style: 'color:var(--primary)', onclick: function () { ruleForm(r, ru, box); } }));
-            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRule(ru, box); } }));
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: ru ? '编辑' : '配置', style: 'color:var(--primary)', 'data-perm': 'mdm:manage', onclick: function () { ruleForm(r, ru, box); } }));
+            if (ru) w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'mdm:manage', onclick: function () { delRule(ru, box); } }));
             return w;
           } }
       ],
@@ -172,11 +172,11 @@
         { key: 'sourcePriority', label: '源系统优先级', render: function (r) { return r.sourcePriority ? truncCell(r.sourcePriority, 48) : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
         { key: '_op', label: '操作', render: function (r) {
             var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () {
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', 'data-perm': 'mdm:manage', onclick: function () {
                 var attr = _svAttrs.filter(function (a) { return a.attrCode === r.attrCode; })[0] || { attrCode: r.attrCode, attrName: r.attrName };
                 ruleForm(attr, r, box);
               } }));
-            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRule(r, box); } }));
+            w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'mdm:manage', onclick: function () { delRule(r, box); } }));
             return w;
           } }
       ],

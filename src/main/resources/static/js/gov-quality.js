@@ -34,7 +34,7 @@
     c.appendChild(ovCard.el);
 
     // 规则列表卡片
-    var runAllBtn = DN.h('button', { class: 'btn', type: 'button', text: '一键全量复跑' });
+    var runAllBtn = DN.h('button', { class: 'btn', type: 'button', text: '一键全量复跑', 'data-perm': 'operations:schedule' });
     var gotoBtn = DN.h('a', { class: 'btn btn-primary', href: 'workspace.html#/quality', text: '前往工作台质量', onclick: function () { if (window.navigateTo) navigateTo('quality'); } });
     var rulesCard = DN.card({ title: '质量规则', icon: 'list', actions: [runAllBtn, gotoBtn] });
     var rulesBody = rulesCard.body;
@@ -273,7 +273,7 @@
         { key: 'startedAt', label: '执行时间', render: function (r) { return r.startedAt ? DN.timeAgo(r.startedAt) : '-'; } },
         { key: '_op', label: '操作', render: function (r) {
             var f = r._f;
-            var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑' });
+            var rerunBtn = DN.h('button', { class: 'btn', type: 'button', style: 'font-size:12px;padding:2px 10px', text: '立即复跑', 'data-perm': 'operations:schedule' });
             rerunBtn.onclick = function () {
               rerunBtn.disabled = true; rerunBtn.textContent = '复跑中…';
               DN.post('/api/quality/rule/' + encodeURIComponent(f.rule.id) + '/run').then(function (nr) {
@@ -514,11 +514,11 @@
             var wrap = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap' });
             // 批2#13: 编辑(复用工作台质量弹窗, 同一 SPA 全局函数)与启停
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑',
-              style: 'color:var(--primary)',
+              style: 'color:var(--primary)', 'data-perm': 'governance:quality',
               onclick: function () { if (window.editQualityRule) editQualityRule(r.id); } }));
             var togText = r.status === 1 ? '停用' : '启用';
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: togText,
-              style: r.status === 1 ? 'color:var(--text-muted)' : 'color:var(--success)',
+              style: r.status === 1 ? 'color:var(--text-muted)' : 'color:var(--success)', 'data-perm': 'governance:quality',
               onclick: function () {
                 var next = r.status === 1 ? 0 : 1;
                 DN.post('/api/quality/rule/save', Object.assign({}, r, { status: next })).then(function () {

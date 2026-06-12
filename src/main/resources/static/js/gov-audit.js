@@ -92,7 +92,7 @@
     });
     searchBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '检索',
       onclick: function () { runSearch(); } });
-    exportBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', onclick: exportCsv });
+    exportBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '导出CSV', 'data-perm': 'governance:audit', onclick: exportCsv });
     toolbar = [els.from, els.to, els.type, els.user, searchBtn, exportBtn];
     lastRows = [];
 

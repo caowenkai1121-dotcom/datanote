@@ -106,7 +106,7 @@
         { icon: 'layers', label: '最大深度', value: maxDepth(tree), sub: typeLabel(_type) }
       ]));
 
-      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '+ 新增关系', onclick: function () { saveDrawer(null, box); } });
+      var addBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '+ 新增关系', onclick: function () { saveDrawer(null, box); } });
       var card = DN.card({ title: typeLabel(_type) + ' · 树形层级', icon: 'git-branch', actions: addBtn });
 
       if (!tree.length) {
@@ -135,8 +135,8 @@
                 if (r.parentRecordId != null) {
                   w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看父记录', style: 'color:var(--primary)', title: '在黄金记录中打开父节点记录', onclick: function () { goGolden(r.parentRecordId); } }));
                 }
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { saveDrawer(r, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delRel(r, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '编辑', style: 'color:var(--primary)', onclick: function () { saveDrawer(r, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '删除', style: 'color:var(--error)', onclick: function () { delRel(r, box); } }));
                 return w;
               } }
           ],
@@ -191,7 +191,7 @@
     if (node.childRecordId != null) {
       ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看黄金记录', style: 'color:var(--primary);font-size:12px', title: '在黄金记录中打开该节点对应记录', onclick: function () { goGolden(node.childRecordId); } }));
     }
-    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error);font-size:12px', onclick: function () { delRel(node, box); } }));
+    ops.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:manage', text: '删除', style: 'color:var(--error);font-size:12px', onclick: function () { delRel(node, box); } }));
     row.appendChild(ops);
     wrap.appendChild(row);
     if (key != null) seen[key] = 1;

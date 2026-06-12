@@ -37,7 +37,7 @@
     body.appendChild(mapBox);
 
     // 导入按钮 + 结果
-    var importBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '开始导入', style: 'background:var(--primary);color:var(--text-inverse);margin-top:10px;display:none' });
+    var importBtn = DN.h('a', { class: 'btn btn-primary', 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '开始导入', style: 'background:var(--primary);color:var(--text-inverse);margin-top:10px;display:none' });
     var resultBox = DN.h('div', { style: 'margin-top:12px' });
     body.appendChild(importBtn);
     body.appendChild(resultBox);

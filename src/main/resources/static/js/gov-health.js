@@ -37,7 +37,7 @@
     // ---- 健康分 ----
     var hc = DN.card({
       title: '治理健康分', icon: 'shield',
-      actions: [DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '重算并快照', onclick: refreshScore })]
+      actions: [DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '重算并快照', 'data-perm': 'operations:schedule', onclick: refreshScore })]
     });
     hc.el.classList.add('primary');
     hc.body.appendChild(DN.h('div', { id: 'hsTop' }, DN.skeleton(3)));
@@ -55,10 +55,10 @@
     var icCard = DN.card({
       title: '治理工单', icon: 'inbox',
       actions: [fsel, batchSel,
-        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '应用批量', onclick: batchTransition }),
-        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '批量指派', onclick: batchAssign }),
-        DN.h('a', { class: 'btn btn-danger', href: 'javascript:void(0)', text: '批量删除', onclick: batchDelete }),
-        DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建工单', onclick: addIssue })]
+        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '应用批量', 'data-perm': 'governance:issue', onclick: batchTransition }),
+        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '批量指派', 'data-perm': 'governance:issue', onclick: batchAssign }),
+        DN.h('a', { class: 'btn btn-danger', href: 'javascript:void(0)', text: '批量删除', 'data-perm': 'governance:issue', onclick: batchDelete }),
+        DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建工单', 'data-perm': 'governance:issue', onclick: addIssue })]
     });
     icCard.body.appendChild(DN.h('div', { id: 'hsIssues' }, DN.skeleton(4)));
     c.appendChild(icCard.el);
@@ -392,7 +392,7 @@
     var wrap = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' });
     (FLOW[it.status] || []).forEach(function (ns) {
       wrap.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: ns,
+        href: 'javascript:void(0)', text: ns, 'data-perm': 'governance:issue',
         onclick: function () { transition(it.id, ns); }
       }));
     });
@@ -400,7 +400,7 @@
     if (it.objectRef && (/^qrule:/.test(it.objectRef) || /^metric:/.test(it.objectRef))) {
       wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看对象', onclick: function () { gotoIssueObject(it.objectRef); } }));
     }
-    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', onclick: function () { assignIssue(it.id); } }));
+    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', 'data-perm': 'governance:issue', onclick: function () { assignIssue(it.id); } }));
     // N5: 已转任务→显示进度徽标(可跳项目任务页); 未转→"转任务"入口(创建前还有服务端反查双保险)
     var refs = _issueTaskRefs[it.id] || _issueTaskRefs[String(it.id)] || [];
     if (refs.length) {
@@ -416,9 +416,9 @@
         }
       }));
     } else {
-      wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '转任务', title: '转为项目任务跟进(任务与工单双向联动)', onclick: function () { issueToProjectTask(it); } }));
+      wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '转任务', title: '转为项目任务跟进(任务与工单双向联动)', 'data-perm': 'project:manage', onclick: function () { issueToProjectTask(it); } }));
     }
-    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', onclick: function () { delIssue(it.id); } }));
+    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'governance:issue', onclick: function () { delIssue(it.id); } }));
     return wrap;
   }
 

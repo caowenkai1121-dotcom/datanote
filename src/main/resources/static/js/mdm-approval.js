@@ -62,7 +62,7 @@
       [['', '全部状态'], ['pending', '待审批'], ['approved', '已批准'], ['rejected', '已驳回']].forEach(function (o) { statusSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
       statusSel.value = _filter;
       statusSel.onchange = function () { _filter = statusSel.value; loadApproval(statBox, box); };
-      var newBtn = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '＋ 新建变更申请', onclick: function () { submitDrawer(statBox, box); } });
+      var newBtn = DN.h('a', { class: 'btn btn-sm btn-primary', 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '＋ 新建变更申请', onclick: function () { submitDrawer(statBox, box); } });
       var acts = DN.h('span', { style: 'display:inline-flex;gap:10px;align-items:center' }, [newBtn, statusSel]);
       var card = DN.card({ title: '变更请求', icon: 'inbox', actions: acts });
       box.innerHTML = '';
@@ -94,8 +94,8 @@
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '详情', style: 'color:var(--primary)', onclick: function () { detailDrawer(r); } }));
               if (r.status === 'pending') {
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '批准', style: 'color:var(--success)', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
-                w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '驳回', style: 'color:var(--error)', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:approve', text: '批准', style: 'color:var(--success)', onclick: function () { reviewDrawer(r, 'approve', statBox, box); } }));
+                w.appendChild(DN.h('a', { href: 'javascript:void(0)', 'data-perm': 'mdm:approve', text: '驳回', style: 'color:var(--error)', onclick: function () { reviewDrawer(r, 'reject', statBox, box); } }));
               }
               // R128 联动: 已关联黄金记录的请求可直跳该记录的变更历史(diff)
               if (r.goldenRecordId != null && window.mdmGoModule) {

@@ -41,7 +41,7 @@
     sort.setAttribute('min', String(SORT_MIN)); sort.setAttribute('max', String(SORT_MAX));
 
     var add = DN.h('a', {
-      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增主题', onclick: function () {
+      class: 'btn btn-primary', 'data-perm': 'governance:manage', href: 'javascript:void(0)', text: '新增主题', onclick: function () {
         var nm = name.value.trim();
         if (!nm) { DN.toast('主题名称必填', 'error'); name.focus(); return; }
         if (nm.length > NAME_MAX) { DN.toast('主题名称不能超过 ' + NAME_MAX + ' 个字符', 'error'); name.focus(); return; }
@@ -324,11 +324,11 @@
       row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
       var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
       ops.appendChild(DN.h('a', {
-        href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary);font-size:13px;margin-right:12px',
+        href: 'javascript:void(0)', text: '编辑', 'data-perm': 'governance:manage', style: 'color:var(--primary);font-size:13px;margin-right:12px',
         onclick: function () { editNode(n, reloadFn); }
       }));
       var delLink = DN.h('a', {
-        href: 'javascript:void(0)', text: '删除', style: 'color:var(--error);font-size:13px',
+        href: 'javascript:void(0)', text: '删除', 'data-perm': 'governance:manage', style: 'color:var(--error);font-size:13px',
         onclick: function () {
           if (delLink.getAttribute('data-busy') === '1') return;   // 删除中防重复触发
           var tip = hasChild

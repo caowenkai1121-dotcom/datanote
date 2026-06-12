@@ -28,7 +28,7 @@
 
     // M9：脱敏策略
     var maskCard = DN.card({ title: '脱敏策略', icon: 'lock',
-      actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建脱敏策略', onclick: function () { openMaskingForm(); } }) });
+      actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建脱敏策略', 'data-perm': 'governance:manage', onclick: function () { openMaskingForm(); } }) });
     maskCard.el.id = 'secCardMask';
     maskTbl = DN.h('div'); maskTbl.appendChild(DN.skeleton(3));
     maskCard.body.appendChild(maskTbl);
@@ -36,7 +36,7 @@
 
     // M9：行级权限
     var rowCard = DN.card({ title: '行级权限', icon: 'layers',
-      actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建行策略', onclick: function () { openRowPolicyForm(); } }) });
+      actions: DN.h('a', { class: 'btn btn-primary btn-sm', href: 'javascript:void(0)', text: '+ 新建行策略', 'data-perm': 'governance:manage', onclick: function () { openRowPolicyForm(); } }) });
     rowCard.el.id = 'secCardRow';
     rowTbl = DN.h('div'); rowTbl.appendChild(DN.skeleton(3));
     rowCard.body.appendChild(rowTbl);
@@ -205,8 +205,8 @@
           } },
         { key: '_op', label: '操作', render: function (p) {
             return ops([
-              link('编辑', function () { openMaskingForm(p); }),
-              delLink(function () { return DN.del('/api/gov/masking/policies/' + p.id); }, loadMaskingPolicies)
+              permWrite(link('编辑', function () { openMaskingForm(p); })),
+              permWrite(delLink(function () { return DN.del('/api/gov/masking/policies/' + p.id); }, loadMaskingPolicies))
             ].concat(tableDrill(p.dbName, p.tableName)));
           } }
       ],
@@ -298,8 +298,8 @@
           } },
         { key: '_op', label: '操作', render: function (p) {
             return ops([
-              link('编辑', function () { openRowPolicyForm(p); }),
-              delLink(function () { return DN.del('/api/gov/masking/row-policies/' + p.id); }, loadRowPolicies)
+              permWrite(link('编辑', function () { openRowPolicyForm(p); })),
+              permWrite(delLink(function () { return DN.del('/api/gov/masking/row-policies/' + p.id); }, loadRowPolicies))
             ].concat(tableDrill(p.dbName, p.tableName)));
           } }
       ],
@@ -390,6 +390,12 @@
   function link(text, fn) {
     return DN.h('a', { href: 'javascript:void(0)', text: text,
       style: 'margin-right:12px;color:var(--primary);font-size:13px', onclick: fn });
+  }
+
+  /** 给写操作行内链接挂权限点: 无 governance:manage 权限时由 dnApplyBtnPerms 隐藏 */
+  function permWrite(node) {
+    if (node && node.setAttribute) node.setAttribute('data-perm', 'governance:manage');
+    return node;
   }
 
   /** R21 深链: 命中入口 ctx.table 的行做聚焦标记(库可空, 仅比表名时忽略库) */

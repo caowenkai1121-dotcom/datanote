@@ -295,11 +295,11 @@ function projRenderList(list) {
       + '<td><span class="gov-pill ' + (p.status === 'ACTIVE' ? 'is-ok' : p.status === 'ARCHIVED' ? 'is-muted' : 'is-info') + '">' + escapeHtml(st.t) + '</span></td>'
       + '<td style="white-space:nowrap;">' + escapeHtml((p.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" onclick="projOpenDetail(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>'
-      + '<a href="#" onclick="projSetTagsModal(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">标签</a>'
-      + '<a href="#" onclick="projTogglePin(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
-      + '<a href="#" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
-      + (p.status === 'ACTIVE' ? '<a href="#" onclick="projArchive(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">归档</a>' : '')
-      + '<a href="#" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:var(--error);">删除</a></td>'
+      + '<a href="#" data-perm="project:manage" onclick="projSetTagsModal(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">标签</a>'
+      + '<a href="#" data-perm="project:manage" onclick="projTogglePin(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
+      + '<a href="#" data-perm="project:manage" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + (p.status === 'ACTIVE' ? '<a href="#" data-perm="project:manage" onclick="projArchive(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">归档</a>' : '')
+      + '<a href="#" data-perm="project:manage" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:var(--error);">删除</a></td>'
       + '</tr>';
   });
   h += '</tbody></table>';
@@ -325,14 +325,14 @@ window.projTogglePin = function(id) {
   }).catch(function() { showToast('操作失败', 'error'); });
 };
 window.projManageTags = function() {
-  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;"><input id="ptNewName" class="dbsync-form-input" style="width:140px;" placeholder="标签名"><input id="ptNewColor" type="color" value="var(--primary)" style="width:40px;height:32px;padding:0;border:1px solid var(--border);border-radius:var(--radius);"><button class="btn btn-sm btn-primary" onclick="projCreateTag()">新建</button></div><div id="ptList"></div>';
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;"><input id="ptNewName" class="dbsync-form-input" style="width:140px;" placeholder="标签名"><input id="ptNewColor" type="color" value="var(--primary)" style="width:40px;height:32px;padding:0;border:1px solid var(--border);border-radius:var(--radius);"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projCreateTag()">新建</button></div><div id="ptList"></div>';
   projShowModalBox('标签管理', h);
   projRenderTagList();
 };
 function projRenderTagList() {
   var box = document.getElementById('ptList'); if (!box) return;
   if (!_projTags.length) { box.innerHTML = '<div style="color:var(--text-muted);">暂无标签</div>'; return; }
-  box.innerHTML = _projTags.map(function(t) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="display:inline-block;width:12px;height:12px;border-radius:var(--radius-sm);background:' + (t.tagColor || 'var(--primary)') + ';"></span><span style="flex:1;">' + escapeHtml(t.tagName) + '</span><a href="#" onclick="projDeleteTag(' + t.id + ');return false;" style="color:var(--error);">删除</a></div>'; }).join('');
+  box.innerHTML = _projTags.map(function(t) { return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><span style="display:inline-block;width:12px;height:12px;border-radius:var(--radius-sm);background:' + (t.tagColor || 'var(--primary)') + ';"></span><span style="flex:1;">' + escapeHtml(t.tagName) + '</span><a href="#" data-perm="project:manage" onclick="projDeleteTag(' + t.id + ');return false;" style="color:var(--error);">删除</a></div>'; }).join('');
 }
 window.projCreateTag = function() {
   var name = (document.getElementById('ptNewName').value || '').trim();
@@ -356,7 +356,7 @@ window.projSetTagsModal = function(pid) {
   if (!_projTags.length) { showToast('请先在「标签管理」新建标签', 'info'); return; }
   var cur = _projTagMap[pid] || [];
   var h = _projTags.map(function(t) { var on = cur.indexOf(t.id) >= 0; return '<label style="display:block;padding:3px 0;cursor:pointer;"><input type="checkbox" class="ptSetChk" value="' + t.id + '"' + (on ? ' checked' : '') + '> <span style="color:' + (t.tagColor || 'var(--primary)') + ';">' + escapeHtml(t.tagName) + '</span></label>'; }).join('');
-  h += '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTags(' + pid + ', this)">保存</button></div>';
+  h += '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projSaveTags(' + pid + ', this)">保存</button></div>';
   projShowModalBox('设置项目标签', h);
 };
 window.projSaveTags = function(pid, btn) {
@@ -641,8 +641,8 @@ window.projLoadMembers = function() {
       + '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
       + '<input id="projMemberUser" class="dbsync-form-input" style="width:160px;" placeholder="用户名">'
       + '<select id="projMemberRole" class="dbsync-form-select" style="width:110px;">' + projRoleOptions('DEVELOPER') + '</select>'
-      + '<button class="btn btn-sm btn-primary" onclick="projAddMember()">添加成员</button>'
-      + '<a href="#" onclick="projPickUser();return false;" style="font-size:12px;color:var(--primary);margin-left:4px;">从用户列表选</a></div>';
+      + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projAddMember()">添加成员</button>'
+      + '<a href="#" data-perm="project:manage" onclick="projPickUser();return false;" style="font-size:12px;color:var(--primary);margin-left:4px;">从用户列表选</a></div>';
     if (!ms.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无成员</div>';
     else {
       // 角色分布徽标 + 搜索 + 导出
@@ -656,7 +656,7 @@ window.projLoadMembers = function() {
         h += '<tr class="proj-member-row" data-uname="' + escapeHtml((m.username || '').toLowerCase()) + '" data-role="' + escapeHtml(m.projectRole || '') + '"><td>' + escapeHtml(m.username) + '</td>'
           + '<td><select class="dbsync-form-select" style="width:110px;" onchange="projChangeRole(' + m.id + ',this.value)">' + projRoleOptions(m.projectRole) + '</select></td>'
           + '<td style="white-space:nowrap;">' + escapeHtml((m.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-          + '<td><a href="#" onclick="projRemoveMember(' + m.id + ');return false;" style="color:var(--error);">移除</a></td></tr>';
+          + '<td><a href="#" data-perm="project:manage" onclick="projRemoveMember(' + m.id + ');return false;" style="color:var(--error);">移除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -751,10 +751,10 @@ window.projLoadSetting = function() {
     + '<div><b>标签</b>：' + escapeHtml(p.tags || '-') + '</div>'
     + '<div><b>描述</b>：' + escapeHtml(p.description || '-') + '</div></div>'
     + '<div style="margin-top:14px;display:flex;gap:8px;">'
-    + '<button class="btn btn-sm btn-primary" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
-    + '<button class="btn btn-sm" onclick="projSaveAsTemplate(' + p.id + ')">存为模板</button>'
-    + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" onclick="projArchive(' + p.id + ')">归档</button>' : '')
-    + '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
+    + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
+    + '<button class="btn btn-sm" data-perm="project:manage" onclick="projSaveAsTemplate(' + p.id + ')">存为模板</button>'
+    + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" data-perm="project:manage" onclick="projArchive(' + p.id + ')">归档</button>' : '')
+    + '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="project:manage" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
     + '</div></div>';
 };
 /* ===== PM-M3：资产纳管 ===== */
@@ -862,7 +862,7 @@ window.projBatchBindModal = function() {
     var h = '<input id="pbbSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索名称" oninput="Array.prototype.slice.call(document.querySelectorAll(\'.pbb-row\')).forEach(function(r){r.style.display=(r.getAttribute(\'data-k\')||\'\').indexOf(this.value.trim().toLowerCase())>=0?\'\':\'none\'},this)">'
       + '<label style="display:block;padding:3px 0;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" onchange="Array.prototype.slice.call(document.querySelectorAll(\'.pbbChk\')).forEach(function(c){if(c.closest(\'label\').style.display!==\'none\')c.checked=this.checked},this)"> 全选(可见项)</label>'
       + '<div style="max-height:280px;overflow:auto;">' + rows + '</div>'
-      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projBatchBindDo(this)">绑定选中</button></div>';
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projBatchBindDo(this)">绑定选中</button></div>';
     projShowModalBox('批量绑定 · ' + (PROJ_ASSET_TYPE[type] || type), h);
   }).catch(function() { showToast('候选加载失败', 'error'); });
 };
@@ -903,8 +903,8 @@ window.projLoadAssets = function() {
       + Object.keys(PROJ_ASSET_TYPE).map(function(k) { return '<option value="' + k + '">' + PROJ_ASSET_TYPE[k] + '</option>'; }).join('')
       + '</select>'
       + '<select id="projAssetCand" class="dbsync-form-select" style="width:220px;"><option value="">加载中...</option></select>'
-      + '<button class="btn btn-sm btn-primary" onclick="projBindAsset()">绑定资产</button>'
-      + '<button class="btn btn-sm" onclick="projBatchBindModal()" title="当前类型下勾选多个资产一次绑定">批量绑定</button></div>';
+      + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projBindAsset()">绑定资产</button>'
+      + '<button class="btn btn-sm" data-perm="project:manage" onclick="projBatchBindModal()" title="当前类型下勾选多个资产一次绑定">批量绑定</button></div>';
     if (!as.length) h += '<div style="padding:20px;text-align:center;color:var(--text-muted);">暂无绑定资产，从上方选择类型与资产绑定</div>';
     else {
       var tc = {}; as.forEach(function(a) { tc[a.assetType] = (tc[a.assetType] || 0) + 1; });
@@ -924,7 +924,7 @@ window.projLoadAssets = function() {
           + '<td style="white-space:nowrap;">' + escapeHtml((a.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
           + '<td><a href="#" onclick="projAssetGoto(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;" title="跳到该资产所在模块">查看</a>'
           + '<a href="#" onclick="projAssetProjects(\'' + a.assetType + '\',' + a.assetId + ');return false;" style="color:var(--primary);margin-right:8px;">归属</a>'
-          + '<a href="#" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:var(--error);">解绑</a></td></tr>';
+          + '<a href="#" data-perm="project:manage" onclick="projUnbindAsset(' + a.id + ');return false;" style="color:var(--error);">解绑</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -1302,8 +1302,8 @@ window.projLoadTasks = function() {
       + '<a href="#" onclick="projSetTaskView(\'list\');return false;" title="列表视图" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projTaskView === 'list' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">列表</a>'
       + '<a href="#" onclick="projSetTaskView(\'kanban\');return false;" title="看板视图" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projTaskView === 'kanban' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">看板</a></span>';
     var h = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
-      + '<button class="btn btn-sm btn-primary" onclick="projTaskModal()">+ 新建任务</button>'
-      + '<button class="btn btn-sm" onclick="projMilestoneManage()">里程碑管理</button>'
+      + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projTaskModal()">+ 新建任务</button>'
+      + '<button class="btn btn-sm" data-perm="project:manage" onclick="projMilestoneManage()">里程碑管理</button>'
       + viewToggle
       + asgSel + prioSel
       + '<label style="font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox"' + (fOver ? ' checked' : '') + ' onchange="_projTaskFilter.overdue=this.checked;projLoadTasks();"> 仅超期</label>'
@@ -1353,7 +1353,7 @@ window.projLoadTasks = function() {
             + '<td style="width:90px;color:var(--text-muted);">' + escapeHtml(msName[t.milestoneId] || '') + '</td>'
             + '<td style="width:90px;"><select class="dbsync-form-select" style="width:84px;" onchange="projTaskStatus(' + t.id + ',this.value)">'
             + ['TODO', 'DOING', 'DONE'].map(function(s) { return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + TASK_STATUS[s].t + '</option>'; }).join('') + '</select></td>'
-            + '<td style="width:80px;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:6px;">编辑</a><a href="#" onclick="projDeleteTask(' + t.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
+            + '<td style="width:80px;"><a href="#" data-perm="project:manage" onclick="projTaskModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:6px;">编辑</a><a href="#" data-perm="project:manage" onclick="projDeleteTask(' + t.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
         });
         h += '</tbody></table>';
       });
@@ -1412,7 +1412,7 @@ function projKanbanHtml(tasks, msName, today) {
         + (msName[t.milestoneId] ? '<span><span style="display:inline-flex;vertical-align:-2px;">' + DN.icon('flag') + '</span>' + escapeHtml(msName[t.milestoneId]) + '</span>' : '')
         + projTaskRefBadge(t)
         + '</div>'
-        + '<div style="margin-top:6px;text-align:right;"><a href="#" onclick="projTaskModal(' + t.id + ');return false;" style="font-size:var(--fs-xs);color:var(--primary);">编辑</a></div>'
+        + '<div style="margin-top:6px;text-align:right;"><a href="#" data-perm="project:manage" onclick="projTaskModal(' + t.id + ');return false;" style="font-size:var(--fs-xs);color:var(--primary);">编辑</a></div>'
         + '</div>';
     });
     h += '</div></div>';
@@ -1433,7 +1433,7 @@ window.projTaskView = function(id) {
   var kv = function(k, v) { return '<div style="display:flex;padding:6px 0;border-bottom:1px solid var(--divider);font-size:13px;"><span style="width:80px;flex-shrink:0;color:var(--text-muted);">' + k + '</span><span style="flex:1;">' + v + '</span></div>'; };
   var flow = ['TODO', 'DOING', 'DONE'].map(function(s) {
     var on = t.status === s; var sm = TASK_STATUS[s];
-    return '<button class="btn btn-sm" onclick="projTaskStatus(' + id + ',\'' + s + '\');projCloseModalBox&&projCloseModalBox();" style="' + (on ? 'background:' + sm.c + ';color:var(--text-inverse);border-color:' + sm.c + ';' : '') + '">' + sm.t + '</button>';
+    return '<button class="btn btn-sm" data-perm="project:manage" onclick="projTaskStatus(' + id + ',\'' + s + '\');projCloseModalBox&&projCloseModalBox();" style="' + (on ? 'background:' + sm.c + ';color:var(--text-inverse);border-color:' + sm.c + ';' : '') + '">' + sm.t + '</button>';
   }).join('');
   var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
     + '<span style="background:' + st.c + ';color:var(--text-inverse);font-size:12px;padding:2px 10px;border-radius:var(--radius-lg);">' + escapeHtml(st.t) + '</span>'
@@ -1448,7 +1448,7 @@ window.projTaskView = function(id) {
   h += '<div style="margin:12px 0 4px;font-size:12px;color:var(--text-muted);">描述</div>'
     + '<div style="font-size:13px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--divider);border-radius:var(--radius);padding:10px;background:var(--bg-hover);min-height:50px;">' + (t.description ? escapeHtml(t.description) : '<span style="color:var(--text-muted);">（无描述）</span>') + '</div>';
   h += '<div style="margin-top:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-muted);">快捷流转</span>' + flow
-    + '<button class="btn btn-sm btn-primary" style="margin-left:auto;" onclick="projCloseModalBox&&projCloseModalBox();projTaskModal(' + id + ')">编辑</button></div>';
+    + '<button class="btn btn-sm btn-primary" style="margin-left:auto;" data-perm="project:manage" onclick="projCloseModalBox&&projCloseModalBox();projTaskModal(' + id + ')">编辑</button></div>';
   // IV-1: 评论时间线——任务下沟通留痕, 不再口头同步
   h += '<div style="margin-top:14px;border-top:1px solid var(--divider);padding-top:10px;">'
     + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">评论</div>'
@@ -1562,7 +1562,7 @@ window.projTaskModal = function(taskId) {
       + '<div class="ds-form-row"><label>截止日期</label><input id="ptkDue" type="date" value="' + (t.dueDate || '') + '"></div>'
       + '<div class="ds-form-row"><label>里程碑</label><select id="ptkMilestone" class="g-modal-input">' + msOpts + '</select></div>'
       + refRow
-      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projSaveTask(this)">保存</button></div>';
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projSaveTask(this)">保存</button></div>';
     projShowModalBox(taskId ? '编辑任务' : '新建任务', h);
     if (t.refType && t.refType !== 'GOV_ISSUE') projTaskRefTypeChanged(t.refId);
   }).catch(function() { showToast('任务表单加载失败, 请重试', 'error'); });
@@ -1633,7 +1633,7 @@ window.projDeleteTask = function(taskId) {
   });
 };
 window.projMilestoneManage = function() {
-  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" onclick="projSaveMilestone(this)">添加</button></div><div id="pmsList"></div>';
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><input id="pmsName" class="dbsync-form-input" style="width:120px;" placeholder="名称"><input id="pmsStart" type="date" class="dbsync-form-input" style="width:130px;"><input id="pmsEnd" type="date" class="dbsync-form-input" style="width:130px;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projSaveMilestone(this)">添加</button></div><div id="pmsList"></div>';
   projShowModalBox('里程碑管理', h);
   projRenderMilestones();
 };
@@ -1667,7 +1667,7 @@ function projRenderMilestones() {
     var r = risks[i];
     var badge = '<span style="display:inline-block;font-size:var(--fs-xs);padding:1px 8px;border-radius:var(--radius-lg);background:' + r.tone + '1a;color:' + r.tone + ';font-weight:600;">' + r.label + '</span>';
     var prog = r.total ? '<span style="color:var(--text-muted);font-size:var(--fs-xs);">' + r.done + '/' + r.total + ' 任务 · ' + r.pct + '%</span>' : '';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border-light,var(--divider));"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:var(--fs-xs);">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span>' + badge + ' ' + prog + ' <a href="#" onclick="projDelMilestone(' + m.id + ');return false;" style="color:var(--error);">删除</a></div>';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border-light,var(--divider));"><span style="flex:1;"><b>' + escapeHtml(m.name) + '</b> <span style="color:var(--text-muted);font-size:var(--fs-xs);">' + escapeHtml((m.startDate || '') + (m.endDate ? ' ~ ' + m.endDate : '')) + '</span></span>' + badge + ' ' + prog + ' <a href="#" data-perm="project:manage" onclick="projDelMilestone(' + m.id + ');return false;" style="color:var(--error);">删除</a></div>';
   }).join('');
 }
 window.projSaveMilestone = function(btn) {
@@ -1751,7 +1751,7 @@ window.projLoadWiki = function() {
   api('/api/project/' + _projDetail.id + '/wiki/pages').then(function(res) {
     _projWikiPages = _pdata(res);
     pane.innerHTML = '<div style="display:flex;gap:12px;min-height:320px;">'
-      + '<div style="width:190px;border-right:1px solid var(--divider);padding-right:10px;"><button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:8px;" onclick="projWikiNew()">+ 新建页面</button><input id="projWikiSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索文档" oninput="projWikiRenderTree()"><div id="projWikiTree"></div></div>'
+      + '<div style="width:190px;border-right:1px solid var(--divider);padding-right:10px;"><button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:8px;" data-perm="project:manage" onclick="projWikiNew()">+ 新建页面</button><input id="projWikiSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索文档" oninput="projWikiRenderTree()"><div id="projWikiTree"></div></div>'
       + '<div style="flex:1;" id="projWikiContent"><div style="color:var(--text-muted);padding:20px;">选择左侧页面查看，或新建页面</div></div></div>';
     projWikiRenderTree();
     if (_projWikiPages.length) projWikiSelect((_projWikiCur && _projWikiPages.some(function(p) { return p.id === _projWikiCur; })) ? _projWikiCur : _projWikiPages[0].id);
@@ -1786,7 +1786,7 @@ window.projWikiSelect = function(pageId) {
   _projWikiCur = pageId; projWikiRenderTree();
   api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) {
     var p = (res && res.code === 0) ? res.data : null; var c = document.getElementById('projWikiContent'); if (!p || !c) return;
-    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">' + escapeHtml(p.title) + '</b><span><button class="btn btn-sm" onclick="projWikiEdit(' + p.id + ')">编辑</button> <button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="projWikiDelete(' + p.id + ')">删除</button></span></div>'
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">' + escapeHtml(p.title) + '</b><span><button class="btn btn-sm" data-perm="project:manage" onclick="projWikiEdit(' + p.id + ')">编辑</button> <button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="project:manage" onclick="projWikiDelete(' + p.id + ')">删除</button></span></div>'
       + '<div id="projWikiToc"></div>'
       + '<div class="proj-md" id="projWikiBody" style="font-size:13px;line-height:1.7;">' + projMd(p.content) + '</div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:10px;">更新人 ' + escapeHtml(p.updatedBy || '-') + ' · ' + escapeHtml((p.updatedAt || '').replace('T', ' ').slice(0, 16)) + '</div>';
@@ -1819,7 +1819,7 @@ function projWikiEditForm(p) {
   c.innerHTML = '<input type="hidden" id="pwId" value="' + (p.id || '') + '">'
     + '<div style="display:flex;gap:8px;margin-bottom:8px;"><input id="pwTitle" class="dbsync-form-input" style="flex:1;" placeholder="标题" value="' + escapeHtml(p.title || '') + '"><select id="pwParent" class="dbsync-form-select" style="width:140px;">' + parentOpts + '</select></div>'
     + '<textarea id="pwContent" style="width:100%;min-height:240px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-family:monospace;font-size:13px;box-sizing:border-box;" placeholder="Markdown 内容">' + escapeHtml(p.content || '') + '</textarea>'
-    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="projWikiSave(this)">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
+    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projWikiSave(this)">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
 }
 window.projWikiSave = function(btn) {
   var title = (document.getElementById('pwTitle').value || '').trim();
@@ -1929,7 +1929,7 @@ window.loadProjectTemplates = function() {
       h += '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模板名</th><th>类型</th><th>描述</th><th>创建人</th><th style="width:160px;">操作</th></tr></thead><tbody>';
       ts.forEach(function(t) {
         h += '<tr><td><b>' + escapeHtml(t.templateName) + '</b></td><td>' + escapeHtml(PROJ_TYPE_LABEL[t.templateType] || t.templateType || '-') + '</td><td>' + escapeHtml(t.description || '-') + '</td><td>' + escapeHtml(t.createdBy || '-') + '</td>'
-          + '<td><a href="#" onclick="projFromTemplateModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:8px;">新建项目</a><a href="#" onclick="projDeleteTemplate(' + t.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
+          + '<td><a href="#" data-perm="project:manage" onclick="projFromTemplateModal(' + t.id + ');return false;" style="color:var(--primary);margin-right:8px;">新建项目</a><a href="#" data-perm="project:manage" onclick="projDeleteTemplate(' + t.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -1949,7 +1949,7 @@ window.projFromTemplateModal = function(presetTid) {
     var opts = ts.map(function(t) { return '<option value="' + t.id + '"' + (presetTid === t.id ? ' selected' : '') + '>' + escapeHtml(t.templateName) + '</option>'; }).join('');
     var h = '<div class="ds-form-row"><label>模板</label><select id="pftTpl" class="g-modal-input">' + opts + '</select></div>'
       + '<div class="ds-form-row"><label>项目名称</label><input id="pftName" placeholder="新项目名称"></div>'
-      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" onclick="projDoFromTemplate()">创建</button></div>';
+      + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projDoFromTemplate()">创建</button></div>';
     projShowModalBox('从模板新建项目', h);
   });
 };
@@ -2008,17 +2008,17 @@ window.projRelDetail = function(rid) {
       var bar = document.getElementById('projRelDetailActs');
       if (!bar) return;
       bar.innerHTML = ok
-        ? '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" onclick="projCloseModalBox();projRelAct(' + r.id + ',\'reject\',\'center\')">驳回</button>'
-          + '<button class="btn btn-sm btn-primary" onclick="projCloseModalBox();projRelAct(' + r.id + ',\'approve\',\'center\')">通过</button>'
+        ? '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="project:approve" onclick="projCloseModalBox();projRelAct(' + r.id + ',\'reject\',\'center\')">驳回</button>'
+          + '<button class="btn btn-sm btn-primary" data-perm="project:approve" onclick="projCloseModalBox();projRelAct(' + r.id + ',\'approve\',\'center\')">通过</button>'
         : '<span style="font-size:12px;color:var(--text-faint);">需该项目负责人/管理员审批</span>';
     }).catch(function() {});
   }
 };
 function projRelActionLinks(r, scope) {
   var s = r.status, rid = r.id, a = '';
-  if (s === 'PENDING') a = '<a href="#" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:var(--success);margin-right:8px;">通过</a><a href="#" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:var(--error);">驳回</a>';
-  else if (s === 'APPROVED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'release\',\'' + scope + '\');return false;" style="color:var(--primary);">发布上线</a>';
-  else if (s === 'RELEASED') a = '<a href="#" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:var(--error);">回滚</a>';
+  if (s === 'PENDING') a = '<a href="#" data-perm="project:approve" onclick="projRelAct(' + rid + ',\'approve\',\'' + scope + '\');return false;" style="color:var(--success);margin-right:8px;">通过</a><a href="#" data-perm="project:approve" onclick="projRelAct(' + rid + ',\'reject\',\'' + scope + '\');return false;" style="color:var(--error);">驳回</a>';
+  else if (s === 'APPROVED') a = '<a href="#" data-perm="project:approve" onclick="projRelAct(' + rid + ',\'release\',\'' + scope + '\');return false;" style="color:var(--primary);">发布上线</a>';
+  else if (s === 'RELEASED') a = '<a href="#" data-perm="project:approve" onclick="projRelAct(' + rid + ',\'rollback\',\'' + scope + '\');return false;" style="color:var(--error);">回滚</a>';
   else a = '<span style="color:var(--text-muted);">-</span>';
   return a;
 }
@@ -2048,7 +2048,7 @@ window.projLoadReleases = function() {
   api('/api/project/' + _projDetail.id + '/releases').then(function(res) {
     var rs = (res && res.code === 0) ? (res.data || []) : [];
     _projReleases = rs;
-    var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><button class="btn btn-sm btn-primary" onclick="projOpenReleaseModal()">+ 提交发布</button>'
+    var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projOpenReleaseModal()">+ 提交发布</button>'
       + '<span style="margin-left:auto;display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">'
       + '<a href="#" onclick="projSetRelView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projRelView === 'table' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">表格</a>'
       + '<a href="#" onclick="projSetRelView(\'timeline\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projRelView === 'timeline' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">时间线</a></span></div>';

@@ -25,7 +25,7 @@
     DN.get('/api/mdm/refdata/categories').then(function (cats) {
       _cats = cats || [];
       tileBox.innerHTML = '';
-      var addCatBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } });
+      var addCatBtn = DN.h('a', { class: 'btn btn-primary', 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } });
       var card = DN.card({ title: '码表类别', icon: 'grid', actions: addCatBtn });
       if (!_cats.length) {
         card.body.appendChild(DN.empty('暂无参考数据，点右上角“新建码值”创建首个码表类别', 'grid'));
@@ -79,7 +79,7 @@
       rows.forEach(function (r) { if (r && r.code != null) nameByCode[r.code] = r.name; });
       // 头部动作：在建模中引用（指引到属性建模，复制 REFERENCE 引用令牌）+ 新建码值
       var refBtn = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '在建模中引用', title: '在主数据建模中将属性设为 REFERENCE 并引用该码表类别', onclick: function () { refInModeling(_selCategory); } });
-      var actBar = DN.h('span', { style: 'display:inline-flex;gap:8px' }, [refBtn, DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } })]);
+      var actBar = DN.h('span', { style: 'display:inline-flex;gap:8px' }, [refBtn, DN.h('a', { class: 'btn btn-primary', 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '新建码值', onclick: function () { codeForm(null, tileBox, box); } })]);
       var card = DN.card({ title: '码表 · ' + _selCategory, icon: 'list', actions: actBar });
       // 引用指引：码表类别即为建模属性的引用令牌
       card.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '在「域与实体建模」中将属性数据类型设为 REFERENCE、引用值填「' + _selCategory + '」，即可复用本类别码值，保证取值一致。' }));
@@ -109,8 +109,8 @@
           { key: '_op', label: '操作', render: function (r) {
               var w = DN.h('span', { style: 'display:inline-flex;gap:10px' });
               w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '明细', style: 'color:var(--primary)', onclick: function () { detailDrawer(r, nameByCode); } }));
-              w.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { codeForm(r, tileBox, box); } }));
-              var delLink = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
+              w.appendChild(DN.h('a', { 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', onclick: function () { codeForm(r, tileBox, box); } }));
+              var delLink = DN.h('a', { 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)' });
               delLink.onclick = function () {
                 if (delLink._busy) return; // 防重复点击（删除请求在途时忽略再次点击）
                 // 本地预检：存在子级码值则先提示，避免无意义的破坏性请求（与后端规则一致）

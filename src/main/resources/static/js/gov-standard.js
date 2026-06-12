@@ -158,7 +158,7 @@
 
   /** 行级编辑链接：点击后由调用方回填表单进入编辑态 */
   function editLink(fn) {
-    return DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm', text: '编辑', onclick: fn });
+    return DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm', text: '编辑', 'data-perm': 'governance:standard', onclick: fn });
   }
 
   /** 下拉回显：值不在既有选项时临时补一个 option，避免编辑回显丢失原值 */
@@ -180,7 +180,7 @@
 
   /** 内联确认删除链接（不用 window.confirm），返回 Node 供 DN.table 渲染 */
   function delLink(delFn, reload) {
-    var a = DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm btn-danger', text: '删除' });
+    var a = DN.h('a', { href: 'javascript:void(0)', class: 'btn btn-sm btn-danger', text: '删除', 'data-perm': 'governance:standard' });
     a.onclick = function () {
       if (a.getAttribute('data-confirm') === '1') {
         if (a._busy) return;             // 删除请求去重，防双击重复删除
@@ -240,7 +240,7 @@
       if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     var save = DN.h('a', {
-      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增数据元', onclick: function () {
+      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增数据元', 'data-perm': 'governance:standard', onclick: function () {
         var code = f.element_code.value.trim();
         if (!code) { DN.toast('编码必填', 'err'); f.element_code.focus(); return; }
         // 编码格式校验：字母开头，仅允许字母/数字/下划线（数据元命名规范）
@@ -329,7 +329,7 @@
       if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     var save = DN.h('a', {
-      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增词根', onclick: function () {
+      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增词根', 'data-perm': 'governance:standard', onclick: function () {
         var payload = {
           wordCn: f.word_cn.value.trim(), wordEn: f.word_en.value.trim(),
           abbr: f.abbr.value.trim(), category: f.category.value.trim()
@@ -401,7 +401,7 @@
       if (form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     var save = DN.h('a', {
-      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增码表', onclick: function () {
+      class: 'btn btn-primary', href: 'javascript:void(0)', text: '新增码表', 'data-perm': 'governance:standard', onclick: function () {
         var payload = { dictCode: f.dict_code.value.trim(), dictName: f.dict_name.value.trim(), description: f.description.value.trim() };
         if (editingId != null) payload.id = editingId;
         if (!payload.dictCode) { DN.toast('编码必填', 'err'); f.dict_code.focus(); return; }
@@ -541,7 +541,7 @@
     runCard.body.appendChild(picker.el);
     var result = DN.h('div', { id: 'checkResult', style: 'margin-top:8px' });
     var runBtn = DN.h('a', {
-      class: 'btn btn-primary', href: 'javascript:void(0)', text: '执行落标稽核', onclick: function () {
+      class: 'btn btn-primary', href: 'javascript:void(0)', text: '执行落标稽核', 'data-perm': 'governance:standard', onclick: function () {
         var scope = picker.db() ? (picker.table() ? picker.db() + '.' + picker.table() : picker.db()) : '';
         // 全量稽核为较重操作，二次确认防误触
         var pre = scope ? Promise.resolve(true)
