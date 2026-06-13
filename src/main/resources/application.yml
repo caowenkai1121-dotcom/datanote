@@ -29,6 +29,15 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # HikariCP 连接池: 防闲置连接被 MySQL 关闭后仍被取用(No operations after connection closed)
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}     # 并发/长事务(质量检查/ETL)需要更大池
+      minimum-idle: 5
+      max-lifetime: 580000                     # 580s, 须 < MySQL wait_timeout, 主动回收旧连接
+      keepalive-time: 120000                   # 120s 保活探测, 剔除已失效连接
+      connection-timeout: 30000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1          # 取用前校验, 失效连接立即剔除重建
 
 # -------------------- MyBatis-Plus --------------------
 mybatis-plus:
