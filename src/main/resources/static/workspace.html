@@ -1329,6 +1329,7 @@
                   <input type="radio" name="dfsSyncMode" value="CDC" onchange="dbsyncOnModeChange()"> 实时同步 CDC
                 </label>
               </div>
+              <div class="intg-hint" style="font-size:var(--fs-xs);color:var(--text-muted);line-height:1.6;">全量=每次整表覆盖(小表/维表)；增量=按时间/自增列只取新增变更(大表，需配增量列)；CDC=实时捕获源端增删改(需源库开 binlog)。</div>
             </div>
           </div>
 
@@ -7031,7 +7032,7 @@ function saveCurrentSnippet() {
   if (!sel.trim()) { showToast('编辑器内容为空，无可保存', 'error'); return; }
   window.__snippetDraft = sel;
   var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">将保存' + (codeArea.selectionStart !== codeArea.selectionEnd ? '选中的 ' : '全部 ') + sel.length + ' 个字符为片段</div>'
-    + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">片段名 *</label><input id="snippetName" class="dbsync-form-input" style="width:100%;" placeholder="如 取昨日分区"></div>'
+    + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">片段名 *</label><input id="snippetName" class="dbsync-form-input" style="width:100%;" placeholder="如 取昨日分区" onkeydown="if(event.key===\'Enter\'){event.preventDefault();doSaveSnippet();}"></div>'
     + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">分类</label><input id="snippetCategory" class="dbsync-form-input" style="width:100%;" placeholder="可选, 如 工具/DWD"></div>'
     + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">说明</label><input id="snippetDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>'
     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="snippetShared"> 设为团队共享（队友可见可用，仅你可改删）</label>';
@@ -12462,6 +12463,7 @@ window.dbsyncLoadSrcDbs = function() {
   _dbsyncSrcTables = [];
   dbsyncRebuildTableRows();
   if (!dsId) return;
+  try { localStorage.setItem('dn_lastSyncSrcDs', dsId); } catch (e) {}   // 记住源数据源
   sel.innerHTML = '<option value="">加载中...</option>';
   api('/api/datasource/' + dsId + '/databases').then(function(res) {
     sel.innerHTML = '<option value="">请选择数据库</option>';
@@ -12492,6 +12494,7 @@ window.dbsyncLoadTgtDbs = function() {
   var sel  = document.getElementById('dfsTgtDb');
   sel.innerHTML = '<option value="">请选择数据库</option>';
   if (!dsId) return;
+  try { localStorage.setItem('dn_lastSyncTgtDs', dsId); } catch (e) {}   // 记住目标数据源
   sel.innerHTML = '<option value="">加载中...</option>';
   api('/api/datasource/' + dsId + '/databases').then(function(res) {
     sel.innerHTML = '<option value="">请选择数据库</option>';
@@ -13196,6 +13199,13 @@ window.dbsyncOpenCreateModal = function() {
     dbsyncLoadDsList('dfsSrcDsId'),
     dbsyncLoadDsList('dfsTgtDsId')
   ]).then(function() {
+    // 记住上次选择的源/目标数据源, 减少重复选择(新建同步常用同一对源/目标)
+    try {
+      var ls = localStorage.getItem('dn_lastSyncSrcDs'), lt = localStorage.getItem('dn_lastSyncTgtDs');
+      var ss = document.getElementById('dfsSrcDsId'), ts = document.getElementById('dfsTgtDsId');
+      if (ls && ss && [].some.call(ss.options, function(o){ return o.value === ls; })) { ss.value = ls; dbsyncLoadSrcDbs(); }
+      if (lt && ts && [].some.call(ts.options, function(o){ return o.value === lt; })) { ts.value = lt; dbsyncLoadTgtDbs(); }
+    } catch (e) {}
     dbsyncAddTableRow();
   });
   document.getElementById('dbsyncFormModal').classList.add('show');
