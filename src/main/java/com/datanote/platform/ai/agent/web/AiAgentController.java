@@ -85,7 +85,8 @@ public class AiAgentController {
         }
         // 越权隔离: 仅会话发起人可读其轨迹(匿名态放行)
         String me = currentUser();
-        if (me != null && !"anonymous".equals(me) && s.getUserName() != null && !me.equals(s.getUserName())) {
+        if (me != null && !"anonymous".equals(me) && !"admin".equals(me)
+                && s.getUserName() != null && !"anonymous".equals(s.getUserName()) && !me.equals(s.getUserName())) {
             return R.fail("无权访问该会话");
         }
         List<DnAiStep> steps = stepMapper.selectList(
@@ -267,7 +268,8 @@ public class AiAgentController {
                 new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
         if (s == null) return R.fail("会话不存在");
         String me = currentUser();
-        if (me != null && !"anonymous".equals(me) && s.getUserName() != null && !me.equals(s.getUserName())) {
+        if (me != null && !"anonymous".equals(me) && !"admin".equals(me)
+                && s.getUserName() != null && !"anonymous".equals(s.getUserName()) && !me.equals(s.getUserName())) {
             return R.fail("无权访问该会话");
         }
         return null;

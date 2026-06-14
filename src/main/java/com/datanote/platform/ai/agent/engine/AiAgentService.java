@@ -104,7 +104,9 @@ public class AiAgentService {
         if (s == null) return true;
         String caller = ctx == null ? null : ctx.getUserName();
         String owner = s.getUserName();
-        if (caller == null || "anonymous".equals(caller) || owner == null) return true;
+        // 匿名态调用 / 超管放行; 无主或开放态(anonymous)创建的历史会话亦放行
+        if (caller == null || "anonymous".equals(caller) || "admin".equals(caller)) return true;
+        if (owner == null || "anonymous".equals(owner)) return true;
         return caller.equals(owner);
     }
 
