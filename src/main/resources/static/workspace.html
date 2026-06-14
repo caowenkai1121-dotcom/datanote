@@ -6986,16 +6986,33 @@ function openSnippetPanel() {
 
 function renderSnippetRows(list) {
   if (!list.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无片段，点击「存当前为片段」保存常用 SQL</div>';
+  var me = window.__user || '';
   return list.map(function(s) {
-    var searchKey = ((s.name || '') + ' ' + (s.category || '') + ' ' + (s.description || '')).toLowerCase();
+    var mine = (s.createdBy === me) || (me === 'admin');
+    var searchKey = ((s.name || '') + ' ' + (s.category || '') + ' ' + (s.description || '') + ' ' + (s.createdBy || '')).toLowerCase();
+    var sharedBadge = s.shared ? ' <span style="font-size:10px;color:var(--primary);border:1px solid var(--primary);border-radius:3px;padding:0 4px;vertical-align:middle;">团队</span>' : '';
+    var ownerTag = (s.createdBy && s.createdBy !== me) ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">@' + escapeHtml(s.createdBy) + '</span>' : '';
+    var actions = '<button class="btn btn-sm btn-primary" onclick="insertSnippet(' + s.id + ')">插入</button>';
+    if (mine) {
+      actions += ' <button class="btn btn-sm" onclick="toggleSnippetShare(' + s.id + ')" title="' + (s.shared ? '取消团队共享' : '设为团队共享, 队友可见可用') + '">' + (s.shared ? '取消共享' : '共享') + '</button>'
+        + ' <button class="btn btn-sm" style="color:var(--error);" onclick="deleteSnippet(' + s.id + ')">删除</button>';
+    }
     return '<div class="snippet-row" data-search="' + escapeHtml(searchKey) + '" style="border-bottom:1px solid var(--border);padding:8px 4px;display:flex;align-items:center;gap:10px;">'
-      + '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(s.name || '') + (s.category ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">· ' + escapeHtml(s.category) + '</span>' : '') + '</div>'
+      + '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(s.name || '') + sharedBadge + (s.category ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">· ' + escapeHtml(s.category) + '</span>' : '') + ownerTag + '</div>'
       + (s.description ? '<div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(s.description) + '</div>' : '')
       + '<div style="font-size:11px;color:var(--text-faint);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(s.content || '') + '">' + escapeHtml((s.content || '').slice(0, 80)) + '</div></div>'
-      + '<div style="white-space:nowrap;text-align:right;flex:0 0 auto;">'
-      + '<button class="btn btn-sm btn-primary" onclick="insertSnippet(' + s.id + ')">插入</button> '
-      + '<button class="btn btn-sm" style="color:var(--error);" onclick="deleteSnippet(' + s.id + ')">删除</button></div></div>';
+      + '<div style="white-space:nowrap;text-align:right;flex:0 0 auto;">' + actions + '</div></div>';
   }).join('');
+}
+
+function toggleSnippetShare(id) {
+  var s = (window.__sqlSnippets || []).filter(function(x){ return x.id === id; })[0];
+  if (!s) return;
+  var payload = { id: s.id, name: s.name, content: s.content, category: s.category || null, description: s.description || null, shared: s.shared ? 0 : 1 };
+  apiPost('/api/snippet/save', payload).then(function(res) {
+    if (res && res.code === 0) { showToast(payload.shared ? '已设为团队共享' : '已设为私有', 'success'); openSnippetPanel(); }
+    else showToast((res && res.msg) || '操作失败', 'error');
+  }).catch(function(){ showToast('操作失败', 'error'); });
 }
 
 function snippetFilter() {
@@ -7014,7 +7031,8 @@ function saveCurrentSnippet() {
   var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">将保存' + (codeArea.selectionStart !== codeArea.selectionEnd ? '选中的 ' : '全部 ') + sel.length + ' 个字符为片段</div>'
     + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">片段名 *</label><input id="snippetName" class="dbsync-form-input" style="width:100%;" placeholder="如 取昨日分区"></div>'
     + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">分类</label><input id="snippetCategory" class="dbsync-form-input" style="width:100%;" placeholder="可选, 如 工具/DWD"></div>'
-    + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">说明</label><input id="snippetDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>';
+    + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">说明</label><input id="snippetDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>'
+    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="snippetShared"> 设为团队共享（队友可见可用，仅你可改删）</label>';
   var footer = '<button class="btn btn-sm" onclick="openSnippetPanel()">返回</button> <button class="btn btn-sm btn-primary" onclick="doSaveSnippet()">保存</button>';
   showModal('保存 SQL 片段', body, footer, { width: 440 });
   setTimeout(function(){ var t = document.getElementById('snippetName'); if (t) t.focus(); }, 50);
@@ -7027,7 +7045,8 @@ function doSaveSnippet() {
     name: name.trim(),
     content: window.__snippetDraft || '',
     category: ((document.getElementById('snippetCategory') || {}).value || '').trim() || null,
-    description: ((document.getElementById('snippetDesc') || {}).value || '').trim() || null
+    description: ((document.getElementById('snippetDesc') || {}).value || '').trim() || null,
+    shared: (document.getElementById('snippetShared') || {}).checked ? 1 : 0
   };
   apiPost('/api/snippet/save', payload).then(function(res) {
     if (res && res.code === 0) { showToast('已保存片段', 'success'); openSnippetPanel(); }

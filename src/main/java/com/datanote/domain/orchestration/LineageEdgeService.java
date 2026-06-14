@@ -99,26 +99,34 @@ public class LineageEdgeService {
         return bfs(db, table, false);
     }
 
-    /** BFS over 表级边，limit 深度防环。downstream=true 顺向(src→dst)，否则逆向(dst→src)。 */
+    /** BFS over 表级边。原每访问一节点查一次库(N 节点=N 次往返), 改为一次性加载全部表级边后内存 BFS(与字段级 computeColumnBfs 同款)。 */
     private List<Map<String, Object>> bfs(String db, String table, boolean downstream) {
+        List<DnLineageEdge> all = edgeMapper.selectList(new QueryWrapper<DnLineageEdge>().eq("level_type", "TABLE"));
+        return computeTableBfs(all, db, table, downstream, MAX_DEPTH);
+    }
+
+    /** 纯函数: 在表级边集合上做 BFS, limit 深度防环。downstream=true 顺向(src→dst), 否则逆向(dst→src)。返回去重节点(db/table/depth/source)。 */
+    static List<Map<String, Object>> computeTableBfs(List<DnLineageEdge> all, String db, String table, boolean downstream, int maxDepth) {
         List<Map<String, Object>> result = new ArrayList<>();
+        if (all == null) return result;
+        // 邻接表: from 节点键 → 出边列表(按方向取 from 端)
+        Map<String, List<DnLineageEdge>> adj = new HashMap<>();
+        for (DnLineageEdge e : all) {
+            if (e == null) continue;
+            String fromKey = downstream ? key(e.getSrcDb(), e.getSrcTable()) : key(e.getDstDb(), e.getDstTable());
+            adj.computeIfAbsent(fromKey, k -> new ArrayList<>()).add(e);
+        }
         java.util.Set<String> visited = new java.util.HashSet<>();
         java.util.Deque<String[]> queue = new java.util.ArrayDeque<>(); // [db, table, depth]
-        String start = key(db, table);
-        visited.add(start);
+        visited.add(key(db, table));
         queue.add(new String[]{db, table, "0"});
         while (!queue.isEmpty()) {
             String[] cur = queue.poll();
             int depth = Integer.parseInt(cur[2]);
-            if (depth >= MAX_DEPTH) continue;
-            QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
-            qw.eq("level_type", "TABLE");
-            if (downstream) qw.eq("src_db", cur[0]).eq("src_table", cur[1]);
-            else qw.eq("dst_db", cur[0]).eq("dst_table", cur[1]);
-            List<DnLineageEdge> edges = edgeMapper.selectList(qw);
-            if (edges == null) continue;   // selectList 理论可返回 null,该跳无边
+            if (depth >= maxDepth) continue;
+            List<DnLineageEdge> edges = adj.get(key(cur[0], cur[1]));
+            if (edges == null) continue;
             for (DnLineageEdge e : edges) {
-                if (e == null) continue;
                 String nDb = downstream ? e.getDstDb() : e.getSrcDb();
                 String nTab = downstream ? e.getDstTable() : e.getSrcTable();
                 String k = key(nDb, nTab);

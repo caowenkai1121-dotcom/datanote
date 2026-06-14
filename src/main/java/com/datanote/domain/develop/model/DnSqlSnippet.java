@@ -19,6 +19,7 @@ public class DnSqlSnippet {
     private String description;   // 说明(可选)
     private String category;      // 分类(可选, 如 ODS/DWD/工具)
     private Integer useCount;     // 插入次数(热度)
+    private Integer shared;        // 是否团队共享: 0 私有 / 1 共享(团队可见可用, 仅创建人/admin 可改删)
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -23,10 +23,11 @@ public class SqlSnippetService {
 
     private final DnSqlSnippetMapper snippetMapper;
 
-    /** 当前用户的片段列表(可按关键词过滤名称/分类), 按使用次数与更新时间降序。 */
+    /** 可见片段列表 = 自己的 + 团队共享的(可按关键词过滤名称/分类/说明), 按使用次数与更新时间降序。 */
     public List<DnSqlSnippet> list(String keyword) {
+        String me = CurrentUserUtil.currentUser();
         QueryWrapper<DnSqlSnippet> qw = new QueryWrapper<>();
-        qw.eq("created_by", CurrentUserUtil.currentUser());
+        qw.and(w -> w.eq("created_by", me).or().eq("shared", 1));   // 本人私有 ∪ 团队共享
         if (keyword != null && !keyword.trim().isEmpty()) {
             String kw = keyword.trim();
             qw.and(w -> w.like("name", kw).or().like("category", kw).or().like("description", kw));
@@ -59,10 +60,12 @@ public class SqlSnippetService {
             s.setUpdatedAt(now);
             s.setCreatedBy(old.getCreatedBy());
             s.setUseCount(old.getUseCount());   // 保留热度
+            if (s.getShared() == null) s.setShared(old.getShared() != null ? old.getShared() : 0);
             snippetMapper.updateById(s);
         } else {
             s.setCreatedBy(me);
             s.setUseCount(0);
+            if (s.getShared() == null) s.setShared(0);
             s.setCreatedAt(now);
             s.setUpdatedAt(now);
             snippetMapper.insert(s);
@@ -82,11 +85,12 @@ public class SqlSnippetService {
         snippetMapper.deleteById(id);
     }
 
-    /** 插入计数 +1(热度排序用)。原子自增, 仅本人片段。 */
+    /** 插入计数 +1(热度排序用)。原子自增, 限本人片段或团队共享片段(可见即可计数)。 */
     public void incrementUse(Long id) {
         if (id == null) return;
+        String me = CurrentUserUtil.currentUser();
         snippetMapper.update(null, new UpdateWrapper<DnSqlSnippet>()
-                .eq("id", id).eq("created_by", CurrentUserUtil.currentUser())
+                .eq("id", id).and(w -> w.eq("created_by", me).or().eq("shared", 1))
                 .setSql("use_count = use_count + 1"));
     }
 }
