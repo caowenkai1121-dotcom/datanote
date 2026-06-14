@@ -294,8 +294,8 @@
     rowTbl.appendChild(DN.table({
       columns: [
         { key: 'roleCode', label: '角色编码' },
-        { key: 'dbName', label: '库', render: function (p) { return truncText(p.dbName, 24); } },
-        { key: 'tableName', label: '表', render: function (p) {
+        { key: 'dbName', label: '库', copyable: true, exportValue: function (p) { return p.dbName || ''; }, render: function (p) { return truncText(p.dbName, 24); } },
+        { key: 'tableName', label: '表', copyable: true, exportValue: function (p) { return p.tableName || ''; }, render: function (p) {
             return isFocusRow(p.dbName, p.tableName) ? focusWrap(p.dbName, p.tableName, p.tableName || '-') : truncText(p.tableName, 24);
           } },
         { key: 'rowFilter', label: '行过滤条件', render: function (p) { return truncText(p.rowFilter, 48); } },
