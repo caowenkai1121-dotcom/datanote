@@ -34,6 +34,7 @@ public class MetricController {
     private final com.datanote.domain.governance.mapper.DnGovernanceIssueMapper issueMapper;
     private final IssueService issueService;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;
+    private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤/守卫受限指标
 
     /**
      * 指标列表（支持关键词搜索和分类筛选）
@@ -53,7 +54,12 @@ public class MetricController {
             qw.eq("category", category);
         }
         qw.orderByDesc("updated_at");
-        return R.ok(metricMapper.selectList(qw));
+        List<DnMetric> list = metricMapper.selectList(qw);
+        java.util.Set<String> denied = dataAclService.deniedIds("METRIC");
+        if (!denied.isEmpty() && list != null) {
+            list.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
+        }
+        return R.ok(list);
     }
 
     /**
@@ -62,6 +68,9 @@ public class MetricController {
     @Operation(summary = "指标详情")
     @GetMapping("/{id}")
     public R<DnMetric> getById(@PathVariable Long id) {
+        if (!dataAclService.canAccess("METRIC", String.valueOf(id))) {
+            return R.fail("无权访问该指标(数据权限受限), 请联系管理员授权");
+        }
         DnMetric metric = metricMapper.selectById(id);
         if (metric == null) {
             throw new ResourceNotFoundException("指标");

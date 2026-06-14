@@ -508,6 +508,14 @@
       });
     };
     wrap.appendChild(off);
+    // 数据权限: 设置该指标可见范围(默认公开)
+    var acl = DN.h('a', { href: 'javascript:void(0)', text: '授权', style: 'color:var(--primary)', 'data-perm': 'data:grant' });
+    acl.onclick = function () {
+      if (r.id == null) { DN.toast('指标缺少 ID', 'err'); return; }
+      if (window.openDataAclModal) window.openDataAclModal('METRIC', r.id, r.metricName || r.metricCode || ('指标#' + r.id));
+      else DN.toast('当前环境不支持数据授权', 'warn');
+    };
+    wrap.appendChild(acl);
     return wrap;
   }
 

@@ -227,6 +227,7 @@
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddEntity(' + m.id + ')">+ 实体</button>' : '')
         + '<button class="btn btn-sm" onclick="dmShowER(' + m.id + ')" style="margin-left:auto;">🔗 ER 图</button>'
         + '<button class="btn btn-sm" onclick="dmShowVersions(' + m.id + ')">🕑 版本历史</button>'
+        + '<button class="btn btn-sm" data-perm="data:grant" onclick="window.openDataAclModal && openDataAclModal(\'MODEL\',' + m.id + ',\'' + esc(m.modelName).replace(/'/g, "") + '\')" title="设置该模型可见范围">🔒 数据授权</button>'
         + '</div><div id="dmEntityBox"></div>'
         + '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px;"><b style="font-size:13px;">关系</b>'
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddRelation(' + m.id + ')">+ 关系</button>' : '')

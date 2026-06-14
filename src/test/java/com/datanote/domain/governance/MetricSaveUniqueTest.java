@@ -22,7 +22,7 @@ class MetricSaveUniqueTest {
     @Mock private DnMetricMapper metricMapper;
 
     private MetricController ctrl() {
-        return new MetricController(metricMapper, null, null, null, null, null, null);
+        return new MetricController(metricMapper, null, null, null, null, null, null, null);
     }
 
     private DnMetric metric(String code, String name) {

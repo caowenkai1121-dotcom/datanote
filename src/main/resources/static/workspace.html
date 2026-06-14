@@ -7896,12 +7896,14 @@ function dmOpenTable(db, table) {
     });
 }
 
-/* ===== 数据授权(资源级访问控制) ===== */
-function dmOpenDataAcl() {
-  if (!dmCurrentDb || !dmCurrentTable) { msgBox('请先打开一张表'); return; }
-  var rid = dmCurrentDb + '.' + dmCurrentTable;
+/* ===== 数据授权(资源级访问控制, 通用: 库表/模型/指标...) ===== */
+// 通用入口: openDataAclModal(资源类型, 资源键, 显示名)
+function openDataAclModal(resourceType, resourceId, label) {
+  if (!resourceId && resourceId !== 0) { msgBox('缺少资源标识'); return; }
+  window.__aclResType = resourceType;
+  window.__aclResId = String(resourceId);
   Promise.all([
-    api('/api/data-acl/grants?resourceType=TABLE&resourceId=' + encodeURIComponent(rid)),
+    api('/api/data-acl/grants?resourceType=' + encodeURIComponent(resourceType) + '&resourceId=' + encodeURIComponent(String(resourceId))),
     api('/api/rbac/roles')
   ]).then(function(rs) {
     window.__aclGrants = ((rs[0] && rs[0].code === 0 && rs[0].data) ? rs[0].data : []).map(function(g) {
@@ -7911,7 +7913,7 @@ function dmOpenDataAcl() {
     if (window.dnFillUserDatalist) dnFillUserDatalist();
     var roleOpts = window.__aclRoles.map(function(r){ return '<option value="' + escapeHtml(r.roleCode) + '">' + escapeHtml(r.roleName || r.roleCode) + '</option>'; }).join('');
     var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6;">'
-      + '资源: <b>' + escapeHtml(rid) + '</b><br>不加任何授权 = <b>公开</b>(所有有数据地图权限的人可见)；一旦添加授权，则<b>仅</b>下列角色/用户(及管理员)可见可查。</div>'
+      + '资源: <b>' + escapeHtml(label || (resourceType + ':' + resourceId)) + '</b><br>不加任何授权 = <b>公开</b>(所有有相应模块权限的人可见)；一旦添加授权，则<b>仅</b>下列角色/用户(及管理员)可见可查。</div>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">'
       + '<select id="aclRoleSel" class="dbsync-form-input" style="width:160px;"><option value="">选择角色…</option>' + roleOpts + '</select>'
       + '<button class="btn btn-sm" onclick="dmAclAdd(\'ROLE\')">+ 角色</button>'
@@ -7920,8 +7922,14 @@ function dmOpenDataAcl() {
       + '<div id="aclGrantList" style="margin-bottom:6px;">' + dmAclRenderGrants() + '</div>';
     var footer = '<button class="btn btn-sm" onclick="closeModal()">取消</button> '
       + '<button class="btn btn-sm btn-primary" onclick="dmAclSave()">保存</button>';
-    showModal('数据授权 · ' + dmCurrentTable, body, footer, { width: 540 });
+    showModal('数据授权 · ' + (label || resourceId), body, footer, { width: 540 });
   }).catch(function(){ msgBox('加载授权失败'); });
+}
+
+// 库表入口(数据地图)
+function dmOpenDataAcl() {
+  if (!dmCurrentDb || !dmCurrentTable) { msgBox('请先打开一张表'); return; }
+  openDataAclModal('TABLE', dmCurrentDb + '.' + dmCurrentTable, dmCurrentTable);
 }
 
 function dmAclRenderGrants() {
@@ -7952,8 +7960,7 @@ function dmAclRemove(i) {
 }
 
 function dmAclSave() {
-  var rid = dmCurrentDb + '.' + dmCurrentTable;
-  apiPost('/api/data-acl/grants', { resourceType: 'TABLE', resourceId: rid, grants: window.__aclGrants || [] }).then(function(res) {
+  apiPost('/api/data-acl/grants', { resourceType: window.__aclResType, resourceId: window.__aclResId, grants: window.__aclGrants || [] }).then(function(res) {
     if (res && res.code === 0) { showToast(res.data || '已保存', 'success'); closeModal(); }
     else showToast((res && res.msg) || '保存失败', 'error');
   }).catch(function(){ showToast('保存失败', 'error'); });

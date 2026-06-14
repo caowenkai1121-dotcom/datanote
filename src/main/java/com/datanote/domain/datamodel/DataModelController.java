@@ -24,6 +24,7 @@ import java.util.Map;
 public class DataModelController {
 
     private final DataModelService service;
+    private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤/守卫受限模型
 
     // -------- 模型 --------
 
@@ -32,12 +33,20 @@ public class DataModelController {
     public R<List<DnModel>> listModels(@RequestParam(required = false) String type,
                                        @RequestParam(required = false) Long subjectId,
                                        @RequestParam(required = false) String status) {
-        return R.ok(service.listModels(type, subjectId, status));
+        List<DnModel> list = service.listModels(type, subjectId, status);
+        java.util.Set<String> denied = dataAclService.deniedIds("MODEL");
+        if (!denied.isEmpty() && list != null) {
+            list.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
+        }
+        return R.ok(list);
     }
 
     @Operation(summary = "模型详情(含实体/属性/关系)")
     @GetMapping("/model/{id}")
     public R<DnModel> getModel(@PathVariable Long id) {
+        if (!dataAclService.canAccess("MODEL", String.valueOf(id))) {
+            return R.fail("无权访问该模型(数据权限受限), 请联系管理员授权");
+        }
         return R.ok(service.getModelDetail(id));
     }
 
