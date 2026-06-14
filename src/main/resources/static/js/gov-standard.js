@@ -445,7 +445,7 @@
       list.innerHTML = '';
       list.appendChild(DN.table({
         columns: [
-          { key: 'dictCode', label: '编码', render: function (d) {
+          { key: 'dictCode', label: '编码', copyable: true, exportValue: function (d) { return d.dictCode || ''; }, render: function (d) {
               return DN.h('a', { href: 'javascript:void(0)', text: d.dictCode || '',
                 title: (d.dictCode || '') + ' · 点击查看码表明细项',
                 style: 'color:var(--primary)', onclick: function () { openDictItems(d); } });

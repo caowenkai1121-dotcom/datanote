@@ -52,11 +52,11 @@
     var todoCard = DN.card({ title: '治理待办行动中心', icon: 'inbox' });
     todoCard.body.appendChild(DN.skeleton(2));
     box.appendChild(todoCard.el);
-    loadGovTodo(todoCard.body, total);
+    loadGovTodo(todoCard.body, total, pending);
   }
 
   // 聚合质量异常/落标违规/健康分偏低等待处理事项(各源独立 .catch 降级), 提供直达链接
-  function loadGovTodo(body, healthTotal) {
+  function loadGovTodo(body, healthTotal, pendingIssues) {
     if (!body) return;
     Promise.all([
       DN.get('/api/quality/overview').catch(function () { return null; }),
@@ -66,6 +66,8 @@
       body.innerHTML = '';
       var q = r[0] || {}, viol = Array.isArray(r[1]) ? r[1] : [];
       var items = [];
+      var pend = Number(pendingIssues) || 0;
+      if (pend > 0) items.push({ icon: 'inbox', label: '待处理治理工单', n: pend, unit: '个', key: 'health', tone: 'warn' });
       var qBad = (Number(q.failedRuns) || 0) + (Number(q.errorRuns) || 0);
       if (qBad > 0) items.push({ icon: 'check', label: '近 24 小时质量检查失败/异常', n: qBad, unit: '次', key: 'quality', tone: 'err' });
       if (viol.length > 0) items.push({ icon: 'doc', label: '数据标准落标违规库表', n: viol.length + (viol.length >= 50 ? '+' : ''), unit: '个', key: 'standard', tone: 'warn' });
