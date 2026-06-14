@@ -12697,6 +12697,12 @@ window.dbsyncOnSrcTableChange = function(selectEl) {
   if (tgtInput && !tgtInput.value) {
     tgtInput.value = selectEl.value;
   }
+  // 任务名为空时按 源库_源表 自动建议, 省手填(用户仍可改)
+  var nameInp = document.getElementById('dfsJobName');
+  if (nameInp && !nameInp.value && selectEl.value) {
+    var srcDb = (document.getElementById('dfsSrcDb') || {}).value || '';
+    nameInp.value = 'sync_' + (srcDb ? srcDb + '_' : '') + selectEl.value;
+  }
 };
 
 /* ---------- 已存在表：拉取目标表 / 模式切换 / 字段行删除 ---------- */
