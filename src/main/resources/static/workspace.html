@@ -679,6 +679,7 @@
             <div class="datamap-detail-actions">
               <button class="btn btn-sm btn-primary" onclick="dmAskAi()" title="让 AI 智能体分析此表(资产/质量/血缘/敏感)">AI 分析此表</button>
               <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">收藏</button>
+              <button class="btn btn-sm" onclick="DN.copy(dmCurrentDb + '.' + dmCurrentTable)" title="复制 库.表 名, 可直接粘进 SQL">复制表名</button>
               <button class="btn btn-sm" data-perm="catalog:edit" onclick="dmEditTableMeta()" title="维护负责人/重要性/标签">编辑信息</button>
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
               <button class="btn btn-sm" onclick="dmGenSelect()">生成查询语句</button>

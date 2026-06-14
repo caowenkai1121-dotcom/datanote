@@ -219,7 +219,7 @@
       body.innerHTML =
         '<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">'
         + '<b style="color:var(--text-primary);font-size:15px;">' + esc(m.modelName) + '</b> '
-        + '<span style="font-family:monospace;">' + esc(m.modelCode) + '</span> · ' + (TYPE_LABEL[m.modelType] || m.modelType)
+        + '<span style="font-family:monospace;cursor:pointer;" title="点击复制模型编码" onclick="window.DN&&DN.copy(\'' + esc(m.modelCode) + '\')">' + esc(m.modelCode) + ' ⧉</span> · ' + (TYPE_LABEL[m.modelType] || m.modelType)
         + ' · <span class="gov-pill ' + (STATUS_PILL[m.status] || 'is-muted') + '">' + (STATUS_LABEL[m.status] || m.status) + '</span> · v' + (m.version || 1)
         + (m.sourceModelName ? ' · 溯源: ' + esc(m.sourceModelName) : '')
         + (m.description ? '<div style="margin-top:4px;">' + esc(m.description) + '</div>' : '') + '</div>'
