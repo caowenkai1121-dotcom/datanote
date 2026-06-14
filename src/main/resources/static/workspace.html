@@ -469,7 +469,7 @@
           </select>
         </div>
         <div class="ds-form-row"><label>主机</label><input id="dsHost" placeholder="127.0.0.1"></div>
-        <div class="ds-form-row"><label>端口</label><input id="dsPort" placeholder="3306" type="number"></div>
+        <div class="ds-form-row"><label>端口</label><input id="dsPort" placeholder="3306" type="number" onkeydown="if(event.key==='Enter'){event.preventDefault();saveDatasource();}"></div>
         <div class="ds-form-row"><label>数据库名</label><input id="dsDatabaseName" placeholder="MySQL可留空；PostgreSQL/SQLServer 连接库名(如 testdb)；Oracle 服务名(如 XEPDB1)"></div>
         <div class="ds-form-row"><label>用户名</label><input id="dsUser" placeholder="root"></div>
         <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码" style="flex:1;"><button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,'dsPass')" title="显示密码" style="margin-left:4px;">👁</button></div>
@@ -4980,9 +4980,14 @@ function testDatasource() {
 
   if (!ds.host) { msgBox('请填写主机地址'); return; }
 
+  var btn = window.event && window.event.target ? window.event.target.closest('button') : null;
+  var oldHtml = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.textContent = '测试中…'; }
+  var restore = function() { if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; } };
   apiPost('/api/datasource/test', ds).then(function(res) {
+    restore();
     msgBox(res.code === 0 ? '连接成功！' : '连接失败: ' + res.msg);
-  });
+  }).catch(function(e) { restore(); msgBox('连接测试失败: ' + ((e && e.message) || '请检查网络')); });
 }
 
 // ===== File tree loading =====

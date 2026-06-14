@@ -215,7 +215,7 @@
         columns: [
           { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode; } },
           { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName; } },
-          { key: 'elementCode', label: '数据元', render: function (r) { return r.elementCode ? DN.pill(r.elementCode, 'ok') : '-'; } },
+          { key: 'elementCode', label: '数据元', copyable: true, exportValue: function (r) { return r.elementCode || ''; }, render: function (r) { return r.elementCode ? DN.pill(r.elementCode, 'ok') : '-'; } },
           { key: 'dataType', label: '数据类型', render: function (r) { return DN.pill(r.dataType || 'STRING', 'info'); } },
           { key: 'lengthLimit', label: '长度', align: 'right', render: function (r) { return r.lengthLimit == null ? '-' : String(r.lengthLimit); } },
           { key: 'enumValues', label: '候选值', render: function (r) { return r.enumValues ? clip(r.enumValues, 30) : '-'; } },

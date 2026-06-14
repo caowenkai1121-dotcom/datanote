@@ -111,7 +111,7 @@
         columns: [
           // 超长名称截断 + title 悬浮显示全称
           { key: 'datasetName', label: '名称', render: function (r) { var t = r.datasetName || r.datasetCode || '-'; return DN.h('span', { title: t, text: clip(t, 30) }); } },
-          { key: 'datasetCode', label: '编码', render: function (r) { var t = r.datasetCode || '-'; return DN.h('span', { title: t, text: clip(t, 24) }); } },
+          { key: 'datasetCode', label: '编码', copyable: true, exportValue: function (r) { return r.datasetCode || ''; }, render: function (r) { var t = r.datasetCode || '-'; return DN.h('span', { title: t, text: clip(t, 24) }); } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: 'status', label: '状态', render: function (r) { return r.status === 1 ? DN.pill('启用', 'ok') : DN.pill('下线', 'muted'); } },
           { key: '_op', label: '操作', render: function (r) { return dsOps(r); } }
