@@ -204,6 +204,8 @@ public class ScriptService {
         }
         scriptMapper.deleteById(id);
         projectAssetCleaner.onAssetDeleted("SCRIPT", id);
+        // 删除即清理: 触发 SQL 血缘重建(全删重建, 已删脚本自然排除), 否则残留边留到夜间兜底
+        eventPublisher.publishEvent(new com.datanote.domain.orchestration.ScriptSavedEvent(id));
     }
 
     @Transactional(rollbackFor = Exception.class)
