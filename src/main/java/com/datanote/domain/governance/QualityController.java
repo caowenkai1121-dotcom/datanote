@@ -132,8 +132,10 @@ public class QualityController {
     @DeleteMapping("/rule/{id}")
     public R<String> deleteRule(@PathVariable Long id) {
         ruleMapper.deleteById(id);
+        // 删除规则时关闭其遗留工单(规则已不存在无法复检), 防僵尸工单
+        int closed = issueService.closeIssuesForDeletedRule(id);
         projectAssetCleaner.onAssetDeleted("QUALITY_RULE", id);
-        return R.ok("删除成功");
+        return R.ok("删除成功" + (closed > 0 ? "(已关闭 " + closed + " 个关联工单)" : ""));
     }
 
     /**

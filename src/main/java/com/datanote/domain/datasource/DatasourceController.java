@@ -34,6 +34,7 @@ public class DatasourceController {
 
     private final DnDatasourceMapper datasourceMapper;
     private final MetadataService metadataService;
+    private final MetadataCrawlerService metadataCrawlerService;   // 删除数据源时级联清理采集元数据
     private final ConnectionManager connectionManager;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
 
@@ -115,11 +116,13 @@ public class DatasourceController {
     @Operation(summary = "删除数据源")
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Long id) {
+        // 先清该源采集的元数据(表/字段/采集日志), 防遗留鬼表污染数据地图
+        int removed = metadataCrawlerService.deleteByDatasource(id);
         datasourceMapper.deleteById(id);
         // 删除后关闭并移除该数据源的所有连接池，避免池泄漏
         connectionManager.evict(id);
         projectAssetCleaner.onAssetDeleted("DATASOURCE", id);
-        return R.ok("删除成功");
+        return R.ok("删除成功" + (removed > 0 ? "(已清理 " + removed + " 张表的元数据)" : ""));
     }
 
     /**

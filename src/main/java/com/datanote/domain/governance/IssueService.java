@@ -288,6 +288,29 @@ public class IssueService {
         log.info("质量恢复自动关单 ruleId={} issueId={}", rule.getId(), existing.getId());
     }
 
+    /**
+     * 删除质量规则时, 关闭其全部未关闭工单(规则已不存在、无法再复检), 防僵尸工单堆积。
+     * 关单而非删单, 保留治理历史。返回关单数。
+     */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public int closeIssuesForDeletedRule(Long ruleId) {
+        if (ruleId == null) return 0;
+        QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+        qw.eq("issue_type", QUALITY_ISSUE_TYPE).eq("object_ref", qualityIssueObjectRef(ruleId)).ne("status", "CLOSED");
+        List<DnGovernanceIssue> open = issueMapper.selectList(qw);
+        if (open == null || open.isEmpty()) return 0;
+        LocalDateTime now = LocalDateTime.now();
+        for (DnGovernanceIssue i : open) {
+            i.setStatus("CLOSED");
+            i.setDescription((i.getDescription() == null ? "" : i.getDescription())
+                    + "\n[自动关单] 关联质量规则已删除于 " + now);
+            i.setUpdatedAt(now);
+            issueMapper.updateById(i);
+        }
+        log.info("质量规则删除自动关单 ruleId={} count={}", ruleId, open.size());
+        return open.size();
+    }
+
     // ---- 以下为纯函数，便于单测 ----
 
     /** 仅自动关闭仍为 OPEN（无人工流转）的工单，尊重人工进行中的整改流程 */

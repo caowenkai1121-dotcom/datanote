@@ -67,6 +67,28 @@ public class MetadataCrawlerService {
 
     private static final long WAREHOUSE_DS_ID = 0L;
 
+    /**
+     * 删除某数据源采集的全部元数据(表/字段/采集日志)。
+     * 数据源删除时调用, 防遗留"鬼表"污染数据地图(原 delete 只删源记录, 采集来的表/字段长期残留)。
+     * 注: 图库/向量镜像无单条删除接口, 随下次全量同步自愈, 此处不处理。
+     * @return 删除的表数(供调用方记日志/提示)
+     */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public int deleteByDatasource(Long datasourceId) {
+        if (datasourceId == null) return 0;
+        List<DnTableMeta> tables = tableMetaMapper.selectList(
+                new QueryWrapper<DnTableMeta>().select("id").eq("datasource_id", datasourceId));
+        if (tables != null && !tables.isEmpty()) {
+            List<Long> tableIds = new ArrayList<>();
+            for (DnTableMeta t : tables) tableIds.add(t.getId());
+            columnMetaMapper.delete(new QueryWrapper<DnColumnMeta>().in("table_meta_id", tableIds));
+        }
+        tableMetaMapper.delete(new QueryWrapper<DnTableMeta>().eq("datasource_id", datasourceId));
+        collectLogMapper.delete(new QueryWrapper<DnMetaCollectLog>().eq("datasource_id", datasourceId));
+        datasourceExploreService.evictTablesSummaryCache();   // 失效数据地图摘要缓存, 鬼表立即消失
+        return tables == null ? 0 : tables.size();
+    }
+
     // ========== 对外采集入口 ==========
 
     /** 采集全部：所有源数据源 + Doris 数仓。单飞: 已在采集中则跳过本次, 防手动与定时并发重复全量采集。 */
