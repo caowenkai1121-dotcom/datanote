@@ -174,9 +174,11 @@ public class AiFileService {
         return true;
     }
 
-    /** owner 越权判定: 实名用户访问他人文件即拒(匿名/无主放行)。 */
+    /** owner 越权判定: 实名用户访问他人文件即拒。超管放行; 调用者匿名 或 文件无主/开放态(anonymous)放行。 */
     private static boolean ownerDenied(String owner, String fileOwner) {
-        return owner != null && !"anonymous".equals(owner) && fileOwner != null && !owner.equals(fileOwner);
+        if (owner == null || "anonymous".equals(owner) || "admin".equals(owner)) return false;
+        if (fileOwner == null || "anonymous".equals(fileOwner)) return false;
+        return !owner.equals(fileOwner);
     }
 
     private static String ext(String name) {

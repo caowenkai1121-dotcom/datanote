@@ -234,10 +234,10 @@ public class AiAgentController {
         return n > 0 ? R.ok() : R.fail("任务不存在");
     }
 
-    /** 当前用户作用域: 匿名/未登录返 null(看全部, 兼容鉴权关闭态), 否则返用户名。 */
+    /** 当前用户作用域: 匿名/未登录/超管返 null(看全部, 兼容鉴权关闭态与超管运维历史匿名任务), 否则返用户名。 */
     private String ownerScope() {
         String me = currentUser();
-        return (me == null || "anonymous".equals(me)) ? null : me;
+        return (me == null || "anonymous".equals(me) || "admin".equals(me)) ? null : me;
     }
 
     /** 协作式中断: 置中断标志, 运行中的 agent 在下一轮工序边界自行停止(替代SSE的DB标志位)。 */
