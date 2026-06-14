@@ -4963,7 +4963,7 @@ function saveDatasource() {
     } else {
       msgBox('保存失败: ' + res.msg);
     }
-  });
+  }).catch(function(e) { msgBox('保存失败: ' + ((e && e.message) || '请检查网络')); });
 }
 
 function testDatasource() {
