@@ -5255,6 +5255,15 @@ function closeModal() {
   var overlay = document.getElementById('gModalOverlay');
   if (overlay) overlay.classList.remove('show');
 }
+// Esc 关闭通用弹窗(msgBox/confirm/prompt/各功能 showModal), 键盘可达性(等同点取消/关闭)
+if (!window.__gModalEscBound) {
+  window.__gModalEscBound = true;
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var ov = document.getElementById('gModalOverlay');
+    if (ov && ov.classList.contains('show')) { closeModal(); }
+  });
+}
 
 function msgBox(msg, cb) {
   showModal('提示', '<div style="min-height:40px;">' + escapeHtml(msg == null ? '' : String(msg)) + '</div>',

@@ -238,7 +238,7 @@
         columns: [
           // 名称单元标记 data-mcode，供 R21 深链/条形图下钻高亮定位本行；超长名称截断+title
           { key: 'metricName', label: '指标', render: function (r) { var t = r.metricName || r.metricCode || '-'; return DN.h('span', { 'data-mcode': r.metricCode || '', title: t, text: clip(t, 30) }); } },
-          { key: 'metricCode', label: '编码', render: function (r) { var t = r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 24), style: 'display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;' }); } },
+          { key: 'metricCode', label: '编码', copyable: true, exportValue: function (r) { return r.metricCode || ''; }, render: function (r) { var t = r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 24), style: 'display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;' }); } },
           { key: 'lastValue', label: '最新值', align: 'right', render: function (r) { return fmtNum(r.lastValue); } },
           { key: 'lastValueAt', label: '取值时间', render: function (r) { return r.lastValueAt ? DN.timeAgo(r.lastValueAt) : '从未'; } },
           { key: 'stale', label: '新鲜度', render: function (r) { return r.stale ? DN.pill('陈旧', 'warn') : DN.pill('新鲜', 'ok'); } },
@@ -460,7 +460,7 @@
         searchKeys: ['metricName', 'metricCode', 'owner'], searchPlaceholder: '搜索僵尸指标',
         columns: [
           { key: 'metricName', label: '指标', render: function (r) { var t = r.metricName || r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 28) }); } },
-          { key: 'metricCode', label: '编码', render: function (r) { var t = r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 24), style: 'display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;' }); } },
+          { key: 'metricCode', label: '编码', copyable: true, exportValue: function (r) { return r.metricCode || ''; }, render: function (r) { var t = r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 24), style: 'display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;' }); } },
           { key: 'category', label: '分类', render: function (r) { return r.category || '-'; } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: '_op', label: '操作', render: function (r) { return zombieOps(r); } }

@@ -294,7 +294,7 @@
       list.innerHTML = '';
       list.appendChild(DN.table({
         columns: [
-          { key: 'elementCode', label: '编码' },
+          { key: 'elementCode', label: '编码', copyable: true },
           { key: 'nameCn', label: '中文名' },
           { key: 'dataType', label: '类型' },
           { key: 'length', label: '长度', align: 'right', render: function (e) { return e.length == null ? '' : e.length; } },

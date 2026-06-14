@@ -325,7 +325,7 @@
       empty: '暂无工单', emptyIcon: 'inbox',
       columns: [
         { key: '_sel', label: '', render: function (it) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择工单 ' + (it.title || it.id) }); cb.checked = !!selectedIssues[it.id]; cb.onchange = function () { if (cb.checked) selectedIssues[it.id] = it.status; else delete selectedIssues[it.id]; }; return cb; } },
-        { key: 'id', label: 'ID', align: 'right' },
+        { key: 'id', label: 'ID', align: 'right', copyable: true },
         { key: 'title', label: '标题', render: function (it) { return truncSpan(it.title, 48); } },
         { key: 'dimension', label: '维度', render: function (it) { return it.dimension || '-'; } },
         { key: 'severity', label: '级别', render: function (it) { return severityPill(it.severity); } },
