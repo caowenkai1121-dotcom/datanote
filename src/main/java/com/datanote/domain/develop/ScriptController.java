@@ -72,6 +72,12 @@ public class ScriptController {
         return R.ok(scriptService.listVersions(id));
     }
 
+    @Operation(summary = "回滚脚本到指定历史版本")
+    @PostMapping("/{id}/rollback/{versionId}")
+    public R<DnScript> rollback(@PathVariable Long id, @PathVariable Long versionId) {
+        return R.ok(scriptService.rollbackToVersion(id, versionId));
+    }
+
     @Operation(summary = "创建文件夹")
     @PostMapping("/folder")
     public R<DnScriptFolder> createFolder(@RequestBody DnScriptFolder folder) {

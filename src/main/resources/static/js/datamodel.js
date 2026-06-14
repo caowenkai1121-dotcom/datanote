@@ -156,8 +156,9 @@
       if (m.modelType === 'PHYS') ops += '<a href="#" onclick="dmShowDdl(' + m.id + ');return false;" style="color:#e8590c;margin-right:8px;">DDL</a>';
       if (m.modelType === 'PHYS' && m.status === 'PUBLISHED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmPublishAsset(' + m.id + ');return false;" style="color:#1971c2;margin-right:8px;">落地资产</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
-      h += '<tr><td style="font-family:monospace;">' + esc(m.modelCode) + '</td><td><b>' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
-        + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;">' + esc(subName) + '</td><td>' + st + '</td>'
+      h += '<tr><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
+        + '<td><b style="display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelName) + '">' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
+        + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(subName) + '">' + esc(subName) + '</td><td>' + st + '</td>'
         + '<td>v' + (m.version || 1) + '</td><td>' + (m.entityCount || 0) + '</td><td style="white-space:nowrap;">' + ops + '</td></tr>';
     });
     box.innerHTML = h + '</tbody></table>';
@@ -250,7 +251,7 @@
         return '<tr><td style="font-family:monospace;">' + esc(a.attrCode) + (a.isPk == 1 ? ' <span style="color:#e8590c;font-size:var(--fs-xs);">PK</span>' : '') + '</td><td>' + esc(a.attrName || '') + '</td><td>' + esc(a.dataType || '') + (a.dataLength ? '(' + esc(a.dataLength) + ')' : '') + '</td><td>' + (a.isNullable == 0 ? '否' : '是') + '</td><td style="font-size:12px;color:var(--text-muted);">' + esc(a.elementCode || '') + '</td></tr>';
       }).join('') || '<tr><td colspan="5" style="color:var(--text-muted);">无属性</td></tr>';
       return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;">'
-        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b>' + esc(e.entityName) + '</b> <span style="font-family:monospace;font-size:12px;color:var(--text-muted);">' + esc(e.entityCode) + '</span> <span style="font-size:var(--fs-xs);color:var(--primary);">L' + (e.level || 4) + '</span>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityName) + '">' + esc(e.entityName) + '</b> <span style="font-family:monospace;font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityCode) + '">' + esc(e.entityCode) + '</span> <span style="font-size:var(--fs-xs);color:var(--primary);flex-shrink:0;">L' + (e.level || 4) + '</span>'
         + (e.physicalTable ? ' <span style="font-size:var(--fs-xs);color:var(--text-faint);">→ ' + esc(e.physicalTable) + '</span>' : '')
         + (canEdit ? '<a href="#" data-perm="datamodel:edit" onclick="dmEditAttrs(' + e.id + ',' + m.id + ');return false;" style="margin-left:auto;font-size:12px;color:var(--primary);">编辑属性</a> <a href="#" data-perm="datamodel:edit" onclick="dmDelEntity(' + e.id + ',' + m.id + ');return false;" style="font-size:12px;color:var(--error);">删除</a>' : '')
         + '</div>'
@@ -282,17 +283,18 @@
         + '<div><label ' + lab + '>说明</label><input id="dmrDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>'
         + '<div style="text-align:right;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveRelation(' + modelId + ')">保存</button></div></div>';
       projShowModalBox('新建关系', h);
-    });
+    }).catch(function () { toast('加载实体失败', 'error'); });
   };
   window.dmSaveRelation = function (modelId) {
     var src = parseInt(document.getElementById('dmrSrc').value), tgt = parseInt(document.getElementById('dmrTgt').value);
+    if (isNaN(src) || isNaN(tgt)) { toast('请选择源与目标实体', 'error'); return; }
     if (src === tgt) { toast('源与目标实体不能相同', 'error'); return; }
     apiPost('/api/datamodel/relation', { modelId: modelId, sourceEntityId: src, targetEntityId: tgt, relationType: document.getElementById('dmrType').value, description: (document.getElementById('dmrDesc').value || '').trim() }).then(function (res) {
       if (res && res.code === 0) { toast('关系已保存', 'success'); projCloseModalBox(); dmReopenModel(modelId); } else toast((res && res.msg) || '保存失败', 'error');
     }).catch(function () { toast('保存失败', 'error'); });
   };
   window.dmDelRelation = function (relId, modelId) {
-    api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); });
+    api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); }).catch(function () { toast('删除失败', 'error'); });
   };
   window.dmAddEntity = function (modelId) {
     var fi = 'class="dbsync-form-input" style="width:100%;"', lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
@@ -324,7 +326,7 @@
       var attrs = (ent && ent.attributes) || [];
       window.__dmAttrEdit = { entityId: entityId, modelId: modelId, rows: attrs.map(function (a) { return Object.assign({}, a); }) };
       renderAttrEditor();
-    });
+    }).catch(function () { toast('加载属性失败', 'error'); });
   };
   function renderAttrEditor() {
     var st = window.__dmAttrEdit;
@@ -411,11 +413,23 @@
       var h = '<div style="min-width:660px;max-height:460px;overflow:auto;"><table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模型</th><th>类型</th><th>说明</th><th>申请人</th><th>状态</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       projShowModalBox('模型审批工单', h);
       var box = document.querySelector('.proj-modal-box, [class*=modal]'); if (window.dnApplyBtnPerms && box) dnApplyBtnPerms(box);
-    });
+    }).catch(function () { toast('加载工单失败', 'error'); });
   };
   window.dmReview = function (changeId, action) {
-    var comment = prompt(action === 'approve' ? '审批通过意见(可选):' : '驳回原因:', '');
-    if (comment === null) return;
+    var isReject = action === 'reject';
+    var lab = isReject ? '驳回原因(必填):' : '审批通过意见(可选):';
+    var h = '<div style="min-width:380px;max-width:440px;">'
+      + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">' + lab + '</div>'
+      + '<textarea id="dmReviewComment" class="dbsync-form-input" style="width:100%;min-height:72px;" placeholder="' + (isReject ? '说明驳回原因, 便于申请人修正 (Ctrl+Enter 提交)' : '可选 (Ctrl+Enter 提交)') + '" onkeydown="if(event.ctrlKey&&event.key===\'Enter\'){event.preventDefault();dmReviewSubmit(' + changeId + ',\'' + action + '\');}"></textarea>'
+      + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> '
+      + '<button class="btn btn-sm btn-primary" onclick="dmReviewSubmit(' + changeId + ',\'' + action + '\')">' + (isReject ? '确认驳回' : '确认通过') + '</button></div></div>';
+    projShowModalBox(isReject ? '驳回模型变更' : '通过模型变更', h);
+    setTimeout(function () { var t = document.getElementById('dmReviewComment'); if (t) t.focus(); }, 50);
+  };
+  window.dmReviewSubmit = function (changeId, action) {
+    var el = document.getElementById('dmReviewComment');
+    var comment = el ? el.value.trim() : '';
+    if (action === 'reject' && !comment) { toast('请填写驳回原因', 'error'); return; }
     apiPost('/api/datamodel/change/' + changeId + '/' + action, { comment: comment }).then(function (res) {
       if (res && res.code === 0) { toast(action === 'approve' ? '已通过, 模型已发布' : '已驳回', 'success'); projCloseModalBox(); dmLoadModels(); dmLoadChangeBadge(); }
       else toast((res && res.msg) || '操作失败', 'error');
@@ -445,18 +459,26 @@
       var ddl = res.data || '-- 无实体';
       var h = '<div style="min-width:600px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">建表 DDL(可复制到数据库执行)</div>'
         + '<pre style="background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius);padding:12px;max-height:420px;overflow:auto;font-size:12px;white-space:pre-wrap;">' + esc(ddl) + '</pre>'
-        + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="dmCopyDdl()">复制</button> <button class="btn btn-sm" onclick="projCloseModalBox()">关闭</button></div></div>';
+        + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="dmCopyDdl()">复制</button> <button class="btn btn-sm" onclick="dmGotoDevelopWithDdl()">去数据开发</button> <button class="btn btn-sm" onclick="projCloseModalBox()">关闭</button></div></div>';
       window.__dmDdl = ddl;
       projShowModalBox('物理模型 DDL', h);
     }).catch(function () { toast('生成失败', 'error'); });
   };
   window.dmCopyDdl = function () { try { navigator.clipboard.writeText(window.__dmDdl || ''); toast('已复制', 'success'); } catch (e) { toast('复制失败', 'error'); } };
+  // 闭合 建模→DDL→开发 链路: 复制 DDL 并跳数据开发, 用户新建脚本粘贴即可写 ETL
+  window.dmGotoDevelopWithDdl = function () {
+    try { navigator.clipboard.writeText(window.__dmDdl || ''); } catch (e) {}
+    projCloseModalBox();
+    if (window.navigateTo) navigateTo('develop');
+    toast('DDL 已复制，到数据开发新建脚本粘贴即可', 'success');
+  };
 
   // ---------- 逆向导入(物理表 → 物理模型) ----------
   window.dmReverseImport = function () {
     api('/api/metadata-center/tables?limit=300').then(function (res) {
       var d = (res && res.code === 0) ? res.data : null;
       var list = Array.isArray(d) ? d : (d && (d.list || d.rows || d.records) || []);
+      list = list.filter(function (t) { return t && t.id != null; });   // 过滤缺元数据ID的记录, 防逆向请求 tableMetaId=undefined
       var rows = list.map(function (t) {
         return '<tr><td style="font-family:monospace;">' + esc(t.databaseName || '') + '.' + esc(t.tableName || '') + '</td><td style="font-size:12px;">' + esc(t.tableComment || '') + '</td><td><a href="#" onclick="dmDoReverse(' + t.id + ');return false;" style="color:var(--primary);">逆向</a></td></tr>';
       }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:16px;">无已采集物理表，请先在「数据地图」采集表元数据</td></tr>';
@@ -488,8 +510,14 @@
     DN.confirm('将该物理模型落地为数据资产？实体/属性将注册到「数据地图」(库 model_<编码>)，可被治理/血缘消费。', { title: '落地数据资产' }).then(function (ok) {
       if (!ok) return;
       apiPost('/api/datamodel/model/' + id + '/publish-asset', {}).then(function (res) {
-        if (res && res.code === 0) toast('已落地 ' + res.data.tables + ' 表/' + res.data.columns + ' 字段，回填分级 ' + (res.data.gradedColumns || 0) + ' 列，派生质量规则建议 ' + (res.data.qualityRules || 0) + ' 条 → 数据地图(' + res.data.database + ')', 'success');
-        else toast((res && res.msg) || '落地失败', 'error');
+        if (res && res.code === 0) {
+          var db = res.data.database;
+          // 落地成功→引导前往数据地图(闭合 建模→落地→地图 链路, 库已在 DB, 直接带库名搜索)
+          DN.confirm('已落地 ' + res.data.tables + ' 表/' + res.data.columns + ' 字段，回填分级 ' + (res.data.gradedColumns || 0) + ' 列，派生质量规则建议 ' + (res.data.qualityRules || 0) + ' 条。前往数据地图查看？',
+            { title: '落地成功', okText: '前往数据地图', cancelText: '留在本页' }).then(function (go) {
+              if (go && window.navigateTo) navigateTo('catalog', { datamapSearch: db });
+            });
+        } else toast((res && res.msg) || '落地失败', 'error');
       }).catch(function () { toast('落地失败', 'error'); });
     });
   };
@@ -497,6 +525,7 @@
   // ---------- ER 图(实体-属性-关系可视化) ----------
   window.dmShowER = function (modelId) {
     api('/api/datamodel/model/' + modelId).then(function (res) {
+      if (!res || res.code !== 0 || !res.data) { toast('加载ER图失败', 'error'); return; }
       var m = res.data; var ents = m.entities || [], rels = m.relations || [];
       if (!ents.length) { toast('该模型暂无实体', 'error'); return; }
       var boxes = ents.map(function (e) {
@@ -514,7 +543,7 @@
       var h = '<div style="min-width:580px;max-width:90vw;max-height:62vh;overflow:auto;"><div id="dmErCanvas" style="position:relative;"><svg id="dmErSvg" style="position:absolute;top:0;left:0;z-index:1;pointer-events:none;overflow:visible;"></svg>' + boxes + '</div>' + relList + '</div>';
       projShowModalBox('ER 图 · ' + esc(m.modelName), h);
       setTimeout(function () { dmDrawErLines(rels); }, 90);
-    });
+    }).catch(function () { toast('加载ER图失败', 'error'); });
   };
   function dmDrawErLines(rels) {
     var canvas = document.getElementById('dmErCanvas'), svg = document.getElementById('dmErSvg');
@@ -528,8 +557,8 @@
       var sr = s.getBoundingClientRect(), tr = t.getBoundingClientRect();
       var x1 = sr.left + sr.width / 2 - cr.left, y1 = sr.top + sr.height / 2 - cr.top;
       var x2 = tr.left + tr.width / 2 - cr.left, y2 = tr.top + tr.height / 2 - cr.top;
-      lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#4f6cf7" stroke-width="1.5" stroke-dasharray="4 3"/>';
-      lines += '<circle cx="' + x2 + '" cy="' + y2 + '" r="3.5" fill="#4f6cf7"/>';
+      lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="var(--primary)" stroke-width="1.5" stroke-dasharray="4 3"/>';
+      lines += '<circle cx="' + x2 + '" cy="' + y2 + '" r="3.5" fill="var(--primary)"/>';
     });
     svg.innerHTML = lines;
   }
@@ -544,7 +573,7 @@
       var cmp = vers.length >= 2 ? '<div style="margin-bottom:8px;"><button class="btn btn-sm" onclick="dmCompareSelected()">⇄ 对比所选两版</button> <span style="font-size:12px;color:var(--text-muted);">勾选两个版本对比字段差异</span></div>' : '';
       var h = '<div style="min-width:560px;max-height:440px;overflow:auto;">' + cmp + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:28px;"></th><th>版本</th><th>发布时间</th><th>发布人</th><th>说明</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
       projShowModalBox('版本历史', h);
-    });
+    }).catch(function () { toast('加载版本历史失败', 'error'); });
   };
   window.dmCompareSelected = function () {
     var ids = Array.prototype.slice.call(document.querySelectorAll('.dmVerChk:checked')).map(function (c) { return parseInt(c.value); });
@@ -572,13 +601,14 @@
   };
   window.dmViewVersion = function (vid) {
     api('/api/datamodel/version/' + vid).then(function (res) {
+      if (!res || res.code !== 0 || !res.data) { toast('加载版本快照失败', 'error'); return; }
       var v = res.data; var snap = {}; try { snap = JSON.parse(v.snapshotJson || '{}'); } catch (e) {}
       var ents = (snap.entities || []).map(function (e) {
         return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b>' + esc(e.entityName) + '</b> <span style="font-size:11px;color:var(--text-muted);">L' + (e.level || 4) + '</span><div style="font-size:12px;margin-top:4px;">' + ((e.attributes || []).map(function (a) { return (a.isPk == 1 ? '🔑' : '') + esc(a.attrCode) + ':' + esc(a.dataType || ''); }).join(' , ') || '无属性') + '</div></div>';
       }).join('') || '<div style="color:var(--text-muted);">无实体</div>';
       var h = '<div style="min-width:480px;max-height:440px;overflow:auto;"><div style="font-size:13px;margin-bottom:10px;"><b>v' + v.version + '</b> · ' + esc(String(v.publishedAt || '').replace('T', ' ').slice(0, 16)) + ' · 发布人 ' + esc(v.publishedBy || '') + (v.changeSummary ? '<div style="color:var(--text-muted);margin-top:2px;">' + esc(v.changeSummary) + '</div>' : '') + '</div>' + ents + '</div>';
       projShowModalBox('版本 v' + v.version + ' 快照', h);
-    });
+    }).catch(function () { toast('加载版本快照失败', 'error'); });
   };
 
   // ---------- 建模覆盖度看板 ----------

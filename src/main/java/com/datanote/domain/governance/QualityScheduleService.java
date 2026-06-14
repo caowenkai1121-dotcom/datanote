@@ -43,7 +43,9 @@ public class QualityScheduleService {
             log.error("质量调度扫描规则失败", e);
             return;
         }
+        if (rules == null) return; // selectList 理论可返回 null, 防 for-each 空指针(与本项目其余取数同惯例)
         for (DnQualityRule rule : rules) {
+            if (rule == null) continue;
             if (!isDueThisMinute(rule.getScheduleCron(), now)) {
                 continue;
             }

@@ -79,12 +79,18 @@ public class ClassificationController {
     @Operation(summary = "打标审计溯源(按库.表)")
     @GetMapping("/audit-trail")
     public R<List<com.datanote.platform.audit.model.DnLabelAudit>> auditTrail(@RequestParam String db, @RequestParam String table) {
+        if (db.trim().isEmpty() || table.trim().isEmpty()) {
+            return R.fail("库名/表名不能为空");
+        }
         return R.ok(classificationService.auditTrail(db, table));
     }
 
     @Operation(summary = "对表采样识别，返回敏感候选")
     @GetMapping("/scan")
     public R<List<Map<String, Object>>> scan(@RequestParam String db, @RequestParam String table) {
+        if (db.trim().isEmpty() || table.trim().isEmpty()) {
+            return R.fail("库名/表名不能为空");
+        }
         try {
             return R.ok(classificationService.scanTable(db, table));
         } catch (Exception e) {

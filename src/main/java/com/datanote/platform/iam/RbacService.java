@@ -14,6 +14,8 @@ import com.datanote.platform.iam.model.DnUser;
 import com.datanote.platform.iam.model.DnUserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -382,6 +384,31 @@ public class RbacService {
             return Collections.emptySet();
         }
         return getUserPerms(user.getId());
+    }
+
+    /**
+     * 解析当前认证主体的权限集：优先查 dn_user；查不到 / 表不存在异常时降级，
+     * 仅对"不在 dn_user 表中的引导账号"按 authorities 兜底 admin('*')，不抛 500、不让同名无角色账号白拿超管。
+     */
+    public Set<String> resolvePerms(Authentication authentication) {
+        if (authentication == null) {
+            return new LinkedHashSet<>();
+        }
+        Set<String> perms;
+        try {
+            perms = new LinkedHashSet<>(getUserPermsByUsername(authentication.getName()));
+        } catch (Exception e) {
+            perms = new LinkedHashSet<>();
+        }
+        if (perms.isEmpty() && !existsInDb(authentication.getName())) {
+            boolean isAdmin = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));
+            if (isAdmin) {
+                perms.add("*");
+            }
+        }
+        return perms;
     }
 
     /**

@@ -84,16 +84,13 @@ public class AssetDetailService {
         requireIdentifier(table, "表名");
         List<String> columnNames = listColumnNames(db, table);
         long totalRows = 0;
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM `" + db + "`.`" + table + "`")) {
-            if (rs.next()) totalRows = rs.getLong(1);
-        }
-
         int max = limitFields(columnNames.size(), MAX_PROFILE_FIELDS);
         List<Map<String, Object>> fields = new ArrayList<Map<String, Object>>();
-        try (Connection conn = hiveConfig.getConnection();
+        try (Connection conn = hiveConfig.getConnection();   // COUNT(*) 与逐字段探查复用同一连接,省连接开销
              Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM `" + db + "`.`" + table + "`")) {
+                if (rs.next()) totalRows = rs.getLong(1);
+            }
             for (int i = 0; i < max; i++) {
                 String name = columnNames.get(i);
                 Map<String, Object> stat = new HashMap<String, Object>();

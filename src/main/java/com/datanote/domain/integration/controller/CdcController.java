@@ -64,6 +64,9 @@ public class CdcController {
     @PostMapping("/{jobId}/incremental-snapshot")
     public R<String> incrementalSnapshot(@PathVariable Long jobId,
                                          @org.springframework.web.bind.annotation.RequestParam String tables) {
+        if (tables == null || tables.trim().isEmpty()) {
+            return R.fail("源表名不能为空");
+        }
         try {
             cdcEngineManager.triggerIncrementalSnapshot(jobId, java.util.Arrays.asList(tables.split(",")));
             return R.ok("已触发增量快照");

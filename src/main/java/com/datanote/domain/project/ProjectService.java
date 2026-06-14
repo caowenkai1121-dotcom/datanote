@@ -139,6 +139,7 @@ public class ProjectService {
     /** 归档：仅 ACTIVE→ARCHIVED。 */
     public void archive(Long id) {
         DnProject p = getById(id);
+        requireEditRole(p);
         p.setStatus("ARCHIVED");
         p.setArchivedAt(LocalDateTime.now());
         projectMapper.updateById(p);
@@ -147,9 +148,28 @@ public class ProjectService {
     /** 软删除：标记 DELETED。 */
     public void delete(Long id) {
         DnProject p = getById(id);
+        requireEditRole(p);
         p.setStatus("DELETED");
         p.setDeletedAt(LocalDateTime.now());
         projectMapper.updateById(p);
+    }
+
+    /** 项目角色门禁：归档/软删须 project:edit(仅 OWNER/ADMIN)；超管/project:all-data 放行。 */
+    private void requireEditRole(DnProject p) {
+        if (canSeeAllProjects()) return;
+        String u = currentUser();
+        String role;
+        if (u != null && (u.equals(p.getOwner()) || u.equals(p.getCreatedBy()))) {
+            role = "OWNER";
+        } else {
+            DnProjectMember m = memberMapper.selectOne(new LambdaQueryWrapper<DnProjectMember>()
+                    .eq(DnProjectMember::getProjectId, p.getId())
+                    .eq(DnProjectMember::getUsername, u).last("LIMIT 1"));
+            role = m == null ? null : m.getProjectRole();
+        }
+        if (!ProjectRoles.can(role, "project:edit")) {
+            throw new BusinessException("无权归档/删除该项目(需项目负责人/管理员)");
+        }
     }
 
     private void addOwnerMember(DnProject p, String user) {

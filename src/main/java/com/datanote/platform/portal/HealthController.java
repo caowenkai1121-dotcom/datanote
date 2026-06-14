@@ -79,7 +79,7 @@ public class HealthController {
     @Operation(summary = "工单状态流转")
     @PostMapping("/issues/{id}/transition")
     public R<DnGovernanceIssue> transition(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String status = body.get("status");
+        String status = body == null ? null : body.get("status");
         if (status == null || status.trim().isEmpty()) return R.fail("目标状态不能为空");
         try {
             return R.ok(issueService.transition(id, status, body.get("operator")));

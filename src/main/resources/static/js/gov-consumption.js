@@ -198,6 +198,8 @@
       if (!/^[A-Za-z][A-Za-z0-9_]{1,49}$/.test(code)) { DN.toast('编码须以字母开头，仅含字母/数字/下划线，长度2-50', 'err'); codeI.focus(); return; }
       if (!sql) { DN.toast('请填写查询 SQL', 'err'); sqlI.focus(); return; }
       if (!/^\s*select\b/i.test(sql)) { DN.toast('查询 SQL 只能以 SELECT 开头（消费层仅支持只读查询）', 'err'); sqlI.focus(); return; }
+      // 与行过滤口径一致：拦截分号/注释符，仅允许单条 SELECT（服务端仍强制只读单语句）
+      if (/;|--|\/\*|\*\//.test(sql)) { DN.toast('查询 SQL 不能包含分号或注释符（仅支持单条 SELECT）', 'err'); sqlI.focus(); return; }
       foot.busy();
       DN.post('/api/consumption/dataset/save', { datasetName: name, datasetCode: code, defaultDb: dbI.value.trim(), querySql: sql, owner: ownerI.value.trim(), status: 1 })
         .then(function () { DN.toast('已保存', 'ok'); dr.close(); loadDatasets(); })
@@ -256,7 +258,7 @@
     var calc = DN.h('a', { href: 'javascript:void(0)', text: '计算', 'data-perm': 'metrics:edit' });
     calc.onclick = function () {
       if (r.metricId == null) { DN.toast('指标缺少 ID，无法计算', 'err'); return; }
-      if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
+      if (calc.dataset.busy) return; setLinkBusy(calc, true, '计算中…'); // 防重复提交
       DN.post('/api/consumption/metric/' + r.metricId + '/calc?operator=ui').then(function (v) {
         setLinkBusy(calc, false, '计算');
         DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? fmtNum(v.metricValue) : (v && v.runStatus === 'error' ? '计算异常' : '—')), v && v.runStatus === 'success' ? 'ok' : 'warn');
@@ -306,7 +308,7 @@
         rows: recent, pageSize: 12, empty: '无', search: false,
         columns: [
           { key: '_t', label: '时间', render: function (x) { var t = timeOf(x); return t ? DN.timeAgo(t) : '-'; } },
-          { key: '_v', label: '值', align: 'right', render: function (x) { return String(valOf(x)); } }
+          { key: '_v', label: '值', align: 'right', render: function (x) { return fmtNum(valOf(x)); } }
         ]
       }));
     }).catch(function (e) { box.innerHTML = ''; box.appendChild(DN.errorBox('趋势加载失败：' + errMsg(e), function () { metricTrendDrawer(r); })); });
@@ -344,7 +346,8 @@
         rules.forEach(function (ru) {
           ru = ru || {};
           var line = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)' });
-          var tone = ru.runStatus === 'no_result' ? 'info' : (ru.passRate != null && Number(ru.passRate) >= 100 ? 'ok' : 'err');
+          // 未跑(passRate 为空)按待执行 warn 显示，避免与"未跑"文案矛盾地标红 err
+          var tone = ru.runStatus === 'no_result' ? 'info' : (ru.passRate == null ? 'warn' : (Number(ru.passRate) >= 100 ? 'ok' : 'err'));
           line.appendChild(DN.pill(ru.severity || 'warning', ru.severity === 'error' ? 'err' : (ru.severity === 'info' ? 'info' : 'warn')));
           var ruLabel = (ru.ruleName || ru.ruleType || '规则') + (ru.dimension ? ' · ' + ru.dimension : '');
           line.appendChild(DN.h('span', { style: 'flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', title: ruLabel, text: clip(ruLabel, 40) }));
@@ -475,7 +478,7 @@
     var calc = DN.h('a', { href: 'javascript:void(0)', text: '立即计算', 'data-perm': 'metrics:edit' });
     calc.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法计算', 'err'); return; }
-      if (calc.dataset.busy) return; setLinkBusy(calc, true, '…'); // 防重复提交
+      if (calc.dataset.busy) return; setLinkBusy(calc, true, '计算中…'); // 防重复提交
       DN.post('/api/consumption/metric/' + r.id + '/calc?operator=ui').then(function (v) {
         setLinkBusy(calc, false, '立即计算');
         DN.toast((r.metricName || r.metricCode || '指标') + ' = ' + (v && v.metricValue != null ? fmtNum(v.metricValue) : '—'), v && v.runStatus === 'success' ? 'ok' : 'warn');
@@ -497,7 +500,7 @@
       if (off.dataset.busy) return;
       DN.confirm('停用后将停止定时取值、退出消费看板与新鲜度监控(历史值与导出保留)。确认停用「' + (r.metricName || r.metricCode || r.id) + '」？', { title: '停用指标' }).then(function (ok) {
         if (!ok) return;
-        setLinkBusy(off, true, '…');
+        setLinkBusy(off, true, '停用中…');
         DN.post('/api/metric/save', { id: r.id, status: 0 }).then(function () {
           DN.toast('已停用', 'ok');
           loadZombies(); loadOverview(); loadBoard();
@@ -508,11 +511,18 @@
     return wrap;
   }
 
+  // 高亮闪烁定位元素：与 ensureFlashStyle 注入的 1.5s 动画时长保持一致（去重两处定位逻辑）
+  function flash(el) {
+    if (!el) return;
+    el.classList.add('cons-flash');
+    setTimeout(function () { el.classList.remove('cons-flash'); }, 1500);
+  }
+
   // 滚动定位某张卡片（消费层概览统计卡下钻用）
   function scrollToCard(id) {
     var el = document.getElementById(id); if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    el.classList.add('cons-flash'); setTimeout(function () { el.classList.remove('cons-flash'); }, 1500);
+    flash(el);
   }
 
   // 高亮并滚动定位驾驶舱中指定指标编码所在行（深链 focusMetric / 条形图下钻共用）
@@ -525,7 +535,7 @@
         var tr = marks[i].closest ? marks[i].closest('tr') : marks[i].parentNode;
         var target = tr || marks[i];
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.classList.add('cons-flash'); (function (t) { setTimeout(function () { t.classList.remove('cons-flash'); }, 1500); })(target);
+        flash(target);
         return;
       }
     }

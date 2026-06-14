@@ -63,34 +63,18 @@ public class DolphinService {
     }
 
     private JSONObject doPost(String path, Map<String, String> params) throws Exception {
-        URL url = new URL(apiUrl + path);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("token", token);
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(30000);
-
-        if (params != null && !params.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (Map.Entry<String, String> e : params.entrySet()) {
-                if (sb.length() > 0) sb.append("&");
-                sb.append(URLEncoder.encode(e.getKey(), "UTF-8"))
-                  .append("=")
-                  .append(URLEncoder.encode(e.getValue(), "UTF-8"));
-            }
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-            }
-        }
-        return readResponse(conn);
+        return doForm("POST", path, params);
     }
 
     private JSONObject doPut(String path, Map<String, String> params) throws Exception {
+        return doForm("PUT", path, params);
+    }
+
+    /** POST/PUT 表单提交共用实现(原 doPost/doPut 仅请求方法不同, 其余逐字重复)。 */
+    private JSONObject doForm(String method, String path, Map<String, String> params) throws Exception {
         URL url = new URL(apiUrl + path);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("PUT");
+        conn.setRequestMethod(method);
         conn.setRequestProperty("token", token);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         conn.setDoOutput(true);
@@ -175,26 +159,7 @@ public class DolphinService {
         JSONArray taskDefArr = new JSONArray();
         taskDefArr.add(taskDef);
 
-        // 构建 taskRelationJson（单任务，preTaskCode=0 表示入口节点）
-        JSONObject relation = new JSONObject();
-        relation.put("preTaskCode", 0);
-        relation.put("preTaskVersion", 0);
-        relation.put("postTaskCode", taskCode);
-        relation.put("postTaskVersion", 1);
-        relation.put("conditionType", "NONE");
-        relation.put("conditionParams", new JSONObject());
-        JSONArray relationArr = new JSONArray();
-        relationArr.add(relation);
-
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("name", name);
-        params.put("tenantCode", tenantCode);
-        params.put("taskDefinitionJson", taskDefArr.toJSONString());
-        params.put("taskRelationJson", relationArr.toJSONString());
-        params.put("executionType", "PARALLEL");
-        params.put("description", "DataNote 自动创建 - " + name);
-        params.put("globalParams", "[]");
-        params.put("timeout", "0");
+        Map<String, String> params = buildProcessDefParams(name, taskCode, taskDefArr);
 
         JSONObject result = doPost("/projects/" + projectCode + "/process-definition", params);
         checkSuccess(result, "创建工作流");
@@ -213,6 +178,15 @@ public class DolphinService {
         JSONArray taskDefArr = new JSONArray();
         taskDefArr.add(taskDef);
 
+        Map<String, String> params = buildProcessDefParams(name, taskCode, taskDefArr);
+
+        JSONObject result = doPut("/projects/" + projectCode + "/process-definition/" + workflowCode, params);
+        checkSuccess(result, "更新工作流");
+        log.info("更新工作流成功: {} (code={})", name, workflowCode);
+    }
+
+    /** 构建单任务工作流的 process-definition 表单参数(create/update 共用, 原两处逐字重复)。 */
+    private Map<String, String> buildProcessDefParams(String name, long taskCode, JSONArray taskDefArr) {
         JSONObject relation = new JSONObject();
         relation.put("preTaskCode", 0);
         relation.put("preTaskVersion", 0);
@@ -232,10 +206,7 @@ public class DolphinService {
         params.put("description", "DataNote 自动创建 - " + name);
         params.put("globalParams", "[]");
         params.put("timeout", "0");
-
-        JSONObject result = doPut("/projects/" + projectCode + "/process-definition/" + workflowCode, params);
-        checkSuccess(result, "更新工作流");
-        log.info("更新工作流成功: {} (code={})", name, workflowCode);
+        return params;
     }
 
     /**

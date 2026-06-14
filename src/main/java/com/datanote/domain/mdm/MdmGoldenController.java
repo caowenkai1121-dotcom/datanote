@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.common.model.R;
-import com.datanote.domain.mdm.MdmMatchService;
 import com.datanote.domain.mdm.mapper.DnMdmEntityMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenHistoryMapper;
 import com.datanote.domain.mdm.mapper.DnMdmGoldenRecordMapper;
@@ -64,17 +63,21 @@ public class MdmGoldenController {
     @Operation(summary = "各状态统计（按实体）")
     @GetMapping("/api/mdm/golden/stats")
     public R<Map<String, Object>> stats(@RequestParam Long entityId) {
-        List<DnMdmGoldenRecord> all = list(entityId, null).getData();
-        if (all == null) all = new java.util.ArrayList<>();
+        // 用 DB count 精确统计, 不复用带 LIMIT 500 的 list(), 避免超 500 条时统计失真
         Map<String, Object> data = new HashMap<>();
-        long active = all.stream().filter(r -> "active".equals(r.getStatus())).count();
-        long draft = all.stream().filter(r -> "draft".equals(r.getStatus())).count();
-        long inactive = all.stream().filter(r -> "inactive".equals(r.getStatus())).count();
-        data.put("total", all.size());
-        data.put("active", active);
-        data.put("draft", draft);
-        data.put("inactive", inactive);
+        data.put("total", countByStatus(entityId, null));
+        data.put("active", countByStatus(entityId, "active"));
+        data.put("draft", countByStatus(entityId, "draft"));
+        data.put("inactive", countByStatus(entityId, "inactive"));
         return R.ok(data);
+    }
+
+    private long countByStatus(Long entityId, String status) {
+        QueryWrapper<DnMdmGoldenRecord> qw = new QueryWrapper<>();
+        qw.eq("entity_id", entityId);
+        if (status != null) qw.eq("status", status);
+        Long c = goldenMapper.selectCount(qw);
+        return c == null ? 0 : c;
     }
 
     @Operation(summary = "保存黄金记录（含必填属性校验）")
@@ -91,8 +94,9 @@ public class MdmGoldenController {
 
         if (rec.getId() != null) {
             DnMdmGoldenRecord old = goldenMapper.selectById(rec.getId());
+            if (old == null) throw new ResourceNotFoundException("黄金记录");   // 防对不存在记录静默空更新却谎报成功
             // #19: 已生效(active)存量记录禁止直改, 防绕过审批; 草稿/停用仍可直接编辑
-            if (old != null && "active".equals(old.getStatus())) {
+            if ("active".equals(old.getStatus())) {
                 throw new BusinessException("已生效记录请走变更申请");
             }
             rec.setVersion((old != null && old.getVersion() != null ? old.getVersion() : 1) + 1);
@@ -242,7 +246,12 @@ public class MdmGoldenController {
         Object sObj = body.get("survivorId");
         Object mObj = body.get("mergedIds");
         if (sObj == null) throw new BusinessException("请指定存活记录");
-        Long survivorId = Long.valueOf(String.valueOf(sObj));
+        Long survivorId;
+        try {
+            survivorId = Long.valueOf(String.valueOf(sObj));
+        } catch (NumberFormatException e) {
+            throw new BusinessException("存活记录 ID 格式错误");
+        }
         DnMdmGoldenRecord survivor = goldenMapper.selectById(survivorId);
         if (survivor == null) throw new ResourceNotFoundException("存活记录");
         if (!(mObj instanceof List)) throw new BusinessException("请指定被合并记录");
@@ -250,11 +259,23 @@ public class MdmGoldenController {
         // 收集被合并记录
         List<DnMdmGoldenRecord> mergedRecs = new ArrayList<>();
         for (Object ido : (List<?>) mObj) {
-            Long mid = Long.valueOf(String.valueOf(ido));
+            Long mid;
+            try {
+                mid = Long.valueOf(String.valueOf(ido));
+            } catch (NumberFormatException e) {
+                throw new BusinessException("被合并记录 ID 格式错误");
+            }
             if (mid.equals(survivorId)) continue;
             DnMdmGoldenRecord m = goldenMapper.selectById(mid);
-            if (m != null) mergedRecs.add(m);
+            if (m == null) continue;
+            // 防 IDOR + 跨实体脏数据污染: 被合并记录必须与存活记录同属一个实体
+            if (!java.util.Objects.equals(m.getEntityId(), survivor.getEntityId())) {
+                throw new BusinessException("被合并记录与存活记录不属于同一实体");
+            }
+            mergedRecs.add(m);
         }
+        // 防空合并: 被合并集为空(全是自身/不存在)时不应空跑——否则只是无意义的版本号自增+误导审计快照
+        if (mergedRecs.isEmpty()) throw new BusinessException("没有有效的被合并记录, 无法执行合并");
         // 应用存活性规则：存活记录 + 被合并记录全部参与字段级选优，组合最佳值写入存活记录
         List<DnMdmGoldenRecord> all = new ArrayList<>();
         all.add(survivor);

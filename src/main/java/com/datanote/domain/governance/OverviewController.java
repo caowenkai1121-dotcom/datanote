@@ -1,7 +1,6 @@
 package com.datanote.domain.governance;
 
 import com.datanote.common.model.R;
-import com.datanote.domain.governance.OverviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

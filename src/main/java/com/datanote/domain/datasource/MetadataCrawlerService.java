@@ -26,7 +26,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 元数据自动采集服务 — 从 MySQL 源库 / Doris 数仓 读取 information_schema，增量 upsert 元数据。
@@ -44,6 +46,10 @@ public class MetadataCrawlerService {
     private final HiveConfig hiveConfig;
     private final com.datanote.platform.ai.graph.GraphMirrorService graphMirrorService;
     private final com.datanote.platform.ai.vector.VectorIndexService vectorIndexService;
+    private final DatasourceExploreService datasourceExploreService;   // 采集后失效数据地图全表摘要缓存
+
+    /** 全量采集单飞守卫: 手动触发(/crawl/all 裸线程)与每日定时可能并发, 防两次全量采集互相打架。 */
+    private final java.util.concurrent.atomic.AtomicBoolean crawlingAll = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -63,25 +69,33 @@ public class MetadataCrawlerService {
 
     // ========== 对外采集入口 ==========
 
-    /** 采集全部：所有源数据源 + Doris 数仓 */
+    /** 采集全部：所有源数据源 + Doris 数仓。单飞: 已在采集中则跳过本次, 防手动与定时并发重复全量采集。 */
     public void crawlAll() {
-        List<DnDatasource> all = datasourceMapper.selectList(null);
-        if (all != null) {
-            for (DnDatasource ds : all) {
-                if (ds == null || ds.getId() == null) {
-                    continue;   // 脏数据(空记录/缺主键)跳过,无法定位采集
-                }
-                try {
-                    crawlDatasource(ds.getId());
-                } catch (Exception e) {
-                    log.error("采集数据源失败 dsId={}", ds.getId(), e);
-                }
-            }
+        if (!crawlingAll.compareAndSet(false, true)) {
+            log.warn("元数据全量采集已在进行中, 跳过本次触发");
+            return;
         }
         try {
-            crawlWarehouse();
-        } catch (Exception e) {
-            log.error("采集 Doris 数仓失败", e);
+            List<DnDatasource> all = datasourceMapper.selectList(null);
+            if (all != null) {
+                for (DnDatasource ds : all) {
+                    if (ds == null || ds.getId() == null) {
+                        continue;   // 脏数据(空记录/缺主键)跳过,无法定位采集
+                    }
+                    try {
+                        crawlDatasource(ds.getId());
+                    } catch (Exception e) {
+                        log.error("采集数据源失败 dsId={}", ds.getId(), e);
+                    }
+                }
+            }
+            try {
+                crawlWarehouse();
+            } catch (Exception e) {
+                log.error("采集 Doris 数仓失败", e);
+            }
+        } finally {
+            crawlingAll.set(false);
         }
     }
 
@@ -131,6 +145,7 @@ public class MetadataCrawlerService {
                 }
             }
             logRec.setStatus("success");
+            datasourceExploreService.evictTablesSummaryCache();   // 采集成功→失效搜索缓存, 新表立即可见
         } catch (Exception e) {
             logRec.setStatus("error");
             logRec.setMessage(e.getMessage());
@@ -196,13 +211,19 @@ public class MetadataCrawlerService {
 
     private int upsertColumns(Connection conn, String db, String table, Long tableMetaId) throws SQLException {
         int count = 0;
+        // 预载该表已有列到 Map, 循环内查 Map 判存在性, 替代每列一次 findColumn 点查(全量采集主要耗时点)
+        Map<String, DnColumnMeta> existingCols = new HashMap<>();
+        List<DnColumnMeta> _cols = columnMetaMapper.selectList(new QueryWrapper<DnColumnMeta>().eq("table_meta_id", tableMetaId));
+        if (_cols != null) for (DnColumnMeta c : _cols) { // selectList 理论可返回 null
+            if (c.getColumnName() != null) existingCols.put(c.getColumnName(), c);
+        }
         try (PreparedStatement ps = conn.prepareStatement(SQL_COLUMNS)) {
             ps.setString(1, db);
             ps.setString(2, table);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String colName = rs.getString("COLUMN_NAME");
-                    DnColumnMeta col = findColumn(tableMetaId, colName);
+                    DnColumnMeta col = existingCols.get(colName);
                     boolean isNew = col == null;
                     if (isNew) {
                         col = new DnColumnMeta();

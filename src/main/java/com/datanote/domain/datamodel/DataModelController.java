@@ -139,10 +139,20 @@ public class DataModelController {
     @Operation(summary = "从物理表元数据逆向生成物理模型")
     @PostMapping("/reverse")
     public R<DnModel> reverse(@RequestBody Map<String, Object> body) {
-        Long tableMetaId = body.get("tableMetaId") == null ? null : Long.valueOf(String.valueOf(body.get("tableMetaId")));
-        Long subjectId = body.get("subjectId") == null ? null : Long.valueOf(String.valueOf(body.get("subjectId")));
+        Long tableMetaId = parseLong(body.get("tableMetaId"));
+        Long subjectId = parseLong(body.get("subjectId"));
         if (tableMetaId == null) return R.fail(R.CODE_BAD_REQUEST, "请指定物理表");
         return R.ok(service.reverseFromTable(tableMetaId, subjectId));
+    }
+
+    /** 宽松解析 Long：空/非数字一律返回 null，避免请求体携带非法值时抛 NumberFormatException 被当成 500。 */
+    private Long parseLong(Object v) {
+        if (v == null) return null;
+        try {
+            return Long.valueOf(String.valueOf(v).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Operation(summary = "物理模型生成建表 DDL")

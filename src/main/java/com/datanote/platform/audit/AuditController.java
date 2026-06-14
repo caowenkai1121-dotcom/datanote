@@ -1,7 +1,6 @@
 package com.datanote.platform.audit;
 
 import com.datanote.common.model.R;
-import com.datanote.platform.audit.AuditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -110,7 +109,7 @@ public class AuditController {
             // 取不到身份按匿名处理
         }
         String xff = request.getHeader("X-Forwarded-For");
-        String ip = (xff != null && !xff.isEmpty())
+        String ip = (xff != null && !xff.trim().isEmpty())
                 ? (xff.indexOf(',') > 0 ? xff.substring(0, xff.indexOf(',')).trim() : xff.trim())
                 : request.getRemoteAddr();
         auditService.record(user, "LOGIN", "POST", "/api/auth/login", ip, 200, "登录成功");

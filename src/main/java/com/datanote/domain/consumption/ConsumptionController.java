@@ -3,10 +3,7 @@ package com.datanote.domain.consumption;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
-import com.datanote.domain.consumption.mapper.DnConsumptionLogMapper;
 import com.datanote.domain.consumption.mapper.DnMetricAlertRuleMapper;
-import com.datanote.domain.consumption.mapper.DnMetricValueMapper;
-import com.datanote.domain.consumption.model.DnConsumptionLog;
 import com.datanote.domain.consumption.model.DnMetricAlertRule;
 import com.datanote.domain.consumption.model.DnMetricValue;
 import com.datanote.domain.governance.mapper.DnMetricMapper;
@@ -34,10 +31,14 @@ import java.util.*;
 public class ConsumptionController {
 
     private final MetricValueService valueService;
-    private final DnMetricValueMapper valueMapper;
-    private final DnConsumptionLogMapper logMapper;
     private final DnMetricMapper metricMapper;
     private final DnMetricAlertRuleMapper alertRuleMapper;
+
+    /** 取已发布(status=1)指标; 未发布/不存在返回 null(调用方按自身返回体处理拒绝)。 */
+    private DnMetric publishedMetric(Long id) {
+        DnMetric m = metricMapper.selectById(id);
+        return (m == null || m.getStatus() == null || m.getStatus() != 1) ? null : m;
+    }
 
     @Operation(summary = "计算指标当前值并落快照")
     @PostMapping("/metric/{id}/calc")
@@ -58,6 +59,9 @@ public class ConsumptionController {
     @Operation(summary = "指标最新值(开放取数 API: 供外部系统/看板按指标拉数, 含消费审计)")
     @GetMapping("/metric/{id}/value")
     public R<DnMetricValue> value(@PathVariable Long id, @RequestParam(required = false) String consumer) {
+        if (publishedMetric(id) == null) {
+            return R.fail("指标未发布(status≠1)，不可消费");
+        }
         DnMetricValue v = valueService.latest(id);
         valueService.logConsumption(consumer, "METRIC_VALUE", v == null ? null : v.getMetricCode(), "QUERY",
                 v == null ? 0L : 1L, null, v != null, v == null ? "无值" : "ok");
@@ -69,14 +73,15 @@ public class ConsumptionController {
     public R<List<DnMetricValue>> history(@PathVariable Long id,
                                           @RequestParam(defaultValue = "30") int limit,
                                           @RequestParam(required = false) String consumer) {
+        DnMetric metric = publishedMetric(id);
+        if (metric == null) {
+            return R.fail("指标未发布(status≠1)，不可消费");
+        }
         List<DnMetricValue> rows = valueService.history(id, limit);
         // 落 targetCode: 趋势查看计入消费排行/热度(行有 code 直取, 空历史回查指标)
         String code = null;
         for (DnMetricValue v : rows) { if (v != null && v.getMetricCode() != null) { code = v.getMetricCode(); break; } }
-        if (code == null) {
-            DnMetric m = metricMapper.selectById(id);
-            if (m != null) code = m.getMetricCode();
-        }
+        if (code == null) code = metric.getMetricCode();
         valueService.logConsumption(consumer, "METRIC_HISTORY", code, "QUERY", (long) rows.size(), null, true, "history " + rows.size());
         return R.ok(rows);
     }
@@ -84,8 +89,17 @@ public class ConsumptionController {
     @Operation(summary = "按 code 批量取最新值(开放取数 API: 看板批量拉数, 上限200)")
     @PostMapping("/metric/values")
     public R<List<Map<String, Object>>> batchValues(@RequestBody Map<String, Object> body) {
-        @SuppressWarnings("unchecked")
-        List<String> codes = body == null ? null : (List<String>) body.get("codes");
+        Object raw = body == null ? null : body.get("codes");
+        if (raw != null && !(raw instanceof List)) {
+            return R.fail("codes 必须为字符串数组");
+        }
+        // 逐元素 String.valueOf 转换, 兼容数字数组, 避免 (List<String>) 强转后 c.trim() 抛 ClassCastException
+        List<String> codes = new ArrayList<>();
+        if (raw instanceof List) {
+            for (Object o : (List<?>) raw) {
+                if (o != null) codes.add(String.valueOf(o));
+            }
+        }
         return R.ok(valueService.batchLatestByCode(codes));
     }
 
@@ -141,6 +155,18 @@ public class ConsumptionController {
         if (rule.getMetricId() == null || rule.getOp() == null || rule.getOp().trim().isEmpty()) {
             return R.fail("metricId 和 op 不能为空");
         }
+        // 阈值校验: 防止缺界/min>max 的规则静默永不触发(与 isBreach 判定口径对齐)
+        String op = rule.getOp().trim().toUpperCase();
+        if ("IN".equals(op) || "OUT".equals(op)) {
+            if (rule.getThresholdMin() == null || rule.getThresholdMax() == null) {
+                return R.fail(op + " 规则需同时设置下限(thresholdMin)与上限(thresholdMax)");
+            }
+            if (rule.getThresholdMin().compareTo(rule.getThresholdMax()) > 0) {
+                return R.fail("下限不能大于上限");
+            }
+        } else if (rule.getThresholdMin() == null) {
+            return R.fail(op + " 规则需设置阈值(thresholdMin)");
+        }
         if (rule.getEnabled() == null) rule.setEnabled(1);
         if (rule.getSeverity() == null) rule.setSeverity("MEDIUM");
         DnMetric m = metricMapper.selectById(rule.getMetricId());
@@ -165,9 +191,16 @@ public class ConsumptionController {
                                          @RequestParam(defaultValue = "csv") String format,
                                          @RequestParam(defaultValue = "365") int limit,
                                          @RequestParam(required = false) String consumer) {
+        DnMetric m = publishedMetric(id);
+        if (m == null) {
+            return ResponseEntity.status(403)
+                    .header("Content-Type", "text/plain; charset=UTF-8")
+                    .body("指标未发布(status≠1)，不可消费".getBytes(StandardCharsets.UTF_8));
+        }
         List<DnMetricValue> rows = valueService.history(id, limit);
-        DnMetric m = metricMapper.selectById(id);
-        String code = m == null ? ("metric" + id) : m.getMetricCode();
+        String code = m.getMetricCode();
+        // 文件名净化: 防特殊字符(引号/CR/LF/斜杠)破坏 Content-Disposition 头或注入
+        String safeCode = (code == null || code.trim().isEmpty()) ? "metric" : code.replaceAll("[^A-Za-z0-9._-]", "_");
         byte[] body;
         String ct, fn;
         if ("json".equalsIgnoreCase(format)) {
@@ -180,7 +213,7 @@ public class ConsumptionController {
                   .append(",\"status\":\"").append(v.getRunStatus()).append("\"}");
             }
             sb.append(']');
-            body = sb.toString().getBytes(StandardCharsets.UTF_8); ct = "application/json; charset=UTF-8"; fn = code + ".json";
+            body = sb.toString().getBytes(StandardCharsets.UTF_8); ct = "application/json; charset=UTF-8"; fn = safeCode + ".json";
         } else {
             StringBuilder sb = new StringBuilder("﻿时间,指标值,状态,业务日期\n");
             for (DnMetricValue v : rows) {
@@ -189,7 +222,7 @@ public class ConsumptionController {
                   .append(csvCell(v.getRunStatus())).append(',')
                   .append(csvCell(v.getBizDate())).append('\n');
             }
-            body = sb.toString().getBytes(StandardCharsets.UTF_8); ct = "text/csv; charset=UTF-8"; fn = code + ".csv";
+            body = sb.toString().getBytes(StandardCharsets.UTF_8); ct = "text/csv; charset=UTF-8"; fn = safeCode + ".csv";
         }
         valueService.logConsumption(consumer, "EXPORT", code, "EXPORT", (long) rows.size(), null, true, "导出 " + format);
         return ResponseEntity.ok()

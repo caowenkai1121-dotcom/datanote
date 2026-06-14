@@ -26,6 +26,11 @@ public class AlertConfigService {
     private final DnAlertConfigMapper alertConfigMapper;
     private final DnSchedulerRunMapper runMapper;
 
+    /** 默认延迟阈值(分钟): 无配置或无历史样本时兜底 */
+    private static final int DEFAULT_DELAY_THRESHOLD_MIN = 60;
+    /** 自动计算阈值时, 在平均耗时基础上预留的缓冲(分钟) */
+    private static final int DELAY_THRESHOLD_BUFFER_MIN = 40;
+
     /**
      * 根据脚本 ID 获取告警配置，不存在则创建默认配置
      *
@@ -44,7 +49,7 @@ public class AlertConfigService {
             config = new DnAlertConfig();
             config.setScriptId(scriptId);
             config.setAlertTypes("[\"delay\"]");
-            config.setDelayThresholdMin(60);
+            config.setDelayThresholdMin(DEFAULT_DELAY_THRESHOLD_MIN);
             config.setQualityRuleIds("");
             config.setAlertScope("personal");
             config.setEnabled(1);
@@ -99,7 +104,7 @@ public class AlertConfigService {
         List<DnSchedulerRun> runs = runMapper.selectList(qw);
 
         if (runs == null || runs.isEmpty()) {
-            return 60;
+            return DEFAULT_DELAY_THRESHOLD_MIN;
         }
 
         long totalMinutes = 0;
@@ -117,10 +122,10 @@ public class AlertConfigService {
         }
 
         if (validCount == 0) {
-            return 60;
+            return DEFAULT_DELAY_THRESHOLD_MIN;
         }
 
         int avgMinutes = (int) (totalMinutes / validCount);
-        return avgMinutes + 40;
+        return avgMinutes + DELAY_THRESHOLD_BUFFER_MIN;
     }
 }

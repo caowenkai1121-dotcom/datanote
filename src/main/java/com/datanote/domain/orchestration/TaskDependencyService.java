@@ -145,14 +145,18 @@ public class TaskDependencyService {
         List<DnTaskDependency> deps = depMapper.selectList(depQw);
         if (deps == null || deps.isEmpty()) return true;
 
+        // 批量取全部上游 run 状态: 一条 IN 查询替代逐上游 selectOne(消除 N+1, 15s tick 热路径)
+        List<Long> upIds = new ArrayList<>();
+        for (DnTaskDependency dep : deps) if (dep != null && dep.getUpstreamTaskId() != null) upIds.add(dep.getUpstreamTaskId());
+        if (upIds.isEmpty()) return true;
+        List<DnSchedulerRun> upRuns = runMapper.selectList(new QueryWrapper<DnSchedulerRun>()
+                .in("task_id", upIds).eq("run_date", runDate).eq("run_type", runType));
+        if (upRuns == null) upRuns = Collections.emptyList();   // selectList 理论可返回 null, 统一兜底
+        Map<String, DnSchedulerRun> runMap = new HashMap<>();
+        for (DnSchedulerRun r : upRuns) runMap.put(r.getTaskType() + ":" + r.getTaskId(), r);
         for (DnTaskDependency dep : deps) {
             if (dep == null || dep.getUpstreamTaskId() == null) continue;
-            QueryWrapper<DnSchedulerRun> runQw = new QueryWrapper<>();
-            runQw.eq("task_id", dep.getUpstreamTaskId())
-                 .eq("task_type", dep.getUpstreamTaskType())
-                 .eq("run_date", runDate)
-                 .eq("run_type", runType);
-            DnSchedulerRun upstreamRun = runMapper.selectOne(runQw);
+            DnSchedulerRun upstreamRun = runMap.get(dep.getUpstreamTaskType() + ":" + dep.getUpstreamTaskId());
             if (upstreamRun == null || upstreamRun.getStatus() != DnSchedulerRun.STATUS_SUCCESS) {
                 return false;
             }
@@ -177,19 +181,45 @@ public class TaskDependencyService {
         List<DnTaskDependency> deps = depMapper.selectList(depQw);
         if (deps == null || deps.isEmpty()) return true;
 
+        // 批量取本批次全部上游 run: 一条 IN 查询替代逐上游 selectOne(消除 N+1)
+        List<Long> upIds = new ArrayList<>();
+        for (DnTaskDependency dep : deps) if (dep != null && dep.getUpstreamTaskId() != null) upIds.add(dep.getUpstreamTaskId());
+        if (upIds.isEmpty()) return true;
+        List<DnSchedulerRun> upRuns = runMapper.selectList(new QueryWrapper<DnSchedulerRun>()
+                .in("task_id", upIds).eq("run_date", run.getRunDate())
+                .eq("run_type", Constants.RUN_TYPE_BACKFILL).eq("batch_id", batchId));
+        if (upRuns == null) upRuns = Collections.emptyList();   // selectList 理论可返回 null, 统一兜底
+        Map<String, DnSchedulerRun> runMap = new HashMap<>();
+        for (DnSchedulerRun r : upRuns) runMap.put(r.getTaskType() + ":" + r.getTaskId(), r);
         for (DnTaskDependency dep : deps) {
             if (dep == null || dep.getUpstreamTaskId() == null) continue;
-            QueryWrapper<DnSchedulerRun> batchQw = new QueryWrapper<>();
-            batchQw.eq("task_id", dep.getUpstreamTaskId())
-                   .eq("task_type", dep.getUpstreamTaskType())
-                   .eq("run_date", run.getRunDate())
-                   .eq("run_type", Constants.RUN_TYPE_BACKFILL).eq("batch_id", batchId);
-            DnSchedulerRun upstreamRun = runMapper.selectOne(batchQw);
-            if (upstreamRun != null && upstreamRun.getStatus() != DnSchedulerRun.STATUS_SUCCESS) {
+            DnSchedulerRun upstreamRun = runMap.get(dep.getUpstreamTaskType() + ":" + dep.getUpstreamTaskId());
+            // 区分两种 null：上游本就不在本批次 → 跳过（不阻塞，避免补数据死等未选中的上游）；
+            // 上游在本批次但 run 记录尚未就绪 → 阻塞（与非批次版本一致，保证批内依赖顺序）
+            if (upstreamRun == null) {
+                if (isUpstreamInBatch(dep.getUpstreamTaskId(), dep.getUpstreamTaskType(), batchId)) {
+                    return false;
+                }
+                continue;
+            }
+            if (upstreamRun.getStatus() != DnSchedulerRun.STATUS_SUCCESS) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * 判断上游任务是否被选入指定补数据批次（按 batch_id 是否存在该上游的 run 记录）
+     */
+    private boolean isUpstreamInBatch(Long upstreamTaskId, String upstreamTaskType, String batchId) {
+        QueryWrapper<DnSchedulerRun> qw = new QueryWrapper<>();
+        qw.eq("task_id", upstreamTaskId)
+          .eq("task_type", upstreamTaskType)
+          .eq("run_type", Constants.RUN_TYPE_BACKFILL)
+          .eq("batch_id", batchId);
+        Long cnt = runMapper.selectCount(qw);
+        return cnt != null && cnt > 0;
     }
 
     // ======================== 下游收集 ========================
@@ -213,6 +243,7 @@ public class TaskDependencyService {
         QueryWrapper<DnTaskDependency> qw = new QueryWrapper<>();
         qw.eq("upstream_task_id", taskId).eq("upstream_task_type", taskType);
         List<DnTaskDependency> downs = depMapper.selectList(qw);
+        if (downs == null) return;   // selectList 理论可返回 null, 统一兜底
         for (DnTaskDependency d : downs) {
             String key = d.getTaskType() + ":" + d.getTaskId();
             if (keys.add(key)) {
@@ -230,18 +261,24 @@ public class TaskDependencyService {
      */
     public List<Map<String, Object>> getDownstreamTree(Long taskId, String taskType) {
         List<Map<String, Object>> result = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        collectDownstreamTree(taskId, taskType, result, visited, 1);
+        // 一次性载入全部依赖边在内存 BFS, 消除逐节点 selectList(下游)与逐节点 getTaskName 的 N+1
+        // (补数弹窗在大型 DAG 下原先每层每节点各一条 SQL, 加载极慢甚至超时)
+        List<DnTaskDependency> all = depMapper.selectList(null);
+        if (all == null) all = Collections.emptyList();   // selectList 理论可返回 null, 统一兜底
+        Map<String, List<DnTaskDependency>> byUpstream = new HashMap<>();
+        for (DnTaskDependency d : all) {
+            if (d == null || d.getUpstreamTaskId() == null) continue;
+            byUpstream.computeIfAbsent(d.getUpstreamTaskType() + ":" + d.getUpstreamTaskId(), k -> new ArrayList<>()).add(d);
+        }
+        collectDownstreamTree(taskType + ":" + taskId, byUpstream, result, new HashSet<>(), 1);
+        fillTaskNames(result);   // 批量解析任务名(脚本/同步任务各一次 selectBatchIds)
         return result;
     }
 
-    private void collectDownstreamTree(Long taskId, String taskType,
-                                        List<Map<String, Object>> result,
-                                        Set<String> visited, int level) {
-        QueryWrapper<DnTaskDependency> qw = new QueryWrapper<>();
-        qw.eq("upstream_task_id", taskId).eq("upstream_task_type", taskType);
-        List<DnTaskDependency> downs = depMapper.selectList(qw);
-
+    private void collectDownstreamTree(String upKey, Map<String, List<DnTaskDependency>> byUpstream,
+                                        List<Map<String, Object>> result, Set<String> visited, int level) {
+        List<DnTaskDependency> downs = byUpstream.get(upKey);
+        if (downs == null) return;
         for (DnTaskDependency d : downs) {
             String key = d.getTaskType() + ":" + d.getTaskId();
             if (visited.contains(key)) continue;
@@ -252,9 +289,33 @@ public class TaskDependencyService {
             node.put("taskType", d.getTaskType());
             node.put("level", level);
             node.put("depTable", d.getDepTable());
-            node.put("taskName", getTaskName(d.getTaskId(), d.getTaskType()));
             result.add(node);
-            collectDownstreamTree(d.getTaskId(), d.getTaskType(), result, visited, level + 1);
+            collectDownstreamTree(key, byUpstream, result, visited, level + 1);
+        }
+    }
+
+    /** 批量回填节点的 taskName(脚本/同步任务各一次 selectBatchIds), 替代逐节点 selectById。 */
+    private void fillTaskNames(List<Map<String, Object>> nodes) {
+        List<Long> scriptIds = new ArrayList<>(), syncIds = new ArrayList<>();
+        for (Map<String, Object> n : nodes) {
+            Long id = (Long) n.get("taskId");
+            if (id == null) continue;
+            if (Constants.TASK_TYPE_SCRIPT.equals(n.get("taskType"))) scriptIds.add(id); else syncIds.add(id);
+        }
+        Map<Long, String> scriptNames = new HashMap<>(), syncNames = new HashMap<>();
+        if (!scriptIds.isEmpty()) {
+            List<DnScript> ss = scriptMapper.selectBatchIds(scriptIds);
+            if (ss != null) for (DnScript s : ss) if (s != null && s.getId() != null) scriptNames.put(s.getId(), s.getScriptName());
+        }
+        if (!syncIds.isEmpty()) {
+            List<DnSyncTask> ts = syncTaskMapper.selectBatchIds(syncIds);
+            if (ts != null) for (DnSyncTask t : ts) if (t != null && t.getId() != null) syncNames.put(t.getId(), t.getTaskName());
+        }
+        for (Map<String, Object> n : nodes) {
+            Long id = (Long) n.get("taskId");
+            boolean isScript = Constants.TASK_TYPE_SCRIPT.equals(n.get("taskType"));
+            String nm = isScript ? scriptNames.get(id) : syncNames.get(id);
+            n.put("taskName", nm != null ? nm : (isScript ? "未知脚本" : "未知任务"));
         }
     }
 
@@ -299,6 +360,7 @@ public class TaskDependencyService {
         int paused = 0;
         for (String key : downstreamKeys) {
             String[] parts = key.split(":");
+            if (parts.length < 2) continue;   // 防御非法 key 格式, 避免 parts[1] 越界
             String dTaskType = parts[0];
             Long dTaskId = Long.valueOf(parts[1]);
 
@@ -308,6 +370,7 @@ public class TaskDependencyService {
               .in("status", DnSchedulerRun.STATUS_WAITING, DnSchedulerRun.STATUS_FAILED);
 
             List<DnSchedulerRun> runs = runMapper.selectList(qw);
+            if (runs == null) continue;   // selectList 理论可返回 null, 统一兜底
             for (DnSchedulerRun run : runs) {
                 run.setStatus(DnSchedulerRun.STATUS_PAUSED);
                 runMapper.updateById(run);
@@ -333,6 +396,7 @@ public class TaskDependencyService {
         int resumed = 0;
         for (String key : downstreamKeys) {
             String[] parts = key.split(":");
+            if (parts.length < 2) continue;   // 防御非法 key 格式, 避免 parts[1] 越界
             String dTaskType = parts[0];
             Long dTaskId = Long.valueOf(parts[1]);
 
@@ -342,6 +406,7 @@ public class TaskDependencyService {
               .eq("status", DnSchedulerRun.STATUS_PAUSED);
 
             List<DnSchedulerRun> runs = runMapper.selectList(qw);
+            if (runs == null) continue;   // selectList 理论可返回 null, 统一兜底
             for (DnSchedulerRun r : runs) {
                 r.setStatus(DnSchedulerRun.STATUS_WAITING);
                 runMapper.updateById(r);
@@ -392,6 +457,22 @@ public class TaskDependencyService {
      * 循环依赖检测（DFS 染色法）
      * WHITE=未访问, GRAY=递归栈中, BLACK=已完成
      */
+    /**
+     * 从当前所有依赖记录构建邻接表（节点 = taskType:taskId，边 = task → upstream），供环检测使用
+     */
+    private Map<String, Set<String>> buildDependencyGraph() {
+        Map<String, Set<String>> graph = new HashMap<>();
+        List<DnTaskDependency> all = depMapper.selectList(null);
+        if (all == null) return graph;
+        for (DnTaskDependency d : all) {
+            if (d == null || d.getTaskId() == null || d.getUpstreamTaskId() == null) continue;
+            String nodeKey = d.getTaskType() + ":" + d.getTaskId();
+            String upstreamKey = d.getUpstreamTaskType() + ":" + d.getUpstreamTaskId();
+            graph.computeIfAbsent(nodeKey, k -> new HashSet<>()).add(upstreamKey);
+        }
+        return graph;
+    }
+
     private boolean hasCycle(Map<String, Set<String>> graph) {
         Map<String, Integer> color = new HashMap<>(); // 0=WHITE, 1=GRAY, 2=BLACK
         for (String node : graph.keySet()) {
@@ -438,7 +519,8 @@ public class TaskDependencyService {
         List<Map<String, Object>> results = new ArrayList<>();
         QueryWrapper<DnScript> sq = new QueryWrapper<>();
         sq.like("script_name", keyword).eq("schedule_status", "online").last("LIMIT 20");
-        for (DnScript s : scriptMapper.selectList(sq)) {
+        List<DnScript> onlineScripts = scriptMapper.selectList(sq);
+        if (onlineScripts != null) for (DnScript s : onlineScripts) {
             Map<String, Object> m = new HashMap<>();
             m.put("taskId", s.getId());
             m.put("taskType", "script");
@@ -447,7 +529,8 @@ public class TaskDependencyService {
         }
         QueryWrapper<DnSyncTask> tq = new QueryWrapper<>();
         tq.like("task_name", keyword).eq("schedule_status", "online").last("LIMIT 20");
-        for (DnSyncTask t : syncTaskMapper.selectList(tq)) {
+        List<DnSyncTask> onlineTasks = syncTaskMapper.selectList(tq);
+        if (onlineTasks != null) for (DnSyncTask t : onlineTasks) {
             Map<String, Object> m = new HashMap<>();
             m.put("taskId", t.getId());
             m.put("taskType", "syncTask");
@@ -463,6 +546,14 @@ public class TaskDependencyService {
                 .eq("upstream_task_id", upstreamTaskId).eq("upstream_task_type", upstreamTaskType);
         if (depMapper.selectCount(qw) > 0) {
             return false;
+        }
+        // 加边前把新边并入现有依赖图跑环检测，禁止手动构造循环依赖（复用 refreshAllDependencies 的 hasCycle）
+        Map<String, Set<String>> graph = buildDependencyGraph();
+        String nodeKey = taskType + ":" + taskId;
+        String upstreamKey = upstreamTaskType + ":" + upstreamTaskId;
+        graph.computeIfAbsent(nodeKey, k -> new HashSet<>()).add(upstreamKey);
+        if (hasCycle(graph)) {
+            throw new BusinessException("该依赖会形成循环依赖，已拒绝添加");
         }
         DnTaskDependency dep = new DnTaskDependency();
         dep.setTaskId(taskId);

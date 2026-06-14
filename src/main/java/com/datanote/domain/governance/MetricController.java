@@ -75,10 +75,23 @@ public class MetricController {
     @Operation(summary = "保存指标")
     @PostMapping("/save")
     public R<DnMetric> save(@RequestBody DnMetric metric) {
+        // metric_code 是预警/取值/关联的引用键, 提供时须唯一(防引用歧义); 启停的 {id,status} 不带 code 则跳过
+        String mc = metric.getMetricCode();
+        if (mc != null && !mc.trim().isEmpty()) {
+            QueryWrapper<DnMetric> dupQ = new QueryWrapper<>();
+            dupQ.eq("metric_code", mc.trim());
+            if (metric.getId() != null) dupQ.ne("id", metric.getId());
+            Long dup = metricMapper.selectCount(dupQ);
+            if (dup != null && dup > 0) return R.fail(R.CODE_BAD_REQUEST, "指标编码已存在: " + mc.trim());
+        }
         if (metric.getId() != null) {
             metric.setUpdatedAt(LocalDateTime.now());
             metricMapper.updateById(metric);
         } else {
+            // 新建必须有指标名(更新分支可只传 {id,status} 做启停, 故仅在此校验)
+            if (metric.getMetricName() == null || metric.getMetricName().trim().isEmpty()) {
+                return R.fail(R.CODE_BAD_REQUEST, "指标名称不能为空");
+            }
             metric.setCreatedAt(LocalDateTime.now());
             metric.setUpdatedAt(LocalDateTime.now());
             // 多用户: 负责人未填时默认创建者本人(指标预警/通知据此路由)

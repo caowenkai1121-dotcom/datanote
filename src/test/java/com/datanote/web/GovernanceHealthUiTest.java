@@ -25,7 +25,7 @@ class GovernanceHealthUiTest {
         assertTrue(js.contains("/api/gov/health/dimensions"), "应查询五维明细");
         assertTrue(js.contains("/api/gov/health/issues"), "应管理工单");
         assertTrue(js.contains("transition"), "应支持工单状态流转");
-        assertTrue(js.contains("/api/gov/health/maturity"), "应支持 DCMM 成熟度自评");
+        // DCMM 成熟度自评已按治理改版「DCMM 孤岛下架」前后端移除，不再断言
     }
 
     @Test

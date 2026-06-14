@@ -113,7 +113,12 @@
     if (diff < 60) return '刚刚';
     if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
     if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
-    if (diff < 172800) return '昨天 ' + s.slice(11, 16);
+    // 「昨天」按自然日历日判定（而非 48 小时时间差），跨日边界才准确
+    var d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var now = new Date();
+    var n0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dayDiff = Math.round((n0 - d0) / 86400000);
+    if (dayDiff === 1) return '昨天 ' + s.slice(11, 16);
     if (diff < 604800) return Math.floor(diff / 86400) + ' 天前';
     return s.slice(0, 10);                               // 超 7 天显示日期
   };
@@ -171,24 +176,40 @@
     var wrap = DN.h('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;' },
       [lbl('库'), dbSel, lbl('表'), tbSel].concat(withColumn ? [lbl('字段'), colSel] : []));
     function fire() { if (opts.onChange) opts.onChange(dbSel.value, tbSel.value, colSel ? colSel.value : null); }
-    dbSel.onchange = function () {
+    // 加载表清单; preselect 用于编辑态回填已存表(异步入 DOM 后再选中), cb 在完成时回调
+    function loadTables(preselect, cb) {
       tbSel.innerHTML = '<option value="">选择表</option>';
       if (colSel) colSel.innerHTML = '<option value="">选择字段</option>';
-      if (dbSel.value) DN.metaTables(dbSel.value).then(function (ts) { addOpts(tbSel, ts, function (t) { return t; }, function (t) { return t; }); }).catch(function () {});
-      fire();
-    };
-    tbSel.onchange = function () {
-      if (colSel) {
-        colSel.innerHTML = '<option value="">选择字段</option>';
-        if (dbSel.value && tbSel.value) DN.metaColumns(dbSel.value, tbSel.value)
-          .then(function (cs) { addOpts(colSel, cs, function (c) { return c.name; }, function (c) { return c.name + (c.type ? ' (' + c.type + ')' : ''); }); }).catch(function () {});
-      }
-      fire();
-    };
+      if (!dbSel.value) { if (cb) cb(); return; }
+      DN.metaTables(dbSel.value).then(function (ts) {
+        addOpts(tbSel, ts, function (t) { return t; }, function (t) { return t; });
+        if (preselect) tbSel.value = preselect;
+        if (cb) cb();
+      }).catch(function () { DN.toast('加载表清单失败', 'error'); if (cb) cb(); });
+    }
+    function loadColumns(preselect, cb) {
+      if (!colSel) { if (cb) cb(); return; }
+      colSel.innerHTML = '<option value="">选择字段</option>';
+      if (!dbSel.value || !tbSel.value) { if (cb) cb(); return; }
+      DN.metaColumns(dbSel.value, tbSel.value).then(function (cs) {
+        addOpts(colSel, cs, function (c) { return c.name; }, function (c) { return c.name + (c.type ? ' (' + c.type + ')' : ''); });
+        if (preselect) colSel.value = preselect;
+        if (cb) cb();
+      }).catch(function () { DN.toast('加载字段清单失败', 'error'); if (cb) cb(); });
+    }
+    dbSel.onchange = function () { loadTables(null); fire(); };
+    tbSel.onchange = function () { loadColumns(null); fire(); };
     if (colSel) colSel.onchange = fire;
     DN.metaDatabases().then(function (dbs) {
       addOpts(dbSel, dbs, function (d) { return d; }, function (d) { return d; });
-      if (opts.defaultDb) { dbSel.value = opts.defaultDb; dbSel.onchange(); }
+      if (opts.defaultDb) {
+        dbSel.value = opts.defaultDb;
+        // 编辑态: 级联回填 库→表→列(异步链), 不丢失已保存的表/列上下文
+        loadTables(opts.defaultTable || null, function () {
+          if (opts.defaultTable && colSel) loadColumns(opts.defaultColumn || null, fire);
+          else fire();
+        });
+      }
     }).catch(function () {});
     return { el: wrap, db: function () { return dbSel.value; }, table: function () { return tbSel.value; }, column: function () { return colSel ? colSel.value : null; } };
   };
@@ -225,8 +246,9 @@
 
   DN.statTile = function (o) {
     o = o || {};
+    var _val = (o.value == null ? '-' : String(o.value));
     var meta = DN.h('div', {}, [
-      DN.h('div', { class: 'v', text: (o.value == null ? '-' : String(o.value)) }),
+      DN.h('div', { class: 'v', text: _val, title: _val }),
       DN.h('div', { class: 'l', text: o.label || '' })
     ]);
     if (o.sub) meta.appendChild(DN.h('div', { class: 'sub', text: o.sub }));
@@ -279,7 +301,7 @@
     items.forEach(function (i) {
       var pct = Math.round((i.value || 0) / (i.max || max || 1) * 100);
       var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + toneColor(i.tone) });
-      var bar = DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]);
+      var bar = DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label, title: i.label == null ? '' : String(i.label) }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]);
       if (typeof i.onClick === 'function') { bar.style.cursor = 'pointer'; bar.title = '点击筛选'; bar.addEventListener('click', function () { i.onClick(i); }); }
       w.appendChild(bar);
     });
@@ -583,8 +605,9 @@
     var w = DN.h('div', { class: 'gov-heat' });
     items.forEach(function (it) {
       var a = (0.1 + (it.value || 0) / max * 0.8).toFixed(2);
-      var cell = DN.h('div', { class: 'gov-heat-cell', style: 'background:rgba(' + base.join(',') + ',' + a + ');', title: it.label + ': ' + (it.value || 0) },
-        [DN.h('span', { class: 'hl', text: it.label }), DN.h('span', { class: 'hv', text: String(it.display != null ? it.display : it.value) })]);
+      var lbl = it.label == null ? '' : String(it.label);
+      var cell = DN.h('div', { class: 'gov-heat-cell', style: 'background:rgba(' + base.join(',') + ',' + a + ');', title: lbl + ': ' + (it.value || 0) },
+        [DN.h('span', { class: 'hl', text: lbl, title: lbl }), DN.h('span', { class: 'hv', text: String(it.display != null ? it.display : it.value) })]);
       if (opts.onClick) { cell.style.cursor = 'pointer'; cell.addEventListener('click', function () { opts.onClick(it); }); }
       w.appendChild(cell);
     });
@@ -606,7 +629,7 @@
     var bar = DN.h('div', { class: 'gov-alert is-' + (tone || 'warn') });
     bar.appendChild(DN.h('span', { class: 'ic', html: DN.icon(tone === 'ok' ? 'check' : 'alert') }));
     bar.appendChild(DN.h('span', { class: 'm', text: msg }));
-    bar.appendChild(DN.h('button', { class: 'x', text: '×', onclick: function () { bar.remove(); } }));
+    bar.appendChild(DN.h('button', { class: 'x', text: '×', 'aria-label': '关闭', onclick: function () { bar.remove(); } }));
     return bar;
   };
 

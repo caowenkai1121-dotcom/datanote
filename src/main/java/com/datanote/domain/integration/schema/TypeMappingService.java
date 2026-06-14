@@ -41,6 +41,8 @@ public class TypeMappingService {
                 // Doris DECIMAL 精度上限 38
                 if (p > 38) { p = 38; }
                 if (s > p) { s = p; }
+                // 防标度吃光精度导致整数位为 0 的非法类型(如 decimal(40,40)->DECIMAL(38,38)),至少保留 1 位整数
+                if (p > 0 && s >= p) { s = p - 1; }
                 return "DECIMAL(" + p + "," + s + ")";
             }
             return "DECIMAL(10,0)";

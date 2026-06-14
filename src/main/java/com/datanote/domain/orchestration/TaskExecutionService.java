@@ -119,6 +119,14 @@ public class TaskExecutionService {
         try {
             future.get(timeoutSeconds, TimeUnit.SECONDS);
 
+            // 写最终成功前重查 DB 状态：若运行期间被手动停止(stopTask 置 FAILED)，不覆盖其结果，也不触发下游
+            DnSchedulerRun curRun = runMapper.selectById(run.getId());
+            if (curRun != null && curRun.getStatus() != null && curRun.getStatus() == DnSchedulerRun.STATUS_FAILED) {
+                log.info("任务已被手动停止，跳过成功状态覆盖: {} {} (runDate={})",
+                        run.getTaskType(), run.getTaskId(), run.getRunDate());
+                return;
+            }
+
             // 执行成功
             run.setStatus(DnSchedulerRun.STATUS_SUCCESS);
             run.setEndTime(LocalDateTime.now());
@@ -166,6 +174,13 @@ public class TaskExecutionService {
      */
     private void handleTaskFailure(DnSchedulerRun run, StringBuilder logBuilder, String errorMsg) {
         log.error("任务执行失败: {} {} - {}", run.getTaskType(), run.getTaskId(), errorMsg);
+
+        // 重查 DB 状态：若已被手动停止(stopTask 置 FAILED)，不再重试/覆盖，保留手动停止结果
+        DnSchedulerRun curRun = runMapper.selectById(run.getId());
+        if (curRun != null && curRun.getStatus() != null && curRun.getStatus() == DnSchedulerRun.STATUS_FAILED) {
+            log.info("任务已被手动停止，跳过失败重试与状态覆盖: {} {}", run.getTaskType(), run.getTaskId());
+            return;
+        }
 
         int retryCount = run.getRetryCount() != null ? run.getRetryCount() : 0;
         int maxRetries = getTaskMaxRetries(run);
@@ -217,12 +232,21 @@ public class TaskExecutionService {
             try {
                 String taskName = run.getTaskType() + "#" + run.getTaskId();
                 String receiver = null;
-                if ("script".equals(run.getTaskType())) {
+                // 接收人优先级: 显式配置的告警联系人(alertContact) → 任务创建人 → admin 兜底
+                if (Constants.TASK_TYPE_SCRIPT.equals(run.getTaskType())) {
                     DnScript s = scriptMapper.selectById(run.getTaskId());
-                    if (s != null) { taskName = s.getScriptName(); receiver = s.getCreatedBy(); }
+                    if (s != null) {
+                        taskName = s.getScriptName();
+                        receiver = (s.getAlertContact() != null && !s.getAlertContact().trim().isEmpty())
+                                ? s.getAlertContact().trim() : s.getCreatedBy();
+                    }
                 } else {
                     DnSyncTask t = syncTaskMapper.selectById(run.getTaskId());
-                    if (t != null) { taskName = t.getTaskName(); receiver = t.getCreatedBy(); }
+                    if (t != null) {
+                        taskName = t.getTaskName();
+                        receiver = (t.getAlertContact() != null && !t.getAlertContact().trim().isEmpty())
+                                ? t.getAlertContact().trim() : t.getCreatedBy();
+                    }
                 }
                 if (receiver == null || receiver.trim().isEmpty()) receiver = "admin";
                 notificationService.notify(receiver, "SCHED_FAILED",

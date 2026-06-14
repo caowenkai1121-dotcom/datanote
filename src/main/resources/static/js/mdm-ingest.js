@@ -63,6 +63,7 @@
     };
 
     loadBtn.onclick = function () {
+      if (loadBtn.textContent === '加载中…') return; // 防重复点击导致并发请求
       var db = dbI.value.trim(), tb = tbI.value.trim();
       if (!db || !tb) { DN.toast('请填源库与源表', 'warn'); return; }
       if (!entitySel.value) { DN.toast('请先选择目标实体', 'warn'); return; }
@@ -70,7 +71,7 @@
       DN.get('/api/mdm/ingest/columns?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(tb)).then(function (cols) {
         st.cols = Array.isArray(cols) ? cols : [];
         loadBtn.textContent = '加载源列';
-        if (!st.cols.length) { mapBox.innerHTML = ''; mapBox.appendChild(DN.empty('源表无列或读取为空', 'list')); return; }
+        if (!st.cols.length) { mapBox.innerHTML = ''; importBtn.style.display = 'none'; resultBox.innerHTML = ''; mapBox.appendChild(DN.empty('源表无列或读取为空', 'list')); return; }
         if (!sysI.value.trim()) sysI.value = db;
         buildMapping();
       }).catch(function (e) { loadBtn.textContent = '加载源列'; DN.toast('读取源列失败: ' + (e && e.message || ''), 'err'); });
@@ -106,7 +107,7 @@
         if (auto) sel.value = auto.attrCode;
         st._sel[col] = sel;
         var tr = DN.h('tr', {});
-        tr.appendChild(DN.h('td', { text: col, style: 'border:1px solid var(--border);padding:5px 10px' }));
+        tr.appendChild(DN.h('td', { text: col, title: col, style: 'border:1px solid var(--border);padding:5px 10px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }));
         var td2 = DN.h('td', { style: 'border:1px solid var(--border);padding:5px 10px' }); td2.appendChild(sel);
         tr.appendChild(td2);
         tbl.appendChild(tr);

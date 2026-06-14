@@ -12,7 +12,6 @@ import com.datanote.domain.integration.HiveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,17 +45,16 @@ public class MetricValueService {
 
     /**
      * 计算单个指标当前值并落快照（仅 status=1 + 有公式）。失败也落 error 快照，不抛断主流程。
-     * 多次写（value 落库 + 预警可能建/刷工单）置于同一事务保证原子。
      */
-    @Transactional
     public DnMetricValue calc(Long metricId, String operator) {
         return calc(metricId, operator, null);
     }
 
     /**
+     * 不开事务: 远端 Hive/Doris 查询(可能数秒到数十秒)期间不持有主库连接, 防长查询拖垮连接池;
+     * 值落库为单条 insert(自身原子), 预警建单为兜底不抛的旁路钩子(内部去重)。
      * @param bizDate 业务日期: null=当日(手动计算); 调度方显式传昨日(T+1 口径由调用方决定, 平台不猜)
      */
-    @Transactional
     public DnMetricValue calc(Long metricId, String operator, java.time.LocalDate bizDate) {
         if (metricId == null) throw new BusinessException("指标ID(metricId)不能为空");
         DnMetric m = metricMapper.selectById(metricId);
@@ -93,12 +91,13 @@ public class MetricValueService {
         }
         v.setDurationMs(System.currentTimeMillis() - start);
         valueMapper.insert(v);
+        boolean ok = "success".equals(v.getRunStatus());
         // 闭合 消费→治理：成功取得数值后判定预警规则，越界自动建治理工单(内部兜底不抛)
-        if ("success".equals(v.getRunStatus()) && num != null) {
+        if (ok && num != null) {
             metricAlertService.checkAndAlert(m, num);
         }
         logConsumption(operator, "CALC", m.getMetricCode(), "CALC", null, v.getDurationMs(),
-                "success".equals(v.getRunStatus()), "success".equals(v.getRunStatus()) ? "计算成功" : v.getErrorMsg());
+                ok, ok ? "计算成功" : v.getErrorMsg());
         return v;
     }
 
@@ -450,7 +449,6 @@ public class MetricValueService {
 
     // ---- 纯函数(可单测) ----
 
-    @SuppressWarnings("unchecked")
     static Object firstCell(Map<String, Object> execResult) {
         if (execResult == null) return null;
         Object rows = execResult.get("rows");

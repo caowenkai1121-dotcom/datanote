@@ -295,14 +295,4 @@ public class HiveService {
         result.put("hiveLogs", logs);
     }
 
-    private void pushLog(String message) {
-        try {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("level", "DORIS");
-            payload.put("message", message);
-            payload.put("time", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
-            messagingTemplate.convertAndSend("/topic/sql-log", payload);
-        } catch (Exception ignored) {
-        }
-    }
 }

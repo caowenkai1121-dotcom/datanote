@@ -268,16 +268,6 @@ public class LifecycleService {
         return cnt != null && cnt > 0;
     }
 
-    /** 是否被任务引用：血缘边上带 job_id 即视为有任务引用（该表作为源或目标参与了同步任务）。 */
-    private boolean hasTaskRef(String db, String table) {
-        QueryWrapper<DnLineageEdge> qw = new QueryWrapper<>();
-        qw.isNotNull("job_id")
-                .and(w -> w.and(x -> x.eq("src_db", db).eq("src_table", table))
-                        .or(x -> x.eq("dst_db", db).eq("dst_table", table)));
-        Long cnt = lineageEdgeMapper.selectCount(qw);
-        return cnt != null && cnt > 0;
-    }
-
     // ========== 销毁三道护栏 ==========
 
     /**
@@ -301,13 +291,13 @@ public class LifecycleService {
             throw new BusinessException("存在下游血缘，禁止销毁: " + db + "." + table);
         }
         LocalDateTime now = LocalDateTime.now();
-        // 复用 dn_lifecycle_policy 承载销毁单：policy_type=ARCHIVE 表示回收意图
-        DnLifecyclePolicy p = findPolicy(db, table, "ARCHIVE");
+        // 销毁单独立用 policy_type=DROP 承载，不复用 ARCHIVE 归档/TTL 策略，避免覆写正常归档配置
+        DnLifecyclePolicy p = findPolicy(db, table, "DROP");
         if (p == null) {
             p = new DnLifecyclePolicy();
             p.setDbName(db);
             p.setTableName(table);
-            p.setPolicyType("ARCHIVE");
+            p.setPolicyType("DROP");
             p.setEnabled(1);
             p.setCreatedAt(now);
         }
@@ -389,7 +379,9 @@ public class LifecycleService {
     /** 成本排行：取每张表最近一次快照，按成本倒序。 */
     public List<Map<String, Object>> costRanking(int limit) {
         QueryWrapper<DnAssetStat> qw = new QueryWrapper<>();
-        qw.orderByDesc("collected_at");
+        // 仅取近 90 天快照界定扫描量(快照随采集累积无限增长; 更老的本就过期、表多已停采集),
+        // 仍保留所有活跃表的"最新一次"快照, 避免原先全表无界 selectList。
+        qw.ge("collected_at", LocalDateTime.now().minusDays(90)).orderByDesc("collected_at");
         List<DnAssetStat> all = assetStatMapper.selectList(qw);
         List<Map<String, Object>> out = new ArrayList<>();
         if (all == null || all.isEmpty()) return out;

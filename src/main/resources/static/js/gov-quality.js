@@ -179,7 +179,9 @@
     btn.onclick = function () {
       if (btn.disabled) return; // 防重复提交(扫描进行中再点无效)
       // 仅扫描已启用规则, 上限 30 条以控制请求量
-      var targets = (Array.isArray(allRules) ? allRules : []).filter(function (r) { return r && r.status === 1 && r.id != null; }).slice(0, 30);
+      var enabledAll = (Array.isArray(allRules) ? allRules : []).filter(function (r) { return r && r.status === 1 && r.id != null; });
+      var targets = enabledAll.slice(0, 30);
+      var capNote = enabledAll.length > targets.length ? '（共 ' + enabledAll.length + ' 条启用，仅扫描前 ' + targets.length + ' 条）' : '';
       if (!targets.length) {
         resultBox.innerHTML = '';
         var emp = DN.empty('暂无已启用的规则可扫描，请在下方规则表启用规则或前往工作台创建', 'check');
@@ -190,7 +192,7 @@
       btn.disabled = true; btn.textContent = '扫描中…';
       resultBox.innerHTML = '';
       // 进度提示(顺序扫描可能耗时, 给出 x/总数 反馈, 避免疑似卡死)
-      var prog = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px', text: '正在扫描 0/' + targets.length + ' 条规则…' });
+      var prog = DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px', text: '正在扫描 0/' + targets.length + ' 条规则…' + capNote });
       resultBox.appendChild(prog); resultBox.appendChild(DN.skeleton(3));
       // 顺序拉取每条规则最近执行(复用已有 /rule/{id}/runs 端点), 取首条(时间倒序)
       var fails = [], done = 0;
@@ -206,13 +208,13 @@
               if (notPass) fails.push({ rule: r, run: last, rate: rate });
             }
           }).catch(function () { /* 单条失败忽略, 不阻断整体扫描 */ })
-            .then(function () { done++; prog.textContent = '正在扫描 ' + done + '/' + targets.length + ' 条规则…'; });
+            .then(function () { done++; prog.textContent = '正在扫描 ' + done + '/' + targets.length + ' 条规则…' + capNote; });
         });
       });
       chain.then(function () {
         btn.disabled = false; btn.textContent = '重新扫描';
         renderFailFocus(resultBox, fails);
-        DN.toast(fails.length ? ('扫描完成: ' + fails.length + ' 条规则未通过') : '扫描完成: 全部通过', fails.length ? 'warn' : 'ok');
+        DN.toast((fails.length ? ('扫描完成: ' + fails.length + ' 条规则未通过') : '扫描完成: 全部通过') + (capNote ? ' ' + capNote : ''), fails.length ? 'warn' : 'ok');
       });
     };
     return card.el;
@@ -596,9 +598,9 @@
         fails.slice(0, 8).forEach(function (f) {
           var ts = String(f.startedAt || '').replace('T', ' ').slice(0, 19);
           var rawReason = f.errorMsg || (f.errorSample ? ('样本: ' + String(f.errorSample)) : ('通过率 ' + (f.passRate == null ? '-' : f.passRate + '%')));
-          var reason = rawReason.length > 80 ? rawReason.slice(0, 80) + '…' : rawReason; // 超长根因截断+title 兜底
+          var reason = trunc(rawReason, 80); // 超长根因截断+title 兜底(复用 trunc)
           ul.appendChild(DN.h('div', { style: 'padding:5px 0;border-bottom:1px solid var(--divider)' }, [
-            DN.pill(f.runStatus || '未知', f.runStatus === 'ERROR' ? 'err' : 'warn'),
+            DN.pill(f.runStatus || '未知', String(f.runStatus || '').toLowerCase() === 'error' ? 'err' : 'warn'),
             DN.h('span', { style: 'color:var(--text-muted);margin:0 6px', text: DN.fmtAgo(f.startedAt), title: ts }),
             DN.h('span', { text: reason, title: rawReason })
           ]));

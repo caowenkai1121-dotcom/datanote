@@ -14,8 +14,5 @@ public class BackfillRequest {
     private Long taskId;
     private String taskType;
     private LocalDate runDate;
-    private LocalDate dateFrom;
-    private LocalDate dateTo;
-    private String granularity;
     private List<Map<String, Object>> selectedTasks;
 }

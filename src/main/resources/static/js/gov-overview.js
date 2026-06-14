@@ -23,7 +23,7 @@
     }).catch(function (e) {
       box.innerHTML = '';
       var msg = (e && e.message) ? e.message : '请稍后重试';
-      box.appendChild(DN.errorBox('治理总览加载失败：' + DN.esc(msg), function () { reload(box); }));
+      box.appendChild(DN.errorBox('治理总览加载失败：' + msg, function () { reload(box); }));
     }).then(function () { if (_reloading === box) _reloading = null; });
   }
 

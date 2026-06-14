@@ -582,7 +582,7 @@
       var showAttrs = (keyAttrs.length ? keyAttrs : _grAttrs).slice(0, 4);
       var cols = [];
       showAttrs.forEach(function (a) {
-        cols.push({ key: 'a_' + a.attrCode, label: a.attrName, render: (function (code) { return function (r) { return clip(r._vals ? r._vals[code] : null, 40); }; })(a.attrCode) });
+        cols.push({ key: 'a_' + a.attrCode, label: a.attrName, render: (function (code) { return function (r) { return clip(r._vals ? r._vals[code] : null, 40); }; })(a.attrCode), exportValue: (function (code) { return function (r) { return r._vals && r._vals[code] != null ? r._vals[code] : ''; }; })(a.attrCode) });
       });
       cols.push({ key: 'status', label: '状态', render: function (r) {
           var s = r.status; return s === 'active' ? DN.pill('已生效', 'ok') : s === 'inactive' ? DN.pill('已停用', 'muted') : DN.pill('草稿', 'warn');
@@ -609,8 +609,7 @@
         } });
       listBox.appendChild(DN.table({
         columns: cols, rows: rows, pageSize: 15,
-        searchKeys: ['bizKey', 'sourceSystem'], searchPlaceholder: '搜索业务主键/来源', exportName: '黄金记录_' + _grEntity.entityCode,
-        exportValue: function (r, k) { return r._vals && r._vals[k.replace('a_', '')] != null ? r._vals[k.replace('a_', '')] : undefined; }
+        searchKeys: ['bizKey', 'sourceSystem'], searchPlaceholder: '搜索业务主键/来源', exportName: '黄金记录_' + _grEntity.entityCode
       }));
     }).catch(function (e) {
       listBox.innerHTML = '';
@@ -880,7 +879,7 @@
       if (i === 0) radio.checked = true;   // 默认首条为存活
       rd.appendChild(radio); tr.appendChild(rd);
       showAttrs.forEach(function (a) { var td = document.createElement('td'); var v = r._vals ? r._vals[a.attrCode] : null; var s = (v == null || v === '') ? '-' : String(v); if (s.length > 40) { td.textContent = s.slice(0, 40) + '…'; td.title = s; } else { td.textContent = s; } tr.appendChild(td); });
-      var st = document.createElement('td'); st.appendChild(r.status === 'active' ? DN.pill('已生效', 'ok') : DN.pill('草稿', 'warn')); tr.appendChild(st);
+      var st = document.createElement('td'); st.appendChild(r.status === 'active' ? DN.pill('已生效', 'ok') : (r.status === 'inactive' ? DN.pill('已停用', 'muted') : DN.pill('草稿', 'warn'))); tr.appendChild(st);
       var sc = document.createElement('td'); sc.textContent = r.sourceSystem || '-'; tr.appendChild(sc);
       var ve = document.createElement('td'); ve.textContent = 'v' + (r.version || 1); tr.appendChild(ve);
       var up = document.createElement('td'); up.appendChild(DN.timeAgo(r.updatedAt)); tr.appendChild(up);

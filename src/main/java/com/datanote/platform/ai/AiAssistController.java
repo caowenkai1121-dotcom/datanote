@@ -50,9 +50,7 @@ public class AiAssistController {
             return R.fail("消息不能为空");
         }
         String reply = aiAssistService.chat(message, context);
-        Map<String, String> result = new HashMap<>();
-        result.put("reply", reply);
-        return R.ok(result);
+        return R.ok(replyResult(reply));
     }
 
     /**
@@ -67,8 +65,7 @@ public class AiAssistController {
             return R.fail("问题不能为空");
         }
         String reply = aiAssistService.nl2sql(question, tableSchema);
-        Map<String, String> result = new HashMap<>();
-        result.put("reply", reply);
+        Map<String, String> result = replyResult(reply);
         // 提取 SQL 代码块
         String sql = extractSqlBlock(reply);
         if (sql != null) {
@@ -88,9 +85,7 @@ public class AiAssistController {
             return R.fail("SQL不能为空");
         }
         String reply = aiAssistService.explainSql(sql);
-        Map<String, String> result = new HashMap<>();
-        result.put("reply", reply);
-        return R.ok(result);
+        return R.ok(replyResult(reply));
     }
 
     /**
@@ -104,9 +99,7 @@ public class AiAssistController {
             return R.fail("SQL不能为空");
         }
         String reply = aiAssistService.optimizeSql(sql);
-        Map<String, String> result = new HashMap<>();
-        result.put("reply", reply);
-        return R.ok(result);
+        return R.ok(replyResult(reply));
     }
 
     /**
@@ -144,10 +137,11 @@ public class AiAssistController {
         saveConfigValue("ai.provider", body.get("provider"), "AI Provider");
         saveConfigValue("ai.base-url", body.get("baseUrl"), "API Base URL");
         saveConfigValue("ai.model", body.get("model"), "AI Model");
-        if (body.get("apiKey") != null && !body.get("apiKey").contains("***")) {
+        String apiKey = body.get("apiKey");
+        if (apiKey != null && !apiKey.contains("***")) {
             // 加密存储 API Key
-            String encrypted = CryptoUtil.encrypt(body.get("apiKey"), cryptoKey);
-            saveConfigValue("ai.api-key", encrypted != null ? encrypted : body.get("apiKey"), "API Key (encrypted)");
+            String encrypted = CryptoUtil.encrypt(apiKey, cryptoKey);
+            saveConfigValue("ai.api-key", encrypted != null ? encrypted : apiKey, "API Key (encrypted)");
         }
         // 通知 AiAssistService 重新加载配置
         aiAssistService.reloadConfig();
@@ -249,6 +243,12 @@ public class AiAssistController {
         result.put("cron", cron);
         result.put("raw", reply);
         return R.ok(result);
+    }
+
+    private Map<String, String> replyResult(String reply) {
+        Map<String, String> result = new HashMap<>();
+        result.put("reply", reply);
+        return result;
     }
 
     private String extractSqlBlock(String text) {

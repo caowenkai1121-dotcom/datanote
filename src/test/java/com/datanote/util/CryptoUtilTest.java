@@ -53,10 +53,17 @@ class CryptoUtilTest {
     }
 
     @Test
-    void decryptWithWrongKey_shouldThrow() {
+    void decryptWithWrongKey_shouldNotRecoverPlaintext() {
         String encrypted = CryptoUtil.encrypt("secret", KEY);
         String wrongKey = "fedcba0987654321";
-        assertThrows(RuntimeException.class, () -> CryptoUtil.decrypt(encrypted, wrongKey));
+        // AES/CBC 错误密钥绝大多数抛 BadPadding, 但约 1/256 概率 padding 偶然合法而不抛(原断言因此偶发失败/flaky)。
+        // 测真正的安全不变式: 错误密钥要么抛异常, 要么也绝不能还原出明文。
+        try {
+            String result = CryptoUtil.decrypt(encrypted, wrongKey);
+            assertNotEquals("secret", result);
+        } catch (RuntimeException expected) {
+            // 抛异常即满足
+        }
     }
 
     @Test

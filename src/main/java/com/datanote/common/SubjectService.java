@@ -17,6 +17,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class SubjectService {
 
+    /** 主题域业务分层最多 5 级(L1-L5) */
+    private static final int MAX_LEVEL = 5;
+
     private final DnSubjectMapper subjectMapper;
 
     /**
@@ -47,7 +50,7 @@ public class SubjectService {
             if (parent != null && parent.getLevel() != null) level = parent.getLevel() + 1;
             else if (parent != null) level = 2;
         }
-        if (level > 5) throw new IllegalArgumentException("主题域层级最多 5 级(L1-L5)");
+        if (level > MAX_LEVEL) throw new IllegalArgumentException("主题域层级最多 " + MAX_LEVEL + " 级(L1-L5)");
         subject.setLevel(level);
         subject.setCreatedAt(LocalDateTime.now());
         subjectMapper.insert(subject);

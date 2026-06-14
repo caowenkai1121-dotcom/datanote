@@ -158,6 +158,9 @@ public class SyncJobService {
         return job;
     }
 
+    /** 审计摘要中 tableConfig 的最大保留长度，超出截断并追加省略号。 */
+    private static final int SUMMARY_TABLE_CONFIG_MAX = 500;
+
     /** 审计摘要：关键字段 JSON（tableConfig 截断，避免过长）。 */
     private static String summary(DnSyncJob job) {
         if (job == null) {
@@ -167,7 +170,8 @@ public class SyncJobService {
         m.put("syncMode", job.getSyncMode());
         m.put("writeMode", job.getWriteMode());
         String tc = job.getTableConfig();
-        m.put("tableConfig", tc == null ? null : (tc.length() > 500 ? tc.substring(0, 500) + "..." : tc));
+        m.put("tableConfig", tc == null ? null
+                : (tc.length() > SUMMARY_TABLE_CONFIG_MAX ? tc.substring(0, SUMMARY_TABLE_CONFIG_MAX) + "..." : tc));
         return JSON.toJSONString(m);
     }
 

@@ -23,6 +23,8 @@ public class MdmIngestController {
     @Operation(summary = "读源表列名(供配置字段映射)")
     @GetMapping("/api/mdm/ingest/columns")
     public R<List<String>> columns(@RequestParam String db, @RequestParam String table) {
+        if (db == null || db.trim().isEmpty()) throw new BusinessException("源库不能为空");
+        if (table == null || table.trim().isEmpty()) throw new BusinessException("源表不能为空");
         try {
             return R.ok(ingestService.sourceColumns(db, table));
         } catch (Exception e) {

@@ -110,7 +110,7 @@
     }).catch(function (e) {
       _loading = false;
       statBox.innerHTML = ''; box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + (e && e.message ? e.message : e), function () { loadApproval(statBox, box); }));
+      box.appendChild(DN.errorBox('加载失败: ' + ((e && e.message) || '请稍后重试'), function () { loadApproval(statBox, box); }));
     });
   }
 
@@ -246,7 +246,7 @@
 
     var sec = DN.formSection('审批信息');
     // #19: 审批人由后端取当前登录用户记录, 不再手填(防冒名审批); 自己提交的申请后端会拦截自批
-    var fComment = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（建议填写）' });
+    var fComment = DN.h('textarea', { class: 'dn-form-input', style: 'width:100%;min-height:72px;resize:vertical', placeholder: isApprove ? '批准意见（可选）' : '驳回原因（必填）' });
     sec.add(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 10px', text: '审批人将自动记录为当前登录用户。' }));
     sec.add(DN.field('审批意见', fComment));
     body.appendChild(sec.el);
@@ -254,6 +254,7 @@
     var dr, foot;
     var doSave = function () {
       if (foot.ok.disabled) return;
+      if (!isApprove && !fComment.value.trim()) { DN.toast('请填写驳回原因', 'warn'); fComment.focus(); return; }
       var payload = { reviewComment: fComment.value.trim() };
       foot.busy(submitText === '确认批准' ? '批准中...' : '驳回中...');
       DN.post('/api/mdm/approval/' + encodeURIComponent(r.id) + '/' + action, payload).then(function () {

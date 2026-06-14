@@ -144,8 +144,8 @@ public class CronJobTool implements AiTool {
     }
 
     private Long idOf(JsonNode args) {
-        int v = AgentArgs.intVal(args, "id", -1);
-        return v < 0 ? null : (long) v;
+        Long v = AgentArgs.longVal(args, "id"); // 用 longVal 避免大 id 被截断为 int
+        return (v == null || v < 0) ? null : v;
     }
 
     private static String cap(String s, int max) {

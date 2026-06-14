@@ -259,10 +259,14 @@ public class ProjectReleaseService {
                         new LambdaQueryWrapper<com.datanote.domain.governance.model.DnQualityRun>()
                                 .eq(com.datanote.domain.governance.model.DnQualityRun::getRuleId, aid)
                                 .orderByDesc(com.datanote.domain.governance.model.DnQualityRun::getId).last("LIMIT 1"));
-                if (run != null && "failed".equalsIgnoreCase(run.getRunStatus())) {
+                // failed 与 error(执行异常)均视为未通过, 与全站口径一致(IssueService/ProjectOverviewService)
+                if (run != null && ("failed".equalsIgnoreCase(run.getRunStatus())
+                        || "error".equalsIgnoreCase(run.getRunStatus()))) {
+                    boolean isErr = "error".equalsIgnoreCase(run.getRunStatus());
+                    String label = isErr ? " 执行异常" : " 检查失败";
                     if (rule.getBlockDownstream() != null && rule.getBlockDownstream() == 1)
-                        hard.add("质量规则 " + name + " 检查失败(强规则)");
-                    else soft.add("质量规则 " + name + " 检查失败");
+                        hard.add("质量规则 " + name + label + "(强规则)");
+                    else soft.add("质量规则 " + name + label);
                 }
             } else if ("METRIC".equals(type)) {
                 // 指标无 blockDownstream 概念, 一律 soft 警示项

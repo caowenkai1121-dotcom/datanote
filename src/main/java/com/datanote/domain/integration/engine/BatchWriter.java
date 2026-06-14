@@ -40,9 +40,16 @@ public final class BatchWriter {
             if (slc != null) {
                 try {
                     long loaded = slc.load(targetTable, writeColumns, buffer);
-                    ctx.getWriteCount().addAndGet(loaded > 0 ? loaded : buffer.size());
+                    // 信任服务端真实新增行数(NumberLoadedRows)：Label Already Exists 幂等命中返回 0
+                    // (该批行已在前次导入时计数)，不再用 buffer.size() 兜底，避免页级重试时同批被重复累加。
+                    ctx.getWriteCount().addAndGet(Math.max(0, loaded));
                     return;
                 } catch (Exception slEx) {
+                    // INSERT 等不可幂等写模式:Stream Load 抛异常但可能服务端已导入(响应丢失窗口),回退 JDBC 会重复写入。
+                    // 故不回退,直接上抛由上层重试(配合稳定 Label 吸收重复);仅 UPSERT 等幂等模式才安全回退。
+                    if ("INSERT".equalsIgnoreCase(ctx.getWriteMode())) {
+                        throw slEx;
+                    }
                     ctx.log("WARN", "Stream Load 失败,回退 JDBC: " + slEx.getMessage());
                 }
             }

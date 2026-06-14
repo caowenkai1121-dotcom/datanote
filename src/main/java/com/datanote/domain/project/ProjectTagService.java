@@ -51,9 +51,13 @@ public class ProjectTagService {
     public void setProjectTags(Long projectId, List<Long> tagIds) {
         mappingMapper.delete(new LambdaQueryWrapper<DnProjectTagMapping>().eq(DnProjectTagMapping::getProjectId, projectId));
         if (tagIds == null) return;
+        // 仅校验本次请求涉及的标签是否真实存在(按需批量查, 避免全表扫)
+        java.util.Set<Long> wantIds = new java.util.LinkedHashSet<>();
+        for (Long tid : tagIds) if (tid != null) wantIds.add(tid);
+        if (wantIds.isEmpty()) return;
         java.util.Set<Long> existing = new java.util.HashSet<>();
-        List<DnProjectTag> allTags = tagMapper.selectList(null);
-        if (allTags != null) for (DnProjectTag t : allTags) {
+        List<DnProjectTag> hitTags = tagMapper.selectBatchIds(wantIds);
+        if (hitTags != null) for (DnProjectTag t : hitTags) {
             if (t != null) existing.add(t.getId());
         }
         java.util.Set<Long> seen = new java.util.HashSet<>();

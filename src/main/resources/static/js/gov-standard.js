@@ -198,8 +198,8 @@
 
   // 数据标准影响分析: 反查引用该数据元的模型属性(联动数据模型模块)
   function govStdImpact(code) {
-    fetch('/api/datamodel/standard-impact?elementCode=' + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (res) {
-      var rows = (res && res.code === 0 && res.data) || [];
+    DN.get('/api/datamodel/standard-impact?elementCode=' + encodeURIComponent(code)).then(function (data) {
+      var rows = data || [];
       var tbl = rows.length
         ? '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>模型</th><th>类型</th><th>状态</th><th>实体</th><th>属性</th><th>当前类型</th></tr></thead><tbody>'
           + rows.map(function (x) {
@@ -208,7 +208,7 @@
         : '<div style="padding:20px;color:var(--text-muted);text-align:center;">无数据模型引用该数据元</div>';
       var h = '<div style="min-width:560px;max-height:440px;overflow:auto;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">引用数据元 <b>' + DN.esc(code) + '</b> 的模型属性（改动标准前评估影响面，共 <b>' + rows.length + '</b> 处）</div>' + tbl + '</div>';
       if (window.projShowModalBox) window.projShowModalBox('数据标准影响分析 · ' + DN.esc(code), h);
-    }).catch(function () { DN.toast('影响分析加载失败', 'err'); });
+    }).catch(function (e) { DN.toast('影响分析加载失败: ' + (e && e.message ? e.message : e), 'error'); });
   }
 
   // ========== 数据元 ==========
@@ -260,6 +260,7 @@
         if (!code) { DN.toast('编码必填', 'err'); f.element_code.focus(); return; }
         // 编码格式校验：字母开头，仅允许字母/数字/下划线（数据元命名规范）
         if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(code)) { DN.toast('编码须字母开头，仅含字母/数字/下划线', 'err'); f.element_code.focus(); return; }
+        if (!f.name_cn.value.trim()) { DN.toast('中文名必填', 'err'); f.name_cn.focus(); return; }
         // 长度范围校验：可空，填则须为正整数（避免负值/0/非法字符入库）
         var lenRaw = f.length.value.trim(), len = null;
         if (lenRaw) {
@@ -351,6 +352,7 @@
           abbr: f.abbr.value.trim(), category: f.category.value.trim()
         };
         if (editingId != null) payload.id = editingId;
+        if (!payload.wordCn) { DN.toast('中文必填', 'err'); f.word_cn.focus(); return; }
         if (!payload.wordEn && !payload.abbr) { DN.toast('英文或缩写至少填一个', 'err'); f.word_en.focus(); return; }
         // 英文/缩写格式校验：仅允许英文字母（命名词根用于生成英文字段名）
         if (payload.wordEn && !/^[A-Za-z]+$/.test(payload.wordEn)) { DN.toast('英文仅允许字母', 'err'); f.word_en.focus(); return; }
@@ -423,6 +425,7 @@
         if (!payload.dictCode) { DN.toast('编码必填', 'err'); f.dict_code.focus(); return; }
         // 编码格式校验：字母开头，仅含字母/数字/下划线（码表编码作为枚举引用键）
         if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(payload.dictCode)) { DN.toast('编码须字母开头，仅含字母/数字/下划线', 'err'); f.dict_code.focus(); return; }
+        if (!payload.dictName) { DN.toast('名称必填', 'err'); f.dict_name.focus(); return; }
         guardSubmit(save, '保存中…', function () {
           return DN.post(API + '/dict/save', payload).then(function () { DN.toast('已保存', 'ok'); renderDicts(body); })
             .catch(function (e) { DN.toast(e && e.message || '保存失败', 'err'); });
@@ -444,6 +447,7 @@
         columns: [
           { key: 'dictCode', label: '编码', render: function (d) {
               return DN.h('a', { href: 'javascript:void(0)', text: d.dictCode || '',
+                title: (d.dictCode || '') + ' · 点击查看码表明细项',
                 style: 'color:var(--primary)', onclick: function () { openDictItems(d); } });
             } },
           { key: 'dictName', label: '名称', render: function (d) { return truncCell(d.dictName, 24); } },

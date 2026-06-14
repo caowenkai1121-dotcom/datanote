@@ -130,6 +130,8 @@ public class IncrementalSyncEngine implements SyncEngine {
                     int rowsThisPage = 0;
                     Object lastInc = cursorInc;
                     Object[] lastPk = cursorPk;
+                    Object pageMax = null;          // 本页读到的最大增量值（仅本页全部成功写入才并入水位）
+                    long dirtyBefore = ctx.getDirtyCount().get();
 
                     try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
                         if (firstPage) {
@@ -149,11 +151,15 @@ public class IncrementalSyncEngine implements SyncEngine {
                             while (rs.next()) {
                                 Object[] raw = new Object[srcColumns.size()];
                                 for (int i = 0; i < srcColumns.size(); i++) raw[i] = rs.getObject(i + 1);
-                                lastInc = raw[incIndex];
+                                Object rowInc = raw[incIndex];
                                 Object[] curPk = new Object[pkSourceIdx.length];
                                 for (int k = 0; k < pkSourceIdx.length; k++) curPk[k] = raw[pkSourceIdx[k]];
-                                lastPk = curPk;
-                                if (lastInc != null && strategy.compare(lastInc, maxValue) > 0) maxValue = lastInc;
+                                // 增量值为 NULL 不能作游标(SQL NULL 比较恒 UNKNOWN 会漏数)，仅更新游标/页内最大值时跳过
+                                if (rowInc != null) {
+                                    lastInc = rowInc;
+                                    lastPk = curPk;
+                                    if (pageMax == null || strategy.compare(rowInc, pageMax) > 0) pageMax = rowInc;
+                                }
                                 rowsThisPage++;
                                 Object[] row = rowProc.process(srcColumns, raw);
                                 if (row == null) continue;  // SKIP_ROW：计读不计写，游标/断点已按原始值推进
@@ -166,6 +172,12 @@ public class IncrementalSyncEngine implements SyncEngine {
                             bw.flush(); // 内部：批成功commit+writeCount；批失败回退逐行+阈值容错（超阈值抛 DirtyDataExceededException）
                             if (ctx.getRateLimiter() != null && rowsWritten > 0) ctx.getRateLimiter().acquire(rowsWritten);
                             if (rowsThisPage > 0) { cursorInc = lastInc; cursorPk = lastPk; }
+                            // 水位只按【已成功写入】推进：仅当本页无坏行丢弃(DLQ)时才把页内最大增量值并入断点；
+                            // 否则保守不推进，丢弃行下次仍可被重读(UPSERT 幂等吸收已写行)，避免静默丢数
+                            if (pageMax != null && ctx.getDirtyCount().get() == dirtyBefore
+                                    && strategy.compare(pageMax, maxValue) > 0) {
+                                maxValue = pageMax;
+                            }
                         }
                     }
 
@@ -174,6 +186,11 @@ public class IncrementalSyncEngine implements SyncEngine {
                     firstPage = false;
 
                     if (rowsThisPage < ctx.getBatchSize()) {
+                        break;
+                    }
+                    // 整页都是增量值为 NULL 的行(游标无法推进)，再查会拿同一页死循环，保守终止本表
+                    if (pageMax == null) {
+                        ctx.log("WARN", "本页增量字段全为 NULL，无法推进游标，终止本表增量: " + tc.getSourceTable());
                         break;
                     }
                 }

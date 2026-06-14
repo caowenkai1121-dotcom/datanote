@@ -128,7 +128,8 @@ public class AiAssistService {
                 fullMessage = "当前上下文：\n" + context + "\n\n用户问题：" + userMessage;
             }
 
-            String activeModel = MODEL_OVERRIDE.get() != null ? MODEL_OVERRIDE.get() : c.model; // 会话级热切优先
+            String override = MODEL_OVERRIDE.get();
+            String activeModel = override != null ? override : c.model; // 会话级热切优先(读一次, 避免重复 ThreadLocal 取值)
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", activeModel);
 
@@ -153,7 +154,7 @@ public class AiAssistService {
 
             String responseBody = callApi(objectMapper.writeValueAsString(requestBody), c.provider, c.apiKey, c.baseUrl);
             if (responseBody == null || responseBody.isEmpty()) {
-                log.error("AI API 返回空响应: provider={}, model={}", c.provider, c.model);
+                log.error("AI API 返回空响应: provider={}, model={}", c.provider, activeModel);
                 return "AI 返回格式异常";
             }
             JsonNode root = objectMapper.readTree(responseBody);
@@ -287,12 +288,8 @@ public class AiAssistService {
             conn.setDoOutput(true);
 
             String m = testModel != null && !testModel.isEmpty() ? testModel : "claude-sonnet-4-6";
-            String body;
-            if (openai) {
-                body = "{\"model\":\"" + m + "\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}";
-            } else {
-                body = "{\"model\":\"" + m + "\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}";
-            }
+            // OpenAI 兼容与 Anthropic 测试请求体一致(均 messages 数组), 原 if/else 两分支完全相同, 收为一行
+            String body = "{\"model\":\"" + m + "\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}";
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(body.getBytes(StandardCharsets.UTF_8));
             }

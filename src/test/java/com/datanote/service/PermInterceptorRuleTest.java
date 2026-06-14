@@ -27,6 +27,28 @@ class PermInterceptorRuleTest {
         // /api/rbac/me、usernames(协作选人) 不在敏感 GET 内, 放行
         assertNull(PermInterceptor.requiredPerm("GET", "/api/rbac/me"));
         assertNull(PermInterceptor.requiredPerm("GET", "/api/rbac/usernames"));
+        // 调度执行日志含 SQL/库表/连接信息, GET 须 operations:schedule(防按自增 runId 枚举读他人任务日志)
+        assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/run-log/5"));
+        assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/log-detail/12"));
+        assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/logs/3"));
+        // 今日状态/运行记录非敏感, 仍只要求登录
+        assertNull(PermInterceptor.requiredPerm("GET", "/api/scheduler/today"));
+        assertNull(PermInterceptor.requiredPerm("GET", "/api/scheduler/task-runs"));
+        // 数据源读: 列表/详情/库/表/列暴露连接配置与源库结构, GET 须 datasource:view
+        assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/list"));
+        assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/5"));
+        assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/5/tables"));
+        // 脚本上线审批队列含 payload SQL+申请人, 仅审批人(更具体规则须先于 /api/script 匹配)
+        assertEquals("develop:approve", PermInterceptor.requiredPerm("GET", "/api/script/changes"));
+        assertEquals("develop:approve", PermInterceptor.requiredPerm("GET", "/api/script/changes/pending-count"));
+        // 单脚本详情/版本/树含完整 SQL, GET 须 develop:view
+        assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/123"));
+        assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/123/versions"));
+        assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/tree"));
+        assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/all-with-content"));
+        // 系统配置 / AI 配置读须与写同权 settings:config
+        assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/system/config/doris"));
+        assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/ai/config"));
     }
 
     @Test
@@ -48,7 +70,14 @@ class PermInterceptorRuleTest {
     @Test
     void genericModuleWritePerms() {
         assertEquals("develop:edit", PermInterceptor.requiredPerm("POST", "/api/script/save"));
+        assertEquals("develop:edit", PermInterceptor.requiredPerm("POST", "/api/snippet/save"));
+        assertEquals("datasource:edit", PermInterceptor.requiredPerm("POST", "/api/datasource/save"));
+        assertEquals("datasource:edit", PermInterceptor.requiredPerm("POST", "/api/datasource/test"));
+        assertEquals("datasource:edit", PermInterceptor.requiredPerm("DELETE", "/api/datasource/9"));
+        assertEquals("develop:edit", PermInterceptor.requiredPerm("DELETE", "/api/snippet/5"));
+        assertNull(PermInterceptor.requiredPerm("GET", "/api/snippet/list"));   // 列表只要登录(按用户隔离)
         assertEquals("governance:quality", PermInterceptor.requiredPerm("POST", "/api/quality/rule/save"));
+        assertEquals("governance:quality", PermInterceptor.requiredPerm("POST", "/api/quality/rules/batch-status"));
         assertEquals("governance:issue", PermInterceptor.requiredPerm("POST", "/api/gov/health/issues"));
         assertEquals("governance:manage", PermInterceptor.requiredPerm("POST", "/api/gov/masking/policies"));
         assertEquals("metrics:edit", PermInterceptor.requiredPerm("DELETE", "/api/metric/9"));

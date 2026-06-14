@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.*;
 
 /**
@@ -34,6 +33,7 @@ public class ScriptService {
     private final DnScriptVersionMapper scriptVersionMapper;
     private final DnSyncTaskMapper syncTaskMapper;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;  // 脚本保存→异步重建SQL血缘
 
     // ========== 文件树 ==========
 
@@ -151,6 +151,8 @@ public class ScriptService {
             if (script.getTimeoutSeconds() == null) script.setTimeoutSeconds(3600);
             scriptMapper.insert(script);
         }
+        // 脚本(SQL)变更→异步重建血缘/依赖, 开发改完即时反馈影响面, 不必等夜间兜底
+        eventPublisher.publishEvent(new com.datanote.domain.orchestration.ScriptSavedEvent(script.getId()));
         return script;
     }
 
@@ -169,6 +171,8 @@ public class ScriptService {
     }
 
     public void updateDatabaseName(Long id, String databaseName) {
+        if (id == null) throw new BusinessException("脚本 ID 不能为空");
+        if (scriptMapper.selectById(id) == null) throw new ResourceNotFoundException("脚本");   // 防对不存在脚本静默空更新
         DnScript script = new DnScript();
         script.setId(id);
         script.setDatabaseName(databaseName);
@@ -247,11 +251,46 @@ public class ScriptService {
 
     public List<DnScriptVersion> listVersions(Long scriptId) {
         if (scriptId == null) return new ArrayList<>();
-        QueryWrapper<DnScriptVersion> qw = new QueryWrapper<>();
-        qw.eq("script_id", scriptId)
-          .orderByDesc("committed_at", "id")
-          .last("LIMIT 10");
-        return scriptVersionMapper.selectList(qw);
+        // 最近版本(保存+上线混排)取前10
+        QueryWrapper<DnScriptVersion> recentQ = new QueryWrapper<>();
+        recentQ.eq("script_id", scriptId).orderByDesc("committed_at", "id").last("LIMIT 10");
+        List<DnScriptVersion> recent = scriptVersionMapper.selectList(recentQ);
+        // 上线版本永久保留, 须始终可见(可能被较新的保存挤出前10而丢失关键回滚点)
+        QueryWrapper<DnScriptVersion> onlineQ = new QueryWrapper<>();
+        onlineQ.eq("script_id", scriptId).eq("version_type", "online").orderByDesc("committed_at", "id");
+        List<DnScriptVersion> online = scriptVersionMapper.selectList(onlineQ);
+        java.util.LinkedHashMap<Long, DnScriptVersion> merged = new java.util.LinkedHashMap<>();
+        if (recent != null) for (DnScriptVersion v : recent) if (v != null) merged.put(v.getId(), v);
+        if (online != null) for (DnScriptVersion v : online) if (v != null) merged.putIfAbsent(v.getId(), v);
+        List<DnScriptVersion> all = new ArrayList<>(merged.values());
+        all.sort((a, b) -> {
+            int c = compareTimeDesc(a.getCommittedAt(), b.getCommittedAt());
+            return c != 0 ? c : Long.compare(b.getId() == null ? 0 : b.getId(), a.getId() == null ? 0 : a.getId());
+        });
+        return all;
+    }
+
+    /** committed_at 降序比较, null 排末尾。 */
+    private static int compareTimeDesc(LocalDateTime a, LocalDateTime b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+        return b.compareTo(a);
+    }
+
+    /** 回滚到指定历史版本: 先把当前内容存为历史版本(防误操作丢失现状), 再用目标版本内容覆盖。 */
+    @Transactional(rollbackFor = Exception.class)
+    public DnScript rollbackToVersion(Long scriptId, Long versionId) {
+        if (scriptId == null || versionId == null) throw new BusinessException("脚本ID与版本ID不能为空");
+        DnScript script = scriptMapper.selectById(scriptId);
+        if (script == null) throw new ResourceNotFoundException("脚本");
+        DnScriptVersion ver = scriptVersionMapper.selectById(versionId);
+        if (ver == null || !scriptId.equals(ver.getScriptId())) throw new BusinessException("版本不存在或不属于该脚本");
+        createScriptVersion(script);   // 当前内容先存为历史版本, 保留回滚前现状
+        script.setContent(ver.getContent());
+        script.setUpdatedAt(LocalDateTime.now());
+        scriptMapper.updateById(script);
+        return scriptMapper.selectById(scriptId);
     }
 
     private void createScriptVersion(DnScript script) {

@@ -154,6 +154,12 @@
         }));
       }
       box.appendChild(riskCard.el);
+    }).catch(function (e) {
+      // 渲染/取数异常兜底: 给可重试错误态, 避免概览区静默空白(原内部 then 无 catch 会成未处理拒绝)
+      if (box && document.body.contains(box)) {
+        box.innerHTML = '';
+        box.appendChild(DN.errorBox('安全态势概览加载失败: ' + (e && e.message || '未知错误'), function () { buildSecurityOverview(box); }));
+      }
     });
   }
 
@@ -235,7 +241,7 @@
         return DN.h('option', { value: t, text: t });
       })));
     // 库/表/列改用系统级联下拉，避免手输
-    var picker = DN.dbTablePicker({ withColumn: true, defaultDb: isEdit ? p.dbName : null });
+    var picker = DN.dbTablePicker({ withColumn: true, defaultDb: isEdit ? p.dbName : null, defaultTable: isEdit ? p.tableName : null, defaultColumn: isEdit ? p.columnName : null });
     var funcSel = DN.h('select', { class: 'dn-form-select' }, [
       DN.h('option', { value: 'MASK', text: 'MASK 掩码' }),
       DN.h('option', { value: 'HASH', text: 'HASH (MD5)' }),
@@ -323,7 +329,7 @@
         return DN.h('option', { value: r.roleCode, text: r.roleName + ' (' + r.roleCode + ')' });
       })));
     // 库/表改用系统级联下拉
-    var picker = DN.dbTablePicker({ defaultDb: isEdit ? p.dbName : null });
+    var picker = DN.dbTablePicker({ defaultDb: isEdit ? p.dbName : null, defaultTable: isEdit ? p.tableName : null });
     var filterInput = DN.h('input', { class: 'dn-form-input', value: isEdit ? (p.rowFilter || '') : '', placeholder: "行过滤片段，如 region = 'EAST'" });
     var statusSel = DN.h('select', { class: 'dn-form-select' }, [
       DN.h('option', { value: '1', text: '启用' }), DN.h('option', { value: '0', text: '停用' })

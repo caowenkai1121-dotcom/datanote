@@ -6,11 +6,7 @@ import com.datanote.domain.orchestration.model.DnLineageEdge;
 import com.datanote.domain.orchestration.model.DnTaskDependency;
 import com.alibaba.fastjson.JSONObject;
 import com.datanote.common.exception.ResourceNotFoundException;
-import com.datanote.domain.orchestration.DolphinService;
 import com.datanote.domain.develop.ScriptService;
-import com.datanote.domain.orchestration.LineageEdgeService;
-import com.datanote.domain.orchestration.SqlLineageService;
-import com.datanote.domain.orchestration.TaskDependencyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -94,9 +90,14 @@ public class LineageController {
     @Operation(summary = "手动添加依赖")
     public R<String> addDependency(@RequestBody Map<String, Object> body) {
         if (body == null || body.get("taskId") == null || body.get("upstreamTaskId") == null) return R.fail("taskId/upstreamTaskId 不能为空");
-        Long taskId = Long.valueOf(body.get("taskId").toString());
+        Long taskId, upstreamTaskId;
+        try {
+            taskId = Long.valueOf(body.get("taskId").toString());
+            upstreamTaskId = Long.valueOf(body.get("upstreamTaskId").toString());
+        } catch (NumberFormatException e) {
+            return R.fail("taskId/upstreamTaskId 必须为数字");
+        }
         String taskType = (String) body.get("taskType");
-        Long upstreamTaskId = Long.valueOf(body.get("upstreamTaskId").toString());
         String upstreamTaskType = (String) body.get("upstreamTaskType");
         String depTable = body.get("depTable") != null ? body.get("depTable").toString() : null;
 
@@ -136,6 +137,28 @@ public class LineageController {
     @Operation(summary = "查询字段级入边(目标列来源)")
     public R<List<DnLineageEdge>> columnEdges(@RequestParam String db, @RequestParam String table) {
         return R.ok(lineageEdgeService.columnEdgesInto(db, table));
+    }
+
+    @GetMapping("/column-impact")
+    @Operation(summary = "字段下游影响(多跳BFS)")
+    public R<List<Map<String, Object>>> columnImpact(@RequestParam String db, @RequestParam String table,
+                                                     @RequestParam String column) {
+        return R.ok(lineageEdgeService.columnImpact(db, table, column));
+    }
+
+    @GetMapping("/column-trace")
+    @Operation(summary = "字段上游溯源(多跳BFS)")
+    public R<List<Map<String, Object>>> columnTrace(@RequestParam String db, @RequestParam String table,
+                                                    @RequestParam String column) {
+        return R.ok(lineageEdgeService.columnTrace(db, table, column));
+    }
+
+    @GetMapping("/column-graph")
+    @Operation(summary = "以某字段为中心的N跳字段级血缘子图(双向BFS)")
+    public R<Map<String, Object>> columnGraph(@RequestParam String db, @RequestParam String table,
+                                              @RequestParam String column, @RequestParam(defaultValue = "2") int depth) {
+        int d = depth < 1 ? 1 : (depth > 6 ? 6 : depth);
+        return R.ok(lineageEdgeService.columnGraph(db, table, column, d));
     }
 
     @PostMapping("/parse-scripts")

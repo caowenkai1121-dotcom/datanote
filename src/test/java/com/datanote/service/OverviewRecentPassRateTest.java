@@ -12,7 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * 治理总览近期通过率纯函数单测 —— 仅计 SUCCESS 且 passRate 非空，均值 *100 保留 1 位。
+ * 治理总览近期通过率纯函数单测 —— 仅计 SUCCESS 且 passRate 非空，pass_rate 落库即 0-100 百分数，直接取均值保留 1 位。
  */
 class OverviewRecentPassRateTest {
 
@@ -26,19 +26,19 @@ class OverviewRecentPassRateTest {
     @Test
     void averageOfSuccessRuns() {
         List<DnQualityRun> runs = Arrays.asList(
-                run("SUCCESS", 1.0),
-                run("SUCCESS", 0.8));
-        // (1.0 + 0.8)/2 * 100 = 90.0
+                run("SUCCESS", 100.0),
+                run("SUCCESS", 80.0));
+        // (100 + 80)/2 = 90.0
         assertEquals(90.0, OverviewService.recentPassRate(runs), 1e-9);
     }
 
     @Test
     void nonSuccessAndNullPassRateExcluded() {
         List<DnQualityRun> runs = Arrays.asList(
-                run("SUCCESS", 0.9),
-                run("FAILED", 0.1),       // 非 SUCCESS 剔除
+                run("SUCCESS", 90.0),
+                run("FAILED", 10.0),      // 非 SUCCESS 剔除
                 run("SUCCESS", null));    // passRate 空剔除
-        // 仅 0.9 计入 → 90.0
+        // 仅 90.0 计入 → 90.0
         assertEquals(90.0, OverviewService.recentPassRate(runs), 1e-9);
     }
 
@@ -51,10 +51,10 @@ class OverviewRecentPassRateTest {
     @Test
     void roundedToOneDecimal() {
         List<DnQualityRun> runs = Arrays.asList(
-                run("SUCCESS", 1.0),
-                run("SUCCESS", 1.0),
+                run("SUCCESS", 100.0),
+                run("SUCCESS", 100.0),
                 run("SUCCESS", 0.0));
-        // (1+1+0)/3 * 100 = 66.666... → 66.7
+        // (100+100+0)/3 = 66.666... → 66.7
         assertEquals(66.7, OverviewService.recentPassRate(runs), 1e-9);
     }
 }

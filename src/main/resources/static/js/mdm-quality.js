@@ -153,7 +153,7 @@
             var raw = r.bizKey || ('#' + r.id);
             var s = String(raw);
             // 超长业务主键截断展示，title 悬浮看全文
-            return s.length > 40 ? DN.h('span', { title: s, text: s.slice(0, 40) + '…' }) : DN.h('span', { text: s });
+            return s.length > 40 ? DN.h('span', { title: s, text: s.slice(0, 40) + '…', style: 'cursor:help' }) : DN.h('span', { text: s });
           } },
         { key: 'status', label: '状态', render: function (r) {
             return r.status === 'active' ? DN.pill('生效', 'ok') : r.status === 'draft' ? DN.pill('草稿', 'warn') : DN.pill(r.status || '-', 'muted');
@@ -197,7 +197,7 @@
                   objectRef: 'mdm:' + (ent.id || '') + ':' + r.id
                 }).then(function (res) {
                   DN.toast('已生成治理工单' + (res && res.id ? ' #' + res.id : '') + '，可在 治理→治理健康分→工单 跟踪', 'ok');
-                }).catch(function (e) { DN.toast('生成失败: ' + (e && e.message ? e.message : ''), 'err'); });
+                }).catch(function (e) { DN.toast('生成失败: ' + (e && e.message ? e.message : '请稍后重试'), 'err'); });
               });
             } }));
             return w;

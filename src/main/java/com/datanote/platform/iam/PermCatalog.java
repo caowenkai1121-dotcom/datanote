@@ -42,6 +42,7 @@ public final class PermCatalog {
             new Perm("develop:view", "进入数据开发", "develop", "数据开发", true),
             new Perm("develop:edit", "脚本/任务增删改", "develop", "数据开发", false),
             new Perm("develop:run", "运行脚本/调试", "develop", "数据开发", false),
+            new Perm("develop:approve", "审批脚本上线", "develop", "数据开发", false),
             // 数据运维
             new Perm("operations:view", "进入数据运维", "operations", "数据运维", true),
             new Perm("operations:schedule", "调度管理(上下线/重跑)", "operations", "数据运维", false),
@@ -77,6 +78,9 @@ public final class PermCatalog {
             new Perm("project:manage", "项目/任务/成员维护", "project", "项目管理", false),
             new Perm("project:approve", "项目发布审批", "project", "项目管理", false),
             new Perm("project:all-data", "查看全部项目(数据范围, 不限本人参与)", "project", "项目管理", false),
+            // 数据源管理(读/写, 跨数据开发/同步/治理复用, 独立管控连接信息)
+            new Perm("datasource:view", "查看数据源(读)", "datasource", "数据源管理", false),
+            new Perm("datasource:edit", "数据源增删改(写)", "datasource", "数据源管理", false),
             // 系统管理
             new Perm("settings:view", "进入系统管理", "settings", "系统管理", true),
             new Perm("settings:user", "用户/角色/权限管理", "settings", "系统管理", false),

@@ -70,7 +70,7 @@
       };
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('实体加载失败: ' + (e && e.message ? e.message : e), function () { c.innerHTML = ''; MDM_RENDERERS.hierarchy(c); }));
+      box.appendChild(DN.errorBox('实体加载失败: ' + ((e && e.message) || '请稍后重试'), function () { c.innerHTML = ''; MDM_RENDERERS.hierarchy(c); }));
     });
   };
 
@@ -146,7 +146,7 @@
       }
     }).catch(function (e) {
       box.innerHTML = '';
-      box.appendChild(DN.errorBox('加载失败: ' + (e && e.message ? e.message : e), function () { loadHierarchy(box); }));
+      box.appendChild(DN.errorBox('加载失败: ' + ((e && e.message) || '请稍后重试'), function () { loadHierarchy(box); }));
     });
   }
 

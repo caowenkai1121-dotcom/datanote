@@ -41,6 +41,9 @@ public class SyncFolderController {
     @Operation(summary = "保存文件夹（新增/改名）")
     @PostMapping("/save")
     public R<DnSyncFolder> save(@RequestBody DnSyncFolder folder) {
+        if (folder == null || folder.getFolderName() == null || folder.getFolderName().trim().isEmpty()) {
+            return R.fail("文件夹名称不能为空");
+        }
         if (folder.getParentId() == null) {
             folder.setParentId(0L);
         }

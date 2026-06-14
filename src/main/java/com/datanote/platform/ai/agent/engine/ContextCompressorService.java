@@ -22,7 +22,7 @@ public class ContextCompressorService {
 
     private final AiAssistService aiAssistService;
 
-    /** trace 超此字符数触发压缩(可配, 默认 12000) */
+    /** trace 超此字符数触发压缩(可配, 默认 18000) */
     @Value("${datanote.ai.compress-threshold:18000}")
     private int compressThreshold;
     /** 保护近期比例: 保后 45% 逐字, 压前 55% 为摘要 */
@@ -31,6 +31,8 @@ public class ContextCompressorService {
     private static final int MIN_HEAD_CHARS = 1200;
     /** 防抖动: 距上次压缩新增不足此字符数则跳过 */
     private static final int MIN_GROWTH = 3000;
+    /** 压缩结果须至少省到原文此比例以下才采纳(否则视为无效压缩, 防抖动) */
+    private static final double MAX_KEEP_RATIO = 0.9;
 
     /** 按需压缩 st.trace(就地替换)。返回是否实际压缩。 */
     public boolean maybeCompress(AgentState st, String goal) {
@@ -46,7 +48,7 @@ public class ContextCompressorService {
             st.lastCompressedLen = t.length(); // 摘要失败: 标记防立即重试, 保留原文
             return false;
         }
-        if (compressed.length() >= (int) (t.length() * 0.9)) {
+        if (compressed.length() >= (int) (t.length() * MAX_KEEP_RATIO)) {
             st.lastCompressedLen = t.length(); // 节省<10%: 放弃, 防抖动
             return false;
         }

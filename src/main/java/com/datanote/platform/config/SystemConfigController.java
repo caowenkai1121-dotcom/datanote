@@ -1,6 +1,5 @@
 package com.datanote.platform.config;
 
-import com.datanote.platform.config.HiveConfig;
 import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import com.datanote.common.model.R;
@@ -24,6 +23,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SystemConfigController {
 
+    /** 密码脱敏占位符: 读取时回写, 保存时识别为"未改动"跳过, 避免明文回显与误覆盖 */
+    private static final String PASSWORD_MASK = "******";
+
     private final DnSystemConfigMapper configMapper;
     private final HiveConfig hiveConfig;
 
@@ -42,7 +44,7 @@ public class SystemConfigController {
             if (cfg.getConfigKey().startsWith(prefix)) {
                 String val = cfg.getConfigValue();
                 if (cfg.getConfigKey().endsWith(".password") && val != null && !val.isEmpty()) {
-                    result.put(cfg.getConfigKey(), "******");
+                    result.put(cfg.getConfigKey(), PASSWORD_MASK);
                 } else {
                     result.put(cfg.getConfigKey(), val);
                 }
@@ -57,12 +59,15 @@ public class SystemConfigController {
             String key = entry.getKey();
             String value = entry.getValue();
 
-            if (key.endsWith(".password") && "******".equals(value)) {
+            if (key.endsWith(".password") && PASSWORD_MASK.equals(value)) {
                 continue;
             }
 
-            if (key.endsWith(".password") && value != null && !value.isEmpty()
-                    && cryptoKey != null && !cryptoKey.isEmpty()) {
+            if (key.endsWith(".password") && value != null && !value.isEmpty()) {
+                // 未配加密密钥时拒绝保存密码类配置, 避免明文静默落库(读取时显示 ****** 制造已脱敏假象)
+                if (cryptoKey == null || cryptoKey.isEmpty()) {
+                    return R.fail("未配置加密密钥(datanote.crypto.key), 拒绝保存密码类配置以防明文落库");
+                }
                 value = CryptoUtil.encrypt(value, cryptoKey);
             }
 
@@ -113,7 +118,7 @@ public class SystemConfigController {
 
     private String resolveDorisPassword(String submittedPassword) {
         if (submittedPassword != null && !submittedPassword.trim().isEmpty()
-                && !"******".equals(submittedPassword) && !"***".equals(submittedPassword)) {
+                && !PASSWORD_MASK.equals(submittedPassword) && !"***".equals(submittedPassword)) {
             return submittedPassword;
         }
 
@@ -122,11 +127,6 @@ public class SystemConfigController {
             return CryptoUtil.decryptSafe(cfg.getConfigValue(), cryptoKey);
         }
         return envDorisPassword;
-    }
-
-    @PostMapping("/test-hdfs")
-    public R<String> testHdfs(@RequestBody Map<String, String> params) {
-        return R.fail("HDFS is no longer required after switching the warehouse engine to Doris.");
     }
 
     @GetMapping({"/doris-status", "/hive-status"})

@@ -13,7 +13,7 @@ import com.datanote.domain.governance.QualityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -24,11 +24,15 @@ import java.util.Map;
 /**
  * 数据质量管理 Controller
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/quality")
 @Tag(name = "数据质量管理", description = "质量规则的增删改查、执行检查、结果查询")
 @RequiredArgsConstructor
 public class QualityController {
+
+    /** 规则启用状态(status=1 表示启用), 列表/批量/补单统一口径 */
+    private static final int STATUS_ENABLED = 1;
 
     private final DnQualityRuleMapper ruleMapper;
     private final DnQualityRunMapper runMapper;
@@ -83,11 +87,42 @@ public class QualityController {
                 rule.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
             }
             if (rule.getStatus() == null) {
-                rule.setStatus(1);
+                rule.setStatus(STATUS_ENABLED);
             }
             ruleMapper.insert(rule);
         }
         return R.ok(rule);
+    }
+
+    /**
+     * 批量启停质量规则(status: 1=启用, 0=停用)
+     */
+    @Operation(summary = "批量启停质量规则")
+    @PostMapping("/rules/batch-status")
+    public R<Map<String, Object>> batchStatus(@RequestBody Map<String, Object> body) {
+        Object idsObj = body == null ? null : body.get("ids");
+        Object statusObj = body == null ? null : body.get("status");
+        if (!(idsObj instanceof List) || ((List<?>) idsObj).isEmpty()) {
+            throw new com.datanote.common.exception.BusinessException("请选择要操作的规则");
+        }
+        int status;
+        try {
+            status = statusObj instanceof Number ? ((Number) statusObj).intValue() : Integer.parseInt(String.valueOf(statusObj));
+        } catch (NumberFormatException e) {
+            throw new com.datanote.common.exception.BusinessException("状态值无效");
+        }
+        if (status != 0 && status != 1) throw new com.datanote.common.exception.BusinessException("状态只能为 0(停用)或 1(启用)");
+        List<Long> ids = new java.util.ArrayList<>();
+        for (Object o : (List<?>) idsObj) {
+            try { ids.add(Long.valueOf(String.valueOf(o))); } catch (NumberFormatException ignored) {}
+        }
+        if (ids.isEmpty()) throw new com.datanote.common.exception.BusinessException("规则 ID 无效");
+        int n = ruleMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnQualityRule>()
+                .in("id", ids).set("status", status).set("updated_at", LocalDateTime.now()));
+        Map<String, Object> out = new HashMap<>();
+        out.put("updated", n);
+        out.put("status", status);
+        return R.ok(out);
     }
 
     /**
@@ -118,17 +153,23 @@ public class QualityController {
     /**
      * 批量执行所有启用的质量规则
      */
-    @Transactional(rollbackFor = Exception.class)
     @Operation(summary = "批量执行质量检查")
     @PostMapping("/run-all")
     public R<String> runAll() {
+        // 不加批级 @Transactional: executeRule 逐条独立落库(与单条 run 接口一致),
+        // 避免整批 N 次远程慢查询占用同一连接, 也避免任一规则异常回滚掉已成功的执行记录。
         QueryWrapper<DnQualityRule> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
+        qw.eq("status", STATUS_ENABLED);
         List<DnQualityRule> rules = ruleMapper.selectList(qw);
+        if (rules == null) rules = new java.util.ArrayList<>();   // selectList 理论可返回 null, 统一兜底
         int count = 0;
         for (DnQualityRule rule : rules) {
-            qualityService.executeRule(rule);
-            count++;
+            try {
+                qualityService.executeRule(rule);
+                count++;
+            } catch (Exception e) {
+                log.warn("批量质检单条规则执行失败 ruleId={}: {}", rule.getId(), e.getMessage());
+            }
         }
         return R.ok("已执行 " + count + " 条规则");
     }
@@ -149,8 +190,9 @@ public class QualityController {
     @PostMapping("/issues/sync")
     public R<Map<String, Object>> syncIssues() {
         QueryWrapper<DnQualityRule> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
+        qw.eq("status", STATUS_ENABLED);
         List<DnQualityRule> rules = ruleMapper.selectList(qw);
+        if (rules == null) rules = new java.util.ArrayList<>();   // selectList 理论可返回 null, 统一兜底
         int failing = 0;
         for (DnQualityRule rule : rules) {
             QueryWrapper<DnQualityRun> rq = new QueryWrapper<>();
@@ -189,6 +231,7 @@ public class QualityController {
         QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
         qw.eq("rule_id", ruleId).orderByDesc("started_at").last("LIMIT 20");
         List<DnQualityRun> runs = runMapper.selectList(qw);
+        if (runs == null) runs = new java.util.ArrayList<>();   // selectList 理论可返回 null, 统一兜底
         List<Map<String, Object>> points = new java.util.ArrayList<>();
         // 倒序查出后反转为时间正序
         for (int i = runs.size() - 1; i >= 0; i--) {
@@ -222,7 +265,7 @@ public class QualityController {
 
         long totalRules = ruleMapper.selectCount(null);
         QueryWrapper<DnQualityRule> enabledQw = new QueryWrapper<>();
-        enabledQw.eq("status", 1);
+        enabledQw.eq("status", STATUS_ENABLED);
         long enabledRules = ruleMapper.selectCount(enabledQw);
 
         data.put("totalRules", totalRules);

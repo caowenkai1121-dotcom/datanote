@@ -155,6 +155,10 @@ public class CdcEngineManager {
 
     private void doStart(DnSyncJob job) {
         Long jobId = job.getId();
+        // 仅 CDC 模式任务可经 CDC 接口启动，否则会把 FULL/INCREMENTAL 任务误挂 CDC 引擎并污染状态
+        if (!"CDC".equalsIgnoreCase(job.getSyncMode())) {
+            throw new IllegalStateException("该任务非 CDC 模式，不能用 CDC 接口启动 jobId=" + jobId);
+        }
         DnDatasource sourceDs = datasourceMapper.selectById(job.getSourceDsId());
         if (sourceDs == null) {
             throw new IllegalArgumentException("源数据源不存在: " + job.getSourceDsId());

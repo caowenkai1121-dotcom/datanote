@@ -173,16 +173,22 @@ public class IssueService {
 
     /** 排行榜：按 owner 统计 总数/未关单/已关单 */
     public List<Map<String, Object>> leaderboard() {
-        List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        // DB 侧 group by owner,status 聚合, 避免全表拉进内存
+        QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+        qw.select("owner", "status", "count(*) AS cnt").groupBy("owner", "status");
+        List<Map<String, Object>> rows = issueMapper.selectMaps(qw);
+        if (rows == null) rows = Collections.emptyList();
         Map<String, long[]> agg = new LinkedHashMap<>(); // owner -> [total, open, closed]
-        if (all == null) all = Collections.emptyList();
-        for (DnGovernanceIssue i : all) {
-            if (i == null) continue;
-            String owner = notBlank(i.getOwner()) ? i.getOwner() : "未分配";
+        for (Map<String, Object> r : rows) {
+            if (r == null) continue;
+            Object o = r.get("owner");
+            String ownerStr = o == null ? null : String.valueOf(o);
+            String owner = notBlank(ownerStr) ? ownerStr : "未分配";
+            long cnt = ((Number) r.get("cnt")).longValue();
             long[] a = agg.computeIfAbsent(owner, k -> new long[3]);
-            a[0]++;
-            if ("CLOSED".equals(i.getStatus())) a[2]++;
-            else a[1]++;
+            a[0] += cnt;
+            if ("CLOSED".equals(r.get("status"))) a[2] += cnt;
+            else a[1] += cnt;
         }
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map.Entry<String, long[]> e : agg.entrySet()) {
@@ -378,7 +384,7 @@ public class IssueService {
     private static long ageHours(LocalDateTime from, LocalDateTime now) {
         if (from == null) return 0L;
         long h = java.time.Duration.between(from, now).toHours();
-        return h < 0 ? 0L : h;
+        return Math.max(0L, h);
     }
 
     /** CSV 单元格：防注入(=,+,-,@ 开头前缀单引号) + 转义逗号/引号/换行 */
@@ -435,10 +441,15 @@ public class IssueService {
     /** 工单趋势：近 days 天每日新建数 / 关闭数(关闭以 CLOSED 工单 updated_at 计) */
     public List<Map<String, Object>> trend(int days) {
         int d = days <= 0 ? 30 : Math.min(days, 365);
-        List<DnGovernanceIssue> all = issueMapper.selectList(null);
+        java.time.LocalDate today = java.time.LocalDate.now();
+        // 仅拉取窗口内有贡献的行: created_at 在窗口内, 或 已关闭(CLOSED)且 updated_at 在窗口内
+        LocalDateTime windowStart = today.minusDays(d - 1).atStartOfDay();
+        QueryWrapper<DnGovernanceIssue> qw = new QueryWrapper<>();
+        qw.ge("created_at", windowStart)
+          .or(w -> w.eq("status", "CLOSED").ge("updated_at", windowStart));
+        List<DnGovernanceIssue> all = issueMapper.selectList(qw);
         if (all == null) all = Collections.emptyList();
         Map<java.time.LocalDate, int[]> bucket = new LinkedHashMap<>();
-        java.time.LocalDate today = java.time.LocalDate.now();
         for (int k = d - 1; k >= 0; k--) bucket.put(today.minusDays(k), new int[2]); // [created, closed]
         for (DnGovernanceIssue i : all) {
             if (i == null) continue;

@@ -128,7 +128,13 @@ public final class SqlMaskRewriter {
         // 建立 别名/表名 → TableRef 映射
         Map<String, TableRef> aliasMap = new HashMap<>();
         List<TableRef> fromTables = new ArrayList<>();
-        collectTables(block.getFrom(), dft, aliasMap, fromTables);
+        boolean[] unresolvableSource = new boolean[]{false};
+        collectTables(block.getFrom(), dft, aliasMap, fromTables, unresolvableSource);
+        // FROM 含无法定位的表源（派生表/子查询/UNION 表源等）：裸列无法归属、行过滤无法注入，
+        // 存在脱敏/行策略时保守 fail-closed，杜绝子查询绕过列脱敏与行级权限
+        if (unresolvableSource[0]) {
+            throw new MaskRewriteException("查询含子查询/派生表，无法精确脱敏，受限用户拒绝执行");
+        }
 
         boolean changed = false;
         // 1) 列脱敏
@@ -296,7 +302,8 @@ public final class SqlMaskRewriter {
     // ========== from 表收集 ==========
 
     private static void collectTables(SQLTableSource from, String dft,
-                                      Map<String, TableRef> aliasMap, List<TableRef> out) {
+                                      Map<String, TableRef> aliasMap, List<TableRef> out,
+                                      boolean[] unresolvableSource) {
         if (from == null) return;
         if (from instanceof SQLExprTableSource) {
             SQLExprTableSource ets = (SQLExprTableSource) from;
@@ -308,13 +315,18 @@ public final class SqlMaskRewriter {
                     aliasMap.put(ets.getAlias().toLowerCase(), ref);
                 }
                 aliasMap.put(ref.table.toLowerCase(), ref);
+            } else {
+                unresolvableSource[0] = true;
             }
         } else if (from instanceof SQLJoinTableSource) {
             SQLJoinTableSource join = (SQLJoinTableSource) from;
-            collectTables(join.getLeft(), dft, aliasMap, out);
-            collectTables(join.getRight(), dft, aliasMap, out);
+            collectTables(join.getLeft(), dft, aliasMap, out, unresolvableSource);
+            collectTables(join.getRight(), dft, aliasMap, out, unresolvableSource);
+        } else {
+            // 子查询/派生表(SQLSubqueryTableSource)、UNION 表源等无法精确列定位，
+            // 标记为不可解析，由 rewrite 在有策略时 fail-closed（防子查询绕过脱敏与行级权限）
+            unresolvableSource[0] = true;
         }
-        // 子查询等其它表源不参与精确列定位（裸列将无法归属，安全跳过）
     }
 
     private static TableRef parseQualified(String raw, String dft) {

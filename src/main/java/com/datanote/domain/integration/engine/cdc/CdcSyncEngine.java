@@ -151,6 +151,9 @@ public class CdcSyncEngine {
                 // 引擎线程内启动失败/正常结束时回置 running，避免状态假象且无法重启
                 .using((success, message, error) -> {
                     running.set(false);
+                    // 引擎自行退出(binlog 出错等)时关闭线程池，否则旧 executor 守护线程永久泄漏(重启会被新 executor 覆盖字段)
+                    ExecutorService ex = this.executor;
+                    if (ex != null) ex.shutdown();
                     if (!success) {
                         log.error("CDC引擎退出: jobId={}, msg={}", jobId, message, error);
                         broadcast("ERROR", "CDC 引擎退出: " + message);
@@ -275,7 +278,19 @@ public class CdcSyncEngine {
             applies.add(new Apply(tc, change));
         }
 
-        // 2) 单连接单事务按序写入；失败回滚并抛出（触发整批重试，offset 不推进）
+        // 2) DDL 漂移预处理：在数据事务之外、用独立连接先把缺失列 ALTER 就绪。
+        //    MySQL DDL 会触发隐式提交，若在批事务中间执行会破坏整批回滚的 at-least-once 语义，故必须前置。
+        if (!applies.isEmpty()) {
+            try {
+                prepareDriftColumns(applies);
+            } catch (Exception e) {
+                errorCount.incrementAndGet();
+                broadcast("ERROR", "CDC DDL 漂移预处理失败，将重试整批: " + e.getMessage());
+                throw new RuntimeException("CDC drift DDL failed, will retry", e);
+            }
+        }
+
+        // 3) 单连接单事务按序写入；失败回滚并抛出（触发整批重试，offset 不推进）
         if (!applies.isEmpty()) {
             try (Connection conn = connectionManager.getConnection(job.getTargetDsId(), job.getTargetDb())) {
                 boolean prevAuto = conn.getAutoCommit();
@@ -302,7 +317,7 @@ public class CdcSyncEngine {
             }
         }
 
-        // 3) 整批成功（或无可应用变更）：推进 offset
+        // 4) 整批成功（或无可应用变更）：推进 offset
         for (ChangeEvent<String, String> rec : records) {
             committer.markProcessed(rec);
         }
@@ -313,10 +328,10 @@ public class CdcSyncEngine {
     private void applyChange(Connection conn, TableSyncConfig tc, ChangeOp change) throws Exception {
         String targetTable = tc.getTargetTable();
         String targetDb = job.getTargetDb();
+        // DDL 漂移列已在 handleBatch 的 prepareDriftColumns 预处理(数据事务外)，此处只做幂等 DML
         switch (change.opType) {
             case INSERT:
                 Map<String, Object> insertProj = projectByFields(change.after, tc);
-                syncDriftColumns(conn, targetDb, targetTable, change.sourceTable, insertProj);
                 writeUpsert(conn, targetDb, targetTable, insertProj);
                 break;
             case UPDATE:
@@ -326,7 +341,6 @@ public class CdcSyncEngine {
                 if (isPkChanged(targetDb, targetTable, beforeProj, afterProj)) {
                     writeDelete(conn, targetDb, targetTable, beforeProj);
                 }
-                syncDriftColumns(conn, targetDb, targetTable, change.sourceTable, afterProj);
                 writeUpsert(conn, targetDb, targetTable, afterProj);
                 break;
             case DELETE:
@@ -334,6 +348,31 @@ public class CdcSyncEngine {
                 break;
             default:
                 break;
+        }
+    }
+
+    /**
+     * 批级 DDL 漂移预处理（默认关）：在数据事务之外、用独立连接(autocommit)把整批 INSERT/UPDATE 涉及的
+     * 缺失列先 ALTER ADD COLUMN 就绪。DDL 在此独立执行，不会再触发数据事务的隐式提交。
+     * 仅 job.ddlSyncEnabled==1 时打开连接；关时零开销直接返回。
+     */
+    private void prepareDriftColumns(List<Apply> applies) throws Exception {
+        if (job.getDdlSyncEnabled() == null || job.getDdlSyncEnabled() != 1) {
+            return;
+        }
+        String targetDb = job.getTargetDb();
+        try (Connection ddlConn = connectionManager.getConnection(job.getTargetDsId(), targetDb)) {
+            for (Apply a : applies) {
+                Map<String, Object> proj;
+                if (a.change.opType == OpType.INSERT) {
+                    proj = projectByFields(a.change.after, a.tc);
+                } else if (a.change.opType == OpType.UPDATE) {
+                    proj = projectByFields(a.change.after, a.tc);
+                } else {
+                    continue; // DELETE 不涉及新列
+                }
+                syncDriftColumns(ddlConn, targetDb, a.tc.getTargetTable(), a.change.sourceTable, proj);
+            }
         }
     }
 
@@ -347,6 +386,12 @@ public class CdcSyncEngine {
             return false;
         }
         for (String pk : pks) {
+            // 投影后(字段映射)缺失主键列：无法判定主键是否变更，静默判'未变更'会漏删旧行致孤儿。
+            // 告警提示主键须纳入同步字段，避免误判。
+            if (!before.containsKey(pk) || !after.containsKey(pk)) {
+                log.warn("CDC 主键列 {} 不在同步字段投影中，无法检测主键变更(可能产生孤儿行)，表={}.{}，请将主键纳入同步字段", pk, db, table);
+                continue;
+            }
             Object b = before.get(pk);
             Object a = after.get(pk);
             if (b == null ? a != null : !b.equals(a)) {
@@ -503,13 +548,13 @@ public class CdcSyncEngine {
     }
 
     /**
-     * DDL 漂移同步（默认关）：after 出现目标表没有的列时，查源列类型并 ALTER 目标 ADD COLUMN。
-     * 仅 job.ddlSyncEnabled==1 时生效；关时第一行直接 return（写路径零开销零行为变化）。
-     * ALTER 失败上抛（由 handleBatch 回滚重试，避免列加不上导致后续 INSERT 列不匹配静默失败）。
+     * DDL 漂移同步单表处理：after 出现目标表没有的列时，查源列类型并 ALTER 目标 ADD COLUMN。
+     * 由 prepareDriftColumns 在数据事务之外用独立连接调用。
+     * ALTER 失败上抛（由 handleBatch 触发整批重试，因尚未写数据，重试干净，避免列不匹配静默失败）。
      */
     private void syncDriftColumns(Connection conn, String db, String table, String sourceTable,
                                   Map<String, Object> after) throws Exception {
-        if (job.getDdlSyncEnabled() == null || job.getDdlSyncEnabled() != 1 || after == null) {
+        if (after == null) {
             return;
         }
         java.util.Set<String> existing = targetColumnsOf(db, table);

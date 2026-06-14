@@ -5,8 +5,6 @@ import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.common.model.R;
-import com.datanote.domain.orchestration.DolphinService;
-import com.datanote.domain.orchestration.TaskSchedulerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -37,9 +35,12 @@ public class ScheduleMonitorController {
     @GetMapping("/today")
     @Operation(summary = "获取今日调度状态")
     public R<Map<String, Object>> getTodayStatus(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Boolean myTask) {
         LocalDate runDate = date != null ? date : LocalDate.now().minusDays(1);
-        return R.ok(taskSchedulerService.getTodayStatus(runDate));
+        // 勾选"我的任务"时按当前登录用户过滤(原 myTask 参数后端未消费, 过滤语义失效)
+        String createdBy = (myTask != null && myTask) ? com.datanote.platform.iam.CurrentUserUtil.currentUser() : null;
+        return R.ok(taskSchedulerService.getTodayStatus(runDate, createdBy));
     }
 
     @GetMapping("/backfill-runs")
@@ -80,6 +81,8 @@ public class ScheduleMonitorController {
             }
             JSONArray instances = dolphinService.getTaskInstances(script.getScriptName(), pageNo, pageSize);
             return R.ok(instances != null ? instances : new JSONArray());
+        } catch (ResourceNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             log.error("查询调度执行日志失败, scriptId={}", scriptId, e);
             return R.fail("查询日志失败");

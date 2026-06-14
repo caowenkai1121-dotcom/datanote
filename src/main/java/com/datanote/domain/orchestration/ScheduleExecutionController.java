@@ -121,6 +121,8 @@ public class ScheduleExecutionController {
     public R<List<String>> cronPreview(@RequestBody CronPreviewRequest req) {
         String cronExpr = req.getCron();
         int count = req.getCount() != null ? req.getCount() : 5;
+        // 收敛 count 上限，防止传超大值触发百万次 cron 计算造成轻量 DoS
+        count = Math.max(1, Math.min(count, 50));
         if (cronExpr == null || cronExpr.trim().isEmpty()) {
             return R.fail("Cron 表达式不能为空");
         }

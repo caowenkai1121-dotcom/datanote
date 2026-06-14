@@ -34,6 +34,11 @@ public class MetadataCenterController {
     private final MetadataCrawlerService crawlerService;
     private final DnMetaCollectLogMapper collectLogMapper;
 
+    /** 表搜索默认/最大分页与采集日志条数限制 */
+    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = 5000;
+    private static final int COLLECT_LOG_LIMIT = 50;
+
     /**
      * 搜索表元数据
      */
@@ -64,7 +69,7 @@ public class MetadataCenterController {
         // 同条件全量计数(须在 orderBy/limit 之前), 供前端展示真实总数, 不再静默截断
         long total = tableMetaMapper.selectCount(qw);
         qw.orderByDesc("updated_at");
-        int lim = (limit == null || limit <= 0) ? 100 : Math.min(limit, 5000);   // 无参默认 100 行为不变
+        int lim = (limit == null || limit <= 0) ? DEFAULT_PAGE_SIZE : Math.min(limit, MAX_PAGE_SIZE);   // 无参默认 100 行为不变
         int off = (offset == null || offset < 0) ? 0 : offset;
         qw.last("LIMIT " + lim + " OFFSET " + off);
         Map<String, Object> data = new HashMap<>();
@@ -216,7 +221,7 @@ public class MetadataCenterController {
     @GetMapping("/collect-logs")
     public R<List<DnMetaCollectLog>> collectLogs() {
         QueryWrapper<DnMetaCollectLog> qw = new QueryWrapper<>();
-        qw.orderByDesc("started_at").last("LIMIT 50");
+        qw.orderByDesc("started_at").last("LIMIT " + COLLECT_LOG_LIMIT);
         return R.ok(collectLogMapper.selectList(qw));
     }
 }

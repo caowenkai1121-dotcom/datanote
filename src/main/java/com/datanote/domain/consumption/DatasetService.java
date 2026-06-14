@@ -118,7 +118,7 @@ public class DatasetService {
             throw new BusinessException("脱敏改写失败，已拒绝执行(fail-closed): " + e.getMessage());
         }
         try {
-            Map<String, Object> r = hiveService.executeSQL(masked);
+            Map<String, Object> r = hiveService.executeSQL(masked, true);   // 纵深防御: 只读连接
             // 空安全：executeSQL 异常返回时可能为 null，避免 r.get 触发 NPE
             if (r == null) {
                 audit(who, ds.getDatasetCode(), 0L, System.currentTimeMillis() - start, false, "执行引擎返回空结果");
@@ -153,12 +153,14 @@ public class DatasetService {
     private static final Pattern LINE_COMMENT = Pattern.compile("--[^\\r\\n]*");
     private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
 
-    /** 只读校验：去注释后必须以 SELECT/WITH 开头，否则抛 BusinessException(防写操作)。 */
+    /** 只读校验：去注释后必须以 SELECT/WITH 开头, 且去尾分号后不得再含分号(拒多语句)，否则抛 BusinessException(防写操作)。 */
     static void validateReadOnly(String sql) {
         String c = sql == null ? "" : sql;
         c = LINE_COMMENT.matcher(c).replaceAll(" ");
         c = BLOCK_COMMENT.matcher(c).replaceAll(" ").trim();
+        if (c.endsWith(";")) c = c.substring(0, c.length() - 1).trim();
         if (c.isEmpty()) throw new BusinessException("查询SQL不能为空");
+        if (c.indexOf(';') >= 0) throw new BusinessException("数据集仅允许只读查询: 不允许多语句(检测到分号)");
         String u = c.toUpperCase();
         if (!(u.startsWith("SELECT") || u.startsWith("WITH"))) {
             throw new BusinessException("数据集仅允许只读 SELECT/WITH 查询");

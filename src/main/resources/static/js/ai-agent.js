@@ -27,21 +27,6 @@
     return inner;
   }
 
-  // 富文本：把深链 token 转成可点 chip，其余按纯文本节点拼（绝不 innerHTML 拼 LLM 文本，防 XSS）
-  var RICH_RE = /\[表:([^\]\.]+)\.([^\]]+)\]|\[规则:#?(\d+)\]|\[任务:#?(\d+)\]/g;
-  function renderRich(container, text) {
-    var last = 0, m;
-    RICH_RE.lastIndex = 0;
-    while ((m = RICH_RE.exec(text)) !== null) {
-      if (m.index > last) container.appendChild(document.createTextNode(text.slice(last, m.index)));
-      if (m[1] != null) container.appendChild(linkChip('🔗 ' + m[1] + '.' + m[2], function () { go('catalog', { openTable: { db: m[1], table: m[2] } }); }));
-      else if (m[3] != null) container.appendChild(linkChip('🔗 规则#' + m[3], function () { go('governance', { gov: 'quality', ruleId: Number(m[3]) }); }));
-      else if (m[4] != null) container.appendChild(linkChip('🔗 任务#' + m[4], function () { go('dbsync', { openDetail: Number(m[4]) }); }));
-      last = m.index + m[0].length;
-    }
-    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
-  }
-
   function linkChip(label, onclick) {
     return DN.h('a', { href: 'javascript:void(0)', text: label, onclick: onclick,
       style: 'display:inline-block;margin:0 3px;padding:1px 9px;border-radius:var(--radius-lg);background:var(--primary);color:var(--text-inverse);font-size:12px;text-decoration:none;' });
@@ -67,8 +52,18 @@
     if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
   }
 
+  // URL scheme 白名单: 仅 http(s):// 与站内相对路径(/...)可点; javascript:/data:/vbscript: 等伪协议降级纯文本防 XSS
+  function isSafeUrl(url) {
+    var u = String(url == null ? '' : url).trim();
+    if (/^\//.test(u)) return true;                 // 站内相对路径
+    return /^https?:\/\//i.test(u);                 // 仅 http/https 绝对地址
+  }
   // 真实 <a href> 链接(下载/外链可点); 下载类加 download 属性, 其余新标签页打开
   function urlChip(label, url) {
+    if (!isSafeUrl(url)) {
+      // 非白名单 scheme(javascript: 等)不渲染为可点链接, 降级为纯文本(原文+url)
+      return document.createTextNode(label + '(' + String(url == null ? '' : url) + ')');
+    }
     var isDl = /\/api\/ai\/agent\/files\//.test(url) || /\/download(\?|$)/.test(url);
     var a = DN.h('a', { href: url, text: (isDl && !/^[⬇↓]/.test(label) ? '⬇ ' : '') + label,
       style: 'display:inline-block;margin:0 3px;padding:2px 10px;border-radius:var(--radius-lg);background:var(--primary);color:var(--text-inverse);font-size:12px;text-decoration:none;' });
@@ -227,8 +222,8 @@
     var scroll = DN.h('div', { style: 'overflow:auto;max-height:340px;' });
     var tbl = DN.h('table', { style: 'border-collapse:collapse;width:100%;font-size:12px;' });
     var thr = DN.h('tr', {});
-    thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;color:var(--text-muted);' }));
-    cols.forEach(function (c) { thr.appendChild(DN.h('th', { text: String(c), style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;' })); });
+    thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;z-index:1;color:var(--text-muted);' }));
+    cols.forEach(function (c) { thr.appendChild(DN.h('th', { text: String(c), style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1;' })); });
     tbl.appendChild(thr);
     rows.forEach(function (row, ri) {
       var tr = DN.h('tr', {});
@@ -531,6 +526,10 @@
           flowEl.appendChild(questionCard({ sessionId: id, questions: qs }));
         }
       }
+      // 待人工审批: 重建审批卡(修复刷新后批准/拒绝卡消失致写操作审批闭环断开)
+      else if (sess.status === 'wait_approval') {
+        loadApproval(id);
+      }
       scrollBottom();
     }).catch(function () {});
   }
@@ -702,7 +701,7 @@
         var toggle = DN.h('button', { class: 'btn btn-sm', text: on ? '停用' : '启用', 'data-perm': 'assistant:use' });
         toggle.onclick = function () { toggle.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/toggle', { enabled: on ? 0 : 1 }).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); toggle.disabled = false; }); };
         var del = DN.h('button', { class: 'btn btn-sm', text: '删除', 'data-perm': 'assistant:use' });
-        del.onclick = function () { del.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/remove', {}).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); del.disabled = false; }); };
+        del.onclick = function () { DN.confirm('确认删除该定时任务？删除后不再自动执行。', { title: '删除定时任务', danger: true }).then(function (ok) { if (!ok) return; del.disabled = true; DN.post('/api/ai/agent/cron/' + j.id + '/remove', {}).then(function () { renderCrons(body); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); del.disabled = false; }); }); };
         btns.appendChild(toggle); btns.appendChild(del);
         card.appendChild(btns);
         body.appendChild(card);
@@ -819,7 +818,7 @@
     if (sessionId) fd.append('sessionId', sessionId);
     if (DN.toast) DN.toast('上传中…', 'info');
     fetch('/api/ai/agent/files/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (res) {
         var data = res && res.data ? res.data : [];
         var errs = data.filter(function (x) { return x && x.error; });
@@ -849,7 +848,7 @@
     ]);
     var dl = DN.h('a', { href: '/api/ai/agent/files/' + f.id + '/download', title: '下载', text: '↓', style: 'flex:0 0 auto;text-decoration:none;color:var(--primary);font-size:17px;font-weight:700;padding:0 5px;' });
     var del = DN.h('span', { title: '删除', text: '✕', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });
-    del.onclick = function () { DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); };
+    del.onclick = function () { DN.confirm('确认删除文件「' + (f.name || '') + '」？', { title: '删除文件', danger: true }).then(function (ok) { if (!ok) return; DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); }); };
     row.appendChild(info); row.appendChild(dl); row.appendChild(del);
     return row;
   }

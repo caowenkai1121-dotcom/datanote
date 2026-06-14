@@ -43,10 +43,13 @@ public class EmbeddingService {
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
 
-    private volatile String baseUrl;
-    private volatile String apiKey;
-    private volatile String model;
-    private volatile int dim;
+    /** 运行时配置不可变快照: volatile 单引用原子发布, 消除 reloadConfig 与 embed 并发时的跨字段撕裂读(切 provider/换 key+url)。 */
+    private static final class EmbConf {
+        final String baseUrl, apiKey, model;
+        final int dim;
+        EmbConf(String b, String k, String m, int d) { baseUrl = b; apiKey = k; model = m; dim = d; }
+    }
+    private volatile EmbConf conf = new EmbConf("", "", "text-embedding-v3", 1024);
 
     public EmbeddingService(DnSystemConfigMapper systemConfigMapper, ObjectMapper objectMapper) {
         this.systemConfigMapper = systemConfigMapper;
@@ -55,36 +58,38 @@ public class EmbeddingService {
 
     @PostConstruct
     public void reloadConfig() {
+        EmbConf c;
         try {
+            String apiKey;
             String dbKey = db("ai.embedding-api-key");
             if (dbKey != null && !dbKey.isEmpty()) {
                 String dec = CryptoUtil.decryptSafe(dbKey, cryptoKey);
-                this.apiKey = dec != null ? dec : dbKey;
+                apiKey = dec != null ? dec : dbKey;
             } else {
-                this.apiKey = envApiKey;
+                apiKey = envApiKey;
             }
             String dbUrl = db("ai.embedding-base-url");
-            this.baseUrl = nonEmpty(dbUrl) ? dbUrl : envBaseUrl;
+            String baseUrl = nonEmpty(dbUrl) ? dbUrl : envBaseUrl;
             String dbModel = db("ai.embedding-model");
-            this.model = nonEmpty(dbModel) ? dbModel : envModel;
+            String model = nonEmpty(dbModel) ? dbModel : envModel;
             String dbDim = db("ai.embedding-dim");
-            this.dim = parseInt(dbDim, envDim);
+            int dim = parseInt(dbDim, envDim);
+            c = new EmbConf(baseUrl, apiKey, model, dim);
         } catch (Exception e) {
-            this.apiKey = envApiKey;
-            this.baseUrl = envBaseUrl;
-            this.model = envModel;
-            this.dim = envDim;
+            c = new EmbConf(envBaseUrl, envApiKey, envModel, envDim);
             log.warn("[embedding] 配置加载异常,使用环境默认: {}", e.getMessage());
         }
-        log.info("[embedding] loaded: model={}, dim={}, configured={}", model, dim, isAvailable());
+        this.conf = c; // 单次 volatile 写: 原子发布自洽快照
+        log.info("[embedding] loaded: model={}, dim={}, configured={}", c.model, c.dim, isAvailable());
     }
 
     public boolean isAvailable() {
-        return nonEmpty(apiKey) && nonEmpty(baseUrl);
+        EmbConf c = this.conf;
+        return nonEmpty(c.apiKey) && nonEmpty(c.baseUrl);
     }
 
     public int dim() {
-        return dim;
+        return this.conf.dim;
     }
 
     public float[] embed(String text) {
@@ -112,6 +117,7 @@ public class EmbeddingService {
 
     /** 单批(≤MAX_BATCH)嵌入。 */
     private List<float[]> embedChunk(List<String> texts) {
+        EmbConf c = this.conf; // 单次 volatile 读, 全程用自洽快照
         try {
             // 单条截断, 防超长文本致整批 422 静默丢点
             List<String> capped = new ArrayList<>(texts.size());
@@ -120,23 +126,33 @@ public class EmbeddingService {
                 else capped.add(t.length() > MAX_INPUT_CHARS ? t.substring(0, MAX_INPUT_CHARS) : t);
             }
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", model);
+            body.put("model", c.model);
             body.put("input", capped);
-            String resp = post(baseUrl.replaceAll("/+$", "") + "/embeddings",
-                    objectMapper.writeValueAsString(body));
+            String resp = post(c.baseUrl.replaceAll("/+$", "") + "/embeddings",
+                    objectMapper.writeValueAsString(body), c.apiKey);
             if (resp == null) return null;
             JsonNode root = objectMapper.readTree(resp);
             JsonNode data = root.get("data");
             if (data == null || !data.isArray()) {
-                log.warn("[embedding] 响应无 data: {}", resp.length() > 200 ? resp.substring(0, 200) : resp);
+                log.warn("[embedding] 响应无 data: {}", logResp(resp));
                 return null;
             }
-            List<float[]> out = new ArrayList<>();
+            // 按响应项的 index 字段回填对应槽位, 不依赖 data 数组顺序(规范不保证有序), 防向量错配到不同文本; index 缺失则退化为位置对应
+            float[][] slots = new float[texts.size()][];
+            int pos = 0;
             for (JsonNode d : data) {
                 JsonNode emb = d.get("embedding");
-                if (emb == null || !emb.isArray()) continue;
+                if (emb == null || !emb.isArray()) { pos++; continue; }
                 float[] v = new float[emb.size()];
                 for (int i = 0; i < emb.size(); i++) v[i] = (float) emb.get(i).asDouble();
+                JsonNode idxNode = d.get("index");
+                int idx = (idxNode != null && idxNode.isInt()) ? idxNode.asInt() : pos;
+                if (idx >= 0 && idx < slots.length) slots[idx] = v;
+                pos++;
+            }
+            List<float[]> out = new ArrayList<>(texts.size());
+            for (float[] v : slots) {
+                if (v == null) continue;
                 out.add(v);
             }
             return out;
@@ -146,13 +162,13 @@ public class EmbeddingService {
         }
     }
 
-    private String post(String url, String json) {
+    private String post(String url, String json, String apiKey) {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            if (apiKey != null) conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(20000);
             conn.setDoOutput(true);
@@ -169,7 +185,7 @@ public class EmbeddingService {
             is.close();
             String resp = new String(bos.toByteArray(), StandardCharsets.UTF_8);
             if (code < 200 || code >= 300) {
-                log.warn("[embedding] HTTP {} : {}", code, resp.length() > 200 ? resp.substring(0, 200) : resp);
+                log.warn("[embedding] HTTP {} : {}", code, logResp(resp));
                 return null;
             }
             return resp;
@@ -201,5 +217,12 @@ public class EmbeddingService {
         } catch (NumberFormatException e) {
             return def;
         }
+    }
+
+    /** 日志截断: 防超长响应体刷屏日志(异常/错误响应只取前缀)。 */
+    private static final int LOG_RESP_MAX = 200;
+
+    private static String logResp(String resp) {
+        return resp.length() > LOG_RESP_MAX ? resp.substring(0, LOG_RESP_MAX) : resp;
     }
 }

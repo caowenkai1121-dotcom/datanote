@@ -17,6 +17,8 @@ public class ProjectTaskService {
 
     private static final Set<String> STATUS = new HashSet<>(Arrays.asList("TODO", "DOING", "DONE"));
     private static final Set<String> PRIORITY = new HashSet<>(Arrays.asList("HIGH", "MEDIUM", "LOW"));
+    // 任务关联实体类型白名单(防脏数据): 非法类型一律清空
+    private static final Set<String> REF_TYPES = new HashSet<>(Arrays.asList("SYNC_JOB", "SCRIPT", "QUALITY_RULE", "METRIC", "GOV_ISSUE"));
 
     private final DnProjectTaskMapper taskMapper;
     private final DnProjectMilestoneMapper milestoneMapper;
@@ -44,7 +46,7 @@ public class ProjectTaskService {
         if (t.getStatus() == null || !STATUS.contains(t.getStatus())) t.setStatus("TODO");
         if (t.getPriority() == null || !PRIORITY.contains(t.getPriority())) t.setPriority("MEDIUM");
         // 关联实体白名单, 非法类型一律清空(防脏数据)
-        if (t.getRefType() != null && !java.util.Arrays.asList("SYNC_JOB", "SCRIPT", "QUALITY_RULE", "METRIC", "GOV_ISSUE").contains(t.getRefType())) {
+        if (t.getRefType() != null && !REF_TYPES.contains(t.getRefType())) {
             t.setRefType(null); t.setRefId(null);
         }
         if (t.getRefType() == null) t.setRefId(null);
@@ -151,7 +153,8 @@ public class ProjectTaskService {
         for (DnProjectTask t : tasks) if (t.getProjectId() != null) pids.add(t.getProjectId());
         Map<Long, String> pname = new HashMap<>();
         if (!pids.isEmpty()) {
-            for (com.datanote.domain.project.model.DnProject p : projectMapper.selectBatchIds(pids)) {
+            List<com.datanote.domain.project.model.DnProject> _ps = projectMapper.selectBatchIds(pids);
+            if (_ps != null) for (com.datanote.domain.project.model.DnProject p : _ps) { // selectList 理论可返回 null
                 if (p != null) pname.put(p.getId(), p.getProjectName());
             }
         }
@@ -168,6 +171,7 @@ public class ProjectTaskService {
     }
 
     public void deleteTask(Long projectId, Long taskId) {
+        projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权
         DnProjectTask t = taskMapper.selectById(taskId);
         if (t == null) return;
         if (!projectId.equals(t.getProjectId())) throw new IllegalArgumentException("任务不属于该项目");
@@ -179,6 +183,7 @@ public class ProjectTaskService {
     // ===== IV-1: 任务评论(协作触达) =====
 
     public List<com.datanote.domain.project.model.DnProjectTaskComment> listComments(Long projectId, Long taskId) {
+        projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权
         DnProjectTask t = taskMapper.selectById(taskId);
         if (t == null || !projectId.equals(t.getProjectId())) throw new IllegalArgumentException("任务不存在");
         return commentMapper.selectList(new LambdaQueryWrapper<com.datanote.domain.project.model.DnProjectTaskComment>()
@@ -187,6 +192,7 @@ public class ProjectTaskService {
     }
 
     public com.datanote.domain.project.model.DnProjectTaskComment addComment(Long projectId, Long taskId, String content) {
+        projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权
         DnProjectTask t = taskMapper.selectById(taskId);
         if (t == null || !projectId.equals(t.getProjectId())) throw new IllegalArgumentException("任务不存在");
         if (content == null || content.trim().isEmpty()) throw new IllegalArgumentException("评论内容不能为空");

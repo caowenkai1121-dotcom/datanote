@@ -26,6 +26,8 @@ public final class FilterExpressionBuilder {
         if (conds == null || conds.isEmpty()) return "";
         String logic = o.getString("logic");
         logic = "OR".equalsIgnoreCase(logic) ? " OR " : " AND ";
+        // MySQL/Doris 反斜杠是转义符,字符串字面量需先转义反斜杠;ANSI 方言(PG/Oracle/SQLServer)反斜杠非转义符,只转义单引号
+        boolean backslashEscapes = quoter.apply("x").startsWith("`");
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < conds.size(); i++) {
             JSONObject c = conds.getJSONObject(i);
@@ -34,14 +36,17 @@ public final class FilterExpressionBuilder {
             if (!SqlIdentifiers.isValid(col)) throw new IllegalArgumentException("非法过滤列: " + col);
             if (op == null || !OPS.contains(op.toUpperCase())) throw new IllegalArgumentException("非法过滤操作符: " + op);
             if (i > 0) sb.append(logic);
-            sb.append(quoter.apply(col)).append(" ").append(op.toUpperCase()).append(" ").append(literal(c.get("value")));
+            sb.append(quoter.apply(col)).append(" ").append(op.toUpperCase()).append(" ").append(literal(c.get("value"), backslashEscapes));
         }
         return sb.append(")").toString();
     }
 
-    private static String literal(Object v) {
+    private static String literal(Object v, boolean backslashEscapes) {
         if (v == null) return "NULL";
         if (v instanceof Number || v instanceof Boolean) return v.toString();
-        return "'" + v.toString().replace("'", "''") + "'";
+        String s = v.toString();
+        // 先转义反斜杠(仅 MySQL/Doris)再转义单引号,防尾部反斜杠把闭合单引号转义掉造成注入
+        if (backslashEscapes) s = s.replace("\\", "\\\\");
+        return "'" + s.replace("'", "''") + "'";
     }
 }

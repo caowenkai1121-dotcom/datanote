@@ -26,6 +26,12 @@ import java.util.Map;
 @Component
 public class GraphStoreClient {
 
+    /** 启动探活瞬时失败后惰性重探的退避间隔（毫秒）。 */
+    private static final long PROBE_BACKOFF_MS = 30000L;
+    /** 保证 Table.fqn 唯一的约束（幂等创建，MERGE 无重复节点）。 */
+    private static final String CONSTRAINT_TABLE_FQN =
+            "CREATE CONSTRAINT dn_table_fqn IF NOT EXISTS FOR (t:Table) REQUIRE t.fqn IS UNIQUE";
+
     private final ObjectMapper objectMapper;
 
     @Value("${datanote.graph.enabled:false}")
@@ -54,7 +60,7 @@ public class GraphStoreClient {
             List<Map<String, Object>> r = run("RETURN 1 AS ok", null);
             if (r != null) {
                 // 唯一约束(幂等), 保证 fqn 唯一、MERGE 无重复节点
-                run("CREATE CONSTRAINT dn_table_fqn IF NOT EXISTS FOR (t:Table) REQUIRE t.fqn IS UNIQUE", null);
+                run(CONSTRAINT_TABLE_FQN, null);
                 ready = true;
                 log.info("[graph] 图数据库已就绪: {}", baseUrl);
             } else {
@@ -70,14 +76,14 @@ public class GraphStoreClient {
         if (ready) return true;
         // 启动探活瞬时失败 → 惰性重探(30s 退避)自愈
         long now = System.currentTimeMillis();
-        if (now - lastProbe < 30000) return false;
+        if (now - lastProbe < PROBE_BACKOFF_MS) return false;
         synchronized (this) {
             if (ready) return true;
-            if (System.currentTimeMillis() - lastProbe < 30000) return false;
+            if (System.currentTimeMillis() - lastProbe < PROBE_BACKOFF_MS) return false;
             lastProbe = System.currentTimeMillis();
             try {
                 if (run("RETURN 1 AS ok", null) != null) {
-                    run("CREATE CONSTRAINT dn_table_fqn IF NOT EXISTS FOR (t:Table) REQUIRE t.fqn IS UNIQUE", null);
+                    run(CONSTRAINT_TABLE_FQN, null);
                     ready = true;
                     log.info("[graph] 惰性重探成功, 启用: {}", baseUrl);
                 }

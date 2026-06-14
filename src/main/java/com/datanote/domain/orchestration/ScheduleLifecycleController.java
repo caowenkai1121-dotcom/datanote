@@ -2,8 +2,6 @@ package com.datanote.domain.orchestration;
 
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
-import com.datanote.domain.orchestration.ScheduleLifecycleService;
-import com.datanote.domain.orchestration.ScheduleTargetType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +29,8 @@ public class ScheduleLifecycleController {
     public R<Map<String, Object>> online(@PathVariable Long scriptId) {
         try {
             return R.ok(lifecycleService.onlineRemote(scriptId, ScheduleTargetType.SCRIPT));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("脚本上线失败, scriptId={}", scriptId, e);
             return R.fail("脚本上线失败");
@@ -70,6 +70,8 @@ public class ScheduleLifecycleController {
     public R<Map<String, Object>> syncOnline(@PathVariable Long taskId) {
         try {
             return R.ok(lifecycleService.onlineRemote(taskId, ScheduleTargetType.SYNC));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("同步任务上线失败, taskId={}", taskId, e);
             return R.fail("同步任务上线失败");

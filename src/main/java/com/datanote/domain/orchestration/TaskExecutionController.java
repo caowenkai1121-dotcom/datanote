@@ -1,6 +1,7 @@
 package com.datanote.domain.orchestration;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.datanote.common.Constants;
 import com.datanote.domain.orchestration.mapper.DnTaskExecutionMapper;
 import com.datanote.domain.orchestration.model.DnTaskExecution;
 import com.datanote.common.model.R;
@@ -23,13 +24,15 @@ public class TaskExecutionController {
     public R<List<DnTaskExecution>> list(@RequestParam Long taskId,
                                           @RequestParam String taskType,
                                           @RequestParam(defaultValue = "20") int limit) {
+        // 收敛 limit 上限，防止传负值/超大值导致 LIMIT 异常或全表扫描
+        int safeLimit = Math.max(1, Math.min(limit, 200));
         QueryWrapper<DnTaskExecution> qw = new QueryWrapper<>();
-        if ("script".equals(taskType)) {
+        if (Constants.TASK_TYPE_SCRIPT.equals(taskType)) {
             qw.eq("script_id", taskId);
         } else {
             qw.eq("sync_task_id", taskId);
         }
-        qw.orderByDesc("start_time").last("LIMIT " + limit);
+        qw.orderByDesc("start_time").last("LIMIT " + safeLimit);
         return R.ok(taskExecutionMapper.selectList(qw));
     }
 
@@ -49,7 +52,7 @@ public class TaskExecutionController {
         QueryWrapper<DnTaskExecution> qw = new QueryWrapper<>();
         qw.eq("trigger_type", "manual");
         if (taskId != null) {
-            if ("script".equals(taskType)) qw.eq("script_id", taskId);
+            if (Constants.TASK_TYPE_SCRIPT.equals(taskType)) qw.eq("script_id", taskId);
             else qw.eq("sync_task_id", taskId);
         }
         if (startDate != null) qw.ge("start_time", LocalDateTime.of(LocalDate.parse(startDate), LocalTime.MIN));
@@ -64,7 +67,7 @@ public class TaskExecutionController {
     @GetMapping("/integration")
     public R<List<DnTaskExecution>> integration(@RequestParam(required = false) String date) {
         QueryWrapper<DnTaskExecution> qw = new QueryWrapper<>();
-        qw.eq("task_type", "syncTask");
+        qw.eq("task_type", Constants.TASK_TYPE_SYNC_TASK);
         if (date != null) {
             LocalDate d = LocalDate.parse(date);
             qw.ge("start_time", LocalDateTime.of(d, LocalTime.MIN));

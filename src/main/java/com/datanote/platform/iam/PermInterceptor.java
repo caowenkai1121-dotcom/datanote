@@ -82,8 +82,10 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/group", "settings:user"),
             prefix("/api/system/config", "settings:config"),
             // --- 通用前缀(模块默认写权限) ---
+            prefix("/api/script/changes", "develop:approve"),   // 脚本上线审批(SoD: 与提交者分权), 须先于 /api/script
             prefix("/api/script", "develop:edit"),
-            prefix("/api/datasource", "develop:edit"),
+            prefix("/api/snippet", "develop:edit"),
+            prefix("/api/datasource", "datasource:edit"),   // 数据源独立管控(写): 与 develop:edit 分权, 连接信息单独授权
             prefix("/api/scheduler", "operations:schedule"),
             prefix("/api/task-execution", "operations:schedule"),
             prefix("/api/metadata-center", "catalog:edit"),
@@ -115,9 +117,29 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/rbac/perms/catalog", "settings:user"),
             // 全脚本含完整 SQL(原 GET 仅要求登录, 任意用户可拉走所有脚本内容)
             prefix("/api/script/all-with-content", "develop:view"),
+            // 脚本上线审批队列(列表/角标)含 payload SQL 快照+申请人, 仅审批人可见(须先于 /api/script)
+            prefix("/api/script/changes", "develop:approve"),
+            // 单脚本详情/版本/树含完整 SQL(原 GET 仅要求登录, 按自增 id 可枚举读他人脚本内容)
+            prefix("/api/script", "develop:view"),
+            // 系统配置(库/仓库连接 host/port/用户名/jdbc url, 密码已脱敏)读须与写同权
+            prefix("/api/system/config", "settings:config"),
+            // AI 配置(provider/baseUrl/model + apiKey 前 8 位)读须与写同权
+            prefix("/api/ai/config", "settings:config"),
             // 各模块导出(审计已单列): 工单/指标/同步等导出按模块 view 保护
             prefix("/api/gov/health/issues/export", "governance:view"),
-            prefix("/api/consumption/metric", "metrics:view")
+            prefix("/api/consumption/metric", "metrics:view"),
+            // 同步样本预览/枚举表名: 直读源库明文数据与表名(原 GET 仅要求登录, 任意用户可拖库)
+            prefix("/api/sync-job/preview", "dbsync:view"),
+            prefix("/api/sync-job/match-tables", "dbsync:view"),
+            // Doris/Hive 流式执行 GET 可跑任意 SQL/DDL(原 GET 仅要求登录, 绕过写权限)
+            prefix("/api/doris/stream-execute", "catalog:edit"),
+            prefix("/api/hive/stream-execute", "catalog:edit"),
+            // 调度执行日志含 SQL/库表/连接信息(原 GET 仅要求登录, 任意用户按自增runId枚举读他人任务日志)
+            prefix("/api/scheduler/run-log", "operations:schedule"),
+            prefix("/api/scheduler/log-detail", "operations:schedule"),
+            prefix("/api/scheduler/logs", "operations:schedule"),
+            // 数据源读: 列表/详情/库/表/列均暴露连接配置与源库结构(原 GET 仅要求登录), 须 datasource:view
+            prefix("/api/datasource", "datasource:view")
     );
 
     /** 纯函数: 求该请求所需权限点(null=只要求登录)。包级可见便于单测。 */
@@ -169,13 +191,30 @@ public class PermInterceptor implements HandlerInterceptor {
                 perms = active ? Collections.singleton("*") : Collections.emptySet();
             }
         } catch (Exception ex) {
-            log.warn("查询用户权限失败, 按空权限处理(不踢会话): {}", username, ex);
-            perms = Collections.emptySet();
-            active = true;   // 查询异常 fail-open 读, 与原行为一致
+            // 账号有效性判定 fail-closed: 查询异常时按未激活处理(踢会话), 不给已失效账号留读取窗口。
+            // 异常结果不缓存, 避免一次抖动锁死整个 TTL 窗口。
+            log.warn("查询用户权限失败, 按账号无效处理(fail-closed): {}", username, ex);
+            return new CacheEntry(Collections.emptySet(), false, 0L);
         }
         CacheEntry ne = new CacheEntry(perms, active, now + CACHE_TTL_MS);
         permCache.put(username, ne);
         return ne;
+    }
+
+    /** 改密前的逃生口: 仅放行改密/登出/状态查询(及当前用户与权限查询), 其余一律拦。 */
+    private static boolean isMustChangePwdAllowed(String path) {
+        return path == null
+                || path.startsWith("/api/auth/change-password")
+                || path.startsWith("/api/auth/logout")
+                || path.startsWith("/api/auth/status")
+                || path.startsWith("/api/auth/login")
+                || path.startsWith("/api/rbac/me");
+    }
+
+    /** 该会话是否因首登强制改密被拦(已在白名单内则放行, 避免无谓查库)。 */
+    private boolean isMustChangePwdBlocked(String username, String path) {
+        if (isMustChangePwdAllowed(path)) return false;
+        return rbacService.mustChangePwd(username);
     }
 
     // ---------- 拦截 ----------
@@ -200,6 +239,16 @@ public class PermInterceptor implements HandlerInterceptor {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(JSON.toJSONString(R.fail(R.CODE_UNAUTHORIZED, "账号已停用或删除, 请重新登录")));
+            return false;
+        }
+
+        // 首登强制改密: 标记 mustChangePwd 的会话, 除改密/登出/状态外一律拒绝, 防绕过前端遮罩直调 API
+        if (isMustChangePwdBlocked(username, request.getRequestURI())) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(JSON.toJSONString(
+                    R.fail(R.CODE_FORBIDDEN, "首次登录或密码已被重置, 请先修改密码后再操作")));
             return false;
         }
 

@@ -43,9 +43,9 @@ public class HiveConfig {
     @Autowired(required = false)
     private DnSystemConfigMapper systemConfigMapper;
 
-    private HikariDataSource dorisDataSource;
-    private boolean dorisAvailable = false;
-    private String currentUrl = "";
+    private volatile HikariDataSource dorisDataSource;
+    private volatile boolean dorisAvailable = false;
+    private volatile String currentUrl = "";
 
     @PostConstruct
     public void init() {
@@ -101,6 +101,8 @@ public class HiveConfig {
         config.setMinimumIdle(0);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
+        config.setMaxLifetime(580000);
+        config.setKeepaliveTime(120000);
         config.setPoolName("DorisHikariPool");
         config.setConnectionTestQuery("SELECT 1");
         config.setInitializationFailTimeout(-1);
@@ -127,10 +129,11 @@ public class HiveConfig {
     }
 
     public Connection getConnection() throws SQLException {
-        if (dorisDataSource == null) {
+        HikariDataSource ds = dorisDataSource; // 先读入局部变量, 避免与 reload 置 null 竞态
+        if (ds == null) {
             throw new SQLException("Doris is not connected. Configure the Doris connection in System Settings.");
         }
-        return dorisDataSource.getConnection();
+        return ds.getConnection();
     }
 
     public Connection getRawConnection() throws SQLException {

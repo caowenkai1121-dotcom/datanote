@@ -116,10 +116,15 @@ public class FullSyncEngine implements SyncEngine {
             }
         }
 
+        // chunk 续传游标以字符串数组序列化,绑定时靠 MySQL 隐式转型;非 MySQL 源(PG/Oracle/SQLServer)对
+        // 'pk > ?' 绑字符串会类型不匹配报错或语义错误,故仅 MySQL 源支持 chunk 续传,其余降级为整表重扫(UPSERT 幂等)。
+        boolean mysqlSource = "MYSQL".equalsIgnoreCase(ctx.getSource().getDatabaseType());
+        boolean nonMysqlWarned = false;
+
         Object[] cursor = null;
         boolean hasCursor = false;
-        // chunk 载入：有断点则从游标继续
-        String cj = ctx.getChunkLoad().apply(tc.getSourceTable());
+        // chunk 载入：有断点则从游标继续（仅 MySQL 源；非 MySQL 源忽略历史游标，整表重扫）
+        String cj = mysqlSource ? ctx.getChunkLoad().apply(tc.getSourceTable()) : null;
         if (cj != null && !cj.isEmpty()) {
             java.util.List<Object> a = com.alibaba.fastjson2.JSON.parseArray(cj, Object.class);
             cursor = a.toArray();
@@ -157,10 +162,7 @@ public class FullSyncEngine implements SyncEngine {
                             rowsThisPage++;
                             Object[] row = rowProc.process(srcColumns, raw);
                             if (row == null) continue;  // SKIP_ROW：计读不计写
-                            Object[] writeRow = new Object[writeColumns.size()];
-                            System.arraycopy(row, 0, writeRow, 0, srcColumns.size());
-                            if (markTs) writeRow[srcColumns.size()] = new java.sql.Timestamp(System.currentTimeMillis());
-                            bw.add(writeRow);
+                            bw.add(buildWriteRow(row, srcColumns.size(), writeColumns.size(), markTs));
                             rowsWritten++;
                         }
                         bw.flush(); // 内部：批成功commit+writeCount；批失败回退逐行+阈值容错
@@ -176,7 +178,12 @@ public class FullSyncEngine implements SyncEngine {
                     hasCursor = true;
                     // chunk 保存：游标存为字符串数组（parse 回来 setObject 绑字符串，MySQL 隐式转型）
                     // 二进制主键(byte[])经 String.valueOf 会得到对象地址串导致续传错位，检测到则跳过保存(降级为不续传)并 WARN 一次
-                    if (containsBinary(cursor)) {
+                    if (!mysqlSource) {
+                        if (!nonMysqlWarned) {
+                            ctx.log("WARN", "非 MySQL 源不支持字符串游标 chunk 续传,本表不保存断点: " + tc.getSourceTable());
+                            nonMysqlWarned = true;
+                        }
+                    } else if (containsBinary(cursor)) {
                         if (!binaryWarned) {
                             ctx.log("WARN", "主键含二进制类型,不支持 chunk 续传,本表不保存断点: " + tc.getSourceTable());
                             binaryWarned = true;
@@ -233,10 +240,7 @@ public class FullSyncEngine implements SyncEngine {
                     ctx.getReadCount().incrementAndGet();
                     Object[] row = rowProc.process(srcColumns, raw);
                     if (row == null) continue; // SKIP_ROW：计读不计写
-                    Object[] writeRow = new Object[writeColumns.size()];
-                    System.arraycopy(row, 0, writeRow, 0, srcColumns.size());
-                    if (markTs) writeRow[srcColumns.size()] = new java.sql.Timestamp(System.currentTimeMillis());
-                    bw.add(writeRow);
+                    bw.add(buildWriteRow(row, srcColumns.size(), writeColumns.size(), markTs));
                     inBatch++;
                     if (inBatch >= batchSize) {
                         bw.flush();
@@ -249,6 +253,14 @@ public class FullSyncEngine implements SyncEngine {
             }
         }
         return tableRead;
+    }
+
+    /** 由源行构造写入行：拷贝源列值，markTs 时在末尾追加当前时间戳列。 */
+    private static Object[] buildWriteRow(Object[] row, int srcColCount, int writeColCount, boolean markTs) {
+        Object[] writeRow = new Object[writeColCount];
+        System.arraycopy(row, 0, writeRow, 0, srcColCount);
+        if (markTs) writeRow[srcColCount] = new java.sql.Timestamp(System.currentTimeMillis());
+        return writeRow;
     }
 
     /** 游标值转字符串数组用于 chunk 序列化：null 保持 null，其余 String.valueOf。 */

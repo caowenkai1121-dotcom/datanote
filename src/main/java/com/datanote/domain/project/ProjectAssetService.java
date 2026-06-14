@@ -204,9 +204,35 @@ public class ProjectAssetService {
     }
 
     private String resolveName(String type, Long id) {
-        for (Object[] idName : allOfType(type)) {
-            if (id.equals(idName[0])) return String.valueOf(idName[1]);
+        // 按类型+id 精确查单条,不再全表加载线性查找(消内存大开销);
+        // found 区分"无此行"(走兜底)与"有行但名字为null"(同原语义返回"null")
+        boolean found = false;
+        Object name = null;
+        switch (type) {
+            case "SYNC_JOB":
+                DnSyncJob j = syncJobMapper.selectById(id);
+                if (j != null) { found = true; name = j.getJobName(); }
+                break;
+            case "SCRIPT":
+                DnScript s = scriptMapper.selectById(id);
+                if (s != null) { found = true; name = s.getScriptName(); }
+                break;
+            case "DATASOURCE":
+                DnDatasource d = datasourceMapper.selectById(id);
+                if (d != null) { found = true; name = d.getName(); }
+                break;
+            case "QUALITY_RULE":
+                DnQualityRule q = qualityRuleMapper.selectById(id);
+                if (q != null) { found = true; name = q.getRuleName(); }
+                break;
+            case "METRIC":
+                com.datanote.domain.governance.model.DnMetric m = metricMapper.selectById(id);
+                if (m != null) { found = true; name = m.getMetricName(); }
+                break;
+            default:
+                break;
         }
+        if (found) return String.valueOf(name);
         return type + "#" + id;
     }
 }

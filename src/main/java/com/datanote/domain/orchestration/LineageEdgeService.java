@@ -52,8 +52,9 @@ public class LineageEdgeService {
                 continue;
             }
             for (DnLineageEdge edge : buildEdgesForJob(job, tables)) {
-                edge.setCreatedAt(LocalDateTime.now());
-                edge.setUpdatedAt(LocalDateTime.now());
+                LocalDateTime now = LocalDateTime.now();
+                edge.setCreatedAt(now);
+                edge.setUpdatedAt(now);
                 try {
                     edgeMapper.insert(edge);
                     count++;
@@ -138,6 +139,66 @@ public class LineageEdgeService {
         return (db == null ? "" : db) + "." + (table == null ? "" : table);
     }
 
+    // ========== 字段级(列)血缘穿透 ==========
+
+    /** 字段下游影响: 从 (db.table.column) 沿字段级边 src→dst 多跳 BFS, 返回去重的下游字段。 */
+    public List<Map<String, Object>> columnImpact(String db, String table, String column) {
+        List<DnLineageEdge> all = edgeMapper.selectList(new QueryWrapper<DnLineageEdge>().eq("level_type", "COLUMN"));
+        return computeColumnBfs(all, db, table, column, true, MAX_DEPTH);
+    }
+
+    /** 字段上游溯源: 沿字段级边 dst→src 多跳 BFS, 返回去重的上游来源字段。 */
+    public List<Map<String, Object>> columnTrace(String db, String table, String column) {
+        List<DnLineageEdge> all = edgeMapper.selectList(new QueryWrapper<DnLineageEdge>().eq("level_type", "COLUMN"));
+        return computeColumnBfs(all, db, table, column, false, MAX_DEPTH);
+    }
+
+    private static String colKey(String db, String table, String col) {
+        return (nz(db) + "." + nz(table) + "." + nz(col)).toLowerCase();
+    }
+
+    /** 纯函数: 在字段级边集合上做 BFS, downstream=true 顺向(src→dst), 否则逆向。返回去重节点(db/table/column/depth/transformType/source)。 */
+    static List<Map<String, Object>> computeColumnBfs(List<DnLineageEdge> all, String db, String table, String column,
+                                                      boolean downstream, int maxDepth) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (all == null) return result;
+        // 按起始端(顺向取 src, 逆向取 dst)建邻接表
+        Map<String, List<DnLineageEdge>> adj = new HashMap<>();
+        for (DnLineageEdge e : all) {
+            if (e == null) continue;
+            String fromKey = downstream ? colKey(e.getSrcDb(), e.getSrcTable(), e.getSrcColumn())
+                    : colKey(e.getDstDb(), e.getDstTable(), e.getDstColumn());
+            adj.computeIfAbsent(fromKey, k -> new ArrayList<>()).add(e);
+        }
+        java.util.Set<String> visited = new java.util.HashSet<>();
+        java.util.Deque<Object[]> queue = new java.util.ArrayDeque<>(); // [db, table, column, depth]
+        visited.add(colKey(db, table, column));
+        queue.add(new Object[]{db, table, column, 0});
+        while (!queue.isEmpty()) {
+            Object[] cur = queue.poll();
+            int depth = (Integer) cur[3];
+            if (depth >= maxDepth) continue;
+            List<DnLineageEdge> edges = adj.get(colKey((String) cur[0], (String) cur[1], (String) cur[2]));
+            if (edges == null) continue;
+            for (DnLineageEdge e : edges) {
+                String nDb = downstream ? e.getDstDb() : e.getSrcDb();
+                String nTab = downstream ? e.getDstTable() : e.getSrcTable();
+                String nCol = downstream ? e.getDstColumn() : e.getSrcColumn();
+                if (!visited.add(colKey(nDb, nTab, nCol))) continue;
+                Map<String, Object> node = new HashMap<>();
+                node.put("db", nDb);
+                node.put("table", nTab);
+                node.put("column", nCol);
+                node.put("depth", depth + 1);
+                node.put("transformType", e.getTransformType());
+                node.put("source", e.getSource());
+                result.add(node);
+                queue.add(new Object[]{nDb, nTab, nCol, depth + 1});
+            }
+        }
+        return result;
+    }
+
     // ========== 纯函数（可单测） ==========
 
     /** 把一个同步任务的表/字段映射转成血缘边（源 MAPPING，置信度 100）。 */
@@ -208,8 +269,12 @@ public class LineageEdgeService {
      * 每跳同时扩展下游(边 src==当前) 与上游(边 dst==当前)；visited 防环；节点达 maxNodes 即停止扩展（起点必含）。
      */
     static SubGraph buildSubgraph(List<TableEdge> allEdges, String db, String table, int depth, int maxNodes) {
+        return buildSubgraphFromKey(allEdges, key(db, table), depth, maxNodes);
+    }
+
+    /** 纯函数(键无关): 以任意起点键(表="db.table" 或 列="db.table.column")双向 BFS 取子图。 */
+    static SubGraph buildSubgraphFromKey(List<TableEdge> allEdges, String start, int depth, int maxNodes) {
         SubGraph g = new SubGraph();
-        String start = key(db, table);
         g.nodes.add(start);
         if (allEdges == null || depth <= 0) return g;
 
@@ -282,5 +347,50 @@ public class LineageEdgeService {
         result.put("nodes", nodes);
         result.put("edges", edgeList);
         return result;
+    }
+
+    private static final int COL_GRAPH_MAX_NODES = 120;
+
+    /** 字段级 N 跳血缘子图(以 db.table.column 为中心双向 BFS): {nodes:[{id,db,table,column}], edges:[{src,dst,level,source}]}。 */
+    public Map<String, Object> columnGraph(String db, String table, String column, int depth) {
+        int d = depth <= 0 ? 2 : Math.min(depth, GRAPH_MAX_DEPTH);
+        List<DnLineageEdge> raw = edgeMapper.selectList(new QueryWrapper<DnLineageEdge>().eq("level_type", "COLUMN"));
+        List<TableEdge> edges = new ArrayList<>();
+        if (raw != null) {
+            for (DnLineageEdge e : raw) {
+                if (e == null) continue;
+                edges.add(new TableEdge(colKey(e.getSrcDb(), e.getSrcTable(), e.getSrcColumn()),
+                        colKey(e.getDstDb(), e.getDstTable(), e.getDstColumn()), "COLUMN", e.getSource()));
+            }
+        }
+        SubGraph sub = buildSubgraphFromKey(edges, colKey(db, table, column), d, COL_GRAPH_MAX_NODES);
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        for (String id : sub.nodes) {
+            Map<String, Object> n = new HashMap<>();
+            String[] p = splitColKey(id);
+            n.put("id", id);
+            n.put("db", p[0]); n.put("table", p[1]); n.put("column", p[2]);
+            nodes.add(n);
+        }
+        List<Map<String, Object>> edgeList = new ArrayList<>();
+        for (TableEdge e : sub.edges) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("src", e.src); m.put("dst", e.dst); m.put("level", "COLUMN"); m.put("source", e.source);
+            edgeList.add(m);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("nodes", nodes);
+        result.put("edges", edgeList);
+        return result;
+    }
+
+    /** "db.table.column" 切分为 [db, table, column](按前两个点切, 余下归 column)。 */
+    static String[] splitColKey(String id) {
+        if (id == null) return new String[]{"", "", ""};
+        int d1 = id.indexOf('.');
+        if (d1 < 0) return new String[]{"", "", id};
+        int d2 = id.indexOf('.', d1 + 1);
+        if (d2 < 0) return new String[]{id.substring(0, d1), id.substring(d1 + 1), ""};
+        return new String[]{id.substring(0, d1), id.substring(d1 + 1, d2), id.substring(d2 + 1)};
     }
 }

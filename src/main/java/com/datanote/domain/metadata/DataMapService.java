@@ -33,11 +33,15 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DataMapService {
 
+    /** AI 搜索提示词最多纳入的表数, 防大元数据库撑爆 LLM 上下文。 */
+    private static final int AI_SEARCH_MAX_TABLES = 800;
+
     private final AiAssistService aiAssistService;
     private final DnTableCommentMapper tableCommentMapper;
     private final DnTableFavoriteMapper tableFavoriteMapper;
     private final DnSearchHistoryMapper searchHistoryMapper;
     private final DnTableMetaMapper tableMetaMapper;
+    private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;   // 表详情合并离线业务属性
     private final DatasourceExploreService exploreService;
 
     // ========== 搜索（基于在线全表摘要） ==========
@@ -71,16 +75,24 @@ public class DataMapService {
         }
         List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
         StringBuilder tableList = new StringBuilder();
+        int included = 0, total = allTables == null ? 0 : allTables.size();
         if (allTables != null) {
             for (Map<String, Object> t : allTables) {
                 if (t == null) continue;
+                // 限制送入提示词的表数, 防大元数据库撑爆 LLM 上下文
+                if (included >= AI_SEARCH_MAX_TABLES) break;
                 tableList.append(t.get("TABLE_SCHEMA")).append(".").append(t.get("TABLE_NAME"));
                 Object comment = t.get("TABLE_COMMENT");
                 if (comment != null && !comment.toString().isEmpty()) {
                     tableList.append(" (").append(comment).append(")");
                 }
                 tableList.append("\n");
+                included++;
             }
+        }
+        if (total > included) {
+            tableList.append("...(共 ").append(total).append(" 张表, 仅列出前 ").append(included)
+                     .append(" 张; 如未命中请用更具体的关键词)\n");
         }
 
         String prompt = "你是一个数据资产搜索引擎。用户想找数据表，请根据用户描述匹配最相关的表。\n\n"
@@ -105,6 +117,7 @@ public class DataMapService {
 
     public List<DnSearchHistory> getSearchHistory() {
         QueryWrapper<DnSearchHistory> qw = new QueryWrapper<DnSearchHistory>();
+        qw.eq("created_by", com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 按登录用户隔离, 不共享他人历史
         qw.orderByDesc("searched_at").last("LIMIT 10");
         return searchHistoryMapper.selectList(qw);
     }
@@ -118,14 +131,17 @@ public class DataMapService {
                 || history.getTableName() == null || history.getTableName().trim().isEmpty()) {
             throw new BusinessException("搜索历史的库名和表名不能为空");
         }
+        String me = com.datanote.platform.iam.CurrentUserUtil.currentUser();
         QueryWrapper<DnSearchHistory> qw = new QueryWrapper<DnSearchHistory>();
-        qw.eq("database_name", history.getDatabaseName()).eq("table_name", history.getTableName());
+        qw.eq("database_name", history.getDatabaseName()).eq("table_name", history.getTableName())
+          .eq("created_by", me);   // 按用户去重, 否则会更新到他人同表记录
         DnSearchHistory existing = searchHistoryMapper.selectOne(qw);
         if (existing != null) {
             existing.setSearchedAt(LocalDateTime.now());
             searchHistoryMapper.updateById(existing);
         } else {
             history.setSearchedAt(LocalDateTime.now());
+            history.setCreatedBy(me);
             searchHistoryMapper.insert(history);
         }
     }
@@ -143,6 +159,7 @@ public class DataMapService {
 
     public List<DnTableFavorite> getFavorites() {
         QueryWrapper<DnTableFavorite> qw = new QueryWrapper<DnTableFavorite>();
+        qw.eq("created_by", com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 仅看自己的收藏
         qw.orderByDesc("created_at").last("LIMIT 30");
         return tableFavoriteMapper.selectList(qw);
     }
@@ -153,7 +170,8 @@ public class DataMapService {
             throw new BusinessException("收藏操作的库名和表名不能为空");
         }
         QueryWrapper<DnTableFavorite> qw = new QueryWrapper<DnTableFavorite>();
-        qw.eq("database_name", db).eq("table_name", table);
+        qw.eq("database_name", db).eq("table_name", table)
+          .eq("created_by", com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 仅切换自己的收藏, 不误删他人
         DnTableFavorite existing = tableFavoriteMapper.selectOne(qw);
         if (existing != null) {
             tableFavoriteMapper.deleteById(existing.getId());
@@ -174,7 +192,8 @@ public class DataMapService {
             throw new BusinessException("查询收藏状态的库名和表名不能为空");
         }
         QueryWrapper<DnTableFavorite> qw = new QueryWrapper<DnTableFavorite>();
-        qw.eq("database_name", db).eq("table_name", table);
+        qw.eq("database_name", db).eq("table_name", table)
+          .eq("created_by", com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 收藏态按用户判定
         Long cnt = tableFavoriteMapper.selectCount(qw);
         return cnt != null && cnt > 0;
     }
@@ -234,7 +253,7 @@ public class DataMapService {
         }
         Long tableMetaId = getOrCreateTableMetaId(db, table);
         QueryWrapper<DnTableComment> qw = new QueryWrapper<DnTableComment>();
-        qw.eq("table_meta_id", tableMetaId).orderByDesc("created_at");
+        qw.eq("table_meta_id", tableMetaId).orderByDesc("created_at").last("LIMIT 50");   // 取最近50条, 防热门表评论无界累积
         List<DnTableComment> list = tableCommentMapper.selectList(qw);
         return list != null ? list : new ArrayList<DnTableComment>();
     }
@@ -261,6 +280,13 @@ public class DataMapService {
         if (id == null) {
             throw new BusinessException("删除评论时评论 ID 不能为空");
         }
+        // 行级归属: 仅评论作者(或 admin)可删, 防任意登录用户按自增ID枚举删他人评论(IDOR)
+        DnTableComment comment = tableCommentMapper.selectById(id);
+        if (comment == null) return;
+        String me = com.datanote.platform.iam.CurrentUserUtil.currentUser();
+        if (!"admin".equals(me) && me != null && !me.equals(comment.getCreatedBy())) {
+            throw new BusinessException("只能删除自己发表的评论");
+        }
         tableCommentMapper.deleteById(id);
     }
 
@@ -277,12 +303,35 @@ public class DataMapService {
         result.put("tableInfo", info);
         result.put("columns", exploreService.getHiveColumns(db, table));
         result.put("favorited", isFavorited(db, table));
-        Long tableMetaId = findTableMetaId(db, table);
+        DnTableMeta meta = tableMetaMapper.selectOne(
+                new QueryWrapper<DnTableMeta>().eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
+        Long tableMetaId = meta != null ? meta.getId() : null;
         if (tableMetaId != null) {
+            // 表级业务元数据(负责人/标签/重要性): 供数据地图表详情展示与编辑
+            Map<String, Object> tm = new HashMap<String, Object>();
+            tm.put("id", meta.getId());
+            tm.put("owner", meta.getOwner());
+            tm.put("tags", meta.getTags());
+            tm.put("importance", meta.getImportance());
+            result.put("tableMeta", tm);
             QueryWrapper<DnTableComment> cmtQw = new QueryWrapper<DnTableComment>();
             cmtQw.eq("table_meta_id", tableMetaId);
             Long cmtCount = tableCommentMapper.selectCount(cmtQw);
             result.put("commentCount", cmtCount != null ? cmtCount : 0L);
+            // 合并离线业务属性(业务名/描述/安全级别/敏感类型): 实时列只有技术信息, 前端按列名叠加展示
+            Map<String, Object> columnMeta = new HashMap<String, Object>();
+            List<com.datanote.domain.metadata.model.DnColumnMeta> _cols = columnMetaMapper.selectList(
+                    new QueryWrapper<com.datanote.domain.metadata.model.DnColumnMeta>().eq("table_meta_id", tableMetaId));
+            if (_cols != null) for (com.datanote.domain.metadata.model.DnColumnMeta c : _cols) { // selectList 理论可返回 null
+                if (c.getColumnName() == null) continue;
+                Map<String, Object> m = new HashMap<String, Object>();
+                m.put("businessName", c.getBusinessName());
+                m.put("businessDesc", c.getBusinessDesc());
+                m.put("securityLevel", c.getSecurityLevel());
+                m.put("sensitiveType", c.getSensitiveType());
+                columnMeta.put(c.getColumnName(), m);
+            }
+            result.put("columnMeta", columnMeta);
         } else {
             result.put("commentCount", 0);
         }

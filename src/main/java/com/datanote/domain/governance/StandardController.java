@@ -11,6 +11,7 @@ import com.datanote.platform.config.model.DnCodeDictItem;
 import com.datanote.domain.governance.model.DnDataElement;
 import com.datanote.domain.governance.model.DnStandardCheckRun;
 import com.datanote.domain.governance.model.DnWordRoot;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
 import com.datanote.domain.governance.StandardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,6 +57,15 @@ public class StandardController {
     @Operation(summary = "保存数据元")
     @PostMapping("/element/save")
     public R<DnDataElement> saveElement(@RequestBody DnDataElement e) {
+        if (isBlank(e.getElementCode())) throw new BusinessException("数据元编码不能为空");
+        if (isBlank(e.getNameCn())) throw new BusinessException("数据元中文名不能为空");
+        // 防重复编码: element_code 是落标稽核类型映射的键, 重复会致映射歧义(loadElementTypes 后者覆盖前者)
+        String code = e.getElementCode().trim();
+        QueryWrapper<DnDataElement> dupQ = new QueryWrapper<>();
+        dupQ.eq("element_code", code);
+        if (e.getId() != null) dupQ.ne("id", e.getId());
+        Long dup = elementMapper.selectCount(dupQ);
+        if (dup != null && dup > 0) throw new BusinessException("数据元编码已存在: " + code);
         if (e.getId() != null) {
             elementMapper.updateById(e);
         } else {
@@ -88,6 +98,15 @@ public class StandardController {
     @Operation(summary = "保存词根")
     @PostMapping("/root/save")
     public R<DnWordRoot> saveRoot(@RequestBody DnWordRoot r) {
+        if (isBlank(r.getWordCn())) throw new BusinessException("词根中文不能为空");
+        if (isBlank(r.getWordEn())) throw new BusinessException("词根英文不能为空");
+        // 防重复: word_en 是落标稽核词根集合的标识, 重复造成列表冗余与命名规范歧义
+        String wen = r.getWordEn().trim();
+        QueryWrapper<DnWordRoot> dupQ = new QueryWrapper<>();
+        dupQ.eq("word_en", wen);
+        if (r.getId() != null) dupQ.ne("id", r.getId());
+        Long dup = wordRootMapper.selectCount(dupQ);
+        if (dup != null && dup > 0) throw new BusinessException("词根英文已存在: " + wen);
         if (r.getId() != null) {
             wordRootMapper.updateById(r);
         } else {
@@ -134,6 +153,15 @@ public class StandardController {
     @Operation(summary = "保存码表")
     @PostMapping("/dict/save")
     public R<DnCodeDict> saveDict(@RequestBody DnCodeDict d) {
+        if (isBlank(d.getDictCode())) throw new BusinessException("码表编码不能为空");
+        if (isBlank(d.getDictName())) throw new BusinessException("码表名称不能为空");
+        // 防重复: dict_code 是码表引用键, 重复造成引用歧义
+        String dc = d.getDictCode().trim();
+        QueryWrapper<DnCodeDict> dupQ = new QueryWrapper<>();
+        dupQ.eq("dict_code", dc);
+        if (d.getId() != null) dupQ.ne("id", d.getId());
+        Long dup = codeDictMapper.selectCount(dupQ);
+        if (dup != null && dup > 0) throw new BusinessException("码表编码已存在: " + dc);
         if (d.getId() != null) {
             codeDictMapper.updateById(d);
         } else {
@@ -156,6 +184,8 @@ public class StandardController {
     @Operation(summary = "保存码表明细项")
     @PostMapping("/dict/item/save")
     public R<DnCodeDictItem> saveDictItem(@RequestBody DnCodeDictItem item) {
+        if (item.getDictId() == null) throw new BusinessException("码表ID(dictId)不能为空");
+        if (isBlank(item.getItemKey())) throw new BusinessException("码值(itemKey)不能为空");
         if (item.getId() != null) {
             codeDictItemMapper.updateById(item);
         } else {
@@ -199,5 +229,9 @@ public class StandardController {
             return R.fail("稽核记录不存在");
         }
         return R.ok(run);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 }

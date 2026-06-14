@@ -5,6 +5,7 @@
 
   var levelNames = []; // 当前 scheme 下的密级名称(供确认下拉)
   var clPicker = null; // 对表识别库表选择器
+  var _focusWaitTimer = null; // focusScanOnTable 等表选项的轮询句柄: 新一次定位前先清掉上一次, 防累积无主定时器
   var rulesTable = null; // 敏感规则表格句柄
   var _scanBtn = null; // 「识别」按钮句柄(加载中置灰)
   var _pendBtn = null; // 「扫描待确认列」按钮句柄(加载中置灰)
@@ -124,11 +125,11 @@
       else body.appendChild(DN.table({
         search: false, pageSize: 15,
         columns: [
-          { key: 'columnName', label: '列' },
+          { key: 'columnName', label: '列', render: function (r) { return ellip(r.columnName, 30); } },
           { label: '原密级', render: function (r) { return r.oldLevel || '-'; } },
           { label: '新密级', render: function (r) { return DN.pill(r.newLevel || '-', 'info'); } },
-          { key: 'sensitiveType', label: '敏感类型', render: function (r) { return r.sensitiveType || '-'; } },
-          { key: 'operator', label: '操作人', render: function (r) { return r.operator || '-'; } },
+          { key: 'sensitiveType', label: '敏感类型', render: function (r) { return ellip(r.sensitiveType, 20); } },
+          { key: 'operator', label: '操作人', render: function (r) { return ellip(r.operator, 20); } },
           { label: '时间', render: function (r) { return DN.timeAgo(r.createdAt); } }
         ],
         rows: rows
@@ -267,14 +268,15 @@
         if (matchSel.value === 'REGEX') {
           try { new RegExp(pt); } catch (re) { DN.toast('正则表达式不合法：' + re.message, 'error'); pattern.focus(); return; }
         }
-        if (saveBtn.disabled) return;
+        if (_busy.rules) return; // 去重:保存进行中不再并发提交
+        _busy.rules = true;
         var restore = lockBtn(saveBtn, '保存中…');
         DN.post('/api/gov/classification/rules', {
           ruleName: nm, matchType: matchSel.value,
           pattern: pt, sensitiveType: st,
           suggestLevel: suggestLevel.value.trim(), enabled: 1
-        }).then(function () { DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
-          .catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
+        }).then(function () { _busy.rules = false; DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
+          .catch(function (e) { _busy.rules = false; restore(); DN.toast(errMsg(e), 'error'); });
       } });
     var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
     actions.appendChild(saveBtn);
@@ -383,17 +385,26 @@
     DN.confirm('将对 ' + picked.length + ' 列写入新密级标记，确认打标？', { title: '打标确认' }).then(function (ok) {
       if (!ok) return;
       var restore = lockBtn(btn, '打标中…');
+      // 逐列独立提交：每个请求各自吞错收集成败，部分成功也不丢已落库的列
       var tasks = picked.map(function (r) {
         return DN.post('/api/gov/classification/confirm', {
           db: db, table: table, column: r.column, newLevel: r._levelSel.value,
           sensitiveType: r.sensitiveType, reason: '采样识别确认'
-        });
+        }).then(function () { return true; }).catch(function () { return false; });
       });
-      Promise.all(tasks).then(function () {
-        DN.toast('已打标 ' + tasks.length + ' 列', 'success');
+      Promise.all(tasks).then(function (results) {
+        restore();
+        var okCnt = results.filter(function (v) { return v; }).length;
+        var fail = results.length - okCnt;
+        if (fail === 0) {
+          DN.toast('已打标 ' + okCnt + ' 列', 'success');
+        } else {
+          DN.toast('已打标 ' + okCnt + '/' + results.length + ' 列，' + fail + ' 列失败', 'error');
+        }
+        // 无论部分成功还是全成功，都刷新热力与识别结果，保证界面与库一致
         loadHeatmap(); // 打标后敏感分布热力同步刷新(联动)
         scanTable();
-      }).catch(function (e) { restore(); DN.toast(errMsg(e), 'error'); });
+      });
     });
   }
 
@@ -453,19 +464,21 @@
     if (!clPicker || !db || !table) { DN.toast('无法定位该表', 'error'); return; }
     var sels = clPicker.el.querySelectorAll('select');
     var dbSel = sels[0], tbSel = sels[1];
-    if (!dbSel || !tbSel) { showAuditTrail(db, table); return; }
+    if (!dbSel || !tbSel) { DN.toast('选择器加载失败，请在「对表采样识别」中手动选择库与表后识别', 'error'); return; }
     // 回填库并触发其 onchange 异步加载表清单，轮询等待目标表选项出现后回填表并识别
     if (dbSel.value !== db) { dbSel.value = db; if (typeof dbSel.onchange === 'function') dbSel.onchange(); }
+    if (_focusWaitTimer) { clearTimeout(_focusWaitTimer); _focusWaitTimer = null; }
     var tries = 0;
     (function waitTable() {
       var hit = Array.prototype.some.call(tbSel.options, function (o) { return o.value === table; });
       if (hit) {
+        _focusWaitTimer = null;
         tbSel.value = table; if (typeof tbSel.onchange === 'function') tbSel.onchange();
         var card = clPicker.el.closest ? clPicker.el.closest('.gov-card') : null;
         if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         scanTable();
-      } else if (tries++ < 20) { setTimeout(waitTable, 100); }
-      else { DN.toast('已定位到库「' + db + '」，请手动选择表「' + table + '」后识别', 'info'); }
+      } else if (tries++ < 20) { _focusWaitTimer = setTimeout(waitTable, 100); }
+      else { _focusWaitTimer = null; DN.toast('已定位到库「' + db + '」，请手动选择表「' + table + '」后识别', 'info'); }
     })();
   }
 

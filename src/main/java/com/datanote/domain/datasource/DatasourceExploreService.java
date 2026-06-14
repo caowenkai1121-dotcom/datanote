@@ -26,6 +26,11 @@ public class DatasourceExploreService {
     private final HiveConfig hiveConfig;
     private final com.datanote.domain.governance.MaskingService maskingService;   // 全站#14 预览脱敏
 
+    /** 全表摘要缓存: 数据地图搜索/AI搜索/热门表都走它, 原每次实时连 Doris 全表扫; 加 5min TTL, 采集后主动 evict。 */
+    private volatile List<Map<String, Object>> tablesSummaryCache;
+    private volatile long tablesSummaryCacheAt = 0L;
+    private static final long TABLES_SUMMARY_TTL_MS = 5 * 60 * 1000L;
+
     /** 排除的系统库(全站#9 统一黑名单: 含 Doris/MySQL 内部库, LifecycleService 共用) */
     public static final Set<String> SYS_DBS = new HashSet<String>(Arrays.asList(
             "default", "information_schema", "sys", "mysql", "__internal_schema", "performance_schema"
@@ -154,6 +159,22 @@ public class DatasourceExploreService {
     // ========== 全表摘要（供搜索/AI搜索/热门 复用） ==========
 
     public List<Map<String, Object>> getAllTablesSummary() throws SQLException {
+        long now = System.currentTimeMillis();
+        List<Map<String, Object>> cached = tablesSummaryCache;
+        if (cached != null && now - tablesSummaryCacheAt < TABLES_SUMMARY_TTL_MS) return cached;
+        List<Map<String, Object>> fresh = loadAllTablesSummary();
+        tablesSummaryCache = fresh;
+        tablesSummaryCacheAt = now;
+        return fresh;
+    }
+
+    /** 采集成功后主动失效全表摘要缓存, 使数据地图立即可见新表。 */
+    public void evictTablesSummaryCache() {
+        tablesSummaryCache = null;
+        tablesSummaryCacheAt = 0L;
+    }
+
+    private List<Map<String, Object>> loadAllTablesSummary() throws SQLException {
         // 全站#7 修根: 原逐库 SHOW TABLES 且注释/行数硬编码空——搜索按描述永不命中、热门全"-"。
         // 改单条 information_schema.tables 查询(Doris 兼容), 一次拿全注释/行数。
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
@@ -290,18 +311,16 @@ public class DatasourceExploreService {
         // 库表限定名只算一次,避免循环内重复拼接(原每字段重算一次)
         String qualified = DorisSqlUtil.quoteQualified(db, table);
 
-        // Hive 聚合查询较慢，先查总行数
+        // Hive 聚合查询较慢，总行数 + 逐字段统计复用同一连接,只开一次连接
         long totalRows = 0;
-        try (Connection conn = hiveConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + qualified)) {
-            if (rs.next()) totalRows = rs.getLong(1);
-        }
-
         // 逐字段统计（限制字段数，避免 Hive 查询过慢）
         int maxProfileFields = Math.min(columns.size(), 30);
         try (Connection conn = hiveConfig.getConnection();
              Statement stmt = conn.createStatement()) {
+            // 先查总行数(ResultSet 单独作用域,关闭后复用 stmt)
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + qualified)) {
+                if (rs.next()) totalRows = rs.getLong(1);
+            }
             for (int i = 0; i < maxProfileFields; i++) {
                 ColumnInfo col = columns.get(i);
                 Map<String, Object> stat = new HashMap<String, Object>();

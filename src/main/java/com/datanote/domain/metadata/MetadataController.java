@@ -171,7 +171,8 @@ public class MetadataController {
     @Operation(summary = "清空搜索历史")
     @DeleteMapping("/search-history")
     public R<String> clearSearchHistory() {
-        dataMapService.clearSearchHistory("default");
+        // 按当前登录用户清空(与 get/add 的 created_by 口径一致; 原硬编码 "default" 永不匹配→清空失效)
+        dataMapService.clearSearchHistory(com.datanote.platform.iam.CurrentUserUtil.currentUser());
         return R.ok("已清空");
     }
 

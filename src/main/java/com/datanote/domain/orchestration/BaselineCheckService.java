@@ -52,8 +52,10 @@ public class BaselineCheckService {
                 if (!"broken".equals(st.get("todayStatus"))) continue;
                 String key = st.get("id") + "@" + st.get("runDate");
                 if (notified.putIfAbsent(key, Boolean.TRUE) != null) continue;
-                String receiver = st.get("createdBy") != null && !String.valueOf(st.get("createdBy")).trim().isEmpty()
-                        && !"default".equals(st.get("createdBy")) ? String.valueOf(st.get("createdBy")).trim() : "admin";
+                Object createdBy = st.get("createdBy");
+                String createdByStr = String.valueOf(createdBy).trim();
+                String receiver = createdBy != null && !createdByStr.isEmpty()
+                        && !"default".equals(createdBy) ? createdByStr : "admin";
                 notificationService.notify(receiver, "BASELINE_BROKEN",
                         "基线打破: " + st.get("baselineName") + " 承诺 " + st.get("commitTime")
                                 + " 前完成, 仍有 " + st.get("unmetCount") + " 个任务未成功",

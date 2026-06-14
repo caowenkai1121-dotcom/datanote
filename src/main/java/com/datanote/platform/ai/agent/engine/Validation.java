@@ -30,7 +30,7 @@ public final class Validation {
                     String type = spec.path("type").asText("");
                     if ("number".equals(type)
                             && !v.isNumber()
-                            && !(v.isTextual() && v.asText().matches("-?\\d+(\\.\\d+)?"))) {
+                            && !(v.isTextual() && v.asText().matches("^-?\\d+(\\.\\d+)?$"))) {
                         return "参数 " + f + " 应为数字";
                     }
                     if ("string".equals(type) && !v.isTextual() && !v.isNumber()) {

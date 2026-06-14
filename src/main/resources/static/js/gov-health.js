@@ -21,7 +21,8 @@
   };
 
   var issueTable = null; // DN.table 句柄，便于 reload
-  var selectedIssues = {}; // 批量流转选中：id -> 当前状态
+  var selectedIssues = {}; // 批量流转选中：id -> 勾选时的状态
+  var _issueStatusById = {}; // 最近一次渲染的工单真实状态：id -> status，批量流转据此实时判定可流转性
   var batchBusy = false; // 批量操作进行中标志，防重复提交
   var boardOwnerFilter = ''; // 排行榜点击联动：按负责人客户端过滤工单
   var issueObjectFilter = null; // R21 深链：按关联对象过滤工单 {kind,ref,label}
@@ -154,6 +155,7 @@
     var tblBox = DN.h('div', { style: 'flex:1;min-width:300px' });
     tblBox.appendChild(DN.table({
       search: false,
+      exportName: 'governance_dimensions',
       columns: [
         { key: 'dim', label: '维度' },
         { key: 'score', label: '得分', align: 'right', render: function (x) { return DN.pill(x.score, scoreTone(x.scoreNum)); } },
@@ -281,37 +283,6 @@
     });
   }
 
-  // 工单分析概览(大功能): 状态分布环图 + 级别分布 + 维度Top
-  function buildIssueAnalytics(rows) {
-    var stMeta = { OPEN: ['待处理', 'var(--error)'], FIXING: ['处理中', 'var(--warning)'], RESOLVED: ['已解决', 'var(--primary)'], VERIFIED: ['已验证', 'var(--chart-2)'], CLOSED: ['已关闭', 'var(--success)'] };
-    var stCnt = {}, sevCnt = {}, dimCnt = {};
-    (rows || []).forEach(function (r) {
-      if (!r) return;
-      var s = r.status || 'OPEN'; stCnt[s] = (stCnt[s] || 0) + 1;
-      var sv = r.severity || 'LOW'; sevCnt[sv] = (sevCnt[sv] || 0) + 1;
-      var d = r.dimension || '未分类'; dimCnt[d] = (dimCnt[d] || 0) + 1;
-    });
-    var segs = Object.keys(stCnt).map(function (s) { return { label: (stMeta[s] || [s])[0], value: stCnt[s], color: (stMeta[s] || [s, 'var(--text-faint)'])[1] }; });
-    var grid = DN.h('div', { class: 'gov-grid', style: 'margin-bottom:12px' });
-    // 状态环图
-    var c1 = DN.card({ title: '工单状态分布', icon: 'inbox' });
-    c1.body.appendChild(DN.donut(segs, { size: 110, stroke: 15, centerLabel: rows.length, centerSub: '工单', legend: true }));
-    grid.appendChild(c1.el);
-    // 级别分布 bars
-    var c2 = DN.card({ title: '严重级别分布', icon: 'shield' });
-    var sevMeta = { HIGH: ['高', 'err'], MEDIUM: ['中', 'warn'], LOW: ['低', 'info'] };
-    c2.body.appendChild(DN.bars(['HIGH', 'MEDIUM', 'LOW'].filter(function (k) { return sevCnt[k]; }).map(function (k) {
-      return { label: (sevMeta[k] || [k])[0], value: sevCnt[k], tone: (sevMeta[k] || [k, 'info'])[1], display: String(sevCnt[k]) };
-    })));
-    grid.appendChild(c2.el);
-    // 维度 Top bars
-    var c3 = DN.card({ title: '问题维度 Top', icon: 'grid' });
-    var dimArr = Object.keys(dimCnt).map(function (k) { return { label: k, value: dimCnt[k] }; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 6);
-    c3.body.appendChild(DN.bars(dimArr.map(function (d) { return { label: d.label, value: d.value, tone: 'info', display: String(d.value) }; })));
-    grid.appendChild(c3.el);
-    return grid;
-  }
-
   function renderIssues(rows) {
     var box = document.getElementById('hsIssues');
     if (!box) return;
@@ -329,6 +300,9 @@
     }
     if (boardOwnerFilter) rows = rows.filter(function (it) { return it && (it.owner || '未分配') === boardOwnerFilter; });
     rows = rows.filter(function (it) { return !!it; }); // 兜底剔除空行，避免渲染时 it.xxx 报错
+    // 缓存本次渲染各工单的真实状态，供批量流转时按最新状态判定可流转性
+    _issueStatusById = {};
+    rows.forEach(function (it) { if (it && it.id != null) _issueStatusById[it.id] = it.status; });
     box.innerHTML = '';
     if (issueObjectFilter) {
       box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 8px;display:flex;align-items:center;gap:8px' }, [
@@ -527,8 +501,11 @@
     if (!to) { DN.toast('请选择目标状态', 'error'); return; }
     var ids = Object.keys(selectedIssues);
     if (!ids.length) { DN.toast('请先勾选工单', 'error'); return; }
-    // 仅对状态机允许的工单流转
-    var valid = ids.filter(function (id) { return (FLOW[selectedIssues[id]] || []).indexOf(to) >= 0; });
+    // 仅对状态机允许的工单流转：用最近渲染的真实状态判定，回退到勾选时状态
+    var valid = ids.filter(function (id) {
+      var st = (id in _issueStatusById) ? _issueStatusById[id] : selectedIssues[id];
+      return (FLOW[st] || []).indexOf(to) >= 0;
+    });
     if (!valid.length) { DN.toast('所选工单当前状态均不能流转到 ' + to, 'error'); return; }
     batchBusy = true;
     Promise.all(valid.map(function (id) {
@@ -630,25 +607,6 @@
       var box = document.getElementById('hsBoard');
       if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('排行榜加载失败：' + (e && e.message || ''), loadBoard)); }
     });
-  }
-
-  // ========== SVG 自绘（趋势折线保留） ==========
-
-  /** 迷你折线 */
-  function drawSparkline(vals, w, h) {
-    var n = vals.length;
-    if (n < 2) return '';
-    var max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
-    var range = max - min || 1, pad = 6;
-    var pts = vals.map(function (v, i) {
-      var x = pad + (w - 2 * pad) * i / (n - 1);
-      var y = pad + (h - 2 * pad) * (1 - (v - min) / range);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    });
-    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="vertical-align:middle">' +
-      '<polyline points="' + pts.join(' ') + '" fill="none" style="stroke:var(--primary)" stroke-width="2"/>' +
-      pts.map(function (p) { var c = p.split(','); return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="2" style="fill:var(--primary)"/>'; }).join('') +
-      '</svg>';
   }
 
   // 分值 → 药丸色调

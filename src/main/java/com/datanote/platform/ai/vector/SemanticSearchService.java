@@ -23,11 +23,15 @@ public class SemanticSearchService {
     private final EmbeddingService embedding;
     private final DnTableMetaMapper tableMetaMapper;
 
+    /** 检索条数: 非法(<1)取默认, 超上限封顶, 防前端传入极端值拖垮向量库/DB。 */
+    private static final int DEFAULT_LIMIT = 10;
+    private static final int MAX_LIMIT = 50;
+
     /** 语义检索。返回 {query, engine:vector|keyword_fallback, count, results:[{kind,db,name,title,score}], note?}。 */
     public Map<String, Object> search(String query, String kind, int limit) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("query", query);
-        int lim = limit < 1 ? 10 : (limit > 50 ? 50 : limit);
+        int lim = limit < 1 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
         if (query == null || query.trim().isEmpty()) {
             out.put("engine", "none");
             out.put("results", new ArrayList<>());

@@ -27,6 +27,7 @@
   var _timer = null;     // 自动刷新定时器（离开首页自停）
   var _box = null;       // 当前挂载容器
   var _ovCache = null;   // /api/gov/overview 单轮缓存：KPI 与 C1 复用，避免重复请求
+  var _syncCache = null; // /api/sync-job/dashboard/summary 单轮缓存：KPI 与 C8 复用，避免重复请求
   var _refreshing = false; // 刷新进行中标记，避免重复点击
 
   // ========== 入口：路由 init 调用 ==========
@@ -35,7 +36,7 @@
     var box = container || document.getElementById('homeCockpit');
     if (!box) return;
     _box = box;
-    _ovCache = null;                                  // 每轮重建清缓存，保证刷新拿到新数据
+    _ovCache = null; _syncCache = null;               // 每轮重建清缓存，保证刷新拿到新数据
     box.innerHTML = '';
     renderHero(box);                                  // 品牌英雄条 + 问候 + 更新时间 + 刷新按钮
 
@@ -49,13 +50,20 @@
     loadKpis(kpiSlot);                                // 7 KPI（多源并发，各源 .catch 降级）
     mountCards(grid);                                 // 4 卡片分批挂载 + 独立加载
     setupAuto(box);                                   // 60s 自动刷新，离开首页自停
-    _refreshing = false;
+    // 防抖: 渲染同步, 若立即复位则手动连点拦不住; 延时复位使加载中连点被忽略
+    setTimeout(function () { _refreshing = false; }, 800);
   };
 
   // 单轮内复用 /api/gov/overview：首次发起请求并缓存 Promise，KPI 与 C1 共用
   function getOverview() {
     if (!_ovCache) _ovCache = DN.get('/api/gov/overview');
     return _ovCache;
+  }
+
+  // 单轮内复用 /api/sync-job/dashboard/summary：KPI 排与 C8 同步大盘共用
+  function getSyncSummary() {
+    if (!_syncCache) _syncCache = DN.get('/api/sync-job/dashboard/summary');
+    return _syncCache;
   }
   // 向后兼容别名（蓝图里曾用 renderHomeCockpit）
   window.renderHomeCockpit = window.renderHomeDashboard;
@@ -98,7 +106,7 @@
       getOverview().catch(function () { return {}; }),
       DN.get('/api/quality/score').catch(function () { return {}; }),
       DN.get('/api/consumption/overview').catch(function () { return {}; }),
-      DN.get('/api/sync-job/dashboard/summary').catch(function () { return {}; })
+      getSyncSummary().catch(function () { return {}; })
     ]).then(function (r) {
       var g = r[0] || {}, qs = r[1] || {}, cs = r[2] || {}, sy = r[3] || {};
       var a = g.assets || {}, hh = g.health || {}, iss = g.issues || {};
@@ -199,7 +207,7 @@
   // ---- C8 同步任务监控大盘（今日执行环 + 成功率仪表，批2#22 改今日口径）----
   function cardSyncBoard(c, d) {
     loading(c, 3);
-    DN.get('/api/sync-job/dashboard/summary').then(function (s) {
+    getSyncSummary().then(function (s) {
       s = s || {};
       c.body.innerHTML = '';
       if (!num(s.jobsTotal)) {
@@ -225,7 +233,7 @@
       c.body.appendChild(wrap);
       c.body.appendChild(DN.h('div', { style: 'margin-top:10px;text-align:center;font-size:12px;color:var(--text-muted)',
         text: '任务 ' + num(s.jobsTotal) + ' · 运行中 ' + num(s.running) + ' · 暂停 ' + num(s.paused) + ' · 今日写入 ' + fmtInt(s.rowsToday) + ' 行' }));
-    }).catch(function (e) { fail(c, d, e); });
+    }).catch(function (e) { _syncCache = null; fail(c, d, e); });
   }
 
   // ---- C9 最新治理工单（待办，表格）----
@@ -267,20 +275,27 @@
         };
       };
       var wrap = DN.h('div');
-      var today = new Date().toISOString().slice(0, 10);
+      // 用本地时区日期(YYYY-MM-DD)与后端 LocalDate 同口径; 原 toISOString 取 UTC, UTC+8 凌晨会少标超期
+      var today = new Date().toLocaleDateString('en-CA');
+      function hoverRow(el) {
+        el.onmouseover = function () { el.style.background = 'var(--bg-hover)'; };
+        el.onmouseout = function () { el.style.background = ''; };
+        return el;
+      }
       appr.slice(0, 4).forEach(function (a) {
-        wrap.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer', onclick: goProj(a.projectId, 'release') }, [
+        var apprText = (a.projectName || '') + ' v' + (a.versionNo == null ? '' : a.versionNo) + ' ' + (a.title || '');
+        wrap.appendChild(hoverRow(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;transition:background .15s', onclick: goProj(a.projectId, 'release') }, [
           DN.pill('待审批', 'warn'),
-          DN.h('span', { text: trunc((a.projectName || '') + ' v' + (a.versionNo == null ? '' : a.versionNo) + ' ' + (a.title || ''), 34) })
-        ]));
+          DN.h('span', { text: trunc(apprText, 34), title: apprText })
+        ])));
       });
       tasks.slice(0, 6).forEach(function (t) {
         var od = t.dueDate && t.status !== 'DONE' && t.dueDate < today;
-        wrap.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer', onclick: goProj(t.projectId, 'task') }, [
+        wrap.appendChild(hoverRow(DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;transition:background .15s', onclick: goProj(t.projectId, 'task') }, [
           DN.pill(od ? '超期' : (t.status === 'DOING' ? '进行中' : '待办'), od ? 'err' : (t.status === 'DOING' ? 'info' : 'muted')),
           DN.h('span', { text: trunc(t.title || '-', 30), title: t.title || '' }),
           DN.h('span', { class: 'gov-desc', style: 'margin-left:auto;white-space:nowrap', text: trunc(t.projectName || '', 12) + (t.dueDate ? ' · ' + t.dueDate : '') })
-        ]));
+        ])));
       });
       c.body.appendChild(wrap);
     }).catch(function (e) { fail(c, d, e); });

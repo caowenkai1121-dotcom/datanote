@@ -22,6 +22,8 @@ public class LoginAttemptService {
     static final long WINDOW_MS = 10 * 60 * 1000L;
     /** 锁定时长。 */
     static final long LOCK_MS = 15 * 60 * 1000L;
+    /** 毫秒/分钟, 用于日志换算。 */
+    private static final long MS_PER_MINUTE = 60 * 1000L;
 
     private static final class Counter {
         int failures;
@@ -60,7 +62,7 @@ public class LoginAttemptService {
         c.failures++;
         if (c.failures >= MAX_FAILURES) {
             c.lockedUntil = now + LOCK_MS;
-            log.warn("账号 {} 登录失败 {} 次, 锁定 {} 分钟", k, c.failures, LOCK_MS / 60000);
+            log.warn("账号 {} 登录失败 {} 次, 锁定 {} 分钟", k, c.failures, LOCK_MS / MS_PER_MINUTE);
             return true;
         }
         return false;

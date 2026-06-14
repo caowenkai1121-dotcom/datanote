@@ -126,9 +126,10 @@ public class MdmPublishService {
         m.put("changeType", type);
         m.put("status", g.getStatus());
         m.put("version", g.getVersion());
-        Object data = g.getDataJson();
+        String json = g.getDataJson();
+        Object data = json;
         try {
-            if (g.getDataJson() != null && !g.getDataJson().trim().isEmpty()) data = objectMapper.readValue(g.getDataJson(), Map.class);
+            if (json != null && !json.trim().isEmpty()) data = objectMapper.readValue(json, Map.class);
         } catch (Exception ignore) {}
         m.put("data", data);
         m.put("publishedAt", now.toString());

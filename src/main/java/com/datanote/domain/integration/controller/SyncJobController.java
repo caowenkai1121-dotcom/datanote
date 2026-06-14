@@ -147,13 +147,22 @@ public class SyncJobController {
                 java.sql.ResultSetMetaData md = rs.getMetaData();
                 int cc = md.getColumnCount();
                 java.util.List<String> cols = new java.util.ArrayList<>();
-                for (int i = 1; i <= cc; i++) cols.add(md.getColumnLabel(i));
+                String[] maskTypes = new String[cc];   // 按列名命中敏感类型则脱敏(防原始预览泄露明文 PII)
+                for (int i = 1; i <= cc; i++) {
+                    String label = md.getColumnLabel(i);
+                    cols.add(label);
+                    maskTypes[i - 1] = sensitiveMaskType(label);
+                }
                 java.util.List<java.util.List<Object>> rows = new java.util.ArrayList<>();
                 while (rs.next()) {
                     java.util.List<Object> row = new java.util.ArrayList<>();
                     for (int i = 1; i <= cc; i++) {
                         Object v = rs.getObject(i);
-                        row.add(v == null ? null : String.valueOf(v));
+                        String s = (v == null) ? null : String.valueOf(v);
+                        if (s != null && maskTypes[i - 1] != null) {
+                            s = String.valueOf(com.datanote.domain.integration.util.PiiMasker.mask(s, maskTypes[i - 1], null));
+                        }
+                        row.add(s);
                     }
                     rows.add(row);
                 }
@@ -164,6 +173,20 @@ public class SyncJobController {
         } catch (Exception e) {
             return R.fail("样本预览失败: " + e.getMessage());
         }
+    }
+
+    /** 按列名命中常见敏感字段, 返回 PiiMasker 脱敏类型; 未命中返回 null(不脱敏)。 */
+    private static String sensitiveMaskType(String columnName) {
+        if (columnName == null) return null;
+        String n = columnName.toLowerCase();
+        if (n.contains("phone") || n.contains("mobile") || n.contains("tel")
+                || n.contains("手机") || n.contains("电话")) return "PHONE";
+        if (n.contains("email") || n.contains("mail") || n.contains("邮箱")) return "EMAIL";
+        if (n.contains("idcard") || n.contains("id_card") || n.contains("identity")
+                || n.contains("身份证")) return "IDCARD";
+        if (n.contains("password") || n.contains("passwd") || n.contains("pwd")
+                || n.contains("secret") || n.contains("token") || n.contains("密码")) return "REDACT";
+        return null;
     }
 
     @Operation(summary = "按正则匹配源库表名(整库/批量/分表汇聚配置生成用)")

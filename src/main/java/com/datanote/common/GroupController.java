@@ -24,6 +24,9 @@ import java.util.List;
 @Tag(name = "分组管理", description = "分组与成员的增删改查")
 public class GroupController {
 
+    /** dn_group_member 表的分组外键列名（多处按分组过滤成员，统一收口避免硬编码漂移） */
+    private static final String COL_GROUP_ID = "group_id";
+
     private final DnGroupMapper groupMapper;
     private final DnGroupMemberMapper memberMapper;
 
@@ -66,7 +69,7 @@ public class GroupController {
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Long id) {
         QueryWrapper<DnGroupMember> memberQuery = new QueryWrapper<>();
-        memberQuery.eq("group_id", id);
+        memberQuery.eq(COL_GROUP_ID, id);
         memberMapper.delete(memberQuery);
         groupMapper.deleteById(id);
         return R.ok("删除成功");
@@ -79,7 +82,7 @@ public class GroupController {
     @GetMapping("/{id}/members")
     public R<List<DnGroupMember>> listMembers(@PathVariable Long id) {
         QueryWrapper<DnGroupMember> qw = new QueryWrapper<>();
-        qw.eq("group_id", id);
+        qw.eq(COL_GROUP_ID, id);
         return R.ok(memberMapper.selectList(qw));
     }
 

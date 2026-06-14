@@ -648,7 +648,8 @@
           columns: [
             { key: 'dstColumn', label: '目标列', copyable: true, render: function (ed) { return clip(ed.dstColumn, 40); }, exportValue: function (ed) { return ed.dstColumn || ''; } },
             { label: '来源', copyable: true, render: function (ed) { return clip((ed.srcDb || '') + '.' + (ed.srcTable || '') + '.' + (ed.srcColumn || ''), 60); }, exportValue: function (ed) { return (ed.srcDb || '') + '.' + (ed.srcTable || '') + '.' + (ed.srcColumn || ''); } },
-            { label: '变换', render: function (ed) { return ed.transformType ? DN.pill(ed.transformType, 'info') : '-'; }, exportValue: function (ed) { return ed.transformType || ''; } }
+            { label: '变换', render: function (ed) { return ed.transformType ? DN.pill(ed.transformType, 'info') : '-'; }, exportValue: function (ed) { return ed.transformType || ''; } },
+            { label: '穿透', render: function (ed) { return DN.h('a', { href: 'javascript:void(0)', text: '上下游', style: 'color:var(--primary)', title: '查看该字段的多跳上游来源与下游影响', onclick: function () { lnColumnFlow(db, table, ed.dstColumn); } }); } }
           ],
           rows: cols,
           pageSize: 20,
@@ -662,6 +663,50 @@
       }
     }).catch(function (err) { box.innerHTML = ''; box.appendChild(DN.errorBox('查询失败: ' + (err && err.message ? err.message : err), function () { queryLineage(); })); })
       .then(done);
+  }
+
+  // 字段级血缘穿透: 抽屉展示某字段的多跳上游来源 + 下游影响
+  function lnColumnFlow(db, table, column) {
+    if (!column) { DN.toast('该行无目标列', 'warn'); return; }
+    var body = DN.h('div', { style: 'min-width:460px;max-width:720px' });
+    body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:0 0 12px', text: '字段 ' + db + '.' + table + '.' + column + ' 的多跳上下游穿透' }));
+    // 字段血缘图谱(可视): 复用表级图渲染器, 节点为 db.table.column
+    var graphTitle = DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:6px', text: '🔗 字段血缘图谱' });
+    var graphBox = DN.h('div', { style: 'overflow:auto;margin-bottom:14px' }); graphBox.appendChild(DN.skeleton(3));
+    body.appendChild(graphTitle); body.appendChild(graphBox);
+    var gqs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table) + '&column=' + encodeURIComponent(column) + '&depth=3';
+    DN.get('/api/lineage/column-graph' + gqs).then(function (g) {
+      g = g || {}; var nodes = g.nodes || [], edges = g.edges || [];
+      graphBox.innerHTML = '';
+      if (nodes.length <= 1 && !edges.length) { graphBox.appendChild(DN.empty('该字段暂无血缘边', 'lineage')); return; }
+      graphBox.appendChild(renderGraph(nodes, edges, (db + '.' + table + '.' + column).toLowerCase()));
+    }).catch(function () { graphBox.innerHTML = ''; graphBox.appendChild(DN.empty('图谱查询失败', 'lineage')); });
+    var upTitle = DN.h('div', { style: 'font-weight:600;font-size:13px;margin-bottom:6px', text: '⬆ 上游来源' });
+    var up = DN.h('div'); up.appendChild(DN.skeleton(2));
+    var downTitle = DN.h('div', { style: 'font-weight:600;font-size:13px;margin:14px 0 6px', text: '⬇ 下游影响' });
+    var down = DN.h('div'); down.appendChild(DN.skeleton(2));
+    body.appendChild(upTitle); body.appendChild(up);
+    body.appendChild(downTitle); body.appendChild(down);
+    DN.drawer('字段血缘穿透 · ' + column, body);
+    var qs = '?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table) + '&column=' + encodeURIComponent(column);
+    DN.get('/api/lineage/column-trace' + qs).then(function (d) { up.innerHTML = ''; up.appendChild(renderColFlow(d, 'up')); })
+      .catch(function () { up.innerHTML = ''; up.appendChild(DN.empty('查询失败', 'lineage')); });
+    DN.get('/api/lineage/column-impact' + qs).then(function (d) { down.innerHTML = ''; down.appendChild(renderColFlow(d, 'down')); })
+      .catch(function () { down.innerHTML = ''; down.appendChild(DN.empty('查询失败', 'lineage')); });
+  }
+
+  function renderColFlow(list, dir) {
+    list = list || [];
+    if (!list.length) return DN.empty(dir === 'up' ? '无上游来源（可能是源头字段）' : '无下游消费', 'lineage');
+    var wrap = DN.h('div');
+    list.forEach(function (n) {
+      var row = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 6px;border-bottom:1px solid var(--border);font-size:13px' });
+      row.appendChild(DN.h('span', { style: 'flex:0 0 auto;font-size:11px;color:var(--text-muted);background:var(--bg-hover);border-radius:var(--radius-full);padding:1px 7px', text: '第' + n.depth + '跳' }));
+      row.appendChild(DN.h('span', { style: 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace', title: (n.db || '') + '.' + (n.table || '') + '.' + (n.column || ''), text: (n.db || '') + '.' + (n.table || '') + '.' + (n.column || '') }));
+      if (n.transformType && n.transformType !== 'DIRECT') row.appendChild(DN.pill(n.transformType, n.transformType === 'MASK' ? 'err' : 'warn'));
+      wrap.appendChild(row);
+    });
+    return wrap;
   }
 
   // 上/下游表的一行药丸罗列（R25：药丸可点 → 以该表为中心画图，消除“看到却去不了”的死胡同）

@@ -63,7 +63,8 @@ public class MaskingController {
         if (policy.getRoleCode() == null || policy.getRoleCode().trim().isEmpty()) {
             return R.fail(R.CODE_BAD_REQUEST, "角色编码不能为空");
         }
-        if (policy.getDbName() == null || policy.getTableName() == null
+        if (policy.getDbName() == null || policy.getDbName().trim().isEmpty()
+                || policy.getTableName() == null || policy.getTableName().trim().isEmpty()
                 || policy.getRowFilter() == null || policy.getRowFilter().trim().isEmpty()) {
             return R.fail(R.CODE_BAD_REQUEST, "库名/表名/行过滤条件不能为空");
         }

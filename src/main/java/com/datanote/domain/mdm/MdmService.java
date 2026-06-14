@@ -14,6 +14,7 @@ import com.datanote.domain.mdm.model.DnMdmGoldenHistory;
 import com.datanote.domain.mdm.model.DnMdmGoldenRecord;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.*;
 /**
  * 主数据管理（MDM）服务 — 域/实体/属性建模层的统计、级联与计数维护。
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MdmService {
@@ -127,7 +129,10 @@ public class MdmService {
             h.setChangeType(changeType);
             h.setCreatedAt(java.time.LocalDateTime.now());
             goldenHistoryMapper.insert(h);
-        } catch (Exception ignore) {}
+        } catch (Exception e) {
+            // 快照失败不影响主流程, 但须留痕便于排查(原静默 ignore 致快照丢失无任何痕迹)
+            log.warn("黄金记录快照写入失败 goldenId={} changeType={}: {}", rec == null ? null : rec.getId(), changeType, e.getMessage());
+        }
     }
 
     /** #18: 黄金记录属性值统一校验(JSON 合法性 + 必填项)并计算业务主键。

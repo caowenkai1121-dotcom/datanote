@@ -90,7 +90,15 @@ public class VectorStoreClient {
     public boolean ensureCollection(int dim) {
         if (!available() || dim <= 0) return false;
         String exists = http("GET", "/collections/" + collection, null);
-        if (exists != null) return true;
+        if (exists != null) {
+            // 集合已存在: 校验已存维度与当前 dim 一致, 不一致则 fail-closed(否则 upsert/search 会被 Qdrant 静默拒绝, 检索悄悄退化)
+            Integer existDim = parseCollectionDim(exists);
+            if (existDim != null && existDim != dim) {
+                log.error("[vector] 集合 {} 已存在但维度不一致(已存={}, 当前={}), 拒绝复用; 请重建集合或重导后再用", collection, existDim, dim);
+                return false;
+            }
+            return true;
+        }
         Map<String, Object> vectors = new LinkedHashMap<>();
         vectors.put("size", dim);
         vectors.put("distance", "Cosine");
@@ -158,6 +166,17 @@ public class VectorStoreClient {
             return objectMapper.writeValueAsString(o);
         } catch (Exception e) {
             return "{}";
+        }
+    }
+
+    /** 从 GET /collections/{name} 响应解析已存集合的向量维度(result.config.params.vectors.size); 解析失败返 null。 */
+    private Integer parseCollectionDim(String resp) {
+        try {
+            JsonNode size = objectMapper.readTree(resp)
+                    .path("result").path("config").path("params").path("vectors").path("size");
+            return size.isInt() || size.isNumber() ? size.asInt() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

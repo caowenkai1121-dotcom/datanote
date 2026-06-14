@@ -240,7 +240,7 @@ public class MetadataService {
                                                    String password, String databaseName, String db, String table) throws SQLException {
         try (Connection conn = getExternalConnection(type, host, port, username, password, databaseName)) {
             if (isPg(type)) return queryPgColumns(conn, db, table);
-            if (isSqlServer(type)) return queryStdColumns(conn, db, table, true);
+            if (isSqlServer(type)) return queryStdColumns(conn, db, table);
             if (isOracle(type)) return queryOracleColumns(conn, db, table);
             return queryColumns(conn, db, table);
         }
@@ -255,7 +255,10 @@ public class MetadataService {
     private List<ColumnInfo> queryOracleColumns(Connection conn, String schema, String table) throws SQLException {
         String owner = (schema == null || schema.trim().isEmpty())
                 ? currentSchema(conn) : schema.toUpperCase();
-        String tbl = table == null ? "" : table.toUpperCase();
+        if (table == null || table.trim().isEmpty()) {
+            throw new IllegalArgumentException("table 不能为空");
+        }
+        String tbl = table.toUpperCase();
         java.util.Set<String> pks = new java.util.HashSet<>();
         String pkSql = "SELECT c.column_name FROM all_constraints k "
                 + "JOIN all_cons_columns c ON k.constraint_name = c.constraint_name AND k.owner = c.owner "
@@ -295,9 +298,8 @@ public class MetadataService {
         return list;
     }
 
-    /** 标准 information_schema.columns + PK 查询（PG/SQLServer 通用），类型按 source 归一。
-     *  sqlserver=true 用 SqlServerConnector 归一，否则用 PG 归一。 */
-    private List<ColumnInfo> queryStdColumns(Connection conn, String schema, String table, boolean sqlserver) throws SQLException {
+    /** 标准 information_schema.columns + PK 查询（SQLServer），类型按 SqlServerConnector 归一。 */
+    private List<ColumnInfo> queryStdColumns(Connection conn, String schema, String table) throws SQLException {
         java.util.Set<String> pks = new java.util.HashSet<>();
         String pkSql = "SELECT kcu.column_name FROM information_schema.table_constraints tc "
                 + "JOIN information_schema.key_column_usage kcu "

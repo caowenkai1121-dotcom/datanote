@@ -18,6 +18,8 @@ public class AiToolRegistry {
 
     private final Map<String, AiTool> byName = new LinkedHashMap<>();
     private final ObjectMapper objectMapper;
+    /** 全量清单缓存: byName 构造后不可变, 全量序列化结果恒定, 懒加载一次复用(每轮 run/resume/tools 端点都调) */
+    private volatile String fullManifestCache;
 
     public AiToolRegistry(List<AiTool> tools, ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -42,9 +44,14 @@ public class AiToolRegistry {
         return byName.size();
     }
 
-    /** 生成机读工具清单（注入 prompt 供 LLM 自发现）。 */
+    /** 生成机读工具清单（注入 prompt 供 LLM 自发现）。全量清单恒定, 懒加载缓存避免每次重复序列化。 */
     public String toToolsManifestJson() {
-        return toToolsManifestJson(null);
+        String c = fullManifestCache;
+        if (c == null) {
+            c = toToolsManifestJson(null);
+            fullManifestCache = c;
+        }
+        return c;
     }
 
     /** 按谓词过滤的机读工具清单(子代理只读受限清单复用)。filter=null 则全量。 */

@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -330,7 +329,8 @@ public class TaskSchedulerService {
 
         for (DnSchedulerRun run : waitingRuns) {
             String taskKey = buildTaskKey(run);
-            if (runningTasks.contains(taskKey)) continue;
+            // 原子门：add 返回 false 表示已有同 key 任务在跑/排队，直接跳过，杜绝 check-then-add 竞态
+            if (!runningTasks.add(taskKey)) continue;
 
             // 条件1：检查上游依赖是否全部完成
             boolean upstreamsReady;
@@ -345,7 +345,6 @@ public class TaskSchedulerService {
                     || isScheduleTimeReady(run.getTaskId(), run.getTaskType());
 
             if (upstreamsReady && timeReady) {
-                runningTasks.add(taskKey);
                 executor.submit(() -> {
                     try {
                         concurrencySemaphore.acquire();
@@ -363,6 +362,9 @@ public class TaskSchedulerService {
                         runningTasks.remove(taskKey);
                     }
                 });
+            } else {
+                // 条件不满足，未提交执行，回退占位，下一轮可重新评估
+                runningTasks.remove(taskKey);
             }
         }
     }
@@ -385,8 +387,12 @@ public class TaskSchedulerService {
                 return true;
             }
 
-            LocalTime triggerTime = nextTrigger.toLocalTime();
-            return !LocalTime.now().isBefore(triggerTime);
+            // 必须连日期一起判断：cron 的下次触发若不在今天（如按周/按月任务），今天就不应触发，
+            // 否则非命中日只比时分会让任务天天误放行
+            if (!nextTrigger.toLocalDate().equals(LocalDate.now())) {
+                return false;
+            }
+            return !LocalDateTime.now().isBefore(nextTrigger);
         } catch (IllegalArgumentException e) {
             log.warn("无法解析 cron 表达式 '{}' (taskId={}, taskType={})，默认放行", cron, taskId, taskType);
             return true;
@@ -521,6 +527,11 @@ public class TaskSchedulerService {
      * @return 状态概览（含任务列表和统计数据）
      */
     public Map<String, Object> getTodayStatus(LocalDate runDate) {
+        return getTodayStatus(runDate, null);
+    }
+
+    /** 当日调度状态; createdBy 非空时仅统计/返回该创建人的任务(运维"我的任务"过滤)。 */
+    public Map<String, Object> getTodayStatus(LocalDate runDate, String createdBy) {
         if (runDate == null) {
             throw new BusinessException("运行日期不能为空");
         }
@@ -551,8 +562,18 @@ public class TaskSchedulerService {
         Map<Long, DnSyncTask> syncTaskMap = (syncList == null ? Collections.<DnSyncTask>emptyList() : syncList).stream()
                 .collect(Collectors.toMap(DnSyncTask::getId, t -> t, (a, b) -> a));
 
+        // "我的任务"过滤: 仅保留创建人匹配的 run(否则失败/耗时排行仍是全员数据)
+        List<DnSchedulerRun> effRuns = runs;
+        if (createdBy != null && !createdBy.trim().isEmpty()) {
+            String who = createdBy.trim();
+            effRuns = new ArrayList<>();
+            for (DnSchedulerRun run : runs) {
+                if (who.equals(ownerOfRun(run, scriptMap, syncTaskMap))) effRuns.add(run);
+            }
+        }
+
         List<Map<String, Object>> runList = new ArrayList<>();
-        for (DnSchedulerRun run : runs) {
+        for (DnSchedulerRun run : effRuns) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", run.getId());
             item.put("taskId", run.getTaskId());
@@ -561,6 +582,7 @@ public class TaskSchedulerService {
             item.put("startTime", run.getStartTime());
             item.put("endTime", run.getEndTime());
             item.put("retryCount", run.getRetryCount());
+            item.put("owner", ownerOfRun(run, scriptMap, syncTaskMap));   // 负责人, 供运维负责人筛选/我的任务
 
             if (Constants.TASK_TYPE_SCRIPT.equals(run.getTaskType())) {
                 DnScript s = scriptMap.get(run.getTaskId());
@@ -576,14 +598,25 @@ public class TaskSchedulerService {
 
         Map<String, Object> result = new HashMap<>();
         result.put("runs", runList);
-        result.put("total", runs.size());
-        result.put("success", countByStatus(runs, DnSchedulerRun.STATUS_SUCCESS));
-        result.put("running", countByStatus(runs, DnSchedulerRun.STATUS_RUNNING));
-        result.put("waiting", countByStatus(runs, DnSchedulerRun.STATUS_WAITING));
-        result.put("failed", countByStatus(runs, DnSchedulerRun.STATUS_FAILED));
-        result.put("paused", countByStatus(runs, DnSchedulerRun.STATUS_PAUSED));
+        result.put("total", effRuns.size());
+        result.put("success", countByStatus(effRuns, DnSchedulerRun.STATUS_SUCCESS));
+        result.put("running", countByStatus(effRuns, DnSchedulerRun.STATUS_RUNNING));
+        result.put("waiting", countByStatus(effRuns, DnSchedulerRun.STATUS_WAITING));
+        result.put("failed", countByStatus(effRuns, DnSchedulerRun.STATUS_FAILED));
+        result.put("paused", countByStatus(effRuns, DnSchedulerRun.STATUS_PAUSED));
         result.put("schedulerEnabled", schedulerEnabled);
         return result;
+    }
+
+    /** 取某条 run 对应任务的创建人(脚本/同步任务 createdBy)。 */
+    private String ownerOfRun(DnSchedulerRun run, Map<Long, DnScript> scriptMap, Map<Long, DnSyncTask> syncTaskMap) {
+        if (run == null || run.getTaskId() == null) return null;
+        if (Constants.TASK_TYPE_SCRIPT.equals(run.getTaskType())) {
+            DnScript s = scriptMap.get(run.getTaskId());
+            return s == null ? null : s.getCreatedBy();
+        }
+        DnSyncTask t = syncTaskMap.get(run.getTaskId());
+        return t == null ? null : t.getCreatedBy();
     }
 
     /**
@@ -621,9 +654,8 @@ public class TaskSchedulerService {
         update.setEndTime(LocalDateTime.now());
         update.setLog(run.getLog() != null ? run.getLog() + "\n[SYSTEM] 任务被手动停止" : "[SYSTEM] 任务被手动停止");
         runMapper.updateById(update);
-        // Remove from running set
-        String taskKey = run.getTaskType() + "_" + run.getTaskId();
-        runningTasks.remove(taskKey);
+        // Remove from running set（与 buildTaskKey 同款键格式，否则去重标记永远清不掉）
+        runningTasks.remove(buildTaskKey(run));
     }
 
     // ======================== 任务运行记录查询 ========================

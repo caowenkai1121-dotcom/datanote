@@ -25,6 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SqlLineageService {
 
+    private static final int TABLE_CONFIDENCE = 100; // 表级解析较稳，置信度 100
     private static final int COLUMN_CONFIDENCE = 80; // 列级 best-effort，低于映射来源的 100
 
     private final DnScriptMapper scriptMapper;
@@ -57,7 +58,7 @@ public class SqlLineageService {
         if (reads != null) for (TableRef src : reads) {
             if (src == null) continue;
             count += tryInsert(edge("TABLE", src.getDb(), src.getTable(), "",
-                    dst.getDb(), dst.getTable(), "", 100));
+                    dst.getDb(), dst.getTable(), "", TABLE_CONFIDENCE));
         }
         List<ColumnMapping> cms = r.getColumnMappings();
         if (cms != null) for (ColumnMapping cm : cms) {
@@ -87,8 +88,9 @@ public class SqlLineageService {
         e.setTransformType("DIRECT");
         e.setSource("SQL");
         e.setConfidence(confidence);
-        e.setCreatedAt(LocalDateTime.now());
-        e.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        e.setCreatedAt(now);
+        e.setUpdatedAt(now);
         return e;
     }
 }

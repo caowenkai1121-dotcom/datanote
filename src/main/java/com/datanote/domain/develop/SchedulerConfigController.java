@@ -1,7 +1,9 @@
 package com.datanote.domain.develop;
 
 import com.datanote.domain.orchestration.dto.ScheduleConfigRequest;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
+import org.springframework.scheduling.support.CronExpression;
 import com.datanote.domain.develop.mapper.DnScriptMapper;
 import com.datanote.domain.integration.mapper.DnSyncTaskMapper;
 import com.datanote.domain.develop.model.DnScript;
@@ -41,6 +43,8 @@ public class SchedulerConfigController {
         config.put("retryTimes", script.getRetryTimes());
         config.put("retryInterval", script.getRetryInterval());
         config.put("warningType", script.getWarningType());
+        config.put("alertChannel", script.getAlertChannel());
+        config.put("alertContact", script.getAlertContact());
         config.put("dsWorkflowCode", script.getDsWorkflowCode());
         config.put("dsScheduleId", script.getDsScheduleId());
         return R.ok(config);
@@ -53,6 +57,7 @@ public class SchedulerConfigController {
     @Operation(summary = "保存脚本调度配置")
     public R<Void> saveConfig(@PathVariable Long scriptId, @RequestBody ScheduleConfigRequest req) {
         requireScript(scriptId);
+        validateScheduleConfig(req);
         DnScript update = new DnScript();
         update.setId(scriptId);
         update.setScheduleCron(req.getScheduleCron());
@@ -60,6 +65,8 @@ public class SchedulerConfigController {
         update.setRetryTimes(req.getRetryTimes());
         update.setRetryInterval(req.getRetryInterval());
         update.setWarningType(req.getWarningType());
+        update.setAlertChannel(req.getAlertChannel());
+        update.setAlertContact(req.getAlertContact());
         scriptMapper.updateById(update);
         return R.ok();
     }
@@ -78,6 +85,8 @@ public class SchedulerConfigController {
         config.put("retryTimes", task.getRetryTimes());
         config.put("retryInterval", task.getRetryInterval());
         config.put("warningType", task.getWarningType());
+        config.put("alertChannel", task.getAlertChannel());
+        config.put("alertContact", task.getAlertContact());
         config.put("dsWorkflowCode", task.getDsWorkflowCode());
         config.put("dsScheduleId", task.getDsScheduleId());
         return R.ok(config);
@@ -90,6 +99,7 @@ public class SchedulerConfigController {
     @Operation(summary = "保存同步任务调度配置")
     public R<Void> saveSyncConfig(@PathVariable Long taskId, @RequestBody ScheduleConfigRequest req) {
         requireSyncTask(taskId);
+        validateScheduleConfig(req);
         DnSyncTask update = new DnSyncTask();
         update.setId(taskId);
         update.setScheduleCron(req.getScheduleCron());
@@ -97,11 +107,34 @@ public class SchedulerConfigController {
         update.setRetryTimes(req.getRetryTimes());
         update.setRetryInterval(req.getRetryInterval());
         update.setWarningType(req.getWarningType());
+        update.setAlertChannel(req.getAlertChannel());
+        update.setAlertContact(req.getAlertContact());
         syncTaskMapper.updateById(update);
         return R.ok();
     }
 
     // ========== 内部辅助方法 ==========
+
+    /** 调度参数校验: 非法 cron / 负超时 / 负重试 落库前拦截, 避免静默吞掉导致按错峰执行。 */
+    private void validateScheduleConfig(ScheduleConfigRequest req) {
+        String cron = req.getScheduleCron();
+        if (cron != null && !cron.trim().isEmpty()) {
+            try {
+                CronExpression.parse(cron.trim());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("非法 cron 表达式: " + cron);
+            }
+        }
+        if (req.getTimeoutSeconds() != null && req.getTimeoutSeconds() < 0) {
+            throw new BusinessException("超时时间(timeoutSeconds)不能为负");
+        }
+        if (req.getRetryTimes() != null && req.getRetryTimes() < 0) {
+            throw new BusinessException("重试次数(retryTimes)不能为负");
+        }
+        if (req.getRetryInterval() != null && req.getRetryInterval() < 0) {
+            throw new BusinessException("重试间隔(retryInterval)不能为负");
+        }
+    }
 
     private DnScript requireScript(Long scriptId) {
         DnScript script = scriptMapper.selectById(scriptId);

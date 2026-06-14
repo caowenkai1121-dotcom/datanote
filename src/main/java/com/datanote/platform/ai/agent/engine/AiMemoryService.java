@@ -1,6 +1,7 @@
 package com.datanote.platform.ai.agent.engine;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.platform.ai.AiAssistService;
 import com.datanote.platform.ai.agent.mapper.DnAiMemorySkillMapper;
 import com.datanote.platform.ai.agent.model.DnAiMemorySkill;
@@ -132,13 +133,11 @@ public class AiMemoryService {
     private void bumpHits(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
         try {
-            for (Long id : ids) {
-                DnAiMemorySkill m = memoryMapper.selectById(id);
-                if (m == null) continue;
-                m.setHitCount((m.getHitCount() == null ? 0 : m.getHitCount()) + 1);
-                m.setUpdatedAt(LocalDateTime.now());
-                memoryMapper.updateById(m);
-            }
+            // 一条批量 UPDATE 自增命中次数, 替代逐条 select+update(消除 N+1, 在对话首字节前的同步路径上)
+            memoryMapper.update(null, new UpdateWrapper<DnAiMemorySkill>()
+                    .in("id", ids)
+                    .setSql("hit_count = COALESCE(hit_count, 0) + 1")
+                    .set("updated_at", LocalDateTime.now()));
         } catch (Exception ignore) {
         }
     }
@@ -165,7 +164,7 @@ public class AiMemoryService {
             String title = clean(j.path("title").asText(null));
             String content = clean(j.path("content").asText(null));
             String trigger = clean(j.path("trigger").asText(null));
-            if (content == null || content.isEmpty()) return;
+            if (content == null || content.trim().isEmpty()) return; // 空/空白 content → 不入库垃圾记忆
             int contentCap = "skill".equals(type) ? 900 : CONTENT_CAP; // 技能含有序步骤, 放宽上限
 
             // 去重: 同 owner 同 title 已有 active → 仅 bump, 不重复入库(防 100 轮迭代刷屏)

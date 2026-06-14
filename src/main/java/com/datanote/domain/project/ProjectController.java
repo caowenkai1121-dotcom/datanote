@@ -197,7 +197,7 @@ public class ProjectController {
     @PutMapping("/{id}/members/{memberId}")
     public R<String> changeRole(@PathVariable Long id, @PathVariable Long memberId, @RequestBody java.util.Map<String, String> body) {
         try {
-            projectMemberService.changeRole(memberId, body.get("role"));
+            projectMemberService.changeRole(id, memberId, body.get("role"));
             return R.ok("已更新");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
@@ -208,7 +208,7 @@ public class ProjectController {
     @DeleteMapping("/{id}/members/{memberId}")
     public R<String> removeMember(@PathVariable Long id, @PathVariable Long memberId) {
         try {
-            projectMemberService.remove(memberId);
+            projectMemberService.remove(id, memberId);
             return R.ok("已移除");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());

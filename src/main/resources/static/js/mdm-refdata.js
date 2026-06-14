@@ -91,7 +91,12 @@
       card.body.appendChild(DN.table({
         columns: [
           { key: 'code', label: '码值', copyable: true, sortable: true, render: function (r) { return r.code == null ? '-' : String(r.code); } },
-          { key: 'name', label: '名称', sortable: true, render: function (r) { return r.name == null ? '-' : String(r.name); } },
+          { key: 'name', label: '名称', sortable: true, render: function (r) {
+              if (r.name == null) return '-';
+              var nm = String(r.name);
+              // 超长名称截断 + title 悬停看全文，避免撑破表格（与描述列口径一致）
+              return DN.h('span', { text: nm.length > 30 ? nm.slice(0, 30) + '…' : nm, title: nm.length > 30 ? nm : '' });
+            } },
           { key: 'parentCode', label: '父级', render: function (r) {
               if (!r.parentCode) return DN.h('span', { text: '-', style: 'color:var(--text-muted)' });
               var pn = nameByCode[r.parentCode];

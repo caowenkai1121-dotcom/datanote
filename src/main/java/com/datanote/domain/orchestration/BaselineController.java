@@ -63,8 +63,12 @@ public class BaselineController {
     @PostMapping("/create")
     @Operation(summary = "创建基线")
     public R<DnBaseline> create(@RequestBody Map<String, Object> body) {
+        String baselineName = body.get("baselineName") != null ? ((String) body.get("baselineName")).trim() : "";
+        if (baselineName.isEmpty()) {
+            return R.fail("基线名称不能为空");
+        }
         DnBaseline baseline = new DnBaseline();
-        baseline.setBaselineName((String) body.get("baselineName"));
+        baseline.setBaselineName(baselineName);
         baseline.setDescription((String) body.get("description"));
         if (body.get("commitTime") != null) {
             baseline.setCommitTime(java.time.LocalTime.parse((String) body.get("commitTime")));

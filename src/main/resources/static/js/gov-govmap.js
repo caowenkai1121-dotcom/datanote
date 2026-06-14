@@ -91,7 +91,7 @@
       steps.forEach(function (s, i) {
         if (!s) return;
         var full = String(s.t == null ? '' : s.t);
-        var pill = DN.h('a', { href: 'javascript:void(0)', text: clip(full, 18), title: full, role: 'button',
+        var pill = DN.h('a', { href: 'javascript:void(0)', text: clip(full, 18), title: full, role: 'button', tabindex: '0',
           style: 'display:inline-block;padding:5px 12px;border-radius:var(--radius-xl);background:var(--bg-body);border:1px solid var(--border);font-size:12px;color:var(--text-primary);cursor:pointer;transition:all var(--dur);' });
         pill.onmouseover = function () { pill.style.background = ch.color || 'var(--primary)'; pill.style.color = 'var(--text-inverse)'; pill.style.borderColor = ch.color || 'var(--primary)'; };
         pill.onmouseout = function () { pill.style.background = 'var(--bg-body)'; pill.style.color = 'var(--text-primary)'; pill.style.borderColor = 'var(--border)'; };
@@ -114,7 +114,7 @@
         if (!h) return;
         var box = DN.h('div', { role: 'button', tabindex: '0', title: (h.t || '') + ' → ' + (h.d || ''),
           style: 'padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:all var(--dur);background:var(--bg-card);outline-offset:2px;' });
-        box.onmouseover = function () { box.style.boxShadow = '0 4px 14px rgba(0,0,0,.1)'; box.style.transform = 'translateY(-2px)'; };
+        box.onmouseover = function () { box.style.boxShadow = 'var(--shadow-md)'; box.style.transform = 'translateY(-2px)'; };
         box.onmouseout = function () { box.style.boxShadow = ''; box.style.transform = ''; };
         if (typeof h.go === 'function') bindActivate(box, h.go);
         box.appendChild(DN.h('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: clip(h.t, 20) }));

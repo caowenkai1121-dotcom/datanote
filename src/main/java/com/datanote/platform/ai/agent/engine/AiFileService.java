@@ -114,7 +114,7 @@ public class AiFileService {
     public Object[] resolve(Long id, String owner) {
         DnAiFile m = fileMapper.selectById(id);
         if (m == null) return null;
-        if (owner != null && !"anonymous".equals(owner) && m.getOwner() != null && !owner.equals(m.getOwner())) return null; // 越权
+        if (ownerDenied(owner, m.getOwner())) return null; // 越权
         try {
             Path root = storageRoot();
             Path p = root.resolve(m.getStoredName()).normalize();
@@ -163,7 +163,7 @@ public class AiFileService {
             // 元数据在但文件已丢: 仍允许删元数据(owner 校验)
             DnAiFile m = fileMapper.selectById(id);
             if (m == null) return false;
-            if (owner != null && !"anonymous".equals(owner) && m.getOwner() != null && !owner.equals(m.getOwner())) return false;
+            if (ownerDenied(owner, m.getOwner())) return false;
             fileMapper.deleteById(id);
             return true;
         }
@@ -172,6 +172,11 @@ public class AiFileService {
         try { Files.deleteIfExists(p); } catch (IOException ignore) {}
         fileMapper.deleteById(m.getId());
         return true;
+    }
+
+    /** owner 越权判定: 实名用户访问他人文件即拒(匿名/无主放行)。 */
+    private static boolean ownerDenied(String owner, String fileOwner) {
+        return owner != null && !"anonymous".equals(owner) && fileOwner != null && !owner.equals(fileOwner);
     }
 
     private static String ext(String name) {

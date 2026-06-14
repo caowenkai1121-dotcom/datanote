@@ -65,3 +65,9 @@ ai-files/
 
 # 参考资料(非代码, 不入库)
 tp/
+
+# 本地运维/测试helper脚本(勿入库)
+/*.py
+round_*.js
+/_start.sh
+cookie.txt

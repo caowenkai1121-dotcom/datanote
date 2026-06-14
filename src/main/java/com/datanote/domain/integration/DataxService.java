@@ -180,10 +180,27 @@ public class DataxService {
     }
 
     public ProcessUtil.ExecResult runJob(String jobFilePath) throws Exception {
+        validateJobPath(jobFilePath);
         if ("docker".equals(dataxMode)) {
             return runJobDocker(jobFilePath);
         }
         return runJobLocal(jobFilePath);
+    }
+
+    /** 作业文件必须落在配置的 datax.job-dir 目录内,规范化后做前缀校验,防 ../ 越目录读取/搬运服务器任意文件。 */
+    private void validateJobPath(String jobFilePath) {
+        if (jobFilePath == null || jobFilePath.trim().isEmpty()) {
+            throw new IllegalArgumentException("作业文件路径不能为空");
+        }
+        try {
+            java.nio.file.Path base = java.nio.file.Paths.get(jobDir).toAbsolutePath().normalize();
+            java.nio.file.Path target = java.nio.file.Paths.get(jobFilePath).toAbsolutePath().normalize();
+            if (!target.startsWith(base)) {
+                throw new IllegalArgumentException("非法作业文件路径(越出作业目录): " + jobFilePath);
+            }
+        } catch (java.nio.file.InvalidPathException e) {
+            throw new IllegalArgumentException("非法作业文件路径: " + jobFilePath);
+        }
     }
 
     private ProcessUtil.ExecResult runJobLocal(String jobFilePath) throws Exception {

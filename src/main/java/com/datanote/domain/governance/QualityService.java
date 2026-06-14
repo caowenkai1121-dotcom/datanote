@@ -89,7 +89,8 @@ public class QualityService {
      */
     public Map<String, Object> computeScore() {
         QueryWrapper<DnQualityRun> qw = new QueryWrapper<>();
-        qw.ge("started_at", LocalDateTime.now().minusDays(7)).isNotNull("pass_rate");
+        // 仅统计 success 状态 run 的通过率，与 HealthScoreService/OverviewService 口径一致，剔除失败执行
+        qw.ge("started_at", LocalDateTime.now().minusDays(7)).eq("run_status", "success").isNotNull("pass_rate");
         List<DnQualityRun> runs = qualityRunMapper.selectList(qw);
         double sum = 0;
         int n = 0;
@@ -457,43 +458,37 @@ public class QualityService {
             ps.setQueryTimeout(60);
             ps.setString(1, param);
             try (ResultSet rs = ps.executeQuery()) {
-                ResultSetMetaData meta = rs.getMetaData();
-                int colCount = meta.getColumnCount();
-                List<Map<String, Object>> samples = new ArrayList<>();
-                while (rs.next() && samples.size() < 10) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= colCount; i++) {
-                        row.put(meta.getColumnLabel(i), rs.getObject(i));
-                    }
-                    samples.add(row);
-                }
-                return objectMapper.writeValueAsString(samples);
+                return rsToSampleJson(rs);
             }
         } catch (Exception e) {
             return "[]";
         }
     }
 
-    @SuppressWarnings("unchecked")
     private String querySampleJson(Connection conn, String sql) {
         try (Statement stmt = conn.createStatement()) {
             stmt.setQueryTimeout(60);
             try (ResultSet rs = stmt.executeQuery(sql)) {
-                ResultSetMetaData meta = rs.getMetaData();
-                int colCount = meta.getColumnCount();
-                List<Map<String, Object>> samples = new ArrayList<>();
-                while (rs.next() && samples.size() < 10) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= colCount; i++) {
-                        row.put(meta.getColumnLabel(i), rs.getObject(i));
-                    }
-                    samples.add(row);
-                }
-                return objectMapper.writeValueAsString(samples);
+                return rsToSampleJson(rs);
             }
         } catch (Exception e) {
             return "[]";
         }
+    }
+
+    /** ResultSet 前 10 行 → JSON 数组采样(两个采样方法共用, 原逐字重复一份)。 */
+    private String rsToSampleJson(ResultSet rs) throws Exception {
+        ResultSetMetaData meta = rs.getMetaData();
+        int colCount = meta.getColumnCount();
+        List<Map<String, Object>> samples = new ArrayList<>();
+        while (rs.next() && samples.size() < 10) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            for (int i = 1; i <= colCount; i++) {
+                row.put(meta.getColumnLabel(i), rs.getObject(i));
+            }
+            samples.add(row);
+        }
+        return objectMapper.writeValueAsString(samples);
     }
 
     @SuppressWarnings("unchecked")

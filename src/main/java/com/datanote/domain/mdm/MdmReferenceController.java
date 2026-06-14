@@ -144,9 +144,16 @@ public class MdmReferenceController {
         if (hierarchyType != null && !hierarchyType.isEmpty()) qw.eq("hierarchy_type", hierarchyType);
         qw.orderByAsc("sort_order").orderByAsc("id");
         List<DnMdmHierarchy> rows = hierarchyMapper.selectList(qw);
+        // 收集父/子记录ID去重后一次性查出, 避免逐行 selectById 造成 N+1
+        Set<Long> recordIds = new HashSet<>();
         for (DnMdmHierarchy h : rows) {
-            h.setParentBizKey(bizKeyOf(h.getParentRecordId()));
-            h.setChildBizKey(bizKeyOf(h.getChildRecordId()));
+            if (h.getParentRecordId() != null) recordIds.add(h.getParentRecordId());
+            if (h.getChildRecordId() != null) recordIds.add(h.getChildRecordId());
+        }
+        Map<Long, String> bizKeyMap = bizKeyMapOf(recordIds);
+        for (DnMdmHierarchy h : rows) {
+            h.setParentBizKey(h.getParentRecordId() == null ? null : bizKeyMap.get(h.getParentRecordId()));
+            h.setChildBizKey(h.getChildRecordId() == null ? null : bizKeyMap.get(h.getChildRecordId()));
         }
         return R.ok(rows);
     }
@@ -176,6 +183,10 @@ public class MdmReferenceController {
             if (parent == null) throw new ResourceNotFoundException("父黄金记录");
             if (!Objects.equals(parent.getEntityId(), h.getEntityId())) {
                 throw new BusinessException("父黄金记录不属于所选实体");
+            }
+            // 环路检测: 从拟设父节点沿 parent 链上溯(同实体同类型), 若途中遇到本子节点说明会成环, 拒绝
+            if (wouldFormCycle(h.getEntityId(), h.getHierarchyType(), h.getChildRecordId(), h.getParentRecordId(), h.getId())) {
+                throw new BusinessException("该关系会形成环路（子节点是父节点的祖先），不允许保存");
             }
         }
 
@@ -238,10 +249,35 @@ public class MdmReferenceController {
     }
 
     // ------- 工具 -------
-    private String bizKeyOf(Long recordId) {
-        if (recordId == null) return null;
-        DnMdmGoldenRecord g = goldenMapper.selectById(recordId);
-        return g != null ? g.getBizKey() : null;
+    /** 批量取黄金记录业务主键: 一次 selectBatchIds 建 id→bizKey 映射, 替代逐条 selectById。 */
+    private Map<Long, String> bizKeyMapOf(Set<Long> recordIds) {
+        Map<Long, String> map = new HashMap<>();
+        if (recordIds == null || recordIds.isEmpty()) return map;
+        List<DnMdmGoldenRecord> records = goldenMapper.selectBatchIds(recordIds);
+        for (DnMdmGoldenRecord g : records) {
+            map.put(g.getId(), g.getBizKey());
+        }
+        return map;
+    }
+
+    /**
+     * 判断把 child 挂到 parent 下是否会成环: 从 parent 沿 parent 链上溯(同实体同类型),
+     * 若途中遇到 child 则会成环。excludeId 为本次保存记录自身(编辑场景), 上溯时跳过。
+     */
+    private boolean wouldFormCycle(Long entityId, String hierarchyType, Long childRecordId,
+                                   Long parentRecordId, Long excludeId) {
+        Set<Long> visited = new HashSet<>();
+        Long cur = parentRecordId;
+        while (cur != null && visited.add(cur)) {
+            if (Objects.equals(cur, childRecordId)) return true;
+            // 找到以 cur 为子节点的关系, 取其父继续上溯
+            QueryWrapper<DnMdmHierarchy> qw = new QueryWrapper<>();
+            qw.eq("entity_id", entityId).eq("hierarchy_type", hierarchyType).eq("child_record_id", cur);
+            if (excludeId != null) qw.ne("id", excludeId);
+            DnMdmHierarchy up = hierarchyMapper.selectOne(qw.last("LIMIT 1"));
+            cur = (up != null) ? up.getParentRecordId() : null;
+        }
+        return false;
     }
 
     // ===== 源自 MdmXrefController.java =====
@@ -259,9 +295,15 @@ public class MdmReferenceController {
         QueryWrapper<DnMdmXref> qw = new QueryWrapper<>();
         qw.eq("entity_id", entityId).orderByAsc("source_system");
         List<DnMdmXref> xrefs = xrefMapper.selectList(qw);
+        // 收集黄金记录ID去重后一次性查出, 避免逐行 selectById 造成 N+1
+        Set<Long> goldenIds = new HashSet<>();
         for (DnMdmXref x : xrefs) {
-            DnMdmGoldenRecord g = goldenMapper.selectById(x.getGoldenRecordId());
-            if (g != null) x.setBizKey(g.getBizKey());
+            if (x.getGoldenRecordId() != null) goldenIds.add(x.getGoldenRecordId());
+        }
+        Map<Long, String> bizKeyMap = bizKeyMapOf(goldenIds);
+        for (DnMdmXref x : xrefs) {
+            String bizKey = x.getGoldenRecordId() == null ? null : bizKeyMap.get(x.getGoldenRecordId());
+            if (bizKey != null) x.setBizKey(bizKey);
         }
         return R.ok(xrefs);
     }
@@ -328,6 +370,8 @@ public class MdmReferenceController {
     @Operation(summary = "按源系统ID反查黄金记录(XREF resolve)")
     @GetMapping("/api/mdm/xref/resolve")
     public R<Map<String, Object>> resolve(@RequestParam String sourceSystem, @RequestParam String sourceId) {
+        if (sourceSystem == null || sourceSystem.trim().isEmpty()) throw new BusinessException("源系统不能为空");
+        if (sourceId == null || sourceId.trim().isEmpty()) throw new BusinessException("源系统业务ID不能为空");
         QueryWrapper<DnMdmXref> qw = new QueryWrapper<>();
         qw.eq("source_system", sourceSystem.trim()).eq("source_id", sourceId.trim());
         DnMdmXref x = xrefMapper.selectOne(qw);

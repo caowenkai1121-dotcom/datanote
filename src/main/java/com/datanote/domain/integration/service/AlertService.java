@@ -33,8 +33,9 @@ public class AlertService {
     public static boolean throttled(Long last, long now, int throttleMin) {
         return last != null && (now - last) < throttleMin * 60_000L;
     }
+    private static boolean notEmpty(String s) { return s != null && !s.isEmpty(); }
     private void send(String text) {
-        if (dingtalk != null && !dingtalk.isEmpty()) {
+        if (notEmpty(dingtalk)) {
             String content = text;
             String at = "";
             // @手机号：内容前缀 @号码 + at.atMobiles，钉钉才会真正 @ 到人
@@ -52,11 +53,11 @@ public class AlertService {
             }
             String url = dingtalk;
             try {
-                if (dingtalkSecret != null && !dingtalkSecret.isEmpty()) url = signedUrl(dingtalk, dingtalkSecret, System.currentTimeMillis());
+                if (notEmpty(dingtalkSecret)) url = signedUrl(dingtalk, dingtalkSecret, System.currentTimeMillis());
             } catch (Exception e) { log.warn("钉钉加签失败,改用未签名 url: {}", e.getMessage()); }
             postJson(url, "{\"msgtype\":\"text\",\"text\":{\"content\":\"" + escape(content) + "\"}" + at + "}");
         }
-        if (webhookUrls != null && !webhookUrls.isEmpty()) for (String u : webhookUrls.split(",")) if (!u.trim().isEmpty()) postJson(u.trim(), "{\"text\":\"" + escape(text) + "\"}");
+        if (notEmpty(webhookUrls)) for (String u : webhookUrls.split(",")) if (!u.trim().isEmpty()) postJson(u.trim(), "{\"text\":\"" + escape(text) + "\"}");
     }
     private static String escape(String s) { return s.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n"); }
 

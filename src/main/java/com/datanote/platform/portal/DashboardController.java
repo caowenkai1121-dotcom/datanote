@@ -9,6 +9,7 @@ import com.datanote.domain.orchestration.model.DnSchedulerRun;
 import com.datanote.domain.develop.model.DnScript;
 import com.datanote.domain.integration.model.DnSyncTask;
 import com.datanote.common.model.R;
+import com.datanote.platform.iam.CurrentUserUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,11 @@ public class DashboardController {
     private final DnSchedulerRunMapper schedulerRunMapper;
     private final DataSource dataSource;
 
+    /** 服务探活 TCP 连接超时(毫秒) */
+    private static final int SERVICE_CONNECT_TIMEOUT_MS = 1000;
+    /** 元数据库连接有效性校验超时(秒) */
+    private static final int DB_VALIDATE_TIMEOUT_SEC = 2;
+
     @Value("${spring.datasource.url:jdbc:mysql://127.0.0.1:3306/datanote}")
     private String dataSourceUrl;
 
@@ -58,7 +64,7 @@ public class DashboardController {
     @GetMapping("/stats")
     public R<Map<String, Object>> stats(@RequestParam(required = false) Boolean myTask) {
         Map<String, Object> data = new HashMap<>();
-        String currentUser = "default";
+        String currentUser = CurrentUserUtil.currentUser();
 
         QueryWrapper<DnScript> scriptQw = new QueryWrapper<>();
         if (Boolean.TRUE.equals(myTask)) {
@@ -174,7 +180,7 @@ public class DashboardController {
         long t0 = System.currentTimeMillis();
         boolean dbOk = false;
         try (Connection conn = dataSource.getConnection()) {
-            dbOk = conn.isValid(2);
+            dbOk = conn.isValid(DB_VALIDATE_TIMEOUT_SEC);
         } catch (Exception ignored) {
         }
         db.put("ok", dbOk);
@@ -213,7 +219,7 @@ public class DashboardController {
         svc.put("desc", desc);
         boolean alive = false;
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), 1000);
+            socket.connect(new InetSocketAddress(host, port), SERVICE_CONNECT_TIMEOUT_MS);
             alive = true;
         } catch (Exception ignored) {
         }

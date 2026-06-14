@@ -108,7 +108,7 @@
         { icon: 'list', label: '实体属性', value: total },
         { icon: 'check', label: '已配规则', value: configured, tone: (configured ? 'ok' : 'muted') },
         { icon: 'alert', label: '未配属性', value: Math.max(0, total - configured), tone: ((total - configured) > 0 ? 'warn' : 'ok') },
-        { icon: 'shield', label: '源优先规则', value: rules.filter(function (ru) { return ru.strategy === 'source_priority'; }).length, sub: '需源系统清单' }
+        { icon: 'shield', label: '源优先规则', value: rules.filter(function (ru) { return ru && ru.strategy === 'source_priority'; }).length, sub: '需源系统清单' }
       ]));
 
       renderAttrConfigCard(box);
@@ -167,7 +167,7 @@
       columns: [
         { key: 'priority', label: '优先级', align: 'right', sortable: true, render: function (r) { return String(r.priority == null ? 0 : r.priority); } },
         { key: 'attrCode', label: '属性编码', copyable: true, render: function (r) { return r.attrCode || '-'; } },
-        { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName || '-'; } },
+        { key: 'attrName', label: '属性名称', render: function (r) { return r.attrName ? truncCell(r.attrName, 40) : '-'; } },
         { key: 'strategy', label: '存活策略', render: function (r) { return DN.pill(strategyLabel(r.strategy), strategyTone(r.strategy)); } },
         { key: 'sourcePriority', label: '源系统优先级', render: function (r) { return r.sourcePriority ? truncCell(r.sourcePriority, 48) : DN.h('span', { text: '-', style: 'color:var(--text-muted)' }); } },
         { key: '_op', label: '操作', render: function (r) {

@@ -73,15 +73,16 @@ public class OverviewService {
         try {
             Map<String, Object> cur = healthScoreService.current();
             Object t = cur.get("totalScore");
-            if (t instanceof Number) total = ((Number) t).doubleValue();
-            else if (t instanceof BigDecimal) total = ((BigDecimal) t).doubleValue();
+            if (t instanceof Number) total = ((Number) t).doubleValue(); // BigDecimal 亦是 Number, 此一分支即覆盖快照/即时两路
             // 即时算：dimensions = {维度:{score,source}}
             Object dimensions = cur.get("dimensions");
             if (dimensions instanceof Map) {
                 for (Map.Entry<String, Object> e : ((Map<String, Object>) dimensions).entrySet()) {
                     Object v = e.getValue();
-                    if (v instanceof Map && ((Map<String, Object>) v).get("score") instanceof Number) {
-                        dims.put(e.getKey(), ((Number) ((Map<String, Object>) v).get("score")).doubleValue());
+                    if (!(v instanceof Map)) continue;
+                    Object score = ((Map<String, Object>) v).get("score"); // 取一次, 避免双重 cast/get
+                    if (score instanceof Number) {
+                        dims.put(e.getKey(), ((Number) score).doubleValue());
                     }
                 }
             }

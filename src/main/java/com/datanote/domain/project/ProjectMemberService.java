@@ -45,10 +45,12 @@ public class ProjectMemberService {
         return m;
     }
 
-    public void changeRole(Long memberId, String role) {
+    public void changeRole(Long projectId, Long memberId, String role) {
+        projectService.getById(projectId);   // 数据级访问校验(canAccessProject), 防 IDOR
         if (!ProjectRoles.isValid(role)) throw new IllegalArgumentException("非法项目角色: " + role);
         DnProjectMember m = memberMapper.selectById(memberId);
         if (m == null) throw new IllegalArgumentException("成员不存在: " + memberId);
+        if (!projectId.equals(m.getProjectId())) throw new IllegalArgumentException("成员不属于该项目");
         if ("OWNER".equals(m.getProjectRole()) && !"OWNER".equals(role) && lastOwner(m.getProjectId(), memberId)) {
             throw new IllegalArgumentException("项目须保留至少一个负责人(OWNER)");
         }
@@ -56,9 +58,11 @@ public class ProjectMemberService {
         memberMapper.updateById(m);
     }
 
-    public void remove(Long memberId) {
+    public void remove(Long projectId, Long memberId) {
+        projectService.getById(projectId);   // 数据级访问校验(canAccessProject), 防 IDOR
         DnProjectMember m = memberMapper.selectById(memberId);
         if (m == null) return;
+        if (!projectId.equals(m.getProjectId())) throw new IllegalArgumentException("成员不属于该项目");
         if ("OWNER".equals(m.getProjectRole()) && lastOwner(m.getProjectId(), memberId)) {
             throw new IllegalArgumentException("不可移除最后一个负责人(OWNER)");
         }

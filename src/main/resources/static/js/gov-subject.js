@@ -162,7 +162,7 @@
     fbox.style.display = '';
     fbox.innerHTML = '';
     var input = DN.h('input', { class: 'dn-form-input', placeholder: '搜索主题名称…', style: 'width:240px;max-width:100%' });
-    var clr = DN.h('a', { href: 'javascript:void(0)', text: '清除', style: 'margin-left:8px;color:var(--text-muted);font-size:12px;display:none', onclick: function () { input.value = ''; trigger(); input.focus(); } });
+    var clr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '清除', style: 'margin-left:8px;display:none', onclick: function () { input.value = ''; trigger(); input.focus(); } });
     var _t = null;
     function trigger() {
       clr.style.display = input.value ? '' : 'none';
@@ -321,7 +321,9 @@
         onclick: function () { if (window.govGoModule) govGoModule('assets', { subjectId: n.id }); }
       });
       row.appendChild(nameEl);
-      row.appendChild(DN.pill(n.layer || 'ALL', 'info'));
+      var layerPill = DN.pill(n.layer || 'ALL', 'info');
+      layerPill.style.flex = 'none';   // 防分层徽标在窄行被挤压换行(flex 行内 span 默认可收缩)
+      row.appendChild(layerPill);
       var ops = DN.h('span', { style: 'margin-left:12px;flex:none' });
       ops.appendChild(DN.h('a', {
         href: 'javascript:void(0)', text: '编辑', 'data-perm': 'governance:manage', style: 'color:var(--primary);font-size:13px;margin-right:12px',

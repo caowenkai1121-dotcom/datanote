@@ -20,6 +20,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TableDataTool implements AiTool {
 
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 50;
+
     private final AssetDetailService assetDetailService;
 
     @Override public String name() { return "table_data"; }
@@ -43,7 +46,8 @@ public class TableDataTool implements AiTool {
             String db = AgentArgs.str(args, "db");
             String table = AgentArgs.str(args, "table");
             if (db == null || table == null) return AiToolResult.fail("bad_arguments", "db 与 table 不能为空");
-            int limit = (args == null || args.get("limit") == null) ? 20 : args.path("limit").asInt(20);
+            int limit = (args == null || args.get("limit") == null) ? DEFAULT_LIMIT : args.path("limit").asInt(DEFAULT_LIMIT);
+            limit = Math.max(1, Math.min(limit, MAX_LIMIT)); // 与描述一致钳到[1,50], 不依赖下游兜底, 防超大/负数 SELECT
             Map<String, Object> preview;
             try {
                 preview = assetDetailService.sampleRows(db, table, limit);

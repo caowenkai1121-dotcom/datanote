@@ -128,6 +128,11 @@ public class PostgresConnector implements DbConnector {
         return o == null ? null : ((Number) o).intValue();
     }
 
+    /** Doris/MySQL decimal 精度上限。 */
+    private static final int MAX_DECIMAL_PRECISION = 38;
+    /** Doris varchar 字节上限（超出转 text → STRING）。 */
+    private static final int MAX_VARCHAR_LEN = 65533;
+
     /** PG data_type → MySQL 列类型词汇（下游 mysqlToDoris/DorisDialect 复用，零额外映射）。 */
     public static String pgTypeToMysql(String dataType, Integer charLen, Integer numPrec, Integer numScale) {
         if (dataType == null) return "text";
@@ -145,12 +150,12 @@ public class PostgresConnector implements DbConnector {
                 break;
         }
         if (t.startsWith("numeric") || t.startsWith("decimal")) {
-            int p = numPrec == null ? 38 : Math.min(numPrec, 38);
+            int p = numPrec == null ? MAX_DECIMAL_PRECISION : Math.min(numPrec, MAX_DECIMAL_PRECISION);
             int s = numScale == null ? 0 : Math.min(Math.max(numScale, 0), p); // scale 必须 0..precision,否则建表失败
             return "decimal(" + p + "," + s + ")";
         }
         if (t.equals("character varying") || t.equals("varchar")) {
-            return (charLen == null || charLen <= 0) ? "text" : "varchar(" + Math.min(charLen, 65533) + ")"; // 封顶 Doris varchar 上限
+            return (charLen == null || charLen <= 0) ? "text" : "varchar(" + Math.min(charLen, MAX_VARCHAR_LEN) + ")"; // 封顶 Doris varchar 上限
         }
         if (t.startsWith("character") || t.equals("char") || t.equals("bpchar")) {
             return charLen == null ? "char(1)" : "char(" + charLen + ")";

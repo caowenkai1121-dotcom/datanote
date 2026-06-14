@@ -1,6 +1,7 @@
 package com.datanote.domain.mdm;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.common.model.R;
@@ -27,6 +28,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -106,10 +108,19 @@ public class MdmCoreController {
         if (domainId != null) qw.eq("domain_id", domainId);
         qw.orderByDesc("updated_at");
         List<DnMdmEntity> entities = entityMapper.selectList(qw);
-        // 填充域名称
+        if (entities == null) entities = new ArrayList<>();   // selectList 理论可返回 null
+        // 批量回填域名(原逐实体 selectById = N+1)
+        List<Long> domIds = new ArrayList<>();
         for (DnMdmEntity e : entities) {
-            DnMdmDomain d = domainMapper.selectById(e.getDomainId());
-            if (d != null) e.setDomainName(d.getDomainName());
+            if (e.getDomainId() != null && !domIds.contains(e.getDomainId())) domIds.add(e.getDomainId());
+        }
+        if (!domIds.isEmpty()) {
+            Map<Long, String> domName = new HashMap<>();
+            List<DnMdmDomain> doms = domainMapper.selectBatchIds(domIds);
+            if (doms != null) for (DnMdmDomain d : doms) if (d != null && d.getId() != null) domName.put(d.getId(), d.getDomainName());
+            for (DnMdmEntity e : entities) {
+                if (e.getDomainId() != null) e.setDomainName(domName.get(e.getDomainId()));
+            }
         }
         return R.ok(entities);
     }
@@ -217,11 +228,20 @@ public class MdmCoreController {
         if (entityId != null) qw.eq("entity_id", entityId);
         qw.orderByDesc("updated_at").last("LIMIT 500");
         List<DnMdmChangeRequest> rows = changeMapper.selectList(qw);
-        // 填充实体名称
+        if (rows == null || rows.isEmpty()) return R.ok(rows == null ? new java.util.ArrayList<>() : rows);
+        // 批量回填实体名(原逐行 selectById = N+1, 最多 500 次查询)
+        java.util.List<Long> eids = new java.util.ArrayList<>();
         for (DnMdmChangeRequest r : rows) {
-            if (r.getEntityId() != null) {
-                DnMdmEntity e = entityMapper.selectById(r.getEntityId());
-                if (e != null) r.setEntityName(e.getEntityName());
+            if (r.getEntityId() != null && !eids.contains(r.getEntityId())) eids.add(r.getEntityId());
+        }
+        if (!eids.isEmpty()) {
+            java.util.Map<Long, String> nameMap = new java.util.HashMap<>();
+            List<DnMdmEntity> _es = entityMapper.selectBatchIds(eids);
+            if (_es != null) for (DnMdmEntity e : _es) { // selectList 理论可返回 null
+                if (e != null && e.getId() != null) nameMap.put(e.getId(), e.getEntityName());
+            }
+            for (DnMdmChangeRequest r : rows) {
+                if (r.getEntityId() != null) r.setEntityName(nameMap.get(r.getEntityId()));
             }
         }
         return R.ok(rows);
@@ -230,12 +250,13 @@ public class MdmCoreController {
     @Operation(summary = "各状态变更请求计数")
     @GetMapping("/api/mdm/approval/stats")
     public R<Map<String, Object>> stats() {
-        List<DnMdmChangeRequest> all = changeMapper.selectList(new QueryWrapper<>());
+        // 计数下推到 SQL COUNT, 避免全表物化进内存(原 selectList 全表后内存 filter)
+        long pending = changeMapper.selectCount(new QueryWrapper<DnMdmChangeRequest>().eq("status", "pending"));
+        long approved = changeMapper.selectCount(new QueryWrapper<DnMdmChangeRequest>().eq("status", "approved"));
+        long rejected = changeMapper.selectCount(new QueryWrapper<DnMdmChangeRequest>().eq("status", "rejected"));
+        long total = changeMapper.selectCount(new QueryWrapper<>());
         Map<String, Object> data = new HashMap<>();
-        long pending = all.stream().filter(r -> "pending".equals(r.getStatus())).count();
-        long approved = all.stream().filter(r -> "approved".equals(r.getStatus())).count();
-        long rejected = all.stream().filter(r -> "rejected".equals(r.getStatus())).count();
-        data.put("total", all.size());
+        data.put("total", total);
         data.put("pending", pending);
         data.put("approved", approved);
         data.put("rejected", rejected);
@@ -258,6 +279,8 @@ public class MdmCoreController {
         }
         req.setChangeType(type);
         req.setReason(req.getReason().trim());
+        // #19: 申请人身份强制取当前登录用户, 不信任请求体, 否则禁自批守卫(review)可被伪造 requestedBy 绕过
+        req.setRequestedBy(currentUser());
         req.setStatus("pending");
         req.setReviewer(null);
         req.setReviewComment(null);
@@ -269,12 +292,14 @@ public class MdmCoreController {
     }
 
     @Operation(summary = "批准变更请求")
+    @Transactional(rollbackFor = Exception.class)   // applyChange 与请求状态更新原子化, 任一失败整体回滚
     @PostMapping("/api/mdm/approval/{id}/approve")
     public R<DnMdmChangeRequest> approve(@PathVariable Long id, @RequestBody(required = false) DnMdmChangeRequest body) {
         return review(id, body, "approved");
     }
 
     @Operation(summary = "驳回变更请求")
+    @Transactional(rollbackFor = Exception.class)
     @PostMapping("/api/mdm/approval/{id}/reject")
     public R<DnMdmChangeRequest> reject(@PathVariable Long id, @RequestBody(required = false) DnMdmChangeRequest body) {
         return review(id, body, "rejected");
@@ -287,14 +312,26 @@ public class MdmCoreController {
         if (!"pending".equals(req.getStatus())) {
             throw new BusinessException("仅待审批（pending）的请求可被审批，当前状态：" + req.getStatus());
         }
+        // 驳回须有原因(便于申请人修正, 与前端必填一致)
+        if ("rejected".equals(target)) {
+            String rc = body == null ? null : body.getReviewComment();
+            if (rc == null || rc.trim().isEmpty()) throw new BusinessException("驳回必须填写原因");
+        }
         // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批); 自己提交的申请禁止自批,
         //      admin 用户例外放行(单管理员环境防锁死: 否则 admin 提交的申请无人能批)。
         String reviewer = currentUser();
         if (!"admin".equals(reviewer) && reviewer.equals(req.getRequestedBy())) {
             throw new BusinessException("不能审批自己的变更申请");
         }
+        // 并发幂等: 用条件更新 status=pending→target 原子占行, 影响行数为 0 说明已被他人处理,
+        //          直接抛错; 这样后续 applyChange 不会被并发重复执行(避免重复黄金记录)。
+        int claimed = changeMapper.update(null, new UpdateWrapper<DnMdmChangeRequest>()
+                .eq("id", id).eq("status", "pending").set("status", target));
+        if (claimed == 0) {
+            throw new BusinessException("该变更请求已被处理，请刷新后重试");
+        }
         // 关键闭环: 批准即【应用】变更到黄金记录(创建/修改/软删), 否则审批形同虚设。
-        // 应用先于改状态: 应用失败(如找不到记录)则抛错, 请求保持 pending, 不误判已批准。
+        // 应用失败(如找不到记录)则抛错, @Transactional 会整体回滚(含上面的占行更新), 请求保持 pending。
         if ("approved".equals(target)) {
             applyChange(req);
         }
@@ -365,7 +402,8 @@ public class MdmCoreController {
     private DnMdmGoldenRecord findGolden(DnMdmChangeRequest req) {
         if (req.getGoldenRecordId() != null) {
             DnMdmGoldenRecord g = goldenMapper.selectById(req.getGoldenRecordId());
-            if (g != null) return g;
+            // 防越实体改数据: 命中的黄金记录必须归属本变更申请的实体, 否则视为未找到
+            if (g != null && Objects.equals(g.getEntityId(), req.getEntityId())) return g;
         }
         if (req.getEntityId() != null && req.getBizKey() != null && !req.getBizKey().trim().isEmpty()) {
             return goldenMapper.selectOne(new QueryWrapper<DnMdmGoldenRecord>()
@@ -409,15 +447,18 @@ public class MdmCoreController {
     @GetMapping("/api/mdm/steward/overview")
     public R<Map<String, Object>> stewardOverview() {
         List<DnMdmEntity> entities = entityMapper.selectList(null);
+        if (entities == null) entities = new ArrayList<>();   // selectList 理论可返回 null
         // 域名映射
         Map<Long, String> domainName = new HashMap<>();
-        for (DnMdmDomain d : domainMapper.selectList(null)) domainName.put(d.getId(), d.getDomainName());
+        List<DnMdmDomain> _ds = domainMapper.selectList(null);
+        if (_ds != null) for (DnMdmDomain d : _ds) domainName.put(d.getId(), d.getDomainName()); // selectList 理论可返回 null
 
         List<Map<String, Object>> rows = new ArrayList<>();
         long totalDraft = 0, totalActive = 0, totalDupClusters = 0, totalDupRecords = 0;
         for (DnMdmEntity e : entities) {
             List<DnMdmGoldenRecord> recs = goldenMapper.selectList(
                     new QueryWrapper<DnMdmGoldenRecord>().eq("entity_id", e.getId()));
+            if (recs == null) recs = new ArrayList<>();   // selectList 理论可返回 null
             long draft = recs.stream().filter(r -> "draft".equals(r.getStatus())).count();
             long active = recs.stream().filter(r -> "active".equals(r.getStatus())).count();
 

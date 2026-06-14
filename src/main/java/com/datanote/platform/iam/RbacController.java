@@ -2,6 +2,7 @@ package com.datanote.platform.iam;
 
 import com.datanote.platform.iam.model.DnRole;
 import com.datanote.platform.iam.model.DnUser;
+import com.datanote.platform.iam.model.DnUserRole;
 import com.datanote.common.model.R;
 import com.datanote.platform.iam.RbacService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 public class RbacController {
 
     private final RbacService rbacService;
+    private final com.datanote.platform.iam.mapper.DnUserRoleMapper userRoleMapper;   // 用户列表批量查角色绑定(避免 N+1)
     private final com.datanote.platform.audit.AuditService auditService;
     private final PermInterceptor permInterceptor;   // 账号/权限变更后清缓存, 使停用·删除·改权限立即生效
 
@@ -55,32 +56,9 @@ public class RbacController {
         if (authenticated) {
             String username = auth.getName();
             data.put("username", username);
-            data.put("perms", resolvePerms(auth));
+            data.put("perms", rbacService.resolvePerms(auth));
         }
         return R.ok(data);
-    }
-
-    /**
-     * 解析权限集：优先查 dn_user；查不到 / 表不存在异常时按 authorities 判断 admin（内存兜底），不抛 500。
-     */
-    private Set<String> resolvePerms(Authentication auth) {
-        Set<String> perms;
-        try {
-            perms = rbacService.getUserPermsByUsername(auth.getName());
-        } catch (Exception e) {
-            perms = new java.util.HashSet<>();
-        }
-        // 内存兜底 admin('*') 仅对不在 dn_user 表的引导账号生效, 防同名无角色账号白拿超管
-        if (perms.isEmpty() && !rbacService.existsInDb(auth.getName())) {
-            boolean isAdmin = auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch(a -> "ROLE_ADMIN".equals(a) || "*".equals(a));
-            if (isAdmin) {
-                perms = new java.util.HashSet<>();
-                perms.add("*");
-            }
-        }
-        return perms;
     }
 
     // ---------------- 用户 ----------------
@@ -92,6 +70,19 @@ public class RbacController {
         // 角色 id→name 映射(一次查全, 避免每用户查库)
         Map<Long, String> roleNameById = new HashMap<>();
         for (DnRole r : rbacService.listRoles()) roleNameById.put(r.getId(), r.getRoleName());
+        // 一次批量查全部用户的角色绑定, 构建 userId→roleIds 映射(避免每用户单查的 N+1)
+        Map<Long, List<Long>> roleIdsByUser = new HashMap<>();
+        List<Long> userIds = users.stream().map(DnUser::getId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        if (!userIds.isEmpty()) {
+            List<DnUserRole> bindings = userRoleMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<DnUserRole>().in("user_id", userIds));
+            if (bindings != null) {
+                for (DnUserRole ur : bindings) {
+                    if (ur.getUserId() == null || ur.getRoleId() == null) continue;
+                    roleIdsByUser.computeIfAbsent(ur.getUserId(), k -> new ArrayList<>()).add(ur.getRoleId());
+                }
+            }
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         for (DnUser u : users) {
             Map<String, Object> m = new HashMap<>();
@@ -101,7 +92,7 @@ public class RbacController {
             m.put("status", u.getStatus());
             m.put("createdAt", u.getCreatedAt());
             m.put("lastLoginAt", u.getLastLoginAt());
-            List<Long> roleIds = rbacService.getUserRoleIds(u.getId());
+            List<Long> roleIds = roleIdsByUser.getOrDefault(u.getId(), new ArrayList<>());
             m.put("roleIds", roleIds);
             List<String> roleNames = new ArrayList<>();
             for (Long rid : roleIds) { String n = roleNameById.get(rid); if (n != null) roleNames.add(n); }
@@ -330,6 +321,17 @@ public class RbacController {
     @Operation(summary = "设置角色权限点")
     @PostMapping("/roles/{id}/perms")
     public R<String> setRolePerms(@PathVariable Long id, @RequestBody SetPermsRequest req) {
+        // 越权自提升防护: 非超管不得给角色加自己不具备的权限点(否则可对自身角色塞 '*' 提权为超管)
+        DnUser self = rbacService.findByUsername(actor());
+        boolean selfSuper = self != null && rbacService.isSuperAdmin(self.getId());
+        if (!selfSuper && self != null && req.getPerms() != null) {
+            java.util.Set<String> myPerms = rbacService.getUserPerms(self.getId());
+            for (String p : req.getPerms()) {
+                if (!RbacService.hasPermission(myPerms, p)) {
+                    return R.fail(R.CODE_FORBIDDEN, "不能授予你本人不具备的权限(" + p + ")");
+                }
+            }
+        }
         rbacService.setRolePerms(id, req.getPerms());
         permInterceptor.evictAll();   // 权限点变更立即生效
         auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/roles/" + id + "/perms", null, 200,

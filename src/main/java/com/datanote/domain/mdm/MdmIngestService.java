@@ -77,7 +77,7 @@ public class MdmIngestService {
                 Integer idx = colIdx.get(m.getKey());
                 if (idx == null || idx >= row.size()) continue;
                 Object v = row.get(idx);
-                if (v != null && !String.valueOf(v).trim().isEmpty()) values.put(m.getValue(), v);
+                if (!blankVal(v)) values.put(m.getValue(), v);
             }
             String missing = firstMissingRequired(attrs, values);
             if (missing != null) {
@@ -88,7 +88,8 @@ public class MdmIngestService {
             String bizKey = computeBizKey(attrs, values);
             String sourceId = null;
             if (sourceIdColumn != null && colIdx.containsKey(sourceIdColumn)) {
-                Object sv = row.get(colIdx.get(sourceIdColumn));
+                int sidx = colIdx.get(sourceIdColumn);
+                Object sv = sidx < row.size() ? row.get(sidx) : null;
                 if (sv != null) sourceId = String.valueOf(sv).trim();
             }
             if (sourceId == null || sourceId.isEmpty()) sourceId = bizKey;
@@ -99,12 +100,14 @@ public class MdmIngestService {
 
         // —— 预载: 该源系统已有 XREF(sourceId→goldenId) + 该实体未停用黄金记录(id→记录, bizKey→记录), 内存匹配免逐行查库 ——
         Map<String, DnMdmXref> xrefBySrcId = new HashMap<>();
-        for (DnMdmXref x : xrefMapper.selectList(new QueryWrapper<DnMdmXref>().eq("source_system", srcSys))) {
+        List<DnMdmXref> _xrefs = xrefMapper.selectList(new QueryWrapper<DnMdmXref>().eq("source_system", srcSys));
+        if (_xrefs != null) for (DnMdmXref x : _xrefs) { // selectList 理论可返回 null
             if (x.getSourceId() != null) xrefBySrcId.put(x.getSourceId(), x);
         }
         Map<Long, DnMdmGoldenRecord> goldenById = new HashMap<>();
         Map<String, DnMdmGoldenRecord> goldenByBizKey = new HashMap<>();
-        for (DnMdmGoldenRecord g : goldenMapper.selectList(new QueryWrapper<DnMdmGoldenRecord>().eq("entity_id", entityId).ne("status", "inactive"))) {
+        List<DnMdmGoldenRecord> _goldens = goldenMapper.selectList(new QueryWrapper<DnMdmGoldenRecord>().eq("entity_id", entityId).ne("status", "inactive"));
+        if (_goldens != null) for (DnMdmGoldenRecord g : _goldens) { // selectList 理论可返回 null
             goldenById.put(g.getId(), g);
             if (g.getBizKey() != null) goldenByBizKey.put(g.getBizKey(), g);
         }
@@ -143,7 +146,16 @@ public class MdmIngestService {
                     created++;
                     goldenById.put(g.getId(), g);
                     if (bizKey != null) goldenByBizKey.put(bizKey, g);
-                    xrefBySrcId.put(sourceId, insertXref(g, entityId, srcSys, sourceId, operator, now));
+                    try {
+                        xrefBySrcId.put(sourceId, insertXref(g, entityId, srcSys, sourceId, operator, now));
+                    } catch (Exception xe) {
+                        // 补偿: XREF 写入失败则回收刚建的黄金记录, 防"有黄金记录无映射"孤儿(本方法无整体事务, 保部分导入语义)
+                        goldenMapper.deleteById(g.getId());
+                        created--;
+                        goldenById.remove(g.getId());
+                        if (bizKey != null) goldenByBizKey.remove(bizKey);
+                        throw xe;
+                    }
                 }
             } catch (Exception ex) {
                 skipped++;
@@ -166,7 +178,7 @@ public class MdmIngestService {
         for (DnMdmAttribute a : attrs) {
             if (a.getRequired() != null && a.getRequired() == 1) {
                 Object v = values.get(a.getAttrCode());
-                if (v == null || String.valueOf(v).trim().isEmpty()) return a.getAttrName() != null ? a.getAttrName() : a.getAttrCode();
+                if (blankVal(v)) return a.getAttrName() != null ? a.getAttrName() : a.getAttrCode();
             }
         }
         return null;
@@ -176,11 +188,11 @@ public class MdmIngestService {
         for (DnMdmAttribute a : attrs) {
             boolean key = (a.getIsKey() != null && a.getIsKey() == 1) || (a.getIsUnique() != null && a.getIsUnique() == 1);
             Object v = values.get(a.getAttrCode());
-            if (key && v != null && !String.valueOf(v).trim().isEmpty()) return String.valueOf(v);
+            if (key && !blankVal(v)) return String.valueOf(v);
         }
         for (DnMdmAttribute a : attrs) {
             Object v = values.get(a.getAttrCode());
-            if (v != null && !String.valueOf(v).trim().isEmpty()) return String.valueOf(v);
+            if (!blankVal(v)) return String.valueOf(v);
         }
         return "记录-" + System.currentTimeMillis();
     }
@@ -204,6 +216,11 @@ public class MdmIngestService {
     private Map<String, Object> parse(String json) {
         if (json == null || json.trim().isEmpty()) return new LinkedHashMap<>();
         try { return objectMapper.readValue(json, Map.class); } catch (Exception e) { return new LinkedHashMap<>(); }
+    }
+
+    /** 值是否为空(null 或去空白后为空串)。 */
+    private static boolean blankVal(Object v) {
+        return v == null || String.valueOf(v).trim().isEmpty();
     }
 
     private static List<String> castStrList(List<?> in) {

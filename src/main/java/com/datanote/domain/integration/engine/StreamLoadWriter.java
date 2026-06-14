@@ -22,6 +22,10 @@ public final class StreamLoadWriter {
 
     private static final char SEP = '\t';
     private static final String NULL = "\\N";
+    /** HTTP 307 临时重定向（JDK HttpURLConnection 无对应常量），FE→BE 转发用。 */
+    private static final int HTTP_TEMP_REDIRECT = 307;
+    /** 抛出异常时响应体截断长度，避免泄漏服务端冗长/敏感内容。 */
+    private static final int ERR_MSG_MAX = 200;
 
     /** 稳定 Label：仅 [A-Za-z0-9_-]，跨重试幂等。 */
     public static String buildLabel(Long jobId, Long execId, String table, long seq) {
@@ -104,7 +108,8 @@ public final class StreamLoadWriter {
         HttpURLConnection conn = open(url, auth, label, cols, data.length);
         int code = sendAndCode(conn, data);
         // FE 返回 307 -> 重定向到 BE，HttpURLConnection 不会自动带 body 重发，手动处理
-        if (code == 307 || code == 301 || code == 302) {
+        if (code == HTTP_TEMP_REDIRECT || code == HttpURLConnection.HTTP_MOVED_PERM
+                || code == HttpURLConnection.HTTP_MOVED_TEMP) {
             String loc = conn.getHeaderField("Location");
             conn.disconnect();
             if (loc == null || loc.isEmpty()) throw new RuntimeException("Stream Load 重定向无 Location");
@@ -114,9 +119,9 @@ public final class StreamLoadWriter {
         String resp = readBody(conn, code);
         conn.disconnect();
         // 异常信息会进日志：响应体截断，避免泄漏服务端冗长/敏感错误内容
-        if (code != 200) throw new RuntimeException("Stream Load HTTP " + code + ": " + truncate(resp, 200));
+        if (code != HttpURLConnection.HTTP_OK) throw new RuntimeException("Stream Load HTTP " + code + ": " + truncate(resp, ERR_MSG_MAX));
         Result r = parseResult(resp);
-        if (!r.success) throw new RuntimeException("Stream Load 失败 status=" + r.status + " msg=" + truncate(r.message, 200));
+        if (!r.success) throw new RuntimeException("Stream Load 失败 status=" + r.status + " msg=" + truncate(r.message, ERR_MSG_MAX));
         return r.loadedRows;
     }
 

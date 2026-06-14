@@ -50,8 +50,12 @@ public class AuditService {
         }
         if ("GET".equals(m)) {
             String p = path.toLowerCase(Locale.ROOT);
+            // 敏感只读留痕(与 PermInterceptor.SENSITIVE_GET_RULES 对齐): 全量用户/角色、权限清单、含完整 SQL 的全部脚本
+            boolean sensitiveRead = p.startsWith("/api/rbac/users") || p.startsWith("/api/rbac/roles")
+                    || p.startsWith("/api/rbac/perms/catalog") || p.startsWith("/api/script/all-with-content");
             return p.contains("/export") || p.contains("/download")
-                    || p.contains("/preview") || p.contains("/profile");
+                    || p.contains("/preview") || p.contains("/profile")
+                    || sensitiveRead;
         }
         if (!("POST".equals(m) || "PUT".equals(m) || "DELETE".equals(m))) {
             return false;
@@ -146,18 +150,24 @@ public class AuditService {
     public void record(String userName, String actionType, String method,
                        String path, String ip, Integer status, String detail) {
         try {
-            DnAuditLog a = new DnAuditLog();
-            a.setUserName(userName == null || userName.isEmpty() ? "anonymous" : userName);
-            a.setActionType(actionType);
-            a.setMethod(method);
-            a.setPath(path == null ? null : (path.length() > 255 ? path.substring(0, 255) : path));
-            a.setIp(ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip));
-            a.setStatus(status);
-            a.setDetail(detail == null ? null : (detail.length() > 60000 ? detail.substring(0, 60000) : detail));
-            auditMapper.insert(a);
+            auditMapper.insert(buildLog(userName, actionType, method, path, ip, status, detail));
         } catch (Exception e) {
             log.warn("审计记录失败 user={} action={} path={}", userName, actionType, path, e);
         }
+    }
+
+    /** 组装审计实体并做字段截断(record/recordReturning 共用,避免两处重复) */
+    private DnAuditLog buildLog(String userName, String actionType, String method,
+                                String path, String ip, Integer status, String detail) {
+        DnAuditLog a = new DnAuditLog();
+        a.setUserName(userName == null || userName.isEmpty() ? "anonymous" : userName);
+        a.setActionType(actionType);
+        a.setMethod(method);
+        a.setPath(path == null ? null : (path.length() > 255 ? path.substring(0, 255) : path));
+        a.setIp(ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip));
+        a.setStatus(status);
+        a.setDetail(detail == null ? null : (detail.length() > 60000 ? detail.substring(0, 60000) : detail));
+        return a;
     }
 
     /**
@@ -167,14 +177,7 @@ public class AuditService {
     public Long recordReturning(String userName, String actionType, String method,
                                 String path, String ip, Integer status, String detail) {
         try {
-            DnAuditLog a = new DnAuditLog();
-            a.setUserName(userName == null || userName.isEmpty() ? "anonymous" : userName);
-            a.setActionType(actionType);
-            a.setMethod(method);
-            a.setPath(path == null ? null : (path.length() > 255 ? path.substring(0, 255) : path));
-            a.setIp(ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip));
-            a.setStatus(status);
-            a.setDetail(detail == null ? null : (detail.length() > 60000 ? detail.substring(0, 60000) : detail));
+            DnAuditLog a = buildLog(userName, actionType, method, path, ip, status, detail);
             auditMapper.insert(a);
             return a.getId();
         } catch (Exception e) {

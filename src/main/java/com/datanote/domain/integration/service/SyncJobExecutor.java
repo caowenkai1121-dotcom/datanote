@@ -151,17 +151,7 @@ public class SyncJobExecutor {
             throw new IllegalStateException("任务正在运行中: " + jobId);
         }
 
-        DnTaskExecution exec = new DnTaskExecution();
-        exec.setSyncTaskId(jobId);
-        exec.setTaskType(TASK_TYPE);
-        exec.setTriggerType(triggerType);
-        exec.setStatus("RUNNING");
-        exec.setStartTime(LocalDateTime.now());
-        exec.setReadCount(0L);
-        exec.setWriteCount(0L);
-        exec.setErrorCount(0L);
-        exec.setCreatedAt(LocalDateTime.now());
-        exec.setAttempt(1);
+        DnTaskExecution exec = buildExecution(jobId, triggerType, 1);
         try {
             taskExecutionMapper.insert(exec);
             syncJobService.updateStatus(jobId, "RUNNING");
@@ -417,8 +407,8 @@ public class SyncJobExecutor {
         }
     }
 
-    /** 为重试创建一条新的 RUNNING 执行记录并置任务 RUNNING、推状态。 */
-    private DnTaskExecution newExecution(Long jobId, String triggerType, int attempt) {
+    /** 构造一条 RUNNING 初始执行记录（不入库）：首次执行与重试共用，仅 attempt 不同。 */
+    private DnTaskExecution buildExecution(Long jobId, String triggerType, int attempt) {
         DnTaskExecution exec = new DnTaskExecution();
         exec.setSyncTaskId(jobId);
         exec.setTaskType(TASK_TYPE);
@@ -430,6 +420,12 @@ public class SyncJobExecutor {
         exec.setErrorCount(0L);
         exec.setCreatedAt(LocalDateTime.now());
         exec.setAttempt(attempt);
+        return exec;
+    }
+
+    /** 为重试创建一条新的 RUNNING 执行记录并置任务 RUNNING、推状态。 */
+    private DnTaskExecution newExecution(Long jobId, String triggerType, int attempt) {
+        DnTaskExecution exec = buildExecution(jobId, triggerType, attempt);
         taskExecutionMapper.insert(exec);
         syncJobService.updateStatus(jobId, "RUNNING");
         logBroadcastService.broadcastSyncStatus(jobId, "RUNNING");

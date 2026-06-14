@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class LineageRebuildListener {
 
     private final LineageEdgeService lineageEdgeService;
+    private final SqlLineageService sqlLineageService;
 
     /** 同步任务变更事件 → 异步重建血缘（失败仅告警，不影响任务保存/删除主流程） */
     @Async
@@ -31,7 +32,20 @@ public class LineageRebuildListener {
         }
     }
 
-    /** 夜间兜底全量重建：覆盖事件丢失/异步失败等场景 */
+    /** 脚本保存事件 → 异步重建 SQL 血缘（开发改完 SQL 即时刷新血缘/依赖, 不必等夜间兜底） */
+    @Async
+    @EventListener
+    public void onScriptSaved(ScriptSavedEvent event) {
+        Long scriptId = event == null ? null : event.getScriptId();
+        try {
+            int n = sqlLineageService.rebuildFromScripts();
+            log.info("脚本变更触发 SQL 血缘重建 scriptId={} 重建边数={}", scriptId, n);
+        } catch (Exception e) {
+            log.warn("脚本变更 SQL 血缘重建失败 scriptId={}: {}", scriptId, e.getMessage());
+        }
+    }
+
+    /** 夜间兜底全量重建：覆盖事件丢失/异步失败等场景（同步任务 MAPPING 边 + 脚本 SQL 边） */
     @Scheduled(cron = "0 40 2 * * ?")
     public void nightlyRebuild() {
         try {
@@ -39,6 +53,12 @@ public class LineageRebuildListener {
             log.info("夜间兜底血缘重建完成, 重建边数={}", n);
         } catch (Exception e) {
             log.warn("夜间兜底血缘重建失败: {}", e.getMessage());
+        }
+        try {
+            int n = sqlLineageService.rebuildFromScripts();
+            log.info("夜间兜底 SQL 血缘重建完成, 重建边数={}", n);
+        } catch (Exception e) {
+            log.warn("夜间兜底 SQL 血缘重建失败: {}", e.getMessage());
         }
     }
 }

@@ -45,7 +45,7 @@ public class VectorIndexService {
     private static final int BATCH = 64;
 
     // 列级重建状态(异步作业, 供 /sync-columns/status 轮询)
-    private volatile boolean columnIndexing = false;
+    private final java.util.concurrent.atomic.AtomicBoolean columnIndexing = new java.util.concurrent.atomic.AtomicBoolean(false);
     private volatile int lastColumnPoints = -1;
 
     /** 全量重建索引。返回写入向量点数(不可用返 0)。 */
@@ -84,21 +84,21 @@ public class VectorIndexService {
     /** 异步触发列级重建(返回即走, 后台串行跑, 状态见 {@link #columnIndexStatus()})。已在跑则忽略。 */
     @Async("aiIndexExecutor")
     public void reindexColumnsAsync() {
-        if (columnIndexing) return;
-        columnIndexing = true;
+        // 原子抢占: 并发触发时仅首个进入, 杜绝 check-then-act 的 TOCTOU 重复重建
+        if (!columnIndexing.compareAndSet(false, true)) return;
         try {
             lastColumnPoints = reindexColumns();
         } catch (Exception e) {
             log.warn("[vector] 列级异步重建异常: {}", e.getMessage());
         } finally {
-            columnIndexing = false;
+            columnIndexing.set(false);
         }
     }
 
     /** 列级重建状态(供前端/轮询)。 */
     public Map<String, Object> columnIndexStatus() {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("indexing", columnIndexing);
+        m.put("indexing", columnIndexing.get());
         m.put("lastColumnPoints", lastColumnPoints);
         return m;
     }

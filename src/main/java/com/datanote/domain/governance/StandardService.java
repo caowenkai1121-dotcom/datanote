@@ -11,7 +11,6 @@ import com.datanote.domain.governance.model.DnDataElement;
 import com.datanote.domain.governance.model.DnStandardCheckRun;
 import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.domain.governance.model.DnWordRoot;
-import com.datanote.common.exception.BusinessException;
 import java.util.LinkedHashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -126,6 +125,7 @@ public class StandardService {
     public DnStandardCheckRun runCheck(String scope) {
         Set<String> roots = loadRoots();
         Map<String, String> elementTypes = loadElementTypes();
+        Set<Long> scopeIds = resolveScopeTableIds(scope);   // null=全量, 否则限定这些表的列
 
         List<DnColumnMeta> columns = columnMetaMapper.selectList(null);
         if (columns == null) {
@@ -137,6 +137,10 @@ public class StandardService {
 
         for (DnColumnMeta col : columns) {
             if (col == null) {
+                continue;
+            }
+            // 范围过滤: 选了 db / db.table 时只稽核该范围内的列(原 scope 参数仅入库未生效)
+            if (scopeIds != null && (col.getTableMetaId() == null || !scopeIds.contains(col.getTableMetaId()))) {
                 continue;
             }
             total++;
@@ -192,6 +196,38 @@ public class StandardService {
         run.setCreatedAt(LocalDateTime.now());
         checkRunMapper.insert(run);
         return run;
+    }
+
+    /** 解析稽核范围 scope("db" 或 "db.table" 或空)为允许的 table_meta id 集合; 空范围返回 null 表示全量。 */
+    private Set<Long> resolveScopeTableIds(String scope) {
+        if (scope == null || scope.trim().isEmpty()) {
+            return null;
+        }
+        String s = scope.trim();
+        String db, table = null;
+        int dot = s.indexOf('.');
+        if (dot >= 0) {
+            db = s.substring(0, dot);
+            table = s.substring(dot + 1);
+        } else {
+            db = s;
+        }
+        QueryWrapper<DnTableMeta> qw = new QueryWrapper<>();
+        qw.eq("database_name", db);
+        if (table != null && !table.trim().isEmpty()) {
+            qw.eq("table_name", table.trim());
+        }
+        qw.select("id");
+        List<DnTableMeta> tbls = tableMetaMapper.selectList(qw);
+        Set<Long> ids = new HashSet<>();
+        if (tbls != null) {
+            for (DnTableMeta t : tbls) {
+                if (t != null && t.getId() != null) {
+                    ids.add(t.getId());
+                }
+            }
+        }
+        return ids;
     }
 
     /** 加载词根集合：word_en 与 abbr 合并、小写、去空。 */

@@ -116,9 +116,19 @@ public class AiAgentController {
                 .eq("status", status).orderByDesc("hit_count").orderByDesc("updated_at").last("LIMIT 200")));
     }
 
-    /** 待审批清单(审批抽屉数据源)。 */
+    /** 待审批清单(审批抽屉数据源); 按 owner 作用域过滤(仅含本人会话的审批, 匿名/开放态看全部)。 */
     @GetMapping("/approvals")
     public R<List<DnAiApproval>> approvals(@RequestParam(value = "status", required = false, defaultValue = "pending") String status) {
+        String me = ownerScope();
+        if (me != null) {
+            List<DnAiSession> mySessions = sessionMapper.selectList(
+                    new QueryWrapper<DnAiSession>().select("session_id").eq("user_name", me));
+            List<String> sessionIds = new java.util.ArrayList<>();
+            for (DnAiSession s : mySessions) sessionIds.add(s.getSessionId());
+            if (sessionIds.isEmpty()) return R.ok(java.util.Collections.emptyList());
+            return R.ok(approvalMapper.selectList(new QueryWrapper<DnAiApproval>()
+                    .eq("status", status).in("session_id", sessionIds).orderByDesc("id").last("LIMIT 100")));
+        }
         return R.ok(approvalMapper.selectList(new QueryWrapper<DnAiApproval>()
                 .eq("status", status).orderByDesc("id").last("LIMIT 100")));
     }
@@ -232,6 +242,8 @@ public class AiAgentController {
     /** 协作式中断: 置中断标志, 运行中的 agent 在下一轮工序边界自行停止(替代SSE的DB标志位)。 */
     @PostMapping("/{sessionId}/interrupt")
     public R<Void> interrupt(@PathVariable("sessionId") String sessionId) {
+        R<Void> denied = assertSessionOwner(sessionId);
+        if (denied != null) return denied;
         int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
                 .eq("session_id", sessionId).set("interrupt_flag", 1).set("updated_at", LocalDateTime.now()));
         return n > 0 ? R.ok() : R.fail("会话不存在");
@@ -242,9 +254,23 @@ public class AiAgentController {
     public R<Void> steer(@PathVariable("sessionId") String sessionId, @RequestBody Map<String, String> body) {
         String text = body == null ? null : body.get("text");
         if (text == null || text.trim().isEmpty()) return R.fail("引导内容不能为空");
+        R<Void> denied = assertSessionOwner(sessionId);
+        if (denied != null) return denied;
         int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
                 .eq("session_id", sessionId).set("steer_text", text.trim()).set("updated_at", LocalDateTime.now()));
         return n > 0 ? R.ok() : R.fail("会话不存在");
+    }
+
+    /** 会话归属校验: 与 session() GET 同款判断(匿名/开放态放行)。非发起人返回拒绝(R.fail), 通过返 null。 */
+    private R<Void> assertSessionOwner(String sessionId) {
+        DnAiSession s = sessionMapper.selectOne(
+                new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (s == null) return R.fail("会话不存在");
+        String me = currentUser();
+        if (me != null && !"anonymous".equals(me) && s.getUserName() != null && !me.equals(s.getUserName())) {
+            return R.fail("无权访问该会话");
+        }
+        return null;
     }
 
     /** 恢复执行: 按已批 args 精确重放已批准未执行的写动作(不重跑 LLM 规划, 消除 args 漂移)。 */

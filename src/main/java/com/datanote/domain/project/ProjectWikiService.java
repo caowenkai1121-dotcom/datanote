@@ -28,6 +28,7 @@ public class ProjectWikiService {
     }
 
     public DnProjectWikiPage getPage(Long projectId, Long pageId) {
+        projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权读
         DnProjectWikiPage p = wikiMapper.selectById(pageId);
         if (p == null || !projectId.equals(p.getProjectId())) throw new IllegalArgumentException("文档不存在");
         return p;
@@ -58,6 +59,7 @@ public class ProjectWikiService {
 
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void deletePage(Long projectId, Long pageId) {
+        projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权删
         DnProjectWikiPage p = wikiMapper.selectById(pageId);
         if (p == null) return;
         if (!projectId.equals(p.getProjectId())) throw new IllegalArgumentException("文档不属于该项目");

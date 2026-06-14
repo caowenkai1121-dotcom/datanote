@@ -144,6 +144,7 @@ public class MdmMatchService {
         return data;
     }
 
+    @SuppressWarnings("unchecked")
     private Map<String, Object> parse(String json) {
         if (json == null || json.trim().isEmpty()) return new HashMap<>();
         try { return objectMapper.readValue(json, Map.class); } catch (Exception e) { return new HashMap<>(); }

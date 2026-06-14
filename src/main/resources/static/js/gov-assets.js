@@ -130,15 +130,18 @@
       var stErr = st.indexOf('FAIL') >= 0 || st.indexOf('ERR') >= 0;
       statusText = stOk ? '正常' : (stErr ? '失败' : (lastLog.status || '-'));
       statusTone = stOk ? 'ok' : (stErr ? 'err' : 'info');
-      statusSub = (lastLog.dbType || '') + ' · ' + (lastLog.startedAt || '');
+      statusSub = (lastLog.dbType || '') + ' · ' + (lastLog.startedAt ? String(lastLog.startedAt).replace('T', ' ').slice(0, 16) : '');
     }
+    // 列表被服务端分页截断时, 下列聚合仅基于已加载子集, 统一加"仅已加载"标注, 避免与全量表数口径混淆
+    var truncated = assetTotal > assetAll.length;
+    var loadedSub = truncated ? '仅已加载' : '';
     box.innerHTML = '';
     box.appendChild(DN.statRow([
-      { icon: 'list', label: '表数', value: fmtInt(tableCount), sub: assetTotal > assetAll.length ? ('已加载 ' + fmtInt(assetAll.length)) : '' },
-      { icon: 'layers', label: '字段数', value: fmtInt(colCount) },
-      { icon: 'db', label: '库数', value: fmtInt(Object.keys(dbSet).length) },
-      { icon: 'chart', label: '总体量', value: DN.fmtBytes(totalBytes) },
-      { icon: 'alert', label: '缺业务描述', value: fmtInt(noDescN), tone: noDescN ? 'warn' : 'ok', title: '点击只看缺业务描述的表', onClick: function () {
+      { icon: 'list', label: '表数', value: fmtInt(tableCount), sub: truncated ? ('已加载 ' + fmtInt(assetAll.length)) : '' },
+      { icon: 'layers', label: '字段数', value: fmtInt(colCount), sub: loadedSub },
+      { icon: 'db', label: '库数', value: fmtInt(Object.keys(dbSet).length), sub: loadedSub },
+      { icon: 'chart', label: '总体量', value: DN.fmtBytes(totalBytes), sub: loadedSub },
+      { icon: 'alert', label: '缺业务描述', value: fmtInt(noDescN), sub: loadedSub, tone: noDescN ? 'warn' : 'ok', title: '点击只看缺业务描述的表', onClick: function () {
           assetState.quick = assetState.quick === 'nodesc' ? '' : 'nodesc';
           if (quickSelEl) quickSelEl.value = assetState.quick;
           renderAssetTable();
@@ -286,7 +289,7 @@
   // 数值分档渐进色条：按占最大值比例渲染右对齐迷你条 + 数值
   function magBar(v, max, label) {
     var pct = max > 0 ? Math.max(2, Math.round(v * 100 / max)) : 0;
-    var color = pct >= 75 ? 'var(--error)' : pct >= 50 ? 'var(--warning)' : pct >= 25 ? 'var(--warning)' : 'var(--success)';
+    var color = pct >= 75 ? 'var(--error)' : pct >= 25 ? 'var(--warning)' : 'var(--success)';
     return '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">'
       + '<span style="font-variant-numeric:tabular-nums;">' + label + '</span>'
       + '<span style="display:inline-block;width:48px;height:6px;border-radius:var(--radius-sm);background:var(--bg-hover);overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';"></span></span></div>';
@@ -546,7 +549,7 @@
       var senN = cols.filter(function (c) { return c.sensitiveType; }).length;
       var noDescN = cols.filter(function (c) { return !c.businessDesc; }).length;
       box.appendChild(DN.statRow([
-        { icon: 'list', label: '字段数', value: cols.length },
+        { icon: 'list', label: '字段数', value: fmtInt(cols.length) },
         { icon: 'lock', label: '已分级', value: secN, tone: secN ? 'warn' : 'ok' },
         { icon: 'tag', label: '敏感字段', value: senN, tone: senN ? 'err' : 'ok' },
         { icon: 'doc', label: '缺注释', value: noDescN, tone: noDescN ? 'warn' : 'ok' }
@@ -699,6 +702,7 @@
   var policyTbl = null;
   var _lifecycleCard = null;     // 生命周期卡片根元素(供成本排行下钻滚动定位)
   var _lifecyclePicker = null;   // 生命周期库/表选择器(供下钻预填)
+  var _lifecycleWaitTimer = null; // gotoLifecycle 等表选项的轮询句柄: 新一次下钻前先清掉上一次, 防累积无主定时器
   function renderLifecycle(c) {
     var card = DN.card({ title: '生命周期策略（应用后自动下发 Doris DDL，失败降级 PENDING）', icon: 'clock' });
     c.appendChild(card.el);
@@ -744,12 +748,13 @@
     if (dbSel.value !== db) { DN.toast('请在生命周期手动选择 ' + db, 'info'); return; }
     if (dbSel.onchange) dbSel.onchange();
     if (table && tbSel) {
-      // 表选项随 onchange 异步加载, 轮询设置
+      // 表选项随 onchange 异步加载, 轮询设置; 新一次下钻前先清掉上一次未完成的轮询
+      if (_lifecycleWaitTimer) { clearInterval(_lifecycleWaitTimer); _lifecycleWaitTimer = null; }
       var tries = 0;
-      var timer = setInterval(function () {
+      _lifecycleWaitTimer = setInterval(function () {
         tries++;
         tbSel.value = table;
-        if (tbSel.value === table || tries > 20) { clearInterval(timer); }
+        if (tbSel.value === table || tries > 20) { clearInterval(_lifecycleWaitTimer); _lifecycleWaitTimer = null; }
       }, 150);
     }
     DN.toast('已预填生命周期: ' + db + (table ? '.' + table : ''), 'info');
@@ -793,7 +798,7 @@
                     if (!ok) return;
                     var done = lockBtn(del);
                     DN.del('/api/gov/lifecycle/policies/' + p.id)
-                      .then(function () { DN.toast('已删除', 'success'); loadPolicies(); })
+                      .then(function () { done(); DN.toast('已删除', 'success'); loadPolicies(); })
                       .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                   });
                 } });
@@ -847,7 +852,7 @@
       var noLineage = rows.filter(function (u) { return !u.hasDownstreamLineage; }).length;
       var wrap = DN.h('div', { style: 'display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:6px' });
       var st = DN.statRow([
-        { icon: 'alert', label: '无用表候选', value: rows.length, tone: rows.length > 0 ? 'warn' : 'ok' },
+        { icon: 'alert', label: '无用表候选', value: fmtInt(rows.length), tone: rows.length > 0 ? 'warn' : 'ok' },
         { icon: 'db', label: '可回收体量', value: DN.fmtBytes(totalBytes), tone: 'info' },
         { icon: 'lineage', label: '无下游血缘', value: noLineage, sub: '可安全回收' }
       ]);
@@ -856,7 +861,7 @@
       if (rows.length > 0) wrap.appendChild(DN.donut([
         { label: '无下游', value: noLineage, color: 'var(--success)' },
         { label: '有下游', value: rows.length - noLineage, color: 'var(--warning)' }
-      ], { size: 96, stroke: 12, centerLabel: rows.length, centerSub: '候选' }));
+      ], { size: 96, stroke: 12, centerLabel: fmtInt(rows.length), centerSub: '候选' }));
       box.appendChild(wrap);
       unusedTbl = DN.table({
         columns: [
@@ -952,7 +957,7 @@
         box.appendChild(DN.sectionTitle('成本 Top10（按月成本，无则按体量）'));
         box.appendChild(DN.heat(top.map(function (s) {
           var v = Number(s.costEstimate) || 0;
-          return { label: (s.db || '') + '.' + (s.table || ''), value: v || (Number(s.sizeBytes) || 0), display: v ? ('¥' + v) : DN.fmtBytes(s.sizeBytes) };
+          return { label: (s.db || '') + '.' + (s.table || ''), value: v || (Number(s.sizeBytes) || 0), display: v ? ('¥' + fmtInt(v)) : DN.fmtBytes(s.sizeBytes) };
         }), { rgb: [250, 173, 20] }));
         box.appendChild(DN.sectionTitle('全部资产成本明细'));
       }
@@ -961,7 +966,7 @@
           { key: '_t', label: '库.表', render: function (s) { return (s.db || '') + '.' + (s.table || ''); } },
           { key: 'sizeBytes', label: '体量', align: 'right', render: function (s) { return DN.fmtBytes(s.sizeBytes); } },
           { key: 'rowCount', label: '行数', align: 'right', render: function (s) { return s.rowCount == null ? '-' : fmtInt(s.rowCount); } },
-          { key: 'costEstimate', label: '月成本(元)', align: 'right', render: function (s) { return s.costEstimate == null ? '-' : s.costEstimate; } },
+          { key: 'costEstimate', label: '月成本(元)', align: 'right', render: function (s) { return s.costEstimate == null ? '-' : fmtInt(s.costEstimate); } },
           { key: '_op', label: '操作', exportValue: function () { return ''; }, render: function (s) {
               var detail = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '详情', title: '查看该表字段/画像/血缘',
                 onclick: function () { openAssetDetail(s.db || '', s.table || ''); } });

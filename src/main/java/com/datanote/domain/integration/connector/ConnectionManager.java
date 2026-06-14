@@ -117,6 +117,13 @@ public class ConnectionManager {
         return pool.getConnection();
     }
 
+    /** 归一化数据源 type：trim + 大写，空/缺省按 MySQL 处理。统一识别口径，收口边界。 */
+    private static String normalizeType(String raw) {
+        if (raw == null) return "MYSQL";
+        String t = raw.trim().toUpperCase();
+        return t.isEmpty() ? "MYSQL" : t;
+    }
+
     private HikariDataSource createPool(Long datasourceId, String db) {
         DnDatasource ds = datasourceMapper.selectById(datasourceId);
         if (ds == null) {
@@ -124,7 +131,7 @@ public class ConnectionManager {
         }
         String pwd = CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey);
         // DS-M8：按数据源 type 选驱动/URL（PG 连接库取 databaseName，同步「db」为 schema 不入 URL）
-        String type = ds.getType() == null ? "MYSQL" : ds.getType().trim().toUpperCase();
+        String type = normalizeType(ds.getType());
         boolean pg = "POSTGRESQL".equals(type) || "POSTGRES".equals(type) || "PG".equals(type);
         boolean mssql = "SQLSERVER".equals(type) || "MSSQL".equals(type) || "SQL_SERVER".equals(type);
         boolean oracle = "ORACLE".equals(type);

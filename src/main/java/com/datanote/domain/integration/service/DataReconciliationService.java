@@ -36,6 +36,8 @@ public class DataReconciliationService {
     /** DS-M2：主键级 diff 单表主键集合上限，超过则放弃 PK diff（仅保留分桶结果），防 OOM。 */
     private static final int PK_DIFF_CAP = 2_000_000;
     private static final int PK_DIFF_SAMPLE = 100;
+    /** 校验和分桶数: 表按主键哈希分桶, 逐桶比对行数与校验和以快速定位差异桶。 */
+    private static final int CHECKSUM_BUCKETS = 16;
 
     public Map<String, Object> reconcile(Long jobId) throws Exception {
         DnSyncJob job = syncJobService.getById(jobId);
@@ -84,7 +86,7 @@ public class DataReconciliationService {
     public Map<String, Object> checksum(Long jobId) throws Exception {
         DnSyncJob job = syncJobService.getById(jobId);
         if (job == null) throw new IllegalArgumentException("任务不存在: " + jobId);
-        int buckets = 16;
+        int buckets = CHECKSUM_BUCKETS;
         DbConnector src = syncJobService.buildConnector(job.getSourceDsId(), job.getSourceDb());
         DbConnector tgt = syncJobService.buildConnector(job.getTargetDsId(), job.getTargetDb());
         List<Map<String, Object>> tableResults = new ArrayList<>();

@@ -240,6 +240,9 @@ public class HiveDdlController {
     @PostMapping("/submit-execute")
     public R<Map<String, Object>> submitExecute(@RequestBody Map<String, Object> body) {
         String sql = (String) body.get("sql");
+        if (sql == null || sql.trim().isEmpty()) {
+            return R.fail("SQL 不能为空");
+        }
         Long scriptId = body.get("scriptId") != null ? Long.valueOf(body.get("scriptId").toString()) : null;
         Long syncTaskId = body.get("syncTaskId") != null ? Long.valueOf(body.get("syncTaskId").toString()) : null;
 
@@ -269,27 +272,16 @@ public class HiveDdlController {
                                      @RequestParam(required = false) Long syncTaskId) {
         SseEmitter emitter = new SseEmitter(600000L);
 
-        // 兼容两种模式：旧的直接传 sql，新的传 executionId
+        // 安全: 只接受由 POST /submit-execute(已过写权限校验)生成的 executionId。
+        // 删除旧的 ?sql=... 直传分支 —— GET 直传 SQL 可绕过写权限拦截执行任意 DDL/DML(含 DROP), 且易被 CSRF/预取触发。
         final String execSql;
         final Long execId;
         if (executionId != null && pendingSql.containsKey(executionId)) {
             execSql = pendingSql.remove(executionId);
             execId = executionId;
-        } else if (sql != null && !sql.isEmpty()) {
-            // 旧模式兼容：短 SQL 直接传
-            DnTaskExecution exec = new DnTaskExecution();
-            exec.setScriptId(scriptId);
-            exec.setSyncTaskId(syncTaskId);
-            exec.setTaskType(scriptId != null ? "script" : syncTaskId != null ? "syncTask" : "manual");
-            exec.setTriggerType("manual");
-            exec.setStatus("RUNNING");
-            exec.setStartTime(java.time.LocalDateTime.now());
-            taskExecutionMapper.insert(exec);
-            execId = exec.getId();
-            execSql = sql;
         } else {
             try { emitter.send(SseEmitter.event().name("error").data(
-                    java.util.Collections.singletonMap("message", "没有可执行的 SQL"))); emitter.complete(); } catch (Exception ignored) {}
+                    java.util.Collections.singletonMap("message", "没有可执行的 SQL（请先通过提交执行获取 executionId）"))); emitter.complete(); } catch (Exception ignored) {}
             return emitter;
         }
 

@@ -180,6 +180,11 @@ public class DataxController {
         }
     }
 
+    /** 单参重载(仅按数据源ID解析); 供单测与内部按ID直解场景复用。 */
+    private DnDatasource resolveDatasource(String dsIdStr) {
+        return resolveDatasource(dsIdStr, null);
+    }
+
     private DnDatasource resolveDatasource(String dsIdStr, Long syncTaskId) {
         if ((dsIdStr == null || dsIdStr.isEmpty()) && syncTaskId != null) {
             DnSyncTask task = syncTaskMapper.selectById(syncTaskId);
@@ -197,10 +202,6 @@ public class DataxController {
             } catch (NumberFormatException ignored) {}
         }
         return getDefaultDatasource();
-    }
-
-    private DnDatasource resolveDatasource(String dsIdStr) {
-        return resolveDatasource(dsIdStr, null);
     }
 
     private List<ColumnInfo> resolveColumns(String dsIdStr, Long syncTaskId, DnDatasource ds, String db, String table) throws Exception {

@@ -33,7 +33,12 @@ public class ProjectOverviewService {
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("project", p);
 
-        Map<String, Long> counts = assetService.countsByType(projectId);
+        // 项目资产列表一次性查出, 后续计数/运行聚合/活动流共用, 消除单次 overview 内 3 次重复查询
+        List<DnProjectAsset> projectAssets = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
+                .eq(DnProjectAsset::getProjectId, projectId));
+        if (projectAssets == null) projectAssets = new ArrayList<>();
+
+        Map<String, Long> counts = countsFromAssets(projectAssets);
         long assetTotal = 0;
         for (Long v : counts.values()) assetTotal += v;
         r.put("assetCounts", counts);
@@ -56,14 +61,26 @@ public class ProjectOverviewService {
         r.put("releasePending", pending);
         r.put("releaseReleased", released);
 
-        r.put("activity", buildActivity(projectId, releases));
+        r.put("activity", buildActivity(projectId, releases, projectAssets));
         // N8: 绑定资产运行四段(同步任务/脚本/质量规则/指标); jobRuns 键保留兼容旧前端
-        Map<String, Object> runs = boundAssetRuns(projectId);
+        Map<String, Object> runs = boundAssetRuns(projectAssets);
         r.put("jobRuns", runs.get("jobRuns"));
         r.put("scriptRuns", runs.get("scriptRuns"));
         r.put("qualityRuns", runs.get("qualityRuns"));
         r.put("metricRuns", runs.get("metricRuns"));
         return r;
+    }
+
+    /** 从已查出的资产列表按类型计数(语义同 ProjectAssetService.countsByType: 全类型有序、0 兜底), 免 5 次 selectCount。 */
+    private Map<String, Long> countsFromAssets(List<DnProjectAsset> assets) {
+        Map<String, Long> m = new LinkedHashMap<>();
+        for (String t : ProjectAssetService.TYPES) m.put(t, 0L);
+        if (assets != null) for (DnProjectAsset a : assets) {
+            if (a == null) continue;
+            String t = a.getAssetType();
+            if (t != null && m.containsKey(t)) m.put(t, m.get(t) + 1);
+        }
+        return m;
     }
 
     /**
@@ -74,6 +91,12 @@ public class ProjectOverviewService {
     public Map<String, Object> boundAssetRuns(Long projectId) {
         List<DnProjectAsset> assets = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getProjectId, projectId));
+        if (assets == null) assets = new ArrayList<>();
+        return boundAssetRuns(assets);
+    }
+
+    /** overview 内复用已查出的资产列表做运行聚合, 不再重复查库(行为同 boundAssetRuns(projectId))。 */
+    private Map<String, Object> boundAssetRuns(List<DnProjectAsset> assets) {
         if (assets == null) assets = new ArrayList<>();
         List<DnProjectAsset> jobs = new ArrayList<>(), scripts = new ArrayList<>(), rules = new ArrayList<>(), metrics = new ArrayList<>();
         for (DnProjectAsset a : assets) {
@@ -256,7 +279,7 @@ public class ProjectOverviewService {
     }
 
     /** 合成活动流：成员加入 / 资产绑定 / 发布事件，按时间倒序取前 15。 */
-    private List<Map<String, Object>> buildActivity(Long projectId, List<DnProjectRelease> releases) {
+    private List<Map<String, Object>> buildActivity(Long projectId, List<DnProjectRelease> releases, List<DnProjectAsset> assets) {
         List<Object[]> events = new ArrayList<>(); // [LocalDateTime, kind, text]
         List<DnProjectMember> members = memberMapper.selectList(new LambdaQueryWrapper<DnProjectMember>()
                 .eq(DnProjectMember::getProjectId, projectId));
@@ -265,8 +288,6 @@ public class ProjectOverviewService {
             events.add(new Object[]{m.getCreatedAt(), "member",
                     "成员 " + m.getUsername() + " 加入（" + ProjectRoles.label(m.getProjectRole()) + "）"});
         }
-        List<DnProjectAsset> assets = assetMapper.selectList(new LambdaQueryWrapper<DnProjectAsset>()
-                .eq(DnProjectAsset::getProjectId, projectId));
         if (assets != null) for (DnProjectAsset a : assets) {
             if (a == null) continue;
             events.add(new Object[]{a.getCreatedAt(), "asset",

@@ -14,7 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 数据模型服务 — 三层模型(业务/逻辑/物理) CRUD、实体/属性/关系维护、
@@ -48,13 +52,25 @@ public class DataModelService {
         if (status != null && !status.isEmpty()) qw.eq("status", status);
         qw.orderByDesc("updated_at");
         List<DnModel> list = modelMapper.selectList(qw);
+        if (list.isEmpty()) return list;
+        List<Long> ids = list.stream().map(DnModel::getId).collect(Collectors.toList());
+        // 批量实体数: 一条 group by 聚合替代逐模型 selectCount(消除 N+1)
+        Map<Long, Integer> countMap = new HashMap<>();
+        for (Map<String, Object> row : entityMapper.selectMaps(new QueryWrapper<DnModelEntity>()
+                .select("model_id", "count(*) cnt").in("model_id", ids).groupBy("model_id"))) {
+            Object mid = row.get("model_id"), cnt = row.get("cnt");
+            if (mid != null) countMap.put(((Number) mid).longValue(), cnt == null ? 0 : ((Number) cnt).intValue());
+        }
+        // 批量溯源模型名: 一次 selectBatchIds 替代逐模型 selectById
+        List<Long> srcIds = list.stream().map(DnModel::getSourceModelId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, String> srcNameMap = new HashMap<>();
+        if (!srcIds.isEmpty()) {
+            List<DnModel> _srcs = modelMapper.selectBatchIds(srcIds);
+            if (_srcs != null) for (DnModel src : _srcs) srcNameMap.put(src.getId(), src.getModelName()); // selectList 理论可返回 null
+        }
         for (DnModel m : list) {
-            Long ec = entityMapper.selectCount(new QueryWrapper<DnModelEntity>().eq("model_id", m.getId()));
-            m.setEntityCount(ec == null ? 0 : ec.intValue());
-            if (m.getSourceModelId() != null) {
-                DnModel src = modelMapper.selectById(m.getSourceModelId());
-                if (src != null) m.setSourceModelName(src.getModelName());
-            }
+            m.setEntityCount(countMap.getOrDefault(m.getId(), 0));
+            if (m.getSourceModelId() != null) m.setSourceModelName(srcNameMap.get(m.getSourceModelId()));
         }
         return list;
     }
@@ -97,6 +113,9 @@ public class DataModelService {
         } else {
             DnModel exist = modelMapper.selectById(model.getId());
             if (exist == null) throw new BusinessException("模型不存在");
+            if ("PENDING".equals(exist.getStatus())) {
+                throw new BusinessException("模型审批中, 不可修改, 请先等待审批完成或驳回后再改");
+            }
             // 状态/版本由流转管控, 此处不允许直改
             model.setStatus(null);
             model.setVersion(null);
@@ -125,8 +144,18 @@ public class DataModelService {
 
     // ---------------- 实体 / 属性 / 关系 ----------------
 
+    /** 模型可编辑校验: 审批中(PENDING)的模型禁止任何增改删, 防审批闭环被旁路。 */
+    private void assertModelEditable(Long modelId) {
+        if (modelId == null) return;
+        DnModel m = modelMapper.selectById(modelId);
+        if (m != null && "PENDING".equals(m.getStatus())) {
+            throw new BusinessException("模型审批中, 不可修改, 请先等待审批完成或驳回后再改");
+        }
+    }
+
     public DnModelEntity saveEntity(DnModelEntity entity) {
         if (entity.getModelId() == null) throw new BusinessException("实体须归属模型");
+        assertModelEditable(entity.getModelId());
         validateCode(entity.getEntityCode(), "实体编码");
         if (entity.getId() == null) {
             entityMapper.insert(entity);
@@ -138,6 +167,8 @@ public class DataModelService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteEntity(Long id) {
+        DnModelEntity e = entityMapper.selectById(id);
+        if (e != null) assertModelEditable(e.getModelId());
         attrMapper.delete(new QueryWrapper<DnModelAttribute>().eq("entity_id", id));
         entityMapper.deleteById(id);
     }
@@ -146,6 +177,8 @@ public class DataModelService {
     @Transactional(rollbackFor = Exception.class)
     public void saveAttributes(Long entityId, List<DnModelAttribute> attrs) {
         if (entityId == null) throw new BusinessException("属性须归属实体");
+        DnModelEntity e = entityMapper.selectById(entityId);
+        if (e != null) assertModelEditable(e.getModelId());
         attrMapper.delete(new QueryWrapper<DnModelAttribute>().eq("entity_id", entityId));
         if (attrs == null) return;
         int order = 0;
@@ -162,11 +195,14 @@ public class DataModelService {
         if (rel.getModelId() == null || rel.getSourceEntityId() == null || rel.getTargetEntityId() == null) {
             throw new BusinessException("关系须指定模型与源/目标实体");
         }
+        assertModelEditable(rel.getModelId());
         if (rel.getId() == null) relMapper.insert(rel); else relMapper.updateById(rel);
         return relMapper.selectById(rel.getId());
     }
 
     public void deleteRelation(Long id) {
+        DnModelRelation rel = relMapper.selectById(id);
+        if (rel != null) assertModelEditable(rel.getModelId());
         relMapper.deleteById(id);
     }
 
@@ -184,6 +220,7 @@ public class DataModelService {
         List<String> warnings = new ArrayList<>();
         List<DnModelEntity> entities = entityMapper.selectList(
                 new QueryWrapper<DnModelEntity>().eq("model_id", modelId).orderByAsc("sort_order", "id"));
+        if (entities == null) entities = new ArrayList<>();
         if (entities.isEmpty()) {
             errors.add("模型须至少包含 1 个实体");
         }
@@ -269,11 +306,25 @@ public class DataModelService {
         }
 
         boolean approved = "approved".equals(target);
+        // 驳回须有原因(便于申请人修正, 与前端必填一致)
+        if (!approved && (comment == null || comment.trim().isEmpty())) {
+            throw new BusinessException("驳回必须填写原因");
+        }
+        // 原子化抢占工单: 仅当工单仍为 pending 才更新, 防并发审批重复发布/双增版本号
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnModelChange> uw =
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<DnModelChange>()
+                        .eq("id", changeId).eq("status", "pending")
+                        .set("status", approved ? "approved" : "rejected")
+                        .set("reviewer", reviewer)
+                        .set("review_comment", comment)
+                        .set("decided_at", LocalDateTime.now());
+        if (changeMapper.update(null, uw) == 0) {
+            throw new BusinessException("该工单已审批, 不能重复操作");
+        }
         c.setStatus(approved ? "approved" : "rejected");
         c.setReviewer(reviewer);
         c.setReviewComment(comment);
         c.setDecidedAt(LocalDateTime.now());
-        changeMapper.updateById(c);
 
         DnModel m = modelMapper.selectById(c.getModelId());
         if (m != null) {
@@ -289,7 +340,10 @@ public class DataModelService {
                 DnModelVersion ver = new DnModelVersion();
                 ver.setModelId(m.getId());
                 ver.setVersion(m.getVersion());
-                ver.setSnapshotJson(JSON.toJSONString(getModelDetail(m.getId())));
+                // 发布快照取审批工单提交时冻结的 payloadJson(审批所见即所发), 而非实时DB状态
+                String snapshot = (c.getPayloadJson() != null && !c.getPayloadJson().trim().isEmpty())
+                        ? c.getPayloadJson() : JSON.toJSONString(getModelDetail(m.getId()));
+                ver.setSnapshotJson(snapshot);
                 ver.setChangeSummary(c.getReason());
                 ver.setPublishedBy(reviewer);
                 ver.setPublishedAt(LocalDateTime.now());
@@ -316,8 +370,16 @@ public class DataModelService {
         if (status != null && !status.isEmpty()) qw.eq("status", status);
         qw.orderByDesc("created_at");
         List<DnModelChange> list = changeMapper.selectList(qw);
+        if (list.isEmpty()) return list;
+        // 批量模型名/编码: 一次 selectBatchIds 替代逐工单 selectById(消除 N+1)
+        List<Long> mids = list.stream().map(DnModelChange::getModelId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, DnModel> modelMap = new HashMap<>();
+        if (!mids.isEmpty()) {
+            List<DnModel> _ms = modelMapper.selectBatchIds(mids);
+            if (_ms != null) for (DnModel m : _ms) modelMap.put(m.getId(), m); // selectList 理论可返回 null
+        }
         for (DnModelChange c : list) {
-            DnModel m = modelMapper.selectById(c.getModelId());
+            DnModel m = modelMap.get(c.getModelId());
             if (m != null) { c.setModelName(m.getModelName()); c.setModelCode(m.getModelCode()); }
         }
         return list;
@@ -488,6 +550,7 @@ public class DataModelService {
     public String generateDdl(Long physicalModelId) {
         DnModel m = modelMapper.selectById(physicalModelId);
         if (m == null) throw new BusinessException("模型不存在");
+        if (!"PHYS".equals(m.getModelType())) throw new BusinessException("仅物理模型可生成 DDL, 请先由逻辑模型生成物理模型");
         List<DnModelEntity> entities = entityMapper.selectList(
                 new QueryWrapper<DnModelEntity>().eq("model_id", physicalModelId).orderByAsc("sort_order", "id"));
         StringBuilder sb = new StringBuilder();
@@ -505,15 +568,15 @@ public class DataModelService {
                         ? a.getPhysicalColumn() : toSnake(a.getAttrCode());
                 StringBuilder line = new StringBuilder("  ").append(col).append(" ").append(sqlType(a.getDataType(), a.getDataLength()));
                 if (a.getIsNullable() != null && a.getIsNullable() == 0) line.append(" NOT NULL");
-                if (a.getDefaultValue() != null && !a.getDefaultValue().isEmpty()) line.append(" DEFAULT '").append(a.getDefaultValue()).append("'");
-                if (a.getAttrName() != null && !a.getAttrName().isEmpty()) line.append(" COMMENT '").append(a.getAttrName()).append("'");
+                if (a.getDefaultValue() != null && !a.getDefaultValue().isEmpty()) line.append(" DEFAULT '").append(sqlEscape(a.getDefaultValue())).append("'");
+                if (a.getAttrName() != null && !a.getAttrName().isEmpty()) line.append(" COMMENT '").append(sqlEscape(a.getAttrName())).append("'");
                 cols.add(line.toString());
                 if (a.getIsPk() != null && a.getIsPk() == 1) pks.add(col);
             }
             sb.append(String.join(",\n", cols));
             if (!pks.isEmpty()) sb.append(",\n  PRIMARY KEY (").append(String.join(", ", pks)).append(")");
             sb.append("\n)");
-            if (e.getEntityName() != null) sb.append(" COMMENT='").append(e.getEntityName()).append("'");
+            if (e.getEntityName() != null) sb.append(" COMMENT='").append(sqlEscape(e.getEntityName())).append("'");
             sb.append(";\n\n");
         }
         return sb.toString();
@@ -563,10 +626,18 @@ public class DataModelService {
         List<java.util.Map<String, Object>> out = new ArrayList<>();
         if (elementCode == null || elementCode.trim().isEmpty()) return out;
         List<DnModelAttribute> attrs = attrMapper.selectList(new QueryWrapper<DnModelAttribute>().eq("element_code", elementCode.trim()));
+        if (attrs.isEmpty()) return out;
+        // 批量取实体与模型, 替代逐属性 selectById(消除 2N 次往返)
+        List<Long> entIds = attrs.stream().map(DnModelAttribute::getEntityId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, DnModelEntity> entMap = new HashMap<>();
+        if (!entIds.isEmpty()) { List<DnModelEntity> _ents = entityMapper.selectBatchIds(entIds); if (_ents != null) for (DnModelEntity e : _ents) entMap.put(e.getId(), e); } // selectList 理论可返回 null
+        List<Long> modIds = entMap.values().stream().map(DnModelEntity::getModelId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<Long, DnModel> modMap = new HashMap<>();
+        if (!modIds.isEmpty()) { List<DnModel> _mods = modelMapper.selectBatchIds(modIds); if (_mods != null) for (DnModel m : _mods) modMap.put(m.getId(), m); } // selectList 理论可返回 null
         for (DnModelAttribute a : attrs) {
-            DnModelEntity e = entityMapper.selectById(a.getEntityId());
+            DnModelEntity e = entMap.get(a.getEntityId());
             if (e == null) continue;
-            DnModel m = modelMapper.selectById(e.getModelId());
+            DnModel m = modMap.get(e.getModelId());
             if (m == null) continue;
             java.util.Map<String, Object> row = new java.util.HashMap<>();
             row.put("modelCode", m.getModelCode());
@@ -759,6 +830,11 @@ public class DataModelService {
 
     // ---------------- 规范 / 工具 ----------------
 
+    /** DDL 字符串字面量转义(展示用 DDL, 防含单引号的默认值/名称生成语法错误)。 */
+    private String sqlEscape(String s) {
+        return s == null ? "" : s.replace("'", "''");
+    }
+
     /** 逻辑数据类型 → SQL 类型映射。 */
     private String sqlType(String dataType, String len) {
         String t = dataType == null ? "STRING" : dataType.trim().toUpperCase();
@@ -792,7 +868,9 @@ public class DataModelService {
         String[] parts = s.split("[_\\s-]+");
         StringBuilder sb = new StringBuilder();
         for (String p : parts) { if (p.isEmpty()) continue; sb.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1).toLowerCase()); }
-        return sb.length() == 0 ? toModelCode(s) : sb.toString();
+        if (sb.length() > 0) return sb.toString();
+        String fb = toModelCode(s);
+        return (fb == null || fb.isEmpty()) ? "T" : fb;
     }
 
     /** 物理类型 → 逻辑类型(逆向归一化)。 */
@@ -823,7 +901,8 @@ public class DataModelService {
 
     /** 编码唯一化(冲突时追加短时间戳后缀)。 */
     private String uniqueCode(String base) {
-        if (modelMapper.selectCount(new QueryWrapper<DnModel>().eq("model_code", base)) == 0) return base;
+        Long cnt = modelMapper.selectCount(new QueryWrapper<DnModel>().eq("model_code", base));
+        if (cnt == null || cnt == 0) return base;
         return base + "_" + (System.currentTimeMillis() % 100000);
     }
 

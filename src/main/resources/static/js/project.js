@@ -193,10 +193,23 @@ window.projApplyFilter = function() {
     return (b.id || 0) - (a.id || 0);
   });
   var cnt = document.getElementById('projFilterCount');
-  if (cnt) cnt.textContent = '共 ' + list.length + ' / ' + _projList.length;
+  if (cnt) {
+    var anyFilter = !!(q || ft || fs || fe || ftag || onlyFav || sort !== 'created_desc');
+    cnt.innerHTML = '共 ' + list.length + ' / ' + _projList.length
+      + (anyFilter ? ' <a href="#" onclick="projClearFilters();return false;" style="margin-left:8px;color:var(--primary);font-size:12px;">清空筛选</a>' : '');
+  }
   _projFiltered = list;
   try { localStorage.setItem('projFilters', JSON.stringify({ q: (document.getElementById('projSearch') || {}).value || '', ft: ft, fs: fs, fe: fe, sort: sort, ftag: ftag, onlyFav: onlyFav })); } catch (e) {}
   projRenderList(list);
+};
+// 一键清空所有筛选条件(搜索/类型/状态/环境/标签/收藏/排序), 恢复默认
+window.projClearFilters = function() {
+  ['projSearch', 'projFilterType', 'projFilterStatus', 'projFilterEnv', 'projFilterTag'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var sortEl = document.getElementById('projSort'); if (sortEl) sortEl.value = 'created_desc';
+  var favEl = document.getElementById('projOnlyFav'); if (favEl) favEl.checked = false;
+  projApplyFilter();
 };
 var _projFiltered = [];
 window.projResetFilters = function() {
@@ -237,10 +250,10 @@ function projListCards(rows) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: 'var(--text-faint)' };
     var fav = _projFav[p.id] && _projFav[p.id].fav;
     var pinned = _projFav[p.id] && _projFav[p.id].pinned;
-    var tagChips = (_projTagMap[p.id] || []).map(function(tid) { var t = _projTagById(tid); if (!t) return ''; return '<span style="display:inline-block;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--radius-lg);margin:2px 3px;word-break:break-word;background:' + (t.tagColor || 'var(--primary)') + '22;color:' + (t.tagColor || 'var(--primary)') + ';">' + escapeHtml(t.tagName) + '</span>'; }).join('');
+    var tagChips = (_projTagMap[p.id] || []).map(function(tid) { var t = _projTagById(tid); if (!t) return ''; return '<span style="display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--radius-lg);margin:2px 3px;background:' + (t.tagColor || 'var(--primary)') + '22;color:' + (t.tagColor || 'var(--primary)') + ';" title="' + escapeHtml(t.tagName) + '">' + escapeHtml(t.tagName) + '</span>'; }).join('');
     h += '<div style="border:1px solid var(--border);border-top:3px solid ' + st.c + ';border-radius:var(--radius-lg);padding:12px;background:var(--bg-card);cursor:pointer;transition:box-shadow var(--dur),transform var(--dur);" onclick="projOpenDetail(' + p.id + ')" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'\';this.style.transform=\'\'">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
-      + (pinned ? '<span style="color:var(--warning);display:inline-flex;vertical-align:-2px;">' + DN.icon('pin') + '</span>' : '')
+      + (pinned ? '<span style="color:var(--warning);display:inline-flex;vertical-align:-2px;" title="置顶" aria-label="置顶">' + DN.icon('pin') + '</span>' : '')
       + '<span style="font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(p.projectName || '') + '">' + escapeHtml(p.projectName || '-') + '<span class="dnph" data-id="' + p.id + '"></span></span>'
       + '<a href="#" onclick="event.stopPropagation();projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? 'var(--warning)' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></div>'
       + '<div style="font-family:monospace;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(p.projectCode || '-') + '</div>'
@@ -286,7 +299,7 @@ function projRenderList(list) {
     }).join('');
     h += '<tr>'
       + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? 'var(--warning)' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
-      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b><span class="dnph" data-id="' + p.id + '"></span>' + (pinned ? ' <span style="font-size:var(--fs-xs);color:var(--warning);">置顶</span>' : '') + (p.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b><span class="dnph" data-id="' + p.id + '"></span>' + (pinned ? ' <span style="font-size:var(--fs-xs);color:var(--warning);">置顶</span>' : '') + (p.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(p.description) + '">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
       + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
@@ -299,7 +312,7 @@ function projRenderList(list) {
       + '<a href="#" data-perm="project:manage" onclick="projTogglePin(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">' + (pinned ? '取消置顶' : '置顶') + '</a>'
       + '<a href="#" data-perm="project:manage" onclick="projOpenEdit(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + (p.status === 'ACTIVE' ? '<a href="#" data-perm="project:manage" onclick="projArchive(' + p.id + ');return false;" style="color:var(--primary);margin-right:8px;">归档</a>' : '')
-      + '<a href="#" data-perm="project:manage" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\');return false;" style="color:var(--error);">删除</a></td>'
+      + '<a href="#" data-perm="project:manage" onclick="projDelete(' + p.id + ');return false;" style="color:var(--error);">删除</a></td>'
       + '</tr>';
   });
   h += '</tbody></table>';
@@ -325,7 +338,7 @@ window.projTogglePin = function(id) {
   }).catch(function() { showToast('操作失败', 'error'); });
 };
 window.projManageTags = function() {
-  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;"><input id="ptNewName" class="dbsync-form-input" style="width:140px;" placeholder="标签名"><input id="ptNewColor" type="color" value="var(--primary)" style="width:40px;height:32px;padding:0;border:1px solid var(--border);border-radius:var(--radius);"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projCreateTag()">新建</button></div><div id="ptList"></div>';
+  var h = '<div style="display:flex;gap:6px;margin-bottom:10px;"><input id="ptNewName" class="dbsync-form-input" style="width:140px;" placeholder="标签名"><input id="ptNewColor" type="color" value="#4051d3" style="width:40px;height:32px;padding:0;border:1px solid var(--border);border-radius:var(--radius);"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projCreateTag()">新建</button></div><div id="ptList"></div>';
   projShowModalBox('标签管理', h);
   projRenderTagList();
 };
@@ -519,7 +532,10 @@ window.projArchive = function(id) {
     });
   });
 };
-window.projDelete = function(id, name) {
+window.projDelete = function(id) {
+  // 安全: 名称从 _projList 按 id 反查, 不从 DOM/onclick 传入(防存储型XSS)
+  var _p = (_projList || []).find(function(x) { return String(x.id) === String(id); });
+  var name = _p ? (_p.projectName || '') : '';
   msgConfirm('删除项目', '确认删除项目 [' + escapeHtml(name) + ']？(软删除，资产关联与成员将不再展示)', '确定删除').then(function(ok) {
     if (!ok) return;
     fetch('/api/project/' + id, { method: 'DELETE' }).then(_handleResponse).then(function() { showToast('已删除', 'success'); projCloseDetail(); loadProjectSpace(); })
@@ -639,7 +655,7 @@ window.projLoadMembers = function() {
     var ms = (res && res.code === 0) ? (res.data || []) : [];
     var h = '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:8px;">角色权限: 负责人/管理员=全部含审批发布 · 开发=资产与提交发布 · 运维=运行 · 访客=只读</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">'
-      + '<input id="projMemberUser" class="dbsync-form-input" style="width:160px;" placeholder="用户名">'
+      + '<input id="projMemberUser" class="dbsync-form-input" list="dnUserList" style="width:160px;" placeholder="用户名(可下拉选)">'
       + '<select id="projMemberRole" class="dbsync-form-select" style="width:110px;">' + projRoleOptions('DEVELOPER') + '</select>'
       + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projAddMember()">添加成员</button>'
       + '<a href="#" data-perm="project:manage" onclick="projPickUser();return false;" style="font-size:12px;color:var(--primary);margin-left:4px;">从用户列表选</a></div>';
@@ -754,7 +770,7 @@ window.projLoadSetting = function() {
     + '<button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projOpenEdit(' + p.id + ')">编辑</button>'
     + '<button class="btn btn-sm" data-perm="project:manage" onclick="projSaveAsTemplate(' + p.id + ')">存为模板</button>'
     + (p.status === 'ACTIVE' ? '<button class="btn btn-sm" data-perm="project:manage" onclick="projArchive(' + p.id + ')">归档</button>' : '')
-    + '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="project:manage" onclick="projDelete(' + p.id + ',\'' + escapeHtml(p.projectName || '') + '\')">删除</button>'
+    + '<button class="btn btn-sm" style="color:var(--error);border-color:var(--error);" data-perm="project:manage" onclick="projDelete(' + p.id + ')">删除</button>'
     + '</div></div>';
 };
 /* ===== PM-M3：资产纳管 ===== */
@@ -1347,7 +1363,7 @@ window.projLoadTasks = function() {
         group.forEach(function(t) {
           var pr = TASK_PRIO[t.priority] || { t: t.priority, c: '' };
           h += '<tr><td style="width:50px;"><span style="color:' + pr.c + ';font-size:var(--fs-xs);">' + pr.t + '</span></td>'
-            + '<td><b onclick="projTaskView(' + t.id + ')" style="cursor:pointer;" title="点击查看详情">' + escapeHtml(t.title) + '</b>' + projTaskRefBadge(t) + (t.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);">' + escapeHtml(t.description) + '</div>' : '') + '</td>'
+            + '<td><b onclick="projTaskView(' + t.id + ')" style="cursor:pointer;" title="点击查看详情">' + escapeHtml(t.title) + '</b>' + projTaskRefBadge(t) + (t.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(t.description) + '">' + escapeHtml(t.description) + '</div>' : '') + '</td>'
             + '<td style="width:80px;">' + escapeHtml(t.assignee || '-') + '</td>'
             + '<td style="width:110px;' + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? 'color:var(--error);font-weight:600;' : '') + '">' + escapeHtml(t.dueDate || '') + (t.dueDate && t.status !== 'DONE' && t.dueDate < _today ? ' 超期' : '') + '</td>'
             + '<td style="width:90px;color:var(--text-muted);">' + escapeHtml(msName[t.milestoneId] || '') + '</td>'
@@ -1812,7 +1828,7 @@ function projWikiBuildToc() {
     + items + '</div>';
 }
 window.projWikiNew = function() { projWikiEditForm({ title: '', content: '', parentId: 0 }); };
-window.projWikiEdit = function(pageId) { api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) { if (res && res.code === 0) projWikiEditForm(res.data); }); };
+window.projWikiEdit = function(pageId) { api('/api/project/' + _projDetail.id + '/wiki/pages/' + pageId).then(function(res) { if (res && res.code === 0) projWikiEditForm(res.data); else showToast((res && res.msg) || '文档加载失败', 'error'); }).catch(function() { showToast('文档加载失败', 'error'); }); };
 function projWikiEditForm(p) {
   var c = document.getElementById('projWikiContent'); if (!c) return;
   var parentOpts = '<option value="0">（根）</option>' + _projWikiPages.filter(function(x) { return x.id !== p.id; }).map(function(x) { return '<option value="' + x.id + '"' + (p.parentId === x.id ? ' selected' : '') + '>' + escapeHtml(x.title) + '</option>'; }).join('');
@@ -1951,7 +1967,7 @@ window.projFromTemplateModal = function(presetTid) {
       + '<div class="ds-form-row"><label>项目名称</label><input id="pftName" placeholder="新项目名称"></div>'
       + '<div style="margin-top:10px;text-align:right;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projDoFromTemplate()">创建</button></div>';
     projShowModalBox('从模板新建项目', h);
-  });
+  }).catch(function() { showToast('模板加载失败', 'error'); });
 };
 window.projDoFromTemplate = function() {
   var tid = document.getElementById('pftTpl').value;

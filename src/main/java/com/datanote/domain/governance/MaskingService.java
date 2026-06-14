@@ -43,6 +43,12 @@ public class MaskingService {
     private final DnTableMetaMapper tableMetaMapper;
     private final RbacService rbacService;
 
+    // 列脱敏清单短 TTL 内存缓存：装配结果只依赖全局策略状态（与用户无关），
+    // 避免每次受限查询都全表扫 dn_column_meta。仅缓存成功装配结果，不改变 fail-closed 语义。
+    private static final long COLUMN_MASK_TTL_MS = 60_000L;
+    private volatile List<SqlMaskRewriter.ColumnMask> columnMaskCache;
+    private volatile long columnMaskCacheAt = 0L;
+
     // ========== 脱敏策略 CRUD ==========
 
     public List<DnMaskingPolicy> listMaskingPolicies() {
@@ -64,12 +70,14 @@ public class MaskingService {
         } else {
             maskingPolicyMapper.updateById(p);
         }
+        evictColumnMasks();
         return p;
     }
 
     public void deleteMaskingPolicy(Long id) {
         if (id == null || id <= 0) throw new BusinessException("脱敏策略ID非法");
         maskingPolicyMapper.deleteById(id);
+        evictColumnMasks();
     }
 
     // ========== 行策略 CRUD ==========
@@ -105,8 +113,25 @@ public class MaskingService {
 
     // ========== 装配当前用户可见性 ==========
 
-    /** 装配该用户的列脱敏清单（库.表.列 → 脱敏函数）。 */
+    /** 装配该用户的列脱敏清单（库.表.列 → 脱敏函数）。短 TTL 缓存，结果与用户无关。 */
     public List<SqlMaskRewriter.ColumnMask> resolveColumnMasks() {
+        List<SqlMaskRewriter.ColumnMask> cached = columnMaskCache;
+        if (cached != null && System.currentTimeMillis() - columnMaskCacheAt < COLUMN_MASK_TTL_MS) {
+            return new ArrayList<>(cached);
+        }
+        List<SqlMaskRewriter.ColumnMask> built = buildColumnMasks();
+        columnMaskCache = built;
+        columnMaskCacheAt = System.currentTimeMillis();
+        return new ArrayList<>(built);
+    }
+
+    /** 列脱敏缓存失效：策略/分级保存后调用，确保新策略即时生效（否则靠 TTL 自然过期）。 */
+    public void evictColumnMasks() {
+        columnMaskCache = null;
+        columnMaskCacheAt = 0L;
+    }
+
+    private List<SqlMaskRewriter.ColumnMask> buildColumnMasks() {
         List<SqlMaskRewriter.ColumnMask> masks = new ArrayList<>();
         QueryWrapper<DnMaskingPolicy> qw = new QueryWrapper<>();
         qw.eq("enabled", 1);

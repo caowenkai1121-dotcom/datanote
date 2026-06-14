@@ -83,13 +83,13 @@ public class ClassificationService {
                 .groupBy("table_meta_id").orderByDesc("cnt").last("LIMIT 30");
         List<Map<String, Object>> rows = columnMetaMapper.selectMaps(qw);
         if (rows == null || rows.isEmpty()) return new ArrayList<>();
-        // 先收集本批次的 tableMetaId，一次性批量取表元数据，消除循环内 selectById(N+1)
-        List<Long> tids = new ArrayList<>();
+        // 先收集本批次的 tableMetaId 并去重，一次性批量取表元数据，消除循环内 selectById(N+1)
+        Set<Long> tids = new LinkedHashSet<>();
         for (Map<String, Object> r : rows) {
             Object tid = (r == null) ? null : r.get("tid");
             if (tid instanceof Number) tids.add(((Number) tid).longValue());
         }
-        Map<Long, DnTableMeta> metaMap = batchLoadTableMeta(tids);
+        Map<Long, DnTableMeta> metaMap = batchLoadTableMeta(new ArrayList<>(tids));
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> r : rows) {
             Object tid = (r == null) ? null : r.get("tid");
@@ -269,6 +269,8 @@ public class ClassificationService {
         if (db == null || db.trim().isEmpty()) throw new BusinessException("库名不能为空");
         if (table == null || table.trim().isEmpty()) throw new BusinessException("表名不能为空");
         if (column == null || column.trim().isEmpty()) throw new BusinessException("列名不能为空");
+        // 密级必须为分级字典中已定义的合法值，杜绝任意/拼写错误密级污染分级覆盖统计与脱敏装配
+        validateLevel(newLevel);
         Long tableMetaId = getOrCreateTableMetaId(db, table);
         DnColumnMeta cm = findColumnMeta(tableMetaId, column);
         String oldLevel = cm != null ? cm.getSecurityLevel() : null;
@@ -306,6 +308,20 @@ public class ClassificationService {
             syncTableSensitiveTag(tableMetaId);
         } catch (Exception e) {
             log.warn("表级敏感标签回写失败(不影响分类) tableMetaId={}: {}", tableMetaId, e.getMessage());
+        }
+    }
+
+    /** 校验密级取值：必须非空且属于 dn_classification_level 已定义的合法 levelCode，否则拒绝(fail-closed)。 */
+    private void validateLevel(String newLevel) {
+        if (newLevel == null || newLevel.trim().isEmpty()) {
+            throw new BusinessException("密级不能为空");
+        }
+        String target = newLevel.trim();
+        boolean valid = levels(null).stream()
+                .map(DnClassificationLevel::getLevelCode)
+                .anyMatch(target::equalsIgnoreCase);
+        if (!valid) {
+            throw new BusinessException("非法密级值: " + newLevel);
         }
     }
 

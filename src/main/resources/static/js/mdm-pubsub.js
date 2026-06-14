@@ -57,21 +57,17 @@
     statBox.innerHTML = ''; statBox.appendChild(DN.skeleton(2));
     DN.get('/api/mdm/pubsub/stats').then(function (s) {
       s = s || {};
+      var rate = s.successRate != null ? s.successRate : 100;   // 成功率兜底，避免重复三元表达式
       statBox.innerHTML = '';
       statBox.appendChild(DN.statRow([
         { icon: 'tag', label: '订阅数', value: s.subscriptionCount || 0, sub: '启用 ' + (s.activeSubscriptionCount || 0), tone: 'info' },
         { icon: 'lineage', label: '发布次数', value: s.publishCount || 0, sub: '成功 ' + (s.successCount || 0) },
-        { icon: 'check', label: '成功率', value: (s.successRate != null ? s.successRate : 100) + '%', tone: ((s.successRate != null ? s.successRate : 100) >= 99 ? 'ok' : 'warn') }
+        { icon: 'check', label: '成功率', value: rate + '%', tone: (rate >= 99 ? 'ok' : 'warn') }
       ]));
     }).catch(function (e) {
       statBox.innerHTML = '';
       statBox.appendChild(DN.errorBox('统计加载失败: ' + (e && e.message ? e.message : e), function () { loadStats(statBox); }));
     });
-  }
-
-  function entityName(id) {
-    for (var i = 0; i < _entities.length; i++) if (String(_entities[i].id) === String(id)) return _entities[i].entityName;
-    return '#' + id;
   }
 
   // ---- 订阅表 ----
@@ -230,7 +226,7 @@
       recSel.appendChild(DN.h('option', { value: '', text: '(请选择黄金记录)' }));
       recs.forEach(function (g) {
         if (!g || g.id == null) return;
-        recSel.appendChild(DN.h('option', { value: g.id, text: (g.bizKey || ('#' + g.id)) + ' [' + (g.status || '') + ']' }));
+        recSel.appendChild(DN.h('option', { value: g.id, text: (g.bizKey || ('#' + g.id)) + (g.status ? ' [' + g.status + ']' : '') }));
       });
     }
     entSel.onchange = function () {

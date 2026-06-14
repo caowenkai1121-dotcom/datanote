@@ -75,7 +75,7 @@ public class MetricAlertService {
         if (m == null || r == null || value == null) return; // 空安全:理论不达,防御性兜底
         // objectRef 用指标ID(对齐 gov-health 手工建单 metric:{metricId} 全局约定, 下钻可达);
         // 去重粒度同步为指标级: 同指标多规则越界合并为一单, 防刷单
-        String objectRef = "metric:" + m.getId();
+        String objectRef = objectRef(m);
         String valStr = value.toPlainString();
         // 指标名优先取 metricName，缺失退化到 metricCode，均空则占位，避免标题出现 "null"
         String metricLabel = notBlank(m.getMetricName()) ? m.getMetricName()
@@ -119,7 +119,7 @@ public class MetricAlertService {
     private void closeRecovered(DnMetric m, BigDecimal value) {
         try {
             DnGovernanceIssue open = issueMapper.selectOne(new QueryWrapper<DnGovernanceIssue>()
-                    .eq("issue_type", ISSUE_TYPE).eq("object_ref", "metric:" + m.getId())
+                    .eq("issue_type", ISSUE_TYPE).eq("object_ref", objectRef(m))
                     .eq("status", "OPEN").orderByDesc("updated_at").last("LIMIT 1"));
             if (open == null) return;
             issueService.transition(open.getId(), "CLOSED", "metric-alert");
@@ -152,6 +152,11 @@ public class MetricAlertService {
     /** 字符串非空白判定(私有小工具) */
     private static boolean notBlank(String s) {
         return s != null && !s.trim().isEmpty();
+    }
+
+    /** 指标工单 objectRef(对齐 gov-health 手工建单 metric:{metricId} 全局约定) */
+    private static String objectRef(DnMetric m) {
+        return "metric:" + m.getId();
     }
 
     // ---- 纯函数(可单测) ----

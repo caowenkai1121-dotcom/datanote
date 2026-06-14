@@ -2,7 +2,6 @@ package com.datanote.domain.governance;
 
 import com.datanote.domain.governance.model.DnGlossaryTerm;
 import com.datanote.common.model.R;
-import com.datanote.domain.governance.AssetDetailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +26,18 @@ public class AssetDetailController {
     @Operation(summary = "资产详情(表+字段级元数据)")
     @GetMapping("/detail")
     public R<Map<String, Object>> detail(@RequestParam String db, @RequestParam String table) {
+        if (db.trim().isEmpty() || table.trim().isEmpty()) {
+            return R.fail("库名/表名不能为空");
+        }
         return R.ok(assetDetailService.assetDetail(db, table));
     }
 
     @Operation(summary = "字段 Profiler 探查(下推数仓采样)")
     @GetMapping("/profile")
     public R<Map<String, Object>> profile(@RequestParam String db, @RequestParam String table) {
+        if (db.trim().isEmpty() || table.trim().isEmpty()) {
+            return R.fail("库名/表名不能为空");
+        }
         try {
             return R.ok(assetDetailService.profile(db, table));
         } catch (Exception e) {

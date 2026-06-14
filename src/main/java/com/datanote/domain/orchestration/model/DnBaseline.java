@@ -14,6 +14,7 @@ public class DnBaseline {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String baselineName;
+    private String baselineType;   // core=核心 / dashboard=看板(sql/84 补列)
     private String description;
     private LocalTime commitTime;
     private Integer priority;

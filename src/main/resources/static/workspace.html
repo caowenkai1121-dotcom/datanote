@@ -174,10 +174,18 @@
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v10M10 2v10M2 4h10M2 10h10"/></svg>
           格式化
         </button>
+        <button class="tool-btn" onclick="openSnippetPanel()" title="SQL 片段库: 保存常用 SQL, 一键插入">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2h6l2 2v8H4z"/><path d="M6 6h4M6 9h4"/></svg>
+          片段
+        </button>
         <div class="tool-sep"></div>
         <button class="tool-btn" id="toolbarOnlineBtn" data-perm="operations:schedule" onclick="toolbarOnline()" style="display:none;">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg>
           上线
+        </button>
+        <button class="tool-btn" id="scriptApprovalBtn" data-perm="develop:approve" onclick="openScriptApprovalQueue()" title="脚本上线审批工单">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h10M2 7h7M2 11h5"/><path d="M9 11l1.5 1.5L13 10"/></svg>
+          审批<span id="scriptApprovalBadge" style="font-size:var(--fs-xs);color:var(--error);font-weight:600;"></span>
         </button>
         <div class="tool-sep"></div>
         <button class="tool-btn" onclick="toggleAiPanel()" title="AI 助手 (NL2SQL / SQL解释 / 优化)">
@@ -277,17 +285,17 @@
     <div class="view-integration" id="viewIntegration">
       <!-- Toolbar (same style as SQL editor) -->
       <div class="editor-toolbar">
-        <button class="tool-btn run" data-perm="dbsync:run" onclick="intgRunSync()">
+        <button class="tool-btn run" id="intgRunBtn" data-perm="dbsync:run" onclick="intgRunSync()">
           <svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 2l9 5-9 5z"/></svg>
           运行
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" data-perm="dbsync:edit" onclick="intgCreateTable()">
+        <button class="tool-btn" id="intgCreateBtn" data-perm="dbsync:edit" onclick="intgCreateTable()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4M7 5v4"/></svg>
           一键建表
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" data-perm="dbsync:edit" onclick="intgSaveTask()">
+        <button class="tool-btn" id="intgSaveBtn" data-perm="dbsync:edit" onclick="intgSaveTask()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M2 5h10"/></svg>
           保存
         </button>
@@ -467,11 +475,11 @@
         <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码"></div>
         <div class="ds-form-row"><label>所属项目</label><select id="dsProjectSel"><option value="">（不归属项目）</option></select></div>
         <div class="ds-form-actions">
-          <button class="btn btn-primary" data-perm="settings:config" onclick="saveDatasource()">
+          <button class="btn btn-primary" data-perm="datasource:edit" onclick="saveDatasource()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h8l2 2v8H2z"/><path d="M4 2v4h5V2"/><path d="M4 9h6v3H4z"/></svg>
             保存
           </button>
-          <button class="btn" onclick="testDatasource()">
+          <button class="btn" data-perm="datasource:edit" onclick="testDatasource()">
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h4l1.5-3 1.5 6 1.5-3H14"/></svg>
             测试连接
           </button>
@@ -549,12 +557,8 @@
                 </select>
                 <select id="schedFilterTaskType" onchange="schedFilterTasks()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">
                   <option value="">全部任务类型</option>
-                  <option value="核心模型">核心模型</option>
-                  <option value="核心扩展">核心扩展</option>
-                  <option value="看板模型">看板模型</option>
-                  <option value="分析模型">分析模型</option>
-                  <option value="重要应用">重要应用</option>
-                  <option value="其他模型">其他模型</option>
+                  <option value="script">脚本</option>
+                  <option value="syncTask">同步任务</option>
                 </select>
                 <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
                   <label style="font-size:12px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:4px;">
@@ -627,6 +631,7 @@
             <button class="datamap-ai-btn is-secondary" onclick="dmSemanticSearch()" title="向量语义检索:中文同义召回(如'支付'命中交易/订单/付款)">语义搜索</button>
           </div>
         </div>
+        <div id="dmCollectStatus" style="max-width:1100px;margin:10px auto 0;padding:0 24px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:var(--fs-xs);color:var(--text-muted);"></div>
         <div id="datamapAiResult" style="display:none;max-width:1100px;margin:0 auto;padding:0 24px;"></div>
         <div class="datamap-sections" id="datamapSections">
           <div class="datamap-section">
@@ -674,8 +679,10 @@
             <div class="datamap-detail-actions">
               <button class="btn btn-sm btn-primary" onclick="dmAskAi()" title="让 AI 智能体分析此表(资产/质量/血缘/敏感)">AI 分析此表</button>
               <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">收藏</button>
+              <button class="btn btn-sm" data-perm="catalog:edit" onclick="dmEditTableMeta()" title="维护负责人/重要性/标签">编辑信息</button>
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
               <button class="btn btn-sm" onclick="dmGenSelect()">生成查询语句</button>
+              <button class="btn btn-sm" onclick="dmOpenSchemaDiff()" title="与另一张表对比字段差异(ODS↔DWD/跨环境)">结构对比</button>
               <span style="width:1px;height:18px;background:var(--border);margin:0 2px;display:inline-block;vertical-align:middle;"></span>
               <button class="btn btn-sm" onclick="dmGotoGov('lineage')" title="查看此表血缘图谱">血缘</button>
               <button class="btn btn-sm" onclick="dmGotoGov('quality')" title="查看/新建此表质量规则">质量</button>
@@ -1262,7 +1269,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <h2 style="font-size:16px;font-weight:600;margin:0;">同步任务实时日志</h2>
               <div style="display:flex;gap:8px;">
-                <select id="dbsyncLogFilter" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">
+                <select id="dbsyncLogFilter" onchange="dbsyncApplyLogFilter()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">
                   <option value="">全部任务</option>
                 </select>
                 <button class="btn btn-sm" onclick="dbsyncClearLogs()">清空</button>
@@ -3204,17 +3211,25 @@ function refreshRightPanelIfOpen() {
 }
 
 function closeTab(tabEl) {
+  var tabId = tabEl.dataset.id;
+  // 全站#5: 未保存守卫——活动 tab 的当前内容与最后保存点不一致时确认(统一用应用弹窗, 不用原生 confirm)
+  var cache = tabContentCache[tabId];
+  if (cache && typeof cache.lastSavedContent === 'string') {
+    var wasActive = tabEl.classList.contains('active');
+    var cur = wasActive ? codeArea.value : cache.editorContent;
+    if (typeof cur === 'string' && cur !== cache.lastSavedContent) {
+      msgConfirm('关闭未保存的标签', '「' + (cache.scriptName || '未命名') + '」有未保存的修改, 关闭将丢失。确定关闭？')
+        .then(function(ok){ if (ok) doCloseTab(tabEl); });
+      return;
+    }
+  }
+  doCloseTab(tabEl);
+}
+
+function doCloseTab(tabEl) {
   var tabBar = document.getElementById('editorTabs');
   var wasActive = tabEl.classList.contains('active');
   var tabId = tabEl.dataset.id;
-  // 全站#5: 未保存守卫——活动 tab 的当前内容与最后保存点不一致时确认
-  var cache = tabContentCache[tabId];
-  if (cache && typeof cache.lastSavedContent === 'string') {
-    var cur = wasActive ? codeArea.value : cache.editorContent;
-    if (typeof cur === 'string' && cur !== cache.lastSavedContent) {
-      if (!confirm('「' + (cache.scriptName || '未命名') + '」有未保存的修改, 关闭将丢失。确定关闭？')) return;
-    }
-  }
   // Clean up content cache
   delete tabContentCache[tabId];
   tabEl.remove();
@@ -3494,6 +3509,10 @@ function intgCreateTable() {
   var syncMode = document.getElementById('syncMode').value || 'df';
   var dsId = document.getElementById('srcConn') ? document.getElementById('srcConn').value : '';
   if (!db || !table) { msgBox('请先选择源表'); return; }
+  var _crBtn = document.getElementById('intgCreateBtn');
+  if (_crBtn && _crBtn.disabled) return;   // 防连点重复建表
+  if (_crBtn) _crBtn.disabled = true;
+  var _restoreCreate = function() { if (_crBtn) _crBtn.disabled = false; };
 
   var odsName = 'ods_' + db + '_' + table.toLowerCase() + '_' + syncMode;
 
@@ -3516,7 +3535,9 @@ function intgCreateTable() {
       updateRunLog(logId, 'fail', res.msg || '未知错误');
       appendLog('<span class="log-fail">FAIL</span> 建表失败: ' + (res.msg || '未知错误'));
     }
+    _restoreCreate();
   }).catch(function(err) {
+    _restoreCreate();
     updateRunLog(logId, 'fail', err.message);
     appendLog('<span class="log-fail">FAIL</span> 建表失败: ' + err.message);
   });
@@ -3528,6 +3549,10 @@ function intgRunSync() {
   var syncMode = document.getElementById('syncMode').value || 'df';
   var dsId = document.getElementById('srcConn') ? document.getElementById('srcConn').value : '';
   if (!db || !table) { msgBox('请先选择源表'); return; }
+  var _runBtn = document.getElementById('intgRunBtn');
+  if (_runBtn && _runBtn.disabled) return;   // 防连点重复派发 DataX 作业
+  if (_runBtn) _runBtn.disabled = true;
+  var _restoreRun = function() { if (_runBtn) _runBtn.disabled = false; };
 
   var odsName = 'ods_' + db + '_' + table.toLowerCase() + '_' + syncMode;
 
@@ -3567,8 +3592,10 @@ function intgRunSync() {
       if (tmpEl) { tmpEl.querySelector('.run-log-status').className = 'run-log-status fail'; tmpEl.querySelector('.run-log-status').textContent = 'FAILED'; }
       appendLog('<span class="log-fail">FAIL</span> ' + (res.msg || '未知错误'));
     }
+    _restoreRun();
     setTimeout(loadDsLogs, 500);
   }).catch(function(err) {
+    _restoreRun();
     var tmpEl = document.getElementById(tmpId);
     if (tmpEl) { tmpEl.querySelector('.run-log-status').className = 'run-log-status fail'; tmpEl.querySelector('.run-log-status').textContent = 'FAILED'; }
     appendLog('<span class="log-fail">FAIL</span> ' + err.message);
@@ -4112,7 +4139,10 @@ function downloadResultCSV() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  msgBox('已下载 ' + count + ' 条数据');
+  // 透明披露上限: 结果超过 500 行时明确告知仅导出前 500 行(原静默截断)
+  msgBox(_resultRows.length > maxRows
+    ? ('已下载前 ' + count + ' 条(共 ' + _resultRows.length + ' 条, 超出 ' + maxRows + ' 行上限未全部导出)')
+    : ('已下载 ' + count + ' 条数据'));
 }
 
 function appendLog(html) {
@@ -4157,6 +4187,9 @@ function runTask() {
   log.innerHTML = '';
   if (hasBizdate) {
     appendLog('<span class="log-info">INFO</span> 传参 bizdate=' + t1Date + '（T-1）');
+  }
+  if (isPartial) {
+    appendLog('<span class="log-info">INFO</span> 仅运行选中代码');
   }
 
   // SSE 流式执行：实时接收 Doris 日志
@@ -4232,28 +4265,24 @@ function runTask() {
   };
   } // end startSSE
 
-  var encodedSql = encodeURIComponent(replaced);
-  if (encodedSql.length > 6000) {
-    // 长 SQL: POST 提交拿 executionId，再用 GET SSE 订阅
-    var submitBody = { sql: replaced };
-    if (currentScriptId) submitBody.scriptId = currentScriptId;
-    if (currentSyncTaskId) submitBody.syncTaskId = currentSyncTaskId;
-    apiPost('/api/doris/submit-execute', submitBody).then(function(res) {
-      if (res.code === 0 && res.data && res.data.executionId) {
-        startSSE('/api/doris/stream-execute?executionId=' + res.data.executionId);
-      } else {
-        var tmpE = document.getElementById(logId);
-        if (tmpE) { tmpE.querySelector('.run-log-status').className = 'run-log-status fail'; tmpE.querySelector('.run-log-status').textContent = 'FAILED'; }
-        appendLog('<span class="log-err">ERROR</span> 提交执行失败: ' + (res.msg || ''));
-      }
-    });
-  } else {
-    // 短 SQL: 直接 GET 传参（兼容旧逻辑）
-    var execParams = 'sql=' + encodedSql;
-    if (currentScriptId) execParams += '&scriptId=' + currentScriptId;
-    if (currentSyncTaskId) execParams += '&syncTaskId=' + currentSyncTaskId;
-    startSSE('/api/doris/stream-execute?' + execParams);
-  }
+  // 统一走 POST submit-execute 换 executionId 再 GET SSE 订阅
+  // (GET ?sql= 直传分支已因安全收口移除，短/长 SQL 一律提交执行，避免短 SQL 走已下线的直传路径而报错)
+  var submitBody = { sql: replaced };
+  if (currentScriptId) submitBody.scriptId = currentScriptId;
+  if (currentSyncTaskId) submitBody.syncTaskId = currentSyncTaskId;
+  apiPost('/api/doris/submit-execute', submitBody).then(function(res) {
+    if (res.code === 0 && res.data && res.data.executionId) {
+      startSSE('/api/doris/stream-execute?executionId=' + res.data.executionId);
+    } else {
+      var tmpE = document.getElementById(logId);
+      if (tmpE) { tmpE.querySelector('.run-log-status').className = 'run-log-status fail'; tmpE.querySelector('.run-log-status').textContent = 'FAILED'; }
+      appendLog('<span class="log-err">ERROR</span> 提交执行失败: ' + (res.msg || ''));
+    }
+  }).catch(function() {
+    var tmpE = document.getElementById(logId);
+    if (tmpE) { tmpE.querySelector('.run-log-status').className = 'run-log-status fail'; tmpE.querySelector('.run-log-status').textContent = 'FAILED'; }
+    appendLog('<span class="log-err">ERROR</span> 网络请求失败, 提交执行未成功');
+  });
 }
 
 function saveScript() {
@@ -4274,7 +4303,7 @@ function saveScript() {
     } else {
       msgBox('保存失败: ' + res.msg);
     }
-  });
+  }).catch(function(e) { msgBox('保存失败: ' + ((e && e.message) || '网络请求失败')); });
 }
 
 function autoSaveDatabaseName() {
@@ -5225,7 +5254,7 @@ function closeModal() {
 }
 
 function msgBox(msg, cb) {
-  showModal('提示', '<div style="min-height:40px;">' + msg + '</div>',
+  showModal('提示', '<div style="min-height:40px;">' + escapeHtml(msg == null ? '' : String(msg)) + '</div>',
     '<button class="btn btn-primary" onclick="closeModal();if(window._msgCb)window._msgCb();">确定</button>');
   window._msgCb = cb || null;
 }
@@ -5468,21 +5497,248 @@ function updateToolbarOnlineBtn() {
     if (!currentScriptId && !currentSyncTaskId) { btn.style.display = 'none'; return; }
     btn.style.display = 'inline-flex';
     btn.className = 'tool-btn';
+    // 脚本走审批流, 按钮显示"提交上线/下线"; 同步任务直接上下线
+    var isScript = currentScriptId && !currentSyncTaskId;
+    var prefix = isScript ? '提交' : '';
     if (currentScriptOnline) {
-      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2V9M4 6l3 3 3-3"/><path d="M2 12h10"/></svg> 下线';
+      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2V9M4 6l3 3 3-3"/><path d="M2 12h10"/></svg> ' + prefix + '下线';
     } else {
-      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg> 上线';
+      btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg> ' + prefix + '上线';
     }
   });
 }
 
 function toolbarOnline() {
   if (!currentScriptId && !currentSyncTaskId) { msgBox('请先选择任务'); return; }
+  // 数据开发脚本: 上线/下线改走审批流(提交→审批→执行); 同步任务保持直接上下线
+  if (currentScriptId && !currentSyncTaskId) {
+    submitScriptApproval(currentScriptOnline ? 'OFFLINE' : 'ONLINE');
+    return;
+  }
   if (currentScriptOnline) {
     checkDownstreamAndOffline();
   } else {
     doOnline();
   }
+}
+
+// 脚本上线/下线: 弹窗填申请说明 → 提交审批工单(不直接上线)
+function submitScriptApproval(changeType) {
+  if (!currentScriptId) return;
+  // 已有待审工单时: 不重复提交, 而是让申请人撤回(否则后端拒绝, 用户卡死)
+  var sid = currentScriptId;
+  api('/api/script/' + sid + '/pending-change').then(function(res) {
+    var c = (res && res.code === 0) ? res.data : null;
+    if (c && c.id) { offerWithdrawScriptChange(c); return; }
+    doShowSubmitApprovalModal(changeType);
+  }).catch(function(){ doShowSubmitApprovalModal(changeType); });
+}
+
+// 已有待审工单: 提示撤回
+function offerWithdrawScriptChange(c) {
+  var verb = c.changeType === 'OFFLINE' ? '下线' : '上线';
+  var body = '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">该脚本已有待审批的' + verb + '工单(申请人 ' + escapeHtml(c.requestedBy || '-') + ')，审批通过前不能重复提交。可撤回后修改重提。</div>';
+  var btns = '<button class="btn btn-sm" onclick="closeModal()">关闭</button> '
+    + '<button class="btn btn-sm" style="color:var(--error);" onclick="doWithdrawScriptChange(' + c.id + ')">撤回工单</button>';
+  showModal('已有待审批工单', body, btns, { width: 440 });
+}
+
+function doWithdrawScriptChange(changeId) {
+  apiPost('/api/script/withdraw-change/' + changeId, {}).then(function(res) {
+    closeModal();
+    if (res && res.code === 0) {
+      showToast('已撤回，可修改后重新提交', 'success');
+      loadScriptApprovalBadge();
+    } else showToast((res && res.msg) || '撤回失败', 'error');
+  }).catch(function(){ closeModal(); showToast('撤回失败', 'error'); });
+}
+
+function doShowSubmitApprovalModal(changeType) {
+  if (changeType === 'ONLINE') {
+    var taskType = document.getElementById('propTaskType');
+    var modelDesc = document.getElementById('propModelDesc');
+    if (taskType && !taskType.value) { msgBox('请先选择任务类型'); return; }
+    if (modelDesc && !modelDesc.value.trim()) { msgBox('请先填写模型描述'); return; }
+  }
+  var verb = changeType === 'ONLINE' ? '上线' : '下线';
+  var body = '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">提交后需审批人(非本人)通过才会执行' + verb + '。</div>'
+    + '<textarea id="scriptApprReason" class="prop-textarea" rows="3" style="width:100%;" placeholder="申请说明(可选)"></textarea>';
+  var btns = '<button class="btn btn-sm" onclick="closeModal()">取消</button> '
+    + '<button class="btn btn-sm btn-primary" onclick="doSubmitScriptApproval(\'' + changeType + '\')">提交审批</button>';
+  showModal('提交' + verb + '审批', body, btns, { width: 440 });
+}
+
+function doSubmitScriptApproval(changeType) {
+  if (!currentScriptId) return;
+  var reasonEl = document.getElementById('scriptApprReason');
+  var reason = reasonEl ? reasonEl.value.trim() : '';
+  // 上线前先保存调度配置, 使审批通过时按最新配置上线
+  var afterCfg = function() {
+    apiPost('/api/script/' + currentScriptId + '/submit-change', { changeType: changeType, reason: reason }).then(function(res) {
+      closeModal();
+      if (res && res.code === 0) {
+        showToast('已提交' + (changeType === 'ONLINE' ? '上线' : '下线') + '审批，待审批人通过后执行', 'success');
+        loadScriptApprovalBadge();
+      } else showToast((res && res.msg) || '提交失败', 'error');
+    }).catch(function() { closeModal(); showToast('提交失败', 'error'); });
+  };
+  if (changeType === 'ONLINE') {
+    apiPost('/api/scheduler/config/' + currentScriptId, getSchedConfig()).then(afterCfg).catch(afterCfg);
+  } else { afterCfg(); }
+}
+
+// 脚本审批工单: 待审角标 + 队列弹窗 + 审批操作
+function loadScriptApprovalBadge() {
+  var badge = document.getElementById('scriptApprovalBadge');
+  if (!badge) return;
+  api('/api/script/changes/pending-count').then(function(res) {
+    var n = (res && res.code === 0) ? res.data : 0;
+    badge.textContent = n > 0 ? ' ' + n : '';
+  }).catch(function(){ badge.textContent = ''; });
+}
+
+function openScriptApprovalQueue(statusFilter) {
+  api('/api/script/changes').then(function(res) {
+    var list = (res && res.code === 0 && res.data) ? res.data : [];
+    window.__scriptChanges = list;
+    renderScriptApprovalQueue(statusFilter || 'pending');
+  }).catch(function(){ msgBox('加载审批工单失败'); });
+}
+
+// 审批工单渲染: 支持按状态筛选(待审批/已通过/已驳回/已撤回/全部), 后端 listChanges 已返回全部, 前端切换
+function renderScriptApprovalQueue(statusFilter) {
+  var list = window.__scriptChanges || [];
+  var counts = { pending: 0, approved: 0, rejected: 0, withdrawn: 0 };
+  list.forEach(function(c){ if (counts[c.status] != null) counts[c.status]++; });
+  var labels = { pending: '待审批', approved: '已通过', rejected: '已驳回', withdrawn: '已撤回', all: '全部' };
+  var sel = '<div style="margin-bottom:10px;font-size:13px;display:flex;gap:10px;align-items:center;">状态筛选: <select id="saprStatusSel" class="dbsync-form-select" style="width:150px;" onchange="renderScriptApprovalQueue(this.value)">'
+    + ['pending','approved','rejected','withdrawn','all'].map(function(s){
+        var cnt = s === 'all' ? list.length : (counts[s] || 0);
+        return '<option value="' + s + '"' + (s === statusFilter ? ' selected' : '') + '>' + labels[s] + ' (' + cnt + ')</option>';
+      }).join('') + '</select>'
+    + '<input id="saprSearch" class="dbsync-form-input" style="flex:1;min-width:120px;" placeholder="搜索脚本名/申请人" oninput="saprApplySearch()"></div>';
+  var isPending = statusFilter === 'pending';
+  var view = statusFilter === 'all' ? list : list.filter(function(c){ return c.status === statusFilter; });
+  var rows = view.length ? view.map(function(c) {
+    var typeLabel = c.changeType === 'OFFLINE' ? '下线' : '上线';
+    var col1 = isPending
+      ? '<input type="checkbox" class="sapr-chk" value="' + c.id + '">'
+      : (c.status === 'approved' ? '<span style="color:var(--success);font-size:11px;">已通过</span>'
+        : c.status === 'rejected' ? '<span style="color:var(--error);font-size:11px;">已驳回</span>'
+        : c.status === 'withdrawn' ? '<span style="color:var(--text-muted);font-size:11px;">已撤回</span>'
+        : '<span style="color:var(--warning);font-size:11px;">待审</span>');
+    var sub = isPending
+      ? typeLabel + ' · 申请人 ' + escapeHtml(c.requestedBy || '-')
+      : typeLabel + ' · 申请 ' + escapeHtml(c.requestedBy || '-') + (c.reviewer ? ' · 审批 ' + escapeHtml(c.reviewer) : '');
+    var col3 = isPending ? (c.reason || '-') : (c.reviewComment || c.reason || '-');
+    var actions = isPending
+      ? '<a onclick="viewScriptChangeSql(' + c.id + ')" style="margin-right:8px;color:var(--primary);cursor:pointer;">查看SQL</a>'
+        + '<button class="btn btn-sm btn-primary" onclick="scriptReview(' + c.id + ',\'approved\')">通过</button> '
+        + '<button class="btn btn-sm" style="color:var(--error);" onclick="scriptReview(' + c.id + ',\'rejected\')">驳回</button>'
+      : '<a onclick="viewScriptChangeSql(' + c.id + ')" style="color:var(--primary);cursor:pointer;">查看SQL</a>';
+    var searchKey = ((c.scriptName || '') + ' ' + (c.requestedBy || '') + ' ' + (c.reviewer || '')).toLowerCase();
+    return '<tr class="sapr-row" data-search="' + escapeHtml(searchKey) + '" style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:6px 4px;text-align:center;">' + col1 + '</td>'
+      + '<td style="padding:6px 8px;"><b>' + escapeHtml(c.scriptName || ('#' + c.scriptId)) + '</b><div style="font-size:11px;color:var(--text-muted);">' + sub + '</div></td>'
+      + '<td style="padding:6px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(col3) + '">' + escapeHtml(col3) + '</td>'
+      + '<td style="padding:6px 8px;white-space:nowrap;text-align:right;">' + actions + '</td></tr>';
+  }).join('') : '<tr><td colspan="4" style="padding:18px;text-align:center;color:var(--text-muted);">无' + labels[statusFilter] + '工单</td></tr>';
+  var bodyHtml = sel + '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="color:var(--text-muted);font-size:12px;"><th style="width:48px;"></th><th style="text-align:left;padding:4px 8px;">脚本/类型</th><th style="text-align:left;padding:4px 8px;">' + (isPending ? '说明' : '审批意见') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+  var footer = (isPending && view.length
+      ? '<button class="btn btn-sm btn-primary" onclick="scriptBatchReview(\'approved\')">批量通过选中</button> <button class="btn btn-sm" style="color:var(--error);" onclick="scriptBatchReview(\'rejected\')">批量驳回选中</button> '
+      : '') + '<button class="btn btn-sm" onclick="closeModal()">关闭</button>';
+  showModal('脚本上线审批工单', bodyHtml, footer, { width: 640 });
+}
+
+// 工单列表内即时搜索(脚本名/申请人/审批人), 原地隐藏不匹配行, 不重渲染防失焦
+function saprApplySearch() {
+  var inp = document.getElementById('saprSearch');
+  if (!inp) return;
+  var kw = inp.value.trim().toLowerCase();
+  document.querySelectorAll('tr.sapr-row').forEach(function(tr){
+    tr.style.display = (!kw || (tr.dataset.search || '').indexOf(kw) >= 0) ? '' : 'none';
+  });
+}
+
+// 审批前查看提交的 SQL 内容快照
+function viewScriptChangeSql(changeId) {
+  var c = (window.__scriptChanges || []).find(function(x){ return String(x.id) === String(changeId); });
+  if (!c) return;
+  var sql = c.payloadJson || '(无内容快照)';
+  var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(c.scriptName || ('#'+c.scriptId)) + ' · ' + (c.changeType === 'OFFLINE' ? '下线' : '上线') + ' 提交时内容快照</div>'
+    + '<pre style="background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius);padding:10px;max-height:380px;overflow:auto;font-size:12px;white-space:pre-wrap;">' + escapeHtml(sql) + '</pre>';
+  showModal('审批 · 查看SQL', h, '<button class="btn btn-sm" onclick="openScriptApprovalQueue()">返回</button> <button class="btn btn-sm" onclick="closeModal()">关闭</button>', { width: 640 });
+}
+
+// 批量审批选中工单
+function scriptBatchReview(target) {
+  var ids = Array.prototype.slice.call(document.querySelectorAll('.sapr-chk:checked')).map(function(el){ return el.value; });
+  if (!ids.length) { showToast('请先勾选工单', 'error'); return; }
+  if (target === 'rejected') {
+    window.__scriptBatchIds = ids;
+    var body = '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">将驳回选中的 ' + ids.length + ' 个工单, 驳回原因(必填):</div>'
+      + '<textarea id="scriptBatchRejectReason" class="prop-textarea" rows="3" style="width:100%;" placeholder="统一驳回原因, 便于申请人修正"></textarea>';
+    var footer = '<button class="btn btn-sm" onclick="openScriptApprovalQueue()">取消</button> '
+      + '<button class="btn btn-sm" style="color:var(--error);" onclick="doScriptBatchReject()">确认批量驳回</button>';
+    showModal('批量驳回', body, footer, { width: 440 });
+    setTimeout(function(){ var t = document.getElementById('scriptBatchRejectReason'); if (t) t.focus(); }, 50);
+    return;
+  }
+  msgConfirm('批量通过', '确认对选中的 ' + ids.length + ' 个工单通过(将执行上线/下线)？').then(function(ok) {
+    if (!ok) return;
+    doScriptBatchReview(ids, 'approved', '');
+  });
+}
+
+function doScriptBatchReject() {
+  var el = document.getElementById('scriptBatchRejectReason');
+  var c = el ? el.value.trim() : '';
+  if (!c) { showToast('请填写驳回原因', 'error'); return; }
+  doScriptBatchReview(window.__scriptBatchIds || [], 'rejected', c);
+}
+
+function doScriptBatchReview(ids, target, comment) {
+  var done = 0, fail = 0;
+  (function next(i) {
+    if (i >= ids.length) {
+      showToast('完成: ' + done + ' 成功' + (fail ? ('，' + fail + ' 失败') : ''), fail ? 'error' : 'success');
+      openScriptApprovalQueue(); loadScriptApprovalBadge();
+      return;
+    }
+    apiPost('/api/script/changes/' + ids[i] + '/review', { target: target, comment: comment }).then(function(res){
+      if (res && res.code === 0) done++; else fail++; next(i + 1);
+    }).catch(function(){ fail++; next(i + 1); });
+  })(0);
+}
+
+function scriptReview(changeId, target) {
+  if (target === 'rejected') {
+    var body = '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">驳回原因(必填):</div>'
+      + '<textarea id="scriptRejectReason" class="prop-textarea" rows="3" style="width:100%;" placeholder="说明驳回原因, 便于申请人修正 (Ctrl+Enter 提交)" onkeydown="if(event.ctrlKey&&event.key===\'Enter\'){event.preventDefault();doScriptRejectSubmit(' + changeId + ');}"></textarea>';
+    var footer = '<button class="btn btn-sm" onclick="openScriptApprovalQueue()">取消</button> '
+      + '<button class="btn btn-sm" style="color:var(--error);" onclick="doScriptRejectSubmit(' + changeId + ')">确认驳回</button>';
+    showModal('驳回脚本' + (currentScriptOnline ? '下线' : '上线'), body, footer, { width: 440 });
+    setTimeout(function(){ var t = document.getElementById('scriptRejectReason'); if (t) t.focus(); }, 50);
+    return;
+  }
+  doScriptReview(changeId, target, '');
+}
+
+function doScriptRejectSubmit(changeId) {
+  var el = document.getElementById('scriptRejectReason');
+  var c = el ? el.value.trim() : '';
+  if (!c) { showToast('请填写驳回原因', 'error'); return; }
+  doScriptReview(changeId, 'rejected', c);
+}
+
+function doScriptReview(changeId, target, comment) {
+  apiPost('/api/script/changes/' + changeId + '/review', { target: target, comment: comment }).then(function(res) {
+    if (res && res.code === 0) {
+      showToast(target === 'approved' ? '已通过并执行' : '已驳回', 'success');
+      openScriptApprovalQueue();
+      loadScriptApprovalBadge();
+    } else showToast((res && res.msg) || '审批失败', 'error');
+  }).catch(function(){ showToast('审批失败', 'error'); });
 }
 
 function doOnline() {
@@ -5528,7 +5784,7 @@ function doOnline() {
         msgBox('上线失败: ' + res2.msg);
       }
     }).catch(function() { if (btn) btn.disabled = false; updateToolbarOnlineBtn(); msgBox('上线请求失败'); });
-  });
+  }).catch(function() { if (btn) btn.disabled = false; updateToolbarOnlineBtn(); msgBox('保存配置失败，请检查网络'); });
 }
 
 function loadSyncSchedConfig(taskId) {
@@ -6243,8 +6499,10 @@ function depRefreshCurrent() {
         if (currentScriptId) {
           loadDependencies();
         }
+      } else {
+        msgBox('刷新失败: ' + (res.msg || '请稍后重试'));
       }
-    });
+    }).catch(function(e) { msgBox('刷新失败: ' + ((e && e.message) || '请检查网络')); });
 }
 
 function depShowAddDialog() {
@@ -6306,7 +6564,7 @@ function depAddManual(upstreamTaskId, upstreamTaskType, upstreamName) {
     } else {
       msgBox(res.msg || '添加失败');
     }
-  });
+  }).catch(function(e) { msgBox('添加请求失败: ' + ((e && e.message) || '请检查网络')); });
 }
 
 function depDeleteManual(depId) {
@@ -6318,8 +6576,10 @@ function depDeleteManual(depId) {
         if (currentScriptId) {
           loadDependencies();
         }
+      } else {
+        msgBox('删除失败: ' + (res.msg || '请稍后重试'));
       }
-    });
+    }).catch(function(e) { msgBox('删除请求失败: ' + ((e && e.message) || '请检查网络')); });
 }
 
 // ===== 依赖关系（自动解析 SQL FROM 表名） =====
@@ -6694,8 +6954,9 @@ function insertAiSql() {
 }
 
 function formatAiReply(text) {
-  // 简单 markdown 渲染：代码块 + 加粗 + 换行
-  return text
+  // 先整体 HTML 转义防 DOM-XSS(AI 回复经 innerHTML 注入, onerror 等载荷可执行), 再做 markdown 渲染
+  // 转义不影响 ``` / \n / ** 等 markdown 标记, 故下列替换仍生效, 且捕获组 $1 已是转义后内容
+  return escapeHtml(text == null ? '' : String(text))
     .replace(/```sql\n([\s\S]*?)```/g, '<pre style="background:var(--bg-body);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;margin:4px 0;font-size:var(--fs-xs);overflow-x:auto;">$1</pre>')
     .replace(/```\n([\s\S]*?)```/g, '<pre style="background:var(--bg-body);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;margin:4px 0;font-size:var(--fs-xs);overflow-x:auto;">$1</pre>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -6708,6 +6969,95 @@ function formatSQL() {
   if (!sql.trim()) { msgBox('脚本内容为空'); return; }
   area.value = doFormatSQL(sql);
   updateLines();
+}
+
+/* ===== SQL 片段库 ===== */
+function openSnippetPanel() {
+  api('/api/snippet/list').then(function(res) {
+    var list = (res && res.code === 0 && res.data) ? res.data : [];
+    window.__sqlSnippets = list;
+    var body = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">'
+      + '<input id="snippetSearch" class="dbsync-form-input" style="flex:1;" placeholder="搜索片段名/分类/说明" oninput="snippetFilter()">'
+      + '<button class="btn btn-sm btn-primary" onclick="saveCurrentSnippet()">＋ 存当前为片段</button></div>'
+      + '<div id="snippetList" style="max-height:380px;overflow:auto;">' + renderSnippetRows(list) + '</div>';
+    showModal('SQL 片段库', body, '<button class="btn btn-sm" onclick="closeModal()">关闭</button>', { width: 600 });
+  }).catch(function(){ msgBox('加载片段失败'); });
+}
+
+function renderSnippetRows(list) {
+  if (!list.length) return '<div style="padding:24px;text-align:center;color:var(--text-muted);">暂无片段，点击「存当前为片段」保存常用 SQL</div>';
+  return list.map(function(s) {
+    var searchKey = ((s.name || '') + ' ' + (s.category || '') + ' ' + (s.description || '')).toLowerCase();
+    return '<div class="snippet-row" data-search="' + escapeHtml(searchKey) + '" style="border-bottom:1px solid var(--border);padding:8px 4px;display:flex;align-items:center;gap:10px;">'
+      + '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(s.name || '') + (s.category ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:400;">· ' + escapeHtml(s.category) + '</span>' : '') + '</div>'
+      + (s.description ? '<div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(s.description) + '</div>' : '')
+      + '<div style="font-size:11px;color:var(--text-faint);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(s.content || '') + '">' + escapeHtml((s.content || '').slice(0, 80)) + '</div></div>'
+      + '<div style="white-space:nowrap;text-align:right;flex:0 0 auto;">'
+      + '<button class="btn btn-sm btn-primary" onclick="insertSnippet(' + s.id + ')">插入</button> '
+      + '<button class="btn btn-sm" style="color:var(--error);" onclick="deleteSnippet(' + s.id + ')">删除</button></div></div>';
+  }).join('');
+}
+
+function snippetFilter() {
+  var inp = document.getElementById('snippetSearch');
+  if (!inp) return;
+  var kw = inp.value.trim().toLowerCase();
+  document.querySelectorAll('.snippet-row').forEach(function(r) {
+    r.style.display = (!kw || (r.dataset.search || '').indexOf(kw) >= 0) ? '' : 'none';
+  });
+}
+
+function saveCurrentSnippet() {
+  var sel = codeArea ? (codeArea.value.substring(codeArea.selectionStart, codeArea.selectionEnd) || codeArea.value) : '';
+  if (!sel.trim()) { showToast('编辑器内容为空，无可保存', 'error'); return; }
+  window.__snippetDraft = sel;
+  var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">将保存' + (codeArea.selectionStart !== codeArea.selectionEnd ? '选中的 ' : '全部 ') + sel.length + ' 个字符为片段</div>'
+    + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">片段名 *</label><input id="snippetName" class="dbsync-form-input" style="width:100%;" placeholder="如 取昨日分区"></div>'
+    + '<div style="margin-bottom:8px;"><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">分类</label><input id="snippetCategory" class="dbsync-form-input" style="width:100%;" placeholder="可选, 如 工具/DWD"></div>'
+    + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;">说明</label><input id="snippetDesc" class="dbsync-form-input" style="width:100%;" placeholder="可选"></div>';
+  var footer = '<button class="btn btn-sm" onclick="openSnippetPanel()">返回</button> <button class="btn btn-sm btn-primary" onclick="doSaveSnippet()">保存</button>';
+  showModal('保存 SQL 片段', body, footer, { width: 440 });
+  setTimeout(function(){ var t = document.getElementById('snippetName'); if (t) t.focus(); }, 50);
+}
+
+function doSaveSnippet() {
+  var name = (document.getElementById('snippetName') || {}).value || '';
+  if (!name.trim()) { showToast('请填写片段名', 'error'); return; }
+  var payload = {
+    name: name.trim(),
+    content: window.__snippetDraft || '',
+    category: ((document.getElementById('snippetCategory') || {}).value || '').trim() || null,
+    description: ((document.getElementById('snippetDesc') || {}).value || '').trim() || null
+  };
+  apiPost('/api/snippet/save', payload).then(function(res) {
+    if (res && res.code === 0) { showToast('已保存片段', 'success'); openSnippetPanel(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function(){ showToast('保存失败', 'error'); });
+}
+
+function insertSnippet(id) {
+  var s = (window.__sqlSnippets || []).filter(function(x){ return x.id === id; })[0];
+  if (!s || !codeArea) return;
+  var start = codeArea.selectionStart, end = codeArea.selectionEnd;
+  var v = codeArea.value;
+  codeArea.value = v.substring(0, start) + s.content + v.substring(end);
+  var pos = start + (s.content || '').length;
+  codeArea.selectionStart = codeArea.selectionEnd = pos;
+  if (window.updateLines) updateLines();
+  codeArea.focus();
+  closeModal();
+  showToast('已插入片段「' + (s.name || '') + '」', 'success');
+  apiPost('/api/snippet/' + id + '/use', {}).catch(function(){});   // 热度计数, 失败不影响
+}
+
+function deleteSnippet(id) {
+  msgConfirm('删除片段', '确定删除此 SQL 片段？').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/snippet/' + id, { method: 'DELETE' }).then(function(r){ return r.json(); }).then(function(res) {
+      if (res && res.code === 0) openSnippetPanel();
+      else showToast((res && res.msg) || '删除失败', 'error');
+    }).catch(function(){ showToast('删除失败', 'error'); });
+  });
 }
 
 function doFormatSQL(sql) {
@@ -6944,7 +7294,8 @@ var ROUTES = {
     }
   },
   'catalog':     { view: 'viewDatamap',             layout: 'editor', init: function() { loadDatamapData();
-      var x = window.__navCtx; if (x && x.openTable && x.openTable.db && x.openTable.table) { try { dmOpenTable(x.openTable.db, x.openTable.table); } catch(e){} } } },
+      var x = window.__navCtx; if (x && x.openTable && x.openTable.db && x.openTable.table) { try { dmOpenTable(x.openTable.db, x.openTable.table); } catch(e){} }
+      else if (x && x.datamapSearch) { try { var _si = document.getElementById('datamapSearchInput'); if (_si) { _si.value = x.datamapSearch; doDatamapSearch(); } } catch(e){} } } },
   'datamodel':   { view: 'viewDatamodel',           layout: 'page',   init: function() { if (window.loadDataModel) loadDataModel(); } },
   'governance':  { view: 'viewGovernance',          layout: 'page',   init: function() { initGovCenter();
       var x = window.__navCtx; if (x && x.gov) { try { govGoModule(x.gov, x); } catch(e){} } } },
@@ -7145,6 +7496,7 @@ function navigateTo(route, ctx) {
     if (rightPanel) rightPanel.style.display = '';
     if (rightHandle) rightHandle.style.display = '';
     if (rightToggleBar) rightToggleBar.style.display = '';
+    if (window.loadScriptApprovalBadge) loadScriptApprovalBadge();
   } else {
     if (rightPanel) { rightPanel.style.display = 'none'; rightPanel.classList.remove('open'); }
     if (rightHandle) rightHandle.style.display = 'none';
@@ -7170,11 +7522,49 @@ function loadDatamapData() {
   loadDmSearchHistory();
   loadDmFavorites();
   loadDmPopular();
+  dmLoadCollectStatus();
   // 检测语音支持
   if (window.SpeechRecognition || window.webkitSpeechRecognition) {
     var btn = document.getElementById('dmVoiceBtn');
     if (btn) btn.style.display = '';
   }
+}
+
+/* 数据地图采集状态栏: 展示上次采集时间 + 一键刷新元数据(原采集口只在治理-资产目录, 用户在地图不知数据是否最新) */
+function dmLoadCollectStatus() {
+  var box = document.getElementById('dmCollectStatus');
+  if (!box) return;
+  fetch('/api/metadata-center/collect-logs').then(function(r){ return r.json(); }).then(function(res){
+    var last = (res.code === 0 && res.data && res.data.length) ? res.data[0] : null;
+    var txt = '元数据采集：';
+    if (last && last.finishedAt) {
+      var ok = last.status === 'success';
+      txt += '<span style="color:' + (ok ? 'var(--success)' : 'var(--error)') + ';">' + (ok ? '✓ ' : '✗ ') + last.finishedAt.replace('T', ' ').substring(0, 19) + '</span>'
+           + ' · ' + (last.tableCount || 0) + ' 表 / ' + (last.columnCount || 0) + ' 字段';
+    } else {
+      txt += '<span style="color:var(--text-faint);">尚无采集记录</span>';
+    }
+    box.innerHTML = '<span>' + txt + '</span>'
+      + '<button class="btn btn-sm" data-perm="catalog:edit" onclick="dmRefreshMetadata(this)" style="font-size:var(--fs-xs);padding:2px 10px;">刷新元数据</button>';
+    if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
+  }).catch(function(){ box.innerHTML = ''; });
+}
+
+function dmRefreshMetadata(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '采集中…'; }
+  apiPost('/api/metadata-center/crawl/warehouse', {}).then(function(res){
+    if (res && res.code === 0) {
+      if (window.showToast) showToast('元数据采集完成', 'success');
+      dmLoadCollectStatus();
+      loadDmPopular();
+    } else {
+      if (window.showToast) showToast((res && res.msg) || '采集失败', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '刷新元数据'; }
+    }
+  }).catch(function(){
+    if (window.showToast) showToast('采集失败', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '刷新元数据'; }
+  });
 }
 
 /* --- 首页三区块加载 --- */
@@ -7456,6 +7846,12 @@ function dmOpenTable(db, table) {
       if (info.rowCount != null) sub += ' | 约 ' + formatNumber(info.rowCount) + ' 行';
       if (info.engine) sub += ' | ' + info.engine;
       if (info.updateTime) sub += ' | 更新 ' + info.updateTime;
+      // 表级业务元数据(负责人/重要性/标签)
+      window.__dmTableMeta = d.tableMeta || {};
+      var tmeta = window.__dmTableMeta;
+      if (tmeta.owner) sub += ' | 负责人 ' + tmeta.owner;
+      if (tmeta.importance) sub += ' | 重要性 ' + tmeta.importance;
+      if (tmeta.tags) sub += ' | 标签 ' + tmeta.tags;
       var subEl = document.getElementById('dmDetailSub');
       if (subEl) subEl.textContent = sub;
       // 收藏按钮
@@ -7584,7 +7980,7 @@ function dmLoadPartitions() {
         var p = list[i];
         html += '<tr>';
         html += '<td style="font-weight:500;">' + escapeHtml(p.partition || '') + '</td>';
-        html += '<td>' + (p.numRows || 0) + ' 行</td>';
+        html += '<td>' + formatNumber(p.numRows || 0) + ' 行</td>';
         html += '<td>' + escapeHtml(p.totalSizeDisplay || '0 B') + '</td>';
         html += '<td>' + escapeHtml(p.createTime || '-') + '</td>';
         html += '<td>' + escapeHtml(p.lastModified || '-') + '</td>';
@@ -7631,7 +8027,7 @@ function dmRenderFields(columns) {
     + '<th style="text-align:left;">中文名</th>'
     + '<th style="text-align:left;">类型</th>'
     + '<th style="text-align:left;">注释</th>'
-    + '<th style="width:100px;text-align:center;">操作</th>'
+    + '<th style="width:150px;text-align:center;">操作</th>'
     + '</tr></thead><tbody>';
   columns.forEach(function(col, i) {
     col = col || {};
@@ -7645,11 +8041,79 @@ function dmRenderFields(columns) {
       + '<td style="text-align:center;">'
       + '<button class="btn btn-sm" data-perm="catalog:edit" onclick="dmEditField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;margin-right:2px;">编辑</button>'
       + '<button class="btn btn-sm" data-perm="catalog:edit" onclick="dmSaveField(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;display:none;" id="dmSaveBtn_' + i + '">保存</button>'
+      + '<button class="btn btn-sm" onclick="dmFieldLineage(' + i + ')" style="font-size:var(--fs-xs);padding:1px 6px;" title="查看该字段的上下游血缘穿透">血缘</button>'
       + '</td>'
       + '</tr>';
   });
   html += '</tbody></table></div>';
   body.innerHTML = html;
+}
+
+/* ===== 数据地图·字段级血缘穿透 ===== */
+function dmFieldLineage(idx) {
+  var col = (dmFieldsData || [])[idx];
+  if (!col || !col.name) { msgBox('该字段无名称'); return; }
+  if (!dmCurrentDb || !dmCurrentTable) { msgBox('请先打开一张表'); return; }
+  var qs = '?db=' + encodeURIComponent(dmCurrentDb) + '&table=' + encodeURIComponent(dmCurrentTable) + '&column=' + encodeURIComponent(col.name);
+  var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">字段 ' + escapeHtml(dmCurrentDb + '.' + dmCurrentTable + '.' + col.name) + ' 的多跳上下游穿透</div>'
+    + '<div style="font-weight:600;font-size:13px;margin-bottom:4px;">🔗 字段血缘图谱</div><div id="dmFlowGraph" style="overflow:auto;margin-bottom:14px;color:var(--text-muted);">加载中...</div>'
+    + '<div style="font-weight:600;font-size:13px;margin-bottom:4px;">⬆ 上游来源</div><div id="dmFlowUp" style="margin-bottom:12px;color:var(--text-muted);">加载中...</div>'
+    + '<div style="font-weight:600;font-size:13px;margin-bottom:4px;">⬇ 下游影响</div><div id="dmFlowDown" style="color:var(--text-muted);">加载中...</div>';
+  showModal('字段血缘 · ' + col.name, body, '<button class="btn btn-sm" onclick="closeModal()">关闭</button>', { width: 640 });
+  var center = (dmCurrentDb + '.' + dmCurrentTable + '.' + col.name).toLowerCase();
+  api('/api/lineage/column-graph' + qs + '&depth=3').then(function(res){ dmRenderColGraph('dmFlowGraph', (res && res.code === 0 && res.data) ? res.data : { nodes: [], edges: [] }, center); }).catch(function(){ var el = document.getElementById('dmFlowGraph'); if (el) el.innerHTML = '<span style="color:var(--error);">图谱查询失败</span>'; });
+  api('/api/lineage/column-trace' + qs).then(function(res){ dmRenderFieldFlow('dmFlowUp', (res && res.code === 0) ? res.data : [], 'up'); }).catch(function(){ dmRenderFieldFlow('dmFlowUp', null, 'up'); });
+  api('/api/lineage/column-impact' + qs).then(function(res){ dmRenderFieldFlow('dmFlowDown', (res && res.code === 0) ? res.data : [], 'down'); }).catch(function(){ dmRenderFieldFlow('dmFlowDown', null, 'down'); });
+}
+
+// 字段血缘图谱: 紧凑分层 SVG(中心列居中, 下游右/上游左), 节点 db.table.column
+function dmRenderColGraph(elId, g, centerId) {
+  var el = document.getElementById(elId); if (!el) return;
+  var nodes = (g && g.nodes) || [], edges = (g && g.edges) || [];
+  if (nodes.length <= 1 && !edges.length) { el.innerHTML = '<span style="color:var(--text-muted);">该字段暂无血缘边(先在治理-血缘重建/解析)</span>'; return; }
+  var out = {}, inc = {};
+  edges.forEach(function(e){ (out[e.src] = out[e.src] || []).push(e.dst); (inc[e.dst] = inc[e.dst] || []).push(e.src); });
+  var col = {}; col[centerId] = 0; var q = [centerId];
+  while (q.length) { var cur = q.shift();
+    (out[cur] || []).forEach(function(n){ if (col[n] == null) { col[n] = col[cur] + 1; q.push(n); } });
+    (inc[cur] || []).forEach(function(n){ if (col[n] == null) { col[n] = col[cur] - 1; q.push(n); } });
+  }
+  nodes.forEach(function(n){ if (col[n.id] == null) col[n.id] = 0; });
+  var cols = {}; nodes.forEach(function(n){ (cols[col[n.id]] = cols[col[n.id]] || []).push(n); });
+  var keys = Object.keys(cols).map(Number).sort(function(a,b){ return a - b; });
+  var NW = 150, NH = 34, GX = 80, GY = 18, PAD = 16, maxRows = 0;
+  keys.forEach(function(k){ if (cols[k].length > maxRows) maxRows = cols[k].length; });
+  var pos = {};
+  keys.forEach(function(k, ci){ var list = cols[k]; var colH = list.length * (NH + GY) - GY; var totalH = maxRows * (NH + GY) - GY; var y0 = PAD + (totalH - colH) / 2;
+    list.forEach(function(n, ri){ pos[n.id] = { x: PAD + ci * (NW + GX), y: y0 + ri * (NH + GY) }; }); });
+  var W = PAD * 2 + keys.length * NW + (keys.length - 1) * GX, H = PAD * 2 + maxRows * (NH + GY) - GY;
+  if (W < 300) W = 300;
+  var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);max-width:100%;">';
+  svg += '<defs><marker id="dmArrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--success)"/></marker>'
+    + '<marker id="dmArrU" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--error)"/></marker></defs>';
+  edges.forEach(function(e){ var a = pos[e.src], b = pos[e.dst]; if (!a || !b) return;
+    var down = (col[e.dst] || 0) >= (col[e.src] || 0); var c = down ? 'var(--success)' : 'var(--error)'; var mk = down ? 'url(#dmArrD)' : 'url(#dmArrU)';
+    var x1 = a.x + NW, y1 = a.y + NH / 2, x2 = b.x, y2 = b.y + NH / 2; if (b.x < a.x) { x1 = a.x; x2 = b.x + NW; }
+    svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + c + '" stroke-width="1.6" marker-end="' + mk + '"/>'; });
+  nodes.forEach(function(n){ var p = pos[n.id]; if (!p) return; var isC = n.id === centerId;
+    var lbl = (n.column || '') + ''; if (!lbl) lbl = n.id; if (lbl.length > 20) lbl = lbl.slice(0, 19) + '…';
+    var sub = (n.db || '') + '.' + (n.table || ''); if (sub.length > 22) sub = sub.slice(0, 21) + '…';
+    svg += '<g><rect x="' + p.x + '" y="' + p.y + '" width="' + NW + '" height="' + NH + '" rx="7" fill="' + (isC ? 'var(--primary)' : 'var(--bg-hover)') + '" stroke="' + (isC ? 'var(--primary)' : 'var(--border)') + '"><title>' + escapeHtml(n.id) + '</title></rect>'
+      + '<text x="' + (p.x + NW / 2) + '" y="' + (p.y + 14) + '" text-anchor="middle" font-size="12" fill="' + (isC ? 'var(--text-inverse)' : 'var(--text-primary)') + '">' + escapeHtml((isC ? '★ ' : '') + lbl) + '</text>'
+      + '<text x="' + (p.x + NW / 2) + '" y="' + (p.y + 27) + '" text-anchor="middle" font-size="9" fill="' + (isC ? 'var(--text-inverse)' : 'var(--text-muted)') + '">' + escapeHtml(sub) + '</text></g>'; });
+  svg += '</svg>';
+  el.innerHTML = svg;
+}
+
+function dmRenderFieldFlow(elId, list, dir) {
+  var el = document.getElementById(elId); if (!el) return;
+  if (list === null) { el.innerHTML = '<span style="color:var(--error);">查询失败</span>'; return; }
+  if (!list.length) { el.innerHTML = '<span style="color:var(--text-muted);">' + (dir === 'up' ? '无上游来源（可能是源头字段，或血缘未覆盖）' : '无下游消费') + '</span>'; return; }
+  el.innerHTML = list.map(function(n) {
+    var tf = (n.transformType && n.transformType !== 'DIRECT') ? ' <span style="font-size:11px;color:' + (n.transformType === 'MASK' ? 'var(--error)' : 'var(--warning)') + ';">[' + escapeHtml(n.transformType) + ']</span>' : '';
+    var full = (n.db || '') + '.' + (n.table || '') + '.' + (n.column || '');
+    return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="font-size:11px;color:var(--text-muted);background:var(--bg-hover);border-radius:10px;padding:1px 7px;flex:0 0 auto;">第' + n.depth + '跳</span><span style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(full) + '">' + escapeHtml(full) + '</span>' + tf + '</div>';
+  }).join('');
 }
 
 function dmEditField(idx) {
@@ -7834,6 +8298,37 @@ function dmLoadDDL() {
 }
 
 // R35 主题域挂资产: 给当前表设置所属主题域(轻量 overlay 选择)
+/* H11: 编辑表级业务元数据(负责人/重要性/标签), 原数据地图无任何前台编辑入口 */
+function dmEditTableMeta() {
+  if (!dmCurrentDb || !dmCurrentTable) return;
+  var tm = window.__dmTableMeta || {};
+  if (tm.id == null) { if (window.msgBox) msgBox('该表尚未纳入元数据目录，请先在数据地图点「刷新元数据」采集'); return; }
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;';
+  var impOpts = ['', '高', '中', '低'].map(function(v){ return '<option value="' + v + '"' + ((tm.importance||'')===v?' selected':'') + '>' + (v||'（未设置）') + '</option>'; }).join('');
+  ov.innerHTML = '<div style="background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;min-width:360px;box-shadow:var(--shadow-lg);">'
+    + '<div style="font-weight:600;margin-bottom:12px;">编辑表信息 · ' + escapeHtml(dmCurrentTable) + '</div>'
+    + '<label style="font-size:12px;color:var(--text-muted);">负责人</label>'
+    + '<input id="dmTmOwner" value="' + escapeHtml(tm.owner||'') + '" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);margin:4px 0 12px;box-sizing:border-box;">'
+    + '<label style="font-size:12px;color:var(--text-muted);">重要性</label>'
+    + '<select id="dmTmImp" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);margin:4px 0 12px;box-sizing:border-box;">' + impOpts + '</select>'
+    + '<label style="font-size:12px;color:var(--text-muted);">标签（逗号分隔）</label>'
+    + '<input id="dmTmTags" value="' + escapeHtml(tm.tags||'') + '" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:var(--radius);margin:4px 0 14px;box-sizing:border-box;">'
+    + '<div style="text-align:right;display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" id="dmTmCancel">取消</button><button class="btn btn-sm btn-primary" id="dmTmSave">保存</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#dmTmCancel').onclick = function(){ ov.remove(); };
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  ov.querySelector('#dmTmSave').onclick = function(){
+    var body = { id: tm.id, owner: ov.querySelector('#dmTmOwner').value.trim(),
+                 importance: ov.querySelector('#dmTmImp').value, tags: ov.querySelector('#dmTmTags').value.trim() };
+    apiPost('/api/metadata-center/table/save', body).then(function(res){
+      ov.remove();
+      if (res && res.code === 0) { if (window.showToast) showToast('已保存', 'success'); dmOpenTable(dmCurrentDb, dmCurrentTable); }
+      else { if (window.showToast) showToast((res && res.msg) || '保存失败', 'error'); }
+    }).catch(function(){ ov.remove(); if (window.showToast) showToast('保存失败', 'error'); });
+  };
+}
+
 function dmSetSubject() {
   if (!dmCurrentDb || !dmCurrentTable) return;
   Promise.all([
@@ -7897,11 +8392,62 @@ function dmCopyCode(btn) {
   }
 }
 
+// 按 onclick 目标定位标签按钮, 不靠下标(原写死 [3] 实为"数据探查", Tab 增减即错位/高亮错按钮)
+function dmTabBtn(tabKey) {
+  return Array.prototype.find.call(document.querySelectorAll('.datamap-detail-tab'), function(b){
+    return (b.getAttribute('onclick') || '').indexOf("'" + tabKey + "'") >= 0;
+  });
+}
 function dmGenDDL() {
-  dmSwitchTab(document.querySelectorAll('.datamap-detail-tab')[3], 'ddl');
+  var b = dmTabBtn('ddl'); if (b) dmSwitchTab(b, 'ddl');
 }
 function dmGenSelect() {
-  dmSwitchTab(document.querySelectorAll('.datamap-detail-tab')[3], 'ddl');
+  var b = dmTabBtn('ddl'); if (b) dmSwitchTab(b, 'ddl');
+}
+
+/* ===== 表结构对比 ===== */
+function dmOpenSchemaDiff() {
+  if (!dmCurrentDb || !dmCurrentTable) { msgBox('请先打开一张表'); return; }
+  var left = dmCurrentDb + '.' + dmCurrentTable;
+  var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">对比当前表与另一张表的字段差异(新增/删除/类型变更)。</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:13px;width:40px;">当前</span><input class="dbsync-form-input" style="flex:1;" value="' + escapeHtml(left) + '" disabled></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;"><span style="font-size:13px;width:40px;">对比</span><input id="schemaDiffRight" class="dbsync-form-input" style="flex:1;" placeholder="库.表, 如 dwd.dwd_order_df" onkeydown="if(event.key===\'Enter\'){event.preventDefault();dmRunSchemaDiff();}"></div>'
+    + '<div id="schemaDiffResult" style="margin-top:12px;"></div>';
+  var footer = '<button class="btn btn-sm" onclick="closeModal()">关闭</button> <button class="btn btn-sm btn-primary" onclick="dmRunSchemaDiff()">对比</button>';
+  showModal('表结构对比', body, footer, { width: 620 });
+  setTimeout(function(){ var t = document.getElementById('schemaDiffRight'); if (t) t.focus(); }, 50);
+}
+
+function dmRunSchemaDiff() {
+  var right = (document.getElementById('schemaDiffRight') || {}).value || '';
+  right = right.trim();
+  var dot = right.indexOf('.');
+  if (dot <= 0 || dot === right.length - 1) { showToast('请按「库.表」格式填写对比表', 'error'); return; }
+  var db2 = right.substring(0, dot), table2 = right.substring(dot + 1);
+  var box = document.getElementById('schemaDiffResult');
+  if (box) box.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text-muted);">对比中...</div>';
+  var url = '/api/metadata/schema-diff?db1=' + encodeURIComponent(dmCurrentDb) + '&table1=' + encodeURIComponent(dmCurrentTable)
+    + '&db2=' + encodeURIComponent(db2) + '&table2=' + encodeURIComponent(table2);
+  api(url).then(function(res) {
+    if (!box) return;
+    if (!res || res.code !== 0 || !res.data) { box.innerHTML = '<div style="padding:14px;color:var(--error);">' + escapeHtml((res && res.msg) || '对比失败') + '</div>'; return; }
+    box.innerHTML = renderSchemaDiff(res.data);
+  }).catch(function(){ if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);">对比请求失败</div>'; });
+}
+
+function renderSchemaDiff(d) {
+  if (d.identical) return '<div style="padding:14px;color:var(--success);text-align:center;">✓ 两表结构一致(共 ' + (d.sameCount || 0) + ' 个相同字段)</div>';
+  var added = d.added || [], removed = d.removed || [], changed = d.changed || [];
+  var h = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">' + escapeHtml(d.left || '') + ' → ' + escapeHtml(d.right || '')
+    + ' · 相同 ' + (d.sameCount || 0) + ' · 新增 ' + added.length + ' · 删除 ' + removed.length + ' · 类型变更 ' + changed.length + '</div>';
+  if (added.length) h += '<div style="margin-bottom:6px;"><b style="color:var(--success);">＋ 对比表新增 ' + added.length + ' 字段</b>: ' + added.map(function(c){ return escapeHtml(c.name) + '(' + escapeHtml(c.type || '') + ')'; }).join('、') + '</div>';
+  if (removed.length) h += '<div style="margin-bottom:6px;"><b style="color:var(--error);">－ 对比表缺失 ' + removed.length + ' 字段</b>: ' + removed.map(function(c){ return escapeHtml(c.name) + '(' + escapeHtml(c.type || '') + ')'; }).join('、') + '</div>';
+  if (changed.length) {
+    h += '<div style="margin-top:6px;"><b style="color:var(--warning);">～ 类型变更 ' + changed.length + '</b><table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;"><thead><tr style="color:var(--text-muted);"><th style="text-align:left;padding:3px 6px;">字段</th><th style="text-align:left;padding:3px 6px;">当前</th><th style="text-align:left;padding:3px 6px;">对比</th></tr></thead><tbody>';
+    changed.forEach(function(c){ h += '<tr style="border-top:1px solid var(--border);"><td style="padding:3px 6px;font-family:monospace;">' + escapeHtml(c.name) + '</td><td style="padding:3px 6px;">' + escapeHtml(c.leftType || '') + '</td><td style="padding:3px 6px;color:var(--warning);">' + escapeHtml(c.rightType || '') + '</td></tr>'; });
+    h += '</tbody></table></div>';
+  }
+  return h;
 }
 // R21 联动: 数据地图表详情 → 治理子模块(血缘/质量/敏感/资产), 携带当前库表上下文
 function dmGotoGov(govKey) {
@@ -7945,7 +8491,7 @@ function dmLoadComments() {
             : '';
           html += '<div class="dm-comment-item">'
             + '<div class="dm-comment-meta"><span>' + escapeHtml(c.createdBy || 'default') + '</span>'
-            + '<span>' + escapeHtml(c.createdAt || '') + '</span>'
+            + '<span>' + escapeHtml((c.createdAt || '').replace('T', ' ').slice(0, 16)) + '</span>'
             + delBtn + '</div>'
             + '<div class="dm-comment-content">' + escapeHtml(c.content || '') + '</div></div>';
         });
@@ -7979,14 +8525,17 @@ function dmAddComment() {
 
 function dmDeleteComment(id) {
   if (id == null) return;
-  fetch('/api/metadata/comments/' + id, { method: 'DELETE' })
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res && res.code === 0) dmLoadComments();
-      else msgBox('删除失败: ' + ((res && res.msg) || '请稍后重试'));
-    }).catch(function(err){
-      msgBox('删除失败: ' + ((err && err.message) || '请检查网络'));
-    });
+  msgConfirm('删除评论', '确定删除此评论？此操作不可恢复。').then(function(ok){
+    if (!ok) return;
+    fetch('/api/metadata/comments/' + id, { method: 'DELETE' })
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        if (res && res.code === 0) dmLoadComments();
+        else msgBox('删除失败: ' + ((res && res.msg) || '请稍后重试'));
+      }).catch(function(err){
+        msgBox('删除失败: ' + ((err && err.message) || '请检查网络'));
+      });
+  });
 }
 
 /* ===== 指标管理 ===== */
@@ -8206,6 +8755,8 @@ function saveMetric() {
           });
       } else {
         restore();
+        // 后端唯一性等校验失败: 编码冲突就近标红编码框(与前端内联校验一致)
+        if (res.msg && res.msg.indexOf('编码已存在') >= 0) markErr('mCode', true);
         msgBox('保存失败: ' + res.msg);
       }
     }).catch(function() { restore(); showToast('保存请求失败, 请重试', 'error'); });
@@ -8340,12 +8891,20 @@ function loadQualityRules() {
       }
       var typeLabels = { null_check:'空值检查', unique_check:'唯一性检查', value_range:'值域检查', regex_check:'正则检查', custom_sql:'自定义SQL' };
       var severityColors = { info:'var(--primary)', warning:'var(--warning)', error:'var(--error)' };
-      var html = '<table class="quality-rules-table"><thead><tr>' +
+      var html = '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<input id="qualityRuleSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索规则名/库表/字段/创建人" oninput="qualityFilterRules()">' +
+        '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">批量:</span>' +
+        '<button class="btn btn-sm" data-perm="governance:quality" onclick="qualityBatchStatus(1)">启用选中</button>' +
+        '<button class="btn btn-sm" data-perm="governance:quality" onclick="qualityBatchStatus(0)">停用选中</button></div>' +
+        '<table class="quality-rules-table"><thead><tr>' +
+        '<th style="width:28px;"><input type="checkbox" id="qrSelAll" onclick="qualityToggleAll(this.checked)" title="全选"></th>' +
         '<th>规则名称</th><th>类型</th><th>数据库.表</th><th>字段</th><th>创建人</th><th>级别</th><th>状态</th><th>操作</th>' +
         '</tr></thead><tbody>';
       rules.forEach(function(r) {
         var sevColor = severityColors[r.severity] || 'var(--text-faint)';
-        html += '<tr>' +
+        var searchKey = ((r.ruleName || '') + ' ' + (r.databaseName || '') + '.' + (r.tableName || '') + ' ' + (r.columnName || '') + ' ' + (r.createdBy || '') + ' ' + (typeLabels[r.ruleType] || '')).toLowerCase();
+        html += '<tr class="quality-rule-row" data-search="' + escapeHtml(searchKey) + '">' +
+          '<td style="text-align:center;"><input type="checkbox" class="qr-chk" value="' + r.id + '"></td>' +
           '<td>' + escapeHtml(r.ruleName || '') + '<span class="dnpj" data-id="' + r.id + '"></span></td>' +
           '<td><span class="quality-type-badge">' + escapeHtml(typeLabels[r.ruleType] || r.ruleType) + '</span></td>' +
           '<td>' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</td>' +
@@ -8378,6 +8937,41 @@ function loadQualityRules() {
         });
       });
     });
+}
+
+// 质量规则列表内即时搜索: 原地隐藏不匹配行(不重渲染防失焦)
+function qualityFilterRules() {
+  var inp = document.getElementById('qualityRuleSearch');
+  if (!inp) return;
+  var kw = inp.value.trim().toLowerCase();
+  document.querySelectorAll('tr.quality-rule-row').forEach(function(tr) {
+    tr.style.display = (!kw || (tr.dataset.search || '').indexOf(kw) >= 0) ? '' : 'none';
+  });
+}
+
+// 全选: 仅勾选当前可见(搜索过滤后)的行
+function qualityToggleAll(checked) {
+  document.querySelectorAll('tr.quality-rule-row').forEach(function(tr) {
+    if (tr.style.display === 'none') return;
+    var c = tr.querySelector('.qr-chk');
+    if (c) c.checked = checked;
+  });
+}
+
+// 批量启停选中规则(status: 1=启用, 0=停用)
+function qualityBatchStatus(status) {
+  var ids = Array.prototype.slice.call(document.querySelectorAll('.qr-chk:checked')).map(function(el){ return parseInt(el.value); });
+  if (!ids.length) { showToast('请先勾选规则', 'error'); return; }
+  var verb = status === 1 ? '启用' : '停用';
+  msgConfirm('批量' + verb, '确认' + verb + '选中的 ' + ids.length + ' 条规则？').then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/quality/rules/batch-status', { ids: ids, status: status }).then(function(res) {
+      if (res && res.code === 0) {
+        showToast('已' + verb + ' ' + (res.data && res.data.updated != null ? res.data.updated : ids.length) + ' 条', 'success');
+        loadQualityRules();
+      } else showToast((res && res.msg) || '操作失败', 'error');
+    }).catch(function(){ showToast('操作失败', 'error'); });
+  });
 }
 
 function loadQualityHistory() {
@@ -8431,7 +9025,7 @@ function renderQualityHistory(runs, ruleMap) {
       '<td>' + (r.failCount || 0) + '</td>' +
       '<td>' + (r.passRate || 0) + '%</td>' +
       '<td>' + (r.durationMs || 0) + 'ms</td>' +
-      '<td>' + (r.startedAt || '-') + '</td>' +
+      '<td>' + (r.startedAt ? String(r.startedAt).replace('T', ' ').substring(0, 19) : '-') + '</td>' +
       '</tr>';
   });
   html += '</tbody></table>';
@@ -8684,7 +9278,7 @@ function deleteQualityRule(id) {
       } else {
         msgBox('删除失败: ' + res.msg);
       }
-    });
+    }).catch(function() { msgBox('删除请求失败，请重试'); });
   });
 }
 
@@ -8703,7 +9297,7 @@ function runSingleQualityRule(id) {
       } else {
         msgBox('执行失败: ' + res.msg);
       }
-    });
+    }).catch(function() { msgBox('执行请求失败，请重试'); });
 }
 
 function runAllQualityRules() {
@@ -8914,11 +9508,17 @@ function schedFilterTasks() {
   var statusFilter = document.getElementById('schedFilterStatus').value;
   var layerFilter = document.getElementById('schedFilterLayer').value;
   var nameFilter = (document.getElementById('schedFilterName').value || '').toLowerCase();
+  var ownerEl = document.getElementById('schedFilterOwner');
+  var typeEl = document.getElementById('schedFilterTaskType');
+  var ownerFilter = ownerEl ? ownerEl.value : '';
+  var typeFilter = typeEl ? typeEl.value : '';
 
   var filtered = schedCachedRuns.filter(function(r) {
     if (statusFilter && String(r.status) !== statusFilter) return false;
     if (layerFilter && (r.layer || '') !== layerFilter) return false;
     if (nameFilter && (r.taskName || '').toLowerCase().indexOf(nameFilter) < 0) return false;
+    if (ownerFilter && (r.owner || '') !== ownerFilter) return false;
+    if (typeFilter && (r.taskType || '') !== typeFilter) return false;
     return true;
   });
   renderSchedTasks(filtered);
@@ -8958,7 +9558,7 @@ function loadBaselineList() {
         if (st.todayStatus === 'met') todayCell = '<span style="color:var(--success);font-weight:500;">✓ 达成</span>';
         else if (st.todayStatus === 'broken') {
           var names = (st.unmetTasks || []).map(function(u) { return u.taskName || (u.taskType + '#' + u.taskId); }).join('、');
-          todayCell = '<span style="color:var(--error);font-weight:600;" title="未达成: ' + escapeHtml(names) + '">✗ 打破(' + st.unmetCount + ')</span>';
+          todayCell = '<span style="color:var(--error);font-weight:600;cursor:pointer;text-decoration:underline dotted;" title="未达成: ' + escapeHtml(names) + '\n点击前往周期任务处理未达成任务" onclick="baselineGotoUnmet()">✗ 打破(' + st.unmetCount + ')</span>';
         }
         else if (st.todayStatus === 'pending') todayCell = '<span style="color:var(--warning);">未到点</span>';
         else if (st.todayStatus === 'empty') todayCell = '<span style="color:var(--text-muted);">无任务</span>';
@@ -8982,6 +9582,15 @@ function loadBaselineList() {
     container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>类型</th><th>承诺时间</th><th>今日达成</th><th>优先级</th><th>状态</th><th>创建人</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
   });
+}
+
+/* 基线打破→跳周期任务并过滤失败任务, 直接重试未达成任务(原无跳转/重跑入口, 须跨页手查) */
+function baselineGotoUnmet() {
+  var sb = document.querySelector('.ops-sidebar-item[onclick*="periodic"]');
+  switchOpsTab(sb, 'periodic');
+  // 同步置失败过滤: schedRefreshStatus 异步加载完成后会按当前下拉值过滤, 直接呈现失败任务
+  var sf = document.getElementById('schedFilterStatus');
+  if (sf) sf.value = '-1';
 }
 
 function showCreateBaselineDialog() {
@@ -9201,6 +9810,8 @@ function renderDag(lineageData) {
 
   var statusColors = { script: 'var(--primary)', syncTask: 'var(--success)' };
 
+  // 先拼字符串再一次性赋值, 避免循环内 innerHTML += 的 O(n²) 反复序列化/解析
+  var nodesStr = '';
   layers.forEach(function(layer, li) {
     var x = 60 + li * (nodeWidth + layerGap);
     var totalHeight = layer.length * nodeHeight + (layer.length - 1) * nodeGap;
@@ -9212,7 +9823,7 @@ function renderDag(lineageData) {
       var node = nodesMap[nodeId];
       var fill = statusColors[node.taskType] || 'var(--text-faint)';
 
-      svg.innerHTML += '<g class="dag-node" data-id="' + nodeId + '">' +
+      nodesStr += '<g class="dag-node" data-id="' + nodeId + '">' +
         '<rect x="' + x + '" y="' + y + '" width="' + nodeWidth + '" height="' + nodeHeight +
         '" rx="6" fill="' + fill + '" opacity="0.15" stroke="' + fill + '" stroke-width="1.5"/>' +
         '<text x="' + (x + nodeWidth / 2) + '" y="' + (y + nodeHeight / 2 + 4) +
@@ -9222,6 +9833,7 @@ function renderDag(lineageData) {
   });
 
   // 画边（箭头）
+  var edgesStr = '';
   edges.forEach(function(e) {
     var from = nodePositions[e.from];
     var to = nodePositions[e.to];
@@ -9231,13 +9843,14 @@ function renderDag(lineageData) {
     var x2 = to.x;
     var y2 = to.cy;
     var midX = (x1 + x2) / 2;
-    svg.innerHTML = '<path d="M' + x1 + ',' + y1 + ' C' + midX + ',' + y1 + ' ' + midX + ',' + y2 + ' ' + x2 + ',' + y2 +
-      '" fill="none" stroke="var(--text-muted)" stroke-width="1.2" opacity="0.5" marker-end="url(#dagArrow)"/>' + svg.innerHTML;
+    edgesStr += '<path d="M' + x1 + ',' + y1 + ' C' + midX + ',' + y1 + ' ' + midX + ',' + y2 + ' ' + x2 + ',' + y2 +
+      '" fill="none" stroke="var(--text-muted)" stroke-width="1.2" opacity="0.5" marker-end="url(#dagArrow)"/>';
   });
 
-  // 箭头定义
-  svg.innerHTML = '<defs><marker id="dagArrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">' +
-    '<path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" opacity="0.6"/></marker></defs>' + svg.innerHTML;
+  // 箭头定义; 一次性赋值: defs + 边(在下) + 节点(在上), z 序与原实现一致
+  var defsStr = '<defs><marker id="dagArrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">' +
+    '<path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" opacity="0.6"/></marker></defs>';
+  svg.innerHTML = defsStr + edgesStr + nodesStr;
 }
 
 function openSchedulerView() {
@@ -9346,8 +9959,24 @@ function schedRefreshStatus() {
       }
 
       schedCachedRuns = data.runs || [];
+      schedPopulateOwnerFilter();
       schedFilterTasks();
     });
+}
+
+/* 从当前任务数据动态填充「负责人」下拉（原写死 admin，与实际脱节） */
+function schedPopulateOwnerFilter() {
+  var sel = document.getElementById('schedFilterOwner');
+  if (!sel) return;
+  var cur = sel.value;
+  var owners = {};
+  schedCachedRuns.forEach(function(r) { if (r.owner) owners[r.owner] = 1; });
+  var opts = '<option value="">全部负责人</option>';
+  Object.keys(owners).sort().forEach(function(o) {
+    opts += '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+  });
+  sel.innerHTML = opts;
+  if (cur && owners[cur]) sel.value = cur;   // 保持刷新前的选择
 }
 
 function renderSchedTasks(runs) {
@@ -9404,6 +10033,9 @@ function renderSchedTasks(runs) {
       }
       if (r.status === 1 || r.status === -1) {
         html += '<button data-perm="operations:backfill" onclick="schedBackfill(' + r.taskId + ',\'' + escapeHtml(r.taskType) + '\',\'' + escapeHtml(r.taskName) + '\')">补数据</button>';
+      }
+      if (r.taskType === 'script') {
+        html += '<button onclick="openScriptById(' + r.taskId + ')" title="打开脚本到数据开发，快速回溯排错">脚本</button>';
       }
       html += '<button onclick="schedViewLog(' + r.id + ',\'' + escapeHtml(r.taskName) + '\')">日志</button>';
       html += '</div></div>';
@@ -9623,7 +10255,7 @@ function showBackfillModal(rootTaskId, rootTaskType, rootTaskName, downstreamTre
     + '<div class="sched-log-modal-header"><span>补数据 - ' + escapeHtml(rootTaskName) + '</span>'
     + '<button class="sched-log-modal-close" onclick="this.closest(\'.sched-log-overlay\').remove()">&times;</button></div>'
     + '<div class="sched-log-modal-body" style="background:var(--bg-card);">'
-    + '<div style="margin-bottom:12px;"><b>数据日期：</b><input type="date" id="bfDate" value="' + date + '" class="sched-date-input"></div>'
+    + '<div style="margin-bottom:12px;"><b>数据日期：</b><input type="date" id="bfDateStart" value="' + date + '" class="sched-date-input"> 至 <input type="date" id="bfDateEnd" value="' + date + '" class="sched-date-input"> <span style="color:var(--text-muted);font-size:12px;">(支持多天区间补数)</span></div>'
     + '<div style="margin-bottom:8px;"><b>根任务：</b>' + escapeHtml(rootTaskName) + '（将重新执行）</div>';
 
   if (downstreamTree.length > 0) {
@@ -9650,8 +10282,12 @@ function showBackfillModal(rootTaskId, rootTaskType, rootTaskName, downstreamTre
 }
 
 function doBackfill(btn, rootTaskId, rootTaskType) {
-  var date = document.getElementById('bfDate').value;
-  if (!date) { msgAlert('提示', '请选择数据日期'); return; }
+  var start = document.getElementById('bfDateStart').value;
+  var end = document.getElementById('bfDateEnd').value || start;
+  if (!start) { msgAlert('提示', '请选择数据日期'); return; }
+  if (end < start) { msgAlert('提示', '结束日期不能早于开始日期'); return; }
+  var dates = bfDateRange(start, end);
+  if (dates.length > 31) { msgAlert('提示', '单次补数区间不超过 31 天'); return; }
 
   var selectedTasks = [];
   document.querySelectorAll('.bf-check:checked').forEach(function(cb) {
@@ -9659,23 +10295,29 @@ function doBackfill(btn, rootTaskId, rootTaskType) {
   });
 
   var ov = btn && btn.closest ? btn.closest('.sched-log-overlay') : null;   // 关本表单自身 overlay
-  fetch('/api/scheduler/backfill', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      taskId: rootTaskId, taskType: rootTaskType,
-      runDate: date, selectedTasks: selectedTasks
-    })
-  }).then(function(r) { return r.json(); }).then(function(res) {
-    if (res.code === 0) {
-      msgAlert('补数据', '补数据已启动，批次: ' + res.data.batchId + '，共 ' + res.data.totalTasks + ' 个任务', 'ok');
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+  // 逐日顺序提交(每天一个 batchId), 避免并发一次性压垮调度
+  var idx = 0, batches = [], failed = 0;
+  function submitNext() {
+    if (idx >= dates.length) {
       if (ov) ov.remove();
+      msgAlert('补数据', '已提交 ' + (dates.length - failed) + '/' + dates.length + ' 天补数'
+        + (failed ? ('，失败 ' + failed + ' 天') : '') + '，共 ' + batches.length + ' 个批次', failed ? 'error' : 'ok');
       schedRefreshStatus();
       startSchedAutoRefresh();
-    } else {
-      msgAlert('错误', '补数据失败: ' + res.msg, 'error');
+      return;
     }
-  }).catch(function(e) { msgAlert('错误', '补数据失败: ' + ((e && e.message) || '请检查网络'), 'error'); });
+    var date = dates[idx++];
+    fetch('/api/scheduler/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: rootTaskId, taskType: rootTaskType, runDate: date, selectedTasks: selectedTasks })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res && res.code === 0) batches.push(res.data.batchId); else failed++;
+      submitNext();
+    }).catch(function() { failed++; submitNext(); });
+  }
+  submitNext();
 }
 
 // ===== 新建菜单 =====
@@ -9795,11 +10437,16 @@ function restoreVersion(versionId) {
   var versions = currentScriptVersions || [];
   var v = versions.find(function(x) { return String(x.id) === String(versionId); });
   if (!v) return;
-  msgConfirm('确认回滚', '确定要回滚到 V' + (v.version || '-') + ' 版本吗？当前编辑器中的内容将被替换。').then(function(ok) {
+  msgConfirm('确认回滚', '确定回滚到 V' + (v.version || '-') + ' 吗？当前内容会先存为历史版本，再被该版本覆盖。').then(function(ok) {
     if (!ok) return;
-    codeArea.value = v.content || '';
-    saveScript();
-    msgBox('已回滚到 V' + (v.version || '-'));
+    // 走服务端原子回滚: 先把当前内容存为历史版本(防丢失)再覆盖, 不依赖编辑器状态
+    apiPost('/api/script/' + currentScriptId + '/rollback/' + versionId, {}).then(function(res) {
+      if (res && res.code === 0) {
+        if (res.data && codeArea) codeArea.value = res.data.content || '';
+        showToast('已回滚到 V' + (v.version || '-'), 'success');
+        loadScriptVersions(currentScriptId);
+      } else showToast((res && res.msg) || '回滚失败', 'error');
+    }).catch(function() { showToast('回滚失败', 'error'); });
   });
 }
 
@@ -10293,11 +10940,21 @@ window.umSaveUser = function(id) {
 };
 window.umResetPwd = function(id) {
   var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
-  var p = prompt('为用户 [' + u.username + '] 设置新密码（≥8位，含字母/数字/符号至少两类）：', '');
-  if (p == null) return;
+  var lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
+  var h = '<div style="min-width:360px;">'
+    + '<div><label ' + lab + '>为用户 [' + escapeHtml(u.username) + '] 设置新密码</label>'
+    + '<input id="umResetPwdInput" type="password" class="dbsync-form-input" style="width:100%;" placeholder="≥8位, 含字母/数字/符号至少两类" onkeydown="if(event.key===\'Enter\'){event.preventDefault();umResetPwdSubmit(' + id + ');}"></div>'
+    + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> '
+    + '<button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umResetPwdSubmit(' + id + ')">重置</button></div></div>';
+  projShowModalBox('重置密码', h);
+  setTimeout(function(){ var t = document.getElementById('umResetPwdInput'); if (t) t.focus(); }, 50);
+};
+window.umResetPwdSubmit = function(id) {
+  var el = document.getElementById('umResetPwdInput');
+  var p = el ? el.value : '';
   if (!p.trim()) { showToast('密码不能为空', 'error'); return; }
   api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p }) })
-    .then(function(res) { if (res && res.code === 0) showToast('密码已重置', 'success'); else showToast((res && res.msg) || '操作失败', 'error'); })
+    .then(function(res) { if (res && res.code === 0) { showToast('密码已重置', 'success'); projCloseModalBox(); } else showToast((res && res.msg) || '操作失败', 'error'); })
     .catch(function() { showToast('操作失败', 'error'); });
 };
 window.umToggleStatus = function(id, on) {
@@ -13357,13 +14014,22 @@ window.dbsyncCdcReset = function(id) {
 
 /* ---------- 增量快照触发 ---------- */
 window.dbsyncTriggerIncrSnapshot = function(id) {
-  var tables = prompt('请输入源表名（逗号分隔，如 db.t1,db.t2）：');
-  if (tables == null || tables.trim() === '') return;
-  fetch('/api/cdc/' + id + '/incremental-snapshot?tables=' + encodeURIComponent(tables.trim()), { method: 'POST' })
+  var body = '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">输入要触发增量快照的源表(逗号分隔):</div>'
+    + '<input id="dbsyncIncrTables" class="dbsync-form-input" style="width:100%;" placeholder="如 db.t1,db.t2" onkeydown="if(event.key===\'Enter\'){event.preventDefault();dbsyncDoIncrSnapshot(' + id + ');}">';
+  var footer = '<button class="btn btn-sm" onclick="closeModal()">取消</button> '
+    + '<button class="btn btn-sm btn-primary" onclick="dbsyncDoIncrSnapshot(' + id + ')">发送信号</button>';
+  showModal('增量快照', body, footer, { width: 440 });
+  setTimeout(function(){ var t = document.getElementById('dbsyncIncrTables'); if (t) t.focus(); }, 50);
+};
+window.dbsyncDoIncrSnapshot = function(id) {
+  var el = document.getElementById('dbsyncIncrTables');
+  var tables = el ? el.value.trim() : '';
+  if (!tables) { showToast('请输入源表名', 'error'); return; }
+  fetch('/api/cdc/' + id + '/incremental-snapshot?tables=' + encodeURIComponent(tables), { method: 'POST' })
     .then(_handleResponse)
     .then(function(res) {
       if (res.code === 0) {
-        showToast('增量快照信号已发送', 'success');
+        showToast('增量快照信号已发送', 'success'); closeModal();
       } else {
         showToast('发送失败: ' + (res.msg || ''), 'error');
       }
@@ -13448,6 +14114,7 @@ window.dbsyncAppendLog = function(data) {
   var level = data.level || 'INFO';
   var line = document.createElement('span');
   line.className = 'dbsync-log-line ' + level;
+  line.dataset.taskId = (data.taskId != null ? String(data.taskId) : '');
   line.textContent = '[' + (data.time || '') + '][' + level + '][任务#' + (data.taskId || '') + '] ' + (data.message || '');
   panel.appendChild(line);
   panel.appendChild(document.createTextNode('\n'));
@@ -13462,6 +14129,17 @@ window.dbsyncAppendLog = function(data) {
 window.dbsyncClearLogs = function() {
   var panel = document.getElementById('dbsyncLogPanel');
   if (panel) panel.innerHTML = '<span style="color:var(--text-muted);">日志已清空</span>';
+};
+
+// 切换任务过滤时, 对已显示的日志行立即生效(原先仅过滤后续新行, 旧行残留)
+window.dbsyncApplyLogFilter = function() {
+  var sel = document.getElementById('dbsyncLogFilter');
+  var panel = document.getElementById('dbsyncLogPanel');
+  if (!sel || !panel) return;
+  var jobId = sel.value;
+  panel.querySelectorAll('.dbsync-log-line').forEach(function(line) {
+    line.style.display = (!jobId || line.dataset.taskId === String(jobId)) ? '' : 'none';
+  });
 };
 
 window.dbsyncRefreshLogFilter = function() {
@@ -14401,6 +15079,8 @@ function dbsyncQsHi() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     var qs = document.getElementById('dbsyncQsOverlay'); if (qs) { qs.remove(); return; }
+    var fm = document.getElementById('dbsyncFormModal');
+    if (fm && fm.classList.contains('show')) { if (window.dbsyncCloseFormModal) dbsyncCloseFormModal(); return; }
     var menu = document.getElementById('dbsyncRowMenu');
     if (menu && menu.classList.contains('show')) { dbsyncCloseRowMenu(); return; }
     if (_dbsyncDetailJobId != null) dbsyncCloseDetail();

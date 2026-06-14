@@ -122,6 +122,7 @@ class DataMapServiceDorisTest {
                 tableFavoriteMapper,
                 searchHistoryMapper,
                 tableMetaMapper,
+                org.mockito.Mockito.mock(com.datanote.domain.metadata.mapper.DnColumnMetaMapper.class),
                 new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class))
         );
     }

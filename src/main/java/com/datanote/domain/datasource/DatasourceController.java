@@ -89,8 +89,8 @@ public class DatasourceController {
                     ds.setPassword(old.getPassword());
                 }
             } else {
-                // 前端提交了新密码，加密后存库
-                ds.setPassword(CryptoUtil.encrypt(ds.getPassword(), cryptoKey));
+                // 前端提交了新密码，加密后存库（空密码原样保留，避免对 null 加密抛 500）
+                ds.setPassword(encryptPassword(ds.getPassword()));
             }
             datasourceMapper.updateById(ds);
             // 配置变更后失效旧连接池，使新 host/端口/账号/口令立即生效
@@ -99,7 +99,7 @@ public class DatasourceController {
             ds.setCreatedAt(LocalDateTime.now());
             ds.setUpdatedAt(LocalDateTime.now());
             ds.setStatus(1);
-            ds.setPassword(CryptoUtil.encrypt(ds.getPassword(), cryptoKey));
+            ds.setPassword(encryptPassword(ds.getPassword()));
             datasourceMapper.insert(ds);
         }
         ds.setPassword(Constants.PASSWORD_MASK);
@@ -207,6 +207,14 @@ public class DatasourceController {
             log.error("获取字段列表失败, datasourceId={}, db={}, table={}", id, db, table, e);
             return R.fail("获取字段列表失败");
         }
+    }
+
+    /** 加密待存口令：空口令原样保留（部分数据源允许无密码），避免对 null 调用 encrypt 抛 500 */
+    private String encryptPassword(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return raw;
+        }
+        return CryptoUtil.encrypt(raw, cryptoKey);
     }
 
     private DnDatasource requireDatasource(Long id) {

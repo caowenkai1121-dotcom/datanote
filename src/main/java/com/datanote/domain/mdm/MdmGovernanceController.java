@@ -250,10 +250,21 @@ public class MdmGovernanceController {
         if (entityId != null) qw.eq("entity_id", entityId);
         qw.orderByDesc("updated_at").last("LIMIT 500");
         List<DnMdmSubscription> rows = subscriptionMapper.selectList(qw);
+        Set<Long> entityIds = new HashSet<>();
+        for (DnMdmSubscription s : rows) {
+            if (s.getEntityId() != null) entityIds.add(s.getEntityId());
+        }
+        Map<Long, String> entityNameMap = new HashMap<>();
+        if (!entityIds.isEmpty()) {
+            List<DnMdmEntity> _es = entityMapper.selectBatchIds(entityIds);
+            if (_es != null) for (DnMdmEntity e : _es) { // selectList 理论可返回 null
+                entityNameMap.put(e.getId(), e.getEntityName());
+            }
+        }
         for (DnMdmSubscription s : rows) {
             if (s.getEntityId() != null) {
-                DnMdmEntity e = entityMapper.selectById(s.getEntityId());
-                if (e != null) s.setEntityName(e.getEntityName());
+                String name = entityNameMap.get(s.getEntityId());
+                if (name != null) s.setEntityName(name);
             }
         }
         return R.ok(rows);
@@ -302,10 +313,21 @@ public class MdmGovernanceController {
         if (subscriptionId != null) qw.eq("subscription_id", subscriptionId);
         qw.orderByDesc("published_at").last("LIMIT 500");
         List<DnMdmPublishLog> rows = publishLogMapper.selectList(qw);
+        Set<Long> subIds = new HashSet<>();
+        for (DnMdmPublishLog l : rows) {
+            if (l.getSubscriptionId() != null) subIds.add(l.getSubscriptionId());
+        }
+        Map<Long, String> subSystemMap = new HashMap<>();
+        if (!subIds.isEmpty()) {
+            List<DnMdmSubscription> _ss = subscriptionMapper.selectBatchIds(subIds);
+            if (_ss != null) for (DnMdmSubscription s : _ss) { // selectList 理论可返回 null
+                subSystemMap.put(s.getId(), s.getSubscriberSystem());
+            }
+        }
         for (DnMdmPublishLog l : rows) {
             if (l.getSubscriptionId() != null) {
-                DnMdmSubscription s = subscriptionMapper.selectById(l.getSubscriptionId());
-                if (s != null) l.setSubscriberSystem(s.getSubscriberSystem());
+                String name = subSystemMap.get(l.getSubscriptionId());
+                if (name != null) l.setSubscriberSystem(name);
             }
         }
         return R.ok(rows);
@@ -333,17 +355,22 @@ public class MdmGovernanceController {
     @Operation(summary = "发布订阅统计（订阅数/发布次数/成功率）")
     @GetMapping("/api/mdm/pubsub/stats")
     public R<Map<String, Object>> stats() {
-        List<DnMdmSubscription> subs = subscriptionMapper.selectList(new QueryWrapper<>());
-        List<DnMdmPublishLog> logs = publishLogMapper.selectList(new QueryWrapper<>());
-        long activeSubs = subs.stream().filter(s -> s.getStatus() != null && s.getStatus() == 1).count();
-        long success = logs.stream().filter(l -> "success".equals(l.getStatus())).count();
+        // 用 DB count 精确统计, 避免把整张 publish_log(随发布持续增长) 全量载入内存
+        long subCount = nz(subscriptionMapper.selectCount(new QueryWrapper<>()));
+        long activeSubs = nz(subscriptionMapper.selectCount(new QueryWrapper<DnMdmSubscription>().eq("status", 1)));
+        long publishCount = nz(publishLogMapper.selectCount(new QueryWrapper<>()));
+        long success = nz(publishLogMapper.selectCount(new QueryWrapper<DnMdmPublishLog>().eq("status", "success")));
         Map<String, Object> data = new HashMap<>();
-        data.put("subscriptionCount", subs.size());
+        data.put("subscriptionCount", subCount);
         data.put("activeSubscriptionCount", activeSubs);
-        data.put("publishCount", logs.size());
+        data.put("publishCount", publishCount);
         data.put("successCount", success);
-        data.put("successRate", logs.isEmpty() ? 100 : Math.round(success * 1000.0 / logs.size()) / 10.0);
+        data.put("successRate", publishCount == 0 ? 100 : Math.round(success * 1000.0 / publishCount) / 10.0);
         return R.ok(data);
+    }
+
+    private long nz(Long c) {
+        return c == null ? 0 : c;
     }
 
     // ------- 工具 -------

@@ -36,7 +36,7 @@ public final class ErrorClassifier {
         // 上下文超长(各家措辞)
         if ((s.contains("context") && (s.contains("length") || s.contains("window") || s.contains("exceed") || s.contains("maximum")))
                 || s.contains("maximum context") || s.contains("context_length_exceeded")
-                || s.contains("too long") || s.contains("token") && s.contains("exceed")
+                || s.contains("too long") || (s.contains("token") && s.contains("exceed"))
                 || (s.contains("上下文") && (s.contains("超") || s.contains("过长")))) {
             return Action.CONTEXT_OVERFLOW;
         }
