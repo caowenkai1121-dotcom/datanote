@@ -300,6 +300,8 @@ public class MetadataController {
         }
         try {
             return R.ok(dataMapService.getTableDetail(db, table));
+        } catch (com.datanote.common.exception.BusinessException be) {
+            return R.fail(be.getMessage());   // 数据权限受限等业务原因须如实回传, 不可吞成通用错
         } catch (Exception e) {
             log.error("获取表详情失败: {}.{}", db, table, e);
             return R.fail("获取表详情失败");

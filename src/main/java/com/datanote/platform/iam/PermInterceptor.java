@@ -77,6 +77,8 @@ public class PermInterceptor implements HandlerInterceptor {
             regex("^/api/sync-job/bulk/(run|stop|online|offline)$", "dbsync:run"),
             prefix("/api/datax", "develop:run"),
             prefix("/api/cdc", "dbsync:run"),
+            // --- 数据权限授权(读写均需 data:grant) ---
+            prefix("/api/data-acl", "data:grant"),
             // --- RBAC / 系统配置 ---
             prefix("/api/rbac", "settings:user"),
             prefix("/api/group", "settings:user"),
@@ -125,6 +127,8 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/system/config", "settings:config"),
             // AI 配置(provider/baseUrl/model + apiKey 前 8 位)读须与写同权
             prefix("/api/ai/config", "settings:config"),
+            // 数据授权清单泄露资源可见范围, 读须 data:grant(与写同权)
+            prefix("/api/data-acl", "data:grant"),
             // 各模块导出(审计已单列): 工单/指标/同步等导出按模块 view 保护
             prefix("/api/gov/health/issues/export", "governance:view"),
             prefix("/api/consumption/metric", "metrics:view"),

@@ -81,6 +81,9 @@ public final class PermCatalog {
             // 数据源管理(读/写, 跨数据开发/同步/治理复用, 独立管控连接信息)
             new Perm("datasource:view", "查看数据源(读)", "datasource", "数据源管理", false),
             new Perm("datasource:edit", "数据源增删改(写)", "datasource", "数据源管理", false),
+            // 数据权限(资源级访问控制: 表/项目/模型等授权给角色/用户)
+            new Perm("data:grant", "数据授权管理(设资源可见范围)", "data", "数据权限", false),
+            new Perm("data:all", "查看全部数据(绕过资源级限制)", "data", "数据权限", false),
             // 系统管理
             new Perm("settings:view", "进入系统管理", "settings", "系统管理", true),
             new Perm("settings:user", "用户/角色/权限管理", "settings", "系统管理", false),

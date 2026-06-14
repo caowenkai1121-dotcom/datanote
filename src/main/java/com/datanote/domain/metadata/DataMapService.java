@@ -43,6 +43,7 @@ public class DataMapService {
     private final DnTableMetaMapper tableMetaMapper;
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;   // 表详情合并离线业务属性
     private final DatasourceExploreService exploreService;
+    private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤受限库表
 
     // ========== 搜索（基于在线全表摘要） ==========
 
@@ -56,8 +57,10 @@ public class DataMapService {
             return matched;
         }
         String kw = keyword.trim().toLowerCase();
+        Set<String> denied = dataAclService.deniedIds("TABLE");   // 受限且当前用户未授权的 db.table
         for (Map<String, Object> t : allTables) {
             if (t == null) continue;
+            if (denied.contains(tableKey(t))) continue;   // 数据权限: 跳过受限不可见表
             String tableName = t.get("TABLE_NAME") != null ? String.valueOf(t.get("TABLE_NAME")).toLowerCase() : "";
             String dbName = t.get("TABLE_SCHEMA") != null ? String.valueOf(t.get("TABLE_SCHEMA")).toLowerCase() : "";
             String comment = t.get("TABLE_COMMENT") != null ? String.valueOf(t.get("TABLE_COMMENT")).toLowerCase() : "";
@@ -69,16 +72,24 @@ public class DataMapService {
         return matched;
     }
 
+    /** 表唯一键 schema.name(与 dn_data_grant.resource_id 对齐, 大小写按源)。 */
+    private static String tableKey(Map<String, Object> t) {
+        Object db = t.get("TABLE_SCHEMA"), tb = t.get("TABLE_NAME");
+        return (db == null ? "" : String.valueOf(db)) + "." + (tb == null ? "" : String.valueOf(tb));
+    }
+
     public Map<String, Object> aiSearch(String query) throws Exception {
         if (query == null || query.trim().isEmpty()) {
             throw new BusinessException("AI 搜索的查询内容不能为空");
         }
         List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
+        java.util.Set<String> deniedAi = dataAclService.deniedIds("TABLE");
         StringBuilder tableList = new StringBuilder();
         int included = 0, total = allTables == null ? 0 : allTables.size();
         if (allTables != null) {
             for (Map<String, Object> t : allTables) {
                 if (t == null) continue;
+                if (deniedAi.contains(tableKey(t))) continue;   // 数据权限: 受限表不喂给 LLM/不返回
                 // 限制送入提示词的表数, 防大元数据库撑爆 LLM 上下文
                 if (included >= AI_SEARCH_MAX_TABLES) break;
                 tableList.append(t.get("TABLE_SCHEMA")).append(".").append(t.get("TABLE_NAME"));
@@ -295,6 +306,10 @@ public class DataMapService {
     public Map<String, Object> getTableDetail(String db, String table) throws Exception {
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("获取表详情的库名和表名不能为空");
+        }
+        // 数据权限: 受限表非授权用户不可看详情
+        if (!dataAclService.canAccess("TABLE", db.trim() + "." + table.trim())) {
+            throw new BusinessException("无权访问该表(数据权限受限), 请联系管理员授权");
         }
         Map<String, Object> result = new HashMap<String, Object>();
 

@@ -49,6 +49,8 @@ class PermInterceptorRuleTest {
         // 系统配置 / AI 配置读须与写同权 settings:config
         assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/system/config/doris"));
         assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/ai/config"));
+        // 数据授权清单读须 data:grant
+        assertEquals("data:grant", PermInterceptor.requiredPerm("GET", "/api/data-acl/grants"));
     }
 
     @Test
@@ -71,6 +73,7 @@ class PermInterceptorRuleTest {
     void genericModuleWritePerms() {
         assertEquals("develop:edit", PermInterceptor.requiredPerm("POST", "/api/script/save"));
         assertEquals("develop:edit", PermInterceptor.requiredPerm("POST", "/api/snippet/save"));
+        assertEquals("data:grant", PermInterceptor.requiredPerm("POST", "/api/data-acl/grants"));
         assertEquals("datasource:edit", PermInterceptor.requiredPerm("POST", "/api/datasource/save"));
         assertEquals("datasource:edit", PermInterceptor.requiredPerm("POST", "/api/datasource/test"));
         assertEquals("datasource:edit", PermInterceptor.requiredPerm("DELETE", "/api/datasource/9"));

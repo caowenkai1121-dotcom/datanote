@@ -116,6 +116,8 @@ class DataMapServiceDorisTest {
     }
 
     private DataMapService newService() {
+        com.datanote.platform.iam.DataAclService acl = org.mockito.Mockito.mock(com.datanote.platform.iam.DataAclService.class);
+        org.mockito.Mockito.lenient().when(acl.canAccess(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
         return new DataMapService(
                 aiAssistService,
                 tableCommentMapper,
@@ -123,7 +125,8 @@ class DataMapServiceDorisTest {
                 searchHistoryMapper,
                 tableMetaMapper,
                 org.mockito.Mockito.mock(com.datanote.domain.metadata.mapper.DnColumnMetaMapper.class),
-                new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class))
+                new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class)),
+                acl
         );
     }
 }

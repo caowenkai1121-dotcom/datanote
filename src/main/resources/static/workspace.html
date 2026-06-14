@@ -683,6 +683,7 @@
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
               <button class="btn btn-sm" onclick="dmGenSelect()">生成查询语句</button>
               <button class="btn btn-sm" onclick="dmOpenSchemaDiff()" title="与另一张表对比字段差异(ODS↔DWD/跨环境)">结构对比</button>
+              <button class="btn btn-sm" data-perm="data:grant" onclick="dmOpenDataAcl()" title="设置该表可见范围(授权给角色/用户; 默认公开)">数据授权</button>
               <span style="width:1px;height:18px;background:var(--border);margin:0 2px;display:inline-block;vertical-align:middle;"></span>
               <button class="btn btn-sm" onclick="dmGotoGov('lineage')" title="查看此表血缘图谱">血缘</button>
               <button class="btn btn-sm" onclick="dmGotoGov('quality')" title="查看/新建此表质量规则">质量</button>
@@ -7895,6 +7896,69 @@ function dmOpenTable(db, table) {
     });
 }
 
+/* ===== 数据授权(资源级访问控制) ===== */
+function dmOpenDataAcl() {
+  if (!dmCurrentDb || !dmCurrentTable) { msgBox('请先打开一张表'); return; }
+  var rid = dmCurrentDb + '.' + dmCurrentTable;
+  Promise.all([
+    api('/api/data-acl/grants?resourceType=TABLE&resourceId=' + encodeURIComponent(rid)),
+    api('/api/rbac/roles')
+  ]).then(function(rs) {
+    window.__aclGrants = ((rs[0] && rs[0].code === 0 && rs[0].data) ? rs[0].data : []).map(function(g) {
+      return { principalType: g.principalType, principal: g.principal };
+    });
+    window.__aclRoles = (rs[1] && rs[1].code === 0 && rs[1].data) ? rs[1].data : [];
+    if (window.dnFillUserDatalist) dnFillUserDatalist();
+    var roleOpts = window.__aclRoles.map(function(r){ return '<option value="' + escapeHtml(r.roleCode) + '">' + escapeHtml(r.roleName || r.roleCode) + '</option>'; }).join('');
+    var body = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6;">'
+      + '资源: <b>' + escapeHtml(rid) + '</b><br>不加任何授权 = <b>公开</b>(所有有数据地图权限的人可见)；一旦添加授权，则<b>仅</b>下列角色/用户(及管理员)可见可查。</div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">'
+      + '<select id="aclRoleSel" class="dbsync-form-input" style="width:160px;"><option value="">选择角色…</option>' + roleOpts + '</select>'
+      + '<button class="btn btn-sm" onclick="dmAclAdd(\'ROLE\')">+ 角色</button>'
+      + '<input id="aclUserInp" class="dbsync-form-input" list="dnUserList" style="width:160px;" placeholder="输入用户名…">'
+      + '<button class="btn btn-sm" onclick="dmAclAdd(\'USER\')">+ 用户</button></div>'
+      + '<div id="aclGrantList" style="margin-bottom:6px;">' + dmAclRenderGrants() + '</div>';
+    var footer = '<button class="btn btn-sm" onclick="closeModal()">取消</button> '
+      + '<button class="btn btn-sm btn-primary" onclick="dmAclSave()">保存</button>';
+    showModal('数据授权 · ' + dmCurrentTable, body, footer, { width: 540 });
+  }).catch(function(){ msgBox('加载授权失败'); });
+}
+
+function dmAclRenderGrants() {
+  var gs = window.__aclGrants || [];
+  if (!gs.length) return '<div style="padding:14px;text-align:center;color:var(--success);font-size:12px;">当前公开（无限制）</div>';
+  return gs.map(function(g, i) {
+    var tag = g.principalType === 'USER' ? '用户' : '角色';
+    return '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:6px 2px;font-size:13px;">'
+      + '<span style="font-size:10px;color:var(--primary);border:1px solid var(--primary);border-radius:3px;padding:0 4px;">' + tag + '</span>'
+      + '<span style="flex:1;">' + escapeHtml(g.principal) + '</span>'
+      + '<button class="btn btn-sm" style="color:var(--error);" onclick="dmAclRemove(' + i + ')">移除</button></div>';
+  }).join('');
+}
+
+function dmAclAdd(type) {
+  var val = type === 'ROLE' ? (document.getElementById('aclRoleSel') || {}).value : ((document.getElementById('aclUserInp') || {}).value || '').trim();
+  if (!val) { showToast(type === 'ROLE' ? '请选择角色' : '请输入用户名', 'error'); return; }
+  window.__aclGrants = window.__aclGrants || [];
+  if (window.__aclGrants.some(function(g){ return g.principalType === type && g.principal === val; })) { showToast('已存在该授权', 'error'); return; }
+  window.__aclGrants.push({ principalType: type, principal: val });
+  if (type === 'USER') document.getElementById('aclUserInp').value = '';
+  var box = document.getElementById('aclGrantList'); if (box) box.innerHTML = dmAclRenderGrants();
+}
+
+function dmAclRemove(i) {
+  window.__aclGrants.splice(i, 1);
+  var box = document.getElementById('aclGrantList'); if (box) box.innerHTML = dmAclRenderGrants();
+}
+
+function dmAclSave() {
+  var rid = dmCurrentDb + '.' + dmCurrentTable;
+  apiPost('/api/data-acl/grants', { resourceType: 'TABLE', resourceId: rid, grants: window.__aclGrants || [] }).then(function(res) {
+    if (res && res.code === 0) { showToast(res.data || '已保存', 'success'); closeModal(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function(){ showToast('保存失败', 'error'); });
+}
+
 function dmBackToHome() {
   document.getElementById('datamapDetail').classList.remove('active');
   document.getElementById('datamapHome').style.display = '';
@@ -10833,6 +10897,7 @@ window.umRenderUsers = function() {
       + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
       + '<td><a href="#" data-perm="settings:user" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umViewUserPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umDirectPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">直授</a>'
       + '<a href="#" data-perm="settings:user" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
       + '<a href="#" data-perm="settings:user" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:var(--primary);margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
       + '<a href="#" data-perm="settings:user" onclick="umDeleteUser(' + u.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
@@ -11074,6 +11139,40 @@ window.umSavePerms = function(id) {
   if (document.getElementById('umfPermAll').checked) perms = ['*'];
   else perms = Array.prototype.slice.call(document.querySelectorAll('#umfPermTree .umf-perm:checked')).map(function(c) { return c.value; });
   apiPost('/api/rbac/roles/' + id + '/perms', { perms: perms }).then(function(res) { if (res && res.code === 0) { showToast('权限已保存', 'success'); projCloseModalBox(); loadUserMgmt(); } else showToast((res && res.msg) || '保存失败', 'error'); }).catch(function() { showToast('保存失败', 'error'); });
+};
+// 用户直授权限点编辑(叠加于角色之上, 角色∪直授) —— 给个别用户临时多开权限而不改角色
+window.umDirectPerms = function(id, username) {
+  Promise.all([api('/api/rbac/users/' + id + '/direct-perms'), api('/api/rbac/perms/catalog')]).then(function(rs) {
+    var direct = (rs[0] && rs[0].code === 0 && rs[0].data) || [];
+    var groups = (rs[1] && rs[1].code === 0 && rs[1].data) || [];
+    var has = {}; direct.forEach(function(p) { has[p] = true; });
+    var tree = groups.map(function(g) {
+      var items = (g.perms || []).map(function(p) {
+        var ck = has[p.code] ? ' checked' : '';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 0;cursor:pointer;">'
+          + '<input type="checkbox" class="umf-perm" value="' + escapeHtml(p.code) + '"' + ck + '>'
+          + '<span>' + escapeHtml(p.name) + '</span>'
+          + '<code style="font-size:var(--fs-xs);color:var(--text-faint);">' + escapeHtml(p.code) + '</code></label>';
+      }).join('');
+      return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin-bottom:8px;">'
+        + '<label style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;cursor:pointer;margin-bottom:4px;">'
+        + '<input type="checkbox" class="umf-group" data-module="' + escapeHtml(g.module) + '" onchange="umToggleGroup(this)"> ' + escapeHtml(g.moduleName) + '</label>'
+        + '<div data-group="' + escapeHtml(g.module) + '" style="padding-left:20px;">' + items + '</div></div>';
+    }).join('');
+    var h = '<div style="min-width:480px;max-width:560px;">'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">直授权限点<b>叠加</b>在该用户角色权限之上（角色 ∪ 直授）。用于临时给个别用户多开权限而不改角色。</div>'
+      + '<div id="umfPermTree" style="max-height:380px;overflow-y:auto;">' + tree + '</div>'
+      + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSaveDirectPerms(' + id + ')">保存</button></div></div>';
+    projShowModalBox('直授权限 · ' + (username || ('#' + id)), h);
+    document.querySelectorAll('#umfPermTree .umf-group').forEach(function(gck) { umSyncGroupHead(gck.dataset.module); });
+  }).catch(function() { showToast('加载失败', 'error'); });
+};
+window.umSaveDirectPerms = function(id) {
+  var perms = Array.prototype.slice.call(document.querySelectorAll('#umfPermTree .umf-perm:checked')).map(function(c) { return c.value; });
+  apiPost('/api/rbac/users/' + id + '/direct-perms', { perms: perms }).then(function(res) {
+    if (res && res.code === 0) { showToast('直授权限已保存', 'success'); projCloseModalBox(); loadUserMgmt(); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
 };
 // 查看用户的有效权限(跨角色去重后, 按 PermCatalog 模块分组只读展示) —— 排障/审查用
 window.umViewUserPerms = function(id, username) {

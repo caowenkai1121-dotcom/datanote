@@ -37,10 +37,11 @@ class DataMapServiceAiSearchTest {
     @Mock private DnTableMetaMapper tableMetaMapper;
     @Mock private DnColumnMetaMapper columnMetaMapper;
     @Mock private DatasourceExploreService exploreService;
+    @Mock private com.datanote.platform.iam.DataAclService dataAclService;
 
     private DataMapService svc() {
         return new DataMapService(aiAssistService, tableCommentMapper, tableFavoriteMapper,
-                searchHistoryMapper, tableMetaMapper, columnMetaMapper, exploreService);
+                searchHistoryMapper, tableMetaMapper, columnMetaMapper, exploreService, dataAclService);
     }
 
     @Test
@@ -53,6 +54,7 @@ class DataMapServiceAiSearchTest {
             tables.add(t);
         }
         when(exploreService.getAllTablesSummary()).thenReturn(tables);
+        when(dataAclService.deniedIds("TABLE")).thenReturn(java.util.Collections.emptySet());
         when(aiAssistService.chat(any(), isNull())).thenReturn("[]");
 
         svc().aiSearch("找订单表");

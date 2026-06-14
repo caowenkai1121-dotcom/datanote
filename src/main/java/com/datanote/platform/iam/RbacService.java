@@ -42,6 +42,7 @@ public class RbacService {
     private final DnRoleMapper roleMapper;
     private final DnUserRoleMapper userRoleMapper;
     private final DnRolePermMapper rolePermMapper;
+    private final com.datanote.platform.iam.mapper.DnUserPermMapper userPermMapper;   // 用户直授权限点
     /** BCrypt 无状态，自建实例避免注入 SecurityConfig 的 PasswordEncoder Bean 造成循环依赖
      *  (SecurityConfig→DbUserDetailsService→RbacService→PasswordEncoder)。哈希跨实例兼容。 */
     private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -360,19 +361,43 @@ public class RbacService {
         if (userId == null) {
             return Collections.emptySet();
         }
+        // 有效权限 = 角色权限并集 ∪ 用户直授权限点(叠加)
+        Set<String> perms = new LinkedHashSet<>();
         List<Long> roleIds = getUserRoleIds(userId);
-        if (roleIds.isEmpty()) {
-            return Collections.emptySet();
+        if (!roleIds.isEmpty()) {
+            List<DnRolePerm> rows = rolePermMapper.selectList(new QueryWrapper<DnRolePerm>().in("role_id", roleIds));
+            if (rows != null) for (DnRolePerm r : rows) if (r.getPermCode() != null) perms.add(r.getPermCode());
         }
-        QueryWrapper<DnRolePerm> qw = new QueryWrapper<>();
-        qw.in("role_id", roleIds);
-        List<DnRolePerm> rows = rolePermMapper.selectList(qw);
-        if (rows == null || rows.isEmpty()) {
-            return Collections.emptySet();
+        for (String p : getUserDirectPerms(userId)) perms.add(p);
+        return perms;
+    }
+
+    /** 用户直授权限点(不含角色继承)。 */
+    public List<String> getUserDirectPerms(Long userId) {
+        if (userId == null) return new ArrayList<>();
+        List<com.datanote.platform.iam.model.DnUserPerm> rows = userPermMapper.selectList(
+                new QueryWrapper<com.datanote.platform.iam.model.DnUserPerm>().eq("user_id", userId));
+        List<String> out = new ArrayList<>();
+        if (rows != null) for (com.datanote.platform.iam.model.DnUserPerm r : rows) if (r.getPermCode() != null) out.add(r.getPermCode());
+        return out;
+    }
+
+    /** 全量重置某用户的直授权限点(覆盖式)。 */
+    public void setUserDirectPerms(Long userId, List<String> perms, String operator) {
+        if (userId == null) return;
+        userPermMapper.delete(new QueryWrapper<com.datanote.platform.iam.model.DnUserPerm>().eq("user_id", userId));
+        if (perms != null) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String p : perms) {
+                if (p == null || p.trim().isEmpty() || !seen.add(p.trim())) continue;
+                com.datanote.platform.iam.model.DnUserPerm up = new com.datanote.platform.iam.model.DnUserPerm();
+                up.setUserId(userId);
+                up.setPermCode(p.trim());
+                up.setCreatedBy(operator);
+                up.setCreatedAt(java.time.LocalDateTime.now());
+                userPermMapper.insert(up);
+            }
         }
-        return rows.stream()
-                .map(DnRolePerm::getPermCode)
-                .collect(Collectors.toSet());
     }
 
     /**

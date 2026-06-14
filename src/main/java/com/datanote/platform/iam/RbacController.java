@@ -287,11 +287,38 @@ public class RbacController {
         return R.ok(result);
     }
 
-    @Operation(summary = "用户的有效权限汇总(跨角色去重, 排障/审查用)")
+    @Operation(summary = "用户的有效权限汇总(角色∪直授, 跨角色去重, 排障/审查用)")
     @GetMapping("/users/{id}/perms")
     public R<List<String>> userEffectivePerms(@PathVariable Long id) {
         java.util.Set<String> perms = rbacService.getUserPerms(id);
         return R.ok(new ArrayList<>(perms));
+    }
+
+    @Operation(summary = "用户直授权限点(不含角色继承)")
+    @GetMapping("/users/{id}/direct-perms")
+    public R<List<String>> userDirectPerms(@PathVariable Long id) {
+        return R.ok(rbacService.getUserDirectPerms(id));
+    }
+
+    @Operation(summary = "设置用户直授权限点(覆盖式, 叠加于角色之上)")
+    @PostMapping("/users/{id}/direct-perms")
+    public R<String> setUserDirectPerms(@PathVariable Long id, @RequestBody SetPermsRequest req) {
+        // 越权自提升防护: 非超管不得直授自己不具备的权限点(否则可给自己塞 '*' 提权)
+        DnUser self = rbacService.findByUsername(actor());
+        boolean selfSuper = self != null && rbacService.isSuperAdmin(self.getId());
+        if (!selfSuper && self != null && req.getPerms() != null) {
+            java.util.Set<String> myPerms = rbacService.getUserPerms(self.getId());
+            for (String p : req.getPerms()) {
+                if (!RbacService.hasPermission(myPerms, p)) {
+                    return R.fail(R.CODE_FORBIDDEN, "不能授予你本人不具备的权限(" + p + ")");
+                }
+            }
+        }
+        rbacService.setUserDirectPerms(id, req.getPerms(), actor());
+        permInterceptor.evictAll();   // 直授变更立即生效
+        auditService.record(actor(), "PERM_CHANGE", "POST", "/api/rbac/users/" + id + "/direct-perms", null, 200,
+                "设置用户#" + id + " 直授权限点 " + (req.getPerms() == null ? 0 : req.getPerms().size()) + " 个");
+        return R.ok("设置成功");
     }
 
     @Operation(summary = "创建角色")
