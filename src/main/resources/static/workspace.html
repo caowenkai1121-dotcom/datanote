@@ -12832,10 +12832,10 @@ window.dbsyncBulkAddByRegex = function() {
     + '<label style="font-size:12px;color:var(--text-regular);">包含正则 include（空=全部，全匹配语义）<input id="dbsyncRegexInc" class="dbsync-form-input" style="margin-top:3px;font-family:monospace;" placeholder="如 user_\\d+"></label>'
     + '<label style="font-size:12px;color:var(--text-regular);">排除正则 exclude（可空）<input id="dbsyncRegexExc" class="dbsync-form-input" style="margin-top:3px;font-family:monospace;" placeholder="如 tmp_.*"></label>'
     + '<label style="font-size:12px;color:var(--text-regular);">汇聚目标表（可空：填则所有匹配表→同一目标表=分表汇聚多对一）<input id="dbsyncRegexAgg" class="dbsync-form-input" style="margin-top:3px;" placeholder="留空：目标表名=源表名"></label>'
-    + '<div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="btn btn-sm btn-primary" onclick="dbsyncDoBulkAdd()">匹配并添加</button></div>'
+    + '<div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="btn btn-sm btn-primary" onclick="dbsyncPreviewBulkAdd()">匹配预览</button></div>'
     + '<div id="dbsyncRegexResult" style="font-size:12px;color:var(--text-muted);"></div></div>');
 };
-window.dbsyncDoBulkAdd = function() {
+window.dbsyncPreviewBulkAdd = function() {
   var dsId = document.getElementById('dfsSrcDsId').value;
   var db = document.getElementById('dfsSrcDb').value;
   var inc = ((document.getElementById('dbsyncRegexInc') || {}).value || '').trim();
@@ -12849,15 +12849,27 @@ window.dbsyncDoBulkAdd = function() {
     var matched = (res && res.code === 0) ? (res.data || []) : (Array.isArray(res) ? res : null);
     if (!matched) { if (rt) rt.innerHTML = '<span style="color:var(--error);">' + escapeHtml((res && res.msg) || '匹配失败') + '</span>'; return; }
     if (matched.length === 0) { if (rt) rt.textContent = '无匹配表'; return; }
-    var container = document.getElementById('dfsTableRows');
-    matched.forEach(function(t) {
-      var idx = container.children.length;
-      container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx, { sourceTable: t, targetTable: agg || t, createTargetTable: true }));
-    });
-    showToast('已批量添加 ' + matched.length + ' 张表' + (agg ? '（汇聚到 ' + agg + '）' : ''), 'success');
-    var ov = document.getElementById('dbsyncPreviewOverlay');
-    if (ov) ov.remove();
+    window.__dbsyncBulkMatched = matched; window.__dbsyncBulkAgg = agg;
+    // 预览匹配结果, 确认后才添加(防盲目一次塞入几十上百张表)
+    var listHtml = matched.slice(0, 200).map(function(t){ return escapeHtml(t); }).join('、');
+    if (rt) rt.innerHTML = '<div style="margin-bottom:6px;color:var(--text-regular);">匹配到 <b>' + matched.length + '</b> 张表'
+      + (agg ? '（汇聚到 <b>' + escapeHtml(agg) + '</b>）' : '') + '：</div>'
+      + '<div style="max-height:160px;overflow:auto;background:var(--bg-hover);border-radius:4px;padding:6px 8px;line-height:1.7;">' + listHtml + (matched.length > 200 ? ' …' : '') + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="dbsyncConfirmBulkAdd()">确认添加 ' + matched.length + ' 张</button></div>';
   }).catch(function() { if (rt) rt.innerHTML = '<span style="color:var(--error);">请求失败</span>'; });
+};
+window.dbsyncConfirmBulkAdd = function() {
+  var matched = window.__dbsyncBulkMatched || [], agg = window.__dbsyncBulkAgg || '';
+  if (!matched.length) return;
+  var container = document.getElementById('dfsTableRows');
+  matched.forEach(function(t) {
+    var idx = container.children.length;
+    container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx, { sourceTable: t, targetTable: agg || t, createTargetTable: true }));
+  });
+  showToast('已批量添加 ' + matched.length + ' 张表' + (agg ? '（汇聚到 ' + agg + '）' : ''), 'success');
+  window.__dbsyncBulkMatched = null;
+  var ov = document.getElementById('dbsyncPreviewOverlay');
+  if (ov) ov.remove();
 };
 
 window.dbsyncDelTableRow = function(btn) {
