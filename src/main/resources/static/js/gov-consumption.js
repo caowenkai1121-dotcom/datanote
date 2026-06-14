@@ -104,7 +104,7 @@
     var box0 = document.getElementById('consDataset'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(3)); }
     DN.get('/api/consumption/dataset/list').then(function (rows) {
       var box = document.getElementById('consDataset'); if (!box) return; box.innerHTML = '';
-      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无数据集，点「新建数据集」把精选 SQL 注册为可复用查询', 'list')); return; }
+      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无数据集，把精选 SQL 注册为可复用查询', 'list', { label: '+ 新建数据集', onClick: function () { addDataset(); } })); return; }
       box.appendChild(DN.table({
         rows: rows, pageSize: 10, searchKeys: ['datasetName', 'datasetCode', 'owner'], searchPlaceholder: '搜索数据集',
         empty: '暂无数据集', emptyIcon: 'list',
@@ -231,7 +231,7 @@
     var box0 = document.getElementById('consBoard'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(4)); }
     DN.get('/api/consumption/metric/freshness').then(function (rows) {
       var box = document.getElementById('consBoard'); if (!box) return; box.innerHTML = '';
-      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无启用指标，请先在指标管理中定义并启用', 'chart')); return; }
+      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('暂无启用指标，请先在指标管理中定义并启用', 'chart', (typeof navigateTo === 'function' ? { label: '去指标管理', onClick: function () { navigateTo('metrics'); } } : null))); return; }
       box.appendChild(DN.table({
         rows: rows, pageSize: 10, searchKeys: ['metricCode', 'metricName'], searchPlaceholder: '搜索指标',
         empty: '暂无指标', emptyIcon: 'chart',

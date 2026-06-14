@@ -275,8 +275,15 @@
     return { el: DN.h('div', { class: 'gov-card' }, [hd, body]), body: body };
   };
 
-  DN.empty = function (text, icon) {
-    return DN.h('div', { class: 'gov-empty' }, [DN.h('span', { html: DN.icon(icon || 'inbox') }), DN.h('div', { class: 'et', text: text || '暂无数据' })]);
+  DN.empty = function (text, icon, action) {
+    var children = [DN.h('span', { html: DN.icon(icon || 'inbox') }), DN.h('div', { class: 'et', text: text || '暂无数据' })];
+    // 可选行动按钮: 空态直接引导下一步(如"去新建"), 提升可达性。action={label,onClick}
+    if (action && action.label && typeof action.onClick === 'function') {
+      var b = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: action.label, style: 'margin-top:10px;' });
+      b.onclick = action.onClick;
+      children.push(b);
+    }
+    return DN.h('div', { class: 'gov-empty' }, children);
   };
   // 错误态 + 重试按钮：加载失败时展示原因 + 可点重试(重新执行 retryFn)，替代纯空态/纯 toast，让用户无需刷新整页即可恢复
   DN.errorBox = function (text, retryFn) {
