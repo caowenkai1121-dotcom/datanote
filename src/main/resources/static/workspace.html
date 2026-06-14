@@ -964,7 +964,7 @@
     <!-- 项目 新建/编辑 弹窗 -->
     <div class="g-modal-overlay" id="projModal" onclick="if(event.target===this)projCloseModal()">
       <div class="g-modal" style="width:520px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'){var b=this.querySelector('.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
-        <div class="g-modal-header"><span id="projModalTitle">新建项目</span><button class="g-modal-close" onclick="projCloseModal()">&times;</button></div>
+        <div class="g-modal-header"><span id="projModalTitle">新建项目</span><button class="g-modal-close" aria-label="关闭" title="关闭" onclick="projCloseModal()">&times;</button></div>
         <div class="g-modal-body">
           <input type="hidden" id="projId">
           <div class="ds-form-row" id="projTemplateRow"><label>模板</label>
@@ -1009,7 +1009,7 @@
     <!-- 提交发布 弹窗 -->
     <div class="g-modal-overlay" id="projReleaseModal" onclick="if(event.target===this)projCloseReleaseModal()">
       <div class="g-modal" style="width:520px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'){var b=this.querySelector('.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
-        <div class="g-modal-header"><span>提交发布</span><button class="g-modal-close" onclick="projCloseReleaseModal()">&times;</button></div>
+        <div class="g-modal-header"><span>提交发布</span><button class="g-modal-close" aria-label="关闭" title="关闭" onclick="projCloseReleaseModal()">&times;</button></div>
         <div class="g-modal-body">
           <div class="ds-form-row"><label>标题</label><input id="projRelTitle" placeholder="留空默认 发布 vN"></div>
           <div class="ds-form-row"><label>目标环境</label>
@@ -12324,10 +12324,16 @@ function closeAiScriptNameModal() {
     var name = window.__user || '';
     if (name) { btn.textContent = name.charAt(0).toUpperCase(); btn.title = name + ' · 账号设置'; }
     btn.style.cursor = 'pointer';
-    btn.onclick = function(){
+    // 无障碍: 可点击 div → 暴露按钮语义 + 键盘可达(Enter/Space)
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('tabindex', '0');
+    btn.setAttribute('aria-label', (name ? name + ' · ' : '') + '账号设置');
+    var _open = function(){
       if (!window.__authEnabled) { if (window.showToast) showToast('当前为开放模式,未启用登录', ''); return; }
       window.dnOpenAccountDrawer();
     };
+    btn.onclick = _open;
+    btn.onkeydown = function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _open(); } };
   };
   // 账号抽屉: 当前身份 + 自助改密 + 登出
   window.dnOpenAccountDrawer = function(){
