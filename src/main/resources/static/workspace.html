@@ -472,7 +472,7 @@
         <div class="ds-form-row"><label>端口</label><input id="dsPort" placeholder="3306" type="number"></div>
         <div class="ds-form-row"><label>数据库名</label><input id="dsDatabaseName" placeholder="MySQL可留空；PostgreSQL/SQLServer 连接库名(如 testdb)；Oracle 服务名(如 XEPDB1)"></div>
         <div class="ds-form-row"><label>用户名</label><input id="dsUser" placeholder="root"></div>
-        <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码"></div>
+        <div class="ds-form-row"><label>密码</label><input id="dsPass" type="password" placeholder="密码" style="flex:1;"><button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,'dsPass')" title="显示密码" style="margin-left:4px;">👁</button></div>
         <div class="ds-form-row"><label>所属项目</label><select id="dsProjectSel"><option value="">（不归属项目）</option></select></div>
         <div class="ds-form-actions">
           <button class="btn btn-primary" data-perm="datasource:edit" onclick="saveDatasource()">
@@ -1134,7 +1134,7 @@
                 </select>
               </div>
               <div class="ds-form-row"><label>用户名</label><input id="cfgHiveUser" placeholder="可选"></div>
-              <div class="ds-form-row"><label>密码</label><input id="cfgHivePass" type="password" placeholder="可选"></div>
+              <div class="ds-form-row"><label>密码</label><input id="cfgHivePass" type="password" placeholder="可选" style="flex:1;"><button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,'cfgHivePass')" title="显示密码" style="margin-left:4px;">👁</button></div>
               <div class="ds-form-row"><label>默认库</label><input id="cfgHiveDb" placeholder="ods" value="ods"></div>
               <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-sm" onclick="testHiveConnection()">测试 Doris 连接</button>
@@ -11122,7 +11122,8 @@ window.umPermModal = function(id) {
     }).join('');
     var h = '<div style="min-width:480px;max-width:560px;">'
       + '<div style="margin-bottom:10px;"><label style="font-size:13px;cursor:pointer;font-weight:600;"><input type="checkbox" id="umfPermAll"' + (hasAll ? ' checked' : '') + ' onchange="umToggleAll(this.checked)"> 全部权限（*，超级管理员）</label></div>'
-      + '<div id="umfPermTree" style="max-height:380px;overflow-y:auto;">' + tree + '</div>'
+      + '<input id="umfPermSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索权限点（名称/代码）…" oninput="umFilterPermTree(this.value)">'
+      + '<div id="umfPermTree" style="max-height:360px;overflow-y:auto;">' + tree + '</div>'
       + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSavePerms(' + id + ')">保存</button></div></div>';
     projShowModalBox('设置角色权限 · ' + (r.roleName || r.roleCode), h);
     // 初始化各组头勾选态
@@ -11131,6 +11132,31 @@ window.umPermModal = function(id) {
 };
 window.umToggleAll = function(all) {
   document.querySelectorAll('#umfPermTree input[type=checkbox]').forEach(function(c) { c.disabled = all; });
+};
+// 密码显示/隐藏切换(人性化: 录入时可核对)
+window.dnTogglePwd = function(btn, inputId) {
+  var i = document.getElementById(inputId);
+  if (!i) return;
+  var toText = i.type === 'password';
+  i.type = toText ? 'text' : 'password';
+  btn.textContent = toText ? '🙈' : '👁';
+  btn.title = toText ? '隐藏密码' : '显示密码';
+};
+// 权限点搜索: 按名称/代码过滤(>40 权限点时快速定位); 组内全隐则隐藏组
+window.umFilterPermTree = function(kw) {
+  kw = (kw || '').trim().toLowerCase();
+  document.querySelectorAll('#umfPermTree [data-group]').forEach(function(grp) {
+    var anyShown = false;
+    grp.querySelectorAll('.umf-perm').forEach(function(c) {
+      var lab = c.closest('label');
+      if (!lab) return;
+      var hit = !kw || lab.textContent.toLowerCase().indexOf(kw) >= 0;
+      lab.style.display = hit ? '' : 'none';
+      if (hit) anyShown = true;
+    });
+    var wrap = grp.closest('div[style*="border"]') || grp.parentElement;
+    if (wrap) wrap.style.display = anyShown ? '' : 'none';
+  });
 };
 window.umToggleGroup = function(head) {
   var mod = head.dataset.module;
@@ -11168,7 +11194,8 @@ window.umDirectPerms = function(id, username) {
     }).join('');
     var h = '<div style="min-width:480px;max-width:560px;">'
       + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">直授权限点<b>叠加</b>在该用户角色权限之上（角色 ∪ 直授）。用于临时给个别用户多开权限而不改角色。</div>'
-      + '<div id="umfPermTree" style="max-height:380px;overflow-y:auto;">' + tree + '</div>'
+      + '<input id="umfPermSearch" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="搜索权限点（名称/代码）…" oninput="umFilterPermTree(this.value)">'
+      + '<div id="umfPermTree" style="max-height:360px;overflow-y:auto;">' + tree + '</div>'
       + '<div style="text-align:right;margin-top:10px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSaveDirectPerms(' + id + ')">保存</button></div></div>';
     projShowModalBox('直授权限 · ' + (username || ('#' + id)), h);
     document.querySelectorAll('#umfPermTree .umf-group').forEach(function(gck) { umSyncGroupHead(gck.dataset.module); });
@@ -11764,7 +11791,7 @@ function openAiConfig() {
       + '</select></div>'
       + '<div>'
       + '<label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">API Key</label>'
-      + '<input id="aiCfgKey" class="prop-input" type="password" style="width:100%;" placeholder="sk-ant-..." value="' + (cfg.apiKeyMasked || '') + '">'
+      + '<div style="display:flex;gap:4px;align-items:center;"><input id="aiCfgKey" class="prop-input" type="password" style="flex:1;" placeholder="sk-ant-..." value="' + (cfg.apiKeyMasked || '') + '"><button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,\'aiCfgKey\')" title="显示密码">👁</button></div>'
       + '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;">密钥加密存储在数据库中，不会明文展示</div></div>'
       + '<div>'
       + '<label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Base URL</label>'
@@ -11860,7 +11887,7 @@ function openStoreConfig() {
       + '<option value="siliconflow"' + (prov === 'siliconflow' ? ' selected' : '') + '>硅基流动 (BAAI/bge-m3)</option>'
       + '<option value="custom"' + (prov === 'custom' ? ' selected' : '') + '>自定义(OpenAI兼容)</option></select></div>'
       + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">API Key</label>'
-      + '<input id="embCfgKey" class="prop-input" type="password" style="width:100%;" placeholder="' + (e.apiKeyMasked || 'sk-...') + '"></div>'
+      + '<div style="display:flex;gap:4px;align-items:center;"><input id="embCfgKey" class="prop-input" type="password" style="flex:1;" placeholder="' + (e.apiKeyMasked || 'sk-...') + '"><button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,\'embCfgKey\')" title="显示密码">👁</button></div></div>'
       + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">Base URL</label>'
       + '<input id="embCfgBaseUrl" class="prop-input" style="width:100%;" value="' + escapeHtml(e.baseUrl || '') + '"></div>'
       + '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">模型</label>'
