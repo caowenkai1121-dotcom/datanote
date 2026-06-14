@@ -111,7 +111,7 @@
     <span class="env-badge">本地环境</span>
     <!-- IV-1: 站内通知铃铛(30s 只轮询未读 count) -->
     <div id="dnBellWrap" style="position:relative;">
-      <button id="dnBellBtn" title="站内通知" onclick="dnBellToggle()" style="position:relative;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:var(--text-regular);display:inline-flex;align-items:center;">
+      <button id="dnBellBtn" title="站内通知" aria-label="站内通知" onclick="dnBellToggle()" style="position:relative;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;color:var(--text-regular);display:inline-flex;align-items:center;">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" style="width:15px;height:15px;"><path d="M8 2a4 4 0 00-4 4v3l-1.2 2h10.4L12 9V6a4 4 0 00-4-4z"/><path d="M6.5 13a1.5 1.5 0 003 0"/></svg>
         <span id="dnBellBadge" style="display:none;position:absolute;top:-5px;right:-5px;min-width:15px;height:15px;line-height:15px;text-align:center;background:var(--error);color:var(--text-inverse);border-radius:var(--radius-lg);font-size:10px;padding:0 3px;"></span>
       </button>
@@ -5248,7 +5248,7 @@ function showModal(title, bodyHtml, buttons, options) {
   }
   var w = options.width || 400;
   overlay.innerHTML = '<div class="g-modal" style="width:' + w + 'px;">'
-    + '<div class="g-modal-header"><span>' + title + '</span><button class="g-modal-close" onclick="closeModal()">&times;</button></div>'
+    + '<div class="g-modal-header"><span>' + title + '</span><button class="g-modal-close" aria-label="关闭" title="关闭(Esc)" onclick="closeModal()">&times;</button></div>'
     + '<div class="g-modal-body">' + bodyHtml + '</div>'
     + '<div class="g-modal-footer">' + (buttons || '') + '</div>'
     + '</div>';
