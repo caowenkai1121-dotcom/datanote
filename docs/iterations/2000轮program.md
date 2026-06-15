@@ -547,3 +547,7 @@
 
 ## R233 [UI重构·第104轮] 数据集成监控大屏模态 Esc+遮罩关闭(工作流确认)
 - workspace.html: Ultracode审计确认 dbsyncDashboardModal 漏在 Esc 处理器(其他 dbsync 弹窗都有)。补 Esc 关闭(全局 keydown 加 dm.classList.contains('show')→dbsyncCloseDashboard) + 遮罩点击关闭。?v=u174。
+
+## R234 [UI重构·第105轮] 全局 a11y: 可点击div/span 键盘可达(工作流确认)
+- 工作流审计确认大量 onclick 的 div/span(侧栏tab×21/wlc-hero按钮/wlc-action卡/result-tab/history-tab/dbsync-section展开 等~30处)缺 role/tabindex/keydown。一处全局解决: dnA11yEnhance() 给 div[onclick]/span[onclick] 补 role=button+tabindex=0(load + navigateTo后扫描) + 全局 keydown 委托(Enter/Space→click)。真机验证 运维6侧栏tab全获a11y属性、聚焦"补数据"Enter→激活。
+- **注**: 工作流"darkmode-#fff"6条经人工核验为**误报**(.wlc-hero/.dash-hero 背景是固定靛蓝渐变 var(--dash-brand-grad)=linear-gradient(#1d6fff,#3aa0ff)、气泡var(--primary)靛蓝、徽标warning橙、toast status色, 白字在恒定彩底两套主题都正确; 改 --text-inverse 深色变暗字反更糟), 故跳过。?v=u175。
