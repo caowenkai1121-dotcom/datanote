@@ -170,3 +170,13 @@
 - 后端(MetricDetailService.detail 扩展, 无新表): +alertIssues(该指标自动建的治理工单 issue_type=METRIC/object_ref=metric:id, 近10条=预警历史) +consumers(dn_consumption_log 近90天按消费方聚合 Top8=下游消费方) +trace(calcFormula+最近一次计算 calcSql/耗时/状态=计算溯源) +alert.rules 项补 ruleId(供前端编辑/删除)。预警自动建工单+通知 owner+恢复关单 R114 已具备, 本轮做前端可管理。
 - 前端(详情页): 异常与预警诊断 → 加「+新建预警规则」+每条规则 编辑/删除(复用 /alert-rule/save、DELETE /alert-rule/{id}, 7 比较符+区间+3 严重度弹窗) + 预警历史表(工单#/严重度/状态/时间, 点击下钻治理工单); 指标血缘 → 升级「指标溯源」: 上游来源/维度表→指标→结果/消费 + 下游消费方 pill(近90天) + 计算溯源(公式 + 最近计算 SQL/耗时)。
 - 部署: mvn package + deploy_jar 全量, ?v=u68。待真机验证。
+
+## R128 [业主令·Ultracode] 全模块深度审计 → 整合(合并/增强/移除)
+- 业主令: 深度探索所有模块, 类似功能合并/薄弱增强/孤立移除。
+- 方法: Workflow 三阶段(11模块并行测绘→综合候选→对抗验证 grep static 防假阳), 15 agent。
+- **结论(实事求是)**: 系统健康/成熟, 11模块分工清晰, 印证 structural-audit 前结论。
+  - **移除**: 唯一候选(datamodel 4 死库列 fk_attr_id/ref_entity_id/dict_code/parent_entity_id)对抗验证 confirmed=false — 确为死列但 DROP 迁移风险>收益, 仅标注预留, 不动。测绘报的其余"死码"均假阳(dashboard端点被smLoad用/baseline属运维/projOpenDetailById已定义)——再证"前端动态拼URL/跨模块归属致grep漏报"陷阱。→ 无安全可删。
+  - **合并**: 2候选(首页待办并 mySubmissions/myIssues、指标refs三处渲染统一)对抗验证均 confirmed=false(已wired正常, 合并破坏口径/联动)。→ 无值得合并真重复。
+  - **增强**: 7项真薄弱(无需验证)。复核纠正1假阳(脱敏: preview 已 fail-closed 打码、profile 只返回统计量无原始值=非fail-open)。
+- **本轮执行 S2(高价值低成本): 指标新鲜度/僵尸信号浮现**(后端 freshness/zombies/overview 早有, UI未消费): 指标列表加「新鲜度」列(最新/陈旧Nh/未取值 pill)+新鲜度筛选(陈旧/最新/未取值)+ 详情驾驶舱「更新时间」磁贴加陈旧/最新徽章。纯前端(stale 按 updatedAt+26h 前端算)。真机验证列/筛选/徽章。?v=u69。
+- 遗留增强 backlog(已验真薄弱, 后续做): 运行日志分页+关键字+截断(防OOM,high)/首页工单卡按状态分布(low)/基线关联任务校验+选择器/血缘重建保留手工边/datamodel派生质量规则闭环(确认default status=0)。
