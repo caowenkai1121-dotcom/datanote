@@ -147,6 +147,8 @@ textarea:focus {
 .sched-log-overlay .sched-log-modal {
   animation: dnModalPop .2s cubic-bezier(.2,.7,.25,1);
 }
+/* metricModal 等用 display:flex 开(非 .show 类), 补弹入动画使与其他弹窗一致 */
+.quality-modal-overlay[style*="flex"] .quality-modal { animation: dnModalPop .2s cubic-bezier(.2,.7,.25,1); }
 @keyframes dnModalPop { from { opacity: 0; transform: translateY(-10px) scale(.985); } to { opacity: 1; transform: none; } }
 
 /* ---- 按钮精修(R139): 字重提升 + 次级按钮 hover 柔底(不动 danger 幽灵风) ---- */

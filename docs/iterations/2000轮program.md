@@ -465,3 +465,6 @@
 
 ## R207 [UI重构·第78轮] 新建指标弹窗遮罩点击关闭
 - workspace.html: metricModal 遮罩加 onclick(event.target===this 时 closeMetricModal), 与 projShowModalBox/cmdk 等遮罩点击关闭一致。真机验证: 点遮罩→关闭(none), 点弹窗内部→保持打开(flex)。?v=u148。
+
+## R208 [UI重构·第79轮] 修 display:flex 弹窗缺弹入动画
+- modern.css: dnModalPop 原仅作用 .quality-modal-overlay.show .quality-modal, 但 metricModal 用 display:flex 开(非.show类)→动画不触发。补 .quality-modal-overlay[style*="flex"] .quality-modal 选择器, 让 flex 开法弹窗也有弹入动画。真机验证 新建指标弹窗内层 animationName=dnModalPop。?v=u149。
