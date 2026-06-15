@@ -557,3 +557,6 @@
 
 ## R236 [UI重构·第107轮] 读操作补catch批1(依赖/手动任务·工作流确认)
 - workspace.html: loadDependencies(/api/script/all-with-content)补 .catch→上下游+脑图区显"加载失败"; loadOpsManual(/api/task-execution/manual)补 .catch→"加载记录失败+重试"(原失败时与"暂无记录"无法区分)。?v=u177。
+
+## R237 [UI重构·第108轮] 读操作补catch批2(质量/数据源下拉·工作流确认)
+- workspace.html: loadQualityTables/loadQualityColumns(质量规则 表/字段下拉)补 .catch→下拉显"加载失败"(原失败时永停"加载中..."); dbsyncLoadDsList 空 catch 改为显"加载失败"。?v=u178。
