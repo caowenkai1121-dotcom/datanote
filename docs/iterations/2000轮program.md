@@ -340,3 +340,6 @@
 
 ## R167 [UI重构·第38轮] 命令面板支持英文/拼音首字母别名
 - workspace.html: dnCmdK 每个命令项加 kw 别名(英文+拼音首字母, 如 指标管理=metrics/zb/kpi, 数据开发=develop/kf), 过滤纳入 kw。中文系统下可直接输 metric/kf/etl 命中。真机验证 metric→指标管理+新建指标, kf→数据开发。?v=u107。
+
+## R168 [UI重构·第39轮] 命令面板底部操作提示
+- workspace.html: dnCmdK 面板加底部 footer(↑↓选择/↵打开/esc关闭 + 右侧"可输 metric/kf/拼音首字母"提示), 提升键盘操作可发现性。真机截图确认渲染+背景模糊。?v=u108。
