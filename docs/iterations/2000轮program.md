@@ -385,3 +385,6 @@
 
 ## R181 [UI重构·第52轮] 主数据xref反查命中框去硬编码
 - mdm.js: 交叉引用反查命中结果框硬编码 rgba(47,158,68,.08)/.25 → var(--success-bg)/var(--success-ring)(gov-pill同款令牌)。至此 JS 文件状态色硬编码全清。?v=u121。
+
+## R182 [UI重构·第53轮] 命令面板补"新建脚本"动作
+- workspace.html: dnCmdK 操作组补"新建脚本"(复用 createNewScript, kw=new/script/xjjb/develop), 数据开发(最常用模块)创建入口入命令面板。真机验证 script/新建 均命中。操作组现含 新建脚本/新建指标/数据集成新建任务/打开AI助手。?v=u122。
