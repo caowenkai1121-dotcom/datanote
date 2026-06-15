@@ -566,3 +566,6 @@
 
 ## R239 [UI重构·第110轮] 读操作补catch批3收尾(工作流确认清零)
 - workspace.html: depSearchTasks(依赖搜索)/depDeleteByName(删依赖前查)/loadBaselineList(Promise.all)补 .catch→错误态+重试; loadDsLogs catch 由灰字"加载失败"升级为带"重试"入口。至此 Ultracode 工作流确认的 缺catch/弹窗一致/a11y 三类(除已否决的 darkmode误报)全部修复闭环。?v=u180。
+
+## R240 [UI重构·第111轮] 周期任务空态区分筛选无匹配/无记录
+- workspace.html: renderSchedTasks 空态原统一显"请先开始今日调度"(筛选无果时误导)。改为检测筛选输入是否激活+是否有数据: 有数据但筛选无匹配→gov-empty"无匹配任务/调整筛选"; 真无数据→gov-empty"暂无调度记录/开始今日调度"。真机验证 有数据+输不存在名→"无匹配任务"。?v=u181。
