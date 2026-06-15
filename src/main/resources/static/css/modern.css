@@ -288,6 +288,10 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 /* ---- 快捷键帮助浮层(R163): 背景模糊, 与其他弹窗一致 ---- */
 #wsHelpOverlay { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 
+/* ---- 图例兜底(R175): .gov-legend 原仅作用于治理4容器, 指标详情驾驶舱(#metricDetailContent)等无作用域处图例挤成一团且色点丢失; 类选择器低优先级兜底, 不影响治理已有 ---- */
+.gov-legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.gov-legend i { display: inline-block; width: 10px; height: 10px; border-radius: var(--radius-sm); margin-right: 5px; vertical-align: middle; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

@@ -361,3 +361,7 @@
 
 ## R174 [UI重构·第45轮] 密度切换加入头部按钮
 - workspace.html: 头部 theme 与 bell 之间新增 #dnDensityBtn(三横线图标, onclick=dnToggleDensity), 密度切换从仅命令面板可达→头部直达, 提升可发现性。真机验证按钮可见、点击 data-density null↔compact 翻转并持久化 localStorage。?v=u114。
+
+## R175 [UI重构·第46轮] 深色QA + 图例兜底真bug修复
+- 深色模式跨模块QA: 数据模型/指标列表/指标详情驾驶舱(自建MetricDetail)全部深色干净无硬编码色泄漏。
+- 真bug: .gov-legend 仅作用于治理4容器(:is(#govModuleContent...)), 指标详情驾驶舱(#metricDetailContent)的趋势图例 flex/gap/色点全失效→"历史值预测目标线"挤成一团。modern.css 加无作用域 .gov-legend 类兜底(低优先级不影响治理已有)。真机验证图例恢复 ●历史值/●预测/●目标线 带色点+12px间距。?v=u115。
