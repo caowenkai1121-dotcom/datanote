@@ -3906,7 +3906,7 @@ html, body { background: var(--bg-body); color: var(--text-primary); }
 /* DN 治理层 tone 别名(ok/err/muted)，与 DN.toast 统一枚举对齐，避免回退到深色底 */
 .dn-toast-ok { background: var(--success-light); color: var(--success-text); border: 1px solid rgba(43,138,75,.4); }
 .dn-toast-err { background: var(--error-light); color: var(--error-text); border: 1px solid rgba(207,59,59,.4); }
-.dn-toast-muted { background: var(--bg-2); color: var(--text-secondary, var(--text-regular)); border: 1px solid rgba(0,0,0,.12); }
+.dn-toast-muted { background: var(--bg-2); color: var(--text-secondary, var(--text-regular)); border: 1px solid var(--border); }
 
 /* ============================================================
    11. 历史 / 版本表 / 其它通用

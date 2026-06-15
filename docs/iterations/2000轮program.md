@@ -481,3 +481,7 @@
 
 ## R212 [UI重构·第83轮] 批量修黑调背景深色不可见(承R211)
 - app.css: 承 R211, 排查并修复 6 处硬编码 rgba(0,0,0,.0x) 背景(深色下不可见/弱): .tab-close:hover(编辑器标签关闭)/.right-header .close-btn:hover/.g-modal-close:hover(弹窗关闭)/计数徽标(→--bg-sunken)/.dbsync-folder-nav-item:hover(集成目录)/.dfs-field-map-table tr:hover(字段映射) → 全改 var(--bg-hover)/var(--bg-sunken)(主题感知)。剩余黑调背景 0。深色 hover 反馈/徽标恢复可见, §6 合规。?v=u153。
+
+## R213 [UI重构·第84轮] 深色端到端QA + toast边框令牌化
+- 深色 QA: 数据开发(树/卡片/hero/KPI/状态药丸/右栏)深色端到端干净, 印证 R211/R212 修复。
+- app.css: .dn-toast-muted 黑边 rgba(0,0,0,.12)→var(--border)(深色可见)。gov-heat-cell .04 超浅装饰边(热力图色块自带强底色)保留。至此 CSS 背景/边框/文字 深色不可见类硬编码基本清零。?v=u154。
