@@ -373,3 +373,6 @@
 - dn-common.js: DN.statTile 可点磁贴补 role="button"(原已有 tabindex=0 + Enter/Space keydown), 读屏语义完整。全站 KPI 磁贴(首页/治理/主数据)键盘+读屏可达。
 - QA: 治理/主数据总览磁贴点击导航子模块正常(主数据域→域与实体建模), R176 gov-* 全局化对治理/主数据作用域无回归。深色亦干净。
 - 另: docs/待我决策.md 写阶段性同步(48轮现状/QA真bug/继续准则), 不暂停推进。?v=u117。
+
+## R178 [UI重构·第49轮] 数据开发"最近编辑"状态统一药丸
+- workspace.html: welcomeRecentList 渲染的脚本状态由纯文本色字→全局 gov-pill(已上线 is-ok 绿/未上线 is-muted 灰), 与全站状态徽标(指标/模型/项目)一致。真机验证药丸渲染正确(印证 R176 gov-pill 全局化在开发模块生效)。?v=u118。
