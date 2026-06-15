@@ -337,3 +337,6 @@
 
 ## R166 [UI重构·第37轮] 骨架屏收尾(开发目录/安全设置)
 - workspace.html: devRootBox/secAuthCard 加载占位 文本→ws-skel骨架行。至此项目/用户/系统监控/开发目录/安全设置 初始加载态全部统一为骨架屏。?v=u106。
+
+## R167 [UI重构·第38轮] 命令面板支持英文/拼音首字母别名
+- workspace.html: dnCmdK 每个命令项加 kw 别名(英文+拼音首字母, 如 指标管理=metrics/zb/kpi, 数据开发=develop/kf), 过滤纳入 kw。中文系统下可直接输 metric/kf/etl 命中。真机验证 metric→指标管理+新建指标, kf→数据开发。?v=u107。
