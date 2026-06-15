@@ -475,3 +475,6 @@
 ## R210 [UI重构·第81轮] 质量规则弹窗即聚焦 + 血缘视图QA
 - workspace.html: showAddRuleDialog 打开后聚焦 qrName。至此 quality-modal-overlay 家族(指标/质量规则)即聚焦+遮罩关闭+Esc+弹入动画 全齐。
 - QA: 数据血缘视图(血缘探查 库/表/跳数+查询/下游/上游/画图 + 图例 + 孤儿表检测)为设计良好的交互查询工具, 无需改。真机验证质量规则弹窗 activeElement=qrName。?v=u151。
+
+## R211 [UI重构·第82轮] 侧栏hover深色不可见bug修复
+- app.css: .ops-sidebar-item:hover 原用硬编码 rgba(0,0,0,.03)(黑色调)→深色模式下几乎不可见(hover无反馈, 真bug+违§6)。改 var(--bg-hover)(主题感知)。真机验证深色 var(--bg-hover)=rgb(34,39,56) 可见。侧栏激活态本就完善(3px左强调条+底色+主色+weight)。?v=u152。
