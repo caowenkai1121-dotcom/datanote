@@ -154,6 +154,15 @@ textarea:focus {
 .btn-primary, .btn-success { font-weight: 600; }
 .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):hover { background: var(--primary-light); }
 
+/* ---- 数据地图搜索 hero 氛围(R140): 顶部柔光渐变, 破平面感 ---- */
+.datamap-search-wrap {
+  background:
+    radial-gradient(720px 320px at 50% -60px, var(--primary-light), transparent 72%),
+    radial-gradient(420px 240px at 85% 10px, rgba(var(--primary-rgb), .05), transparent 70%);
+}
+.datamap-search-title { letter-spacing: -.02em; }
+.datamap-search-box:focus-within { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

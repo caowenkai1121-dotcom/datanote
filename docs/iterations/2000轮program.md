@@ -234,3 +234,7 @@
 ## R139 [UI重构·第10轮] 按钮系统精修
 - modern.css: .btn 字重 500 / 主要·成功按钮 600; 次级(非 primary/success/danger)按钮 hover 加主色柔底(原仅描边变色)。保留 .btn-danger 幽灵风(各模块依赖, 不动)。
 - 验证: 截图按钮渲染正常(删除红幽灵保留)。console 2 错误为 /api/notify/unread-count 瞬时空响应(与本改无关)。?v=u79。
+
+## R140 [UI重构·第11轮] 数据地图搜索 hero 氛围
+- modern.css: .datamap-search-wrap(原 transparent 平)加顶部双层 radial 柔光渐变(indigo)破平面感; 搜索框 focus-within 微抬+悬浮阴影; 标题负字距。
+- 真机截图: 搜索 hero 有 indigo 辉光质感, 表粘性表头/db pill 现代。?v=u80。
