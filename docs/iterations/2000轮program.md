@@ -318,3 +318,6 @@
 
 ## R160 [UI重构·第31轮] 结果/日志面板标签现代化
 - modern.css: 数据开发底部 .result-tab(运行日志/执行结果)加 hover(柔底)+ 激活底色(primary-light)+ 过渡, 与顶栏/编辑器 tab 交互一致。?v=u100。
+
+## R161 [UI重构·第32轮] 复选框/单选框品牌色
+- modern.css: 全站原生 input[checkbox/radio] accent-color=主色 + cursor pointer + focus-visible 焦点环。批量选择/筛选/表单一处升级全站。?v=u101。

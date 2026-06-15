@@ -276,6 +276,10 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
 .result-tab:hover { color: var(--text-regular); background: var(--bg-hover); }
 .result-tab.active { background: var(--primary-light); }
 
+/* ---- 复选/单选框品牌色(R161): 全站原生 checkbox/radio 用主色, 现代统一 ---- */
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); cursor: pointer; }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
