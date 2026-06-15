@@ -34,6 +34,7 @@ public class ScriptService {
     private final DnSyncTaskMapper syncTaskMapper;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;  // 脚本保存→异步重建SQL血缘
+    private final com.datanote.platform.collab.EditLockService editLockService;          // 并发编辑防护: 保存须持锁 + 版本校验
 
     // ========== 文件树 ==========
 
@@ -131,6 +132,12 @@ public class ScriptService {
             DnScript existing = scriptMapper.selectById(script.getId());
             if (existing == null) {
                 throw new ResourceNotFoundException("脚本");
+            }
+            // 并发编辑防护: ①他人持编辑锁则拒(服务端兜底, 防绕过前端) ②乐观版本校验(自上次加载后被他人改过则拒)
+            editLockService.assertHeld("SCRIPT", String.valueOf(script.getId()));
+            if (script.getBaseUpdatedAt() != null && existing.getUpdatedAt() != null
+                    && !script.getBaseUpdatedAt().equals(existing.getUpdatedAt())) {
+                throw new BusinessException("该脚本已被他人修改(" + (existing.getUpdatedBy() == null ? "" : existing.getUpdatedBy()) + "), 请刷新后重试以免覆盖对方改动");
             }
             createScriptVersion(existing);
             script.setCreatedAt(existing.getCreatedAt());

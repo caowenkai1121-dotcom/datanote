@@ -3233,6 +3233,11 @@ function doCloseTab(tabEl) {
   var tabBar = document.getElementById('editorTabs');
   var wasActive = tabEl.classList.contains('active');
   var tabId = tabEl.dataset.id;
+  // 并发编辑防护: 关闭脚本 tab 释放其编辑锁
+  if (tabEl.dataset.scriptId && window.__editLock && window.__editLock.type === 'SCRIPT'
+      && String(window.__editLock.id) === String(tabEl.dataset.scriptId)) {
+    dnEditLockRelease('SCRIPT', tabEl.dataset.scriptId);
+  }
   // Clean up content cache
   delete tabContentCache[tabId];
   tabEl.remove();
@@ -4292,12 +4297,14 @@ function saveScript() {
   if (!currentScriptId) { msgBox('请先选择一个脚本'); return; }
   var content = codeArea.value;
   var savePayload = { id: currentScriptId, content: content };
+  savePayload.baseUpdatedAt = (window.__scriptBase || {})[currentScriptId] || null;   // 乐观版本校验基线
   var propDesc = document.getElementById('propDesc');
   var propDbName = document.getElementById('propDatabaseName');
   if (propDesc) savePayload.description = propDesc.value;
   if (propDbName) savePayload.databaseName = propDbName.value;
   apiPost('/api/script/save', savePayload).then(function(res) {
     if (res.code === 0) {
+      if (window.__scriptBase && res.data) window.__scriptBase[currentScriptId] = res.data.updatedAt || null;   // 刷新基线
       loadScriptVersions(currentScriptId);
       // 全站#5: 保存成功更新"最后保存点"(关 tab/刷新守卫基准)
       var _activeTab = document.querySelector('#editorTabs .editor-tab.active');
@@ -5153,6 +5160,49 @@ function openDatasource(el, dsId, dsName) {
   });
 }
 
+/* ===== 通用编辑锁(并发编辑防护, 可复用于脚本/模型/规则等) ===== */
+window.__editLock = null;   // {type,id,timer}
+function dnEditLockStop() { if (window.__editLock && window.__editLock.timer) { clearInterval(window.__editLock.timer); window.__editLock.timer = null; } }
+function dnEditLockRelease(type, id) {
+  dnEditLockStop();
+  try { apiPost('/api/edit-lock/release', { type: type, id: String(id) }).catch(function(){}); } catch(e){}
+  if (window.__editLock && window.__editLock.type === type && String(window.__editLock.id) === String(id)) window.__editLock = null;
+}
+function dnEditLockStartHeartbeat(type, id, onLost) {
+  dnEditLockStop();
+  window.__editLock = { type: type, id: String(id), timer: setInterval(function(){
+    apiPost('/api/edit-lock/heartbeat', { type: type, id: String(id) }).then(function(r){
+      if (r && r.code === 0 && r.data === false) { dnEditLockStop(); if (typeof onLost === 'function') onLost(); }   // 锁被他人接管
+    }).catch(function(){});
+  }, 30000) };
+}
+// 申请编辑锁; cb(ok, holder)。锁服务异常→降级可编辑(保存仍有服务端版本/持锁校验兜底)
+function dnEditLockAcquire(type, id, cb) {
+  apiPost('/api/edit-lock/acquire', { type: type, id: String(id) }).then(function(res){
+    var d = (res && res.code === 0) ? (res.data || {}) : {};
+    if (d.ok) { dnEditLockStartHeartbeat(type, id, function(){ cb(false, '(超时)'); }); cb(true, null); }
+    else cb(false, d.holder);
+  }).catch(function(){ cb(true, null); });
+}
+// 编辑器只读横幅
+function dnShowEditLockBanner(holder) {
+  var ed = document.getElementById('codeArea');
+  var bar = document.getElementById('editLockBanner');
+  if (!holder) { if (bar) bar.style.display = 'none'; return; }
+  if (!bar && ed && ed.parentNode) {
+    bar = document.createElement('div'); bar.id = 'editLockBanner';
+    bar.style.cssText = 'padding:6px 12px;background:var(--warning-bg,#fff7e6);color:var(--warning,#b26a00);border-bottom:1px solid var(--border);font-size:12px;';
+    ed.parentNode.insertBefore(bar, ed);
+  }
+  if (bar) { bar.textContent = '🔒 「' + holder + '」正在编辑此脚本，当前为只读，避免覆盖对方改动。'; bar.style.display = ''; }
+}
+// 关页/刷新尽力释放锁(keepalive); 兜底仍靠服务端心跳超时(90s)
+window.addEventListener('beforeunload', function(){
+  if (window.__editLock) {
+    try { fetch('/api/edit-lock/release', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: window.__editLock.type, id: String(window.__editLock.id) }), keepalive: true }); } catch(e){}
+  }
+});
+
 function openScriptFromTree(el, scriptId, name) {
   document.querySelectorAll('.tree-file').forEach(function(f) { f.classList.remove('active'); });
   el.classList.add('active');
@@ -5179,6 +5229,18 @@ function openScriptFromTree(el, scriptId, name) {
     if (res.code === 0 && res.data) {
       codeArea.value = res.data.content || '-- 空脚本';
       updateLines();
+      // 并发编辑防护: 记录版本基线 + 申请编辑锁(他人持锁→只读+横幅)
+      window.__scriptBase = window.__scriptBase || {};
+      window.__scriptBase[scriptId] = res.data.updatedAt || null;
+      if (window.__editLock && !(window.__editLock.type === 'SCRIPT' && String(window.__editLock.id) === String(scriptId))) {
+        dnEditLockRelease(window.__editLock.type, window.__editLock.id);
+      }
+      dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
+        if (currentScriptId !== scriptId) return;   // 已切走, 忽略
+        codeArea.readOnly = !ok;
+        dnShowEditLockBanner(ok ? null : (holder || '他人'));
+        if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
+      });
       // Update cache with loaded content
       if (tabContentCache[tabId]) { tabContentCache[tabId].editorContent = codeArea.value; tabContentCache[tabId].lastSavedContent = codeArea.value; }
       loadScriptVersions(currentScriptId);

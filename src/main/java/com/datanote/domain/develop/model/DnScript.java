@@ -23,6 +23,10 @@ public class DnScript {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /** 并发编辑乐观校验基线: 前端保存时回传其加载时的 updatedAt, 服务端比对防覆盖他人改动(非库字段) */
+    @TableField(exist = false)
+    private LocalDateTime baseUpdatedAt;
+
     // DolphinScheduler 集成字段
     private Long dsProjectCode;
     private Long dsWorkflowCode;
