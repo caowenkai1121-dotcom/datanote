@@ -413,3 +413,6 @@
 ## R190 [UI重构·第61轮] 内联代码全局点击复制
 - modern.css: code:not(pre code):not(.monaco-editor code) cursor:pointer + hover 主色提示。
 - workspace.html: 全局委托 click 监听, 点内联 <code>(表名/字段/编码)即 DN.copy 复制(排除 pre/Monaco代码块/带自身onclick的)。数据平台高频复制场景一处全站受益。真机验证点 metricCode<code>→DN.copy("sign_proj_cnt")。?v=u130。
+
+## R191 [UI重构·第62轮] 内联代码复制可发现性(悬停title)
+- workspace.html: 委托 mouseover 监听, 为可复制的内联 <code> 首次悬停时补 title="点击复制"(排除 pre/Monaco/带onclick), 不侵入各处渲染即让 R190 复制能力可被发现。真机验证悬停 metricCode→title="点击复制"。?v=u131。
