@@ -510,3 +510,7 @@
 
 ## R221 [UI重构·第92轮] 质量规则过滤无匹配反馈
 - workspace.html: qualityFilterRules(客户端 show/hide 过滤)原全隐藏时为空表无提示。改为统计可见行, 全隐藏时插入/显示 #qualityNoMatch 提示行(colspan=9 "无匹配规则，试试调整搜索词"), 有匹配时隐藏。真机验证 搜不存在词→提示显示(20行全隐)、清空→提示隐藏+20行恢复。?v=u162。
+
+## R222 [UI重构·第93轮] 全模块控制台巡检 + 改密显示密码开关
+- QA: 逐访 10 模块控制台 0 错误 0 警告(仅 benign verbose "密码框未在form内"提示)。
+- workspace.html: 账号抽屉改密区加"显示密码"开关(一处复选切换 原/新/确认 三框 password↔text, 便于核对)。真机验证 勾选→三框 type password→text。?v=u163。
