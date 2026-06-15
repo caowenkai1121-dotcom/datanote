@@ -1,0 +1,82 @@
+/* ============================================================
+ * modern.css — UI 现代化 polish 层(末位加载, 纯增量, 不改布局/密度)
+ * 目标: 更现代/人性化/易用。手段=字体升级 + 微交互(hover抬升/按压回弹) +
+ * 焦点可达 + 细滚动条 + 平滑滚动 + 选区色 + 卡片悬浮质感。
+ * 原则: 只加"感觉", 不动尺寸/栅格(防破坏密集表格与既有布局)。
+ * ============================================================ */
+
+/* ---- 字体: Geist(现代·数字优秀) 打头, CJK 走系统字体回退; CDN 不可达自动降级 ---- */
+html, body {
+  font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+}
+/* 标题更有"分量": 负字距 + 紧行高(仅作用于标题, 不动正文) */
+h1, h2, h3, .gov-card-hd, .dn-card-hd {
+  letter-spacing: -0.012em;
+}
+
+/* ---- 平滑滚动 ---- */
+html { scroll-behavior: smooth; }
+
+/* ---- 选区色: 与主色一致, 更精致 ---- */
+::selection { background: rgba(var(--primary-rgb), .18); color: var(--text-primary); }
+
+/* ---- 现代细滚动条(全局; Monaco 自管不受影响) ---- */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- 焦点可达: 键盘 focus 才显环, 鼠标点击不显(现代做法) ---- */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible, .ops-sidebar-item:focus-visible,
+.tree-file:focus-visible, .header-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- 交互通用过渡(限定交互元素, 不用 * 通配防抖动) ---- */
+.btn, .tool-btn, .header-tab, .ops-sidebar-item, .tree-file, .tree-folder-header,
+.gov-stat, .gov-card, .dn-card, .ctx-item, .gov-pill, .quality-type-badge,
+.dbsync-folder-nav-item, a.header-tab, .filter-btn {
+  transition: background var(--dur, .2s) ease, color var(--dur, .2s) ease,
+    border-color var(--dur, .2s) ease, box-shadow var(--dur, .2s) ease,
+    transform var(--dur-fast, .12s) ease;
+}
+
+/* ---- 按钮: 悬浮微抬 + 按压回弹(物理感) ---- */
+.btn:hover, .tool-btn:hover { transform: translateY(-1px); }
+.btn:active, .tool-btn:active { transform: translateY(0) scale(.985); }
+.btn-primary:hover { box-shadow: var(--shadow-hover); }
+
+/* ---- 卡片: 悬浮抬升 + 染色阴影(仅对可视卡片, 不影响内联) ---- */
+.gov-card, .dn-card { transition: box-shadow var(--dur, .2s) ease, transform var(--dur, .2s) ease, border-color var(--dur, .2s) ease; }
+.gov-card:hover, .dn-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+/* ---- KPI 磁贴: 悬浮微抬 ---- */
+.gov-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+/* ---- 顶部导航: 悬浮态更顺滑(active 已有下划线, 不动) ---- */
+.header-tab:hover { background: var(--primary-light); }
+
+/* ---- 表格行: 悬浮平滑(不抬升防密集表抖动, 仅底色+左强调) ---- */
+table tbody tr { transition: background var(--dur-fast, .12s) ease; }
+
+/* ---- pill / 徽章: 轻微悬浮反馈(可点的) ---- */
+a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
+
+/* ---- 主按钮渐变质感(单一主色, 极轻, 非"AI渐变") ---- */
+.btn-primary {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.04));
+}
+
+/* ---- 弹窗/抽屉进场更柔(若已有动画则被其覆盖, 此为兜底) ---- */
+.dn-modal, .g-modal, .gov-drawer { will-change: transform, opacity; }
+
+/* ---- 减少动效偏好: 尊重系统设置 ---- */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+  .btn:hover, .tool-btn:hover, .gov-card:hover, .dn-card:hover, .gov-stat:hover { transform: none; }
+}
