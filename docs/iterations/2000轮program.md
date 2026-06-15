@@ -321,3 +321,6 @@
 
 ## R161 [UI重构·第32轮] 复选框/单选框品牌色
 - modern.css: 全站原生 input[checkbox/radio] accent-color=主色 + cursor pointer + focus-visible 焦点环。批量选择/筛选/表单一处升级全站。?v=u101。
+
+## R162 [UI重构·第33轮] 空态图标可见度统一
+- modern.css: .intg-empty/.iw-empty-state/.history-empty 图标原用 --divider 过淡似渲染坏 → 统一为 --text-muted/.55 + dnEmptyFade 入场, 对齐已完善的 .gov-empty。?v=u102。

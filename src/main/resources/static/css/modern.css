@@ -280,6 +280,11 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
 input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); cursor: pointer; }
 input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+/* ---- 空态统一(R162): 图标可见度对齐 + 入场动画(原 --divider 过淡似渲染坏) ---- */
+.intg-empty, .iw-empty-state, .history-empty { animation: dnEmptyFade .3s ease; }
+.intg-empty svg, .iw-empty-state svg, .history-empty svg { color: var(--text-muted); opacity: .55; }
+@keyframes dnEmptyFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
