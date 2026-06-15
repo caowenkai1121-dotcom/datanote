@@ -520,3 +520,6 @@
 
 ## R224 [UI重构·第95轮] 重置密码框加显示密码(显密码闭环)
 - workspace.html: 用户管理 umResetPwd 弹窗的 umResetPwdInput 加"显示密码"复选(内联 onchange 切 type)。至此显示密码覆盖 数据源密码/Hive/AI key(早有👁)+账号改密(R222)+首登强制改密(R223)+重置密码(R224)。真机验证 勾选→password→text。?v=u165。
+
+## R225 [UI重构·第96轮] 新建/编辑用户密码框加显示密码(显密码全覆盖收官)
+- workspace.html: umUserModal 的 umfPwd 加"显示密码"复选。至此全部密码输入场景均有显示密码: 数据源/Hive/AI key(👁)+账号改密(R222)+首登改密(R223)+重置密码(R224)+新建编辑用户(R225)。真机验证 勾选→password→text。?v=u166。
