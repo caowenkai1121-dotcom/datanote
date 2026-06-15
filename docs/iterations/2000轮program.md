@@ -444,3 +444,6 @@
 
 ## R200 [UI重构·第71轮] 数据模型空态升级为可操作引导
 - datamodel.js: 模型列表空态由纯文本→全局 .gov-empty: 图标+"暂无模型"+引导(沉淀业务/逻辑/物理三层)+"＋新建模型"CTA(dmNewModel, data-perm=datamodel:edit)。四大创建流(指标/项目/集成任务/数据模型)空态全部为上手引导。?v=u141。
+
+## R201 [UI重构·第72轮] AI助手进入即聚焦输入
+- ai-agent.js: assistant 视图输入 textarea 创建后 setTimeout 自动 focus(聊天UI标准, 进入即可开问, 省一次点击)。真机验证 进入#/assistant 后 activeElement=AI输入框。?v=u142。
