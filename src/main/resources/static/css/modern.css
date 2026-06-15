@@ -238,6 +238,14 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
   outline: none;
 }
 
+/* ---- 顶部导航进度条(R154): 模块切换/加载的轻量反馈 ---- */
+#dnNavBar {
+  position: fixed; top: 0; left: 0; height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--primary), #7c8af0);
+  z-index: 100020; opacity: 0; box-shadow: 0 0 8px rgba(var(--primary-rgb), .6);
+  transition: width .3s ease, opacity .35s ease; pointer-events: none;
+}
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

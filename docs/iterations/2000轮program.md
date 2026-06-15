@@ -291,3 +291,7 @@
 ## R153 [UI重构·第24轮] 首页问候个性化
 - home-dashboard.js: hero 问候由"晚上好，欢迎回来"改为带用户名"{时段问候}，{用户名}"(window.__user), 更人性化亲切。
 - 真机验证(Playwright): 首页 hero 显示"晚上好，admin"。?v=u93。
+
+## R154 [UI重构·第25轮] 顶部导航进度条(新组件)
+- 新增 #dnNavBar 顶部细进度条(渐变+辉光), navigateTo 起始 dnNavProgress() 触发(0→85%→100%淡出), 模块切换/加载轻量反馈(类 GitHub 顶条)。非报表组件。
+- 真机验证(Playwright): 切换中 width 85%/opacity 1, 随后完成淡出。?v=u94。
