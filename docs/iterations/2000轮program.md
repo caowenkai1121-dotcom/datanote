@@ -287,3 +287,7 @@
 - 深色模式跨模块 QA(治理-数据质量页真机截图): 暗色背景/卡片头/99.8 gauge/文本对比/空态/按钮 全优, 无对比度问题, 旗舰特性达标。
 - 真改进: 早期 boot 首访(无 dn-theme)跟随系统 prefers-color-scheme:dark 自动深色(人性化); 用户手动切换后 dn-theme 持久覆盖。
 - ?v=u92。
+
+## R153 [UI重构·第24轮] 首页问候个性化
+- home-dashboard.js: hero 问候由"晚上好，欢迎回来"改为带用户名"{时段问候}，{用户名}"(window.__user), 更人性化亲切。
+- 真机验证(Playwright): 首页 hero 显示"晚上好，admin"。?v=u93。

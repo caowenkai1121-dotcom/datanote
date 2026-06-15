@@ -88,7 +88,7 @@
       onclick: function () { if (window.homeAskAi) window.homeAskAi(); }
     });
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
-      DN.h('div', { class: 'h-title', text: greet + '，欢迎回来' }),
+      DN.h('div', { class: 'h-title', text: greet + '，' + (window.__user ? window.__user : '欢迎回来') }),
       DN.h('div', { class: 'h-sub', text: 'DataNote · 数据资产驾驶舱 — 一屏掌握资产 / 治理 / 质量 / 消费 / 同步全景' }),
       DN.h('div', { class: 'h-meta' }, [
         DN.h('span', { text: '更新于 ' + new Date().toLocaleTimeString() }),
