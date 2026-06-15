@@ -334,3 +334,6 @@
 
 ## R165 [UI重构·第36轮] 骨架屏续推广(项目模板/发布中心+系统监控四盒)
 - workspace.html: projTemplateBox/projReleaseCenterBox + smMetricsBox/smServiceBox/smScheduleBox/smAuditBox 加载占位 文本→ws-skel骨架行。真机验证系统管理/项目渲染正常。?v=u105。
+
+## R166 [UI重构·第37轮] 骨架屏收尾(开发目录/安全设置)
+- workspace.html: devRootBox/secAuthCard 加载占位 文本→ws-skel骨架行。至此项目/用户/系统监控/开发目录/安全设置 初始加载态全部统一为骨架屏。?v=u106。
