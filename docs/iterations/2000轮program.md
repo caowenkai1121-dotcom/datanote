@@ -485,3 +485,6 @@
 ## R213 [UI重构·第84轮] 深色端到端QA + toast边框令牌化
 - 深色 QA: 数据开发(树/卡片/hero/KPI/状态药丸/右栏)深色端到端干净, 印证 R211/R212 修复。
 - app.css: .dn-toast-muted 黑边 rgba(0,0,0,.12)→var(--border)(深色可见)。gov-heat-cell .04 超浅装饰边(热力图色块自带强底色)保留。至此 CSS 背景/边框/文字 深色不可见类硬编码基本清零。?v=u154。
+
+## R214 [UI重构·第85轮] 数字输入框防滚轮误改值
+- workspace.html: 全局 passive wheel 监听, 聚焦的 number 输入被滚轮经过时 blur(让页面正常滚动而非误改数值)。修常见痛点(跳数/阈值/batchSize 等数字输入滚动误改)。真机验证 聚焦number+滚轮→失焦且值不变(5→5)。?v=u155。
