@@ -379,3 +379,6 @@
 
 ## R179 [UI重构·第50轮] 调度状态徽标去硬编码+统一药丸
 - workspace.html: scheduleStatusBadge(右属性栏调度状态)原用硬编码 rgba(0,0,0,.06)/rgba(47,158,68,.12)(违设计规范§6禁硬编码)+纯文本。静态HTML与两处JS更新(5660/6041)统一改用全局 gov-pill is-ok/is-muted, 去硬编码、令牌化、与全站状态徽标一致。真机验证 badge=gov-pill is-muted 无内联底色。?v=u119。
+
+## R180 [UI重构·第51轮] 续清状态徽标硬编码色
+- workspace.html: 依赖列表上下线徽标(6982/6983, 已上线 rgba(47,158,68,.12)/未上线 rgba(230,162,60,.12))→ gov-pill is-ok/is-warn; 用户权限"*"全部权限 chip 硬编码绿→ var(--success-bg)/var(--success-text)。amber 硬编码全清, 绿色仅余 7 处装饰性SVG勾选图标/面板图标底(配 stroke=var(--success), 保留)。?v=u120。
