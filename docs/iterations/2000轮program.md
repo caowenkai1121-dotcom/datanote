@@ -200,3 +200,8 @@
 ## R131 [UI重构·第2轮] 登录页现代化
 - 登录页(独立 login.html, 首印象)重设计: Geist 字体; 左品牌区网格渐变(indigo/slate radial mesh)+辉光+点阵+SVG颗粒(破平面)+价值特性chip(数据开发/治理质量/指标消费/数据集成); 右表单图标前缀输入+密码显隐eye切换+渐变主按钮(加载spin)+图标化内联错误; 入场动画(shell/字段 staggered)。保留全部 JS 逻辑与 ID。
 - 真机验证(Playwright): 截图现代化无破坏; 密码显隐切换正常; admin 登录成功跳 workspace。?v=u71(login)。
+
+## R132 [UI重构·第3轮] 全局命令面板(Ctrl+K) + 深色模式
+- 现代体验组件(非报表): ①全局命令面板 dnCmdK(Ctrl/⌘+K 任意位置, glass+blur, 模糊搜索, 11模块前往+常用操作[新建指标/新建集成任务/AI/退出]+主题, ↑↓导航 Enter 执行 ESC关); ②深色模式 dnToggleTheme(令牌级 data-theme=dark 全站自动换色, localStorage 持久 + 早期内联 boot 防闪)。
+- 头部新增 ⌘K 命令面板按钮 + 主题切换按钮; Ctrl+K 由原"数据集成快切"改为全局命令面板; 修 AI 按钮误标 Ctrl+K。
+- 真机验证(Playwright): 面板16项/搜索过滤; 主题暗色持久/可切回/截图全站换色完美(导航/KPI/图表适配)。?v=u72。
