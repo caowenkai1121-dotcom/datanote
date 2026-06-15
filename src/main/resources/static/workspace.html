@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u73">
-<link rel="stylesheet" href="css/gov-modern.css?v=u73">
-<link rel="stylesheet" href="css/redesign.css?v=u73">
-<link rel="stylesheet" href="css/dn-design.css?v=u73">
+<link rel="stylesheet" href="css/app.css?v=u74">
+<link rel="stylesheet" href="css/gov-modern.css?v=u74">
+<link rel="stylesheet" href="css/redesign.css?v=u74">
+<link rel="stylesheet" href="css/dn-design.css?v=u74">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u73">
+<link rel="stylesheet" href="css/modern.css?v=u74">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题, 防深色模式刷新闪白 */(function(){try{var t=localStorage.getItem('dn-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u73"></script>
-<script src="js/gov-assets.js?v=u73"></script>
-<script src="js/gov-lineage.js?v=u73"></script>
-<script src="js/gov-quality.js?v=u73"></script>
-<script src="js/gov-standard.js?v=u73"></script>
-<script src="js/gov-classification.js?v=u73"></script>
-<script src="js/gov-security.js?v=u73"></script>
-<script src="js/gov-health.js?v=u73"></script>
-<script src="js/gov-audit.js?v=u73"></script>
-<script src="js/gov-overview.js?v=u73"></script>
-<script src="js/gov-subject.js?v=u73"></script>
-<script src="js/gov-consumption.js?v=u73"></script>
-<script src="js/gov-govmap.js?v=u73"></script>
-<script src="js/project.js?v=u73"></script>
-<script src="js/datamodel.js?v=u73"></script>
-<script src="js/home-dashboard.js?v=u73"></script>
-<script src="js/mdm.js?v=u73"></script>
-<script src="js/mdm-ingest.js?v=u73"></script>
-<script src="js/mdm-survivorship.js?v=u73"></script>
-<script src="js/mdm-approval.js?v=u73"></script>
-<script src="js/mdm-refdata.js?v=u73"></script>
-<script src="js/mdm-quality.js?v=u73"></script>
-<script src="js/mdm-pubsub.js?v=u73"></script>
-<script src="js/mdm-hierarchy.js?v=u73"></script>
-<script src="js/ai-agent.js?v=u73"></script>
+<script src="js/dn-common.js?v=u74"></script>
+<script src="js/gov-assets.js?v=u74"></script>
+<script src="js/gov-lineage.js?v=u74"></script>
+<script src="js/gov-quality.js?v=u74"></script>
+<script src="js/gov-standard.js?v=u74"></script>
+<script src="js/gov-classification.js?v=u74"></script>
+<script src="js/gov-security.js?v=u74"></script>
+<script src="js/gov-health.js?v=u74"></script>
+<script src="js/gov-audit.js?v=u74"></script>
+<script src="js/gov-overview.js?v=u74"></script>
+<script src="js/gov-subject.js?v=u74"></script>
+<script src="js/gov-consumption.js?v=u74"></script>
+<script src="js/gov-govmap.js?v=u74"></script>
+<script src="js/project.js?v=u74"></script>
+<script src="js/datamodel.js?v=u74"></script>
+<script src="js/home-dashboard.js?v=u74"></script>
+<script src="js/mdm.js?v=u74"></script>
+<script src="js/mdm-ingest.js?v=u74"></script>
+<script src="js/mdm-survivorship.js?v=u74"></script>
+<script src="js/mdm-approval.js?v=u74"></script>
+<script src="js/mdm-refdata.js?v=u74"></script>
+<script src="js/mdm-quality.js?v=u74"></script>
+<script src="js/mdm-pubsub.js?v=u74"></script>
+<script src="js/mdm-hierarchy.js?v=u74"></script>
+<script src="js/ai-agent.js?v=u74"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -10961,15 +10961,24 @@ function wsSkeleton(rows) {
 }
 
 function showToast(msg, type) {
-  var t = document.createElement('div');
+  // 现代化: 右上角堆叠, 玻璃卡 + 彩色左强调 + 彩色图标, 从右滑入(多条不重叠)
+  var stack = document.getElementById('dnToastStack');
+  if (!stack) {
+    stack = document.createElement('div'); stack.id = 'dnToastStack';
+    stack.style.cssText = 'position:fixed;top:18px;right:18px;z-index:var(--z-toast,100010);display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+    document.body.appendChild(stack);
+  }
   var icon = type === 'error' ? '✕' : type === 'success' ? '✓' : type === 'warning' ? '!' : 'i';
-  var c = type === 'error' ? ['var(--error-bg)', 'var(--error-text)', 'var(--error-ring)'] : type === 'success' ? ['var(--success-bg)', 'var(--success-text)', 'var(--success-ring)'] : type === 'warning' ? ['var(--warning-bg)', 'var(--warning-text)', 'var(--warning-ring)'] : ['var(--info-bg)', 'var(--primary)', 'var(--info-ring)'];
-  t.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:' + c[1] + ';color:var(--text-inverse);font-size:var(--fs-xs);font-weight:700;flex-shrink:0;">' + icon + '</span><span></span>';
+  var accent = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : 'var(--primary)';
+  var t = document.createElement('div');
+  t.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:200px;max-width:380px;padding:11px 14px 11px 13px;border-radius:var(--radius-md,10px);'
+    + 'background:var(--bg-card);color:var(--text-regular);border:1px solid var(--border);border-left:3px solid ' + accent + ';box-shadow:var(--shadow-lg);'
+    + 'transition:opacity .28s ease, transform .28s cubic-bezier(.2,.7,.25,1);opacity:0;transform:translateX(24px);';
+  t.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:' + accent + ';color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">' + icon + '</span><span style="font-size:13px;line-height:1.4;"></span>';
   t.lastChild.textContent = msg;
-  t.style.cssText = 'position:fixed;top:20px;left:50%;z-index:var(--z-toast);display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:var(--radius-lg);font-size:13px;box-shadow:var(--shadow-md);transition:opacity var(--dur-slow),transform var(--dur-slow);opacity:0;transform:translateX(-50%) translateY(-12px);background:' + c[0] + ';color:' + c[1] + ';border:1px solid ' + c[2] + ';';
-  document.body.appendChild(t);
-  requestAnimationFrame(function() { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
-  setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(-12px)'; setTimeout(function() { t.remove(); }, 300); }, 2500);
+  stack.appendChild(t);
+  requestAnimationFrame(function() { t.style.opacity = '1'; t.style.transform = 'translateX(0)'; });
+  setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(24px)'; setTimeout(function() { t.remove(); }, 300); }, 2600);
 }
 
 function schedBackfill(taskId, taskType, taskName) {

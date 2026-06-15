@@ -213,3 +213,7 @@
 ## R134 [UI重构·第5轮] 全局数据表现代化
 - modern.css 加: 数据表(.quality-rules-table/.dbsync-exec-table 全站 metric/user/sync 共用)粘性表头(滚动表头不丢)+ 行 hover 左强调(inset 3px 主色)+ 列表容器圆角。纯 CSS 增量, 低风险高覆盖。
 - 真机验证(Playwright): 指标列表表头 position:sticky 生效。?v=u73(css)。
+
+## R135 [UI重构·第6轮] Toast 通知现代化
+- showToast 重写: 原单条居中(多条重叠)→ 右上角 #dnToastStack 堆叠容器(多条不重叠), 玻璃卡(bg-card+彩色左强调3px+彩色圆形图标)+ 从右滑入(cubic-bezier)。全模块通用, 保留签名 showToast(msg,type)。
+- 真机验证(Playwright): 3条同时堆叠 top/right 18px 不重叠。?v=u74。
