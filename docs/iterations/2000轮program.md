@@ -270,3 +270,7 @@
 ## R148 [UI重构·第19轮] 键盘按键提示 kbd 现代键帽
 - modern.css: 全站 kbd 统一现代键帽(Geist mono + 底边 2px + 圆角 + 居中), 作用于命令面板/欢迎页/帮助等无内联样式的 kbd。
 - 真机截图(命令面板): 玻璃模糊背景+分组+模块图标+高亮首项+ESC 键帽, 现代体系一致。?v=u88。
+
+## R149 [UI重构·第20轮] 统一全模块切换淡入(含 page-layout)
+- navigateTo 给显示的视图加 .dn-enter 类(先移除+void offsetWidth 强制重排重触发动画), 覆盖 R144 未含的 page-layout 视图(数据模型/治理/主数据/项目/AI)。modern.css .dn-enter 复用 dnViewIn。全模块切换统一顺滑淡入。
+- 真机验证(Playwright): 数据模型 viewDatamodel 含 dn-enter + animName=dnViewIn。?v=u89。

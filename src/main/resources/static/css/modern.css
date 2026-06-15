@@ -194,6 +194,8 @@ select.dbsync-form-select, #devRootLayer, #metricCategoryFilter, #metricFreshFil
   animation: dnViewIn .22s ease;
 }
 @keyframes dnViewIn { from { opacity: 0; } to { opacity: 1; } }
+/* 统一: 任意视图(含 page-layout)切换淡入, navigateTo 加 .dn-enter 重触发 */
+.dn-enter { animation: dnViewIn .24s ease; }
 
 /* ---- 详情抽屉(slide-over)现代化(R145): 遮罩背景模糊 + 抽屉左缘精致 ---- */
 #govDrawerMask, .dbsync-drawer-mask, .dn-modal-mask { backdrop-filter: blur(3px); }
