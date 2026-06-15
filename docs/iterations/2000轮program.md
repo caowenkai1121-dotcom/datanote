@@ -572,3 +572,6 @@
 
 ## R241 [UI重构·第112轮] 布局防错位批(§10.4·工作流2确认)
 - app.css: 工作流2确认的6处布局错位/溢出隐患修复(均低风险防御CSS, 不动色彩): .intg-form-control 加 min-width:0(select防压扁); .intg-panel-header h3 加 ellipsis(长表名防撑破); .intg-table td 加 max-width:180+ellipsis(长数据截断); .btn 加 width:auto(紧凑工具条防压扁); .env-badge 加 display:inline-flex+align-items(防压缩)+bg令牌化(rgba绿→--success-bg); .prop-value 加 min-width:0(属性栏长标签防错位)。?v=u182。
+
+## R242 [UI重构·第113轮] 交互按压态补全(§10.5·工作流2确认)
+- modern.css: 工作流2确认 .header-tab/.editor-tab/.result-tab(有hover无active)补 :active translateY(1px); .tab-close/.left-header .add-btn/.result-download-btn 补 :active scale(.92)。纯 transform 反馈不动色, 与既有 .btn:active 一致。?v=u183。

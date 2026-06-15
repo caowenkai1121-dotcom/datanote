@@ -312,6 +312,10 @@ code:not(pre code):not(.monaco-editor code):hover { color: var(--primary); }
 .quality-rules-table tbody tr:nth-child(even) td { background: var(--bg-sunken); }
 .quality-rules-table tbody tr:hover td { background: var(--bg-hover); }   /* hover 须盖过斑马: 同特异性, 紧随其后保证源序在后 */
 
+/* ---- 交互按压态补全(R242, 工作流2确认): 多处 tab/按钮有 hover 无 :active, 补按压反馈(纯 transform, 不动色) ---- */
+.header-tab:active, .editor-tab:active, .result-tab:active { transform: translateY(1px); }
+.tab-close:active, .left-header .add-btn:active, .result-download-btn:active { transform: scale(.92); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
