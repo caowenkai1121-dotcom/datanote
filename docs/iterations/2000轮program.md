@@ -196,3 +196,7 @@
 - 第1轮(最高杠杆·低风险): 新增 css/modern.css(末位加载, 纯增量不改布局密度): ①字体 Geist 打头+CJK系统回退(数字/拉丁更现代, 中文不变); ②微交互(按钮 hover抬升+按压回弹/卡片悬浮抬升染色阴影/KPI磁贴抬升); ③focus-visible 键盘焦点环; ④现代细滚动条; ⑤平滑滚动+选区色; ⑥prefers-reduced-motion 尊重。
 - 真机验证(Playwright): Geist 加载/modern.css 挂载/平滑滚动/按钮过渡 全绿; 首页截图无破坏。?v=u71。
 - 后续轮: 逐视图 UX 人性化(登录/导航/空态/骨架/各模块体验), 现代体验组件(命令面板/侧滑/上下文动作, 非报表)。
+
+## R131 [UI重构·第2轮] 登录页现代化
+- 登录页(独立 login.html, 首印象)重设计: Geist 字体; 左品牌区网格渐变(indigo/slate radial mesh)+辉光+点阵+SVG颗粒(破平面)+价值特性chip(数据开发/治理质量/指标消费/数据集成); 右表单图标前缀输入+密码显隐eye切换+渐变主按钮(加载spin)+图标化内联错误; 入场动画(shell/字段 staggered)。保留全部 JS 逻辑与 ID。
+- 真机验证(Playwright): 截图现代化无破坏; 密码显隐切换正常; admin 登录成功跳 workspace。?v=u71(login)。
