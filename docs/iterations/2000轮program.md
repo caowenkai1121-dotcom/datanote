@@ -462,3 +462,6 @@
 
 ## R206 [UI重构·第77轮] 新建指标弹窗 Esc 关闭(a11y一致性)
 - workspace.html: 全局 Esc 处理(原仅 gModalOverlay)扩展覆盖 metricModal(display:flex 时 closeMetricModal)。dbsyncFormModal 已有(16339)/projShowModalBox 已有/项目弹窗已有→至此主要弹窗 Esc 关闭一致。真机验证 打开新建指标弹窗 Esc→关闭(flex→none)。?v=u147。
+
+## R207 [UI重构·第78轮] 新建指标弹窗遮罩点击关闭
+- workspace.html: metricModal 遮罩加 onclick(event.target===this 时 closeMetricModal), 与 projShowModalBox/cmdk 等遮罩点击关闭一致。真机验证: 点遮罩→关闭(none), 点弹窗内部→保持打开(flex)。?v=u148。
