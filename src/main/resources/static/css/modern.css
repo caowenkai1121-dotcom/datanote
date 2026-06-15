@@ -303,6 +303,8 @@ code:not(pre code):not(.monaco-editor code):hover { color: var(--primary); }
 #dnBackTop { position: fixed; right: 22px; bottom: 26px; width: 40px; height: 40px; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--bg-card); color: var(--text-regular); box-shadow: var(--shadow-md); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(8px) scale(.9); pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 300; }
 #dnBackTop.show { opacity: 1; transform: none; pointer-events: auto; }
 #dnBackTop:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+#dnBackTop:active { transform: scale(.92); }
+#dnBackTop:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {

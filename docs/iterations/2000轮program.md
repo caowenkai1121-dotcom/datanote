@@ -419,3 +419,7 @@
 
 ## R192 [UI重构·第63轮] 新增"返回顶部"浮动按钮
 - 新组件(非报表): modern.css #dnBackTop(右下圆钮, 默认隐藏, .show 淡入+悬停抬升) + workspace.html 自包含JS(捕获阶段监听任意可见滚动容器, scrollTop>320 显现, 排除弹窗/抽屉/Monaco/铃铛避免遮挡; 点击 scrollTo top smooth)。真机验证: 资产目录滚动后按钮浮现(截图确认右下↑), 点击调用 scrollTo({top:0,smooth})于正确容器(headless不跑smooth动画属已知限制)。?v=u132。
+
+## R193 [UI重构·第64轮] 返回顶部按钮按压/焦点态 + 数据标准QA
+- modern.css: #dnBackTop 补 :active(scale .92 按压反馈) + :focus-visible(键盘焦点环), 完善组件状态(技能要求 pressed/focus 态)。
+- QA: 数据标准(新增数据元表单+标准列表)视图整洁, 返回顶部按钮在此也正常浮现。?v=u133。
