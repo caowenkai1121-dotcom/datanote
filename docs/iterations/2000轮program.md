@@ -560,3 +560,6 @@
 
 ## R237 [UI重构·第108轮] 读操作补catch批2(质量/数据源下拉·工作流确认)
 - workspace.html: loadQualityTables/loadQualityColumns(质量规则 表/字段下拉)补 .catch→下拉显"加载失败"(原失败时永停"加载中..."); dbsyncLoadDsList 空 catch 改为显"加载失败"。?v=u178。
+
+## R238 [UI重构·第109轮] dbsync弹窗一致(对账/历史/移动 Esc+遮罩·工作流确认)
+- workspace.html: dbsyncReconcileModal/dbsyncHistoryModal/dbsyncMoveJobModal 各补 遮罩点击关闭(onclick event.target===this) + 全局 Esc 处理器加 3 检查(reconcile走dbsyncCloseReconcile, history/movejob classList.remove)。真机验证 3 模态 Esc+遮罩关闭全生效。至此 dbsync 全部弹窗 Esc/遮罩关闭一致(承 R233)。?v=u179。
