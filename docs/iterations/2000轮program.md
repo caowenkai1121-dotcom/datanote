@@ -164,3 +164,9 @@
 - 后端: DnMetric+target_value(sql/94); 新增 MetricDetailService.detail(id) 聚合(当前值latest/目标/达成率/环比MoM[上期]/同比YoY[≈一年前±45天]/线性回归预测下期/趋势序列/告警越界诊断[复用 MetricAlertService.isBreach]/输入质量/血缘refs/同分类相关指标); GET /api/consumption/metric/{id}/detail。
 - 前端: 新增 DN.forecast(历史实线+预测虚线+目标线 SVG); viewMetrics 加 metricsDetailPanel 详情面板; 指标名/「详情」按钮→openMetricDetail; renderMetricDetail 渲染对标原型: 返回+头卡(名称/启用·预警徽章/分类·负责人·编码/口径/立即计算·编辑·AI深度解读)+KPI七磁贴(当前/目标/达成率/环比/同比/预测/更新时间)+智能解读(模板化叙述)+趋势与预测图+异常与预警诊断(规则越界卡+环比/同比下降+输入质量信号)+指标血缘(来源→指标→消费)+相关指标; 编辑表单加目标值; switchMetricsTab 切签隐藏详情。
 - 部署: sql/94 + mvn package + deploy_jar 全量, ?v=u67。待真机验证(设目标+计算造history)。
+
+## R127 [业主令] 加强指标溯源 + 指标预警
+- 业主令: 在 R126 指标详情驾驶舱基础上加强 指标溯源、指标预警。
+- 后端(MetricDetailService.detail 扩展, 无新表): +alertIssues(该指标自动建的治理工单 issue_type=METRIC/object_ref=metric:id, 近10条=预警历史) +consumers(dn_consumption_log 近90天按消费方聚合 Top8=下游消费方) +trace(calcFormula+最近一次计算 calcSql/耗时/状态=计算溯源) +alert.rules 项补 ruleId(供前端编辑/删除)。预警自动建工单+通知 owner+恢复关单 R114 已具备, 本轮做前端可管理。
+- 前端(详情页): 异常与预警诊断 → 加「+新建预警规则」+每条规则 编辑/删除(复用 /alert-rule/save、DELETE /alert-rule/{id}, 7 比较符+区间+3 严重度弹窗) + 预警历史表(工单#/严重度/状态/时间, 点击下钻治理工单); 指标血缘 → 升级「指标溯源」: 上游来源/维度表→指标→结果/消费 + 下游消费方 pill(近90天) + 计算溯源(公式 + 最近计算 SQL/耗时)。
+- 部署: mvn package + deploy_jar 全量, ?v=u68。待真机验证。

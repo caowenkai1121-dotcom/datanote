@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u67">
-<link rel="stylesheet" href="css/gov-modern.css?v=u67">
-<link rel="stylesheet" href="css/redesign.css?v=u67">
-<link rel="stylesheet" href="css/dn-design.css?v=u67">
+<link rel="stylesheet" href="css/app.css?v=u68">
+<link rel="stylesheet" href="css/gov-modern.css?v=u68">
+<link rel="stylesheet" href="css/redesign.css?v=u68">
+<link rel="stylesheet" href="css/dn-design.css?v=u68">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u67"></script>
-<script src="js/gov-assets.js?v=u67"></script>
-<script src="js/gov-lineage.js?v=u67"></script>
-<script src="js/gov-quality.js?v=u67"></script>
-<script src="js/gov-standard.js?v=u67"></script>
-<script src="js/gov-classification.js?v=u67"></script>
-<script src="js/gov-security.js?v=u67"></script>
-<script src="js/gov-health.js?v=u67"></script>
-<script src="js/gov-audit.js?v=u67"></script>
-<script src="js/gov-overview.js?v=u67"></script>
-<script src="js/gov-subject.js?v=u67"></script>
-<script src="js/gov-consumption.js?v=u67"></script>
-<script src="js/gov-govmap.js?v=u67"></script>
-<script src="js/project.js?v=u67"></script>
-<script src="js/datamodel.js?v=u67"></script>
-<script src="js/home-dashboard.js?v=u67"></script>
-<script src="js/mdm.js?v=u67"></script>
-<script src="js/mdm-ingest.js?v=u67"></script>
-<script src="js/mdm-survivorship.js?v=u67"></script>
-<script src="js/mdm-approval.js?v=u67"></script>
-<script src="js/mdm-refdata.js?v=u67"></script>
-<script src="js/mdm-quality.js?v=u67"></script>
-<script src="js/mdm-pubsub.js?v=u67"></script>
-<script src="js/mdm-hierarchy.js?v=u67"></script>
-<script src="js/ai-agent.js?v=u67"></script>
+<script src="js/dn-common.js?v=u68"></script>
+<script src="js/gov-assets.js?v=u68"></script>
+<script src="js/gov-lineage.js?v=u68"></script>
+<script src="js/gov-quality.js?v=u68"></script>
+<script src="js/gov-standard.js?v=u68"></script>
+<script src="js/gov-classification.js?v=u68"></script>
+<script src="js/gov-security.js?v=u68"></script>
+<script src="js/gov-health.js?v=u68"></script>
+<script src="js/gov-audit.js?v=u68"></script>
+<script src="js/gov-overview.js?v=u68"></script>
+<script src="js/gov-subject.js?v=u68"></script>
+<script src="js/gov-consumption.js?v=u68"></script>
+<script src="js/gov-govmap.js?v=u68"></script>
+<script src="js/project.js?v=u68"></script>
+<script src="js/datamodel.js?v=u68"></script>
+<script src="js/home-dashboard.js?v=u68"></script>
+<script src="js/mdm.js?v=u68"></script>
+<script src="js/mdm-ingest.js?v=u68"></script>
+<script src="js/mdm-survivorship.js?v=u68"></script>
+<script src="js/mdm-approval.js?v=u68"></script>
+<script src="js/mdm-refdata.js?v=u68"></script>
+<script src="js/mdm-quality.js?v=u68"></script>
+<script src="js/mdm-pubsub.js?v=u68"></script>
+<script src="js/mdm-hierarchy.js?v=u68"></script>
+<script src="js/ai-agent.js?v=u68"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9353,17 +9353,21 @@ function renderMetricDetail(d, id) {
   // 异常与预警诊断
   var alertCards = '';
   var rules = (d.alert && d.alert.rules) || [];
+  var mcode = (m.metricCode || '').replace(/'/g, "");
   if (rules.length) {
     rules.forEach(function(r) {
       var tone = r.breach ? 'is-err' : (r.enabled ? 'is-ok' : 'is-muted');
       var bg = r.breach ? 'rgba(224,49,49,.06)' : 'var(--bg-card)';
+      var rJson = encodeURIComponent(JSON.stringify(r));
       alertCards += '<div style="flex:1;min-width:200px;background:' + bg + ';border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;">'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="gov-pill ' + tone + '">' + (r.breach ? '触发' : (r.enabled ? '正常' : '停用')) + '</span><span style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.severity || '') + '</span></div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="gov-pill ' + tone + '">' + (r.breach ? '触发' : (r.enabled ? '正常' : '停用')) + '</span><span style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.severity || '') + '</span>'
+        + '<span style="margin-left:auto;display:flex;gap:6px;"><a href="#" data-perm="metrics:edit" onclick="metricOpenAlertRule(' + id + ',\'' + mcode + '\',\'' + rJson + '\');return false;" style="font-size:var(--fs-xs);color:var(--primary);">编辑</a>'
+        + '<a href="#" data-perm="metrics:edit" onclick="metricDeleteAlertRule(' + r.id + ',' + id + ');return false;" style="font-size:var(--fs-xs);color:var(--error);">删除</a></span></div>'
         + '<div style="font-size:13px;">' + escapeHtml(r.desc || '') + '</div>'
         + (r.remark ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">' + escapeHtml(r.remark) + '</div>' : '') + '</div>';
     });
   } else {
-    alertCards = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">尚未配置预警规则。可在「指标取值」驾驶舱为该指标添加阈值预警。</div>';
+    alertCards = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">尚未配置预警规则，点右上「+ 新建预警规则」添加阈值预警（越界自动建治理工单并通知负责人）。</div>';
   }
   // 趋势预警 + 质量
   var trendWarn = '';
@@ -9375,10 +9379,25 @@ function renderMetricDetail(d, id) {
   var qLabel = { HEALTHY: '来源数据健康', AT_RISK: '来源质量存在风险', NO_RULES: '来源表未配质量规则', NO_RESULT: '来源质量暂无结果' };
   if (qSignal) trendWarn += '<div style="flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;"><div class="gov-pill ' + (qToneMap[qSignal] || 'is-muted') + '" style="margin-bottom:6px;">输入质量</div><div style="font-size:13px;">' + escapeHtml(qLabel[qSignal] || qSignal) + (q.passRate != null ? '（通过率 ' + q.passRate + '%）' : '') + '</div></div>';
 
+  // 预警历史(自动建的治理工单)
+  var issues = d.alertIssues || [];
+  var issueHtml = '';
+  if (issues.length) {
+    issueHtml = '<div style="margin-top:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">预警历史</div>'
+      + '<table class="quality-rules-table" style="width:100%;"><thead><tr><th>工单</th><th>严重度</th><th>状态</th><th>时间</th></tr></thead><tbody>'
+      + issues.map(function(it) {
+          var stTone = it.status === 'CLOSED' ? 'is-muted' : (it.status === 'OPEN' ? 'is-err' : 'is-warn');
+          return '<tr><td><a href="#" onclick="navigateTo(\'governance\',{gov:\'issues\',issueId:' + it.id + '});return false;" style="color:var(--primary);" title="' + escapeHtml(it.title || '') + '">#' + it.id + ' ' + escapeHtml((it.title || '').slice(0, 28)) + '</a></td>'
+            + '<td>' + escapeHtml(it.severity || '-') + '</td><td><span class="gov-pill ' + stTone + '">' + escapeHtml(it.status || '') + '</span></td>'
+            + '<td style="white-space:nowrap;font-size:var(--fs-xs);">' + escapeHtml(String(it.updatedAt || it.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+  }
   html += cardOpen
-    + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">异常与预警诊断</h3>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><h3 style="margin:0;font-size:14px;font-weight:600;">异常与预警诊断</h3>'
+    + '<button class="btn btn-sm btn-primary" data-perm="metrics:edit" onclick="metricOpenAlertRule(' + id + ',\'' + mcode + '\',\'\')">+ 新建预警规则</button></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + alertCards + '</div>'
     + (trendWarn ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' + trendWarn + '</div>' : '')
+    + issueHtml
     + '</div>';
 
   // 指标血缘
@@ -9398,7 +9417,21 @@ function renderMetricDetail(d, id) {
   } else {
     refHtml = '<div style="color:var(--text-muted);font-size:13px;">未登记来源表血缘。可在「编辑」中登记来源库表，数据地图与输入质量将联动。</div>';
   }
-  html += cardOpen + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">指标血缘</h3>' + refHtml + '</div>';
+  // 下游消费方
+  var consumers = d.consumers || [];
+  var consumerHtml = '';
+  if (consumers.length) {
+    consumerHtml = '<div style="margin-top:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">下游消费方（近90天）</div><div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      + consumers.map(function(cs) { return '<span class="gov-pill is-info" title="消费 ' + cs.count + ' 次">' + escapeHtml(cs.consumer) + ' · ' + cs.count + '</span>'; }).join('') + '</div></div>';
+  }
+  // 计算溯源(公式/最近计算SQL)
+  var tr = d.trace || {};
+  var traceHtml = '<div style="margin-top:14px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">计算溯源</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:3px;">计算公式</div>'
+    + '<pre style="margin:0 0 8px;background:var(--bg-body);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;">' + escapeHtml(tr.calcFormula || '（未配置计算公式）') + '</pre>'
+    + (tr.lastCalcSql ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:3px;">最近一次计算 SQL' + (tr.lastDurationMs != null ? '（耗时 ' + tr.lastDurationMs + 'ms，' + escapeHtml(tr.lastRunStatus || '') + '）' : '') + '</div><pre style="margin:0;background:var(--bg-body);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;">' + escapeHtml(tr.lastCalcSql) + '</pre>' : '')
+    + '</div>';
+  html += cardOpen + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">指标溯源</h3>' + refHtml + consumerHtml + traceHtml + '</div>';
 
   // 相关指标
   var rel = d.related || [];
@@ -9421,6 +9454,49 @@ function renderMetricDetail(d, id) {
     else chartBox.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">暂无历史值，点「立即计算」生成趋势</div>';
   }
 }
+
+// 预警规则: 新建/编辑弹窗
+window.metricOpenAlertRule = function(metricId, metricCode, ruleEnc) {
+  var r = {};
+  try { if (ruleEnc) r = JSON.parse(decodeURIComponent(ruleEnc)); } catch (e) { r = {}; }
+  var ops = [['GT', '> 大于'], ['GE', '≥ 大于等于'], ['LT', '< 小于'], ['LE', '≤ 小于等于'], ['NE', '≠ 不等于'], ['OUT', '区间外触发'], ['IN', '区间内触发']];
+  var opOpts = ops.map(function(o) { return '<option value="' + o[0] + '"' + (r.op === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+  var sevOpts = ['HIGH', 'MEDIUM', 'LOW'].map(function(s) { return '<option' + (r.severity === s ? ' selected' : '') + '>' + s + '</option>'; }).join('');
+  var lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
+  var fi = 'class="dbsync-form-input" style="width:100%;"';
+  var body = '<div style="display:flex;flex-direction:column;gap:10px;min-width:340px;">'
+    + '<div><label ' + lab + '>比较符</label><select id="marOp" class="dbsync-form-select" style="width:100%;">' + opOpts + '</select></div>'
+    + '<div><label ' + lab + '>阈值 / 下界</label><input id="marMin" type="number" step="any" ' + fi + ' value="' + (r.thresholdMin != null ? r.thresholdMin : '') + '" placeholder="如 50"></div>'
+    + '<div><label ' + lab + '>区间上界（OUT/IN 用）</label><input id="marMax" type="number" step="any" ' + fi + ' value="' + (r.thresholdMax != null ? r.thresholdMax : '') + '" placeholder="区间判定时填"></div>'
+    + '<div><label ' + lab + '>严重度</label><select id="marSev" class="dbsync-form-select" style="width:100%;">' + sevOpts + '</select></div>'
+    + '<div><label ' + lab + '>备注</label><input id="marRemark" ' + fi + ' value="' + escapeHtml(r.remark || '') + '" placeholder="预警说明"></div>'
+    + '<div style="font-size:var(--fs-xs);color:var(--text-muted);">越界将自动建治理工单并通知负责人，恢复后自动关单。</div></div>';
+  showModal(r.id ? '编辑预警规则' : '新建预警规则', body,
+    '<button class="btn" onclick="closeModal()">取消</button> <button class="btn btn-primary" data-perm="metrics:edit" onclick="metricSaveAlertRule(' + metricId + ',\'' + metricCode + '\',' + (r.id || 0) + ')">保存</button>');
+};
+window.metricSaveAlertRule = function(metricId, metricCode, ruleId) {
+  var op = document.getElementById('marOp').value;
+  var min = document.getElementById('marMin').value;
+  var max = document.getElementById('marMax').value;
+  var sev = document.getElementById('marSev').value;
+  var remark = document.getElementById('marRemark').value;
+  var payload = { metricId: metricId, metricCode: metricCode, op: op, severity: sev, enabled: 1, remark: remark || null,
+    thresholdMin: min === '' ? null : parseFloat(min), thresholdMax: max === '' ? null : parseFloat(max) };
+  if (ruleId) payload.id = ruleId;
+  apiPost('/api/consumption/metric/alert-rule/save', payload).then(function(res) {
+    if (res && res.code === 0) { showToast('预警规则已保存', 'success'); closeModal(); _openMetricDetail(metricId); }
+    else showToast((res && res.msg) || '保存失败', 'error');
+  }).catch(function() { showToast('保存失败', 'error'); });
+};
+window.metricDeleteAlertRule = function(ruleId, metricId) {
+  DN.confirm('确认删除该预警规则？', { title: '删除确认', danger: true }).then(function(ok) {
+    if (!ok) return;
+    api('/api/consumption/metric/alert-rule/' + ruleId, { method: 'DELETE' }).then(function(res) {
+      if (res && res.code === 0) { showToast('已删除', 'success'); _openMetricDetail(metricId); }
+      else showToast((res && res.msg) || '删除失败', 'error');
+    }).catch(function() { showToast('删除失败', 'error'); });
+  });
+};
 
 // 详情页内立即计算后刷新
 window.metricDetailCalc = function(id) {

@@ -32,6 +32,8 @@ public class MetricDetailService {
     private final MetricValueService valueService;
     private final DnMetricAlertRuleMapper alertRuleMapper;
     private final DnMetricRefMapper metricRefMapper;
+    private final com.datanote.domain.governance.mapper.DnGovernanceIssueMapper issueMapper;
+    private final com.datanote.domain.consumption.mapper.DnConsumptionLogMapper logMapper;
 
     public Map<String, Object> detail(Long id) {
         DnMetric m = metricMapper.selectById(id);
@@ -101,6 +103,7 @@ public class MetricDetailService {
             boolean breach = enabled && current != null
                     && MetricAlertService.isBreach(r.getOp(), current, r.getThresholdMin(), r.getThresholdMax());
             Map<String, Object> a = new LinkedHashMap<>();
+            a.put("id", r.getId());
             a.put("op", r.getOp());
             a.put("thresholdMin", r.getThresholdMin());
             a.put("thresholdMax", r.getThresholdMax());
@@ -142,6 +145,57 @@ public class MetricDetailService {
             }
         }
         out.put("related", related);
+
+        // 预警历史: 该指标自动建的治理工单(issue_type=METRIC, object_ref=metric:{id})
+        try {
+            List<com.datanote.domain.governance.model.DnGovernanceIssue> issues = issueMapper.selectList(
+                    new QueryWrapper<com.datanote.domain.governance.model.DnGovernanceIssue>()
+                            .eq("issue_type", "METRIC").eq("object_ref", "metric:" + id)
+                            .orderByDesc("updated_at").last("LIMIT 10"));
+            List<Map<String, Object>> issueHist = new ArrayList<>();
+            for (com.datanote.domain.governance.model.DnGovernanceIssue is : issues == null ? Collections.<com.datanote.domain.governance.model.DnGovernanceIssue>emptyList() : issues) {
+                Map<String, Object> h = new LinkedHashMap<>();
+                h.put("id", is.getId()); h.put("title", is.getTitle());
+                h.put("severity", is.getSeverity()); h.put("status", is.getStatus());
+                h.put("createdAt", is.getCreatedAt() != null ? is.getCreatedAt().toString() : null);
+                h.put("updatedAt", is.getUpdatedAt() != null ? is.getUpdatedAt().toString() : null);
+                issueHist.add(h);
+            }
+            out.put("alertIssues", issueHist);
+        } catch (Exception e) { out.put("alertIssues", new ArrayList<>()); }
+
+        // 下游消费方: 近 90 天消费审计中按消费方聚合(target_code=指标编码)
+        try {
+            List<Map<String, Object>> consumers = new ArrayList<>();
+            if (m.getMetricCode() != null && !m.getMetricCode().trim().isEmpty()) {
+                List<com.datanote.domain.consumption.model.DnConsumptionLog> logs = logMapper.selectList(
+                        new QueryWrapper<com.datanote.domain.consumption.model.DnConsumptionLog>()
+                                .eq("target_code", m.getMetricCode())
+                                .ge("created_at", java.time.LocalDateTime.now().minusDays(90))
+                                .orderByDesc("created_at").last("LIMIT 500"));
+                Map<String, Integer> byConsumer = new LinkedHashMap<>();
+                for (com.datanote.domain.consumption.model.DnConsumptionLog lg : logs == null ? Collections.<com.datanote.domain.consumption.model.DnConsumptionLog>emptyList() : logs) {
+                    String who = lg.getConsumer() == null || lg.getConsumer().trim().isEmpty() ? "(匿名)" : lg.getConsumer().trim();
+                    byConsumer.merge(who, 1, Integer::sum);
+                }
+                byConsumer.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(8).forEach(en -> {
+                    Map<String, Object> cmap = new LinkedHashMap<>();
+                    cmap.put("consumer", en.getKey()); cmap.put("count", en.getValue());
+                    consumers.add(cmap);
+                });
+            }
+            out.put("consumers", consumers);
+        } catch (Exception e) { out.put("consumers", new ArrayList<>()); }
+
+        // 溯源: 计算公式 + 最近一次计算所用 SQL/耗时(便于排查口径)
+        Map<String, Object> trace = new LinkedHashMap<>();
+        trace.put("calcFormula", m.getCalcFormula());
+        if (latestV != null) {
+            trace.put("lastCalcSql", latestV.getCalcSql());
+            trace.put("lastDurationMs", latestV.getDurationMs());
+            trace.put("lastRunStatus", latestV.getRunStatus());
+        }
+        out.put("trace", trace);
 
         return out;
     }
