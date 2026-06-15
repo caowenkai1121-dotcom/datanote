@@ -328,3 +328,6 @@
 ## R163 [UI重构·第34轮] 快捷键帮助浮层补全+模糊
 - workspace.html: ? 帮助浮层"全局"组补准确条目 Ctrl/Cmd+K=命令面板(搜索模块/操作/切主题密度), 去掉项目/集成里误标为"切换"的旧 ⌘K 行。
 - modern.css: #wsHelpOverlay 加 backdrop-filter blur(3px), 与其他弹窗一致。真机按?验证浮层弹出且含新条目。?v=u103。
+
+## R164 [UI重构·第35轮] 骨架屏推广到高频加载点
+- 已有 wsSkeleton/.ws-skel shimmer 组件但仅 2 处用。推广到项目管理(projHomeBox/projListBox)+用户管理(umUserBox/umRoleBox)初始加载占位, 替换"加载中..."纯文本为骨架行(首帧瞬态, 数据到达即替换)。真机验证项目模块渲染正常无破坏。?v=u104。
