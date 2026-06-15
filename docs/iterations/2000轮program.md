@@ -324,3 +324,7 @@
 
 ## R162 [UI重构·第33轮] 空态图标可见度统一
 - modern.css: .intg-empty/.iw-empty-state/.history-empty 图标原用 --divider 过淡似渲染坏 → 统一为 --text-muted/.55 + dnEmptyFade 入场, 对齐已完善的 .gov-empty。?v=u102。
+
+## R163 [UI重构·第34轮] 快捷键帮助浮层补全+模糊
+- workspace.html: ? 帮助浮层"全局"组补准确条目 Ctrl/Cmd+K=命令面板(搜索模块/操作/切主题密度), 去掉项目/集成里误标为"切换"的旧 ⌘K 行。
+- modern.css: #wsHelpOverlay 加 backdrop-filter blur(3px), 与其他弹窗一致。真机按?验证浮层弹出且含新条目。?v=u103。

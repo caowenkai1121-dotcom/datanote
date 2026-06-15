@@ -285,6 +285,9 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 .intg-empty svg, .iw-empty-state svg, .history-empty svg { color: var(--text-muted); opacity: .55; }
 @keyframes dnEmptyFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
+/* ---- 快捷键帮助浮层(R163): 背景模糊, 与其他弹窗一致 ---- */
+#wsHelpOverlay { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
