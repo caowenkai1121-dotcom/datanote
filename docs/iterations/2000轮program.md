@@ -447,3 +447,6 @@
 
 ## R201 [UI重构·第72轮] AI助手进入即聚焦输入
 - ai-agent.js: assistant 视图输入 textarea 创建后 setTimeout 自动 focus(聊天UI标准, 进入即可开问, 省一次点击)。真机验证 进入#/assistant 后 activeElement=AI输入框。?v=u142。
+
+## R202 [UI重构·第73轮] 新建指标弹窗即聚焦首字段
+- workspace.html: showAddMetricDialog 打开后 setTimeout 聚焦 mName(弹窗即聚焦首字段, 省一次点击, 与 R201 聊天聚焦同理)。真机验证打开弹窗 activeElement=mName。?v=u143。
