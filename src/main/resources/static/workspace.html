@@ -7638,6 +7638,14 @@ function loadDmPopular() {
   });
 }
 
+function dmExportTables() {
+  var ts = window.__dmTableList || [];
+  if (!ts.length) { showToast('无可导出的表', 'error'); return; }
+  var rows = ts.map(function(t) {
+    return [t.TABLE_SCHEMA || '', t.TABLE_NAME || '', t.TABLE_COMMENT || '', (t.col_count != null ? t.col_count : ''), (t.TABLE_ROWS != null ? t.TABLE_ROWS : '')];
+  });
+  DN.exportRows('数据地图表清单', ['数据库', '表名', '中文名/描述', '字段数', '行数'], rows);
+}
 function renderDmTable(containerId, tables) {
   var container = document.getElementById(containerId);
   if (!container) return;
@@ -7645,7 +7653,9 @@ function renderDmTable(containerId, tables) {
     container.innerHTML = '<div class="datamap-empty">暂无数据</div>';
     return;
   }
-  var html = '<table class="datamap-table"><thead><tr>'
+  window.__dmTableList = tables;
+  var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button class="btn btn-sm" onclick="dmExportTables()" title="导出当前表清单为 CSV">导出CSV</button></div>'
+    + '<table class="datamap-table"><thead><tr>'
     + '<th style="width:180px;">数据库</th>'
     + '<th style="min-width:220px;">表名</th>'
     + '<th>中文名 / 描述</th>'

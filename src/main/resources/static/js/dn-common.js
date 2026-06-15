@@ -275,6 +275,18 @@
     return { el: DN.h('div', { class: 'gov-card' }, [hd, body]), body: body };
   };
 
+  // 通用 CSV 导出(BOM+CRLF+注入防护): headers=表头数组, rows=二维数组。供 DN.table 之外的自定义列表复用。
+  DN.exportRows = function (name, headers, rows) {
+    function cell(v) { var s = String(v == null ? '' : v).replace(/[\r\n]+/g, ' '); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }
+    var lines = [(headers || []).map(cell).join(',')];
+    (rows || []).forEach(function (r) { lines.push((r || []).map(cell).join(',')); });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = (name || 'export') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  };
+
   DN.empty = function (text, icon, action) {
     var children = [DN.h('span', { html: DN.icon(icon || 'inbox') }), DN.h('div', { class: 'et', text: text || '暂无数据' })];
     // 可选行动按钮: 空态直接引导下一步(如"去新建"), 提升可达性。action={label,onClick}
