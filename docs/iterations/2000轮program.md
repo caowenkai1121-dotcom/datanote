@@ -497,3 +497,6 @@
 
 ## R217 [UI重构·第88轮] AI输入发送后高度复位
 - ai-agent.js: send/steer 清空 value 后补 inputEl.style.height=''(配合 R216 自动增高, 防发送后高度残留变高)。真机验证 增高117→复位58。?v=u158。
+
+## R218 [UI重构·第89轮] 指标搜索防抖(去请求风暴)
+- workspace.html: metricSearchInput 原 oninput=loadMetricList() 每键都发服务端双请求(列表+新鲜度)→请求风暴。新增 loadMetricListDebounced(280ms)替换 oninput。其余搜索框多为廉价客户端过滤或已防抖(dbsync/proj)。真机验证 3连击→0即时+延迟后1次。?v=u159。
