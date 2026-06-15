@@ -403,3 +403,6 @@
 
 ## R187 [UI重构·第58轮] 命令面板鼠标hover同步选中
 - workspace.html: .cmdk-item 原仅键盘高亮无鼠标反馈; 加 onmouseenter→dnCmdKHover(i) 同步 _cmdkActiveIdx+重绘高亮, 实现"悬停即选中、回车执行悬停项"的标准面板交互。真机验证 hover 第3项→activeIdx=2+primary-light底。?v=u127。
+
+## R188 [UI重构·第59轮] 立即计算按钮加载态防重复提交
+- workspace.html: metricDetailCalc 接收按钮引用, 计算期间禁用按钮+文案"计算中…"+opacity .7, 防双击触发多次计算; 成功后详情重渲染自动还原, 失败/异常时还原按钮可重试。真机验证点击后 disabled+「计算中…」。?v=u128。

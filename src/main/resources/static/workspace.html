@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u127">
-<link rel="stylesheet" href="css/gov-modern.css?v=u127">
-<link rel="stylesheet" href="css/redesign.css?v=u127">
-<link rel="stylesheet" href="css/dn-design.css?v=u127">
+<link rel="stylesheet" href="css/app.css?v=u128">
+<link rel="stylesheet" href="css/gov-modern.css?v=u128">
+<link rel="stylesheet" href="css/redesign.css?v=u128">
+<link rel="stylesheet" href="css/dn-design.css?v=u128">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u127">
+<link rel="stylesheet" href="css/modern.css?v=u128">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u127"></script>
-<script src="js/gov-assets.js?v=u127"></script>
-<script src="js/gov-lineage.js?v=u127"></script>
-<script src="js/gov-quality.js?v=u127"></script>
-<script src="js/gov-standard.js?v=u127"></script>
-<script src="js/gov-classification.js?v=u127"></script>
-<script src="js/gov-security.js?v=u127"></script>
-<script src="js/gov-health.js?v=u127"></script>
-<script src="js/gov-audit.js?v=u127"></script>
-<script src="js/gov-overview.js?v=u127"></script>
-<script src="js/gov-subject.js?v=u127"></script>
-<script src="js/gov-consumption.js?v=u127"></script>
-<script src="js/gov-govmap.js?v=u127"></script>
-<script src="js/project.js?v=u127"></script>
-<script src="js/datamodel.js?v=u127"></script>
-<script src="js/home-dashboard.js?v=u127"></script>
-<script src="js/mdm.js?v=u127"></script>
-<script src="js/mdm-ingest.js?v=u127"></script>
-<script src="js/mdm-survivorship.js?v=u127"></script>
-<script src="js/mdm-approval.js?v=u127"></script>
-<script src="js/mdm-refdata.js?v=u127"></script>
-<script src="js/mdm-quality.js?v=u127"></script>
-<script src="js/mdm-pubsub.js?v=u127"></script>
-<script src="js/mdm-hierarchy.js?v=u127"></script>
-<script src="js/ai-agent.js?v=u127"></script>
+<script src="js/dn-common.js?v=u128"></script>
+<script src="js/gov-assets.js?v=u128"></script>
+<script src="js/gov-lineage.js?v=u128"></script>
+<script src="js/gov-quality.js?v=u128"></script>
+<script src="js/gov-standard.js?v=u128"></script>
+<script src="js/gov-classification.js?v=u128"></script>
+<script src="js/gov-security.js?v=u128"></script>
+<script src="js/gov-health.js?v=u128"></script>
+<script src="js/gov-audit.js?v=u128"></script>
+<script src="js/gov-overview.js?v=u128"></script>
+<script src="js/gov-subject.js?v=u128"></script>
+<script src="js/gov-consumption.js?v=u128"></script>
+<script src="js/gov-govmap.js?v=u128"></script>
+<script src="js/project.js?v=u128"></script>
+<script src="js/datamodel.js?v=u128"></script>
+<script src="js/home-dashboard.js?v=u128"></script>
+<script src="js/mdm.js?v=u128"></script>
+<script src="js/mdm-ingest.js?v=u128"></script>
+<script src="js/mdm-survivorship.js?v=u128"></script>
+<script src="js/mdm-approval.js?v=u128"></script>
+<script src="js/mdm-refdata.js?v=u128"></script>
+<script src="js/mdm-quality.js?v=u128"></script>
+<script src="js/mdm-pubsub.js?v=u128"></script>
+<script src="js/mdm-hierarchy.js?v=u128"></script>
+<script src="js/ai-agent.js?v=u128"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9385,7 +9385,7 @@ function renderMetricDetail(d, id) {
     + '    <div style="font-size:13px;color:var(--text-regular);margin-top:8px;">指标口径：' + escapeHtml(m.description || '（未填写业务口径）') + '</div>'
     + '  </div>'
     + '  <div style="display:flex;gap:6px;flex-wrap:wrap;">'
-    + '    <button class="btn btn-sm btn-primary" data-perm="metrics:run" onclick="metricDetailCalc(' + id + ')">立即计算</button>'
+    + '    <button class="btn btn-sm btn-primary" data-perm="metrics:run" onclick="metricDetailCalc(' + id + ', this)">立即计算</button>'
     + '    <button class="btn btn-sm" data-perm="metrics:edit" onclick="editMetric(' + id + ')">编辑</button>'
     + '    <button class="btn btn-sm" onclick="window.dnAskAi(\'解读指标「' + escapeHtml((m.metricName || '').replace(/'/g, "")) + '」(metricId=' + id + '):结合当前值/目标/达成率/环比同比/趋势/预警,分析现状、异常波动原因与改进建议。\', {route:\'metrics\',metricId:' + id + '})">AI 深度解读</button>'
     + '  </div>'
@@ -9549,12 +9549,13 @@ window.metricDeleteAlertRule = function(ruleId, metricId) {
 };
 
 // 详情页内立即计算后刷新
-window.metricDetailCalc = function(id) {
+window.metricDetailCalc = function(id, btn) {
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.dataset.txt = btn.textContent; btn.textContent = '计算中…'; btn.style.opacity = '.7'; }
   showToast('计算中...', 'info');
   apiPost('/api/consumption/metric/' + id + '/calc?operator=detail').then(function(res) {
     if (res && res.code === 0) { showToast('已计算', 'success'); _openMetricDetail(id); }
-    else showToast((res && res.msg) || '计算失败', 'error');
-  }).catch(function() { showToast('计算失败', 'error'); });
+    else { showToast((res && res.msg) || '计算失败', 'error'); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.txt || '立即计算'; btn.style.opacity = ''; } }
+  }).catch(function() { showToast('计算失败', 'error'); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.txt || '立即计算'; btn.style.opacity = ''; } });
 };
 
 /* ===== 元数据管理（保留兼容）===== */
