@@ -406,3 +406,6 @@
 
 ## R188 [UI重构·第59轮] 立即计算按钮加载态防重复提交
 - workspace.html: metricDetailCalc 接收按钮引用, 计算期间禁用按钮+文案"计算中…"+opacity .7, 防双击触发多次计算; 成功后详情重渲染自动还原, 失败/异常时还原按钮可重试。真机验证点击后 disabled+「计算中…」。?v=u128。
+
+## R189 [UI重构·第60轮] 命令面板项高亮过渡
+- modern.css: .cmdk-item 加 background/color .12s 过渡, JS 改内联高亮色时切换顺滑(键盘上下/鼠标hover均更自然)。?v=u129。

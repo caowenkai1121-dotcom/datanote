@@ -292,6 +292,9 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 .gov-legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .gov-legend i { display: inline-block; width: 10px; height: 10px; border-radius: var(--radius-sm); margin-right: 5px; vertical-align: middle; }
 
+/* ---- 命令面板项过渡(R189): 高亮/hover 由 JS 改内联色, 加过渡使切换顺滑 ---- */
+.cmdk-item { transition: background .12s ease, color .12s ease; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
