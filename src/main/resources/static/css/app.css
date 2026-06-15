@@ -1880,7 +1880,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .proj-kb-card:hover { box-shadow:var(--shadow-md) !important; transform: translateY(-1px); }
 /* 表格斑马纹 + 行悬停高亮(项目/同步明细表通用) */
 .dbsync-exec-table tbody tr { transition: background var(--dur-fast); }
-.dbsync-exec-table tbody tr:nth-child(even) { background: rgba(0,0,0,.015); }
+.dbsync-exec-table tbody tr:nth-child(even) { background: var(--bg-sunken); }
 .dbsync-exec-table tbody tr:hover { background: var(--primary-bg, rgba(var(--primary-rgb),.07)); }
 .proj-view-toggle a, #dbsyncJobsContent a[onclick*="View"], #projListBox a[onclick*="View"] { transition: background var(--dur), color var(--dur); }
 /* 细化滚动条(UX) */

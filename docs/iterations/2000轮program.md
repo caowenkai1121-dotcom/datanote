@@ -503,3 +503,7 @@
 
 ## R219 [UI重构·第90轮] 指标列表搜索命中高亮
 - workspace.html: renderMetricList 加 hlMetric() 高亮搜索关键词在 指标名称/编码 中的命中(<mark> warning-bg, title 保持纯文本)。承命令面板高亮体验, 列表结果可扫读。真机验证 搜"签"→"<mark>签</mark>约项目数"。?v=u160。
+
+## R220 [UI重构·第91轮] 表格斑马纹(补主表+修dbsync硬编码)
+- app.css: .dbsync-exec-table 斑马 rgba(0,0,0,.015)(R212漏网, 深色不可见)→var(--bg-sunken)。
+- modern.css: quality-rules-table(指标等主表)原无斑马, 补 tbody tr:nth-child(even) td 交替行底(var(--bg-sunken)) + 紧随 hover td=var(--bg-hover) 覆盖规则(同特异性源序在后, 保证 hover 盖过斑马)。真机验证 偶数行TD bg=var(--bg-sunken) 令牌生效。?v=u161。

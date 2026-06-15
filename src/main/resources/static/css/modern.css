@@ -308,6 +308,10 @@ code:not(pre code):not(.monaco-editor code):hover { color: var(--primary); }
 #dnBackTop:active { transform: scale(.92); }
 #dnBackTop:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+/* ---- 表格斑马纹(R220): quality-rules-table(指标等主表)原无斑马, 补交替行底提升密集数据可读性(令牌, 深浅皆宜) ---- */
+.quality-rules-table tbody tr:nth-child(even) td { background: var(--bg-sunken); }
+.quality-rules-table tbody tr:hover td { background: var(--bg-hover); }   /* hover 须盖过斑马: 同特异性, 紧随其后保证源序在后 */
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
