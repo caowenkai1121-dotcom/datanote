@@ -382,3 +382,6 @@
 
 ## R180 [UI重构·第51轮] 续清状态徽标硬编码色
 - workspace.html: 依赖列表上下线徽标(6982/6983, 已上线 rgba(47,158,68,.12)/未上线 rgba(230,162,60,.12))→ gov-pill is-ok/is-warn; 用户权限"*"全部权限 chip 硬编码绿→ var(--success-bg)/var(--success-text)。amber 硬编码全清, 绿色仅余 7 处装饰性SVG勾选图标/面板图标底(配 stroke=var(--success), 保留)。?v=u120。
+
+## R181 [UI重构·第52轮] 主数据xref反查命中框去硬编码
+- mdm.js: 交叉引用反查命中结果框硬编码 rgba(47,158,68,.08)/.25 → var(--success-bg)/var(--success-ring)(gov-pill同款令牌)。至此 JS 文件状态色硬编码全清。?v=u121。
