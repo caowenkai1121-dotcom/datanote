@@ -254,3 +254,7 @@
 ## R144 [UI重构·第15轮] 模块切换淡入过渡
 - modern.css: 编辑布局视图(.active: viewScheduler/viewDatamap/viewMetrics/viewSettings/viewWelcome/viewSql/viewIntegration)切换时 dnViewIn 淡入(仅 opacity 无位移防 jank); reduced-motion 媒体查询同步禁动画(animation-duration .01ms)。模块切换更顺滑。
 - 真机验证(Playwright): viewMetrics.active animationName=dnViewIn 0.22s。?v=u84。
+
+## R145 [UI重构·第16轮] 详情抽屉(slide-over)现代化
+- modern.css: 抽屉遮罩(#govDrawerMask/.dbsync-drawer-mask[同步+项目详情共用]/.dn-modal-mask)加 backdrop-filter blur(3px); 抽屉(gov-drawer/项目详情/同步详情)左缘 1px 边精致。
+- 真机验证: CSS served; 项目工作台截图无破坏(顺带见 R127 指标预警工单闭环显示在"指给我的工单")。?v=u85。
