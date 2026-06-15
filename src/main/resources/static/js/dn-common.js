@@ -255,7 +255,7 @@
     var tile = DN.h('div', { class: 'gov-stat' + (o.tone ? ' tone-' + o.tone : '') + (typeof o.onClick === 'function' ? ' clickable' : '') },
       [DN.h('div', { class: 'ic', html: DN.icon(o.icon || 'chart') }), meta]);
     if (typeof o.onClick === 'function') {
-      tile.setAttribute('tabindex', '0'); if (o.title) tile.title = o.title;
+      tile.setAttribute('tabindex', '0'); tile.setAttribute('role', 'button'); if (o.title) tile.title = o.title;
       tile.addEventListener('click', o.onClick);
       tile.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onClick(); } });
     }
