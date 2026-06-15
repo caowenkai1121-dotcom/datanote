@@ -538,3 +538,6 @@
 
 ## R230 [UI重构·第101轮] 数据地图搜索命中高亮
 - workspace.html: renderDmTable 加 _dhl() 高亮 datamapSearchInput 关键词在 表名/中文名描述 中的命中(<mark> warning-bg)。承指标列表(R219)高亮体验, 搜索中枢结果可扫读。真机验证 搜"ads"→50处命中高亮。?v=u171。
+
+## R231 [UI重构·第102轮] 用户管理搜索命中高亮
+- workspace.html: umRenderUsers 加 _uhl() 高亮搜索关键词在 用户名/昵称/邮箱/手机/部门 中的命中(<mark> warning-bg)。承指标(R219)/数据地图(R230)高亮, 用户列表搜索可扫读。真机验证 搜"admin"→用户名命中高亮。?v=u172。

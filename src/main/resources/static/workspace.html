@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u171">
-<link rel="stylesheet" href="css/gov-modern.css?v=u171">
-<link rel="stylesheet" href="css/redesign.css?v=u171">
-<link rel="stylesheet" href="css/dn-design.css?v=u171">
+<link rel="stylesheet" href="css/app.css?v=u172">
+<link rel="stylesheet" href="css/gov-modern.css?v=u172">
+<link rel="stylesheet" href="css/redesign.css?v=u172">
+<link rel="stylesheet" href="css/dn-design.css?v=u172">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u171">
+<link rel="stylesheet" href="css/modern.css?v=u172">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u171"></script>
-<script src="js/gov-assets.js?v=u171"></script>
-<script src="js/gov-lineage.js?v=u171"></script>
-<script src="js/gov-quality.js?v=u171"></script>
-<script src="js/gov-standard.js?v=u171"></script>
-<script src="js/gov-classification.js?v=u171"></script>
-<script src="js/gov-security.js?v=u171"></script>
-<script src="js/gov-health.js?v=u171"></script>
-<script src="js/gov-audit.js?v=u171"></script>
-<script src="js/gov-overview.js?v=u171"></script>
-<script src="js/gov-subject.js?v=u171"></script>
-<script src="js/gov-consumption.js?v=u171"></script>
-<script src="js/gov-govmap.js?v=u171"></script>
-<script src="js/project.js?v=u171"></script>
-<script src="js/datamodel.js?v=u171"></script>
-<script src="js/home-dashboard.js?v=u171"></script>
-<script src="js/mdm.js?v=u171"></script>
-<script src="js/mdm-ingest.js?v=u171"></script>
-<script src="js/mdm-survivorship.js?v=u171"></script>
-<script src="js/mdm-approval.js?v=u171"></script>
-<script src="js/mdm-refdata.js?v=u171"></script>
-<script src="js/mdm-quality.js?v=u171"></script>
-<script src="js/mdm-pubsub.js?v=u171"></script>
-<script src="js/mdm-hierarchy.js?v=u171"></script>
-<script src="js/ai-agent.js?v=u171"></script>
+<script src="js/dn-common.js?v=u172"></script>
+<script src="js/gov-assets.js?v=u172"></script>
+<script src="js/gov-lineage.js?v=u172"></script>
+<script src="js/gov-quality.js?v=u172"></script>
+<script src="js/gov-standard.js?v=u172"></script>
+<script src="js/gov-classification.js?v=u172"></script>
+<script src="js/gov-security.js?v=u172"></script>
+<script src="js/gov-health.js?v=u172"></script>
+<script src="js/gov-audit.js?v=u172"></script>
+<script src="js/gov-overview.js?v=u172"></script>
+<script src="js/gov-subject.js?v=u172"></script>
+<script src="js/gov-consumption.js?v=u172"></script>
+<script src="js/gov-govmap.js?v=u172"></script>
+<script src="js/project.js?v=u172"></script>
+<script src="js/datamodel.js?v=u172"></script>
+<script src="js/home-dashboard.js?v=u172"></script>
+<script src="js/mdm.js?v=u172"></script>
+<script src="js/mdm-ingest.js?v=u172"></script>
+<script src="js/mdm-survivorship.js?v=u172"></script>
+<script src="js/mdm-approval.js?v=u172"></script>
+<script src="js/mdm-refdata.js?v=u172"></script>
+<script src="js/mdm-quality.js?v=u172"></script>
+<script src="js/mdm-pubsub.js?v=u172"></script>
+<script src="js/mdm-hierarchy.js?v=u172"></script>
+<script src="js/ai-agent.js?v=u172"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -11882,6 +11882,8 @@ window.umRenderUsers = function() {
       || (u.employeeId || '').toLowerCase().indexOf(kw) >= 0;
   });
   document.getElementById('umUserCount').textContent = '共 ' + list.length + ' / ' + _umUsers.length;
+  // 搜索命中高亮
+  function _uhl(text) { text = text == null ? '' : String(text); if (!kw) return escapeHtml(text); var i = text.toLowerCase().indexOf(kw); if (i < 0) return escapeHtml(text); return escapeHtml(text.slice(0, i)) + '<mark style="background:var(--warning-bg);color:inherit;padding:0 1px;border-radius:2px;">' + escapeHtml(text.slice(i, i + kw.length)) + '</mark>' + escapeHtml(text.slice(i + kw.length)); }
   if (!list.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">' + (_umUsers.length ? '无匹配用户' : '暂无用户') + '</div>'; if (window.umRenderBatchBar) umRenderBatchBar(); return; }
   var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th><th>用户名</th><th>昵称</th><th>邮箱</th><th>手机号</th><th>部门</th><th>岗位</th><th>状态</th><th>角色</th><th>最后登录</th><th style="width:260px;">操作</th></tr></thead><tbody>';
   list.forEach(function(u) {
@@ -11892,10 +11894,10 @@ window.umRenderUsers = function() {
     var lastLogin = u.lastLoginAt ? escapeHtml(String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) : '<span style="color:var(--text-faint);">从未登录</span>';
     var selChk = '<td><input type="checkbox" class="umSelChk" value="' + u.id + '" onclick="umToggleSelect(' + u.id + ',this.checked)"' + (window._umSel[u.id] ? ' checked' : '') + '></td>';
     var dash = '<span style="color:var(--text-faint);">-</span>';
-    h += '<tr>' + selChk + '<td><b>' + escapeHtml(u.username) + '</b></td><td>' + escapeHtml(u.nickname || '-') + '</td>'
-      + '<td>' + (u.email ? escapeHtml(u.email) : dash) + '</td>'
-      + '<td style="white-space:nowrap;">' + (u.phone ? escapeHtml(u.phone) : dash) + '</td>'
-      + '<td>' + (u.department ? escapeHtml(u.department) : dash) + '</td>'
+    h += '<tr>' + selChk + '<td><b>' + _uhl(u.username) + '</b></td><td>' + _uhl(u.nickname || '-') + '</td>'
+      + '<td>' + (u.email ? _uhl(u.email) : dash) + '</td>'
+      + '<td style="white-space:nowrap;">' + (u.phone ? _uhl(u.phone) : dash) + '</td>'
+      + '<td>' + (u.department ? _uhl(u.department) : dash) + '</td>'
       + '<td>' + (u.position ? escapeHtml(u.position) : dash) + '</td>'
       + '<td><span class="gov-pill ' + (on ? 'is-ok' : 'is-muted') + '">' + (on ? '启用' : '停用') + '</span></td>'
       + '<td>' + chips + '</td>'
