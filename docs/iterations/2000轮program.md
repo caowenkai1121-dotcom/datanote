@@ -72,3 +72,11 @@
   2. 编辑器是 Monaco(非 textarea), 我之前的锁/三态 UI 误用 #codeArea(不存在): a) codeArea 是 shim 对象无 readOnly setter → codeArea.readOnly=true 对 Monaco 无效(只读形同虚设); b) 状态横幅锚到 #codeArea(缺失)→ 横幅从不显示。修: 给 codeArea shim 加 readOnly setter→monacoEditor.updateOptions({readOnly}) + create 后应用暂存只读; 横幅锚到 #monacoContainer。
 - 真机验证(Playwright): 打开已上线脚本 6 → 横幅"🟢已上线…点编辑"显示 + monacoReadOnly=true + 工具栏"提交下线"。
 - 遗留(另记): 首页"最近编辑"快捷项点击未真正打开脚本(currentScriptId 仍 null), 与文件树打开路径不同, 后续修。
+
+## R116 [全局排查·业主报告"ODS不行"] 任务三态/锁 统一所有打开路径
+- 业主报告 ODS 不行 + 要求全局检查。排查发现脚本打开有多入口, 仅 openScriptFromTree 应用了三态/工具栏/锁; 其余入口遗漏:
+  - **真bug**: openScriptFromTree 首行 el.classList.add 在 el=null 时 NPE → 经"最近编辑"/openScriptById/AI 创建(传 null)打开全部抛错、currentScriptId 不设 → 这些入口打开脚本失效("ODS不行"=经 openScriptById 打开失败)。修: el 空守卫。
+  - switchTab(切已开 tab)、ctxNewSqlScript/ctxNewShellScript(新建) 未应用三态/工具栏/锁。
+- 统一: 抽 dnApplyScriptLifecycle(scriptId)(查 /state→设 currentScriptOnline+提交上线/下线按钮 + 只读/状态横幅 + 并发锁), openScriptFromTree/switchTab/新建 全部改调它; 切脚本先隐旧横幅防残留。
+- 真机验证(Playwright): 在线脚本6→🟢已上线横幅+Monaco只读+提交下线; 草稿216→可编辑+✏️独占横幅+提交上线; openScriptById 各入口正常(此前 NPE 失效)。
+- 兼: R115 已修 Monaco 只读(shim readOnly setter)+横幅锚 #monacoContainer。

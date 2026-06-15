@@ -2959,6 +2959,8 @@ function createSqlScriptInFolder(folderId) {
         var _tabEl = document.querySelector('[data-id="' + _tabId + '"]');
         if (_tabEl) { _tabEl.dataset.scriptId = res.data.id; _tabEl.dataset.scriptName = name; }
         if (tabContentCache[_tabId]) { tabContentCache[_tabId].scriptId = res.data.id; tabContentCache[_tabId].scriptName = name; tabContentCache[_tabId].editorContent = codeArea.value; }
+        window.__scriptBase = window.__scriptBase || {}; window.__scriptBase[res.data.id] = res.data.updatedAt || null;
+        dnApplyScriptLifecycle(res.data.id);   // 新建=草稿: 显示「提交上线」+可编辑+抢锁
       } else { msgBox('创建失败: ' + res.msg); }
     });
   });
@@ -2982,6 +2984,8 @@ function ctxNewShellScript() {
         var _tabEl = document.querySelector('[data-id="' + _tabId + '"]');
         if (_tabEl) { _tabEl.dataset.scriptId = res.data.id; _tabEl.dataset.scriptName = name; }
         if (tabContentCache[_tabId]) { tabContentCache[_tabId].scriptId = res.data.id; tabContentCache[_tabId].scriptName = name; tabContentCache[_tabId].editorContent = codeArea.value; }
+        window.__scriptBase = window.__scriptBase || {}; window.__scriptBase[res.data.id] = res.data.updatedAt || null;
+        dnApplyScriptLifecycle(res.data.id);   // 新建=草稿: 显示「提交上线」+可编辑+抢锁
       } else { msgBox('创建失败: ' + res.msg); }
     });
   });
@@ -3144,9 +3148,12 @@ function switchTab(tabEl) {
     if (dbInput && cache && typeof cache.databaseName === 'string') {
       dbInput.value = cache.databaseName;
     }
-    // 刷新调度状态
+    // 刷新调度状态 + 统一应用三态门控/工具栏/编辑锁(切到已有脚本 tab 也要正确显示)
     loadSchedConfig(currentScriptId);
+    dnApplyScriptLifecycle(currentScriptId);
   } else if (tabEl.dataset.type === 'sync') {
+    // 离开脚本: 释放其编辑锁
+    if (window.dnEditLockRelease && window.__editLock && window.__editLock.type === 'SCRIPT') dnEditLockRelease('SCRIPT', window.__editLock.id);
     currentScriptId = null;
     if (cache && cache.syncTaskId != null) {
       currentSyncTaskId = cache.syncTaskId;
@@ -5258,9 +5265,44 @@ window.addEventListener('beforeunload', function(){
   }
 });
 
+// 统一脚本生命周期 UI(所有打开/切换/新建路径共用): 查三态→设工具栏「提交上线/下线」+ 只读/横幅 + 并发编辑锁
+function dnApplyScriptLifecycle(scriptId) {
+  if (!scriptId) return;
+  // 切换脚本: 释放上一把(非本脚本)编辑锁 + 先隐旧横幅(防异步间隙残留上一脚本状态)
+  if (window.__editLock && !(window.__editLock.type === 'SCRIPT' && String(window.__editLock.id) === String(scriptId))) {
+    dnEditLockRelease(window.__editLock.type, window.__editLock.id);
+  }
+  dnShowEditLockBanner(null);
+  var applyLock = function() {
+    dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
+      if (currentScriptId !== scriptId) return;
+      codeArea.readOnly = !ok;
+      dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
+      if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
+    });
+  };
+  api('/api/script/' + scriptId + '/state').then(function(sr) {
+    if (currentScriptId !== scriptId) return;
+    var st = (sr && sr.code === 0) ? sr.data : 'DRAFT';
+    window.__scriptState = window.__scriptState || {}; window.__scriptState[scriptId] = st;
+    currentScriptOnline = (st === 'ONLINE');
+    if (window.updateToolbarOnlineBtn) updateToolbarOnlineBtn();
+    if (st === 'PENDING' || st === 'ONLINE') {
+      codeArea.readOnly = true;
+      dnShowEditLockBanner(st === 'ONLINE' ? 'online' : 'submitted');
+    } else {
+      applyLock();
+    }
+  }).catch(function() {   // state 失败降级: 走并发锁
+    if (currentScriptId !== scriptId) return;
+    if (window.updateToolbarOnlineBtn) updateToolbarOnlineBtn();
+    applyLock();
+  });
+}
+
 function openScriptFromTree(el, scriptId, name) {
   document.querySelectorAll('.tree-file').forEach(function(f) { f.classList.remove('active'); });
-  el.classList.add('active');
+  if (el && el.classList) el.classList.add('active');   // 经"最近编辑"/openScriptById/AI 创建 等入口 el 可能为 null
 
   var tabId = 'tab-script-' + scriptId;
   addOrActivateTab(tabId, name, 'sql');
@@ -5284,36 +5326,10 @@ function openScriptFromTree(el, scriptId, name) {
     if (res.code === 0 && res.data) {
       codeArea.value = res.data.content || '-- 空脚本';
       updateLines();
-      // 记录版本基线 + 刷新工具栏「提交上线/提交下线」按钮(此前打开脚本未刷新致按钮不显)
+      // 记录版本基线 + 统一应用 任务三态门控/工具栏按钮/并发编辑锁(所有打开路径共用)
       window.__scriptBase = window.__scriptBase || {};
       window.__scriptBase[scriptId] = res.data.updatedAt || null;
-      currentScriptOnline = (res.data.scheduleStatus === 'online');
-      if (window.updateToolbarOnlineBtn) updateToolbarOnlineBtn();
-      if (window.__editLock && !(window.__editLock.type === 'SCRIPT' && String(window.__editLock.id) === String(scriptId))) {
-        dnEditLockRelease(window.__editLock.type, window.__editLock.id);
-      }
-      // 任务三态门控: 已提交待审/已上线 → 只读+「编辑」转草稿; 未提交(草稿) → 走并发编辑锁
-      api('/api/script/' + scriptId + '/state').then(function(sr) {
-        if (currentScriptId !== scriptId) return;
-        var st = (sr && sr.code === 0) ? sr.data : 'DRAFT';
-        window.__scriptState = window.__scriptState || {}; window.__scriptState[scriptId] = st;
-        if (st === 'PENDING' || st === 'ONLINE') {
-          codeArea.readOnly = true;
-          dnShowEditLockBanner(st === 'ONLINE' ? 'online' : 'submitted');
-        } else {
-          dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
-            if (currentScriptId !== scriptId) return;
-            codeArea.readOnly = !ok;
-            dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
-            if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
-          });
-        }
-      }).catch(function() {   // state 失败降级: 直接走锁
-        dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
-          if (currentScriptId !== scriptId) return;
-          codeArea.readOnly = !ok; dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
-        });
-      });
+      dnApplyScriptLifecycle(scriptId);
       // Update cache with loaded content
       if (tabContentCache[tabId]) { tabContentCache[tabId].editorContent = codeArea.value; tabContentCache[tabId].lastSavedContent = codeArea.value; }
       loadScriptVersions(currentScriptId);
