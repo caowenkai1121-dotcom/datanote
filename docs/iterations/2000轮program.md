@@ -429,3 +429,6 @@
 
 ## R195 [UI重构·第66轮] Esc 清空搜索框
 - workspace.html: keydown 监听, 聚焦在搜索框(type=search 或 placeholder含搜索/查找/search)且有内容时按 Esc 清空并触发 input 重新筛选, e.stopPropagation 防误关弹窗; 空内容时放行(Esc 仍可关弹窗); 排除命令面板输入(#cmdkInput 的 Esc 关面板)。真机验证 指标搜索框输入后 Esc→清空。?v=u135。
+
+## R196 [UI重构·第67轮] "/" 聚焦搜索 + 快捷键帮助更新
+- workspace.html: 全局 keydown, 非输入态按 "/" 聚焦当前视图首个可见搜索框(defaultPrevented 则让行, 不与模块级"/"冲突)。? 帮助浮层"全局"组更新: 加 "/"=聚焦当前页搜索框、Esc=清空搜索框/关闭弹窗, 数据集成组移除重复的"/"。真机验证 指标页 body 态按"/"→聚焦 metricSearchInput。?v=u137。
