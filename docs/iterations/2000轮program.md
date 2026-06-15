@@ -569,3 +569,6 @@
 
 ## R240 [UI重构·第111轮] 周期任务空态区分筛选无匹配/无记录
 - workspace.html: renderSchedTasks 空态原统一显"请先开始今日调度"(筛选无果时误导)。改为检测筛选输入是否激活+是否有数据: 有数据但筛选无匹配→gov-empty"无匹配任务/调整筛选"; 真无数据→gov-empty"暂无调度记录/开始今日调度"。真机验证 有数据+输不存在名→"无匹配任务"。?v=u181。
+
+## R241 [UI重构·第112轮] 布局防错位批(§10.4·工作流2确认)
+- app.css: 工作流2确认的6处布局错位/溢出隐患修复(均低风险防御CSS, 不动色彩): .intg-form-control 加 min-width:0(select防压扁); .intg-panel-header h3 加 ellipsis(长表名防撑破); .intg-table td 加 max-width:180+ellipsis(长数据截断); .btn 加 width:auto(紧凑工具条防压扁); .env-badge 加 display:inline-flex+align-items(防压缩)+bg令牌化(rgba绿→--success-bg); .prop-value 加 min-width:0(属性栏长标签防错位)。?v=u182。

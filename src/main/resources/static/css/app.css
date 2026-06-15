@@ -109,10 +109,11 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   flex-shrink: 0;
 }
 .env-badge {
+  display: inline-flex; align-items: center;
   font-size: 12px;
   padding: 2px 10px;
   border-radius:var(--radius-sm);
-  background: rgba(43,138,75,.1);
+  background: var(--success-bg);
   color: var(--success);
   font-weight: 500;
 }
@@ -127,6 +128,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .btn {
   display: inline-flex;
+  width: auto;
   align-items: center;
   gap: 5px;
   padding: 5px 14px;
@@ -765,6 +767,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 .prop-value {
   flex: 1;
+  min-width: 0;
 }
 .prop-input {
   width: 100%;
@@ -960,7 +963,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   display: flex; align-items: center; justify-content: center;
 }
 .intg-panel-icon svg { width: 14px; height: 14px; }
-.intg-panel-header h3 { font-size: 13px; font-weight: 600; }
+.intg-panel-header h3 { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .intg-panel-tag {
   font-size: var(--fs-xs); padding: 1px 8px; border-radius:var(--radius-sm);
   margin-left: auto;
@@ -976,7 +979,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .intg-form-label {
   width: 65px; font-size: 12px; color: var(--text-muted); flex-shrink: 0;
 }
-.intg-form-control { flex: 1; }
+.intg-form-control { flex: 1; min-width: 0; }
 .intg-select, .intg-input {
   width: 100%; height: 34px;
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -1023,6 +1026,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   font-size: var(--fs-xs);
   color: var(--text-regular);
   border-bottom: 1px solid var(--divider);
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .intg-table tr:last-child td { border-bottom: none; }
 .intg-table tr:hover td { background: var(--primary-light); }
