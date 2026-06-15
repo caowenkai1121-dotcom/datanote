@@ -223,6 +223,13 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
   border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px;
   background: var(--bg-card); color: var(--text-muted); line-height: 1.5; }
 
+/* ---- 面板区标题强调条(R150): 运维/指标/系统 各 panel 的 h2 加主色短条, 层级更清晰 ---- */
+.ops-dashboard h2 { position: relative; padding-left: 12px; }
+.ops-dashboard h2::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 15px; border-radius: 2px; background: var(--primary);
+}
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

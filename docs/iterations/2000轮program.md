@@ -274,3 +274,7 @@
 ## R149 [UI重构·第20轮] 统一全模块切换淡入(含 page-layout)
 - navigateTo 给显示的视图加 .dn-enter 类(先移除+void offsetWidth 强制重排重触发动画), 覆盖 R144 未含的 page-layout 视图(数据模型/治理/主数据/项目/AI)。modern.css .dn-enter 复用 dnViewIn。全模块切换统一顺滑淡入。
 - 真机验证(Playwright): 数据模型 viewDatamodel 含 dn-enter + animName=dnViewIn。?v=u89。
+
+## R150 [UI重构·第21轮] 面板区标题强调条
+- modern.css: .ops-dashboard h2 加主色短强调条(::before 3px)+左缩进, 运维/指标/系统 各 panel 标题层级更清晰(运维概览/周期/补数/手动/基线/数据集成/指标列表/用户管理等)。
+- 真机截图(运维概览): 标题强调条渲染正确, 多面板统一。?v=u90。
