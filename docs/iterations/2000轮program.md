@@ -563,3 +563,6 @@
 
 ## R238 [UI重构·第109轮] dbsync弹窗一致(对账/历史/移动 Esc+遮罩·工作流确认)
 - workspace.html: dbsyncReconcileModal/dbsyncHistoryModal/dbsyncMoveJobModal 各补 遮罩点击关闭(onclick event.target===this) + 全局 Esc 处理器加 3 检查(reconcile走dbsyncCloseReconcile, history/movejob classList.remove)。真机验证 3 模态 Esc+遮罩关闭全生效。至此 dbsync 全部弹窗 Esc/遮罩关闭一致(承 R233)。?v=u179。
+
+## R239 [UI重构·第110轮] 读操作补catch批3收尾(工作流确认清零)
+- workspace.html: depSearchTasks(依赖搜索)/depDeleteByName(删依赖前查)/loadBaselineList(Promise.all)补 .catch→错误态+重试; loadDsLogs catch 由灰字"加载失败"升级为带"重试"入口。至此 Ultracode 工作流确认的 缺catch/弹窗一致/a11y 三类(除已否决的 darkmode误报)全部修复闭环。?v=u180。

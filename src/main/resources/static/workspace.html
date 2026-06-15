@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u179">
-<link rel="stylesheet" href="css/gov-modern.css?v=u179">
-<link rel="stylesheet" href="css/redesign.css?v=u179">
-<link rel="stylesheet" href="css/dn-design.css?v=u179">
+<link rel="stylesheet" href="css/app.css?v=u180">
+<link rel="stylesheet" href="css/gov-modern.css?v=u180">
+<link rel="stylesheet" href="css/redesign.css?v=u180">
+<link rel="stylesheet" href="css/dn-design.css?v=u180">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u179">
+<link rel="stylesheet" href="css/modern.css?v=u180">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u179"></script>
-<script src="js/gov-assets.js?v=u179"></script>
-<script src="js/gov-lineage.js?v=u179"></script>
-<script src="js/gov-quality.js?v=u179"></script>
-<script src="js/gov-standard.js?v=u179"></script>
-<script src="js/gov-classification.js?v=u179"></script>
-<script src="js/gov-security.js?v=u179"></script>
-<script src="js/gov-health.js?v=u179"></script>
-<script src="js/gov-audit.js?v=u179"></script>
-<script src="js/gov-overview.js?v=u179"></script>
-<script src="js/gov-subject.js?v=u179"></script>
-<script src="js/gov-consumption.js?v=u179"></script>
-<script src="js/gov-govmap.js?v=u179"></script>
-<script src="js/project.js?v=u179"></script>
-<script src="js/datamodel.js?v=u179"></script>
-<script src="js/home-dashboard.js?v=u179"></script>
-<script src="js/mdm.js?v=u179"></script>
-<script src="js/mdm-ingest.js?v=u179"></script>
-<script src="js/mdm-survivorship.js?v=u179"></script>
-<script src="js/mdm-approval.js?v=u179"></script>
-<script src="js/mdm-refdata.js?v=u179"></script>
-<script src="js/mdm-quality.js?v=u179"></script>
-<script src="js/mdm-pubsub.js?v=u179"></script>
-<script src="js/mdm-hierarchy.js?v=u179"></script>
-<script src="js/ai-agent.js?v=u179"></script>
+<script src="js/dn-common.js?v=u180"></script>
+<script src="js/gov-assets.js?v=u180"></script>
+<script src="js/gov-lineage.js?v=u180"></script>
+<script src="js/gov-quality.js?v=u180"></script>
+<script src="js/gov-standard.js?v=u180"></script>
+<script src="js/gov-classification.js?v=u180"></script>
+<script src="js/gov-security.js?v=u180"></script>
+<script src="js/gov-health.js?v=u180"></script>
+<script src="js/gov-audit.js?v=u180"></script>
+<script src="js/gov-overview.js?v=u180"></script>
+<script src="js/gov-subject.js?v=u180"></script>
+<script src="js/gov-consumption.js?v=u180"></script>
+<script src="js/gov-govmap.js?v=u180"></script>
+<script src="js/project.js?v=u180"></script>
+<script src="js/datamodel.js?v=u180"></script>
+<script src="js/home-dashboard.js?v=u180"></script>
+<script src="js/mdm.js?v=u180"></script>
+<script src="js/mdm-ingest.js?v=u180"></script>
+<script src="js/mdm-survivorship.js?v=u180"></script>
+<script src="js/mdm-approval.js?v=u180"></script>
+<script src="js/mdm-refdata.js?v=u180"></script>
+<script src="js/mdm-quality.js?v=u180"></script>
+<script src="js/mdm-pubsub.js?v=u180"></script>
+<script src="js/mdm-hierarchy.js?v=u180"></script>
+<script src="js/ai-agent.js?v=u180"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -6377,7 +6377,7 @@ function loadDsLogs() {
         + '<div class="run-log-output" id="logOutput_' + r.id + '"></div></div>';
     });
     container.innerHTML = html;
-  }).catch(function() { container.innerHTML = '<div style="color:var(--text-muted);">加载失败</div>'; });
+  }).catch(function() { container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">运行日志加载失败 <a href="#" onclick="loadDsLogs();return false;" style="color:var(--primary);">重试</a></div>'; });
 }
 
 function viewLocalRunLog(runId, toggleEl) {
@@ -6652,7 +6652,7 @@ function depDeleteByName(nodeName) {
       } else {
         msgBox('该依赖是 SQL 自动解析的，请修改 SQL 中的 FROM/JOIN 语句来移除');
       }
-    });
+    }).catch(function(e) { msgBox('加载依赖失败: ' + ((e && e.message) || '网络错误')); });
 }
 
 // +/- 按钮（白底圆圈，盖住下面的线）
@@ -6871,7 +6871,7 @@ function depSearchTasks() {
             + '</div>';
         });
         document.getElementById('depSearchResults').innerHTML = html;
-      });
+      }).catch(function() { var el = document.getElementById('depSearchResults'); if (el) el.innerHTML = '<div style="color:var(--error);padding:8px;">搜索失败，请重试</div>'; });
   }, 300);
 }
 
@@ -10371,7 +10371,7 @@ function loadBaselineList() {
     }).join('');
     container.innerHTML = '<table class="ops-ranking-table"><thead><tr><th>#</th><th>基线名称</th><th>类型</th><th>承诺时间</th><th>今日达成</th><th>优先级</th><th>状态</th><th>创建人</th><th>任务数</th><th>操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
-  });
+  }).catch(function() { var c = document.getElementById('opsBaselineContent'); if (c) c.innerHTML = '<div style="padding:24px;text-align:center;color:var(--error);">加载基线列表失败 <a href="#" onclick="loadBaselineList();return false;" style="color:var(--primary);">重试</a></div>'; });
 }
 
 /* 基线打破→跳周期任务并过滤失败任务, 直接重试未达成任务(原无跳转/重跑入口, 须跨页手查) */
