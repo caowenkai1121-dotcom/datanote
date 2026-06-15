@@ -554,3 +554,6 @@
 
 ## R235 [UI重构·第106轮] 写操作补 .catch 防静默失败(工作流确认)
 - workspace.html: 工作流确认的5处写操作裸 fetch/apiPost 无 .catch(网络失败静默, 用户误以为成功): autoSaveDatabaseName(数据库名自动保存)/ctxDelete(删脚本/源)/ctxDeleteFolder(删文件夹)/ctxNewFolder(新建文件夹)/ctxRenameFolder(重命名文件夹) 均补 .catch→msgBox/toast 错误提示。与全站既有错误处理模式一致。?v=u176。
+
+## R236 [UI重构·第107轮] 读操作补catch批1(依赖/手动任务·工作流确认)
+- workspace.html: loadDependencies(/api/script/all-with-content)补 .catch→上下游+脑图区显"加载失败"; loadOpsManual(/api/task-execution/manual)补 .catch→"加载记录失败+重试"(原失败时与"暂无记录"无法区分)。?v=u177。
