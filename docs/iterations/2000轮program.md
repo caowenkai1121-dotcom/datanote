@@ -36,3 +36,11 @@
 - 前端: editQualityRule/editMetric 加载时存基线(__qrBaseUpdatedAt/__mBaseUpdatedAt), 保存带上; 新建弹窗清基线。
 - E2E: 质量规则 save 旧版本→拒"他人修改"/正确版本→code:0(指标同款逻辑对称)。627 测试绿。
 - 进度(8资源): ✅脚本(锁) ✅数据模型(锁) ✅质量规则(版本) ✅指标(版本)。待: 数据标准/主数据/同步任务/项目。
+
+## R111 [并发编辑锁改 Redis] (业主决定)
+- 业主决定锁用 Redis(原生 TTL/原子 SETNX, 优于 DB 表)。环境原无 Redis, 新增:
+  - 服务器: docker datanote-redis(redis:7-alpine, requirepass 随机+maxmemory 128mb LRU, -p 127.0.0.1:6379, restart unless-stopped); datanote.env 加 REDIS_HOST/PORT/PASSWORD。
+  - pom: spring-boot-starter-data-redis; application.yml: spring.redis.*(注: Boot 2.7 用 spring.redis 非 spring.data.redis——踩坑: 配错前缀致连不上密码 NOAUTH 走降级)。
+  - EditLockService 重写为 StringRedisTemplate: acquire=SET NX EX(+本人续约可重入), heartbeat/release=Lua(get==me 才 pexpire/del 原子), currentHolder=get, TTL 90s 原生过期。Redis 异常 fail-open(降级可编辑)+版本校验兜底。
+  - 删 DnEditLock model/mapper(DB 锁表弃用, sql/90 表保留无害)。
+- E2E: admin acquire→redis key=[admin] ttl=90 / viewer→ok:false holder admin / 非持有者 heartbeat=false / release→key 删除 viewer 可抢。627 测试绿。
