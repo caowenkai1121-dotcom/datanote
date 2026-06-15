@@ -266,6 +266,11 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
 .tool-btn:hover { background: var(--primary-light); border-radius: var(--radius-sm); }
 .tool-btn.run:hover { background: var(--success-light); }
 
+/* ---- 通知铃铛下拉(R159): 入场动画 ---- */
+#dnBellDrop[style*="display: none"], #dnBellDrop[style*="display:none"] { animation: none; }
+#dnBellDrop { animation: dnDropIn .18s cubic-bezier(.2,.7,.25,1); transform-origin: top right; }
+@keyframes dnDropIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
