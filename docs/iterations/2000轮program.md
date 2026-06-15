@@ -532,3 +532,6 @@
 
 ## R228 [UI重构·第99轮] 新建指标弹窗 Enter 提交
 - workspace.html: metricModal 加 onkeydown, 单行输入(非 textarea/button)按 Enter→saveMetric, 与 projShowModalBox 回车提交一致。真机验证 名称框填值回车→saveMetric 被调用。数据源测试连接复检已有加载态+结果反馈(testDatasource)。?v=u169。
+
+## R229 [UI重构·第100轮] 质量规则弹窗 Enter 提交(里程碑)
+- workspace.html: qualityRuleModal 加 onkeydown 单行输入 Enter→saveQualityRule()(btn 可选)。与 metricModal(R228)/projShowModalBox 回车提交一致, quality-modal-overlay 家族交互闭环。真机验证 名称框回车→saveQualityRule。**第100轮里程碑**: R130-R229 累计100轮 UI 现代化, 全程真机验证+提交推送。?v=u170。
