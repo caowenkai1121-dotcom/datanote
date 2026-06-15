@@ -438,3 +438,6 @@
 
 ## R198 [UI重构·第69轮] 项目空间空态升级为可操作引导
 - project.js: 项目列表空态由纯文本→全局 .gov-empty: "暂无项目"带图标+引导+"＋新建项目"CTA(projOpenCreate); "无匹配项目"带搜索图标+调整筛选提示。真机验证项目空间空态渲染 gov-empty+CTA。与 R197 指标空态形成一致的"空态即引导"体验。?v=u139。
+
+## R199 [UI重构·第70轮] 数据集成任务空态升级为可操作引导
+- workspace.html: 同步任务列表整体空态(_dbsyncRenderTasks)由纯文本→全局 .gov-empty: 图标+"暂无同步任务"+引导+"＋新建任务"CTA(dbsyncOpenCreateModal, data-perm=dbsync:edit)。至此三大创建流(指标 R197/项目 R198/集成任务 R199)空态均为"开始引导"。?v=u140。
