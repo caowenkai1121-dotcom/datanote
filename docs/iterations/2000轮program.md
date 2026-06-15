@@ -551,3 +551,6 @@
 ## R234 [UI重构·第105轮] 全局 a11y: 可点击div/span 键盘可达(工作流确认)
 - 工作流审计确认大量 onclick 的 div/span(侧栏tab×21/wlc-hero按钮/wlc-action卡/result-tab/history-tab/dbsync-section展开 等~30处)缺 role/tabindex/keydown。一处全局解决: dnA11yEnhance() 给 div[onclick]/span[onclick] 补 role=button+tabindex=0(load + navigateTo后扫描) + 全局 keydown 委托(Enter/Space→click)。真机验证 运维6侧栏tab全获a11y属性、聚焦"补数据"Enter→激活。
 - **注**: 工作流"darkmode-#fff"6条经人工核验为**误报**(.wlc-hero/.dash-hero 背景是固定靛蓝渐变 var(--dash-brand-grad)=linear-gradient(#1d6fff,#3aa0ff)、气泡var(--primary)靛蓝、徽标warning橙、toast status色, 白字在恒定彩底两套主题都正确; 改 --text-inverse 深色变暗字反更糟), 故跳过。?v=u175。
+
+## R235 [UI重构·第106轮] 写操作补 .catch 防静默失败(工作流确认)
+- workspace.html: 工作流确认的5处写操作裸 fetch/apiPost 无 .catch(网络失败静默, 用户误以为成功): autoSaveDatabaseName(数据库名自动保存)/ctxDelete(删脚本/源)/ctxDeleteFolder(删文件夹)/ctxNewFolder(新建文件夹)/ctxRenameFolder(重命名文件夹) 均补 .catch→msgBox/toast 错误提示。与全站既有错误处理模式一致。?v=u176。
