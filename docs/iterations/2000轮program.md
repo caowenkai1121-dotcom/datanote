@@ -544,3 +544,6 @@
 
 ## R232 [UI重构·第103轮] 用户管理空态升级为可操作引导
 - workspace.html: umRenderUsers 空态由纯文本→gov-empty: "暂无用户"带图标+"＋新建用户"CTA(umUserModal); "无匹配用户"带搜索图标+调整提示。承 R197-200/R221 空态体系。真机验证 搜不存在词→gov-empty"无匹配用户"。?v=u173。
+
+## R233 [UI重构·第104轮] 数据集成监控大屏模态 Esc+遮罩关闭(工作流确认)
+- workspace.html: Ultracode审计确认 dbsyncDashboardModal 漏在 Esc 处理器(其他 dbsync 弹窗都有)。补 Esc 关闭(全局 keydown 加 dm.classList.contains('show')→dbsyncCloseDashboard) + 遮罩点击关闭。?v=u174。
