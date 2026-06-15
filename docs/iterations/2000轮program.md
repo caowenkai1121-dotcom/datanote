@@ -507,3 +507,6 @@
 ## R220 [UI重构·第91轮] 表格斑马纹(补主表+修dbsync硬编码)
 - app.css: .dbsync-exec-table 斑马 rgba(0,0,0,.015)(R212漏网, 深色不可见)→var(--bg-sunken)。
 - modern.css: quality-rules-table(指标等主表)原无斑马, 补 tbody tr:nth-child(even) td 交替行底(var(--bg-sunken)) + 紧随 hover td=var(--bg-hover) 覆盖规则(同特异性源序在后, 保证 hover 盖过斑马)。真机验证 偶数行TD bg=var(--bg-sunken) 令牌生效。?v=u161。
+
+## R221 [UI重构·第92轮] 质量规则过滤无匹配反馈
+- workspace.html: qualityFilterRules(客户端 show/hide 过滤)原全隐藏时为空表无提示。改为统计可见行, 全隐藏时插入/显示 #qualityNoMatch 提示行(colspan=9 "无匹配规则，试试调整搜索词"), 有匹配时隐藏。真机验证 搜不存在词→提示显示(20行全隐)、清空→提示隐藏+20行恢复。?v=u162。
