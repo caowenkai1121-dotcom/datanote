@@ -584,3 +584,6 @@
 
 ## R245 [UI重构·第116轮] app.css :root 补关键令牌(防御性·工作流2)
 - app.css: 遗留桥接 :root 补 --radius-sm/--radius-full/--fs-xs/--text-inverse/--text-secondary/--dur/--dur-fast/--dur-slow(值与 dn-design.css 一致)。orphan-var 经级联实际可用(CSS变量computed-time解析), 补齐为防御性(防加载序变化), 无可见变化。工作流2其余项(KPI卡片跨文件令牌统一/操作链接205处refactor/1px间距微调)经判断为高风险或无可见收益, 按极简原则**不做**。真机冒烟首页正常。?v=u186。
+
+## R246 [UI重构·第117轮] 数据集成任务空态区分筛选无匹配/无任务
+- workspace.html: dbsyncRenderJobs 空态原统一显"暂无同步任务+新建"(搜索/状态/目录筛选无果时误导)。改为检测筛选是否激活(搜索词/状态≠ALL/选了子目录)+_dbsyncAllJobs是否有数据: 有任务但筛选无匹配→"无匹配任务/调整筛选"; 真无任务→"暂无同步任务/新建"。真机验证 有任务+搜不存在词→"无匹配任务"。承 R221/R240 空态区分体系。?v=u187。
