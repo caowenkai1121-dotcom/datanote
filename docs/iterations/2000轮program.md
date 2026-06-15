@@ -514,3 +514,6 @@
 ## R222 [UI重构·第93轮] 全模块控制台巡检 + 改密显示密码开关
 - QA: 逐访 10 模块控制台 0 错误 0 警告(仅 benign verbose "密码框未在form内"提示)。
 - workspace.html: 账号抽屉改密区加"显示密码"开关(一处复选切换 原/新/确认 三框 password↔text, 便于核对)。真机验证 勾选→三框 type password→text。?v=u163。
+
+## R223 [UI重构·第94轮] 首登强制改密加显示密码
+- workspace.html: dnForceChangePwd 弹窗(首登必改的关键流)3 框(当前/新/确认)加"显示密码"复选(dnFpShow, 切 password↔text), 与账号抽屉改密(R222)一致。真机验证 勾选→三框 type password→text。?v=u164。
