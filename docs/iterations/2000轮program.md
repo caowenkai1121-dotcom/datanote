@@ -388,3 +388,6 @@
 
 ## R182 [UI重构·第53轮] 命令面板补"新建脚本"动作
 - workspace.html: dnCmdK 操作组补"新建脚本"(复用 createNewScript, kw=new/script/xjjb/develop), 数据开发(最常用模块)创建入口入命令面板。真机验证 script/新建 均命中。操作组现含 新建脚本/新建指标/数据集成新建任务/打开AI助手。?v=u122。
+
+## R183 [UI重构·第54轮] 浏览器标签标题随模块
+- workspace.html: navigateTo 内更新 document.title = 模块名 · DataNote 数据平台(NAV_LABEL 映射), 多标签页/历史记录易辨识当前位置。真机验证 切治理/指标/项目 标题随之变化。?v=u123。
