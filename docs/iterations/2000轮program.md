@@ -246,3 +246,7 @@
 ## R142 [UI重构·第13轮] 数据开发左面板现代化
 - modern.css: 左侧搜索框加放大镜图标(内联svg bg)+圆角+focus光环; 筛选按钮(全部/我的/已上线)pill化(radius-full)。高频左面板更精致。
 - 真机截图(数据开发): 搜索图标+筛选pill 渲染正常。?v=u82。
+
+## R143 [UI重构·第14轮] 全局下拉框自定义 chevron
+- modern.css: 全站表单 select(.prop-select/.dbsync-form-select/.iw-form-select/.intg-select/分类·新鲜度筛选等)appearance:none + 内联 svg chevron(替代老气原生箭头)+ padding-right。
+- 真机验证(Playwright): webkitAppearance:none + 自定义 chevron + padRight 28px。注: 服务器偶发 ERR_EMPTY_RESPONSE 致 css 漏载, 重载即正常。?v=u83。
