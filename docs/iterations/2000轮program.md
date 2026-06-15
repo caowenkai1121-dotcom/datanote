@@ -315,3 +315,6 @@
 ## R159 [UI重构·第30轮] 通知铃铛下拉现代化
 - 铃铛下拉(每屏可见): 空态加铃铛图标 + 友好文案"暂无通知，一切都处理好了"(人性化); modern.css 加 #dnBellDrop 入场动画 dnDropIn(右上为锚的弹入)。
 - 真机验证(Playwright): 下拉 animationName=dnDropIn; 列表渲染 4 条(含指标预警闭环)。?v=u99。
+
+## R160 [UI重构·第31轮] 结果/日志面板标签现代化
+- modern.css: 数据开发底部 .result-tab(运行日志/执行结果)加 hover(柔底)+ 激活底色(primary-light)+ 过渡, 与顶栏/编辑器 tab 交互一致。?v=u100。
