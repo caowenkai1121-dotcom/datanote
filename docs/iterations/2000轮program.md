@@ -468,3 +468,6 @@
 
 ## R208 [UI重构·第79轮] 修 display:flex 弹窗缺弹入动画
 - modern.css: dnModalPop 原仅作用 .quality-modal-overlay.show .quality-modal, 但 metricModal 用 display:flex 开(非.show类)→动画不触发。补 .quality-modal-overlay[style*="flex"] .quality-modal 选择器, 让 flex 开法弹窗也有弹入动画。真机验证 新建指标弹窗内层 animationName=dnModalPop。?v=u149。
+
+## R209 [UI重构·第80轮] 质量规则弹窗遮罩点击+Esc关闭
+- workspace.html: qualityRuleModal(同 .quality-modal-overlay/display:flex 开)补遮罩 onclick(closeRuleModal)+全局 Esc 扩展覆盖。R208 弹入动画已覆盖它。真机验证 遮罩点击→关闭、Esc→关闭。至此 quality-modal-overlay 家族(指标/质量规则)弹窗 动画+遮罩关闭+Esc 三件套齐全一致。?v=u150。
