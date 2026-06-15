@@ -3241,10 +3241,14 @@ function doCloseTab(tabEl) {
   var tabBar = document.getElementById('editorTabs');
   var wasActive = tabEl.classList.contains('active');
   var tabId = tabEl.dataset.id;
-  // 并发编辑防护: 关闭脚本 tab 释放其编辑锁
+  // 并发编辑防护: 关闭脚本/同步 tab 释放其编辑锁
   if (tabEl.dataset.scriptId && window.__editLock && window.__editLock.type === 'SCRIPT'
       && String(window.__editLock.id) === String(tabEl.dataset.scriptId)) {
     dnEditLockRelease('SCRIPT', tabEl.dataset.scriptId);
+  }
+  if (tabEl.dataset.syncTaskId && window.__editLock && window.__editLock.type === 'SYNC'
+      && String(window.__editLock.id) === String(tabEl.dataset.syncTaskId)) {
+    dnEditLockRelease('SYNC', tabEl.dataset.syncTaskId);
   }
   // Clean up content cache
   delete tabContentCache[tabId];
@@ -6048,38 +6052,89 @@ function loadSyncSchedConfig(taskId) {
   });
 }
 
-// 同步任务(ODS)三态: 已上线→映射区只读+横幅"编辑"(下线后可改); 未上线→可编辑。与脚本同款逻辑。
+// 同步任务(ODS)三态+并发编辑锁: 已上线→映射区只读+横幅"编辑"(下线后可改); 未上线(草稿)→抢 SYNC 编辑锁, 抢到独占可改, 被他人持有则只读。与脚本同款逻辑。
+function _syncSetReadonly(ro) {
+  var body = document.querySelector('#viewIntegration .intg-body');
+  if (body) { if (ro) body.classList.add('intg-readonly'); else body.classList.remove('intg-readonly'); }
+  var save = document.getElementById('intgSaveBtn');
+  var create = document.getElementById('intgCreateBtn');
+  if (save) save.disabled = ro;
+  if (create) create.disabled = ro;
+}
+
 function dnApplySyncLifecycle(online) {
+  if (!document.querySelector('#viewIntegration .intg-body')) return;
+  var taskId = currentSyncTaskId;
+  // 切换任务: 释放上一把(非本任务)编辑锁
+  if (window.__editLock && !(window.__editLock.type === 'SYNC' && String(window.__editLock.id) === String(taskId))) {
+    dnEditLockRelease(window.__editLock.type, window.__editLock.id);
+  }
+  if (online) {
+    _syncSetReadonly(true);
+    dnShowSyncBanner('online');
+    if (window.__editLock && window.__editLock.type === 'SYNC') dnEditLockRelease('SYNC', taskId);
+    return;
+  }
+  // 未上线(草稿): 抢编辑锁
+  if (!taskId) { _syncSetReadonly(false); dnShowSyncBanner(null); return; }
+  dnEditLockAcquire('SYNC', taskId, function(ok, holder) {
+    if (currentSyncTaskId !== taskId) return;
+    _syncSetReadonly(!ok);
+    dnShowSyncBanner(ok ? 'held' : 'locked', holder || '他人');
+    if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此同步任务，当前只读', 'warning');
+  });
+}
+
+// 同步任务编辑横幅。mode: 'online'(已上线只读) | 'held'(本人独占) | 'locked'(他人持有) | 'released'(本人已释放) | null(隐藏)
+function dnShowSyncBanner(mode, holder) {
   var body = document.querySelector('#viewIntegration .intg-body');
   if (!body) return;
   var bar = document.getElementById('syncLockBanner');
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'syncLockBanner';
-    bar.style.cssText = 'align-items:center;gap:10px;padding:8px 12px;margin:0 0 12px;border-radius:6px;font-size:13px;background:rgba(47,158,68,.10);color:var(--success);';
+    bar.style.cssText = 'align-items:center;gap:10px;padding:8px 12px;margin:0 0 12px;border-radius:6px;font-size:13px;';
     body.insertBefore(bar, body.firstChild);
   }
-  var save = document.getElementById('intgSaveBtn');
-  var create = document.getElementById('intgCreateBtn');
-  if (online) {
-    body.classList.add('intg-readonly');
-    if (save) save.disabled = true;
-    if (create) create.disabled = true;
-    bar.innerHTML = '<span style="flex:1;">🟢 该同步任务已上线，只读。点「编辑」将下线后修改。</span>'
-      + '<button class="btn btn-sm btn-primary" data-perm="dbsync:run" onclick="dnSyncToDraft()">编辑</button>';
-    bar.style.display = 'flex';
-  } else {
-    body.classList.remove('intg-readonly');
-    if (save) save.disabled = false;
-    if (create) create.disabled = false;
-    bar.style.display = 'none';
+  if (!mode) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  if (mode === 'online') {
+    bar.style.background = 'rgba(47,158,68,.10)'; bar.style.color = 'var(--success)';
+    bar.innerHTML = '<span style="flex:1;">🟢 该同步任务已上线，只读。点「编辑」将下线后修改。</span><button class="btn btn-sm btn-primary" data-perm="dbsync:run" onclick="dnSyncToDraft()">编辑</button>';
+  } else if (mode === 'held') {
+    bar.style.background = 'var(--success-bg,#eafaf0)'; bar.style.color = 'var(--success,#1a7f4b)';
+    bar.innerHTML = '<span style="flex:1;">✏️ 你正在独占编辑此同步任务。</span><button class="btn btn-sm" onclick="dnSyncReleaseLock()">释放编辑锁</button>';
+  } else if (mode === 'released') {
+    bar.style.background = 'var(--bg-hover)'; bar.style.color = 'var(--text-muted)';
+    bar.innerHTML = '<span style="flex:1;">🔓 你已释放编辑锁，他人可编辑。</span><button class="btn btn-sm btn-primary" onclick="dnSyncReacquire()">重新获取</button>';
+  } else { // locked
+    bar.style.background = 'var(--warning-bg,#fff7e6)'; bar.style.color = 'var(--warning,#b26a00)';
+    bar.innerHTML = '<span style="flex:1;">🔒 「' + (holder || '他人') + '」正在编辑此同步任务，当前只读。</span><button class="btn btn-sm btn-primary" onclick="dnSyncReacquire()">获取编辑权</button>';
   }
 }
 
-// 点"编辑": 已上线同步任务先下线(下线后映射区自动转可编辑)
+// 点"编辑": 已上线同步任务先下线(下线后映射区自动转可编辑+抢锁)
 function dnSyncToDraft() {
   if (!currentSyncTaskId) return;
-  proceedOffline();   // 内含确认; 成功后 loadSyncSchedConfig 重新放开只读
+  proceedOffline();   // 内含确认; 成功后 loadSyncSchedConfig 重新放开只读+抢锁
+}
+
+// 获取(或重新获取)当前同步任务编辑权: 仅当无人持锁/锁已超时才成功
+function dnSyncReacquire() {
+  if (!currentSyncTaskId) return;
+  dnEditLockAcquire('SYNC', currentSyncTaskId, function(ok, holder) {
+    if (ok) { _syncSetReadonly(false); dnShowSyncBanner('held'); showToast('已获取编辑权', 'success'); }
+    else showToast('仍被「' + (holder || '他人') + '」编辑中，请待其释放', 'warning');
+  });
+}
+
+// 主动释放当前同步任务编辑锁(不关闭任务), 让他人接手
+function dnSyncReleaseLock() {
+  if (!currentSyncTaskId) return;
+  dnEditLockRelease('SYNC', currentSyncTaskId);
+  _syncSetReadonly(true);
+  dnShowSyncBanner('released');
+  showToast('已释放编辑锁，他人可获取编辑', 'info');
 }
 
 function checkDownstreamAndOffline() {

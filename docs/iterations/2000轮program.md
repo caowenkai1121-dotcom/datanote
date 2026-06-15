@@ -91,3 +91,12 @@
   - closeOtherTabs(keep)/closeAllTabs 复用 doCloseTab(已释放脚本编辑锁); 批量关闭任一未保存→单次确认(_closeTabsBatch + _tabUnsaved), 避免逐个弹窗; 关闭其他后 switchTab 回保留 tab。
 - 真机验证(Playwright, 服务器 8099): ODS 任务1(在线)→intg-readonly=true+横幅 flex+保存 disabled+文案正确; 开4 tab→右键菜单[关闭自己,关闭其他,关闭所有]→关闭其他余1→关闭所有余0。
 - 部署: fast_static.py 推 workspace.html+css/app.css(?v=u61), JAR_UPDATED+服务 active。
+
+## R118 [并发一致性补全] 同步任务(ODS草稿)也接入 Redis 编辑锁
+- R117 给同步任务补了三态只读, 但未上线(草稿)同步任务仍无并发编辑锁——脚本草稿有锁、同步草稿没有, 两人可同改最后写覆盖。补齐一致性。
+- 锁基建(dnEditLockAcquire/Heartbeat/Release + /api/edit-lock)本就按 type 泛化, 直接复用 type='SYNC':
+  - dnApplySyncLifecycle(online): 在线→只读+online横幅(不抢锁, 释放本任务残留锁); 未上线→dnEditLockAcquire('SYNC',taskId) 抢锁, 抢到→独占可编辑+✏️横幅(释放编辑锁), 他人持有→只读+🔒横幅(获取编辑权)。
+  - dnShowSyncBanner(online/held/locked/released/null) + dnSyncReacquire/dnSyncReleaseLock, 与脚本横幅同款。
+  - 切换任务先释放上一把非本任务锁; doCloseTab 增 SYNC 分支释放锁; switchTab/openSyncTask 经 loadSyncSchedConfig→dnApplySyncLifecycle 统一触发。
+- 真机验证(Playwright, 远程库): 草稿路径→独占可编辑+横幅+lock 持有; 释放→只读+"已释放"横幅+lock 清空; 重新获取→独占恢复。(首测因远程抢锁一次往返~1-2s 出现竞态假象, 加长等待后全绿。)
+- 遗留: 同步保存的服务端持锁/版本断言(SyncJobService.save)未加, 当前靠前端锁+心跳超时(90s)+"已上线先下线"护栏; 脚本侧 ScriptService 已有服务端断言, 后续可对齐。
