@@ -570,7 +570,7 @@
     var msg = (inputEl.value || '').trim();
     if (!msg) return;
     DN.post('/api/ai/agent/' + sessionId + '/steer', { text: msg })
-      .then(function () { if (inputEl) inputEl.value = ''; DN.toast('已插话', 'ok'); })
+      .then(function () { if (inputEl) { inputEl.value = ''; inputEl.style.height = ''; } DN.toast('已插话', 'ok'); })
       .catch(function (e) { DN.toast('插话失败：' + (e && e.message ? e.message : e), 'err'); });
   }
 
@@ -579,7 +579,7 @@
     var msg = (inputEl.value || '').trim();
     if (!msg) { DN.toast('请输入问题', 'warn'); return; }
     flowEl.appendChild(userBubble(msg));
-    inputEl.value = '';
+    inputEl.value = ''; inputEl.style.height = '';   // 发送后高度复位(配合自动增高)
     runRequest('/api/ai/agent/chat', { message: msg, ctx: pendingCtx, model: selectedModel || undefined })
       .then(function () {}).catch(function () {}).then(function () { if (inputEl) inputEl.focus(); });
   }
@@ -895,6 +895,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
     });
+    inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; });   // 聊天输入随内容自动增高(≤160px)
     sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);

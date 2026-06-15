@@ -491,3 +491,9 @@
 
 ## R215 [UI重构·第86轮] Toast 点击即关
 - workspace.html: showToast 生成的 toast 加 cursor:pointer + title=点击关闭 + click→淡出移除(原仅 2.6s 自动消失)。真机验证 弹 toast→点击→立即移除。?v=u156。
+
+## R216 [UI重构·第87轮] AI聊天输入自动增高
+- ai-agent.js: assistant 输入 textarea 加 input 监听, 随内容自动增高(height=auto→min(scrollHeight,160))。标准聊天输入体验。真机验证 空58→5行117→封顶≤160。?v=u157。
+
+## R217 [UI重构·第88轮] AI输入发送后高度复位
+- ai-agent.js: send/steer 清空 value 后补 inputEl.style.height=''(配合 R216 自动增高, 防发送后高度残留变高)。真机验证 增高117→复位58。?v=u158。
