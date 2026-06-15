@@ -376,3 +376,6 @@
 
 ## R178 [UI重构·第49轮] 数据开发"最近编辑"状态统一药丸
 - workspace.html: welcomeRecentList 渲染的脚本状态由纯文本色字→全局 gov-pill(已上线 is-ok 绿/未上线 is-muted 灰), 与全站状态徽标(指标/模型/项目)一致。真机验证药丸渲染正确(印证 R176 gov-pill 全局化在开发模块生效)。?v=u118。
+
+## R179 [UI重构·第50轮] 调度状态徽标去硬编码+统一药丸
+- workspace.html: scheduleStatusBadge(右属性栏调度状态)原用硬编码 rgba(0,0,0,.06)/rgba(47,158,68,.12)(违设计规范§6禁硬编码)+纯文本。静态HTML与两处JS更新(5660/6041)统一改用全局 gov-pill is-ok/is-muted, 去硬编码、令牌化、与全站状态徽标一致。真机验证 badge=gov-pill is-muted 无内联底色。?v=u119。
