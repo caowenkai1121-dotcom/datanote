@@ -141,3 +141,12 @@
 - 后端: createFolder 未指定 sortOrder 时取同级 max(sort_order)+1 追加末尾(避免默认0抢前); 新增 updateFolderSort + POST /api/script/folder/sort; buildTree 节点补 sortOrder 回传。
 - 前端(系统管理·开发目录): 新建表单加"排序"数字输入(留空则末尾); 列表加可编辑排序列(改值 onchange→/folder/sort 即时保存+重载树)。
 - 部署: mvn package + deploy_jar 全量, ?v=u64。
+
+## R124 [业主令] 数据集成目录改用数据开发树风格 + 逐项展开收起 + 自由建目录
+- 业主令: 数据运维·数据集成的目录样式和逻辑保持和数据开发类似(但可自由新建目录), 展开收起也参考数据开发。
+- 现状: 数据集成 folder 已支持层级(DnSyncFolder.parentId)+CRUD+按folder过滤job, 但用自有扁平样式(.dbsync-folder-nav-item)、整块折叠(无逐项展开)、内联操作按钮。
+- 改(纯前端, 无后端): 重写 dbsyncRenderFolderTabs/dbsyncRenderFolderNodes 为数据开发树风格(.tree-folder/.tree-folder-header/.arrow/.folder-icon/.tree-children + 缩进), 复用全局 CSS。
+  - 逐项展开收起: 箭头点击 dbsyncTreeToggle(toggle .open)+localStorage(INTEG_FOLDER_OPEN_KEY)持久化, 同数据开发 toggleFolder 机制。
+  - 点文件夹名/图标→dbsyncSelectFolder(选中过滤job+高亮.active+自动展开); 顶部"全部"项; 底部"新建文件夹"(自由建根); 右键菜单 dbsyncFolderCtx(新建子文件夹/重命名/删除)同数据开发交互。
+  - CSS 补 .tree-folder-header.active 高亮 + .leaf 箭头隐藏 + .tree-count 计数徽章。
+- 真机验证(Playwright): 树风格渲染/箭头展开收起/子目录显隐/选中高亮/右键菜单三项 全绿。fast_static ?v=u65。

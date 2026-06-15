@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u64">
-<link rel="stylesheet" href="css/gov-modern.css?v=u64">
-<link rel="stylesheet" href="css/redesign.css?v=u64">
-<link rel="stylesheet" href="css/dn-design.css?v=u64">
+<link rel="stylesheet" href="css/app.css?v=u65">
+<link rel="stylesheet" href="css/gov-modern.css?v=u65">
+<link rel="stylesheet" href="css/redesign.css?v=u65">
+<link rel="stylesheet" href="css/dn-design.css?v=u65">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u64"></script>
-<script src="js/gov-assets.js?v=u64"></script>
-<script src="js/gov-lineage.js?v=u64"></script>
-<script src="js/gov-quality.js?v=u64"></script>
-<script src="js/gov-standard.js?v=u64"></script>
-<script src="js/gov-classification.js?v=u64"></script>
-<script src="js/gov-security.js?v=u64"></script>
-<script src="js/gov-health.js?v=u64"></script>
-<script src="js/gov-audit.js?v=u64"></script>
-<script src="js/gov-overview.js?v=u64"></script>
-<script src="js/gov-subject.js?v=u64"></script>
-<script src="js/gov-consumption.js?v=u64"></script>
-<script src="js/gov-govmap.js?v=u64"></script>
-<script src="js/project.js?v=u64"></script>
-<script src="js/datamodel.js?v=u64"></script>
-<script src="js/home-dashboard.js?v=u64"></script>
-<script src="js/mdm.js?v=u64"></script>
-<script src="js/mdm-ingest.js?v=u64"></script>
-<script src="js/mdm-survivorship.js?v=u64"></script>
-<script src="js/mdm-approval.js?v=u64"></script>
-<script src="js/mdm-refdata.js?v=u64"></script>
-<script src="js/mdm-quality.js?v=u64"></script>
-<script src="js/mdm-pubsub.js?v=u64"></script>
-<script src="js/mdm-hierarchy.js?v=u64"></script>
-<script src="js/ai-agent.js?v=u64"></script>
+<script src="js/dn-common.js?v=u65"></script>
+<script src="js/gov-assets.js?v=u65"></script>
+<script src="js/gov-lineage.js?v=u65"></script>
+<script src="js/gov-quality.js?v=u65"></script>
+<script src="js/gov-standard.js?v=u65"></script>
+<script src="js/gov-classification.js?v=u65"></script>
+<script src="js/gov-security.js?v=u65"></script>
+<script src="js/gov-health.js?v=u65"></script>
+<script src="js/gov-audit.js?v=u65"></script>
+<script src="js/gov-overview.js?v=u65"></script>
+<script src="js/gov-subject.js?v=u65"></script>
+<script src="js/gov-consumption.js?v=u65"></script>
+<script src="js/gov-govmap.js?v=u65"></script>
+<script src="js/project.js?v=u65"></script>
+<script src="js/datamodel.js?v=u65"></script>
+<script src="js/home-dashboard.js?v=u65"></script>
+<script src="js/mdm.js?v=u65"></script>
+<script src="js/mdm-ingest.js?v=u65"></script>
+<script src="js/mdm-survivorship.js?v=u65"></script>
+<script src="js/mdm-approval.js?v=u65"></script>
+<script src="js/mdm-refdata.js?v=u65"></script>
+<script src="js/mdm-quality.js?v=u65"></script>
+<script src="js/mdm-pubsub.js?v=u65"></script>
+<script src="js/mdm-hierarchy.js?v=u65"></script>
+<script src="js/ai-agent.js?v=u65"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -14046,36 +14046,76 @@ function _dbsyncFolderCount(fid) {
 function _dbsyncCountBadge(n) {
   return '<span style="margin-left:auto;font-size:var(--fs-xs);color:var(--text-muted,var(--text-muted));background:var(--bg-hover,var(--bg-sunken));border-radius:var(--radius-full);padding:0 6px;min-width:16px;text-align:center;">' + n + '</span>';
 }
+// 数据集成目录树(数据开发树同款风格: 逐项展开收起 + 右键菜单 + 缩进)
+var INTEG_FOLDER_OPEN_KEY = 'datanote:integFolderOpen';
+function dbsyncGetOpenFolders() {
+  try { var r = JSON.parse(localStorage.getItem(INTEG_FOLDER_OPEN_KEY) || '[]'); return new Set((r || []).map(String)); }
+  catch (e) { return new Set(); }
+}
+function dbsyncSaveOpenFoldersFromDom() {
+  var ids = Array.prototype.slice.call(document.querySelectorAll('#dbsyncFolderTabs .tree-folder.open'))
+    .map(function(el) { return el.getAttribute('data-folder-id'); }).filter(Boolean);
+  localStorage.setItem(INTEG_FOLDER_OPEN_KEY, JSON.stringify(ids));
+}
+// 箭头点击: 仅展开/收起本文件夹(不选中)
+window.dbsyncTreeToggle = function(arrowEl, id) {
+  var folder = arrowEl.closest('.tree-folder');
+  if (!folder) return;
+  folder.classList.toggle('open');
+  dbsyncSaveOpenFoldersFromDom();
+};
+
 function dbsyncRenderFolderTabs() {
   var wrap = document.getElementById('dbsyncFolderTabs');
   if (!wrap) return;
-  var html = '<div class="dbsync-folder-node">'
-    + '<button class="dbsync-folder-nav-item' + (_dbsyncSelectedFolderId === 0 ? ' active' : '') + '" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">'
-    + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>'
-    + '<span class="dbsync-folder-name">全部</span>' + _dbsyncCountBadge(_dbsyncFolderCount(0)) + '</button></div>';
-  html += dbsyncRenderFolderNodes(0, 0);
+  var openSet = dbsyncGetOpenFolders();
+  // 顶部"全部"(选中=不过滤)
+  var html = '<div class="tree-file' + (String(_dbsyncSelectedFolderId) === '0' ? ' active' : '') + '" onclick="dbsyncSelectFolder(this,0)">'
+    + '<svg class="sync-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4h11M2.5 2.5h9a1 1 0 011 1v7a1 1 0 01-1 1h-9a1 1 0 01-1-1v-7a1 1 0 011-1z"/></svg>'
+    + '<span class="file-name">全部</span><span class="tree-count">' + _dbsyncFolderCount(0) + '</span></div>';
+  html += dbsyncRenderFolderNodes(0, openSet);
   wrap.innerHTML = html;
 }
 
-function dbsyncRenderFolderNodes(parentId, depth) {
+function dbsyncRenderFolderNodes(parentId, openSet) {
   return _dbsyncFolders.filter(function(f) {
     return String(f.parentId || 0) === String(parentId || 0);
   }).map(function(f) {
     var isActive = String(_dbsyncSelectedFolderId) === String(f.id);
-    var pad = 8 + depth * 12;
-    return '<div class="dbsync-folder-node">'
-      + '<button class="dbsync-folder-nav-item' + (isActive ? ' active' : '') + '" data-folder-id="' + f.id + '" onclick="dbsyncSelectFolder(this,' + f.id + ')" style="padding-left:' + pad + 'px;">'
-      + '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3a1 1 0 011-1h2.6a1 1 0 01.7.3L6 3h4a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V3z"/></svg>'
-      + '<span class="dbsync-folder-name">' + escapeHtml(f.folderName || '') + '</span>' + _dbsyncCountBadge(_dbsyncFolderCount(f.id)) + '</button>'
-      + '<div class="dbsync-folder-actions">'
-      + '<button class="dbsync-folder-action" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncOpenCreateChildFolder(' + f.id + ')" title="新建子文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v8M2 6h8"/></svg></button>'
-      + '<button class="dbsync-folder-action" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncOpenRenameFolder(' + f.id + ')" title="重命名"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7.5 2.5l2 2L4.2 9.8H2.2V7.8z"/><path d="M6.8 3.2l2 2"/></svg></button>'
-      + '<button class="dbsync-folder-delete" data-perm="dbsync:edit" onclick="event.stopPropagation(); dbsyncDeleteFolder(' + f.id + ',\'' + escapeHtml(f.folderName || '') + '\')" title="删除文件夹"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6M5 3V2h2v1M4 5v4M8 5v4M3.5 3.8l.4 6.2h4.2l.4-6.2"/></svg></button>'
+    var hasChildren = _dbsyncFolders.some(function(c) { return String(c.parentId || 0) === String(f.id); });
+    var isOpen = openSet.has(String(f.id));
+    var nameEsc = escapeHtml(f.folderName || '').replace(/'/g, "\\'");
+    return '<div class="tree-folder' + (isOpen ? ' open' : '') + (hasChildren ? '' : ' leaf') + '" data-folder-id="' + f.id + '">'
+      + '<div class="tree-folder-header' + (isActive ? ' active' : '') + '" oncontextmenu="dbsyncFolderCtx(event,' + f.id + ',\'' + nameEsc + '\')">'
+      + '<svg class="arrow" viewBox="0 0 14 14" fill="currentColor" onclick="event.stopPropagation();dbsyncTreeToggle(this,' + f.id + ')"><path d="M5 3l5 4-5 4z"/></svg>'
+      + '<svg class="folder-icon" viewBox="0 0 14 14" fill="currentColor" onclick="dbsyncSelectFolder(this,' + f.id + ')"><path d="M1 3a1 1 0 011-1h3.5l1.5 1.5H12a1 1 0 011 1V11a1 1 0 01-1 1H2a1 1 0 01-1-1z"/></svg>'
+      + '<span class="file-name" onclick="dbsyncSelectFolder(this,' + f.id + ')">' + escapeHtml(f.folderName || '') + '</span>'
+      + '<span class="tree-count">' + _dbsyncFolderCount(f.id) + '</span>'
       + '</div>'
-      + '</div>'
-      + dbsyncRenderFolderNodes(f.id, depth + 1);
+      + '<div class="tree-children">' + (hasChildren ? dbsyncRenderFolderNodes(f.id, openSet) : '') + '</div>'
+      + '</div>';
   }).join('');
 }
+
+// 文件夹右键菜单(新建子文件夹/重命名/删除), 数据开发同款交互
+function dbsyncCloseFolderCtx() { var m = document.getElementById('dbsyncFolderCtxMenu'); if (m) m.remove(); }
+window.dbsyncFolderCtx = function(e, id, name) {
+  e.preventDefault(); e.stopPropagation();
+  dbsyncCloseFolderCtx();
+  var menu = document.createElement('div');
+  menu.id = 'dbsyncFolderCtxMenu'; menu.className = 'ctx-menu show';
+  menu.style.cssText = 'left:' + e.clientX + 'px;top:' + e.clientY + 'px;';
+  var fIcon = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4a1 1 0 011-1h3l1.5 1.5H12a1 1 0 011 1V11a1 1 0 01-1 1H2a1 1 0 01-1-1z"/></svg>';
+  var rIcon = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11.5V12h.5l7.3-7.3-.5-.5L2 11.5zM10.7 3.3l.5.5.5-.5a.7.7 0 000-1l-.5-.5a.7.7 0 00-1 0l-.5.5.5.5z"/></svg>';
+  var dIcon = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4M3 4v8.5a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V4"/></svg>';
+  menu.innerHTML = '<div class="ctx-item" data-perm="dbsync:edit" onclick="dbsyncCloseFolderCtx();dbsyncOpenCreateChildFolder(' + id + ')">' + fIcon + ' 新建子文件夹</div>'
+    + '<div class="ctx-item" data-perm="dbsync:edit" onclick="dbsyncCloseFolderCtx();dbsyncOpenRenameFolder(' + id + ')">' + rIcon + ' 重命名</div>'
+    + '<div class="ctx-sep"></div>'
+    + '<div class="ctx-item" data-perm="dbsync:edit" style="color:var(--error);" onclick="dbsyncCloseFolderCtx();dbsyncDeleteFolder(' + id + ',\'' + name + '\')">' + dIcon + ' 删除文件夹</div>';
+  document.body.appendChild(menu);
+  if (window.dnApplyBtnPerms) dnApplyBtnPerms(menu);
+  setTimeout(function() { document.addEventListener('click', dbsyncCloseFolderCtx, { once: true }); }, 0);
+};
 
 function dbsyncFillFolderSelect() {
   var sel = document.getElementById('dfsFolderId');
@@ -14086,8 +14126,11 @@ function dbsyncFillFolderSelect() {
 
 window.dbsyncSelectFolder = function(btn, folderId) {
   _dbsyncSelectedFolderId = folderId;
-  var jobsNav = document.getElementById('dbsyncJobsNav');
-  if (jobsNav) switchDbSyncTab(jobsNav, 'jobs');
+  // 选中即展开该文件夹(写入 open 态, 重渲染后保持)
+  if (String(folderId) !== '0') {
+    var s = dbsyncGetOpenFolders(); s.add(String(folderId));
+    localStorage.setItem(INTEG_FOLDER_OPEN_KEY, JSON.stringify(Array.from(s)));
+  }
   dbsyncRenderFolderTabs();
   dbsyncApplyFolderFilter();
 };

@@ -251,6 +251,12 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   padding-left: 16px;
 }
 .tree-folder.open > .tree-children { display: block; }
+/* 选中文件夹高亮(数据集成目录用; 与 .tree-file.active 同款) */
+.tree-folder-header.active { background: var(--primary-light); color: var(--primary); font-weight: 500; }
+.tree-folder-header.active .folder-icon { color: var(--primary); }
+/* 叶子文件夹(无子目录)箭头占位但不显, 保持缩进对齐 */
+.tree-folder.leaf > .tree-folder-header .arrow { visibility: hidden; }
+.tree-folder-header .tree-count { margin-left: auto; font-size: var(--fs-xs); color: var(--text-muted); background: var(--bg-hover); border-radius: var(--radius-full); padding: 0 6px; min-width: 16px; text-align: center; }
 
 .tree-file {
   display: flex;
