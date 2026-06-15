@@ -44,3 +44,8 @@
   - EditLockService 重写为 StringRedisTemplate: acquire=SET NX EX(+本人续约可重入), heartbeat/release=Lua(get==me 才 pexpire/del 原子), currentHolder=get, TTL 90s 原生过期。Redis 异常 fail-open(降级可编辑)+版本校验兜底。
   - 删 DnEditLock model/mapper(DB 锁表弃用, sql/90 表保留无害)。
 - E2E: admin acquire→redis key=[admin] ttl=90 / viewer→ok:false holder admin / 非持有者 heartbeat=false / release→key 删除 viewer 可抢。627 测试绿。
+
+## R112 [修复+增强] 脚本编辑锁: 连续保存误判 + 获取/释放锁交互
+- 修真bug(业主报告): 同一人连续保存第二次报"已被他人修改()"。根因=save 返回内存毫秒精度 updatedAt, MySQL datetime 存秒(截断), 前端基线带毫秒≠库秒→误判。修: ScriptService.save 返回 scriptMapper.selectById(DB真实秒精度行); 并 setUpdatedBy(冲突提示显示修改人, 修空括号)。
+- 增强(业主要求): 编辑锁横幅三态+按钮 —— held(本人持有)「释放编辑锁」/ locked(他人持有)「获取编辑权」/ released(本人已释放)「重新获取」。dnScriptReleaseLock(主动释放不关脚本, 他人可接手) + dnScriptReacquire(无人持锁/超时才成功, 否则提示仍被X编辑)。
+- E2E: 连续 save1/2/3 均 code:0(不再误判); acquire/release 端点既有验证。627 测试绿。

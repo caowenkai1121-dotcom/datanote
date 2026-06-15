@@ -5184,17 +5184,44 @@ function dnEditLockAcquire(type, id, cb) {
     else cb(false, d.holder);
   }).catch(function(){ cb(true, null); });
 }
-// 编辑器只读横幅
-function dnShowEditLockBanner(holder) {
+// 编辑器编辑锁横幅。mode: 'held'(本人持有,可释放) | 'locked'(他人持有,可获取) | 'released'(本人已释放,可重新获取) | null(隐藏)
+function dnShowEditLockBanner(mode, holder) {
   var ed = document.getElementById('codeArea');
   var bar = document.getElementById('editLockBanner');
-  if (!holder) { if (bar) bar.style.display = 'none'; return; }
+  if (!mode) { if (bar) bar.style.display = 'none'; return; }
   if (!bar && ed && ed.parentNode) {
     bar = document.createElement('div'); bar.id = 'editLockBanner';
-    bar.style.cssText = 'padding:6px 12px;background:var(--warning-bg,#fff7e6);color:var(--warning,#b26a00);border-bottom:1px solid var(--border);font-size:12px;';
+    bar.style.cssText = 'padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:10px;';
     ed.parentNode.insertBefore(bar, ed);
   }
-  if (bar) { bar.textContent = '🔒 「' + holder + '」正在编辑此脚本，当前为只读，避免覆盖对方改动。'; bar.style.display = ''; }
+  if (!bar) return;
+  bar.style.display = '';
+  if (mode === 'held') {
+    bar.style.background = 'var(--success-bg,#eafaf0)'; bar.style.color = 'var(--success,#1a7f4b)';
+    bar.innerHTML = '<span style="flex:1;">✏️ 你正在独占编辑此脚本。</span><button class="btn btn-sm" onclick="dnScriptReleaseLock()">释放编辑锁</button>';
+  } else if (mode === 'released') {
+    bar.style.background = 'var(--bg-hover)'; bar.style.color = 'var(--text-muted)';
+    bar.innerHTML = '<span style="flex:1;">🔓 你已释放编辑锁，他人可编辑。</span><button class="btn btn-sm btn-primary" onclick="dnScriptReacquire()">重新获取</button>';
+  } else { // locked
+    bar.style.background = 'var(--warning-bg,#fff7e6)'; bar.style.color = 'var(--warning,#b26a00)';
+    bar.innerHTML = '<span style="flex:1;">🔒 「' + (holder || '他人') + '」正在编辑此脚本，当前只读。</span><button class="btn btn-sm btn-primary" onclick="dnScriptReacquire()">获取编辑权</button>';
+  }
+}
+// 获取(或重新获取)当前脚本编辑权: 仅当无人持锁/锁已超时才成功
+function dnScriptReacquire() {
+  if (!currentScriptId) return;
+  dnEditLockAcquire('SCRIPT', currentScriptId, function (ok, holder) {
+    if (ok) { if (window.codeArea) codeArea.readOnly = false; dnShowEditLockBanner('held'); showToast('已获取编辑权', 'success'); }
+    else { showToast('仍被「' + (holder || '他人') + '」编辑中，请待其释放', 'warning'); }
+  });
+}
+// 主动释放当前脚本编辑锁(不关闭脚本), 让他人可接手
+function dnScriptReleaseLock() {
+  if (!currentScriptId) return;
+  dnEditLockRelease('SCRIPT', currentScriptId);
+  if (window.codeArea) codeArea.readOnly = true;
+  dnShowEditLockBanner('released');
+  showToast('已释放编辑锁，他人可获取编辑', 'info');
 }
 // 关页/刷新尽力释放锁(keepalive); 兜底仍靠服务端心跳超时(90s)
 window.addEventListener('beforeunload', function(){
@@ -5238,7 +5265,7 @@ function openScriptFromTree(el, scriptId, name) {
       dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
         if (currentScriptId !== scriptId) return;   // 已切走, 忽略
         codeArea.readOnly = !ok;
-        dnShowEditLockBanner(ok ? null : (holder || '他人'));
+        dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
         if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
       });
       // Update cache with loaded content

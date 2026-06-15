@@ -142,6 +142,7 @@ public class ScriptService {
             createScriptVersion(existing);
             script.setCreatedAt(existing.getCreatedAt());
             script.setUpdatedAt(LocalDateTime.now());
+            script.setUpdatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 记修改人(冲突提示显示是谁)
             scriptMapper.updateById(script);
         } else {
             script.setCreatedAt(LocalDateTime.now());
@@ -160,7 +161,8 @@ public class ScriptService {
         }
         // 脚本(SQL)变更→异步重建血缘/依赖, 开发改完即时反馈影响面, 不必等夜间兜底
         eventPublisher.publishEvent(new com.datanote.domain.orchestration.ScriptSavedEvent(script.getId()));
-        return script;
+        // 返回库内真实行: updatedAt 为 DB 截断后的秒精度, 供前端刷新版本基线(否则毫秒≠秒致连续保存误判"被他人修改")
+        return scriptMapper.selectById(script.getId());
     }
 
     public void updateBasicInfo(Long id, Map<String, String> body) {
