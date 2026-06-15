@@ -430,6 +430,14 @@ select.dn-form-select, input.dn-form-input { width: auto; }
 .gov-pill.is-info { background: var(--info-bg); color: var(--info-text); box-shadow: inset 0 0 0 1px var(--info-ring); }
 .gov-pill.is-muted { background: var(--bg-sunken); color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--border); }
 
+/* 同款全局化(R176): 区块标题/空态/折线容器/统计网格 原仅治理作用域内有样式, 内联模块(项目/详情等)复用时失效 → 提升为全局(类选择器低优先级, 不影响治理作用域已有) */
+.gov-section-title { font-size: 13px; font-weight: 650; color: var(--text-regular); margin: 6px 0 10px; padding-left: 9px; border-left: 3px solid var(--primary); }
+.gov-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: var(--text-muted); text-align: center; }
+.gov-empty svg { width: 44px; height: 44px; opacity: .5; }
+.gov-empty .et { font-size: 13px; }
+.gov-line { display: flex; justify-content: center; width: 100%; }
+.gov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+
 /* ════════════════ 11b. 数据地图搜索条精修 ════════════════ */
 /* 去掉焦点时的渐变雾罩(盖在输入区上像脏色), 焦点表达交给容器 border+光环 */
 .datamap-search-box::before { content: none; }

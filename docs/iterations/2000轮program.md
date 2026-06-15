@@ -365,3 +365,6 @@
 ## R175 [UI重构·第46轮] 深色QA + 图例兜底真bug修复
 - 深色模式跨模块QA: 数据模型/指标列表/指标详情驾驶舱(自建MetricDetail)全部深色干净无硬编码色泄漏。
 - 真bug: .gov-legend 仅作用于治理4容器(:is(#govModuleContent...)), 指标详情驾驶舱(#metricDetailContent)的趋势图例 flex/gap/色点全失效→"历史值预测目标线"挤成一团。modern.css 加无作用域 .gov-legend 类兜底(低优先级不影响治理已有)。真机验证图例恢复 ●历史值/●预测/●目标线 带色点+12px间距。?v=u115。
+
+## R176 [UI重构·第47轮] gov-* 工具类全局化(承 gov-pill 模式)
+- dn-design.css: 承 gov-pill 已有全局化模式, 把内联模块(项目/详情等)复用但仍仅治理作用域的 gov-section-title/gov-empty/gov-empty svg/gov-line/gov-stats 提升为全局类(低优先级, 不影响治理作用域已有)。真机验证 gov 容器外这些类样式恢复(区块标题左强调条/空态flex居中)。?v=u116。
