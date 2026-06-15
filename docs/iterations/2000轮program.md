@@ -100,3 +100,10 @@
   - 切换任务先释放上一把非本任务锁; doCloseTab 增 SYNC 分支释放锁; switchTab/openSyncTask 经 loadSyncSchedConfig→dnApplySyncLifecycle 统一触发。
 - 真机验证(Playwright, 远程库): 草稿路径→独占可编辑+横幅+lock 持有; 释放→只读+"已释放"横幅+lock 清空; 重新获取→独占恢复。(首测因远程抢锁一次往返~1-2s 出现竞态假象, 加长等待后全绿。)
 - 遗留: 同步保存的服务端持锁/版本断言(SyncJobService.save)未加, 当前靠前端锁+心跳超时(90s)+"已上线先下线"护栏; 脚本侧 ScriptService 已有服务端断言, 后续可对齐。
+
+## R119 [服务端兜底] ODS同步任务保存 服务端持锁断言 + 在线护栏(防绕过前端)
+- 排查发现: 开发树 ODS 同步任务实为 DnSyncTask, 保存走 /api/script/sync-task→ScriptService.saveSyncTask(非 SyncJobService/数据同步模块的 DnSyncJob)。原 saveSyncTask 无在线护栏、无持锁断言——前端只读可被 API 绕过。
+- 修 ScriptService.saveSyncTask(更新分支): ①已上线→拒"请先下线再编辑"(服务端兜底三态) ②editLockService.assertHeld("SYNC",id)(他人持锁则拒, 与 R118 前端 SYNC 锁同款; 无人持锁 fail-open 不影响 AI/批量)。
+- 顺带 SyncJobService.save(数据同步模块 DnSyncJob)也加 assertHeld, 但用独立锁类型 "SYNCJOB" 避与 DnSyncTask 的 "SYNC" 锁键(同 id 不同表)冲突。
+- 真机验证(双 requests 会话, 远程库): 建草稿 DnSyncTask→viewer 抢 SYNC 锁→admin 保存被拒(code -1「viewer 正在编辑该内容, 你暂时无法保存」)→viewer 释放→admin 保存 code 0 成功→删测试数据。
+- 部署: mvn package + deploy_jar.py 全量(md5 校验 8041b6b 匹配), 服务 active; SyncJobServiceValidateTest 构造补 null 参过。

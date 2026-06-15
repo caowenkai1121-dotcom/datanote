@@ -381,6 +381,13 @@ public class ScriptService {
 
     public DnSyncTask saveSyncTask(DnSyncTask task) {
         if (task.getId() != null) {
+            DnSyncTask old = syncTaskMapper.selectById(task.getId());
+            // 任务三态: 已上线不可直接改, 须先下线(转草稿)再编辑——防改动静默作用于在跑任务(服务端兜底, 防绕过前端只读)
+            if (old != null && "online".equalsIgnoreCase(old.getScheduleStatus())) {
+                throw new BusinessException("该同步任务已上线, 请先下线(转为草稿)再编辑");
+            }
+            // 并发编辑防护: 他人持 SYNC 编辑锁则拒(与脚本同款; 无人持锁则放行不影响 AI/批量)
+            editLockService.assertHeld("SYNC", String.valueOf(task.getId()));
             task.setUpdatedAt(LocalDateTime.now());
             syncTaskMapper.updateById(task);
         } else {

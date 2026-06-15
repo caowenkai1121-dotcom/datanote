@@ -47,6 +47,7 @@ public class SyncJobService {
     private final DnSyncJobDependencyMapper dependencyMapper;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
     private final ApplicationEventPublisher eventPublisher;   // #17 任务变更发事件, 血缘侧监听重建(解耦, 不直接注入 orchestration)
+    private final com.datanote.platform.collab.EditLockService editLockService;   // 并发编辑防护: 保存须无他人持锁(服务端兜底, 防绕过前端)
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -140,6 +141,8 @@ public class SyncJobService {
             if (old != null && "online".equalsIgnoreCase(old.getScheduleStatus())) {
                 throw new IllegalArgumentException("该同步任务已上线, 请先下线(转为草稿)再编辑");
             }
+            // 并发编辑防护: 他人持编辑锁则拒(服务端兜底; 用独立类型 SYNCJOB 避与开发ODS同步任务 DnSyncTask 的 SYNC 锁键冲突; 无人持锁则放行不影响 AI/批量)
+            editLockService.assertHeld("SYNCJOB", String.valueOf(job.getId()));
             job.setUpdatedAt(LocalDateTime.now());
             syncJobMapper.updateById(job);
             auditLogService.record(job.getId(), job.getJobName(), "UPDATE",
