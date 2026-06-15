@@ -529,3 +529,6 @@
 
 ## R227 [UI重构·第98轮] 首登改密也加新密码实时合规提示
 - workspace.html: dnForceChangePwd 加 #dnFpHint, dnFpNew input 时同款校验(≥8位+2类, 满足绿/未满足橙)。与账号改密(R226)一致, 覆盖两大密码创建流。真机验证 "abc"→"未满足"、"Abcd1234!"→"✓已满足"。?v=u168。
+
+## R228 [UI重构·第99轮] 新建指标弹窗 Enter 提交
+- workspace.html: metricModal 加 onkeydown, 单行输入(非 textarea/button)按 Enter→saveMetric, 与 projShowModalBox 回车提交一致。真机验证 名称框填值回车→saveMetric 被调用。数据源测试连接复检已有加载态+结果反馈(testDatasource)。?v=u169。
