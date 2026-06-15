@@ -461,6 +461,7 @@ window.projOpenCreate = function() {
   document.getElementById('projTags').value = '';
   document.getElementById('projDesc').value = '';
   document.getElementById('projModal').classList.add('show');
+  setTimeout(function() { try { document.getElementById('projName').focus(); } catch (e) {} }, 60);   // 弹窗即聚焦首字段, 省一次点击
 };
 window.projOpenEdit = function(id) {
   var p = _projList.find(function(x) { return x.id === id; });

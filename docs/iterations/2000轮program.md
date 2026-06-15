@@ -450,3 +450,6 @@
 
 ## R202 [UI重构·第73轮] 新建指标弹窗即聚焦首字段
 - workspace.html: showAddMetricDialog 打开后 setTimeout 聚焦 mName(弹窗即聚焦首字段, 省一次点击, 与 R201 聊天聚焦同理)。真机验证打开弹窗 activeElement=mName。?v=u143。
+
+## R203 [UI重构·第74轮] 项目创建弹窗即聚焦首字段
+- project.js: projOpenCreate 打开后聚焦 projName(与 R202 指标弹窗一致, 创建流弹窗统一即聚焦)。真机验证打开弹窗 activeElement=projName。?v=u144。
