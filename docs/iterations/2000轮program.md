@@ -456,3 +456,6 @@
 
 ## R204 [UI重构·第75轮] 同步任务弹窗即聚焦 + 创建流即聚焦闭环
 - workspace.html: dbsyncOpenCreateModal 打开后聚焦 dfsJobName。至此三大表单弹窗(指标 R202/项目 R203/同步任务 R204)+ AI助手(R201) 进入/打开即聚焦首字段, "少一步、即开即用"闭环。真机验证 activeElement=dfsJobName。?v=u145。
+
+## R205 [UI重构·第76轮] 通用弹窗 projShowModalBox 统一即聚焦
+- project.js: projShowModalBox(数据模型新建/编辑等 ~36处调用的通用弹窗)appendChild 后统一聚焦首个可用 input/textarea/select。一处惠及全部通用弹窗。真机验证 dmNewModel→弹窗内 INPUT 获焦。至此创建流即聚焦覆盖第4流(数据模型)。?v=u146。

@@ -407,6 +407,7 @@ function projShowModalBox(title, inner) {
     if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
   });
   ov.appendChild(box); document.body.appendChild(ov);
+  setTimeout(function() { try { var f = box.querySelector('input:not([type=hidden]):not([disabled]),textarea:not([disabled]),select:not([disabled])'); if (f) f.focus(); } catch (e) {} }, 60);   // 通用弹窗打开即聚焦首输入
 }
 window.projCloseModalBox = function() { var o = document.getElementById('projModalBox'); if (o) o.remove(); };
 // Esc 关闭项目模块弹窗(动态 projModalBox 优先,其次两个静态弹窗),提升键盘可达性
