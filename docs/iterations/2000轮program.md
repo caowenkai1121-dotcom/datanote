@@ -500,3 +500,6 @@
 
 ## R218 [UI重构·第89轮] 指标搜索防抖(去请求风暴)
 - workspace.html: metricSearchInput 原 oninput=loadMetricList() 每键都发服务端双请求(列表+新鲜度)→请求风暴。新增 loadMetricListDebounced(280ms)替换 oninput。其余搜索框多为廉价客户端过滤或已防抖(dbsync/proj)。真机验证 3连击→0即时+延迟后1次。?v=u159。
+
+## R219 [UI重构·第90轮] 指标列表搜索命中高亮
+- workspace.html: renderMetricList 加 hlMetric() 高亮搜索关键词在 指标名称/编码 中的命中(<mark> warning-bg, title 保持纯文本)。承命令面板高亮体验, 列表结果可扫读。真机验证 搜"签"→"<mark>签</mark>约项目数"。?v=u160。
