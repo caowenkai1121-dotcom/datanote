@@ -517,3 +517,6 @@
 
 ## R223 [UI重构·第94轮] 首登强制改密加显示密码
 - workspace.html: dnForceChangePwd 弹窗(首登必改的关键流)3 框(当前/新/确认)加"显示密码"复选(dnFpShow, 切 password↔text), 与账号抽屉改密(R222)一致。真机验证 勾选→三框 type password→text。?v=u164。
+
+## R224 [UI重构·第95轮] 重置密码框加显示密码(显密码闭环)
+- workspace.html: 用户管理 umResetPwd 弹窗的 umResetPwdInput 加"显示密码"复选(内联 onchange 切 type)。至此显示密码覆盖 数据源密码/Hive/AI key(早有👁)+账号改密(R222)+首登强制改密(R223)+重置密码(R224)。真机验证 勾选→password→text。?v=u165。
