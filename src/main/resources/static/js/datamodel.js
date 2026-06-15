@@ -142,7 +142,7 @@
   }
   function renderModels() {
     var box = document.getElementById('dmModelList'); if (!box) return;
-    if (!DM.models.length) { box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">暂无模型，点击右上「+ 新建模型」</div>'; return; }
+    if (!DM.models.length) { box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="5" rx="1.5"/><rect x="3" y="18" width="11" height="3" rx="1.5"/></svg><div class="et">暂无模型</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">新建模型, 沉淀业务 / 逻辑 / 物理三层建模</div><button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="if(window.dmNewModel)dmNewModel()">＋ 新建模型</button></div>'; return; }
     var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>编码</th><th>名称</th><th>类型</th><th>数仓层</th><th>主题域</th><th>状态</th><th>版本</th><th>实体</th><th style="width:280px;">操作</th></tr></thead><tbody>';
     DM.models.forEach(function (m) {
       var tc = TYPE_COLOR[m.modelType] || 'var(--text-muted)';

@@ -441,3 +441,6 @@
 
 ## R199 [UI重构·第70轮] 数据集成任务空态升级为可操作引导
 - workspace.html: 同步任务列表整体空态(_dbsyncRenderTasks)由纯文本→全局 .gov-empty: 图标+"暂无同步任务"+引导+"＋新建任务"CTA(dbsyncOpenCreateModal, data-perm=dbsync:edit)。至此三大创建流(指标 R197/项目 R198/集成任务 R199)空态均为"开始引导"。?v=u140。
+
+## R200 [UI重构·第71轮] 数据模型空态升级为可操作引导
+- datamodel.js: 模型列表空态由纯文本→全局 .gov-empty: 图标+"暂无模型"+引导(沉淀业务/逻辑/物理三层)+"＋新建模型"CTA(dmNewModel, data-perm=datamodel:edit)。四大创建流(指标/项目/集成任务/数据模型)空态全部为上手引导。?v=u141。
