@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u65">
-<link rel="stylesheet" href="css/gov-modern.css?v=u65">
-<link rel="stylesheet" href="css/redesign.css?v=u65">
-<link rel="stylesheet" href="css/dn-design.css?v=u65">
+<link rel="stylesheet" href="css/app.css?v=u66">
+<link rel="stylesheet" href="css/gov-modern.css?v=u66">
+<link rel="stylesheet" href="css/redesign.css?v=u66">
+<link rel="stylesheet" href="css/dn-design.css?v=u66">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u65"></script>
-<script src="js/gov-assets.js?v=u65"></script>
-<script src="js/gov-lineage.js?v=u65"></script>
-<script src="js/gov-quality.js?v=u65"></script>
-<script src="js/gov-standard.js?v=u65"></script>
-<script src="js/gov-classification.js?v=u65"></script>
-<script src="js/gov-security.js?v=u65"></script>
-<script src="js/gov-health.js?v=u65"></script>
-<script src="js/gov-audit.js?v=u65"></script>
-<script src="js/gov-overview.js?v=u65"></script>
-<script src="js/gov-subject.js?v=u65"></script>
-<script src="js/gov-consumption.js?v=u65"></script>
-<script src="js/gov-govmap.js?v=u65"></script>
-<script src="js/project.js?v=u65"></script>
-<script src="js/datamodel.js?v=u65"></script>
-<script src="js/home-dashboard.js?v=u65"></script>
-<script src="js/mdm.js?v=u65"></script>
-<script src="js/mdm-ingest.js?v=u65"></script>
-<script src="js/mdm-survivorship.js?v=u65"></script>
-<script src="js/mdm-approval.js?v=u65"></script>
-<script src="js/mdm-refdata.js?v=u65"></script>
-<script src="js/mdm-quality.js?v=u65"></script>
-<script src="js/mdm-pubsub.js?v=u65"></script>
-<script src="js/mdm-hierarchy.js?v=u65"></script>
-<script src="js/ai-agent.js?v=u65"></script>
+<script src="js/dn-common.js?v=u66"></script>
+<script src="js/gov-assets.js?v=u66"></script>
+<script src="js/gov-lineage.js?v=u66"></script>
+<script src="js/gov-quality.js?v=u66"></script>
+<script src="js/gov-standard.js?v=u66"></script>
+<script src="js/gov-classification.js?v=u66"></script>
+<script src="js/gov-security.js?v=u66"></script>
+<script src="js/gov-health.js?v=u66"></script>
+<script src="js/gov-audit.js?v=u66"></script>
+<script src="js/gov-overview.js?v=u66"></script>
+<script src="js/gov-subject.js?v=u66"></script>
+<script src="js/gov-consumption.js?v=u66"></script>
+<script src="js/gov-govmap.js?v=u66"></script>
+<script src="js/project.js?v=u66"></script>
+<script src="js/datamodel.js?v=u66"></script>
+<script src="js/home-dashboard.js?v=u66"></script>
+<script src="js/mdm.js?v=u66"></script>
+<script src="js/mdm-ingest.js?v=u66"></script>
+<script src="js/mdm-survivorship.js?v=u66"></script>
+<script src="js/mdm-approval.js?v=u66"></script>
+<script src="js/mdm-refdata.js?v=u66"></script>
+<script src="js/mdm-quality.js?v=u66"></script>
+<script src="js/mdm-pubsub.js?v=u66"></script>
+<script src="js/mdm-hierarchy.js?v=u66"></script>
+<script src="js/ai-agent.js?v=u66"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -14069,11 +14069,9 @@ function dbsyncRenderFolderTabs() {
   var wrap = document.getElementById('dbsyncFolderTabs');
   if (!wrap) return;
   var openSet = dbsyncGetOpenFolders();
-  // 顶部"全部"(选中=不过滤)
-  var html = '<div class="tree-file' + (String(_dbsyncSelectedFolderId) === '0' ? ' active' : '') + '" onclick="dbsyncSelectFolder(this,0)">'
-    + '<svg class="sync-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4h11M2.5 2.5h9a1 1 0 011 1v7a1 1 0 01-1 1h-9a1 1 0 01-1-1v-7a1 1 0 011-1z"/></svg>'
-    + '<span class="file-name">全部</span><span class="tree-count">' + _dbsyncFolderCount(0) + '</span></div>';
-  html += dbsyncRenderFolderNodes(0, openSet);
+  // 去掉"全部": 仅渲染文件夹树, 点文件夹只看该文件夹内容
+  var html = dbsyncRenderFolderNodes(0, openSet);
+  if (!html) html = '<div style="padding:10px 12px;color:var(--text-muted);font-size:var(--fs-xs);">暂无文件夹，点下方「新建文件夹」</div>';
   wrap.innerHTML = html;
 }
 
@@ -14098,7 +14096,8 @@ function dbsyncRenderFolderNodes(parentId, openSet) {
 }
 
 // 文件夹右键菜单(新建子文件夹/重命名/删除), 数据开发同款交互
-function dbsyncCloseFolderCtx() { var m = document.getElementById('dbsyncFolderCtxMenu'); if (m) m.remove(); }
+// 注: 必须挂 window — 内联 onclick 在全局作用域解析, 普通 function 在本闭包内不可见
+window.dbsyncCloseFolderCtx = function() { var m = document.getElementById('dbsyncFolderCtxMenu'); if (m) m.remove(); };
 window.dbsyncFolderCtx = function(e, id, name) {
   e.preventDefault(); e.stopPropagation();
   dbsyncCloseFolderCtx();
@@ -14114,7 +14113,7 @@ window.dbsyncFolderCtx = function(e, id, name) {
     + '<div class="ctx-item" data-perm="dbsync:edit" style="color:var(--error);" onclick="dbsyncCloseFolderCtx();dbsyncDeleteFolder(' + id + ',\'' + name + '\')">' + dIcon + ' 删除文件夹</div>';
   document.body.appendChild(menu);
   if (window.dnApplyBtnPerms) dnApplyBtnPerms(menu);
-  setTimeout(function() { document.addEventListener('click', dbsyncCloseFolderCtx, { once: true }); }, 0);
+  setTimeout(function() { document.addEventListener('click', window.dbsyncCloseFolderCtx, { once: true }); }, 0);
 };
 
 function dbsyncFillFolderSelect() {
@@ -14174,14 +14173,11 @@ function dbsyncFolderScopeIds(folderId) {
 }
 
 function dbsyncApplyFolderFilter() {
-  if (_dbsyncSelectedFolderId === 0) {
-    dbsyncRenderJobs(_dbsyncAllJobs);
-  } else {
-    var scopeIds = dbsyncFolderScopeIds(_dbsyncSelectedFolderId);
-    dbsyncRenderJobs((_dbsyncAllJobs || []).filter(function(j) {
-      return scopeIds.indexOf(String(j.folderId || 0)) >= 0;
-    }));
-  }
+  // 只显示"对应文件夹"的任务(精确匹配, 不含后代); 未选(0)=未归类任务
+  var sel = String(_dbsyncSelectedFolderId || 0);
+  dbsyncRenderJobs((_dbsyncAllJobs || []).filter(function(j) {
+    return String(j.folderId || 0) === sel;
+  }));
 }
 
 /* ---------- 新建文件夹 ---------- */

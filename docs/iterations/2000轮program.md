@@ -150,3 +150,10 @@
   - 点文件夹名/图标→dbsyncSelectFolder(选中过滤job+高亮.active+自动展开); 顶部"全部"项; 底部"新建文件夹"(自由建根); 右键菜单 dbsyncFolderCtx(新建子文件夹/重命名/删除)同数据开发交互。
   - CSS 补 .tree-folder-header.active 高亮 + .leaf 箭头隐藏 + .tree-count 计数徽章。
 - 真机验证(Playwright): 树风格渲染/箭头展开收起/子目录显隐/选中高亮/右键菜单三项 全绿。fast_static ?v=u65。
+
+## R125 [业主报告·修] 数据集成目录去掉"全部"+精确过滤 + 修复删除无反应
+- 业主报告: ①去掉"全部", 点文件夹只显示对应文件夹内容; ②文件夹点删除没反应。
+- ②根因: R124 的 dbsyncCloseFolderCtx 用普通 function 声明, 但 workspace.html JS 在闭包内, 内联 onclick 在全局作用域解析→找不到→ReferenceError→整个删除 onclick 中断(同 R124 switchOpsTab 跨作用域同源教训)。修: 改 window.dbsyncCloseFolderCtx + addEventListener 引用 window.x。
+- ①: dbsyncRenderFolderTabs 去掉"全部"项(仅渲染文件夹树, 空时提示); dbsyncApplyFolderFilter 改精确匹配(j.folderId===selected, 不再含后代 scopeIds), 未选(0)=未归类任务。
+- 真机验证(Playwright): 无"全部"项; 右键删除→确认弹窗→确定→文件夹真删(delTestGone); 精确过滤生效。fast_static ?v=u66。
+- 教训复记: workspace.html 内联 onclick/HTML 引用的函数必须挂 window, 闭包内 function/var 不可见(已第3次踩, 写入记忆)。
