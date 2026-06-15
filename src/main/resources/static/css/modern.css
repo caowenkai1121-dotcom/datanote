@@ -163,6 +163,13 @@ textarea:focus {
 .datamap-search-title { letter-spacing: -.02em; }
 .datamap-search-box:focus-within { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
 
+/* ---- 顶部导航现代化(R141): 柔阴影分层 + 激活 tab 底色强化 ---- */
+.dev-header { box-shadow: 0 2px 12px rgba(23,30,60,.05); position: relative; z-index: 50; }
+.header-tab.active { background: var(--primary-light); }
+.dev-header .logo { letter-spacing: -.01em; }
+.user-btn { transition: transform var(--dur-fast) ease, box-shadow var(--dur) ease; }
+.user-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

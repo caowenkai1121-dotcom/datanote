@@ -238,3 +238,7 @@
 ## R140 [UI重构·第11轮] 数据地图搜索 hero 氛围
 - modern.css: .datamap-search-wrap(原 transparent 平)加顶部双层 radial 柔光渐变(indigo)破平面感; 搜索框 focus-within 微抬+悬浮阴影; 标题负字距。
 - 真机截图: 搜索 hero 有 indigo 辉光质感, 表粘性表头/db pill 现代。?v=u80。
+
+## R141 [UI重构·第12轮] 顶部导航现代化
+- modern.css: .dev-header 柔阴影分层(与内容区脱离)+ z-index; 激活 header-tab 加 indigo 底色(原仅下划线, 现底色+下划线更醒目); 用户头像按钮 hover 微抬。
+- 真机截图(治理页): 激活 tab 底色高亮 + 顶栏分层, 全局更现代。?v=u81。
