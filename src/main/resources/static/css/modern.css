@@ -255,6 +255,13 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
 .quality-status-off { background: var(--bg-hover); color: var(--text-muted); }
 .quality-status-on::before, .quality-status-off::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
+/* ---- 页级标题强调条(R156): .gov-h1(治理/主数据/消费 页标题)统一主色短条, 与面板区标题呼应 ---- */
+:is(#govModuleContent, #mdmModuleContent, #homeCockpit, #metricsConsumption) .gov-h1 { position: relative; padding-left: 13px; }
+:is(#govModuleContent, #mdmModuleContent, #homeCockpit, #metricsConsumption) .gov-h1::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 17px; border-radius: 2px; background: var(--primary);
+}
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

@@ -299,3 +299,7 @@
 ## R155 [UI重构·第26轮] 状态徽章统一为现代 pill
 - modern.css: .quality-status-on/off(原纯彩色文字)升级为带圆点的现代 pill(启用=success-light底+绿点; 停用=灰底+灰点), 指标/质量列表状态更醒目一致。
 - 真机验证(Playwright): 启用徽章 bg=success-light + radius 999px。?v=u95。
+
+## R156 [UI重构·第27轮] 页级标题强调条统一
+- modern.css: .gov-h1(治理/主数据/消费 页级标题如"主数据总览/治理总览")加主色短强调条(::before 4px), 与 R150 面板区标题(ops-dashboard h2)呼应, 全站标题层级统一。
+- 真机验证(主数据): .gov-h1 padding-left 13px 强调条生效。?v=u96。
