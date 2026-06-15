@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u85">
-<link rel="stylesheet" href="css/gov-modern.css?v=u85">
-<link rel="stylesheet" href="css/redesign.css?v=u85">
-<link rel="stylesheet" href="css/dn-design.css?v=u85">
+<link rel="stylesheet" href="css/app.css?v=u86">
+<link rel="stylesheet" href="css/gov-modern.css?v=u86">
+<link rel="stylesheet" href="css/redesign.css?v=u86">
+<link rel="stylesheet" href="css/dn-design.css?v=u86">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u85">
+<link rel="stylesheet" href="css/modern.css?v=u86">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
-<script>/* 早期应用主题, 防深色模式刷新闪白 */(function(){try{var t=localStorage.getItem('dn-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<script>/* 早期应用主题/密度, 防刷新闪变 */(function(){try{var t=localStorage.getItem('dn-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u85"></script>
-<script src="js/gov-assets.js?v=u85"></script>
-<script src="js/gov-lineage.js?v=u85"></script>
-<script src="js/gov-quality.js?v=u85"></script>
-<script src="js/gov-standard.js?v=u85"></script>
-<script src="js/gov-classification.js?v=u85"></script>
-<script src="js/gov-security.js?v=u85"></script>
-<script src="js/gov-health.js?v=u85"></script>
-<script src="js/gov-audit.js?v=u85"></script>
-<script src="js/gov-overview.js?v=u85"></script>
-<script src="js/gov-subject.js?v=u85"></script>
-<script src="js/gov-consumption.js?v=u85"></script>
-<script src="js/gov-govmap.js?v=u85"></script>
-<script src="js/project.js?v=u85"></script>
-<script src="js/datamodel.js?v=u85"></script>
-<script src="js/home-dashboard.js?v=u85"></script>
-<script src="js/mdm.js?v=u85"></script>
-<script src="js/mdm-ingest.js?v=u85"></script>
-<script src="js/mdm-survivorship.js?v=u85"></script>
-<script src="js/mdm-approval.js?v=u85"></script>
-<script src="js/mdm-refdata.js?v=u85"></script>
-<script src="js/mdm-quality.js?v=u85"></script>
-<script src="js/mdm-pubsub.js?v=u85"></script>
-<script src="js/mdm-hierarchy.js?v=u85"></script>
-<script src="js/ai-agent.js?v=u85"></script>
+<script src="js/dn-common.js?v=u86"></script>
+<script src="js/gov-assets.js?v=u86"></script>
+<script src="js/gov-lineage.js?v=u86"></script>
+<script src="js/gov-quality.js?v=u86"></script>
+<script src="js/gov-standard.js?v=u86"></script>
+<script src="js/gov-classification.js?v=u86"></script>
+<script src="js/gov-security.js?v=u86"></script>
+<script src="js/gov-health.js?v=u86"></script>
+<script src="js/gov-audit.js?v=u86"></script>
+<script src="js/gov-overview.js?v=u86"></script>
+<script src="js/gov-subject.js?v=u86"></script>
+<script src="js/gov-consumption.js?v=u86"></script>
+<script src="js/gov-govmap.js?v=u86"></script>
+<script src="js/project.js?v=u86"></script>
+<script src="js/datamodel.js?v=u86"></script>
+<script src="js/home-dashboard.js?v=u86"></script>
+<script src="js/mdm.js?v=u86"></script>
+<script src="js/mdm-ingest.js?v=u86"></script>
+<script src="js/mdm-survivorship.js?v=u86"></script>
+<script src="js/mdm-approval.js?v=u86"></script>
+<script src="js/mdm-refdata.js?v=u86"></script>
+<script src="js/mdm-quality.js?v=u86"></script>
+<script src="js/mdm-pubsub.js?v=u86"></script>
+<script src="js/mdm-hierarchy.js?v=u86"></script>
+<script src="js/ai-agent.js?v=u86"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -11440,6 +11440,14 @@ function dnSyncThemeIcon() {
 }
 try { dnSyncThemeIcon(); } catch (e) {}
 
+/* ===== 紧凑/舒适密度切换(数据密集场景一键收紧行距; localStorage 持久) ===== */
+window.dnToggleDensity = function() {
+  var compact = document.documentElement.getAttribute('data-density') === 'compact';
+  if (compact) { document.documentElement.removeAttribute('data-density'); try { localStorage.setItem('dn-density', 'comfortable'); } catch (e) {} }
+  else { document.documentElement.setAttribute('data-density', 'compact'); try { localStorage.setItem('dn-density', 'compact'); } catch (e) {} }
+  if (window.showToast) showToast(compact ? '已切换舒适密度' : '已切换紧凑密度', 'info');
+};
+
 /* ===== 全局命令面板(Ctrl/⌘+K): 跨模块导航 + 常用动作 + 主题, 模糊搜索 + 键盘上下 Enter ===== */
 var _cmdkItems = null, _cmdkActiveIdx = 0, _cmdkFiltered = [];
 function dnCmdKBuildItems() {
@@ -11455,6 +11463,7 @@ function dnCmdKBuildItems() {
   items.push({ group: '操作', label: '数据集成 · 新建任务', icon: '＋', run: function() { navigateTo('operations'); setTimeout(function(){ var n=document.getElementById('dbsyncJobsNav'); if(n) switchOpsTab(n,'integration'); setTimeout(function(){ if(window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 150); } });
   items.push({ group: '操作', label: '打开 AI 助手', icon: '✦', run: function() { openAiLauncher(); } });
   items.push({ group: '偏好', label: '切换深色/浅色模式', icon: '◐', run: function() { dnToggleTheme(); } });
+  items.push({ group: '偏好', label: '切换紧凑/舒适密度', icon: '☰', run: function() { dnToggleDensity(); } });
   items.push({ group: '账户', label: '退出登录', icon: '⏻', run: function() { if (window.dnLogout) dnLogout(); else fetch('/api/auth/logout', { method: 'POST' }).then(function(){ location.replace('login.html'); }); } });
   return items;
 }

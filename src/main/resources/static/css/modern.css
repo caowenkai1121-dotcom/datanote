@@ -199,6 +199,17 @@ select.dbsync-form-select, #devRootLayer, #metricCategoryFilter, #metricFreshFil
 #govDrawerMask, .dbsync-drawer-mask, .dn-modal-mask { backdrop-filter: blur(3px); }
 .gov-drawer, .dbsync-detail-drawer, #projDetailDrawer, #dbsyncDetailDrawer { border-left: 1px solid var(--border); }
 
+/* ---- 紧凑密度模式(R146): 数据密集用户一键收紧行距(命令面板切换) ---- */
+:root[data-density="compact"] .quality-rules-table td,
+:root[data-density="compact"] .quality-rules-table th,
+:root[data-density="compact"] .dbsync-exec-table td,
+:root[data-density="compact"] .dbsync-exec-table th { padding-top: 4px; padding-bottom: 4px; }
+:root[data-density="compact"] .ops-sidebar-item { padding-top: 7px; padding-bottom: 7px; }
+:root[data-density="compact"] .gov-stat { padding: 12px 14px; }
+:root[data-density="compact"] .tree-folder-header,
+:root[data-density="compact"] .tree-file { padding-top: 4px; padding-bottom: 4px; }
+:root[data-density="compact"] .editor-tab { font-size: 11.5px; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

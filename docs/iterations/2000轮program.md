@@ -258,3 +258,7 @@
 ## R145 [UI重构·第16轮] 详情抽屉(slide-over)现代化
 - modern.css: 抽屉遮罩(#govDrawerMask/.dbsync-drawer-mask[同步+项目详情共用]/.dn-modal-mask)加 backdrop-filter blur(3px); 抽屉(gov-drawer/项目详情/同步详情)左缘 1px 边精致。
 - 真机验证: CSS served; 项目工作台截图无破坏(顺带见 R127 指标预警工单闭环显示在"指给我的工单")。?v=u85。
+
+## R146 [UI重构·第17轮] 紧凑/舒适密度切换(新特性)
+- 新增密度切换 dnToggleDensity(data-density=compact 全局, localStorage 'dn-density' 持久 + 早期内联 boot): 紧凑模式收紧 表格行/侧栏项/树/磁贴/编辑器tab 间距, 数据密集用户一屏看更多。命令面板加"切换紧凑/舒适密度"项。modern.css 加 :root[data-density=compact] 规则。
+- 真机验证(Playwright): 表格 td padding 8px→4px, data-density=compact 持久, 可切回。?v=u86。
