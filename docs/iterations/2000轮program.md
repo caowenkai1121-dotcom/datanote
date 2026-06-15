@@ -426,3 +426,6 @@
 
 ## R194 [UI重构·第65轮] 截断文本悬停显示全文
 - workspace.html: 委托 mouseover, 对被省略号截断的文本(scrollWidth>clientWidth 且 textOverflow:ellipsis 或 overflow:hidden)首次悬停补 title=全文(<400字, 排除Monaco), 全站表格/标签截断处可悬停看全文。真机验证: 截断元素→title=全文; 不截断元素→不误加title(无误报)。?v=u134。
+
+## R195 [UI重构·第66轮] Esc 清空搜索框
+- workspace.html: keydown 监听, 聚焦在搜索框(type=search 或 placeholder含搜索/查找/search)且有内容时按 Esc 清空并触发 input 重新筛选, e.stopPropagation 防误关弹窗; 空内容时放行(Esc 仍可关弹窗); 排除命令面板输入(#cmdkInput 的 Esc 关面板)。真机验证 指标搜索框输入后 Esc→清空。?v=u135。
