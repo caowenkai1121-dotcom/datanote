@@ -136,6 +136,19 @@ textarea:focus {
   outline: none;
 }
 
+/* ---- 弹窗现代化(R138): 背景模糊 + 卡片弹入动画(全站遗留弹窗) ---- */
+.g-modal-overlay, .dbsync-modal-overlay, .quality-modal-overlay, .sched-log-overlay, .intg-modal-overlay {
+  backdrop-filter: blur(3px);
+}
+.g-modal-overlay.show .g-modal,
+.quality-modal-overlay.show .quality-modal,
+.dbsync-modal-overlay.show .dbsync-modal,
+.intg-modal-overlay.show .intg-modal,
+.sched-log-overlay .sched-log-modal {
+  animation: dnModalPop .2s cubic-bezier(.2,.7,.25,1);
+}
+@keyframes dnModalPop { from { opacity: 0; transform: translateY(-10px) scale(.985); } to { opacity: 1; transform: none; } }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

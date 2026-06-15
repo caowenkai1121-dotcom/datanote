@@ -226,3 +226,7 @@
 - modern.css: 全站输入/下拉/文本域(.prop-input/.dbsync-form-input/.iw-form-input/.intg-*/.g-modal-input/.ds-form-row input/quality-modal/textarea)聚焦统一 主色边框 + 3px 柔光环(原各处仅变边框无环, 不一致)。
 - 坑: 首版选择器含 input:not([type=checkbox]):not(...):focus 复杂链疑被丢弃→改纯类列表; headless 程序化 .focus()+getComputedStyle 不渲染 :focus(连既有规则都不反映), 须真实 Playwright click 验证。
 - 真机验证(Playwright 真实 click): 聚焦输入 box-shadow=主色3px光环 + border 主色。?v=u77。
+
+## R138 [UI重构·第9轮] 全局弹窗现代化
+- modern.css: 全部 modal 遮罩(.g-modal-overlay/.dbsync-modal-overlay/.quality-modal-overlay/.sched-log-overlay/.intg-modal-overlay)加 backdrop-filter blur(3px); .show 类弹窗(及 DN.confirm dn-modal)卡片弹入动画 dnModalPop(opacity+translateY+scale)。
+- 验证: 服务器 CSS 正确; 真机截图弹窗渲染干净+遮罩变暗。注: getComputedStyle 对 backdrop-filter 在 headless 无 GPU 合成时返回 none(假象), 以截图为准。?v=u78。
