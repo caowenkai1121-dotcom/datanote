@@ -535,3 +535,6 @@
 
 ## R229 [UI重构·第100轮] 质量规则弹窗 Enter 提交(里程碑)
 - workspace.html: qualityRuleModal 加 onkeydown 单行输入 Enter→saveQualityRule()(btn 可选)。与 metricModal(R228)/projShowModalBox 回车提交一致, quality-modal-overlay 家族交互闭环。真机验证 名称框回车→saveQualityRule。**第100轮里程碑**: R130-R229 累计100轮 UI 现代化, 全程真机验证+提交推送。?v=u170。
+
+## R230 [UI重构·第101轮] 数据地图搜索命中高亮
+- workspace.html: renderDmTable 加 _dhl() 高亮 datamapSearchInput 关键词在 表名/中文名描述 中的命中(<mark> warning-bg)。承指标列表(R219)高亮体验, 搜索中枢结果可扫读。真机验证 搜"ads"→50处命中高亮。?v=u171。
