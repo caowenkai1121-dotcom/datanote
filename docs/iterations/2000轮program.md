@@ -488,3 +488,6 @@
 
 ## R214 [UI重构·第85轮] 数字输入框防滚轮误改值
 - workspace.html: 全局 passive wheel 监听, 聚焦的 number 输入被滚轮经过时 blur(让页面正常滚动而非误改数值)。修常见痛点(跳数/阈值/batchSize 等数字输入滚动误改)。真机验证 聚焦number+滚轮→失焦且值不变(5→5)。?v=u155。
+
+## R215 [UI重构·第86轮] Toast 点击即关
+- workspace.html: showToast 生成的 toast 加 cursor:pointer + title=点击关闭 + click→淡出移除(原仅 2.6s 自动消失)。真机验证 弹 toast→点击→立即移除。?v=u156。
