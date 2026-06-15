@@ -541,3 +541,6 @@
 
 ## R231 [UI重构·第102轮] 用户管理搜索命中高亮
 - workspace.html: umRenderUsers 加 _uhl() 高亮搜索关键词在 用户名/昵称/邮箱/手机/部门 中的命中(<mark> warning-bg)。承指标(R219)/数据地图(R230)高亮, 用户列表搜索可扫读。真机验证 搜"admin"→用户名命中高亮。?v=u172。
+
+## R232 [UI重构·第103轮] 用户管理空态升级为可操作引导
+- workspace.html: umRenderUsers 空态由纯文本→gov-empty: "暂无用户"带图标+"＋新建用户"CTA(umUserModal); "无匹配用户"带搜索图标+调整提示。承 R197-200/R221 空态体系。真机验证 搜不存在词→gov-empty"无匹配用户"。?v=u173。
