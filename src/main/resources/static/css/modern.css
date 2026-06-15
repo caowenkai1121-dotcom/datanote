@@ -262,6 +262,10 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
   width: 4px; height: 17px; border-radius: 2px; background: var(--primary);
 }
 
+/* ---- 编辑器工具栏按钮 hover 柔底(R157): SQL/集成编辑器 运行/保存/格式化 等 ---- */
+.tool-btn:hover { background: var(--primary-light); border-radius: var(--radius-sm); }
+.tool-btn.run:hover { background: var(--success-light); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
