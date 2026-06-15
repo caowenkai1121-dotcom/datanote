@@ -331,3 +331,6 @@
 
 ## R164 [UI重构·第35轮] 骨架屏推广到高频加载点
 - 已有 wsSkeleton/.ws-skel shimmer 组件但仅 2 处用。推广到项目管理(projHomeBox/projListBox)+用户管理(umUserBox/umRoleBox)初始加载占位, 替换"加载中..."纯文本为骨架行(首帧瞬态, 数据到达即替换)。真机验证项目模块渲染正常无破坏。?v=u104。
+
+## R165 [UI重构·第36轮] 骨架屏续推广(项目模板/发布中心+系统监控四盒)
+- workspace.html: projTemplateBox/projReleaseCenterBox + smMetricsBox/smServiceBox/smScheduleBox/smAuditBox 加载占位 文本→ws-skel骨架行。真机验证系统管理/项目渲染正常。?v=u105。
