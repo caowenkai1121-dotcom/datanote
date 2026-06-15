@@ -37,6 +37,12 @@ public class DataModelService {
     private final NotificationService notificationService;
     private final com.datanote.domain.metadata.mapper.DnTableMetaMapper tableMetaMapper;
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;
+    private final com.datanote.platform.collab.EditLockService editLockService;   // 并发编辑防护: 模型级编辑锁
+
+    /** 模型级编辑锁断言: 他人持锁则拒(服务端兜底, 防绕过前端)。 */
+    private void assertModelHeld(Long modelId) {
+        if (modelId != null) editLockService.assertHeld("MODEL", String.valueOf(modelId));
+    }
     private final DnModelVersionMapper versionMapper;
     private final com.datanote.domain.governance.mapper.DnDataElementMapper dataElementMapper;
     private final com.datanote.domain.governance.mapper.DnWordRootMapper wordRootMapper;
@@ -116,6 +122,12 @@ public class DataModelService {
             if ("PENDING".equals(exist.getStatus())) {
                 throw new BusinessException("模型审批中, 不可修改, 请先等待审批完成或驳回后再改");
             }
+            // 并发编辑防护: 他人持锁拒 + 乐观版本校验
+            assertModelHeld(model.getId());
+            if (model.getBaseUpdatedAt() != null && exist.getUpdatedAt() != null
+                    && !model.getBaseUpdatedAt().equals(exist.getUpdatedAt())) {
+                throw new BusinessException("该模型已被他人修改, 请刷新后重试以免覆盖对方改动");
+            }
             // 状态/版本由流转管控, 此处不允许直改
             model.setStatus(null);
             model.setVersion(null);
@@ -147,6 +159,7 @@ public class DataModelService {
     /** 模型可编辑校验: 审批中(PENDING)的模型禁止任何增改删, 防审批闭环被旁路。 */
     private void assertModelEditable(Long modelId) {
         if (modelId == null) return;
+        assertModelHeld(modelId);   // 并发编辑防护: 他人持模型编辑锁则拒(覆盖实体/属性/关系所有子改动)
         DnModel m = modelMapper.selectById(modelId);
         if (m != null && "PENDING".equals(m.getStatus())) {
             throw new BusinessException("模型审批中, 不可修改, 请先等待审批完成或驳回后再改");

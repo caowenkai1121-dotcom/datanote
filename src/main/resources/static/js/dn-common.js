@@ -447,7 +447,7 @@
   };
 
   /** 右侧抽屉：返回 {close, body}。footerNode 可选: 渲染为 sticky 底部操作栏(.df), 永远贴底不随内容滚走。 */
-  DN.drawer = function (title, bodyNode, footerNode) {
+  DN.drawer = function (title, bodyNode, footerNode, onClose) {
     // 替换旧抽屉时先解绑其 keydown 监听,避免监听器泄漏累积
     if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
     var old = document.getElementById('govDrawerMask'); if (old) old.remove();
@@ -469,7 +469,7 @@
       }
     }
     var _closing = false;
-    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
+    function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} try { if (typeof onClose === 'function') onClose(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var drKids = [DN.h('div', { class: 'dh' }, [DN.h('span', { text: title || '' }), DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd];
     if (df) drKids.push(df);
     var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, drKids);

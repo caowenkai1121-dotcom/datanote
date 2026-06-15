@@ -30,6 +30,10 @@ public class DnModel {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /** 并发编辑乐观校验基线(非库字段) */
+    @TableField(exist = false)
+    private LocalDateTime baseUpdatedAt;
+
     @TableField(exist = false)
     private String subjectName;
     @TableField(exist = false)

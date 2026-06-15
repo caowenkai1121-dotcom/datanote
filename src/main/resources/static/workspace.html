@@ -7502,6 +7502,8 @@ function navigateTo(route, ctx) {
   window.__navCtx = ctx || null;   // R21 跨模块深链上下文, 各 view init 读取后置空
   // 切换视图前统一关闭所有抽屉(DN.drawer/项目详情/同步详情/AI), 防残留遮罩盖住新视图+键盘监听泄漏
   if (window.DN && DN.closeAllDrawers) { try { DN.closeAllDrawers(); } catch (e) {} }
+  // 并发编辑防护: 切换顶级模块即离开编辑场景, 释放当前持有的编辑锁(脚本/模型等)+停心跳, 防锁残留
+  if (window.dnEditLockRelease && window.__editLock) { try { dnEditLockRelease(window.__editLock.type, window.__editLock.id); } catch (e) {} }
   else if (currentRoute === 'project' && route !== 'project' && window.projCloseDetail) { try { projCloseDetail(); } catch (e) {} }
   // 路由权限守卫(强制登录模式): 无该模块 view 权限则拦回首页
   if (window.__authEnabled && window.dnHasPerm && route !== 'home') {

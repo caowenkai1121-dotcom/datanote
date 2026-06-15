@@ -24,7 +24,7 @@ class DataModelReviewTest {
 
     private DataModelService svc() {
         return new DataModelService(null, null, null, null, changeMapper,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     @Test

@@ -214,7 +214,21 @@
     api('/api/datamodel/model/' + id).then(function (res) {
       if (!res || res.code !== 0) { toast('加载失败', 'error'); return; }
       var m = res.data;
-      var canEdit = (m.status === 'DRAFT' || m.status === 'REJECTED');
+      var statusEditable = (m.status === 'DRAFT' || m.status === 'REJECTED');
+      // 并发编辑防护: 可编辑状态才抢模型锁; 他人持锁→只读+横幅
+      if (window.__editLock && window.dnEditLockRelease && !(window.__editLock.type === 'MODEL' && String(window.__editLock.id) === String(id))) {
+        dnEditLockRelease(window.__editLock.type, window.__editLock.id);
+      }
+      if (statusEditable && window.dnEditLockAcquire) {
+        dnEditLockAcquire('MODEL', id, function (ok, holder) { _dmBuildModelDetail(m, ok, ok ? null : (holder || '他人')); });
+      } else {
+        _dmBuildModelDetail(m, false, null);
+      }
+    }).catch(function () { toast('加载失败', 'error'); });
+  };
+  function _dmBuildModelDetail(m, canEdit, lockHolder) {
+    {
+      var id = m.id;
       var body = document.createElement('div');
       body.innerHTML =
         '<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">'
@@ -232,19 +246,27 @@
         + '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px;"><b style="font-size:13px;">关系</b>'
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddRelation(' + m.id + ')">+ 关系</button>' : '')
         + '</div><div id="dmRelBox"></div>';
-      var foot = null;
+      if (lockHolder) {
+        var banner = document.createElement('div');
+        banner.style.cssText = 'padding:6px 10px;margin-bottom:8px;background:var(--warning-bg,#fff7e6);color:var(--warning,#b26a00);border-radius:4px;font-size:12px;';
+        banner.textContent = '🔒 「' + lockHolder + '」正在编辑此模型，当前为只读，避免覆盖对方改动。';
+        body.insertBefore(banner, body.firstChild);
+      }
+      var _rel = function () { if (window.dnEditLockRelease && window.__editLock && window.__editLock.type === 'MODEL' && String(window.__editLock.id) === String(m.id)) dnEditLockRelease('MODEL', m.id); };
       if (window.DN && DN.drawer) {
-        var dr = DN.drawer('模型详情 · ' + esc(m.modelName), body, null);
+        var dr = DN.drawer('模型详情 · ' + esc(m.modelName), body, null, _rel);
         window.__dmDrawer = dr;
       } else {
         projShowModalBox('模型详情 · ' + esc(m.modelName), body.outerHTML);
       }
+      _dmCanEdit = canEdit;
       renderEntities(m);
-    }).catch(function () { toast('加载失败', 'error'); });
-  };
+    }
+  }
+  var _dmCanEdit = false;   // 模型详情当前是否可编辑(状态可编辑 且 持有编辑锁)
   function renderEntities(m) {
     var box = document.getElementById('dmEntityBox'); if (!box) return;
-    var canEdit = (m.status === 'DRAFT' || m.status === 'REJECTED');
+    var canEdit = _dmCanEdit;
     if (!m.entities || !m.entities.length) { box.innerHTML = '<div style="padding:16px;color:var(--text-muted);">暂无实体</div>'; if (window.dnApplyBtnPerms) dnApplyBtnPerms(box); return; }
     box.innerHTML = m.entities.map(function (e) {
       var attrs = e.attributes || [];
