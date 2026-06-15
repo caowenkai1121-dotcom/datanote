@@ -471,3 +471,7 @@
 
 ## R209 [UI重构·第80轮] 质量规则弹窗遮罩点击+Esc关闭
 - workspace.html: qualityRuleModal(同 .quality-modal-overlay/display:flex 开)补遮罩 onclick(closeRuleModal)+全局 Esc 扩展覆盖。R208 弹入动画已覆盖它。真机验证 遮罩点击→关闭、Esc→关闭。至此 quality-modal-overlay 家族(指标/质量规则)弹窗 动画+遮罩关闭+Esc 三件套齐全一致。?v=u150。
+
+## R210 [UI重构·第81轮] 质量规则弹窗即聚焦 + 血缘视图QA
+- workspace.html: showAddRuleDialog 打开后聚焦 qrName。至此 quality-modal-overlay 家族(指标/质量规则)即聚焦+遮罩关闭+Esc+弹入动画 全齐。
+- QA: 数据血缘视图(血缘探查 库/表/跳数+查询/下游/上游/画图 + 图例 + 孤儿表检测)为设计良好的交互查询工具, 无需改。真机验证质量规则弹窗 activeElement=qrName。?v=u151。
