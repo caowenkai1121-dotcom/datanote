@@ -391,3 +391,6 @@
 
 ## R183 [UI重构·第54轮] 浏览器标签标题随模块
 - workspace.html: navigateTo 内更新 document.title = 模块名 · DataNote 数据平台(NAV_LABEL 映射), 多标签页/历史记录易辨识当前位置。真机验证 切治理/指标/项目 标题随之变化。?v=u123。
+
+## R184 [UI重构·第55轮] 最近编辑可点行键盘可达
+- workspace.html: welcomeRecentList 脚本行(onclick打开)补 role=button/tabindex=0/onkeydown(Enter|Space), 键盘用户可 Tab 聚焦+回车打开。真机验证8行均具备。承 R177 a11y。?v=u124。
