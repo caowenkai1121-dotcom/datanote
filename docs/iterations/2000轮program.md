@@ -575,3 +575,6 @@
 
 ## R242 [UI重构·第113轮] 交互按压态补全(§10.5·工作流2确认)
 - modern.css: 工作流2确认 .header-tab/.editor-tab/.result-tab(有hover无active)补 :active translateY(1px); .tab-close/.left-header .add-btn/.result-download-btn 补 :active scale(.92)。纯 transform 反馈不动色, 与既有 .btn:active 一致。?v=u183。
+
+## R243 [UI重构·第114轮] 状态徽标/按钮视觉统一(工作流2确认)
+- workspace.html: 审批状态(已通过/已驳回/已撤回/待审)由裸 span+内联色→gov-pill is-ok/err/muted/warn(与全站状态徽标统一); 基线删除按钮由"btn+内联error色"→btn-danger(与其他删除按钮一致的红底)。?v=u184。
