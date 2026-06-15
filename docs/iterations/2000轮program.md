@@ -453,3 +453,6 @@
 
 ## R203 [UI重构·第74轮] 项目创建弹窗即聚焦首字段
 - project.js: projOpenCreate 打开后聚焦 projName(与 R202 指标弹窗一致, 创建流弹窗统一即聚焦)。真机验证打开弹窗 activeElement=projName。?v=u144。
+
+## R204 [UI重构·第75轮] 同步任务弹窗即聚焦 + 创建流即聚焦闭环
+- workspace.html: dbsyncOpenCreateModal 打开后聚焦 dfsJobName。至此三大表单弹窗(指标 R202/项目 R203/同步任务 R204)+ AI助手(R201) 进入/打开即聚焦首字段, "少一步、即开即用"闭环。真机验证 activeElement=dfsJobName。?v=u145。
