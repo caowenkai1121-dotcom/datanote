@@ -459,3 +459,6 @@
 
 ## R205 [UI重构·第76轮] 通用弹窗 projShowModalBox 统一即聚焦
 - project.js: projShowModalBox(数据模型新建/编辑等 ~36处调用的通用弹窗)appendChild 后统一聚焦首个可用 input/textarea/select。一处惠及全部通用弹窗。真机验证 dmNewModel→弹窗内 INPUT 获焦。至此创建流即聚焦覆盖第4流(数据模型)。?v=u146。
+
+## R206 [UI重构·第77轮] 新建指标弹窗 Esc 关闭(a11y一致性)
+- workspace.html: 全局 Esc 处理(原仅 gModalOverlay)扩展覆盖 metricModal(display:flex 时 closeMetricModal)。dbsyncFormModal 已有(16339)/projShowModalBox 已有/项目弹窗已有→至此主要弹窗 Esc 关闭一致。真机验证 打开新建指标弹窗 Esc→关闭(flex→none)。?v=u147。
