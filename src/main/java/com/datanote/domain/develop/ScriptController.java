@@ -91,6 +91,15 @@ public class ScriptController {
         return R.ok("重命名成功");
     }
 
+    @Operation(summary = "更新文件夹排序")
+    @PostMapping("/folder/sort")
+    public R<String> updateFolderSort(@RequestBody Map<String, Object> body) {
+        Long id = body.get("id") == null ? null : Long.valueOf(body.get("id").toString());
+        Integer sortOrder = body.get("sortOrder") == null ? 0 : Integer.valueOf(body.get("sortOrder").toString());
+        scriptService.updateFolderSort(id, sortOrder);
+        return R.ok("已更新排序");
+    }
+
     @Operation(summary = "删除文件夹")
     @DeleteMapping("/folder/{id}")
     public R<String> deleteFolder(@PathVariable Long id) {

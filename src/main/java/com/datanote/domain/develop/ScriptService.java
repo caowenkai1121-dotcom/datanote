@@ -68,6 +68,7 @@ public class ScriptService {
             node.put("name", f.getFolderName());
             node.put("type", "folder");
             node.put("layer", f.getLayer());
+            node.put("sortOrder", f.getSortOrder());
             List<Map<String, Object>> children = buildTree(folders, scripts, datasources, syncTasks, f.getId());
 
             if ("数据源".equals(f.getLayer())) {
@@ -344,8 +345,25 @@ public class ScriptService {
 
     public DnScriptFolder createFolder(DnScriptFolder folder) {
         folder.setCreatedAt(LocalDateTime.now());
+        // 未指定排序时, 追加到同级末尾(max(sort_order)+1), 避免新目录默认 0 抢到最前
+        if (folder.getSortOrder() == null) {
+            QueryWrapper<DnScriptFolder> qw = new QueryWrapper<>();
+            qw.eq("parent_id", folder.getParentId() == null ? 0L : folder.getParentId())
+              .orderByDesc("sort_order").last("LIMIT 1");
+            DnScriptFolder last = folderMapper.selectOne(qw);
+            folder.setSortOrder(last == null || last.getSortOrder() == null ? 0 : last.getSortOrder() + 1);
+        }
         folderMapper.insert(folder);
         return folder;
+    }
+
+    /** 更新文件夹排序号(供"开发目录"管理调整根目录顺序)。 */
+    public void updateFolderSort(Long id, Integer sortOrder) {
+        if (id == null) throw new BusinessException("文件夹 ID 不能为空");
+        DnScriptFolder f = new DnScriptFolder();
+        f.setId(id);
+        f.setSortOrder(sortOrder == null ? 0 : sortOrder);
+        folderMapper.updateById(f);
     }
 
     public void renameFolder(Long id, String name) {

@@ -135,3 +135,9 @@
 - DB 规范化(sql/93, live已执行): DWS层1脚本迁回"脚本"根→删DWS层→删AI生成脚本E2E/AI脚本两空目录→新增DM层→重排序(数据源/ODS/DWD/ADS/DM/脚本)。
 - 前端: 右键菜单 DWD/DWS/ADS/**DM**/DIM 都给 新建文件夹+新建SQL脚本(buildTree else 分支本就支持 DM 显脚本); 系统管理新增"开发目录"tab(loadDevRoots/devRootCreate/devRootDelete): 列出所有根目录, 数据源/ODS/脚本=系统保留不可删, 其余可删(须先清空), 新建根=name+layer→/api/script/folder parentId:0(settings:config 权限)。无后端改动(createFolder 本就允许根)。
 - 真机验证(Playwright): 树根目录=6个顺序正确(DWS+AI已清); 系统管理开发目录列6项+保留/可删标识正确。fast_static 部署 ?v=u63。
+
+## R123 [业主令] 新建目录要有排序
+- 业主令: 新建目录要有排序。
+- 后端: createFolder 未指定 sortOrder 时取同级 max(sort_order)+1 追加末尾(避免默认0抢前); 新增 updateFolderSort + POST /api/script/folder/sort; buildTree 节点补 sortOrder 回传。
+- 前端(系统管理·开发目录): 新建表单加"排序"数字输入(留空则末尾); 列表加可编辑排序列(改值 onchange→/folder/sort 即时保存+重载树)。
+- 部署: mvn package + deploy_jar 全量, ?v=u64。
