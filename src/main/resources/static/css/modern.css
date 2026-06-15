@@ -112,6 +112,19 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 .wlc-sec-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
 @media (max-width: 900px) { .wlc-grid4, .wlc-grid3 { grid-template-columns: 1fr 1fr; } }
 
+/* ---- 数据表现代化(R134): 粘性表头 + 行 hover 左强调(全站 metric/user/sync 表) ---- */
+.quality-rules-table thead th, .dbsync-exec-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-card);
+  backdrop-filter: blur(2px);
+}
+.quality-rules-table tbody tr, .dbsync-exec-table tbody tr { transition: background var(--dur-fast, .12s) ease, box-shadow var(--dur-fast, .12s) ease; }
+.quality-rules-table tbody tr:hover, .dbsync-exec-table tbody tr:hover {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+/* 表格容器圆角观感(若直接在卡片内则继承) */
+#metricsListContent, #umUserBox, #dbsyncJobsContent { border-radius: var(--radius-lg); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

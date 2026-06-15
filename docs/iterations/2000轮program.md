@@ -209,3 +209,7 @@
 ## R133 [UI重构·第4轮] 数据开发欢迎页现代化
 - viewWelcome 重设计(核心模块首屏): 渐变 hero(indigo+点阵纹理)+ Ctrl+K 快速导航提示 + 新建脚本玻璃按钮; 4 图标磁贴(脚本/上线/今日执行/失败, 类化享统一 hover 抬升); 3 左强调动作卡(hover 左边框点亮); 最近编辑列表(带图标标题)。移除重复内联 hover, 改 modern.css 类(.wlc-*)。
 - 真机验证(Playwright): hero/4磁贴/3动作卡/⌘K提示渲染; 截图现代无破坏。?v=u73。
+
+## R134 [UI重构·第5轮] 全局数据表现代化
+- modern.css 加: 数据表(.quality-rules-table/.dbsync-exec-table 全站 metric/user/sync 共用)粘性表头(滚动表头不丢)+ 行 hover 左强调(inset 3px 主色)+ 列表容器圆角。纯 CSS 增量, 低风险高覆盖。
+- 真机验证(Playwright): 指标列表表头 position:sticky 生效。?v=u73(css)。
