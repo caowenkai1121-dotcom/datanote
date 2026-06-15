@@ -626,11 +626,41 @@ public class TaskSchedulerService {
      * @return 日志内容
      */
     public String getRunLog(Long runId) {
+        return getRunLog(runId, null, 0);
+    }
+
+    /**
+     * 运行日志查询: 支持关键字过滤 + 大小上限(防超大日志整返拖垮前端/内存)。
+     * @param keyword 非空时仅返回含该关键字的行
+     * @param maxBytes 返回上限字节(<=0 用默认 256KB); 超限保留尾部(最新)并在头部标注截断
+     */
+    public String getRunLog(Long runId, String keyword, int maxBytes) {
         if (runId == null) {
             throw new BusinessException("运行记录 ID 不能为空");
         }
         DnSchedulerRun run = runMapper.selectById(runId);
-        return run != null ? run.getLog() : null;
+        String log = run != null ? run.getLog() : null;
+        if (log == null || log.isEmpty()) return log;
+        int cap = maxBytes > 0 ? maxBytes : 256 * 1024;
+        // 关键字过滤(按行)
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim().toLowerCase();
+            StringBuilder sb = new StringBuilder();
+            int hit = 0;
+            for (String line : log.split("\n", -1)) {
+                if (line.toLowerCase().contains(kw)) { sb.append(line).append('\n'); hit++; }
+            }
+            log = "[关键字 \"" + keyword.trim() + "\" 命中 " + hit + " 行]\n" + sb;
+        }
+        // 大小上限: 超限保留尾部(最新日志在后)
+        byte[] bytes = log.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (bytes.length > cap) {
+            String tail = new String(bytes, bytes.length - cap, cap, java.nio.charset.StandardCharsets.UTF_8);
+            int nl = tail.indexOf('\n');   // 丢弃可能被截断的首个半行
+            if (nl > 0 && nl < 200) tail = tail.substring(nl + 1);
+            log = "[日志过大(" + (bytes.length / 1024) + "KB), 仅显示最新 " + (cap / 1024) + "KB]\n…\n" + tail;
+        }
+        return log;
     }
 
     /**

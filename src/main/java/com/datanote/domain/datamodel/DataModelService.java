@@ -832,7 +832,7 @@ public class DataModelService {
         r.setTableName(table);
         r.setColumnName(column);
         r.setSeverity("medium");
-        r.setStatus(0);   // 停用: 派生建议规则, 治理专员确认目标库表(真建表后)再启用
+        r.setStatus(1);   // 启用: 派生发生在 publishToAsset(物理表已落地)时, 直接启用使 建模→质量 闭环(否则用户感受不到价值)
         r.setPassThreshold(new java.math.BigDecimal("1.00"));
         r.setDimension("completeness");
         r.setCreatedBy(user);

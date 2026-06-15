@@ -80,10 +80,11 @@ public class BaselineController {
         baseline.setUpdatedAt(LocalDateTime.now());
         baselineMapper.insert(baseline);
 
-        // 关联任务
+        // 关联任务: taskId 缺失/非法跳过(防 NPE 与脏关联致 SLA 监控误报)
         if (body.get("taskIds") instanceof List) {
             List<Map<String, Object>> tasks = (List<Map<String, Object>>) body.get("taskIds");
             for (Map<String, Object> t : tasks) {
+                if (t == null || !(t.get("taskId") instanceof Number)) continue;
                 DnBaselineTask bt = new DnBaselineTask();
                 bt.setBaselineId(baseline.getId());
                 bt.setTaskId(((Number) t.get("taskId")).longValue());

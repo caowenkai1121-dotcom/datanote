@@ -133,7 +133,7 @@
     var defs = [
       { col: 8, title: '治理健康总分', icon: 'shield', primary: true, build: cardHealth },   // C1 主卡 跨8列
       { col: 4, title: '健康分趋势', icon: 'chart', build: cardHealthTrend },                  // C2
-      { col: 6, title: '最新治理工单', icon: 'inbox', build: cardIssues },                      // C9
+      { col: 6, title: '待处理工单', icon: 'inbox', build: cardIssues },                      // C9
       { col: 6, title: '同步任务监控大盘', icon: 'grid', build: cardSyncBoard },               // C8
       { col: 6, title: '我的项目待办', icon: 'doc', build: cardMyTodos }                       // N2 项目待办三合一入口
     ];
@@ -239,13 +239,22 @@
   // ---- C9 最新治理工单（待办，表格）----
   function cardIssues(c, d) {
     loading(c, 4);
-    DN.get('/api/gov/health/issues?status=OPEN').then(function (resp) {
+    // 待处理工单 = 开放(OPEN) + 处理中(FIXING), 并排显示各态计数, 让治理进度可感知
+    Promise.all([
+      DN.get('/api/gov/health/issues?status=OPEN'),
+      DN.get('/api/gov/health/issues?status=FIXING')
+    ]).then(function (arr) {
       c.body.innerHTML = '';
-      var rows = unwrap(resp);
+      var open = unwrap(arr[0]) || [], fixing = unwrap(arr[1]) || [];
+      var rows = open.map(function (r) { r._st = 'OPEN'; return r; }).concat(fixing.map(function (r) { r._st = 'FIXING'; return r; }));
       if (!rows.length) { c.body.appendChild(DN.empty('暂无待处理工单', 'check')); return; }
+      c.body.appendChild(DN.h('div', { style: 'display:flex;gap:8px;margin-bottom:10px;' }, [
+        DN.pill(open.length + ' 开放', 'err'), DN.pill(fixing.length + ' 处理中', 'warn')
+      ]));
       c.body.appendChild(DN.table({
         columns: [
-          { key: 'title', label: '标题', render: function (r) { return DN.h('span', { text: trunc(r.title || '-', 28), title: r.title || '' }); } },
+          { key: 'title', label: '标题', render: function (r) { return DN.h('span', { text: trunc(r.title || '-', 26), title: r.title || '' }); } },
+          { key: '_st', label: '状态', render: function (r) { return DN.pill(r._st === 'OPEN' ? '开放' : '处理中', r._st === 'OPEN' ? 'err' : 'warn'); } },
           { key: 'severity', label: '级别', render: function (r) { return DN.pill(r.severity || '-', sevTone(r.severity)); } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: 'overdue', label: '超期', align: 'center', render: function (r) { return r.overdue ? DN.pill('超期', 'err') : DN.h('span', { text: '-' }); } },

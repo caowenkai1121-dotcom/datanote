@@ -63,9 +63,11 @@ public class ScheduleMonitorController {
     }
 
     @GetMapping("/run-log/{runId}")
-    @Operation(summary = "获取本地任务执行日志")
-    public R<String> getRunLog(@PathVariable Long runId) {
-        String logContent = taskSchedulerService.getRunLog(runId);
+    @Operation(summary = "获取本地任务执行日志(支持关键字过滤+大小上限)")
+    public R<String> getRunLog(@PathVariable Long runId,
+                               @RequestParam(required = false) String keyword,
+                               @RequestParam(required = false, defaultValue = "0") int maxBytes) {
+        String logContent = taskSchedulerService.getRunLog(runId, keyword, maxBytes);
         return R.ok(logContent != null ? logContent : "");
     }
 

@@ -180,3 +180,12 @@
   - **增强**: 7项真薄弱(无需验证)。复核纠正1假阳(脱敏: preview 已 fail-closed 打码、profile 只返回统计量无原始值=非fail-open)。
 - **本轮执行 S2(高价值低成本): 指标新鲜度/僵尸信号浮现**(后端 freshness/zombies/overview 早有, UI未消费): 指标列表加「新鲜度」列(最新/陈旧Nh/未取值 pill)+新鲜度筛选(陈旧/最新/未取值)+ 详情驾驶舱「更新时间」磁贴加陈旧/最新徽章。纯前端(stale 按 updatedAt+26h 前端算)。真机验证列/筛选/徽章。?v=u69。
 - 遗留增强 backlog(已验真薄弱, 后续做): 运行日志分页+关键字+截断(防OOM,high)/首页工单卡按状态分布(low)/基线关联任务校验+选择器/血缘重建保留手工边/datamodel派生质量规则闭环(确认default status=0)。
+
+## R129 [Ultracode·整合backlog] 薄弱功能增强批1
+- 续 R128 审计 backlog, 做实3+1项薄弱(均先 grep 复核确为真薄弱):
+  - **datamodel 派生质量规则闭环**: deriveQualityRules 派生规则 status 0→1。派生发生在 publishToAsset(物理表已落地)时, 直接启用使 建模→质量 闭环(原停用态用户感受不到价值)。
+  - **运行日志查询加固(防OOM)**: TaskSchedulerService.getRunLog 重载(keyword 关键字按行过滤 + maxBytes 上限默认256KB, 超限保留尾部最新+标注截断); ScheduleMonitorController /run-log 加 keyword/maxBytes 参数。(日志存 DB 列, 原整返超大日志拖累)
+  - **基线关联任务健壮性**: BaselineController.create taskId 缺失/非 Number 跳过(防 NPE + 脏关联致 SLA 误报)。
+  - **首页"待处理工单"卡**(原"最新治理工单"只显 OPEN): 改取 OPEN+FIXING, 头部并排各态计数(N开放/M处理中)+表内状态列, 标题改"待处理工单", 治理进度可感知。
+- 部署: mvn package + deploy_jar 全量, ?v=u70。待真机验证。
+- 剩余 backlog: 血缘重建保留手工边(medium, 较复杂)/基线任务选择器UI(medium)。
