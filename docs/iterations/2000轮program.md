@@ -416,3 +416,6 @@
 
 ## R191 [UI重构·第62轮] 内联代码复制可发现性(悬停title)
 - workspace.html: 委托 mouseover 监听, 为可复制的内联 <code> 首次悬停时补 title="点击复制"(排除 pre/Monaco/带onclick), 不侵入各处渲染即让 R190 复制能力可被发现。真机验证悬停 metricCode→title="点击复制"。?v=u131。
+
+## R192 [UI重构·第63轮] 新增"返回顶部"浮动按钮
+- 新组件(非报表): modern.css #dnBackTop(右下圆钮, 默认隐藏, .show 淡入+悬停抬升) + workspace.html 自包含JS(捕获阶段监听任意可见滚动容器, scrollTop>320 显现, 排除弹窗/抽屉/Monaco/铃铛避免遮挡; 点击 scrollTo top smooth)。真机验证: 资产目录滚动后按钮浮现(截图确认右下↑), 点击调用 scrollTo({top:0,smooth})于正确容器(headless不跑smooth动画属已知限制)。?v=u132。

@@ -299,6 +299,11 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 code:not(pre code):not(.monaco-editor code) { cursor: pointer; transition: color .12s ease; }
 code:not(pre code):not(.monaco-editor code):hover { color: var(--primary); }
 
+/* ---- 返回顶部浮动按钮(R192): 长页面人性化, 默认隐藏滚动超阈值显现 ---- */
+#dnBackTop { position: fixed; right: 22px; bottom: 26px; width: 40px; height: 40px; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--bg-card); color: var(--text-regular); box-shadow: var(--shadow-md); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(8px) scale(.9); pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 300; }
+#dnBackTop.show { opacity: 1; transform: none; pointer-events: auto; }
+#dnBackTop:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
