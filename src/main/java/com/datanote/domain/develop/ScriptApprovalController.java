@@ -59,6 +59,19 @@ public class ScriptApprovalController {
         return R.ok(approvalService.withdraw(changeId));
     }
 
+    @Operation(summary = "脚本三态(DRAFT/PENDING/ONLINE)")
+    @GetMapping("/{id}/state")
+    public R<String> state(@PathVariable Long id) {
+        return R.ok(approvalService.stateOf(id));
+    }
+
+    @Operation(summary = "点编辑: 已提交/已上线 退回未提交(草稿)")
+    @PostMapping("/{id}/revert-to-draft")
+    public R<String> revertToDraft(@PathVariable Long id) {
+        approvalService.revertToDraft(id);
+        return R.ok("已退回未提交, 可编辑(改完需重新提交)");
+    }
+
     @Operation(summary = "审批脚本上线工单(approved/rejected)")
     @PostMapping("/changes/{changeId}/review")
     public R<DnScriptChange> review(@PathVariable Long changeId, @RequestBody Map<String, String> body) {

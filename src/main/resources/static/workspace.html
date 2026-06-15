@@ -5202,10 +5202,33 @@ function dnShowEditLockBanner(mode, holder) {
   } else if (mode === 'released') {
     bar.style.background = 'var(--bg-hover)'; bar.style.color = 'var(--text-muted)';
     bar.innerHTML = '<span style="flex:1;">🔓 你已释放编辑锁，他人可编辑。</span><button class="btn btn-sm btn-primary" onclick="dnScriptReacquire()">重新获取</button>';
+  } else if (mode === 'submitted') {
+    bar.style.background = 'var(--warning-bg,#fff7e6)'; bar.style.color = 'var(--warning,#b26a00)';
+    bar.innerHTML = '<span style="flex:1;">📤 该脚本已提交待审，只读。点「编辑」转为草稿后修改（改完需重新提交）。</span><button class="btn btn-sm btn-primary" data-perm="develop:edit" onclick="dnScriptToDraft()">编辑</button>';
+  } else if (mode === 'online') {
+    bar.style.background = 'var(--success-bg,#eafaf0)'; bar.style.color = 'var(--success,#1a7f4b)';
+    bar.innerHTML = '<span style="flex:1;">🟢 该脚本已上线，只读。点「编辑」将下线并转草稿后修改（改完需重新提交）。</span><button class="btn btn-sm btn-primary" data-perm="develop:edit" onclick="dnScriptToDraft()">编辑</button>';
   } else { // locked
     bar.style.background = 'var(--warning-bg,#fff7e6)'; bar.style.color = 'var(--warning,#b26a00)';
     bar.innerHTML = '<span style="flex:1;">🔒 「' + (holder || '他人') + '」正在编辑此脚本，当前只读。</span><button class="btn btn-sm btn-primary" onclick="dnScriptReacquire()">获取编辑权</button>';
   }
+}
+// 点"编辑": 已提交/已上线 → 退回未提交(草稿)后可改(改完需重新提交)
+function dnScriptToDraft() {
+  if (!currentScriptId) return;
+  var sid = currentScriptId;
+  var st = (window.__scriptState || {})[sid];
+  var tip = st === 'ONLINE' ? '该脚本已上线，点编辑将先下线并转为草稿，改完需重新提交审批。确认？' : '该脚本已提交待审，点编辑将撤回提交并转为草稿，改完需重新提交。确认？';
+  msgConfirm('转为草稿编辑', tip).then(function(ok) {
+    if (!ok) return;
+    apiPost('/api/script/' + sid + '/revert-to-draft', {}).then(function(res) {
+      if (res && res.code === 0) {
+        showToast('已转为草稿，可编辑', 'success');
+        var el = document.querySelector('.tree-file.active') || document.createElement('div');
+        openScriptFromTree(el, sid, currentScriptName || '脚本');   // 重新打开→DRAFT→可编辑+抢锁
+      } else showToast((res && res.msg) || '操作失败', 'error');
+    }).catch(function(e) { showToast('操作失败: ' + ((e && e.message) || ''), 'error'); });
+  });
 }
 // 获取(或重新获取)当前脚本编辑权: 仅当无人持锁/锁已超时才成功
 function dnScriptReacquire() {
@@ -5256,17 +5279,33 @@ function openScriptFromTree(el, scriptId, name) {
     if (res.code === 0 && res.data) {
       codeArea.value = res.data.content || '-- 空脚本';
       updateLines();
-      // 并发编辑防护: 记录版本基线 + 申请编辑锁(他人持锁→只读+横幅)
+      // 记录版本基线
       window.__scriptBase = window.__scriptBase || {};
       window.__scriptBase[scriptId] = res.data.updatedAt || null;
       if (window.__editLock && !(window.__editLock.type === 'SCRIPT' && String(window.__editLock.id) === String(scriptId))) {
         dnEditLockRelease(window.__editLock.type, window.__editLock.id);
       }
-      dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
-        if (currentScriptId !== scriptId) return;   // 已切走, 忽略
-        codeArea.readOnly = !ok;
-        dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
-        if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
+      // 任务三态门控: 已提交待审/已上线 → 只读+「编辑」转草稿; 未提交(草稿) → 走并发编辑锁
+      api('/api/script/' + scriptId + '/state').then(function(sr) {
+        if (currentScriptId !== scriptId) return;
+        var st = (sr && sr.code === 0) ? sr.data : 'DRAFT';
+        window.__scriptState = window.__scriptState || {}; window.__scriptState[scriptId] = st;
+        if (st === 'PENDING' || st === 'ONLINE') {
+          codeArea.readOnly = true;
+          dnShowEditLockBanner(st === 'ONLINE' ? 'online' : 'submitted');
+        } else {
+          dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
+            if (currentScriptId !== scriptId) return;
+            codeArea.readOnly = !ok;
+            dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
+            if (!ok) showToast('「' + (holder || '他人') + '」正在编辑此脚本，当前只读', 'warning');
+          });
+        }
+      }).catch(function() {   // state 失败降级: 直接走锁
+        dnEditLockAcquire('SCRIPT', scriptId, function(ok, holder) {
+          if (currentScriptId !== scriptId) return;
+          codeArea.readOnly = !ok; dnShowEditLockBanner(ok ? 'held' : 'locked', holder || '他人');
+        });
       });
       // Update cache with loaded content
       if (tabContentCache[tabId]) { tabContentCache[tabId].editorContent = codeArea.value; tabContentCache[tabId].lastSavedContent = codeArea.value; }
@@ -5685,6 +5724,13 @@ function doSubmitScriptApproval(changeType) {
       if (res && res.code === 0) {
         showToast('已提交' + (changeType === 'ONLINE' ? '上线' : '下线') + '审批，待审批人通过后执行', 'success');
         loadScriptApprovalBadge();
+        // 提交上线后即转"已提交待审"只读态(释放编辑锁+只读横幅), 与三态一致
+        if (changeType === 'ONLINE') {
+          if (window.dnEditLockRelease && window.__editLock) dnEditLockRelease('SCRIPT', currentScriptId);
+          if (window.codeArea) codeArea.readOnly = true;
+          if (window.__scriptState) window.__scriptState[currentScriptId] = 'PENDING';
+          dnShowEditLockBanner('submitted');
+        }
       } else showToast((res && res.msg) || '提交失败', 'error');
     }).catch(function() { closeModal(); showToast('提交失败', 'error'); });
   };

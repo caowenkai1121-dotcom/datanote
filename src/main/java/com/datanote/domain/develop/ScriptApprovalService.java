@@ -169,6 +169,35 @@ public class ScriptApprovalService {
         return n != null && n > 0;
     }
 
+    /** 任务三态: DRAFT(未提交,可随时改) / PENDING(已提交待审) / ONLINE(已上线)。 */
+    public String stateOf(Long scriptId) {
+        DnScript s = scriptMapper.selectById(scriptId);
+        if (s == null) return "DRAFT";
+        if ("online".equalsIgnoreCase(s.getScheduleStatus())) return "ONLINE";
+        if (hasPending(scriptId)) return "PENDING";
+        return "DRAFT";
+    }
+
+    /** 点"编辑": 已提交/已上线 退回未提交(草稿)以便修改(改完需重新提交)。撤回待审工单 + 已上线则下线。 */
+    @Transactional(rollbackFor = Exception.class)
+    public void revertToDraft(Long scriptId) {
+        if (scriptId == null) throw new BusinessException("脚本 ID 不能为空");
+        DnScriptChange pend = pendingChange(scriptId);
+        if (pend != null) {   // 撤回待审工单
+            pend.setStatus("withdrawn");
+            pend.setDecidedAt(LocalDateTime.now());
+            changeMapper.updateById(pend);
+        }
+        DnScript s = scriptMapper.selectById(scriptId);
+        if (s != null && "online".equalsIgnoreCase(s.getScheduleStatus())) {   // 已上线→下线
+            try {
+                scheduleLifecycleService.offlineLocal(scriptId, ScheduleTargetType.SCRIPT);
+            } catch (Exception e) {
+                throw new BusinessException("退回草稿(下线)失败: " + e.getMessage());
+            }
+        }
+    }
+
     /** 某脚本当前待审批工单(供申请人撤回, develop:edit 可达); 无则返回 null。 */
     public DnScriptChange pendingChange(Long scriptId) {
         if (scriptId == null) return null;

@@ -49,3 +49,11 @@
 - 修真bug(业主报告): 同一人连续保存第二次报"已被他人修改()"。根因=save 返回内存毫秒精度 updatedAt, MySQL datetime 存秒(截断), 前端基线带毫秒≠库秒→误判。修: ScriptService.save 返回 scriptMapper.selectById(DB真实秒精度行); 并 setUpdatedBy(冲突提示显示修改人, 修空括号)。
 - 增强(业主要求): 编辑锁横幅三态+按钮 —— held(本人持有)「释放编辑锁」/ locked(他人持有)「获取编辑权」/ released(本人已释放)「重新获取」。dnScriptReleaseLock(主动释放不关脚本, 他人可接手) + dnScriptReacquire(无人持锁/超时才成功, 否则提示仍被X编辑)。
 - E2E: 连续 save1/2/3 均 code:0(不再误判); acquire/release 端点既有验证。627 测试绿。
+
+## R113 [大功能·任务三态生命周期 第1波] 数据开发脚本
+- 业主令: 任务三态(未提交/已提交未上线/已上线), 未提交随时改, 提交后须点"编辑"才改; 已提交=提交审批(复用现有 dn_script_change 流), 点编辑→退回草稿需重提。
+- 脚本三态推导: scheduleStatus=online→ONLINE / 有 pending 工单→PENDING / 否则→DRAFT。
+- 后端: ScriptApprovalService.stateOf + revertToDraft(撤待审工单 + 已上线则 offlineLocal 下线); Controller GET /{id}/state + POST /{id}/revert-to-draft(develop:edit)。
+- 前端: 打开脚本先查 state —— PENDING/ONLINE→只读+状态横幅(📤已提交待审/🟢已上线)+「编辑」按钮(dnScriptToDraft: 确认→revert-to-draft→重开为草稿可编辑+抢锁); DRAFT→走并发编辑锁(R108)。提交上线后即转只读"已提交待审"横幅。
+- E2E: DRAFT→提交→PENDING→编辑退回→DRAFT→审批→ONLINE→编辑退回(自动下线)→DRAFT 全链路验证。627 测试绿。
+- 进度(三态): ✅脚本。待: 同步任务/调度运维/指标/规则。
