@@ -397,7 +397,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   margin-left: 4px;
   color: var(--text-muted);
 }
-.tab-close:hover { background: rgba(0,0,0,.08); color: var(--error); }
+.tab-close:hover { background: var(--bg-hover); color: var(--error); }
 
 /* Toolbar */
 .editor-toolbar {
@@ -622,7 +622,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   opacity: 0.45;
   transition: opacity var(--dur), background var(--dur);
 }
-.right-header .close-btn:hover { opacity: 0.85; background: rgba(0,0,0,.06); }
+.right-header .close-btn:hover { opacity: 0.85; background: var(--bg-hover); }
 
 /* .right-tabs removed — navigation moved to right-toggle-bar */
 
@@ -1165,7 +1165,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   cursor: pointer; border: none; background: none;
   border-radius:var(--radius-sm); color: var(--text-muted); font-size: 16px;
 }
-.g-modal-close:hover { background: rgba(0,0,0,.06); }
+.g-modal-close:hover { background: var(--bg-hover); }
 .g-modal-body {
   padding: 0 20px 16px;
   font-size: 13px;
@@ -1774,7 +1774,7 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
   justify-content: center;
   min-width: 24px;
   padding: 2px 6px;
-  background: rgba(0,0,0,.04);
+  background: var(--bg-sunken);
   border-radius:var(--radius-sm);
   font-size: 12px;
   font-weight: 500;
@@ -2206,7 +2206,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
   color: var(--text-regular); display: flex; align-items: center; gap: 6px; padding: 0 8px;
   font-size: 12px; text-align: left; cursor: pointer;
 }
-.dbsync-folder-nav-item:hover { background: rgba(0,0,0,.03); color: var(--primary); }
+.dbsync-folder-nav-item:hover { background: var(--bg-hover); color: var(--primary); }
 .dbsync-folder-nav-item.active { background: rgba(var(--primary-rgb),.08); color: var(--primary); font-weight: 500; }
 .dbsync-folder-nav-item svg { width: 12px; height: 12px; flex-shrink: 0; }
 .dbsync-folder-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3382,7 +3382,7 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
 }
 .dfs-field-map-table td { padding: 3px 8px; border-bottom: 1px solid var(--divider); vertical-align: middle; }
 .dfs-field-map-table tr:last-child td { border-bottom: none; }
-.dfs-field-map-table tbody tr:hover { background: rgba(0,0,0,.02); }
+.dfs-field-map-table tbody tr:hover { background: var(--bg-hover); }
 /* 日志面板 */
 .dbsync-log-panel {
   background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);

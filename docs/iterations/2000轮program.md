@@ -478,3 +478,6 @@
 
 ## R211 [UI重构·第82轮] 侧栏hover深色不可见bug修复
 - app.css: .ops-sidebar-item:hover 原用硬编码 rgba(0,0,0,.03)(黑色调)→深色模式下几乎不可见(hover无反馈, 真bug+违§6)。改 var(--bg-hover)(主题感知)。真机验证深色 var(--bg-hover)=rgb(34,39,56) 可见。侧栏激活态本就完善(3px左强调条+底色+主色+weight)。?v=u152。
+
+## R212 [UI重构·第83轮] 批量修黑调背景深色不可见(承R211)
+- app.css: 承 R211, 排查并修复 6 处硬编码 rgba(0,0,0,.0x) 背景(深色下不可见/弱): .tab-close:hover(编辑器标签关闭)/.right-header .close-btn:hover/.g-modal-close:hover(弹窗关闭)/计数徽标(→--bg-sunken)/.dbsync-folder-nav-item:hover(集成目录)/.dfs-field-map-table tr:hover(字段映射) → 全改 var(--bg-hover)/var(--bg-sunken)(主题感知)。剩余黑调背景 0。深色 hover 反馈/徽标恢复可见, §6 合规。?v=u153。
