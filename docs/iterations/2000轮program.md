@@ -117,3 +117,14 @@
 - 排查确认: 指标(__mBaseUpdatedAt)/质量规则(__qrBaseUpdatedAt)**早有乐观版本校验**(modal 编辑适用), scope 中"指标规则"无需补。
 - 真机验证(双 requests, 远程库): 正确基线保存成功(updatedBy=admin, 新基线秒精度) → 旧基线保存被拒(code -1「已被他人修改(admin)」) → 新基线再成功(连续保存无误判) → 删测试。
 - 部署: sql/91 应用(列已建) + mvn package + deploy_jar 全量(md5 a4f379f 匹配), 服务 active。
+
+## R121 [业主令·IA重构] 数据同步并入数据运维(改名"数据集成") + 删独立实时日志 + 加强用户管理
+- 业主令: ①去掉"数据同步"顶级模块, 并入"数据运维"改名"数据集成"; ②删独立实时日志模块; ③加强用户管理(信息太少)。
+- Ultracode: Workflow 4 路并行测绘(导航/dbsync视图/运维视图/用户管理)定锚点 → 串行重构 → Workflow 对抗审查(3维×27 agent)→ 修真实缺口。
+- **①②IA 合并**(关键: viewDbSync 与 viewScheduler 同为 ops-layout; dbsync 的模态/抽屉本就是 viewDbSync 的兄弟浮层, 无需迁移):
+  - 删顶部"数据同步"header-tab; 运维 ops-sidebar 加"数据集成"项(id=dbsyncJobsNav→switchOpsTab(this,'integration'))+文件夹树(collapsed class 控显隐); 运维 ops-main 加 dbsyncJobsPanel; 删整个 viewDbSync 壳 + 独立实时日志面板(dbsyncLogsNav/dbsyncLogsPanel)。
+  - switchOpsTab 加 integration 分支(显面板+按展开态切 folder+dbsyncLoadFolders/Jobs); navigateTo 顶部 dbsync→operations+integration **同步**重定向(消除 overview 闪烁); 删 ROUTES.dbsync/NAV_LABEL.dbsync; switchDbSyncTab 改垫片; 快捷键守卫 viewDbSync→数据集成面板可见; dbsyncRunJob 运行后开任务详情抽屉 log tab。
+  - 实时日志函数(dbsyncAppendLog/ClearLogs/ApplyLogFilter/RefreshLogFilter)本就 null 守卫→删面板后自动安全 no-op; 日志仍经 WS→dbsyncDetailAppendLog 入抽屉。权限点 dbsync:* 保留不改名(避免动 PermCatalog/授权)。
+- **③加强用户管理**: dn_user 加 6 列(email/phone/department/position/employee_id/remark, sql/92 判存幂等); DnUser 实体 +6 字段; RbacController.listUsers 回传 + createUser/updateUser 服务端校验(邮箱/手机格式+长度上限, 防绕过前端); 前端 umRenderUsers 表格加邮箱/手机/部门/岗位列+搜索扩展; umUserModal 表单加 6 字段; umSaveUser 带 profile; 新增 umViewUser 只读详情卡。
+- 对抗审查 27 agent: 确认多为正确/防御到位(日志函数 null 守卫安全·WS链完整·新字段前后端通); 修真实缺口=后端档案校验防绕过 + 深链闪烁同步切换。
+- 部署: sql/92 + mvn package + deploy_jar 全量。版本 ?v=u62。

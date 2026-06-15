@@ -92,6 +92,12 @@ public class RbacController {
             m.put("status", u.getStatus());
             m.put("createdAt", u.getCreatedAt());
             m.put("lastLoginAt", u.getLastLoginAt());
+            m.put("email", u.getEmail());
+            m.put("phone", u.getPhone());
+            m.put("department", u.getDepartment());
+            m.put("position", u.getPosition());
+            m.put("employeeId", u.getEmployeeId());
+            m.put("remark", u.getRemark());
             List<Long> roleIds = roleIdsByUser.getOrDefault(u.getId(), new ArrayList<>());
             m.put("roleIds", roleIds);
             List<String> roleNames = new ArrayList<>();
@@ -100,6 +106,21 @@ public class RbacController {
             result.add(m);
         }
         return R.ok(result);
+    }
+
+    /** 用户档案字段服务端校验(邮箱/手机格式 + 长度上限, 防绕过前端直接 POST)。无问题返回 null。 */
+    private static String validateProfile(DnUser u) {
+        if (u == null) return null;
+        String email = u.getEmail(), phone = u.getPhone();
+        if (email != null && !email.isEmpty() && !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) return "邮箱格式不正确";
+        if (phone != null && !phone.isEmpty() && !phone.matches("^\\d{11}$")) return "手机号需为 11 位数字";
+        if (email != null && email.length() > 100) return "邮箱过长(≤100)";
+        if (phone != null && phone.length() > 20) return "手机号过长";
+        if (u.getDepartment() != null && u.getDepartment().length() > 64) return "部门名过长(≤64)";
+        if (u.getPosition() != null && u.getPosition().length() > 64) return "岗位过长(≤64)";
+        if (u.getEmployeeId() != null && u.getEmployeeId().length() > 64) return "工号过长(≤64)";
+        if (u.getRemark() != null && u.getRemark().length() > 500) return "备注过长(≤500)";
+        return null;
     }
 
     @Operation(summary = "创建用户")
@@ -114,6 +135,8 @@ public class RbacController {
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
             return R.fail(R.CODE_BAD_REQUEST, "密码不能为空");
         }
+        String perr = validateProfile(user);
+        if (perr != null) return R.fail(R.CODE_BAD_REQUEST, perr);
         return R.ok(rbacService.createUser(user));
     }
 
@@ -130,6 +153,8 @@ public class RbacController {
                 return R.fail(R.CODE_BAD_REQUEST, "不能停用最后一名超级管理员, 系统将无人可管理");
             }
         }
+        String perr = validateProfile(user);
+        if (perr != null) return R.fail(R.CODE_BAD_REQUEST, perr);
         user.setId(id);
         user.setUsername(null); // 用户名不可改
         DnUser r = rbacService.updateUser(user);

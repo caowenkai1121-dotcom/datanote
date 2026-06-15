@@ -25,6 +25,18 @@ public class DnUser {
     private LocalDateTime lastLoginAt;
     /** 首登强制改密标志: 1需改/0正常(管理员建号或重置密码后置1, 用户自助改密后清0) */
     private Integer mustChangePwd;
+    /** 邮箱 */
+    private String email;
+    /** 手机号 */
+    private String phone;
+    /** 部门 */
+    private String department;
+    /** 岗位/职位 */
+    private String position;
+    /** 员工工号 */
+    private String employeeId;
+    /** 备注 */
+    private String remark;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

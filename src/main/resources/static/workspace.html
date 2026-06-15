@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u61">
-<link rel="stylesheet" href="css/gov-modern.css?v=u61">
-<link rel="stylesheet" href="css/redesign.css?v=u61">
-<link rel="stylesheet" href="css/dn-design.css?v=u61">
+<link rel="stylesheet" href="css/app.css?v=u62">
+<link rel="stylesheet" href="css/gov-modern.css?v=u62">
+<link rel="stylesheet" href="css/redesign.css?v=u62">
+<link rel="stylesheet" href="css/dn-design.css?v=u62">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u61"></script>
-<script src="js/gov-assets.js?v=u61"></script>
-<script src="js/gov-lineage.js?v=u61"></script>
-<script src="js/gov-quality.js?v=u61"></script>
-<script src="js/gov-standard.js?v=u61"></script>
-<script src="js/gov-classification.js?v=u61"></script>
-<script src="js/gov-security.js?v=u61"></script>
-<script src="js/gov-health.js?v=u61"></script>
-<script src="js/gov-audit.js?v=u61"></script>
-<script src="js/gov-overview.js?v=u61"></script>
-<script src="js/gov-subject.js?v=u61"></script>
-<script src="js/gov-consumption.js?v=u61"></script>
-<script src="js/gov-govmap.js?v=u61"></script>
-<script src="js/project.js?v=u61"></script>
-<script src="js/datamodel.js?v=u61"></script>
-<script src="js/home-dashboard.js?v=u61"></script>
-<script src="js/mdm.js?v=u61"></script>
-<script src="js/mdm-ingest.js?v=u61"></script>
-<script src="js/mdm-survivorship.js?v=u61"></script>
-<script src="js/mdm-approval.js?v=u61"></script>
-<script src="js/mdm-refdata.js?v=u61"></script>
-<script src="js/mdm-quality.js?v=u61"></script>
-<script src="js/mdm-pubsub.js?v=u61"></script>
-<script src="js/mdm-hierarchy.js?v=u61"></script>
-<script src="js/ai-agent.js?v=u61"></script>
+<script src="js/dn-common.js?v=u62"></script>
+<script src="js/gov-assets.js?v=u62"></script>
+<script src="js/gov-lineage.js?v=u62"></script>
+<script src="js/gov-quality.js?v=u62"></script>
+<script src="js/gov-standard.js?v=u62"></script>
+<script src="js/gov-classification.js?v=u62"></script>
+<script src="js/gov-security.js?v=u62"></script>
+<script src="js/gov-health.js?v=u62"></script>
+<script src="js/gov-audit.js?v=u62"></script>
+<script src="js/gov-overview.js?v=u62"></script>
+<script src="js/gov-subject.js?v=u62"></script>
+<script src="js/gov-consumption.js?v=u62"></script>
+<script src="js/gov-govmap.js?v=u62"></script>
+<script src="js/project.js?v=u62"></script>
+<script src="js/datamodel.js?v=u62"></script>
+<script src="js/home-dashboard.js?v=u62"></script>
+<script src="js/mdm.js?v=u62"></script>
+<script src="js/mdm-ingest.js?v=u62"></script>
+<script src="js/mdm-survivorship.js?v=u62"></script>
+<script src="js/mdm-approval.js?v=u62"></script>
+<script src="js/mdm-refdata.js?v=u62"></script>
+<script src="js/mdm-quality.js?v=u62"></script>
+<script src="js/mdm-pubsub.js?v=u62"></script>
+<script src="js/mdm-hierarchy.js?v=u62"></script>
+<script src="js/ai-agent.js?v=u62"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -85,10 +85,6 @@
     <a class="header-tab" href="#/mdm" data-route="mdm">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="4" r="2.2"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/><circle cx="3" cy="6" r="1.3"/><circle cx="13" cy="6" r="1.3"/></svg>
       主数据管理
-    </a>
-    <a class="header-tab" href="#/dbsync" data-route="dbsync">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="5" cy="5" rx="3" ry="1.5"/><path d="M2 5v6c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5V5"/><path d="M2 8c0 .8 1.3 1.5 3 1.5s3-.7 3-1.5"/><path d="M10 7h4M12 5l2 2-2 2"/></svg>
-      数据同步
     </a>
     <a class="header-tab" href="#/metrics" data-route="metrics">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V7h3v6H2zM7 13V4h3v9H7zM12 13V1h3v12h-3z"/></svg>
@@ -496,8 +492,29 @@
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'periodic')">周期任务</div>
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'backfill')">补数据</div>
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'manual')">手动任务</div>
-          <!-- IA v3: 数据集成(与数据同步中心整建制重复)、血缘管理(与治理-数据血缘重复)摘除菜单, 面板保留深链可达 -->
+          <!-- IA v3: 血缘管理(与治理-数据血缘重复)摘除菜单, 面板保留深链可达 -->
           <div class="ops-sidebar-item" onclick="switchOpsTab(this,'baseline')">基线管理</div>
+          <!-- 数据集成: 原"数据同步"模块整建制并入数据运维 -->
+          <div id="dbsyncJobsNav" class="ops-sidebar-item dbsync-jobs-nav" onclick="switchOpsTab(this,'integration')">
+            <span class="dbsync-nav-label">数据集成</span>
+            <button type="button" id="dbsyncFolderToggle" class="dbsync-folder-toggle" onclick="event.stopPropagation(); dbsyncToggleFolderNav();" title="展开/收起文件夹">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5l3 3 3-3"/></svg>
+            </button>
+          </div>
+          <div id="dbsyncFolderNav" class="dbsync-folder-nav collapsed">
+            <div id="dbsyncFolderTabs" class="dbsync-folder-nav-list">
+              <div class="dbsync-folder-node">
+                <button class="dbsync-folder-nav-item active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>
+                  <span class="dbsync-folder-name">全部</span>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="dbsync-folder-create" data-perm="dbsync:edit" onclick="dbsyncOpenCreateFolder()" title="新建文件夹">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+              新建文件夹
+            </button>
+          </div>
         </div>
         <!-- 右侧内容区 -->
         <div class="ops-main">
@@ -608,6 +625,36 @@
             </div>
             <div id="opsBaselineContent">
               <div style="padding:32px;text-align:center;color:var(--text-muted);">暂无基线，点击「新建基线」创建</div>
+            </div>
+          </div>
+
+          <!-- ===== 数据集成(原数据同步)任务列表面板 ===== -->
+          <div class="ops-dashboard" id="dbsyncJobsPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">数据集成任务</h2>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobsDebounced()"
+                  style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);">
+                <button class="btn btn-primary btn-sm" data-perm="dbsync:edit" onclick="dbsyncOpenCreateModal()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
+                  新建任务
+                </button>
+                <button class="btn btn-sm" onclick="dbsyncOpenTemplates()" title="从模板新建 / 管理模板">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="2" y="2" width="10" height="10" rx="1.5"/><path d="M2 5h10M5 5v7"/></svg>
+                  模板
+                </button>
+                <button class="btn btn-sm" onclick="dbsyncOpenDashboard()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
+                  监控大盘
+                </button>
+                <button class="btn btn-sm" onclick="dbsyncLoadJobs()">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M2 7a5 5 0 105-.5"/><path d="M10.5 2.5v4h-4"/></svg>
+                  刷新
+                </button>
+              </div>
+            </div>
+            <div id="dbsyncJobsContent">
+              <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
             </div>
           </div>
         </div>
@@ -1206,87 +1253,7 @@
       </div>
     </div>
 
-    <!-- ===== view-dbsync 关系库同步 ===== -->
-    <div class="view-dbsync" id="viewDbSync" style="flex:1;overflow:hidden;">
-      <div class="ops-layout" style="height:100%;overflow:hidden;">
-        <!-- 左侧导航 -->
-        <div class="ops-sidebar">
-          <div id="dbsyncJobsNav" class="ops-sidebar-item active dbsync-jobs-nav" onclick="switchDbSyncTab(this,'jobs')">
-            <span class="dbsync-nav-label">任务列表</span>
-            <button type="button" id="dbsyncFolderToggle" class="dbsync-folder-toggle" onclick="event.stopPropagation(); dbsyncToggleFolderNav();" title="展开/收起文件夹">
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5l3 3 3-3"/></svg>
-            </button>
-          </div>
-          <div id="dbsyncFolderNav" class="dbsync-folder-nav">
-            <div id="dbsyncFolderTabs" class="dbsync-folder-nav-list">
-              <div class="dbsync-folder-node">
-                <button class="dbsync-folder-nav-item active" data-folder-id="0" onclick="dbsyncSelectFolder(this,0)">
-                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5h9M2.5 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-7a1 1 0 01-1-1V3a1 1 0 011-1z"/></svg>
-                  <span class="dbsync-folder-name">全部</span>
-                </button>
-              </div>
-            </div>
-            <button type="button" class="dbsync-folder-create" data-perm="dbsync:edit" onclick="dbsyncOpenCreateFolder()" title="新建文件夹">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
-              新建文件夹
-            </button>
-          </div>
-          <div id="dbsyncLogsNav" class="ops-sidebar-item" onclick="switchDbSyncTab(this,'logs')">实时日志</div>
-        </div>
-        <!-- 右侧内容区 -->
-        <div class="ops-main">
-
-          <!-- ===== 任务列表面板 ===== -->
-          <div class="ops-dashboard" id="dbsyncJobsPanel">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">数据同步任务</h2>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="dbsyncFilterJobsDebounced()"
-                  style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);">
-                <button class="btn btn-primary btn-sm" data-perm="dbsync:edit" onclick="dbsyncOpenCreateModal()">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
-                  新建任务
-                </button>
-                <button class="btn btn-sm" onclick="dbsyncOpenTemplates()" title="从模板新建 / 管理模板">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="2" y="2" width="10" height="10" rx="1.5"/><path d="M2 5h10M5 5v7"/></svg>
-                  模板
-                </button>
-                <button class="btn btn-sm" onclick="dbsyncOpenDashboard()">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
-                  监控大盘
-                </button>
-                <button class="btn btn-sm" onclick="dbsyncLoadJobs()">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M2 7a5 5 0 105-.5"/><path d="M10.5 2.5v4h-4"/></svg>
-                  刷新
-                </button>
-              </div>
-            </div>
-            <div id="dbsyncJobsContent">
-              <div style="padding:32px;text-align:center;color:var(--text-muted);">加载中...</div>
-            </div>
-          </div>
-
-          <!-- ===== 实时日志面板 ===== -->
-          <div class="ops-dashboard" id="dbsyncLogsPanel" style="display:none;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">同步任务实时日志</h2>
-              <div style="display:flex;gap:8px;">
-                <select id="dbsyncLogFilter" onchange="dbsyncApplyLogFilter()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">
-                  <option value="">全部任务</option>
-                </select>
-                <button class="btn btn-sm" onclick="dbsyncClearLogs()">清空</button>
-              </div>
-            </div>
-            <div class="dbsync-log-panel" id="dbsyncLogPanel">
-              <span style="color:var(--text-muted);">等待实时日志...</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== view-dbsync 新建/编辑任务弹窗 ===== -->
+    <!-- ===== 数据集成 新建/编辑任务弹窗(原 view-dbsync, 浮层独立于视图) ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncFormModal">
       <div class="dbsync-modal">
         <div class="dbsync-modal-header">
@@ -7661,9 +7628,6 @@ var ROUTES = {
         var items = document.querySelectorAll('#viewSettings .ops-sidebar-item');
         for (var i=0;i<items.length;i++){ var oc=items[i].getAttribute('onclick')||''; if (oc.indexOf("'"+x.sm+"'")>=0){ switchSettingsTab(items[i], x.sm); break; } }
       } catch(e){} }, 200); } } },
-  'dbsync':      { view: 'viewDbSync',              layout: 'editor', init: function() { var x = window.__navCtx;
-      window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter();
-      if (x && x.openDetail) { setTimeout(function(){ try { window.dbsyncOpenDetail(x.openDetail); } catch(e){} }, 800); } } },
   'assistant':   { view: 'viewAssistant',           layout: 'page',   init: function() { var x = window.__navCtx;
       if (window.initAiAssistant) initAiAssistant(x ? { prefill: x.agentPrefill, ctx: x.agentCtx, autoSend: x.agentAutoSend } : null); } }
 };
@@ -7695,7 +7659,7 @@ function navRenderBack() {
     chip.style.display = 'inline-flex';
   } else { chip.style.display = 'none'; }
 }
-var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', datamodel:'数据模型', governance:'数据治理', mdm:'主数据', dbsync:'数据同步', metrics:'指标管理', project:'项目管理', settings:'系统管理', assistant:'AI助手' };
+var NAV_LABEL = { home:'首页', develop:'数据开发', operations:'数据运维', catalog:'数据地图', datamodel:'数据模型', governance:'数据治理', mdm:'主数据', metrics:'指标管理', project:'项目管理', settings:'系统管理', assistant:'AI助手' };
 
 // 全局 AI 唤起器: 任意页可达, 自动带当前路由情境, 跳 AI助手(天工司辰)。蓝图 window.openAiAgent 别名同此。
 function openAiLauncher(prefill, ctx) {
@@ -7710,7 +7674,7 @@ window.dnAskAi = function (prefill, ctx) {
 // 同步任务详情 AI 排障入口
 window.dbsyncAskAi = function (jobId, jobName) {
   window.dnAskAi('分析同步任务 #' + jobId + '(' + (jobName || '') + '):基础配置、CDC/增量断点积压情况、对账差异与异常排查建议。[任务:#' + jobId + ']',
-    { route: 'dbsync', jobId: jobId, jobName: jobName });
+    { route: 'operations', jobId: jobId, jobName: jobName });
 };
 // 调度运行失败 AI 根因入口
 window.schedAskAi = function (runId, taskId, taskType, taskName) {
@@ -7745,6 +7709,16 @@ function defaultAiCtx() {
 }
 
 function navigateTo(route, ctx) {
+  // 数据同步已并入数据运维"数据集成": 旧路由/深链重定向到运维的数据集成 tab
+  if (route === 'dbsync') {
+    var _did = ctx && ctx.openDetail;
+    navigateTo('operations');
+    // 同步切到"数据集成"tab(避免先闪 overview 再切的视觉跳变)
+    var nav = document.getElementById('dbsyncJobsNav');
+    if (nav && window.switchOpsTab) switchOpsTab(nav, 'integration');
+    if (_did) setTimeout(function(){ try { dbsyncOpenDetail(_did); } catch(e){} }, 400);
+    return;
+  }
   // R28: 深链跳转(带 ctx)时把当前来源压栈, 供「返回来源」
   if (ctx && currentRoute && currentRoute !== route) {
     window.__navStack.push({ route: currentRoute, ctx: null });
@@ -7793,7 +7767,7 @@ function navigateTo(route, ctx) {
 
   // Hide all editor-internal views
   ['viewSql', 'viewIntegration', 'viewDatasource', 'viewWelcome',
-   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics', 'viewProject', 'viewSettings', 'viewDbSync'].forEach(function(id) {
+   'viewScheduler', 'viewDatamap', 'viewQuality', 'viewMetrics', 'viewProject', 'viewSettings'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.style.display = 'none'; el.classList.remove('active'); }
   });
@@ -9798,8 +9772,11 @@ function getTodayMinus1() {
 function switchOpsTab(el, tab) {
   document.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   if (el) el.classList.add('active');
-  var panels = ['opsOverviewPanel', 'opsPeriodicPanel', 'opsBackfillPanel', 'opsManualPanel', 'opsBaselinePanel'];
+  var panels = ['opsOverviewPanel', 'opsPeriodicPanel', 'opsBackfillPanel', 'opsManualPanel', 'opsBaselinePanel', 'dbsyncJobsPanel'];
   panels.forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  // 数据集成文件夹树仅在数据集成 tab 显示(用 collapsed class, 避免 inline display 覆盖)
+  var _folderNav = document.getElementById('dbsyncFolderNav');
+  if (_folderNav && tab !== 'integration') _folderNav.classList.add('collapsed');
 
   if (tab === 'overview') {
     document.getElementById('opsOverviewPanel').style.display = '';
@@ -9818,6 +9795,14 @@ function switchOpsTab(el, tab) {
   } else if (tab === 'baseline') {
     document.getElementById('opsBaselinePanel').style.display = '';
     loadBaselineList();
+  } else if (tab === 'integration') {
+    // 数据集成(原数据同步): 展开文件夹树 + 加载文件夹+任务列表
+    document.getElementById('dbsyncJobsPanel').style.display = '';
+    if (_folderNav) _folderNav.classList.remove('collapsed');
+    var _ft = document.getElementById('dbsyncFolderToggle');
+    if (_ft) _ft.classList.remove('collapsed');
+    if (window.dbsyncLoadFolders) { window.dbsyncLoadFolders().then(function(){ if (window.dbsyncLoadJobs) window.dbsyncLoadJobs(); }); }
+    else if (window.dbsyncLoadJobs) window.dbsyncLoadJobs();
   }
 }
 
@@ -10600,7 +10585,7 @@ window.wsShowShortcutHelp = function() {
   var groups = [
     ['全局', [['?', '显示/关闭本快捷键面板'], ['Esc', '关闭当前弹窗/抽屉/面板']]],
     ['项目管理', [['Ctrl/Cmd + K', '快速切换项目'], ['双击项目名', '打开项目详情'], ['任务看板', '拖拽卡片改状态']]],
-    ['数据同步', [['Ctrl/Cmd + K', '快速切换任务'], ['/', '聚焦任务搜索框'], ['N', '新建任务'], ['R', '刷新列表'], ['D', '打开监控大盘']]],
+    ['数据集成(运维)', [['Ctrl/Cmd + K', '快速切换任务'], ['/', '聚焦任务搜索框'], ['N', '新建任务'], ['R', '刷新列表'], ['D', '打开监控大盘']]],
     ['数据治理', [['总览·全屏大屏', '投屏展示模式'], ['可视化', '点击磁贴/图块下钻筛选']]]
   ];
   var rows = groups.map(function(g) {
@@ -11233,10 +11218,18 @@ window.umRenderUsers = function() {
   var box = document.getElementById('umUserBox'); if (!box) return;
   window._umSel = window._umSel || {};
   var kw = (document.getElementById('umUserSearch').value || '').trim().toLowerCase();
-  var list = _umUsers.filter(function(u) { return !kw || (u.username || '').toLowerCase().indexOf(kw) >= 0 || (u.nickname || '').toLowerCase().indexOf(kw) >= 0; });
+  var list = _umUsers.filter(function(u) {
+    if (!kw) return true;
+    return (u.username || '').toLowerCase().indexOf(kw) >= 0
+      || (u.nickname || '').toLowerCase().indexOf(kw) >= 0
+      || (u.email || '').toLowerCase().indexOf(kw) >= 0
+      || (u.phone || '').toLowerCase().indexOf(kw) >= 0
+      || (u.department || '').toLowerCase().indexOf(kw) >= 0
+      || (u.employeeId || '').toLowerCase().indexOf(kw) >= 0;
+  });
   document.getElementById('umUserCount').textContent = '共 ' + list.length + ' / ' + _umUsers.length;
   if (!list.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">' + (_umUsers.length ? '无匹配用户' : '暂无用户') + '</div>'; if (window.umRenderBatchBar) umRenderBatchBar(); return; }
-  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th><th>用户名</th><th>昵称</th><th>状态</th><th>角色</th><th>最后登录</th><th>创建时间</th><th style="width:230px;">操作</th></tr></thead><tbody>';
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th><th>用户名</th><th>昵称</th><th>邮箱</th><th>手机号</th><th>部门</th><th>岗位</th><th>状态</th><th>角色</th><th>最后登录</th><th style="width:260px;">操作</th></tr></thead><tbody>';
   list.forEach(function(u) {
     var on = u.status === 1 || u.status === '1';
     // 优先用后端返回的 roleNames(无需本地映射); 回退 roleIds
@@ -11244,12 +11237,17 @@ window.umRenderUsers = function() {
     var chips = names.map(function(nm) { return '<span style="display:inline-block;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--radius-lg);margin:1px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(nm) + '</span>'; }).join('') || '<span style="color:var(--text-muted);">未分配</span>';
     var lastLogin = u.lastLoginAt ? escapeHtml(String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) : '<span style="color:var(--text-faint);">从未登录</span>';
     var selChk = '<td><input type="checkbox" class="umSelChk" value="' + u.id + '" onclick="umToggleSelect(' + u.id + ',this.checked)"' + (window._umSel[u.id] ? ' checked' : '') + '></td>';
+    var dash = '<span style="color:var(--text-faint);">-</span>';
     h += '<tr>' + selChk + '<td><b>' + escapeHtml(u.username) + '</b></td><td>' + escapeHtml(u.nickname || '-') + '</td>'
+      + '<td>' + (u.email ? escapeHtml(u.email) : dash) + '</td>'
+      + '<td style="white-space:nowrap;">' + (u.phone ? escapeHtml(u.phone) : dash) + '</td>'
+      + '<td>' + (u.department ? escapeHtml(u.department) : dash) + '</td>'
+      + '<td>' + (u.position ? escapeHtml(u.position) : dash) + '</td>'
       + '<td><span class="gov-pill ' + (on ? 'is-ok' : 'is-muted') + '">' + (on ? '启用' : '停用') + '</span></td>'
       + '<td>' + chips + '</td>'
       + '<td style="white-space:nowrap;">' + lastLogin + '</td>'
-      + '<td style="white-space:nowrap;">' + escapeHtml(String(u.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td>'
-      + '<td><a href="#" data-perm="settings:user" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
+      + '<td><a href="#" onclick="umViewUser(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>'
+      + '<a href="#" data-perm="settings:user" onclick="umUserModal(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>'
       + '<a href="#" onclick="umViewUserPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">权限</a>'
       + '<a href="#" data-perm="settings:user" onclick="umDirectPerms(' + u.id + ',\'' + escapeHtml(String(u.username || '')).replace(/'/g, "\\'") + '\');return false;" style="color:var(--primary);margin-right:8px;">直授</a>'
       + '<a href="#" data-perm="settings:user" onclick="umResetPwd(' + u.id + ');return false;" style="color:var(--primary);margin-right:8px;">重置密码</a>'
@@ -11350,6 +11348,16 @@ window.umUserModal = function(id) {
     + '<div><label ' + lab + '>密码' + (u ? '（留空不修改）' : '') + '</label><input id="umfPwd" type="password" ' + fi + ' placeholder="' + (u ? '留空保持原密码' : '登录密码') + '"></div>'
     + '<div><label ' + lab + '>状态</label><select id="umfStatus" class="dbsync-form-select" style="width:100%;"><option value="1"' + ((!u || u.status === 1) ? ' selected' : '') + '>启用</option><option value="0"' + (u && u.status === 0 ? ' selected' : '') + '>停用</option></select></div>'
     + '<div><label ' + lab + '>角色</label><div style="max-height:120px;overflow:auto;">' + roleChecks + '</div></div>'
+    + '<div style="display:flex;gap:10px;">'
+    +   '<div style="flex:1;"><label ' + lab + '>邮箱</label><input id="umfEmail" type="email" ' + fi + ' value="' + (u ? escapeHtml(u.email || '') : '') + '" placeholder="name@example.com"></div>'
+    +   '<div style="flex:1;"><label ' + lab + '>手机号</label><input id="umfPhone" ' + fi + ' value="' + (u ? escapeHtml(u.phone || '') : '') + '" placeholder="11 位手机号"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;">'
+    +   '<div style="flex:1;"><label ' + lab + '>部门</label><input id="umfDept" ' + fi + ' value="' + (u ? escapeHtml(u.department || '') : '') + '" placeholder="所属部门"></div>'
+    +   '<div style="flex:1;"><label ' + lab + '>岗位</label><input id="umfPos" ' + fi + ' value="' + (u ? escapeHtml(u.position || '') : '') + '" placeholder="岗位/职位"></div>'
+    + '</div>'
+    + '<div><label ' + lab + '>工号</label><input id="umfEmpId" ' + fi + ' value="' + (u ? escapeHtml(u.employeeId || '') : '') + '" placeholder="员工工号"></div>'
+    + '<div><label ' + lab + '>备注</label><textarea id="umfRemark" class="dbsync-form-input" style="width:100%;min-height:54px;resize:vertical;" placeholder="备注信息">' + (u ? escapeHtml(u.remark || '') : '') + '</textarea></div>'
     + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="umSaveUser(' + (id || 0) + ')">保存</button></div></div>';
   projShowModalBox(id ? '编辑用户' : '新建用户', h);
 };
@@ -11357,17 +11365,30 @@ window.umSaveUser = function(id) {
   var nickname = (document.getElementById('umfNick').value || '').trim();
   var pwd = document.getElementById('umfPwd').value || '';
   var status = parseInt(document.getElementById('umfStatus').value);
+  var email = (document.getElementById('umfEmail').value || '').trim();
+  var phone = (document.getElementById('umfPhone').value || '').trim();
+  var department = (document.getElementById('umfDept').value || '').trim();
+  var position = (document.getElementById('umfPos').value || '').trim();
+  var employeeId = (document.getElementById('umfEmpId').value || '').trim();
+  var remark = (document.getElementById('umfRemark').value || '').trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { showToast('邮箱格式不正确', 'error'); return; }
+  if (phone && !/^\d{11}$/.test(phone)) { showToast('手机号需为 11 位数字', 'error'); return; }
   var roleIds = []; document.querySelectorAll('.umRoleChk:checked').forEach(function(c) { roleIds.push(parseInt(c.value)); });
+  // 档案字段(后端 updateById 默认策略: 非空才更新, 空值保留原值)
+  var profile = { email: email, phone: phone, department: department, position: position, employeeId: employeeId, remark: remark };
   var req;
   if (id) {
     var body = { nickname: nickname, status: status };
     if (pwd) body.password = pwd;
+    Object.keys(profile).forEach(function(k){ body[k] = profile[k]; });
     req = api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   } else {
     var username = (document.getElementById('umfUser').value || '').trim();
     if (!username) { showToast('请填写用户名', 'error'); return; }
     if (!pwd) { showToast('请填写密码', 'error'); return; }
-    req = apiPost('/api/rbac/users', { username: username, nickname: nickname, password: pwd, status: status });
+    var createBody = { username: username, nickname: nickname, password: pwd, status: status };
+    Object.keys(profile).forEach(function(k){ createBody[k] = profile[k]; });
+    req = apiPost('/api/rbac/users', createBody);
   }
   req.then(function(res) {
     if (!res || res.code !== 0) { showToast((res && res.msg) || '保存失败', 'error'); return; }
@@ -11375,6 +11396,30 @@ window.umSaveUser = function(id) {
     var done = function() { showToast('已保存', 'success'); projCloseModalBox(); loadUserMgmt(); };
     if (uid) apiPost('/api/rbac/users/' + uid + '/roles', { roleIds: roleIds }).then(done).catch(done); else done();
   }).catch(function() { showToast('保存失败', 'error'); });
+};
+// 用户详情(只读档案卡)
+window.umViewUser = function(id) {
+  var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
+  var on = u.status === 1 || u.status === '1';
+  var names = (u.roleNames && u.roleNames.length) ? u.roleNames : (u.roleIds || []).map(umRoleName);
+  var dash = '<span style="color:var(--text-faint);">未填写</span>';
+  var v = function(x){ return x ? escapeHtml(String(x)) : dash; };
+  var row = function(k, val){ return '<div style="display:flex;padding:6px 0;border-bottom:1px solid var(--divider);"><div style="width:84px;color:var(--text-muted);flex-shrink:0;">' + k + '</div><div style="flex:1;color:var(--text-regular);word-break:break-all;">' + val + '</div></div>'; };
+  var h = '<div style="min-width:420px;font-size:13px;">'
+    + row('用户名', '<b>' + escapeHtml(u.username) + '</b>')
+    + row('昵称', v(u.nickname))
+    + row('状态', '<span class="gov-pill ' + (on ? 'is-ok' : 'is-muted') + '">' + (on ? '启用' : '停用') + '</span>')
+    + row('角色', names.length ? names.map(escapeHtml).join('、') : dash)
+    + row('邮箱', v(u.email))
+    + row('手机号', v(u.phone))
+    + row('部门', v(u.department))
+    + row('岗位', v(u.position))
+    + row('工号', v(u.employeeId))
+    + row('备注', v(u.remark))
+    + row('最后登录', u.lastLoginAt ? escapeHtml(String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) : dash)
+    + row('创建时间', u.createdAt ? escapeHtml(String(u.createdAt).replace('T', ' ').slice(0, 16)) : dash)
+    + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">关闭</button> <button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="projCloseModalBox();umUserModal(' + u.id + ')">编辑</button></div></div>';
+  projShowModalBox('用户详情 · ' + escapeHtml(u.username), h);
 };
 window.umResetPwd = function(id) {
   var u = _umUsers.filter(function(x) { return x.id === id; })[0]; if (!u) return;
@@ -12032,10 +12077,12 @@ function loadOpsManual() {
   });
 }
 
-// R24 联动: 数据集成统计 → 数据同步该任务详情
+// R24 联动: 运维统计 → 数据集成该任务详情(同视图内打开)
 function opsGotoSyncTask(id) {
   if (!id) return;
-  navigateTo('dbsync', { openDetail: id });
+  var nav = document.getElementById('dbsyncJobsNav');
+  if (nav && window.switchOpsTab) switchOpsTab(nav, 'integration');
+  setTimeout(function(){ try { dbsyncOpenDetail(id); } catch(e){} }, 400);
 }
 // ===== 数据集成统计 =====
 
@@ -12784,12 +12831,10 @@ var _dbsyncSelected = {};         // 批量选中 id->true
 var _dbsyncSort = { key: null, dir: 1 }; // 列排序
 
 /* ---------- Tab 切换 ---------- */
+// 兼容垫片: 数据同步已并入数据运维"数据集成"tab, 实时日志面板已移除(改用任务详情抽屉日志)
 window.switchDbSyncTab = function(el, tab) {
-  var sidebar = document.querySelector('#viewDbSync .ops-sidebar');
-  if (sidebar) sidebar.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
-  if (el) el.classList.add('active');
-  document.getElementById('dbsyncJobsPanel').style.display  = (tab === 'jobs')  ? '' : 'none';
-  document.getElementById('dbsyncLogsPanel').style.display  = (tab === 'logs')  ? '' : 'none';
+  var nav = document.getElementById('dbsyncJobsNav');
+  if (nav && window.switchOpsTab) switchOpsTab(nav, 'integration');
 };
 
 /* ---------- 加载数据源下拉 ---------- */
@@ -14488,16 +14533,11 @@ window.dbsyncRunJob = function(id) {
   apiPost('/api/sync-job/' + id + '/run', {}).then(function(res) {
     if (res.code === 0) {
       showToast('任务已启动，正在实时输出日志', 'success');
-      // 自动切换到"实时日志"页签，并设置过滤到当前任务
-      var sidebar = document.querySelector('#viewDbSync .ops-sidebar');
-      if (sidebar) {
-        var logsItem = sidebar.querySelectorAll('.ops-sidebar-item')[1];
-        if (logsItem) switchDbSyncTab(logsItem, 'logs');
-      }
-      var logFilter = document.getElementById('dbsyncLogFilter');
-      if (logFilter) {
-        logFilter.value = String(id);
-      }
+      // 打开任务详情抽屉的"实时日志"页签查看实时输出(独立实时日志面板已并入抽屉)
+      try {
+        dbsyncOpenDetail(id);
+        setTimeout(function(){ var lt = document.querySelector('#dbsyncDetailDrawer [data-tab="log"]'); if (lt) dbsyncDetailTab(lt, 'log'); }, 300);
+      } catch(e){}
       setTimeout(dbsyncLoadJobs, 1500);
     } else {
       showToast('运行失败: ' + (res.msg || ''), 'error');
@@ -15633,15 +15673,19 @@ document.addEventListener('keydown', function(e) {
     if (_dbsyncDetailJobId != null) dbsyncCloseDetail();
     return;
   }
-  // Ctrl/Cmd+K 任务快速切换(dbsync 视图激活时)
+  // 数据集成 tab 是否激活(运维视图 + 数据集成面板可见)
+  var _integActive = (function(){
+    var p = document.getElementById('dbsyncJobsPanel');
+    var v = document.getElementById('viewScheduler');
+    return p && v && v.classList.contains('active') && p.style.display !== 'none';
+  })();
+  // Ctrl/Cmd+K 任务快速切换(数据集成激活时)
   if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-    var v2 = document.getElementById('viewDbSync');
-    if (v2 && v2.classList.contains('active')) { e.preventDefault(); dbsyncQuickSwitch(); }
+    if (_integActive) { e.preventDefault(); dbsyncQuickSwitch(); }
     return;
   }
-  // 全局快捷键: 仅 dbsync 视图可见、未在输入框/弹窗时生效
-  var view = document.getElementById('viewDbSync');
-  if (!view || !view.classList.contains('active')) return;
+  // 全局快捷键: 仅数据集成面板可见、未在输入框/弹窗时生效
+  if (!_integActive) return;
   var tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.altKey || e.metaKey) return;
   if (_dbsyncDetailJobId != null) return; // 抽屉打开时不触发
@@ -16256,11 +16300,10 @@ window.dbsyncClearErrorRows = function(jobId) {
         document.getElementById('viewScheduler').style.display !== 'none') {
       loadOpsOverview();
     }
-    // 刷新关系库同步任务列表（如果正在查看）
-    if (data.taskType === 'DbSync' && typeof dbsyncLoadJobs === 'function' &&
-        document.getElementById('viewDbSync') &&
-        document.getElementById('viewDbSync').style.display !== 'none') {
-      dbsyncLoadJobs();
+    // 刷新数据集成任务列表（如果正在查看）
+    if (data.taskType === 'DbSync' && typeof dbsyncLoadJobs === 'function') {
+      var _ip = document.getElementById('dbsyncJobsPanel');
+      if (_ip && _ip.style.display !== 'none') dbsyncLoadJobs();
     }
   }
 
