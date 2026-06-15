@@ -81,7 +81,6 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/data-acl", "data:grant"),
             // --- RBAC / 系统配置 ---
             prefix("/api/rbac", "settings:user"),
-            prefix("/api/group", "settings:user"),
             prefix("/api/system/config", "settings:config"),
             // --- 通用前缀(模块默认写权限) ---
             prefix("/api/script/changes", "develop:approve"),   // 脚本上线审批(SoD: 与提交者分权), 须先于 /api/script
@@ -104,7 +103,6 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/mdm", "mdm:manage"),
             prefix("/api/sync-job", "dbsync:edit"),
             prefix("/api/sync-folder", "dbsync:edit"),
-            prefix("/api/alert-config", "dbsync:edit"),
             prefix("/api/metric", "metrics:edit"),
             prefix("/api/consumption", "metrics:edit"),
             prefix("/api/project", "project:manage"),
