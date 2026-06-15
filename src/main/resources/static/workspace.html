@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u62">
-<link rel="stylesheet" href="css/gov-modern.css?v=u62">
-<link rel="stylesheet" href="css/redesign.css?v=u62">
-<link rel="stylesheet" href="css/dn-design.css?v=u62">
+<link rel="stylesheet" href="css/app.css?v=u63">
+<link rel="stylesheet" href="css/gov-modern.css?v=u63">
+<link rel="stylesheet" href="css/redesign.css?v=u63">
+<link rel="stylesheet" href="css/dn-design.css?v=u63">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u62"></script>
-<script src="js/gov-assets.js?v=u62"></script>
-<script src="js/gov-lineage.js?v=u62"></script>
-<script src="js/gov-quality.js?v=u62"></script>
-<script src="js/gov-standard.js?v=u62"></script>
-<script src="js/gov-classification.js?v=u62"></script>
-<script src="js/gov-security.js?v=u62"></script>
-<script src="js/gov-health.js?v=u62"></script>
-<script src="js/gov-audit.js?v=u62"></script>
-<script src="js/gov-overview.js?v=u62"></script>
-<script src="js/gov-subject.js?v=u62"></script>
-<script src="js/gov-consumption.js?v=u62"></script>
-<script src="js/gov-govmap.js?v=u62"></script>
-<script src="js/project.js?v=u62"></script>
-<script src="js/datamodel.js?v=u62"></script>
-<script src="js/home-dashboard.js?v=u62"></script>
-<script src="js/mdm.js?v=u62"></script>
-<script src="js/mdm-ingest.js?v=u62"></script>
-<script src="js/mdm-survivorship.js?v=u62"></script>
-<script src="js/mdm-approval.js?v=u62"></script>
-<script src="js/mdm-refdata.js?v=u62"></script>
-<script src="js/mdm-quality.js?v=u62"></script>
-<script src="js/mdm-pubsub.js?v=u62"></script>
-<script src="js/mdm-hierarchy.js?v=u62"></script>
-<script src="js/ai-agent.js?v=u62"></script>
+<script src="js/dn-common.js?v=u63"></script>
+<script src="js/gov-assets.js?v=u63"></script>
+<script src="js/gov-lineage.js?v=u63"></script>
+<script src="js/gov-quality.js?v=u63"></script>
+<script src="js/gov-standard.js?v=u63"></script>
+<script src="js/gov-classification.js?v=u63"></script>
+<script src="js/gov-security.js?v=u63"></script>
+<script src="js/gov-health.js?v=u63"></script>
+<script src="js/gov-audit.js?v=u63"></script>
+<script src="js/gov-overview.js?v=u63"></script>
+<script src="js/gov-subject.js?v=u63"></script>
+<script src="js/gov-consumption.js?v=u63"></script>
+<script src="js/gov-govmap.js?v=u63"></script>
+<script src="js/project.js?v=u63"></script>
+<script src="js/datamodel.js?v=u63"></script>
+<script src="js/home-dashboard.js?v=u63"></script>
+<script src="js/mdm.js?v=u63"></script>
+<script src="js/mdm-ingest.js?v=u63"></script>
+<script src="js/mdm-survivorship.js?v=u63"></script>
+<script src="js/mdm-approval.js?v=u63"></script>
+<script src="js/mdm-refdata.js?v=u63"></script>
+<script src="js/mdm-quality.js?v=u63"></script>
+<script src="js/mdm-pubsub.js?v=u63"></script>
+<script src="js/mdm-hierarchy.js?v=u63"></script>
+<script src="js/ai-agent.js?v=u63"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -1131,6 +1131,7 @@
         <div class="ops-sidebar">
           <div class="ops-sidebar-item active" onclick="switchSettingsTab(this,'user')">用户管理</div>
           <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'datasource')">数据源管理</div>
+          <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'devroot')">开发目录</div>
           <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'env')">环境配置</div>
           <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'security')">安全设置</div>
           <div class="ops-sidebar-item" onclick="switchSettingsTab(this,'ai')">AI 配置</div>
@@ -1190,6 +1191,25 @@
               </div>
               <div id="hiveTestResult" style="margin-top:10px;font-size:13px;display:none;"></div>
             </div>
+          </div>
+          <div class="ops-dashboard" id="settingsDevrootPanel" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <h2 style="font-size:16px;font-weight:600;margin:0;">数据开发根目录</h2>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">数据开发左侧树的根目录为系统统一管理，普通用户不能在树中直接新建根目录；如需新增/删除根目录请在此操作。</div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;max-width:560px;">
+              <input id="devRootName" class="dbsync-form-input" style="flex:1;" placeholder="根目录名称，如 DM层">
+              <select id="devRootLayer" class="dbsync-form-select" style="width:150px;">
+                <option value="">通用(无层级)</option>
+                <option value="DWD">DWD</option>
+                <option value="DWS">DWS</option>
+                <option value="ADS">ADS</option>
+                <option value="DM">DM</option>
+                <option value="DIM">DIM</option>
+              </select>
+              <button class="btn btn-sm btn-primary" data-perm="settings:config" onclick="devRootCreate()">+ 新建根目录</button>
+            </div>
+            <div id="devRootBox"><div style="color:var(--text-muted);">加载中...</div></div>
           </div>
           <div class="ops-dashboard" id="settingsEnvPanel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -2528,7 +2548,7 @@ function buildCtxItems(type) {
   if (type === 'ODS') {
     return '<div class="ctx-item" onclick="ctxNewSyncTask()">' + addIcon + ' 新建同步任务</div>';
   }
-  if (type === 'DWD' || type === 'DWS' || type === 'ADS' || type === 'DIM') {
+  if (type === 'DWD' || type === 'DWS' || type === 'ADS' || type === 'DM' || type === 'DIM') {
     return '<div class="ctx-item" onclick="ctxNewFolder()">' + folderIcon + ' 新建文件夹</div>'
       + '<div class="ctx-item" onclick="ctxNewSqlScript()">' + addIcon + ' 新建 SQL 脚本</div>';
   }
@@ -11178,16 +11198,56 @@ function switchProjectTab(el, tab) {
 function switchSettingsTab(el, tab) {
   el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
   el.classList.add('active');
-  ['settingsUserPanel', 'settingsDatasourcePanel', 'settingsEnvPanel', 'settingsSecurityPanel', 'settingsAiPanel', 'settingsMonitorPanel']
+  ['settingsUserPanel', 'settingsDatasourcePanel', 'settingsDevrootPanel', 'settingsEnvPanel', 'settingsSecurityPanel', 'settingsAiPanel', 'settingsMonitorPanel']
     .forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
-  var panelMap = { user: 'settingsUserPanel', datasource: 'settingsDatasourcePanel', env: 'settingsEnvPanel', security: 'settingsSecurityPanel', ai: 'settingsAiPanel', monitor: 'settingsMonitorPanel' };
+  var panelMap = { user: 'settingsUserPanel', datasource: 'settingsDatasourcePanel', devroot: 'settingsDevrootPanel', env: 'settingsEnvPanel', security: 'settingsSecurityPanel', ai: 'settingsAiPanel', monitor: 'settingsMonitorPanel' };
   if (panelMap[tab]) document.getElementById(panelMap[tab]).style.display = '';
   // 切到数据源管理时自动加载配置
   if (tab === 'datasource') loadDatasourceConfig();
+  if (tab === 'devroot') loadDevRoots();
   if (tab === 'env') loadEnvConfig();
   if (tab === 'user') loadUserMgmt();
   if (tab === 'security') loadSecurityCenter();
   if (tab === 'monitor') smInit(); else smStopAuto();
+}
+
+// ===== 系统管理: 数据开发根目录管理(根目录统一在此增删, 树中不可直接新建根) =====
+var _devRootReserved = ['数据源', 'ODS', '脚本'];   // 系统保留层(数据源/ODS有特殊子节点, 脚本为通用桶), 不可删
+function loadDevRoots() {
+  var box = document.getElementById('devRootBox'); if (!box) return;
+  api('/api/script/tree').then(function(res) {
+    var roots = (res && res.code === 0 && Array.isArray(res.data)) ? res.data.filter(function(n){ return n.type === 'folder'; }) : [];
+    if (!roots.length) { box.innerHTML = '<div style="padding:20px;color:var(--text-muted);">暂无根目录</div>'; return; }
+    var h = '<table class="dbsync-exec-table" style="width:100%;max-width:680px;"><thead><tr><th>名称</th><th>层级</th><th>子项数</th><th style="width:90px;">操作</th></tr></thead><tbody>';
+    roots.forEach(function(r) {
+      var cnt = (r.children || []).length;
+      var reserved = _devRootReserved.indexOf(r.layer) >= 0;
+      h += '<tr><td><b>' + escapeHtml(r.name || '') + '</b></td><td>' + escapeHtml(r.layer || '通用') + '</td><td>' + cnt + '</td><td>'
+        + (reserved ? '<span style="color:var(--text-faint);">系统保留</span>'
+            : '<a href="#" data-perm="settings:config" onclick="devRootDelete(' + r.id + ',\'' + escapeHtml(String(r.name || '')).replace(/'/g, "\\'") + '\',' + cnt + ');return false;" style="color:var(--error);">删除</a>')
+        + '</td></tr>';
+    });
+    box.innerHTML = h + '</tbody></table>';
+  }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
+}
+function devRootCreate() {
+  var name = (document.getElementById('devRootName').value || '').trim();
+  var layer = document.getElementById('devRootLayer').value || '';
+  if (!name) { showToast('请输入根目录名称', 'error'); return; }
+  apiPost('/api/script/folder', { folderName: name, parentId: 0, layer: layer }).then(function(res) {
+    if (res && res.code === 0) { showToast('已新建根目录', 'success'); document.getElementById('devRootName').value = ''; loadDevRoots(); if (window.loadFileTree) loadFileTree(); }
+    else showToast((res && res.msg) || '新建失败', 'error');
+  }).catch(function() { showToast('新建失败', 'error'); });
+}
+function devRootDelete(id, name, cnt) {
+  if (cnt > 0) { showToast('该根目录下有 ' + cnt + ' 项, 请先清空再删除', 'error'); return; }
+  DN.confirm('确认删除根目录「' + name + '」？', { title: '删除确认', danger: true }).then(function(ok) {
+    if (!ok) return;
+    api('/api/script/folder/' + id, { method: 'DELETE' }).then(function(res) {
+      if (res && res.code === 0) { showToast('已删除', 'success'); loadDevRoots(); if (window.loadFileTree) loadFileTree(); }
+      else showToast((res && res.msg) || '删除失败', 'error');
+    }).catch(function() { showToast('删除失败', 'error'); });
+  });
 }
 
 // ===== 系统管理：用户管理(RBAC) =====

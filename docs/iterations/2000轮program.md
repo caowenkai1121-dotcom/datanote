@@ -128,3 +128,10 @@
 - **③加强用户管理**: dn_user 加 6 列(email/phone/department/position/employee_id/remark, sql/92 判存幂等); DnUser 实体 +6 字段; RbacController.listUsers 回传 + createUser/updateUser 服务端校验(邮箱/手机格式+长度上限, 防绕过前端); 前端 umRenderUsers 表格加邮箱/手机/部门/岗位列+搜索扩展; umUserModal 表单加 6 字段; umSaveUser 带 profile; 新增 umViewUser 只读详情卡。
 - 对抗审查 27 agent: 确认多为正确/防御到位(日志函数 null 守卫安全·WS链完整·新字段前后端通); 修真实缺口=后端档案校验防绕过 + 深链闪烁同步切换。
 - 部署: sql/92 + mvn package + deploy_jar 全量。版本 ?v=u62。
+
+## R122 [业主令·IA] 数据开发根目录规范化(固定6根)+ 根目录创建移至系统管理
+- 业主令: 数据开发根目录只保留 数据源/ODS/DWD/ADS/DM/脚本; 用户不能在树中直接新建根目录, 要新建去别处。
+- 现状: 根目录是 dn_script_folder(parent_id=0) 行, layer 驱动特殊子节点(数据源→数据源列表/ODS→同步任务)。树右键 ctxNewFolder 本就只建子目录(parentId=目标), 无根新建入口=已满足"不能直接新建根"。
+- DB 规范化(sql/93, live已执行): DWS层1脚本迁回"脚本"根→删DWS层→删AI生成脚本E2E/AI脚本两空目录→新增DM层→重排序(数据源/ODS/DWD/ADS/DM/脚本)。
+- 前端: 右键菜单 DWD/DWS/ADS/**DM**/DIM 都给 新建文件夹+新建SQL脚本(buildTree else 分支本就支持 DM 显脚本); 系统管理新增"开发目录"tab(loadDevRoots/devRootCreate/devRootDelete): 列出所有根目录, 数据源/ODS/脚本=系统保留不可删, 其余可删(须先清空), 新建根=name+layer→/api/script/folder parentId:0(settings:config 权限)。无后端改动(createFolder 本就允许根)。
+- 真机验证(Playwright): 树根目录=6个顺序正确(DWS+AI已清); 系统管理开发目录列6项+保留/可删标识正确。fast_static 部署 ?v=u63。
