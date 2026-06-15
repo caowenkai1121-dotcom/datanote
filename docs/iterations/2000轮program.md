@@ -423,3 +423,6 @@
 ## R193 [UI重构·第64轮] 返回顶部按钮按压/焦点态 + 数据标准QA
 - modern.css: #dnBackTop 补 :active(scale .92 按压反馈) + :focus-visible(键盘焦点环), 完善组件状态(技能要求 pressed/focus 态)。
 - QA: 数据标准(新增数据元表单+标准列表)视图整洁, 返回顶部按钮在此也正常浮现。?v=u133。
+
+## R194 [UI重构·第65轮] 截断文本悬停显示全文
+- workspace.html: 委托 mouseover, 对被省略号截断的文本(scrollWidth>clientWidth 且 textOverflow:ellipsis 或 overflow:hidden)首次悬停补 title=全文(<400字, 排除Monaco), 全站表格/标签截断处可悬停看全文。真机验证: 截断元素→title=全文; 不截断元素→不误加title(无误报)。?v=u134。
