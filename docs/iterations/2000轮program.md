@@ -217,3 +217,7 @@
 ## R135 [UI重构·第6轮] Toast 通知现代化
 - showToast 重写: 原单条居中(多条重叠)→ 右上角 #dnToastStack 堆叠容器(多条不重叠), 玻璃卡(bg-card+彩色左强调3px+彩色圆形图标)+ 从右滑入(cubic-bezier)。全模块通用, 保留签名 showToast(msg,type)。
 - 真机验证(Playwright): 3条同时堆叠 top/right 18px 不重叠。?v=u74。
+
+## R136 [UI重构·第7轮] 记住上次所在模块(人性化)
+- navigateTo 持久 currentRoute 到 localStorage('dn-last-route'); parseRoute 在无 hash(直接打开/刷新)时恢复上次模块, 无记录则首页。重进应用回到上次工作处, 减少重复导航。
+- 真机验证(Playwright): 进指标→saved=metrics; 模拟无 hash parseRoute()→metrics。?v=u75。
