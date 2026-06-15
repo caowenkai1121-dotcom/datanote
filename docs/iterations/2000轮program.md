@@ -432,3 +432,6 @@
 
 ## R196 [UI重构·第67轮] "/" 聚焦搜索 + 快捷键帮助更新
 - workspace.html: 全局 keydown, 非输入态按 "/" 聚焦当前视图首个可见搜索框(defaultPrevented 则让行, 不与模块级"/"冲突)。? 帮助浮层"全局"组更新: 加 "/"=聚焦当前页搜索框、Esc=清空搜索框/关闭弹窗, 数据集成组移除重复的"/"。真机验证 指标页 body 态按"/"→聚焦 metricSearchInput。?v=u137。
+
+## R197 [UI重构·第68轮] 指标列表空态升级为可操作引导
+- workspace.html: renderMetricList 空态由纯文本→全局 .gov-empty 组合空态: "暂无指标"分支带图标+引导文案+"＋新建指标"CTA按钮(showAddMetricDialog); "无匹配指标"分支带搜索图标+"试试调整搜索或筛选条件"提示。分支选择逻辑不变。真机验证两分支渲染正确(暂无→有CTA / 无匹配→无CTA)。?v=u138。
