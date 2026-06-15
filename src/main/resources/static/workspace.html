@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u60">
-<link rel="stylesheet" href="css/gov-modern.css?v=u60">
-<link rel="stylesheet" href="css/redesign.css?v=u60">
-<link rel="stylesheet" href="css/dn-design.css?v=u60">
+<link rel="stylesheet" href="css/app.css?v=u61">
+<link rel="stylesheet" href="css/gov-modern.css?v=u61">
+<link rel="stylesheet" href="css/redesign.css?v=u61">
+<link rel="stylesheet" href="css/dn-design.css?v=u61">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u60"></script>
-<script src="js/gov-assets.js?v=u60"></script>
-<script src="js/gov-lineage.js?v=u60"></script>
-<script src="js/gov-quality.js?v=u60"></script>
-<script src="js/gov-standard.js?v=u60"></script>
-<script src="js/gov-classification.js?v=u60"></script>
-<script src="js/gov-security.js?v=u60"></script>
-<script src="js/gov-health.js?v=u60"></script>
-<script src="js/gov-audit.js?v=u60"></script>
-<script src="js/gov-overview.js?v=u60"></script>
-<script src="js/gov-subject.js?v=u60"></script>
-<script src="js/gov-consumption.js?v=u60"></script>
-<script src="js/gov-govmap.js?v=u60"></script>
-<script src="js/project.js?v=u60"></script>
-<script src="js/datamodel.js?v=u60"></script>
-<script src="js/home-dashboard.js?v=u60"></script>
-<script src="js/mdm.js?v=u60"></script>
-<script src="js/mdm-ingest.js?v=u60"></script>
-<script src="js/mdm-survivorship.js?v=u60"></script>
-<script src="js/mdm-approval.js?v=u60"></script>
-<script src="js/mdm-refdata.js?v=u60"></script>
-<script src="js/mdm-quality.js?v=u60"></script>
-<script src="js/mdm-pubsub.js?v=u60"></script>
-<script src="js/mdm-hierarchy.js?v=u60"></script>
-<script src="js/ai-agent.js?v=u60"></script>
+<script src="js/dn-common.js?v=u61"></script>
+<script src="js/gov-assets.js?v=u61"></script>
+<script src="js/gov-lineage.js?v=u61"></script>
+<script src="js/gov-quality.js?v=u61"></script>
+<script src="js/gov-standard.js?v=u61"></script>
+<script src="js/gov-classification.js?v=u61"></script>
+<script src="js/gov-security.js?v=u61"></script>
+<script src="js/gov-health.js?v=u61"></script>
+<script src="js/gov-audit.js?v=u61"></script>
+<script src="js/gov-overview.js?v=u61"></script>
+<script src="js/gov-subject.js?v=u61"></script>
+<script src="js/gov-consumption.js?v=u61"></script>
+<script src="js/gov-govmap.js?v=u61"></script>
+<script src="js/project.js?v=u61"></script>
+<script src="js/datamodel.js?v=u61"></script>
+<script src="js/home-dashboard.js?v=u61"></script>
+<script src="js/mdm.js?v=u61"></script>
+<script src="js/mdm-ingest.js?v=u61"></script>
+<script src="js/mdm-survivorship.js?v=u61"></script>
+<script src="js/mdm-approval.js?v=u61"></script>
+<script src="js/mdm-refdata.js?v=u61"></script>
+<script src="js/mdm-quality.js?v=u61"></script>
+<script src="js/mdm-pubsub.js?v=u61"></script>
+<script src="js/mdm-hierarchy.js?v=u61"></script>
+<script src="js/ai-agent.js?v=u61"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -3078,6 +3078,7 @@ function addOrActivateTab(id, name, type) {
     tab.dataset.type = type;
     tab.dataset.scriptName = (type === 'sql') ? name : '';
     tab.onclick = function() { switchTab(this); };
+    tab.oncontextmenu = function(e) { showTabCtx(e, this); };
     var iconSvg;
     if (type === 'sync') {
       iconSvg = '<svg class="sync-icon" viewBox="0 0 13 13" fill="none" stroke="var(--success)" stroke-width="1.5"><path d="M1.5 6.5h3l1.2-2.5 1.2 5 1.2-2.5h3.4"/></svg>';
@@ -3260,6 +3261,60 @@ function doCloseTab(tabEl) {
       showView('welcome');
     }
   }
+}
+
+// ===== 标签页一键关闭(右键菜单: 关闭自己/其他/所有) =====
+function _tabUnsaved(tabEl) {
+  var cache = tabContentCache[tabEl.dataset.id];
+  if (!cache || typeof cache.lastSavedContent !== 'string') return false;
+  var cur = tabEl.classList.contains('active') ? codeArea.value : cache.editorContent;
+  return typeof cur === 'string' && cur !== cache.lastSavedContent;
+}
+
+// 批量关闭: 任一未保存→单次确认后整体关闭(避免逐个弹窗)
+function _closeTabsBatch(list, after) {
+  if (!list.length) { if (after) after(); return; }
+  function go() { list.forEach(function(t) { doCloseTab(t); }); if (after) after(); }
+  if (list.some(_tabUnsaved)) {
+    msgConfirm('关闭未保存的标签', '部分标签有未保存的修改, 关闭将丢失。确定关闭？')
+      .then(function(ok) { if (ok) go(); });
+  } else { go(); }
+}
+
+function closeOtherTabs(keepEl) {
+  var others = Array.prototype.slice.call(document.querySelectorAll('#editorTabs .editor-tab'))
+    .filter(function(t) { return t !== keepEl; });
+  _closeTabsBatch(others, function() {
+    if (keepEl && document.body.contains(keepEl)) switchTab(keepEl);
+  });
+}
+
+function closeAllTabs() {
+  _closeTabsBatch(Array.prototype.slice.call(document.querySelectorAll('#editorTabs .editor-tab')));
+}
+
+function closeTabCtx() { var m = document.getElementById('tabCtxMenu'); if (m) m.remove(); }
+
+function showTabCtx(e, tabEl) {
+  e.preventDefault(); e.stopPropagation();
+  closeTabCtx();
+  var menu = document.createElement('div');
+  menu.id = 'tabCtxMenu';
+  menu.style.cssText = 'position:fixed;left:' + e.clientX + 'px;top:' + e.clientY + 'px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:var(--z-dropdown,9999);min-width:140px;padding:4px 0;font-size:13px;';
+  [['关闭自己', function() { closeTab(tabEl); }],
+   ['关闭其他', function() { closeOtherTabs(tabEl); }],
+   ['关闭所有', function() { closeAllTabs(); }]
+  ].forEach(function(it) {
+    var row = document.createElement('div');
+    row.textContent = it[0];
+    row.style.cssText = 'padding:6px 16px;cursor:pointer;color:var(--text);';
+    row.onmouseenter = function() { row.style.background = 'var(--bg-hover,rgba(0,0,0,.05))'; };
+    row.onmouseleave = function() { row.style.background = ''; };
+    row.onclick = function(ev) { ev.stopPropagation(); closeTabCtx(); it[1](); };
+    menu.appendChild(row);
+  });
+  document.body.appendChild(menu);
+  setTimeout(function() { document.addEventListener('click', closeTabCtx, { once: true }); }, 0);
 }
 
 // ===== Open saved sync task =====
@@ -5975,6 +6030,7 @@ function loadSyncSchedConfig(taskId) {
       badge.textContent = '未上线'; badge.style.background = 'rgba(0,0,0,.06)'; badge.style.color = 'var(--text-muted)';
     }
     updateToolbarOnlineBtn();
+    dnApplySyncLifecycle(currentScriptOnline);   // 已上线→映射区只读+编辑横幅
     if (d.scheduleCron) setCronToUI(d.scheduleCron);
     if (d.timeoutSeconds != null && d.timeoutSeconds > 0) {
       document.getElementById('schedTimeoutAlert').value = '1';
@@ -5990,6 +6046,40 @@ function loadSyncSchedConfig(taskId) {
     if (d.alertContact) document.getElementById('schedAlertContact').value = d.alertContact;
     onAlertChannelChange();
   });
+}
+
+// 同步任务(ODS)三态: 已上线→映射区只读+横幅"编辑"(下线后可改); 未上线→可编辑。与脚本同款逻辑。
+function dnApplySyncLifecycle(online) {
+  var body = document.querySelector('#viewIntegration .intg-body');
+  if (!body) return;
+  var bar = document.getElementById('syncLockBanner');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'syncLockBanner';
+    bar.style.cssText = 'align-items:center;gap:10px;padding:8px 12px;margin:0 0 12px;border-radius:6px;font-size:13px;background:rgba(47,158,68,.10);color:var(--success);';
+    body.insertBefore(bar, body.firstChild);
+  }
+  var save = document.getElementById('intgSaveBtn');
+  var create = document.getElementById('intgCreateBtn');
+  if (online) {
+    body.classList.add('intg-readonly');
+    if (save) save.disabled = true;
+    if (create) create.disabled = true;
+    bar.innerHTML = '<span style="flex:1;">🟢 该同步任务已上线，只读。点「编辑」将下线后修改。</span>'
+      + '<button class="btn btn-sm btn-primary" data-perm="dbsync:run" onclick="dnSyncToDraft()">编辑</button>';
+    bar.style.display = 'flex';
+  } else {
+    body.classList.remove('intg-readonly');
+    if (save) save.disabled = false;
+    if (create) create.disabled = false;
+    bar.style.display = 'none';
+  }
+}
+
+// 点"编辑": 已上线同步任务先下线(下线后映射区自动转可编辑)
+function dnSyncToDraft() {
+  if (!currentSyncTaskId) return;
+  proceedOffline();   // 内含确认; 成功后 loadSyncSchedConfig 重新放开只读
 }
 
 function checkDownstreamAndOffline() {

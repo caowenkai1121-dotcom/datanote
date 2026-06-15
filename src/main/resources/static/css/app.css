@@ -913,6 +913,11 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 .intg-body {
   padding: 20px 24px;
 }
+/* 同步任务已上线 → 只读: 仅置灰映射区, 横幅(编辑按钮)保持可点 */
+.intg-body.intg-readonly > *:not(#syncLockBanner) {
+  pointer-events: none;
+  opacity: .55;
+}
 
 /* Mapping panels */
 .intg-mapping {

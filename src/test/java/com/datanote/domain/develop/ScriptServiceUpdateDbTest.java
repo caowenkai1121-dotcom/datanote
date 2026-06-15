@@ -22,7 +22,7 @@ class ScriptServiceUpdateDbTest {
     @Mock private DnScriptMapper scriptMapper;
 
     private ScriptService svc() {
-        return new ScriptService(null, scriptMapper, null, null, null, null, null);
+        return new ScriptService(null, scriptMapper, null, null, null, null, null, null);
     }
 
     @Test

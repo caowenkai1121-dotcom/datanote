@@ -80,3 +80,14 @@
 - 统一: 抽 dnApplyScriptLifecycle(scriptId)(查 /state→设 currentScriptOnline+提交上线/下线按钮 + 只读/状态横幅 + 并发锁), openScriptFromTree/switchTab/新建 全部改调它; 切脚本先隐旧横幅防残留。
 - 真机验证(Playwright): 在线脚本6→🟢已上线横幅+Monaco只读+提交下线; 草稿216→可编辑+✏️独占横幅+提交上线; openScriptById 各入口正常(此前 NPE 失效)。
 - 兼: R115 已修 Monaco 只读(shim readOnly setter)+横幅锚 #monacoContainer。
+
+## R117 [业主令] ODS(同步任务)上线也应用三态只读 + 标签页一键关闭
+- 业主报告: ODS 上线的也需要应用这个逻辑 + 新增标签页一键关闭(关闭所有/其他/自己)。
+- **ODS 三态修复**: ODS 层节点是 syncTask(走 openSyncTask), 此前只有脚本(openScriptFromTree)应用三态只读, 同步任务在线仍可编辑/保存 → 不一致。
+  - 加 dnApplySyncLifecycle(online): 已上线→给 .intg-body 加 .intg-readonly(CSS 置灰映射区 pointer-events:none, 横幅除外)+禁用「保存/一键建表」+顶部绿横幅"🟢 该同步任务已上线，只读。点「编辑」将下线后修改。"+「编辑」按钮; 未上线→放开。
+  - loadSyncSchedConfig 拿到 scheduleStatus 后调用; 「编辑」→dnSyncToDraft→proceedOffline(下线后自动 reload 转可编辑)。
+  - 运行按钮保留(在线任务允许跑)。
+- **标签页一键关闭**: addOrActivateTab 给 tab 绑 oncontextmenu→showTabCtx 浮层菜单(关闭自己/其他/所有)。
+  - closeOtherTabs(keep)/closeAllTabs 复用 doCloseTab(已释放脚本编辑锁); 批量关闭任一未保存→单次确认(_closeTabsBatch + _tabUnsaved), 避免逐个弹窗; 关闭其他后 switchTab 回保留 tab。
+- 真机验证(Playwright, 服务器 8099): ODS 任务1(在线)→intg-readonly=true+横幅 flex+保存 disabled+文案正确; 开4 tab→右键菜单[关闭自己,关闭其他,关闭所有]→关闭其他余1→关闭所有余0。
+- 部署: fast_static.py 推 workspace.html+css/app.css(?v=u61), JAR_UPDATED+服务 active。
