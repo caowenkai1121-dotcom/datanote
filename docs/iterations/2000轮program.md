@@ -295,3 +295,7 @@
 ## R154 [UI重构·第25轮] 顶部导航进度条(新组件)
 - 新增 #dnNavBar 顶部细进度条(渐变+辉光), navigateTo 起始 dnNavProgress() 触发(0→85%→100%淡出), 模块切换/加载轻量反馈(类 GitHub 顶条)。非报表组件。
 - 真机验证(Playwright): 切换中 width 85%/opacity 1, 随后完成淡出。?v=u94。
+
+## R155 [UI重构·第26轮] 状态徽章统一为现代 pill
+- modern.css: .quality-status-on/off(原纯彩色文字)升级为带圆点的现代 pill(启用=success-light底+绿点; 停用=灰底+灰点), 指标/质量列表状态更醒目一致。
+- 真机验证(Playwright): 启用徽章 bg=success-light + radius 999px。?v=u95。

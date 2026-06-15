@@ -246,6 +246,15 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
   transition: width .3s ease, opacity .35s ease; pointer-events: none;
 }
 
+/* ---- 状态徽章统一(R155): 启用/停用 由纯文字升级为带圆点的现代 pill(指标/质量列表) ---- */
+.quality-status-on, .quality-status-off {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 1px 9px; border-radius: var(--radius-full); font-size: var(--fs-xs); font-weight: 500;
+}
+.quality-status-on { background: var(--success-light); color: var(--success-text); }
+.quality-status-off { background: var(--bg-hover); color: var(--text-muted); }
+.quality-status-on::before, .quality-status-off::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
