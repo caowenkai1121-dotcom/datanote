@@ -33,6 +33,7 @@ public class ConsumptionController {
     private final MetricValueService valueService;
     private final DnMetricMapper metricMapper;
     private final DnMetricAlertRuleMapper alertRuleMapper;
+    private final MetricDetailService metricDetailService;
 
     /** 取已发布(status=1)指标; 未发布/不存在返回 null(调用方按自身返回体处理拒绝)。 */
     private DnMetric publishedMetric(Long id) {
@@ -54,6 +55,16 @@ public class ConsumptionController {
     @PostMapping("/metric/calc-all")
     public R<Map<String, Object>> calcAll(@RequestParam(required = false) String operator) {
         return R.ok(valueService.calcAllEnabled(operator == null ? "calc-all" : operator, null));
+    }
+
+    @Operation(summary = "指标详情驾驶舱聚合(当前值/目标/达成率/环比同比/预测/趋势/告警/质量/血缘/相关)")
+    @GetMapping("/metric/{id}/detail")
+    public R<Map<String, Object>> detail(@PathVariable Long id) {
+        try {
+            return R.ok(metricDetailService.detail(id));
+        } catch (BusinessException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @Operation(summary = "指标最新值(开放取数 API: 供外部系统/看板按指标拉数, 含消费审计)")

@@ -23,6 +23,8 @@ public class DnMetric {
     private String owner;
     private Integer status;
     private String tags;
+    /** 目标值(供达成率/目标对比, 详情驾驶舱用) */
+    private java.math.BigDecimal targetValue;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     /** 并发编辑乐观校验基线(非库字段) */

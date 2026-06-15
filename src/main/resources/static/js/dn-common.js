@@ -596,6 +596,39 @@
     return DN.h('div', { class: 'gov-line', html: svg });
   };
 
+  /** 历史+预测折线。values:[number]历史, opts:{forecast:Number 下一期预测, target:Number 目标线, height, color, forecastColor} */
+  DN.forecast = function (values, opts) {
+    opts = opts || {};
+    var data = (values || []).map(Number).filter(function (x) { return !isNaN(x); });
+    if (data.length < 1) return DN.empty('暂无趋势数据', 'chart');
+    var fc = (opts.forecast != null && !isNaN(Number(opts.forecast))) ? Number(opts.forecast) : null;
+    var h = opts.height || 140, pad = 8;
+    var series = data.slice(); if (fc != null) series.push(fc);
+    var allv = series.slice(); if (opts.target != null && !isNaN(Number(opts.target))) allv.push(Number(opts.target));
+    var max = Math.max.apply(null, allv), min = Math.min.apply(null, allv);
+    if (max === min) { max = min + 1; }
+    var n = series.length, vw = 600, stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0;
+    var col = opts.color || 'var(--primary)', fcol = opts.forecastColor || 'var(--warning)';
+    function X(i) { return pad + i * stepX; } function Y(v) { return (h - pad) - ((v - min) / (max - min)) * (h - pad * 2); }
+    var histPts = data.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+    var svg = '<svg width="100%" height="' + h + '" viewBox="0 0 ' + vw + ' ' + h + '" preserveAspectRatio="none">';
+    svg += '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (vw - pad) + '" y2="' + (h - pad) + '" style="stroke:var(--divider)" vector-effect="non-scaling-stroke"/>';
+    if (opts.target != null && !isNaN(Number(opts.target))) {
+      var ty = Y(Number(opts.target)).toFixed(1);
+      svg += '<line x1="' + pad + '" y1="' + ty + '" x2="' + (vw - pad) + '" y2="' + ty + '" stroke-dasharray="6 4" style="stroke:var(--success)" vector-effect="non-scaling-stroke"/>';
+    }
+    svg += '<path d="M' + histPts.join(' L') + ' L' + X(data.length - 1).toFixed(1) + ',' + (h - pad) + ' L' + X(0).toFixed(1) + ',' + (h - pad) + ' Z" style="fill:' + col + '" opacity="0.08"/>';
+    svg += '<polyline points="' + histPts.join(' ') + '" fill="none" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" style="stroke:' + col + '"/>';
+    if (fc != null && data.length >= 1) {
+      var li = data.length - 1;
+      svg += '<line x1="' + X(li).toFixed(1) + '" y1="' + Y(data[li]).toFixed(1) + '" x2="' + X(n - 1).toFixed(1) + '" y2="' + Y(fc).toFixed(1) + '" stroke-dasharray="6 4" stroke-width="2" vector-effect="non-scaling-stroke" style="stroke:' + fcol + '"/>';
+      svg += '<circle cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(fc).toFixed(1) + '" r="3.5" style="fill:' + fcol + '"/>';
+    }
+    data.forEach(function (v, i) { svg += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="2.5" style="fill:' + col + '"/>'; });
+    svg += '</svg>';
+    return DN.h('div', { class: 'gov-line', html: svg });
+  };
+
   /** 环形占比图。segments:[{label,value,color}]，opts:{size,stroke,centerLabel,centerSub} */
   DN.donut = function (segments, opts) {
     opts = opts || {}; var segs = (segments || []).filter(function (s) { return s && (s.value || 0) > 0; });

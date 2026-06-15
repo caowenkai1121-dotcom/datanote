@@ -157,3 +157,10 @@
 - ①: dbsyncRenderFolderTabs 去掉"全部"项(仅渲染文件夹树, 空时提示); dbsyncApplyFolderFilter 改精确匹配(j.folderId===selected, 不再含后代 scopeIds), 未选(0)=未归类任务。
 - 真机验证(Playwright): 无"全部"项; 右键删除→确认弹窗→确定→文件夹真删(delTestGone); 精确过滤生效。fast_static ?v=u66。
 - 教训复记: workspace.html 内联 onclick/HTML 引用的函数必须挂 window, 闭包内 function/var 不可见(已第3次踩, 写入记忆)。
+
+## R126 [业主令·参考原型] 完善指标管理: 指标详情驾驶舱(对标 base44 MetricDetail)
+- 业主令: 参考原型 MetricDetail 完善指标管理模块。原型=指标详情运营驾驶舱(KPI头卡/AI解读/业务图谱/转化漏斗/异常归因树/异常预警诊断/预测/推荐分析)。
+- 测绘: 我方后端很全(DnMetric定义+DnMetricValue时序history+DnMetricAlertRule阈值+DnMetricRef血缘+inputQuality质量+消费审计), DN组件有 line/donut/bars/statRow/card/pill/delta; 缺 target_value字段/聚合详情端点/DN.forecast。
+- 后端: DnMetric+target_value(sql/94); 新增 MetricDetailService.detail(id) 聚合(当前值latest/目标/达成率/环比MoM[上期]/同比YoY[≈一年前±45天]/线性回归预测下期/趋势序列/告警越界诊断[复用 MetricAlertService.isBreach]/输入质量/血缘refs/同分类相关指标); GET /api/consumption/metric/{id}/detail。
+- 前端: 新增 DN.forecast(历史实线+预测虚线+目标线 SVG); viewMetrics 加 metricsDetailPanel 详情面板; 指标名/「详情」按钮→openMetricDetail; renderMetricDetail 渲染对标原型: 返回+头卡(名称/启用·预警徽章/分类·负责人·编码/口径/立即计算·编辑·AI深度解读)+KPI七磁贴(当前/目标/达成率/环比/同比/预测/更新时间)+智能解读(模板化叙述)+趋势与预测图+异常与预警诊断(规则越界卡+环比/同比下降+输入质量信号)+指标血缘(来源→指标→消费)+相关指标; 编辑表单加目标值; switchMetricsTab 切签隐藏详情。
+- 部署: sql/94 + mvn package + deploy_jar 全量, ?v=u67。待真机验证(设目标+计算造history)。

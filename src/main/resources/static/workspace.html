@@ -5,39 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u66">
-<link rel="stylesheet" href="css/gov-modern.css?v=u66">
-<link rel="stylesheet" href="css/redesign.css?v=u66">
-<link rel="stylesheet" href="css/dn-design.css?v=u66">
+<link rel="stylesheet" href="css/app.css?v=u67">
+<link rel="stylesheet" href="css/gov-modern.css?v=u67">
+<link rel="stylesheet" href="css/redesign.css?v=u67">
+<link rel="stylesheet" href="css/dn-design.css?v=u67">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u66"></script>
-<script src="js/gov-assets.js?v=u66"></script>
-<script src="js/gov-lineage.js?v=u66"></script>
-<script src="js/gov-quality.js?v=u66"></script>
-<script src="js/gov-standard.js?v=u66"></script>
-<script src="js/gov-classification.js?v=u66"></script>
-<script src="js/gov-security.js?v=u66"></script>
-<script src="js/gov-health.js?v=u66"></script>
-<script src="js/gov-audit.js?v=u66"></script>
-<script src="js/gov-overview.js?v=u66"></script>
-<script src="js/gov-subject.js?v=u66"></script>
-<script src="js/gov-consumption.js?v=u66"></script>
-<script src="js/gov-govmap.js?v=u66"></script>
-<script src="js/project.js?v=u66"></script>
-<script src="js/datamodel.js?v=u66"></script>
-<script src="js/home-dashboard.js?v=u66"></script>
-<script src="js/mdm.js?v=u66"></script>
-<script src="js/mdm-ingest.js?v=u66"></script>
-<script src="js/mdm-survivorship.js?v=u66"></script>
-<script src="js/mdm-approval.js?v=u66"></script>
-<script src="js/mdm-refdata.js?v=u66"></script>
-<script src="js/mdm-quality.js?v=u66"></script>
-<script src="js/mdm-pubsub.js?v=u66"></script>
-<script src="js/mdm-hierarchy.js?v=u66"></script>
-<script src="js/ai-agent.js?v=u66"></script>
+<script src="js/dn-common.js?v=u67"></script>
+<script src="js/gov-assets.js?v=u67"></script>
+<script src="js/gov-lineage.js?v=u67"></script>
+<script src="js/gov-quality.js?v=u67"></script>
+<script src="js/gov-standard.js?v=u67"></script>
+<script src="js/gov-classification.js?v=u67"></script>
+<script src="js/gov-security.js?v=u67"></script>
+<script src="js/gov-health.js?v=u67"></script>
+<script src="js/gov-audit.js?v=u67"></script>
+<script src="js/gov-overview.js?v=u67"></script>
+<script src="js/gov-subject.js?v=u67"></script>
+<script src="js/gov-consumption.js?v=u67"></script>
+<script src="js/gov-govmap.js?v=u67"></script>
+<script src="js/project.js?v=u67"></script>
+<script src="js/datamodel.js?v=u67"></script>
+<script src="js/home-dashboard.js?v=u67"></script>
+<script src="js/mdm.js?v=u67"></script>
+<script src="js/mdm-ingest.js?v=u67"></script>
+<script src="js/mdm-survivorship.js?v=u67"></script>
+<script src="js/mdm-approval.js?v=u67"></script>
+<script src="js/mdm-refdata.js?v=u67"></script>
+<script src="js/mdm-quality.js?v=u67"></script>
+<script src="js/mdm-pubsub.js?v=u67"></script>
+<script src="js/mdm-hierarchy.js?v=u67"></script>
+<script src="js/ai-agent.js?v=u67"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -909,6 +909,10 @@
       <div class="ops-dashboard" id="metricsConsumePanel" style="display:none;">
         <div id="metricsConsumption"></div>
       </div>
+      <!-- 指标详情驾驶舱(对标原型 MetricDetail) -->
+      <div class="ops-dashboard" id="metricsDetailPanel" style="display:none;">
+        <div id="metricDetailContent"></div>
+      </div>
       </div><!-- ops-main -->
       </div><!-- ops-layout -->
 
@@ -942,6 +946,7 @@
               </div>
             </div>
             <div class="ds-form-row"><label>单位</label><input id="mUnit" placeholder="人/元/次"></div>
+            <div class="ds-form-row"><label>目标值</label><input id="mTarget" type="number" step="any" placeholder="如 50（用于达成率/目标对比, 选填）"></div>
             <div class="ds-form-row"><label>负责人</label><input id="mOwner" list="dnUserList" placeholder="负责人(可从用户列表选)"></div>
             <div class="ds-form-row"><label>标签</label><input id="mTags" placeholder="用逗号分隔"></div>
             <div class="ds-form-row"><label>所属项目</label><select id="mProject" class="prop-select"><option value="">（不归属项目）</option></select></div>
@@ -9019,7 +9024,7 @@ function renderMetricList(metrics) {
       return '<span class="quality-type-badge" style="margin:1px;">' + escapeHtml(t.trim()) + '</span>';
     }).join('');
     html += '<tr data-mid="' + m.id + '">' +
-      '<td style="font-weight:500;max-width:200px;"><span style="display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;" title="' + escapeHtml(m.metricName || '') + '">' + escapeHtml(m.metricName || '') + '</span><span class="dnpj" data-id="' + m.id + '"></span></td>' +
+      '<td style="font-weight:500;max-width:200px;"><a href="#" onclick="openMetricDetail(' + m.id + ');return false;" style="color:var(--primary);display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;" title="查看详情驾驶舱: ' + escapeHtml(m.metricName || '') + '">' + escapeHtml(m.metricName || '') + '</a><span class="dnpj" data-id="' + m.id + '"></span></td>' +
       '<td><code style="font-size:var(--fs-xs);background:var(--bg-body);padding:1px 4px;border-radius:var(--radius-sm);">' + escapeHtml(m.metricCode || '') + '</code></td>' +
       '<td>' + escapeHtml(m.category || '-') + '</td>' +
       '<td>' + escapeHtml(m.unit || '-') + '</td>' +
@@ -9028,8 +9033,8 @@ function renderMetricList(metrics) {
       // 启停开关: 复用 /api/metric/save 只传 {id,status}
       '<td><a href="#" data-perm="metrics:edit" onclick="metricToggleStatus(' + m.id + ',' + (m.status === 1 ? 0 : 1) + ');return false;" title="点击' + (m.status === 1 ? '停用(停止取值/退出消费层)' : '启用') + '">' + (m.status === 1 ? '<span class="quality-status-on">启用</span>' : '<span class="quality-status-off">停用</span>') + '</a></td>' +
       '<td class="quality-actions">' +
+        '<button class="btn btn-sm" onclick="openMetricDetail(' + m.id + ')" title="指标详情驾驶舱">详情</button>' +
         '<button class="btn btn-sm" data-perm="metrics:edit" onclick="editMetric(' + m.id + ')">编辑</button>' +
-        '<button class="btn btn-sm" onclick="metricGotoBoard(\'' + escapeHtml(m.metricCode || '') + '\')" title="在消费驾驶舱查看该指标值/新鲜度/输入质量">驾驶舱</button>' +
         '<button class="btn btn-sm" style="color:var(--primary)" onclick="window.dnAskAi(\'解读指标「' + escapeHtml(m.metricName || '') + '」(metricId=' + m.id + '):最新值、历史趋势与输入数据质量,分析异常波动原因。\', {route:\'metrics\',metricId:' + m.id + '})" title="AI解读该指标">AI</button>' +
         '<button class="btn btn-sm btn-danger" data-perm="metrics:edit" onclick="deleteMetric(' + m.id + ')">删除</button>' +
       '</td></tr>';
@@ -9119,6 +9124,7 @@ function showAddMetricDialog() {
   document.getElementById('mDesc').value = '';
   document.getElementById('mFormula').value = '';
   document.getElementById('mUnit').value = '';
+  document.getElementById('mTarget').value = '';
   document.getElementById('mOwner').value = '';
   document.getElementById('mTags').value = '';
   metricLoadRefs(null);
@@ -9139,6 +9145,7 @@ function saveMetric() {
     description: document.getElementById('mDesc').value || null,
     calcFormula: document.getElementById('mFormula').value || null,
     unit: document.getElementById('mUnit').value || null,
+    targetValue: (document.getElementById('mTarget').value || '').trim() === '' ? null : parseFloat(document.getElementById('mTarget').value),
     owner: document.getElementById('mOwner').value || null,
     tags: document.getElementById('mTags').value || null
   };
@@ -9215,6 +9222,7 @@ function editMetric(id) {
       document.getElementById('mDesc').value = m.description || '';
       document.getElementById('mFormula').value = m.calcFormula || '';
       document.getElementById('mUnit').value = m.unit || '';
+      document.getElementById('mTarget').value = (m.targetValue != null ? m.targetValue : '');
       document.getElementById('mOwner').value = m.owner || '';
       document.getElementById('mTags').value = m.tags || '';
       metricLoadRefs(m.id);
@@ -9242,6 +9250,186 @@ function deleteMetric(id) {
     });
   });
 }
+
+/* ===== 指标详情驾驶舱(对标原型 MetricDetail) ===== */
+function metricBackToList() {
+  var dp = document.getElementById('metricsDetailPanel'); if (dp) dp.style.display = 'none';
+  var lp = document.getElementById('metricsListPanel'); if (lp) lp.style.display = '';
+  document.querySelectorAll('#viewMetrics .ops-sidebar-item').forEach(function(i) { i.classList.remove('active'); });
+  var first = document.querySelector('#viewMetrics .ops-sidebar-item'); if (first) first.classList.add('active');
+  if (window.loadMetricList) loadMetricList();
+}
+window.metricBackToList = metricBackToList;
+
+window.openMetricDetail = function(id) {
+  if (typeof navigateTo === 'function' && window.currentRoute !== 'metrics') {
+    navigateTo('metrics');
+    setTimeout(function() { _openMetricDetail(id); }, 150);
+  } else { _openMetricDetail(id); }
+};
+function _openMetricDetail(id) {
+  ['metricsListPanel', 'metricsConsumePanel'].forEach(function(p) { var e = document.getElementById(p); if (e) e.style.display = 'none'; });
+  var dp = document.getElementById('metricsDetailPanel'); if (!dp) return; dp.style.display = '';
+  document.querySelectorAll('#viewMetrics .ops-sidebar-item').forEach(function(i) { i.classList.remove('active'); });
+  var c = document.getElementById('metricDetailContent');
+  c.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text-muted);">加载中...</div>';
+  api('/api/consumption/metric/' + id + '/detail').then(function(res) {
+    if (!res || res.code !== 0) { c.innerHTML = '<div style="padding:48px;text-align:center;color:var(--error);">加载失败: ' + escapeHtml((res && res.msg) || '') + '</div>'; return; }
+    renderMetricDetail(res.data || {}, id);
+  }).catch(function() { c.innerHTML = '<div style="padding:48px;text-align:center;color:var(--error);">加载失败</div>'; });
+}
+
+function _mdNum(v) { if (v == null || v === '') return '-'; var n = Number(v); return isNaN(n) ? String(v) : (Math.round(n * 100) / 100).toLocaleString(); }
+function _mdDelta(p) {
+  if (p == null) return '<span style="color:var(--text-faint);">-</span>';
+  var up = Number(p) >= 0;
+  return '<span style="color:' + (up ? 'var(--success)' : 'var(--error)') + ';font-weight:600;">' + (up ? '▲' : '▼') + ' ' + Math.abs(Number(p)) + '%</span>';
+}
+
+function renderMetricDetail(d, id) {
+  var c = document.getElementById('metricDetailContent');
+  var m = d.metric || {};
+  var unit = m.unit || '';
+  var current = d.current != null ? d.current : (d.currentText || null);
+  var ach = d.achievement;
+  var achColor = ach == null ? 'var(--text-regular)' : (ach >= 100 ? 'var(--success)' : (ach >= 80 ? 'var(--warning)' : 'var(--error)'));
+  var statusPill = m.status === 1 ? '<span class="gov-pill is-ok">启用</span>' : '<span class="gov-pill is-muted">停用</span>';
+  var breached = d.alert && d.alert.breached;
+  var alertPill = breached ? '<span class="gov-pill is-err">⚠ ' + escapeHtml(d.alert.severity || '') + ' 预警</span>' : '<span class="gov-pill is-ok">正常</span>';
+
+  // KPI 磁贴
+  function tile(label, valHtml, sub) {
+    return '<div style="flex:1;min-width:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;">'
+      + '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:4px;">' + label + '</div>'
+      + '<div style="font-size:20px;font-weight:700;line-height:1.1;">' + valHtml + '</div>'
+      + (sub ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px;">' + sub + '</div>' : '') + '</div>';
+  }
+  var kpis = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'
+    + tile('当前值', '<span style="color:var(--primary);">' + _mdNum(current) + '</span> <span style="font-size:13px;font-weight:400;color:var(--text-muted);">' + escapeHtml(unit) + '</span>')
+    + tile('目标值', _mdNum(d.target) + ' <span style="font-size:13px;font-weight:400;color:var(--text-muted);">' + escapeHtml(unit) + '</span>')
+    + tile('达成率', '<span style="color:' + achColor + ';">' + (ach != null ? ach + '%' : '-') + '</span>')
+    + tile('环比', _mdDelta(d.mom))
+    + tile('同比', _mdDelta(d.yoy))
+    + tile('预测下期', _mdNum(d.forecast) + ' <span style="font-size:13px;font-weight:400;color:var(--text-muted);">' + escapeHtml(unit) + '</span>')
+    + tile('更新时间', '<span style="font-size:13px;font-weight:500;">' + escapeHtml((d.bizDate || (d.updatedAt ? String(d.updatedAt).replace('T', ' ').slice(0, 16) : '从未计算'))) + '</span>')
+    + '</div>';
+
+  // AI 解读(模板化)
+  var ins = '「' + escapeHtml(m.metricName || '') + '」当前值 ' + _mdNum(current) + escapeHtml(unit);
+  if (d.target != null) ins += '，目标 ' + _mdNum(d.target) + escapeHtml(unit) + '，达成率 ' + (ach != null ? ach + '%' : '-') + '（' + (ach != null && ach >= 100 ? '已达标' : '未达标') + '）';
+  if (d.mom != null) ins += '；环比' + (d.mom >= 0 ? '上升' : '下降') + Math.abs(d.mom) + '%';
+  if (d.yoy != null) ins += '，同比' + (d.yoy >= 0 ? '上升' : '下降') + Math.abs(d.yoy) + '%';
+  if (d.forecast != null) ins += '。预测下期约 ' + _mdNum(d.forecast) + escapeHtml(unit);
+  if (breached) { var br = (d.alert.rules || []).filter(function(r) { return r.breach; })[0]; ins += '。⚠ 已触发' + escapeHtml(d.alert.severity || '') + '预警' + (br ? '：' + escapeHtml(br.desc || '') : ''); }
+  else ins += '。当前未触发预警阈值';
+
+  var cardOpen = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:14px;">';
+
+  // 头卡
+  var html = cardOpen
+    + '<button class="btn btn-sm" onclick="metricBackToList()" style="margin-bottom:10px;">← 返回指标列表</button>'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+    + '  <div style="flex:1;min-width:240px;">'
+    + '    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><h2 style="margin:0;font-size:18px;font-weight:700;">' + escapeHtml(m.metricName || '') + '</h2>' + statusPill + alertPill + '</div>'
+    + '    <div style="font-size:12px;color:var(--text-muted);margin-top:5px;">' + escapeHtml(m.category || '未分类') + ' · 负责人 ' + escapeHtml(m.owner || '-') + ' · <code style="font-size:11px;">' + escapeHtml(m.metricCode || '') + '</code></div>'
+    + '    <div style="font-size:13px;color:var(--text-regular);margin-top:8px;">指标口径：' + escapeHtml(m.description || '（未填写业务口径）') + '</div>'
+    + '  </div>'
+    + '  <div style="display:flex;gap:6px;flex-wrap:wrap;">'
+    + '    <button class="btn btn-sm btn-primary" data-perm="metrics:run" onclick="metricDetailCalc(' + id + ')">立即计算</button>'
+    + '    <button class="btn btn-sm" data-perm="metrics:edit" onclick="editMetric(' + id + ')">编辑</button>'
+    + '    <button class="btn btn-sm" onclick="window.dnAskAi(\'解读指标「' + escapeHtml((m.metricName || '').replace(/'/g, "")) + '」(metricId=' + id + '):结合当前值/目标/达成率/环比同比/趋势/预警,分析现状、异常波动原因与改进建议。\', {route:\'metrics\',metricId:' + id + '})">AI 深度解读</button>'
+    + '  </div>'
+    + '</div>'
+    + kpis
+    + '<div style="background:var(--warning-bg,#fff7e6);border:1px solid var(--warning-border,rgba(210,140,0,.25));border-radius:var(--radius);padding:10px 14px;margin-top:14px;font-size:13px;color:var(--text-regular);line-height:1.6;"><b style="color:var(--warning,#b26a00);">🔍 智能解读：</b>' + ins + '</div>'
+    + '</div>';
+
+  // 趋势与预测
+  html += cardOpen
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><h3 style="margin:0;font-size:14px;font-weight:600;">趋势与预测</h3>'
+    + '<div class="gov-legend" style="font-size:12px;"><span><i style="background:var(--primary)"></i>历史值</span><span><i style="background:var(--warning)"></i>预测</span>' + (d.target != null ? '<span><i style="background:var(--success)"></i>目标线</span>' : '') + '</div></div>'
+    + '<div id="metricTrendChart"></div></div>';
+
+  // 异常与预警诊断
+  var alertCards = '';
+  var rules = (d.alert && d.alert.rules) || [];
+  if (rules.length) {
+    rules.forEach(function(r) {
+      var tone = r.breach ? 'is-err' : (r.enabled ? 'is-ok' : 'is-muted');
+      var bg = r.breach ? 'rgba(224,49,49,.06)' : 'var(--bg-card)';
+      alertCards += '<div style="flex:1;min-width:200px;background:' + bg + ';border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span class="gov-pill ' + tone + '">' + (r.breach ? '触发' : (r.enabled ? '正常' : '停用')) + '</span><span style="font-size:12px;color:var(--text-muted);">' + escapeHtml(r.severity || '') + '</span></div>'
+        + '<div style="font-size:13px;">' + escapeHtml(r.desc || '') + '</div>'
+        + (r.remark ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">' + escapeHtml(r.remark) + '</div>' : '') + '</div>';
+    });
+  } else {
+    alertCards = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">尚未配置预警规则。可在「指标取值」驾驶舱为该指标添加阈值预警。</div>';
+  }
+  // 趋势预警 + 质量
+  var trendWarn = '';
+  if (d.mom != null && d.mom < 0) trendWarn += '<div style="flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;"><div class="gov-pill is-warn" style="margin-bottom:6px;">环比下降</div><div style="font-size:13px;">环比 ' + d.mom + '%，较上期回落，关注波动原因</div></div>';
+  if (d.yoy != null && d.yoy < 0) trendWarn += '<div style="flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;"><div class="gov-pill is-warn" style="margin-bottom:6px;">同比下降</div><div style="font-size:13px;">同比 ' + d.yoy + '%，弱于去年同期</div></div>';
+  var q = d.quality || {};
+  var qSignal = q.signal || q.status || '';
+  var qToneMap = { HEALTHY: 'is-ok', AT_RISK: 'is-err', NO_RULES: 'is-muted', NO_RESULT: 'is-muted' };
+  var qLabel = { HEALTHY: '来源数据健康', AT_RISK: '来源质量存在风险', NO_RULES: '来源表未配质量规则', NO_RESULT: '来源质量暂无结果' };
+  if (qSignal) trendWarn += '<div style="flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;"><div class="gov-pill ' + (qToneMap[qSignal] || 'is-muted') + '" style="margin-bottom:6px;">输入质量</div><div style="font-size:13px;">' + escapeHtml(qLabel[qSignal] || qSignal) + (q.passRate != null ? '（通过率 ' + q.passRate + '%）' : '') + '</div></div>';
+
+  html += cardOpen
+    + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">异常与预警诊断</h3>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + alertCards + '</div>'
+    + (trendWarn ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' + trendWarn + '</div>' : '')
+    + '</div>';
+
+  // 指标血缘
+  var refs = d.refs || [];
+  var refHtml = '';
+  if (refs.length) {
+    var grp = { SOURCE: [], DIM: [], RESULT: [] };
+    refs.forEach(function(r) { (grp[r.refType] || (grp[r.refType] = [])).push(r); });
+    function refChips(arr) { return (arr || []).map(function(r) { return '<span class="quality-type-badge" style="margin:2px;">' + escapeHtml((r.dbName || '') + '.' + (r.tableName || '') + (r.columnName ? '.' + r.columnName : '')) + '</span>'; }).join('') || '<span style="color:var(--text-faint);">-</span>'; }
+    refHtml = '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">'
+      + '<div style="flex:1;min-width:180px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">来源表</div>' + refChips(grp.SOURCE) + (grp.DIM && grp.DIM.length ? '<div style="font-size:12px;color:var(--text-muted);margin:6px 0 4px;">维度表</div>' + refChips(grp.DIM) : '') + '</div>'
+      + '<div style="font-size:20px;color:var(--text-faint);">→</div>'
+      + '<div style="background:rgba(var(--primary-rgb),.08);color:var(--primary);border-radius:var(--radius-lg);padding:10px 16px;font-weight:600;">' + escapeHtml(m.metricName || '') + '</div>'
+      + '<div style="font-size:20px;color:var(--text-faint);">→</div>'
+      + '<div style="flex:1;min-width:120px;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">结果/消费</div>' + (grp.RESULT && grp.RESULT.length ? refChips(grp.RESULT) : '<span style="color:var(--text-muted);font-size:13px;">看板 / API / 导出</span>') + '</div>'
+      + '</div>';
+  } else {
+    refHtml = '<div style="color:var(--text-muted);font-size:13px;">未登记来源表血缘。可在「编辑」中登记来源库表，数据地图与输入质量将联动。</div>';
+  }
+  html += cardOpen + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">指标血缘</h3>' + refHtml + '</div>';
+
+  // 相关指标
+  var rel = d.related || [];
+  if (rel.length) {
+    var relHtml = rel.map(function(r) {
+      return '<div onclick="openMetricDetail(' + r.id + ')" style="cursor:pointer;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px;min-width:150px;" onmouseover="this.style.borderColor=\'var(--primary)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+        + '<div style="font-weight:600;font-size:13px;">' + escapeHtml(r.metricName || '') + '</div>'
+        + '<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px;"><code>' + escapeHtml(r.metricCode || '') + '</code>' + (r.unit ? ' · ' + escapeHtml(r.unit) : '') + '</div></div>';
+    }).join('');
+    html += cardOpen + '<h3 style="margin:0 0 10px;font-size:14px;font-weight:600;">相关指标（同分类）</h3><div style="display:flex;gap:10px;flex-wrap:wrap;">' + relHtml + '</div></div>';
+  }
+
+  c.innerHTML = html;
+  if (window.dnApplyBtnPerms) dnApplyBtnPerms(c);
+  // 趋势预测图
+  var chartBox = document.getElementById('metricTrendChart');
+  if (chartBox && window.DN && DN.forecast) {
+    var vals = (d.trend || []).map(function(p) { return Number(p.value); }).filter(function(x) { return !isNaN(x); });
+    if (vals.length >= 1) chartBox.appendChild(DN.forecast(vals, { forecast: d.forecast, target: d.target, height: 150 }));
+    else chartBox.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">暂无历史值，点「立即计算」生成趋势</div>';
+  }
+}
+
+// 详情页内立即计算后刷新
+window.metricDetailCalc = function(id) {
+  showToast('计算中...', 'info');
+  apiPost('/api/consumption/metric/' + id + '/calc?operator=detail').then(function(res) {
+    if (res && res.code === 0) { showToast('已计算', 'success'); _openMetricDetail(id); }
+    else showToast((res && res.msg) || '计算失败', 'error');
+  }).catch(function() { showToast('计算失败', 'error'); });
+};
 
 /* ===== 元数据管理（保留兼容）===== */
 
@@ -11105,7 +11293,7 @@ function switchMetricsTab(el, tab, ctx) {
     el.parentElement.querySelectorAll('.ops-sidebar-item').forEach(function(t) { t.classList.remove('active'); });
     el.classList.add('active');
   }
-  ['metricsListPanel', 'metricsConsumePanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
+  ['metricsListPanel', 'metricsConsumePanel', 'metricsDetailPanel'].forEach(function(id) { var p = document.getElementById(id); if (p) p.style.display = 'none'; });
   if (tab === 'list') { document.getElementById('metricsListPanel').style.display = ''; loadMetricList(); }
   else if (tab === 'consume') {
     // IA v3: 指标取值看板 = 原治理-数据消费渲染器(取值/新鲜度/一键计算), 每次进入重渲染保证数据新鲜
