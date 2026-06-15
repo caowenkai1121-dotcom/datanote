@@ -149,6 +149,11 @@ textarea:focus {
 }
 @keyframes dnModalPop { from { opacity: 0; transform: translateY(-10px) scale(.985); } to { opacity: 1; transform: none; } }
 
+/* ---- 按钮精修(R139): 字重提升 + 次级按钮 hover 柔底(不动 danger 幽灵风) ---- */
+.btn { font-weight: 500; }
+.btn-primary, .btn-success { font-weight: 600; }
+.btn:not(.btn-primary):not(.btn-success):not(.btn-danger):hover { background: var(--primary-light); }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
