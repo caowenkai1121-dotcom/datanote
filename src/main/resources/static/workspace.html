@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u167">
-<link rel="stylesheet" href="css/gov-modern.css?v=u167">
-<link rel="stylesheet" href="css/redesign.css?v=u167">
-<link rel="stylesheet" href="css/dn-design.css?v=u167">
+<link rel="stylesheet" href="css/app.css?v=u168">
+<link rel="stylesheet" href="css/gov-modern.css?v=u168">
+<link rel="stylesheet" href="css/redesign.css?v=u168">
+<link rel="stylesheet" href="css/dn-design.css?v=u168">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u167">
+<link rel="stylesheet" href="css/modern.css?v=u168">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u167"></script>
-<script src="js/gov-assets.js?v=u167"></script>
-<script src="js/gov-lineage.js?v=u167"></script>
-<script src="js/gov-quality.js?v=u167"></script>
-<script src="js/gov-standard.js?v=u167"></script>
-<script src="js/gov-classification.js?v=u167"></script>
-<script src="js/gov-security.js?v=u167"></script>
-<script src="js/gov-health.js?v=u167"></script>
-<script src="js/gov-audit.js?v=u167"></script>
-<script src="js/gov-overview.js?v=u167"></script>
-<script src="js/gov-subject.js?v=u167"></script>
-<script src="js/gov-consumption.js?v=u167"></script>
-<script src="js/gov-govmap.js?v=u167"></script>
-<script src="js/project.js?v=u167"></script>
-<script src="js/datamodel.js?v=u167"></script>
-<script src="js/home-dashboard.js?v=u167"></script>
-<script src="js/mdm.js?v=u167"></script>
-<script src="js/mdm-ingest.js?v=u167"></script>
-<script src="js/mdm-survivorship.js?v=u167"></script>
-<script src="js/mdm-approval.js?v=u167"></script>
-<script src="js/mdm-refdata.js?v=u167"></script>
-<script src="js/mdm-quality.js?v=u167"></script>
-<script src="js/mdm-pubsub.js?v=u167"></script>
-<script src="js/mdm-hierarchy.js?v=u167"></script>
-<script src="js/ai-agent.js?v=u167"></script>
+<script src="js/dn-common.js?v=u168"></script>
+<script src="js/gov-assets.js?v=u168"></script>
+<script src="js/gov-lineage.js?v=u168"></script>
+<script src="js/gov-quality.js?v=u168"></script>
+<script src="js/gov-standard.js?v=u168"></script>
+<script src="js/gov-classification.js?v=u168"></script>
+<script src="js/gov-security.js?v=u168"></script>
+<script src="js/gov-health.js?v=u168"></script>
+<script src="js/gov-audit.js?v=u168"></script>
+<script src="js/gov-overview.js?v=u168"></script>
+<script src="js/gov-subject.js?v=u168"></script>
+<script src="js/gov-consumption.js?v=u168"></script>
+<script src="js/gov-govmap.js?v=u168"></script>
+<script src="js/project.js?v=u168"></script>
+<script src="js/datamodel.js?v=u168"></script>
+<script src="js/home-dashboard.js?v=u168"></script>
+<script src="js/mdm.js?v=u168"></script>
+<script src="js/mdm-ingest.js?v=u168"></script>
+<script src="js/mdm-survivorship.js?v=u168"></script>
+<script src="js/mdm-approval.js?v=u168"></script>
+<script src="js/mdm-refdata.js?v=u168"></script>
+<script src="js/mdm-quality.js?v=u168"></script>
+<script src="js/mdm-pubsub.js?v=u168"></script>
+<script src="js/mdm-hierarchy.js?v=u168"></script>
+<script src="js/ai-agent.js?v=u168"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -13430,7 +13430,8 @@ function closeAiScriptNameModal() {
       + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">为保障账号安全，管理员设置的初始密码仅供首次登录。请立即设置仅你本人知晓的新密码（≥8位，含字母/数字/符号至少两类）。</div>'
       + '<input id="dnFpOld" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:10px;" placeholder="当前(初始)密码">'
       + '<input id="dnFpNew" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:10px;" placeholder="新密码">'
-      + '<input id="dnFpNew2" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:10px;" placeholder="再输一遍新密码">'
+      + '<input id="dnFpNew2" type="password" class="dbsync-form-input" style="width:100%;margin-bottom:8px;" placeholder="再输一遍新密码">'
+      + '<div id="dnFpHint" style="font-size:12px;margin-bottom:10px;color:var(--text-muted);">要求: ≥8位, 且 字母 / 数字 / 符号 至少 2 类</div>'
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;margin-bottom:16px;"><input type="checkbox" id="dnFpShow"><span>显示密码</span></label>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;">'
       + '<a href="#" id="dnFpLogout" style="font-size:13px;color:var(--error);">登出</a>'
@@ -13440,6 +13441,14 @@ function closeAiScriptNameModal() {
       fetch('/api/auth/logout', { method: 'POST' }).then(function(){ location.replace('login.html'); }).catch(function(){ location.replace('login.html'); });
     };
     document.getElementById('dnFpShow').onchange = function(){ var t = this.checked ? 'text' : 'password'; ['dnFpOld','dnFpNew','dnFpNew2'].forEach(function(id){ var el = document.getElementById(id); if (el) el.type = t; }); };
+    document.getElementById('dnFpNew').addEventListener('input', function(){
+      var v = this.value || '', hint = document.getElementById('dnFpHint'); if (!hint) return;
+      if (!v) { hint.textContent = '要求: ≥8位, 且 字母 / 数字 / 符号 至少 2 类'; hint.style.color = 'var(--text-muted)'; return; }
+      var types = (/[a-zA-Z]/.test(v)?1:0) + (/[0-9]/.test(v)?1:0) + (/[^a-zA-Z0-9]/.test(v)?1:0);
+      var ok = v.length >= 8 && types >= 2;
+      hint.textContent = ok ? '✓ 已满足强度要求' : ('未满足: ' + (v.length < 8 ? '需 ≥8 位 ' : '') + (types < 2 ? '需 字母/数字/符号 至少 2 类' : ''));
+      hint.style.color = ok ? 'var(--success)' : 'var(--warning)';
+    });
     document.getElementById('dnFpSave').onclick = function(){
       var o = document.getElementById('dnFpOld').value, n = document.getElementById('dnFpNew').value, n2 = document.getElementById('dnFpNew2').value;
       if (!o) { showToast('请输入当前密码', 'error'); return; }
