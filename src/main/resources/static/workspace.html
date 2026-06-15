@@ -8863,6 +8863,7 @@ function metricGotoBoard(code) {
 }
 
 function showAddMetricDialog() {
+  window.__mBaseUpdatedAt = null;   // 新建指标: 清版本基线
   document.getElementById('mId').value = '';
   document.getElementById('mName').value = '';
   document.getElementById('mCode').value = '';
@@ -8894,7 +8895,7 @@ function saveMetric() {
     tags: document.getElementById('mTags').value || null
   };
   var id = document.getElementById('mId').value;
-  if (id) payload.id = parseInt(id);
+  if (id) { payload.id = parseInt(id); payload.baseUpdatedAt = window.__mBaseUpdatedAt || null; }   // 并发编辑版本基线
   // II-4: 必填+编码正则内联标红(令牌错误态)
   var markErr = function(elId, bad) { var el = document.getElementById(elId); if (el) el.style.borderColor = bad ? 'var(--error)' : ''; };
   var nameBad = !payload.metricName || !payload.metricName.trim();
@@ -8958,6 +8959,7 @@ function editMetric(id) {
     .then(function(res) {
       if (res.code !== 0) { showToast('指标加载失败, 请重试', 'error'); return; }
       var m = res.data;
+      window.__mBaseUpdatedAt = m.updatedAt || null;   // 并发编辑乐观校验基线
       document.getElementById('mId').value = m.id;
       document.getElementById('mName').value = m.metricName || '';
       document.getElementById('mCode').value = m.metricCode || '';
@@ -9213,6 +9215,7 @@ function renderQualityHistory(runs, ruleMap) {
 }
 
 function showAddRuleDialog() {
+  window.__qrBaseUpdatedAt = null;   // 新建规则: 清版本基线
   document.getElementById('qrId').value = '';
   document.getElementById('qrName').value = '';
   document.getElementById('qrType').value = 'null_check';
@@ -9381,7 +9384,7 @@ function saveQualityRule(btn) {
   } else {
     payload.passThreshold = null;
   }
-  if (id) payload.id = parseInt(id);
+  if (id) { payload.id = parseInt(id); payload.baseUpdatedAt = window.__qrBaseUpdatedAt || null; }   // 编辑时带版本基线防覆盖
   if (!payload.ruleName || payload.datasourceId === null || isNaN(payload.datasourceId) || !payload.databaseName || !payload.tableName) {
     msgBox('请填写完整的规则信息');
     return;
@@ -9415,6 +9418,7 @@ function editQualityRule(id) {
     .then(function(res) {
       if (res.code !== 0) { msgBox('加载失败'); return; }
       var r = res.data;
+      window.__qrBaseUpdatedAt = r.updatedAt || null;   // 并发编辑乐观校验基线
       document.getElementById('qrId').value = r.id;
       document.getElementById('qrName').value = r.ruleName || '';
       document.getElementById('qrType').value = qrNormalizeType(r.ruleType);

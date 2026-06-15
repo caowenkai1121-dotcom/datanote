@@ -77,6 +77,13 @@ public class QualityController {
     @PostMapping("/rule/save")
     public R<DnQualityRule> saveRule(@RequestBody DnQualityRule rule) {
         if (rule.getId() != null) {
+            // 并发编辑乐观版本校验: 自加载后被他人改过则拒, 防覆盖
+            if (rule.getBaseUpdatedAt() != null) {
+                DnQualityRule cur = ruleMapper.selectById(rule.getId());
+                if (cur != null && cur.getUpdatedAt() != null && !rule.getBaseUpdatedAt().equals(cur.getUpdatedAt())) {
+                    return R.fail("该规则已被他人修改, 请刷新后重试以免覆盖对方改动");
+                }
+            }
             rule.setUpdatedAt(LocalDateTime.now());
             ruleMapper.updateById(rule);
         } else {

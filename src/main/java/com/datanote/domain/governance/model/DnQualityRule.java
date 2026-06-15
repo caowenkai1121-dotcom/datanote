@@ -29,4 +29,7 @@ public class DnQualityRule {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 并发编辑乐观校验基线(非库字段) */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private LocalDateTime baseUpdatedAt;
 }

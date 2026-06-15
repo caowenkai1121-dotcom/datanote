@@ -94,6 +94,13 @@ public class MetricController {
             if (dup != null && dup > 0) return R.fail(R.CODE_BAD_REQUEST, "指标编码已存在: " + mc.trim());
         }
         if (metric.getId() != null) {
+            // 并发编辑乐观版本校验(状态启停不带 baseUpdatedAt 则跳过)
+            if (metric.getBaseUpdatedAt() != null) {
+                DnMetric cur = metricMapper.selectById(metric.getId());
+                if (cur != null && cur.getUpdatedAt() != null && !metric.getBaseUpdatedAt().equals(cur.getUpdatedAt())) {
+                    return R.fail("该指标已被他人修改, 请刷新后重试以免覆盖对方改动");
+                }
+            }
             metric.setUpdatedAt(LocalDateTime.now());
             metricMapper.updateById(metric);
         } else {
