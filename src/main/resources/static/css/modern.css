@@ -170,6 +170,15 @@ textarea:focus {
 .user-btn { transition: transform var(--dur-fast) ease, box-shadow var(--dur) ease; }
 .user-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
 
+/* ---- 数据开发左面板现代化(R142): 搜索框图标+圆角光环, 筛选 pill ---- */
+.left-search input {
+  height: 30px; border-radius: var(--radius-md, 8px); padding-left: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa2b4' stroke-width='1.5'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M13.5 13.5l-3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 9px center; background-size: 14px;
+}
+.left-search input:focus { box-shadow: 0 0 0 3px var(--primary-light); border-color: var(--primary); }
+.filter-btn { border-radius: var(--radius-full) !important; }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
