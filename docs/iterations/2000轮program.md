@@ -581,3 +581,6 @@
 
 ## R244 [UI重构·第115轮] quality-status徽标统一为gov-pill(工作流2确认)
 - workspace.html: 指标列表(9105)+质量规则表(9682)的 启用/停用 状态由 quality-status-on/off(独立重复类)→gov-pill is-ok/is-muted, 与全站状态徽标统一。quality-status-on/off 用法清零。真机验证指标列表 gov-pill 正常。?v=u185。
+
+## R245 [UI重构·第116轮] app.css :root 补关键令牌(防御性·工作流2)
+- app.css: 遗留桥接 :root 补 --radius-sm/--radius-full/--fs-xs/--text-inverse/--text-secondary/--dur/--dur-fast/--dur-slow(值与 dn-design.css 一致)。orphan-var 经级联实际可用(CSS变量computed-time解析), 补齐为防御性(防加载序变化), 无可见变化。工作流2其余项(KPI卡片跨文件令牌统一/操作链接205处refactor/1px间距微调)经判断为高风险或无可见收益, 按极简原则**不做**。真机冒烟首页正常。?v=u186。
