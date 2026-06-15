@@ -65,3 +65,10 @@
 - E2E: online 态 save 拒"已上线"; offline 后 save code:0。627 测试绿。
 - 进度(三态): ✅脚本(全3态/审批) ✅同步任务(2态/上线门控)。待: 调度运维/指标/规则。
 - 备注: 指标/质量规则 已在 R110 有乐观版本校验防丢更新; 若要"上线/提交"语义的三态需各自定义生命周期(指标/规则当前无上线概念, 业主可定)。
+
+## R115 [修真bug·业主报告] 数据开发看不到 提交/编辑 按钮 + 锁只读对 Monaco 不生效
+- 业主报告: 数据开发里看不到提交/编辑按钮。三处根因:
+  1. openScriptFromTree 打开脚本未调 updateToolbarOnlineBtn → 工具栏「提交上线/提交下线」按钮(默认 display:none)不显。修: 打开时按 res.data.scheduleStatus 设 currentScriptOnline + updateToolbarOnlineBtn。
+  2. 编辑器是 Monaco(非 textarea), 我之前的锁/三态 UI 误用 #codeArea(不存在): a) codeArea 是 shim 对象无 readOnly setter → codeArea.readOnly=true 对 Monaco 无效(只读形同虚设); b) 状态横幅锚到 #codeArea(缺失)→ 横幅从不显示。修: 给 codeArea shim 加 readOnly setter→monacoEditor.updateOptions({readOnly}) + create 后应用暂存只读; 横幅锚到 #monacoContainer。
+- 真机验证(Playwright): 打开已上线脚本 6 → 横幅"🟢已上线…点编辑"显示 + monacoReadOnly=true + 工具栏"提交下线"。
+- 遗留(另记): 首页"最近编辑"快捷项点击未真正打开脚本(currentScriptId 仍 null), 与文件树打开路径不同, 后续修。

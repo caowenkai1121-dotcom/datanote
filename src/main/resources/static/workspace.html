@@ -4349,8 +4349,12 @@ var codeArea = {
     var sel = monacoEditor.getSelection();
     var model = monacoEditor.getModel();
     return model.getOffsetAt(sel.getEndPosition());
-  }
+  },
+  // 只读: 映射到 Monaco updateOptions(并发编辑锁/任务三态门控用); 编辑器未就绪时暂存, 创建后应用
+  get readOnly() { return !!_codeAreaReadOnly; },
+  set readOnly(v) { _codeAreaReadOnly = !!v; if (monacoEditor) monacoEditor.updateOptions({ readOnly: !!v }); }
 };
+var _codeAreaReadOnly = false;
 
 // Monaco handles line numbers — stub for backward compatibility
 function updateLines() {}
@@ -4416,11 +4420,12 @@ function _initMonacoAfterLoader() {
       }
     });
 
-    // Monaco 就绪后回填暂存内容
+    // Monaco 就绪后回填暂存内容 + 应用暂存只读态(并发锁/三态门控可能在编辑器就绪前已设)
     if (_pendingEditorValue != null) {
       monacoEditor.setValue(_pendingEditorValue);
       _pendingEditorValue = null;
     }
+    if (_codeAreaReadOnly) monacoEditor.updateOptions({ readOnly: true });
 
     // SQL 关键词自动补全
     var sqlKeywords = [
@@ -5186,12 +5191,12 @@ function dnEditLockAcquire(type, id, cb) {
 }
 // 编辑器编辑锁横幅。mode: 'held'(本人持有,可释放) | 'locked'(他人持有,可获取) | 'released'(本人已释放,可重新获取) | null(隐藏)
 function dnShowEditLockBanner(mode, holder) {
-  var ed = document.getElementById('codeArea');
+  var ed = document.getElementById('monacoContainer');   // 真实编辑器容器(Monaco)
   var bar = document.getElementById('editLockBanner');
   if (!mode) { if (bar) bar.style.display = 'none'; return; }
   if (!bar && ed && ed.parentNode) {
     bar = document.createElement('div'); bar.id = 'editLockBanner';
-    bar.style.cssText = 'padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:10px;';
+    bar.style.cssText = 'padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:10px;flex:0 0 auto;';
     ed.parentNode.insertBefore(bar, ed);
   }
   if (!bar) return;
@@ -5279,9 +5284,11 @@ function openScriptFromTree(el, scriptId, name) {
     if (res.code === 0 && res.data) {
       codeArea.value = res.data.content || '-- 空脚本';
       updateLines();
-      // 记录版本基线
+      // 记录版本基线 + 刷新工具栏「提交上线/提交下线」按钮(此前打开脚本未刷新致按钮不显)
       window.__scriptBase = window.__scriptBase || {};
       window.__scriptBase[scriptId] = res.data.updatedAt || null;
+      currentScriptOnline = (res.data.scheduleStatus === 'online');
+      if (window.updateToolbarOnlineBtn) updateToolbarOnlineBtn();
       if (window.__editLock && !(window.__editLock.type === 'SCRIPT' && String(window.__editLock.id) === String(scriptId))) {
         dnEditLockRelease(window.__editLock.type, window.__editLock.id);
       }
