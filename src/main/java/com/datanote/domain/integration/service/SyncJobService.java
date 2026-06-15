@@ -136,6 +136,10 @@ public class SyncJobService {
         validate(job);
         if (job.getId() != null) {
             DnSyncJob old = syncJobMapper.selectById(job.getId());
+            // 任务三态: 已上线不可直接改, 须先下线(转草稿)再编辑——防改动静默作用于在跑任务
+            if (old != null && "online".equalsIgnoreCase(old.getScheduleStatus())) {
+                throw new IllegalArgumentException("该同步任务已上线, 请先下线(转为草稿)再编辑");
+            }
             job.setUpdatedAt(LocalDateTime.now());
             syncJobMapper.updateById(job);
             auditLogService.record(job.getId(), job.getJobName(), "UPDATE",

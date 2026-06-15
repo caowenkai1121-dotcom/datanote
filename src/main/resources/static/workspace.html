@@ -13390,6 +13390,21 @@ window.dbsyncOpenCreateModal = function() {
 
 /* ---------- 打开编辑弹窗 ---------- */
 window.dbsyncOpenEditModal = function(id) {
+  // 任务三态门控: 已上线 → 须先下线(转草稿)再编辑(改完重新上线), 防改动静默作用于在跑任务
+  api('/api/sync-job/' + id).then(function(jr) {
+    var j = (jr && jr.code === 0) ? jr.data : null;
+    if (j && j.scheduleStatus === 'online') {
+      msgConfirm('转为草稿编辑', '该同步任务已上线，编辑需先下线并转为草稿（改完需重新上线）。确认？').then(function(ok) {
+        if (!ok) return;
+        apiPost('/api/sync-job/' + id + '/offline', {}).then(function(r) {
+          if (r && r.code === 0) { showToast('已下线转草稿，可编辑', 'success'); _dbsyncRealOpenEdit(id); }
+          else showToast((r && r.msg) || '下线失败', 'error');
+        }).catch(function() { showToast('下线失败', 'error'); });
+      });
+    } else { _dbsyncRealOpenEdit(id); }
+  }).catch(function() { _dbsyncRealOpenEdit(id); });
+};
+function _dbsyncRealOpenEdit(id) {
   _dbsyncEditId = id;
   _dbsyncSrcTables = [];
   document.getElementById('dbsyncFormTitle').textContent = '编辑同步任务';

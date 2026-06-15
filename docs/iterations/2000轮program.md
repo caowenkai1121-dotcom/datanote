@@ -57,3 +57,11 @@
 - 前端: 打开脚本先查 state —— PENDING/ONLINE→只读+状态横幅(📤已提交待审/🟢已上线)+「编辑」按钮(dnScriptToDraft: 确认→revert-to-draft→重开为草稿可编辑+抢锁); DRAFT→走并发编辑锁(R108)。提交上线后即转只读"已提交待审"横幅。
 - E2E: DRAFT→提交→PENDING→编辑退回→DRAFT→审批→ONLINE→编辑退回(自动下线)→DRAFT 全链路验证。627 测试绿。
 - 进度(三态): ✅脚本。待: 同步任务/调度运维/指标/规则。
+
+## R114 [任务三态 第2波] 同步任务
+- 同步任务无审批流(无 sync_change 表), 故实为 2 态: 未提交(offline/草稿)/已上线(online); 无 PENDING(需另建同步审批流才有)。
+- 后端: SyncJobService.save 更新分支 —— old.scheduleStatus=online 则拒"已上线, 请先下线再编辑"(防改动静默作用于在跑任务)。
+- 前端: dbsyncOpenEditModal 拆为门控+_dbsyncRealOpenEdit; 已上线任务点编辑→确认"下线转草稿"→POST /offline→再打开可编辑(改完重新上线)。
+- E2E: online 态 save 拒"已上线"; offline 后 save code:0。627 测试绿。
+- 进度(三态): ✅脚本(全3态/审批) ✅同步任务(2态/上线门控)。待: 调度运维/指标/规则。
+- 备注: 指标/质量规则 已在 R110 有乐观版本校验防丢更新; 若要"上线/提交"语义的三态需各自定义生命周期(指标/规则当前无上线概念, 业主可定)。
