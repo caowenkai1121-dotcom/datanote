@@ -205,3 +205,7 @@
 - 现代体验组件(非报表): ①全局命令面板 dnCmdK(Ctrl/⌘+K 任意位置, glass+blur, 模糊搜索, 11模块前往+常用操作[新建指标/新建集成任务/AI/退出]+主题, ↑↓导航 Enter 执行 ESC关); ②深色模式 dnToggleTheme(令牌级 data-theme=dark 全站自动换色, localStorage 持久 + 早期内联 boot 防闪)。
 - 头部新增 ⌘K 命令面板按钮 + 主题切换按钮; Ctrl+K 由原"数据集成快切"改为全局命令面板; 修 AI 按钮误标 Ctrl+K。
 - 真机验证(Playwright): 面板16项/搜索过滤; 主题暗色持久/可切回/截图全站换色完美(导航/KPI/图表适配)。?v=u72。
+
+## R133 [UI重构·第4轮] 数据开发欢迎页现代化
+- viewWelcome 重设计(核心模块首屏): 渐变 hero(indigo+点阵纹理)+ Ctrl+K 快速导航提示 + 新建脚本玻璃按钮; 4 图标磁贴(脚本/上线/今日执行/失败, 类化享统一 hover 抬升); 3 左强调动作卡(hover 左边框点亮); 最近编辑列表(带图标标题)。移除重复内联 hover, 改 modern.css 类(.wlc-*)。
+- 真机验证(Playwright): hero/4磁贴/3动作卡/⌘K提示渲染; 截图现代无破坏。?v=u73。
