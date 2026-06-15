@@ -400,3 +400,6 @@
 
 ## R186 [UI重构·第57轮] 命令面板结果高亮匹配文字
 - workspace.html: dnCmdKRender 加 hl() 高亮 label 中命中查询的片段(主色加粗, 仅 label 命中时), 标准现代命令面板体验, 提升可扫读性。真机验证搜"指标"→"<b>指标</b>管理"。?v=u126。
+
+## R187 [UI重构·第58轮] 命令面板鼠标hover同步选中
+- workspace.html: .cmdk-item 原仅键盘高亮无鼠标反馈; 加 onmouseenter→dnCmdKHover(i) 同步 _cmdkActiveIdx+重绘高亮, 实现"悬停即选中、回车执行悬停项"的标准面板交互。真机验证 hover 第3项→activeIdx=2+primary-light底。?v=u127。
