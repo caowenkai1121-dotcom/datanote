@@ -394,3 +394,6 @@
 
 ## R184 [UI重构·第55轮] 最近编辑可点行键盘可达
 - workspace.html: welcomeRecentList 脚本行(onclick打开)补 role=button/tabindex=0/onkeydown(Enter|Space), 键盘用户可 Tab 聚焦+回车打开。真机验证8行均具备。承 R177 a11y。?v=u124。
+
+## R185 [UI重构·第56轮] 命令面板"最近"反映真实导航轨迹
+- workspace.html: navigateTo 内把实际模块导航也计入 dnCmdKRecord(原仅用面板时记录), 命令面板"最近"现反映真实访问历史(最近优先), 成为更实用的快速切换器。dnCmdKRecord 为闭包内函数声明→typeof 守卫直调(非 window.*)。真机验证 导航 模型→治理→指标 后"最近"=[指标管理,数据治理,数据模型]。?v=u125。
