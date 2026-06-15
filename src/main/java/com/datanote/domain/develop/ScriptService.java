@@ -388,14 +388,29 @@ public class ScriptService {
             }
             // 并发编辑防护: 他人持 SYNC 编辑锁则拒(与脚本同款; 无人持锁则放行不影响 AI/批量)
             editLockService.assertHeld("SYNC", String.valueOf(task.getId()));
+            // 乐观版本校验: 自打开后被他人改过则拒(Redis 锁 fail-open/超时时的兜底, 与脚本同款)
+            if (old != null && task.getBaseUpdatedAt() != null && old.getUpdatedAt() != null
+                    && !task.getBaseUpdatedAt().equals(old.getUpdatedAt())) {
+                throw new BusinessException("该同步任务已被他人修改(" + (old.getUpdatedBy() == null ? "" : old.getUpdatedBy()) + "), 请刷新后重试以免覆盖对方改动");
+            }
             task.setUpdatedAt(LocalDateTime.now());
+            task.setUpdatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
             syncTaskMapper.updateById(task);
+            // 返回库内真实行: updatedAt 为 DB 截断秒精度, 供前端刷新版本基线(否则毫秒≠秒致连续保存误判"被他人修改")
+            return syncTaskMapper.selectById(task.getId());
         } else {
             task.setCreatedAt(LocalDateTime.now());
             task.setUpdatedAt(LocalDateTime.now());
+            if (task.getCreatedBy() == null || task.getCreatedBy().trim().isEmpty()) {
+                task.setCreatedBy(com.datanote.platform.iam.CurrentUserUtil.currentUser());
+            }
             syncTaskMapper.insert(task);
+            return syncTaskMapper.selectById(task.getId());
         }
-        return task;
+    }
+
+    public DnSyncTask getSyncTask(Long id) {
+        return id == null ? null : syncTaskMapper.selectById(id);
     }
 
     public void deleteSyncTask(Long id) {

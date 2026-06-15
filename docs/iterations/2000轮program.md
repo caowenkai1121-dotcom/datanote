@@ -107,3 +107,13 @@
 - 顺带 SyncJobService.save(数据同步模块 DnSyncJob)也加 assertHeld, 但用独立锁类型 "SYNCJOB" 避与 DnSyncTask 的 "SYNC" 锁键(同 id 不同表)冲突。
 - 真机验证(双 requests 会话, 远程库): 建草稿 DnSyncTask→viewer 抢 SYNC 锁→admin 保存被拒(code -1「viewer 正在编辑该内容, 你暂时无法保存」)→viewer 释放→admin 保存 code 0 成功→删测试数据。
 - 部署: mvn package + deploy_jar.py 全量(md5 校验 8041b6b 匹配), 服务 active; SyncJobServiceValidateTest 构造补 null 参过。
+
+## R120 [并发兜底收尾] ODS同步任务 乐观版本校验(对齐脚本) + 指标/规则确认已有
+- 补 R119 遗留: DnSyncTask 乐观版本校验(Redis 锁 fail-open/超时时的覆盖兜底)。脚本侧早有, 同步缺。
+  - DB: dn_sync_task 加 updated_by 列(sql/91, MySQL 不支持 ADD COLUMN IF NOT EXISTS→运维脚本判存幂等)。
+  - DnSyncTask: +updatedBy +@TableField(exist=false) baseUpdatedAt(不入库基线)。
+  - ScriptService.saveSyncTask: 更新分支 baseUpdatedAt≠old.updatedAt 则拒"已被他人修改(updatedBy)" + setUpdatedBy + 返回 selectById(DB 秒精度, 防毫秒≠秒连续保存误判); 新增 getSyncTask + GET /api/script/sync-task/{id}(取基线)。
+  - 前端: openSyncTask 拉详情存 window.__syncBase[id]=updatedAt; intgSaveTask 带 baseUpdatedAt + 成功后刷新基线。
+- 排查确认: 指标(__mBaseUpdatedAt)/质量规则(__qrBaseUpdatedAt)**早有乐观版本校验**(modal 编辑适用), scope 中"指标规则"无需补。
+- 真机验证(双 requests, 远程库): 正确基线保存成功(updatedBy=admin, 新基线秒精度) → 旧基线保存被拒(code -1「已被他人修改(admin)」) → 新基线再成功(连续保存无误判) → 删测试。
+- 部署: sql/91 应用(列已建) + mvn package + deploy_jar 全量(md5 a4f379f 匹配), 服务 active。

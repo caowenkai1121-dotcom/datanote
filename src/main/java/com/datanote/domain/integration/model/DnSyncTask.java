@@ -23,8 +23,12 @@ public class DnSyncTask {
     private String dataxJson;
     private Integer status;
     private String createdBy;
+    private String updatedBy;          // 最后修改人(并发冲突提示显示是谁)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @TableField(exist = false)
+    private LocalDateTime baseUpdatedAt;   // 乐观版本校验基线(前端打开时的 updatedAt), 不入库
 
     // DolphinScheduler 集成字段
     private Long dsProjectCode;

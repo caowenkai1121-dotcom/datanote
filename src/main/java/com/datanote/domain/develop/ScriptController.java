@@ -117,6 +117,12 @@ public class ScriptController {
         return R.ok(scriptService.allWithContent());
     }
 
+    @Operation(summary = "同步任务详情(供前端取版本基线 updatedAt)")
+    @GetMapping("/sync-task/{id}")
+    public R<DnSyncTask> getSyncTask(@PathVariable Long id) {
+        return R.ok(scriptService.getSyncTask(id));
+    }
+
     @Operation(summary = "保存同步任务")
     @PostMapping("/sync-task")
     public R<DnSyncTask> saveSyncTask(@RequestBody DnSyncTask task) {

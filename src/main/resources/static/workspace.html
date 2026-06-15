@@ -3355,6 +3355,13 @@ function openSyncTask(el, id, name, db, table, mode, dsId) {
 
   // 加载同步任务调度状态，更新上线按钮
   loadSyncSchedConfig(id);
+  // 取版本基线(乐观并发校验): 打开时的 updatedAt
+  api('/api/script/sync-task/' + id).then(function(res) {
+    if (res && res.code === 0 && res.data) {
+      window.__syncBase = window.__syncBase || {};
+      window.__syncBase[id] = res.data.updatedAt || null;
+    }
+  }).catch(function(){});
   // 切换任务后刷新右面板数据
   refreshRightPanelIfOpen();
 }
@@ -3698,11 +3705,16 @@ function intgSaveTask() {
     partitionField: 'dt',
     status: 1
   };
-  if (currentSyncTaskId) task.id = currentSyncTaskId;
+  if (currentSyncTaskId) {
+    task.id = currentSyncTaskId;
+    task.baseUpdatedAt = (window.__syncBase || {})[currentSyncTaskId] || null;   // 乐观版本校验基线
+  }
 
   apiPost('/api/script/sync-task', task).then(function(res) {
     if (res.code === 0) {
       currentSyncTaskId = res.data.id;
+      window.__syncBase = window.__syncBase || {};
+      window.__syncBase[res.data.id] = res.data.updatedAt || null;   // 刷新基线(连续保存防误判)
       // 更新 tab cache 中的 syncTaskId
       var tabBar = document.getElementById('editorTabs');
       var activeTab = tabBar ? tabBar.querySelector('.editor-tab.active') : null;
