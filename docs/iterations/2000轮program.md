@@ -368,3 +368,8 @@
 
 ## R176 [UI重构·第47轮] gov-* 工具类全局化(承 gov-pill 模式)
 - dn-design.css: 承 gov-pill 已有全局化模式, 把内联模块(项目/详情等)复用但仍仅治理作用域的 gov-section-title/gov-empty/gov-empty svg/gov-line/gov-stats 提升为全局类(低优先级, 不影响治理作用域已有)。真机验证 gov 容器外这些类样式恢复(区块标题左强调条/空态flex居中)。?v=u116。
+
+## R177 [UI重构·第48轮] KPI磁贴无障碍补全 + 总览磁贴导航QA
+- dn-common.js: DN.statTile 可点磁贴补 role="button"(原已有 tabindex=0 + Enter/Space keydown), 读屏语义完整。全站 KPI 磁贴(首页/治理/主数据)键盘+读屏可达。
+- QA: 治理/主数据总览磁贴点击导航子模块正常(主数据域→域与实体建模), R176 gov-* 全局化对治理/主数据作用域无回归。深色亦干净。
+- 另: docs/待我决策.md 写阶段性同步(48轮现状/QA真bug/继续准则), 不暂停推进。?v=u117。
