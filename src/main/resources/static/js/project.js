@@ -273,7 +273,11 @@ function projRenderList(list) {
   if (!box) return;
   var rows = list || _projFiltered || _projList;
   if (!rows.length) {
-    box.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);">' + (_projList.length ? '无匹配项目' : '暂无项目，点击右上角「新建项目」开始') + '</div>';
+    if (_projList.length) {
+      box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="et">无匹配项目</div><div style="font-size:12px;color:var(--text-faint);">试试调整搜索或筛选条件</div></div>';
+    } else {
+      box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><div class="et">暂无项目</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">创建第一个项目, 把资产 / 任务 / 成员组织起来</div><button class="btn btn-sm btn-primary" data-perm="project:edit" onclick="if(window.projOpenCreate)projOpenCreate()">＋ 新建项目</button></div>';
+    }
     return;
   }
   // (统计概览已由页面级 projTile 横幅提供, 此处不再重复)
