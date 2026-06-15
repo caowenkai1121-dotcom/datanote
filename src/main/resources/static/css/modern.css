@@ -125,6 +125,17 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 /* 表格容器圆角观感(若直接在卡片内则继承) */
 #metricsListContent, #umUserBox, #dbsyncJobsContent { border-radius: var(--radius-lg); }
 
+/* ---- 表单控件统一聚焦光环(R137): 全站输入/下拉/文本域一致的主色柔光 ---- */
+.prop-input:focus, .prop-select:focus, .dbsync-form-input:focus, .dbsync-form-select:focus,
+.iw-form-input:focus, .iw-form-select:focus, .intg-select:focus, .intg-input:focus,
+.g-modal-input:focus, .ds-form-row input:focus, .sched-date-input:focus,
+.quality-modal-body input:focus, .quality-modal-body textarea:focus, .quality-modal-body select:focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-light) !important;
+  outline: none;
+}
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

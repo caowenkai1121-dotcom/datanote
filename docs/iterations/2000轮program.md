@@ -221,3 +221,8 @@
 ## R136 [UI重构·第7轮] 记住上次所在模块(人性化)
 - navigateTo 持久 currentRoute 到 localStorage('dn-last-route'); parseRoute 在无 hash(直接打开/刷新)时恢复上次模块, 无记录则首页。重进应用回到上次工作处, 减少重复导航。
 - 真机验证(Playwright): 进指标→saved=metrics; 模拟无 hash parseRoute()→metrics。?v=u75。
+
+## R137 [UI重构·第8轮] 全局表单控件统一聚焦光环
+- modern.css: 全站输入/下拉/文本域(.prop-input/.dbsync-form-input/.iw-form-input/.intg-*/.g-modal-input/.ds-form-row input/quality-modal/textarea)聚焦统一 主色边框 + 3px 柔光环(原各处仅变边框无环, 不一致)。
+- 坑: 首版选择器含 input:not([type=checkbox]):not(...):focus 复杂链疑被丢弃→改纯类列表; headless 程序化 .focus()+getComputedStyle 不渲染 :focus(连既有规则都不反映), 须真实 Playwright click 验证。
+- 真机验证(Playwright 真实 click): 聚焦输入 box-shadow=主色3px光环 + border 主色。?v=u77。
