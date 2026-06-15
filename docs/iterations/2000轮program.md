@@ -409,3 +409,7 @@
 
 ## R189 [UI重构·第60轮] 命令面板项高亮过渡
 - modern.css: .cmdk-item 加 background/color .12s 过渡, JS 改内联高亮色时切换顺滑(键盘上下/鼠标hover均更自然)。?v=u129。
+
+## R190 [UI重构·第61轮] 内联代码全局点击复制
+- modern.css: code:not(pre code):not(.monaco-editor code) cursor:pointer + hover 主色提示。
+- workspace.html: 全局委托 click 监听, 点内联 <code>(表名/字段/编码)即 DN.copy 复制(排除 pre/Monaco代码块/带自身onclick的)。数据平台高频复制场景一处全站受益。真机验证点 metricCode<code>→DN.copy("sign_proj_cnt")。?v=u130。
