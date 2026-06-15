@@ -188,8 +188,15 @@ select.dbsync-form-select, #devRootLayer, #metricCategoryFilter, #metricFreshFil
   padding-right: 28px !important;
 }
 
+/* ---- 模块切换淡入(R144): 顺滑过渡(仅 opacity, 无位移防 jank) ---- */
+#viewScheduler.active, #viewDatamap.active, #viewMetrics.active, #viewSettings.active,
+#viewWelcome.active, #viewSql.active, #viewIntegration.active {
+  animation: dnViewIn .22s ease;
+}
+@keyframes dnViewIn { from { opacity: 0; } to { opacity: 1; } }
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
-  * { scroll-behavior: auto !important; }
+  * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
   .btn:hover, .tool-btn:hover, .gov-card:hover, .dn-card:hover, .gov-stat:hover { transform: none; }
 }

@@ -250,3 +250,7 @@
 ## R143 [UI重构·第14轮] 全局下拉框自定义 chevron
 - modern.css: 全站表单 select(.prop-select/.dbsync-form-select/.iw-form-select/.intg-select/分类·新鲜度筛选等)appearance:none + 内联 svg chevron(替代老气原生箭头)+ padding-right。
 - 真机验证(Playwright): webkitAppearance:none + 自定义 chevron + padRight 28px。注: 服务器偶发 ERR_EMPTY_RESPONSE 致 css 漏载, 重载即正常。?v=u83。
+
+## R144 [UI重构·第15轮] 模块切换淡入过渡
+- modern.css: 编辑布局视图(.active: viewScheduler/viewDatamap/viewMetrics/viewSettings/viewWelcome/viewSql/viewIntegration)切换时 dnViewIn 淡入(仅 opacity 无位移防 jank); reduced-motion 媒体查询同步禁动画(animation-duration .01ms)。模块切换更顺滑。
+- 真机验证(Playwright): viewMetrics.active animationName=dnViewIn 0.22s。?v=u84。
