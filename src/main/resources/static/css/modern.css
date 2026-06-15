@@ -230,6 +230,14 @@ kbd { font-family: 'Geist', ui-monospace, 'SF Mono', Consolas, monospace; font-s
   width: 3px; height: 15px; border-radius: 2px; background: var(--primary);
 }
 
+/* ---- 搜索框聚焦光环补全(R151): 治理/主数据/补数等剩余搜索/输入统一 ---- */
+:is(#govModuleContent, #mdmModuleContent, #homeCockpit, #metricsConsumption) .gov-search input:focus,
+.left-search input:focus, .sched-date-input:focus, .param-run-row input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-light) !important;
+  outline: none;
+}
+
 /* ---- 减少动效偏好: 尊重系统设置 ---- */
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
