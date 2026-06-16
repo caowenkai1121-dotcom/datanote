@@ -1138,3 +1138,6 @@
 
 ## R428 [UI重构·第299轮] 项目Wiki编辑实时预览切换
 - project.js: Wiki 编辑表单加"预览/编辑"切换(projWikiTogglePreview 用 projMd 渲染 markdown 到 #pwPreview, 与 textarea 互斥显示, 按钮文案切换), 写文档边写边看效果。真机构造验证 预览渲染h1/strong/p+切回编辑。?v=u369。
+
+## R429 [UI重构·第300轮里程碑] SQL运行按钮执行中禁用防重复
+- workspace.html: runTask 运行中禁用"运行"按钮(透明度.6)+ 已禁用时忽略重复触发(含Ctrl+Enter), 4个结束点(result/error/onerror/submit失败/catch)均 _restoreRunBtn 复原。防重复提交+执行态反馈。真机 Monaco+spy submit失败验证 禁用→恢复。?v=u370。**第300轮(30%)里程碑**。
