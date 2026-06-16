@@ -603,3 +603,6 @@
 
 ## R251 [UI重构·第122轮] closeAllDrawers 死查询清理(工作流3确认)
 - dn-common.js: DN.closeAllDrawers 删除 querySelectorAll('.dn-ai-mask, .dn-ai-drawer') 死查询(AI抽屉已统一为.gov-drawer, 上方已处理; 该选择器永不命中却每次导航都跑)。真机验证 closeAllDrawers 无异常。其余 perf 项(projResetFilters/collectAttrRows/projOpenDetail 微优化)经判断为非热路径/无实益, 按极简不改。**至此三轮工作流(共~88确认项)全部处置完毕(实修+合理否决)**。?v=u192。
+
+## R252 [UI重构·第123轮] 数据集成任务表格搜索命中高亮
+- workspace.html: dbsyncJobsTable 加 _jhl() 高亮搜索关键词在任务名中的命中(<mark> warning-bg, title保持纯文本)。真机验证 真实任务"ces1"搜"ce"→命中高亮。至此搜索高亮覆盖命令面板/指标/数据地图/用户/数据集成全部主搜索列表。?v=u193。
