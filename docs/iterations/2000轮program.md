@@ -748,3 +748,6 @@
 
 ## R299 [UI重构·第170轮] 质量/指标/系统管理 末次子tab记忆(收口偏好持久化)
 - workspace.html: switchQualityTab/switchMetricsTab/switchSettingsTab 持久化 localStorage(dn.qualityTab/metricsTab/settingsTab); 三模块 init 深链优先, 否则恢复上次子tab(metrics detail临时态不记; 深链 editId/sm 优先)。至此全模块子导航记忆收口: dbsync/项目/文件树/治理/主数据/运维/质量/指标/系统管理。真机验证 系统管理"系统监控"+指标"指标取值"离开返回均保持; 质量同范式。已清测试态。?v=u240。
+
+## R300 [UI重构·第171轮] 治理/主数据 动态侧栏 a11y 补全
+- workspace.html: initGovCenter/initMdmCenter 动态侧栏项补 role=button + tabindex=0 + Enter/Space 键盘激活 + aria-current=page; switchGovModule/switchMdmModule 切换时迁移 aria-current。此前动态侧栏(治理9项/主数据多项)无键盘可达, 与静态侧栏(运维/质量/指标/系统)不一致。真机验证 治理侧栏 role=button/tabindex=0/aria-current=page, Enter 激活"资产目录"且 aria-current 跟随。?v=u241。
