@@ -803,3 +803,6 @@
 
 ## R317 [UI重构·第188轮] 项目 KPI 磁贴键盘可达
 - project.js: projTile 可点磁贴(项目空间 总数/活跃/已归档/本月新增 等)补 role=button + tabindex=0 + Enter/Space 键盘激活(原仅 cursor:pointer 鼠标可点; 动态渲染漏过一次性 dnA11yEnhance)。截图复核项目工作台视觉整洁。真机验证 4 个可点磁贴 role=button/tabindex=0/onkeydown 齐备。?v=u258。
+
+## R318 [UI重构·第189轮] 数据集成 任务搜索 × 清除按钮
+- workspace.html: 数据集成任务搜索框加 × 清除(dbsyncSearchClear, 有内容才现+回焦)。即时搜索清除×现覆盖 文件树/指标/质量/数据集成 + DN.table。截图复核 数据集成空态(暂无同步任务+CTA)现代清晰。真机验证 隐藏→输入显现→点击清空隐藏。?v=u259。
