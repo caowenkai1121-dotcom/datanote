@@ -891,3 +891,6 @@
 
 ## R346 [UI重构·第217轮] 手动执行记录 状态中文化 + 空态升级
 - workspace.html: loadOpsManual 状态由英文裸值(SUCCESS/FAILED)改中文(成功/失败/运行中/待执行/异常, 大写键); 空态纯文本→gov-empty。承 i18n + 空态范式。真机验证(真实数据) 状态列全中文"成功"无英文裸值。?v=u288。
+
+## R347 [UI重构·第218轮] 系统监控审计预览 动作中文化
+- workspace.html: smRenderAudit(系统监控页审计预览)动作列由英文裸值(LOGIN/DATA_ACCESS等)改 SEC_ACTION_LABEL 中文(登录/数据访问/权限变更...)。承 i18n 线。真机验证(真实数据) 动作列"权限变更/登录"无英文裸值。?v=u289。
