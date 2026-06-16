@@ -1018,3 +1018,6 @@
 
 ## R388 [UI重构·第259轮] 依赖添加搜索清除×
 - workspace.html: 脚本依赖添加对话框任务搜索框(depSearchInput)加清除"×"(有输入才显, 内联清空+隐×+depSearchTasks重置+聚焦); depOpenAddDialog 重置时也隐藏×。真机(develop 内置对话框)验证 初始隐/输入显/清除隐+清空+(去抖后)结果重置。?v=u330。
+
+## R389 [UI重构·第260轮] 脚本审批搜索清除×+无匹配反馈
+- workspace.html: 脚本审批中心搜索框(saprSearch)加清除"×"; saprApplySearch 加无匹配反馈行(#saprNoMatch, colspan 取首行列数)。完成即时搜索清除×backlog(仅余 dbsyncDetailLogKw 日志关键字过滤, 价值低暂不做)。真机(u331)验证 无匹配行创建/清除移除/行恢复。**验证教训: 改后须导航到新?v页面再测, 否则旧缓存函数致假阴**。?v=u331。
