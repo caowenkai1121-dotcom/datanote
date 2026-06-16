@@ -791,3 +791,6 @@
 
 ## R313 [UI重构·第184轮] 质量规则 Enter 提交防重复
 - workspace.html: saveQualityRule 未传 btn(modal Enter 提交路径)时自取 #qualityRuleModal .btn-primary, 保证 Enter 与点击两条路径都禁用按钮防重复提交(此前仅点击路径有保护)。saveMetric 本就自查按钮无此问题。真机验证 modal 打开 fallback 选择器解析到"保存"按钮。?v=u254。
+
+## R314 [UI重构·第185轮] 数据集成 建/改任务 防重复提交
+- workspace.html: dbsyncSaveJob 保存中禁用 #dbsyncFormModal .btn-primary 并显"保存中..."(成功/失败/异常均还原), 防表单慢保存误双击建重复任务(承 saveMetric/saveQualityRule 范式)。真机验证 创建弹窗打开+保存按钮解析; curl 确认守卫部署。?v=u255。
