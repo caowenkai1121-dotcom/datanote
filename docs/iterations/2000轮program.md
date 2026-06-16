@@ -657,3 +657,6 @@
 
 ## R269 [UI重构·第140轮] 用户管理列排序
 - workspace.html: umRenderUsers 加可点表头排序(用户名/昵称/部门/最后登录), umSortBy 切 asc/desc(▲▼), 复用 _umUsers 过滤后列表重渲染。承 R268 指标排序。真机验证 点用户名→升序首admin→再点降序首zs01(4用户反转)。?v=u210。
+
+## R270 [UI重构·第141轮] 指标列表加条数计数
+- workspace.html: renderMetricList 表格上方加"共 N 个指标"计数(筛选时显"N / 总数"), 与用户表"共N/M"一致, 信息性。真机验证 显"共 1 个指标"。?v=u211。
