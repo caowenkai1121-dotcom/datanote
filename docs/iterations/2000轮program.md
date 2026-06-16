@@ -766,3 +766,7 @@
 
 ## R305 [UI重构·第176轮] 数据集成 任务列表 CSV 导出
 - workspace.html: 同步任务列表工具栏(视图切换行)加"导出CSV"(dbsyncExportJobs: 任务名/同步模式/源端/目标端/状态/调度; 导出当前筛选+排序后列表 window._dbsyncExportList; 复用 csvCell 防注入; BOM)。补齐 dbsync 列表级导出(此前仅单任务配置/历史/审计/大盘可导)。真机验证 合成列表触发"同步任务列表.csv"(本环境0任务则toast"暂无任务可导出")。?v=u246。
+
+## R306 [UI重构·第177轮] 质量规则 批量选择实时计数 + 全模块回归
+- 先回归: 13 模块 navigateTo 全遍历 0 控制台错误(确认 dn-common/datamodel/mdm/gov-standard/ai-agent/project 多文件改动无副作用; 焦点环[tabindex]:focus-visible 已覆盖新可聚焦th)。
+- workspace.html: 质量规则批量工具栏加"已选 N"实时计数(qualityUpdateSelCount, 选中变主色加粗; qr-chk onchange + qualityToggleAll 触发), 启停前清楚影响范围(承 dbsync"已选N"范式)。真机验证 已选 0→2→全选23。?v=u247。

@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u246">
-<link rel="stylesheet" href="css/gov-modern.css?v=u246">
-<link rel="stylesheet" href="css/redesign.css?v=u246">
-<link rel="stylesheet" href="css/dn-design.css?v=u246">
+<link rel="stylesheet" href="css/app.css?v=u247">
+<link rel="stylesheet" href="css/gov-modern.css?v=u247">
+<link rel="stylesheet" href="css/redesign.css?v=u247">
+<link rel="stylesheet" href="css/dn-design.css?v=u247">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u246">
+<link rel="stylesheet" href="css/modern.css?v=u247">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u246"></script>
-<script src="js/gov-assets.js?v=u246"></script>
-<script src="js/gov-lineage.js?v=u246"></script>
-<script src="js/gov-quality.js?v=u246"></script>
-<script src="js/gov-standard.js?v=u246"></script>
-<script src="js/gov-classification.js?v=u246"></script>
-<script src="js/gov-security.js?v=u246"></script>
-<script src="js/gov-health.js?v=u246"></script>
-<script src="js/gov-audit.js?v=u246"></script>
-<script src="js/gov-overview.js?v=u246"></script>
-<script src="js/gov-subject.js?v=u246"></script>
-<script src="js/gov-consumption.js?v=u246"></script>
-<script src="js/gov-govmap.js?v=u246"></script>
-<script src="js/project.js?v=u246"></script>
-<script src="js/datamodel.js?v=u246"></script>
-<script src="js/home-dashboard.js?v=u246"></script>
-<script src="js/mdm.js?v=u246"></script>
-<script src="js/mdm-ingest.js?v=u246"></script>
-<script src="js/mdm-survivorship.js?v=u246"></script>
-<script src="js/mdm-approval.js?v=u246"></script>
-<script src="js/mdm-refdata.js?v=u246"></script>
-<script src="js/mdm-quality.js?v=u246"></script>
-<script src="js/mdm-pubsub.js?v=u246"></script>
-<script src="js/mdm-hierarchy.js?v=u246"></script>
-<script src="js/ai-agent.js?v=u246"></script>
+<script src="js/dn-common.js?v=u247"></script>
+<script src="js/gov-assets.js?v=u247"></script>
+<script src="js/gov-lineage.js?v=u247"></script>
+<script src="js/gov-quality.js?v=u247"></script>
+<script src="js/gov-standard.js?v=u247"></script>
+<script src="js/gov-classification.js?v=u247"></script>
+<script src="js/gov-security.js?v=u247"></script>
+<script src="js/gov-health.js?v=u247"></script>
+<script src="js/gov-audit.js?v=u247"></script>
+<script src="js/gov-overview.js?v=u247"></script>
+<script src="js/gov-subject.js?v=u247"></script>
+<script src="js/gov-consumption.js?v=u247"></script>
+<script src="js/gov-govmap.js?v=u247"></script>
+<script src="js/project.js?v=u247"></script>
+<script src="js/datamodel.js?v=u247"></script>
+<script src="js/home-dashboard.js?v=u247"></script>
+<script src="js/mdm.js?v=u247"></script>
+<script src="js/mdm-ingest.js?v=u247"></script>
+<script src="js/mdm-survivorship.js?v=u247"></script>
+<script src="js/mdm-approval.js?v=u247"></script>
+<script src="js/mdm-refdata.js?v=u247"></script>
+<script src="js/mdm-quality.js?v=u247"></script>
+<script src="js/mdm-pubsub.js?v=u247"></script>
+<script src="js/mdm-hierarchy.js?v=u247"></script>
+<script src="js/ai-agent.js?v=u247"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9492,6 +9492,7 @@ function loadQualityRules() {
         '<input id="qualityRuleSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索规则名/库表/字段/创建人" oninput="qualityFilterRules()">' +
         '<span style="font-size:12px;color:var(--text-muted);">共 ' + rules.length + ' 条规则</span>' +
         '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">批量:</span>' +
+        '<span id="qrSelCount" style="font-size:12px;color:var(--text-muted);">已选 0</span>' +
         '<button class="btn btn-sm" data-perm="governance:quality" onclick="qualityBatchStatus(1)">启用选中</button>' +
         '<button class="btn btn-sm" data-perm="governance:quality" onclick="qualityBatchStatus(0)">停用选中</button>' +
         '<button class="btn btn-sm" onclick="qualityExportCsv()" title="导出规则列表为 CSV">导出CSV</button></div>' +
@@ -9517,7 +9518,7 @@ function loadQualityRules() {
           ' data-s-by="' + escapeHtml((r.createdBy || '').toLowerCase()) + '"' +
           ' data-s-sev="' + sevOrd + '"' +
           ' data-s-status="' + (r.status === 1 ? 1 : 0) + '">' +
-          '<td style="text-align:center;"><input type="checkbox" class="qr-chk" value="' + r.id + '"></td>' +
+          '<td style="text-align:center;"><input type="checkbox" class="qr-chk" value="' + r.id + '" onchange="qualityUpdateSelCount()"></td>' +
           '<td>' + escapeHtml(r.ruleName || '') + '<span class="dnpj" data-id="' + r.id + '"></span></td>' +
           '<td><span class="quality-type-badge">' + escapeHtml(typeLabels[r.ruleType] || r.ruleType) + '</span></td>' +
           '<td>' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</td>' +
@@ -9629,7 +9630,14 @@ function qualityToggleAll(checked) {
     var c = tr.querySelector('.qr-chk');
     if (c) c.checked = checked;
   });
+  qualityUpdateSelCount();
 }
+// 批量选择实时计数(承 dbsync "已选 N" 范式): 让用户启停前清楚影响范围
+window.qualityUpdateSelCount = function() {
+  var n = document.querySelectorAll('.qr-chk:checked').length;
+  var el = document.getElementById('qrSelCount');
+  if (el) { el.textContent = '已选 ' + n; el.style.color = n ? 'var(--primary)' : 'var(--text-muted)'; el.style.fontWeight = n ? '600' : ''; }
+};
 
 // 批量启停选中规则(status: 1=启用, 0=停用)
 function qualityBatchStatus(status) {
