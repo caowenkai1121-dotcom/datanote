@@ -949,3 +949,6 @@
 
 ## R365 [UI重构·第236轮] DN.table 搜索清除按钮空值隐藏(全站)
 - dn-common.js: DN.table 工厂的搜索清除"×"原一直常显(gov-search-clr 无 display:none 默认), 改为仅有输入时显示, 清除后隐藏。一处惠及全站所有 DN.table(治理/主数据/项目/建模等)。真机构造 DN.table 验证 初始隐藏/输入显示/清除隐藏+还原+聚焦 全对。?v=u307。
+
+## R366 [UI重构·第237轮] 结果面板拖拽高度持久化
+- workspace.html: SQL结果/日志面板拖拽调整的高度记入 localStorage dn.resultPanelH, 下次加载恢复(承全站偏好持久化体系 dn.theme/density/last-route/treeFilter 等)。clamp 80~70vh 防越界。真机验证 设300px reload 后 cssText="height: 300px" 已恢复。?v=u308。
