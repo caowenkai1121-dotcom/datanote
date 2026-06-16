@@ -873,3 +873,6 @@
 
 ## R340 [UI重构·第211轮] 调度状态轮询补 catch(防未处理拒绝)
 - workspace.html: schedRefreshStatus(运维5s调度状态轮询)补 .catch 静默(原无catch, 端点失败时未处理拒绝噪声; 5s下次自重试)。其余 setInterval(编辑锁心跳/监控10s/dbsync大盘5s)均页/弹窗作用域+可见性守卫, 离开即停, 风险低。真机验证 运维页加载0新错, schedRefreshStatus 函数正常。?v=u282。
+
+## R341 [UI重构·第212轮] 开始今日调度 二次确认 + catch
+- workspace.html: schedStartDaily 加 msgConfirm 二次确认("会真实运行 ETL")+ .catch 网络异常提示。原无确认直接触发当日全量调度(真跑ETL), 误点代价高。承破坏性/高代价操作补确认范式。真机验证 调用 schedStartDaily→弹确认→取消不触发。smLoad 已含catch+可见性守卫(复核)。?v=u283。
