@@ -934,3 +934,6 @@
 
 ## R360 [UI重构·第231轮] SQL编辑器 Ctrl+Enter 运行 + 快捷键帮助补全
 - workspace.html: Monaco 加 Ctrl/Cmd+Enter 运行(addAction run-sql→runTask, 选中即跑选中否则全部; 现代SQL编辑器惯例; Ctrl+S保存本有)。快捷键帮助面板(?)加"数据开发"组(Ctrl+S保存/Ctrl+Enter运行/tab圆点=未保存)。真机验证 monacoEditor.getAction('run-sql')+('save-script')均存在。(附: 上轮R359 dirty态确认 beforeunload 守卫真生效——导航被未保存对话框拦截)。?v=u302。
+
+## R361 [UI重构·第232轮] SQL编辑器工具栏快捷键提示
+- workspace.html: 运行/保存/格式化 工具栏按钮加 title 显快捷键(Ctrl+Enter/Ctrl+S/Ctrl+Shift+F), 帮助面板"数据开发"组补格式化项, 提升快捷键可发现性。真机验证 三按钮 title 含对应快捷键。?v=u303。
