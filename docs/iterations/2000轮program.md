@@ -1054,3 +1054,6 @@
 
 ## R400 [UI重构·第271轮] 表字段明细"复制列名"(写SELECT用)
 - workspace.html: 数据地图表字段明细工具栏加"复制列名"(dmCopyFieldNames: 全字段名逗号拼接, 跳过空名, DN.copy silent + 自定义 toast"已复制N个字段名"), 直接粘进 SELECT 子句。配 R382搜索/导出CSV。真机设 dmFieldsData 验证 复制"user_id, user_name, created_at"跳过空名 + toast计数。?v=u342。
+
+## R401 [UI重构·第272轮] 数据地图查询语句"去开发查询"(catalog→develop工作流)
+- workspace.html: 表详情 DDL/SQL tab 的 SELECT 块加"去开发查询"(dmSelectToDevelop: 读块内pre的SQL→DN.copy silent→createNewScript→toast引导), 打通 探索表→新建脚本查询 闭环。承 datamodel dmGotoDevelopWithDdl 范式。真机构造代码块验证 复制SELECT全文+调createNewScript+toast。?v=u343。
