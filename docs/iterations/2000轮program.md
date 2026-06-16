@@ -1102,3 +1102,6 @@
 
 ## R416 [UI重构·第287轮] 数据源表单必填项标红*
 - workspace.html: 数据源表单 名称/主机 label 加红*必填标记(对应 saveDatasource 校验 name+host)。**必填标记体系收尾(指标R414/质量R415/数据源R416)**。真机验证 名称*/主机*、类型无*。?v=u358。
+
+## R417 [UI重构·第288轮] SQL结果"复制为Markdown表格"
+- workspace.html: 结果工具栏加"复制MD"(copyResultMarkdown: 生成 GFM 表格含表头分隔行 | --- |, 转义单元内 | 为 \|+换行净化, 上限200行), 一键贴 PR/Wiki/Issue。resultToggleActionBtns 同步可见性。真机验证 表头分隔行/| 转义/换行净化 全对。结果复制矩阵: TSV(R362)/单元格(R363)/整列(R404)/Markdown(R417)/CSV下载。?v=u359。
