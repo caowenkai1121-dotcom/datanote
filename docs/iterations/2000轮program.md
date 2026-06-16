@@ -1153,3 +1153,6 @@
 
 ## R433 [UI重构·第304轮] 指标列表新鲜度列前置最新取值
 - workspace.html: _metricFreshBadge 在新鲜度药丸前加粗显示 fr.lastValue(freshness接口已返但原未展示), tabular-nums 对齐, title 含值。免开详情即见指标最新值+新鲜度。真机验证 新鲜度列 <b>45</b>+药丸。?v=u374。
+
+## R434 [UI重构·第305轮] 质量规则自定义SQL常驻格式提示
+- workspace.html: 自定义SQL 字段下加常驻提示"须返回 total_count/fail_count 两列, 通过率自动计算"(placeholder 输入后消失, 常驻提示更可靠), textarea 改 width:100% box-sizing。真机切类型验证 提示显示/切走隐藏。?v=u375。
