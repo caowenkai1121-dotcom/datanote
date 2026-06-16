@@ -460,7 +460,8 @@
             } }
         ],
         rows: data || [], searchKeys: ['dictCode', 'dictName'], searchPlaceholder: '搜索编码/名称',
-        empty: '暂无码表，使用上方表单新增', emptyIcon: 'list'
+        empty: '暂无码表，使用上方表单新增', emptyIcon: 'list',
+        onRow: function (d) { openDictItems(d); }
       }));
     }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { body.innerHTML = ''; renderDicts(body); })); });
   }
