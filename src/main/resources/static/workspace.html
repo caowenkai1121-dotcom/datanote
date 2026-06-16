@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u273">
-<link rel="stylesheet" href="css/gov-modern.css?v=u273">
-<link rel="stylesheet" href="css/redesign.css?v=u273">
-<link rel="stylesheet" href="css/dn-design.css?v=u273">
+<link rel="stylesheet" href="css/app.css?v=u274">
+<link rel="stylesheet" href="css/gov-modern.css?v=u274">
+<link rel="stylesheet" href="css/redesign.css?v=u274">
+<link rel="stylesheet" href="css/dn-design.css?v=u274">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u273">
+<link rel="stylesheet" href="css/modern.css?v=u274">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u273"></script>
-<script src="js/gov-assets.js?v=u273"></script>
-<script src="js/gov-lineage.js?v=u273"></script>
-<script src="js/gov-quality.js?v=u273"></script>
-<script src="js/gov-standard.js?v=u273"></script>
-<script src="js/gov-classification.js?v=u273"></script>
-<script src="js/gov-security.js?v=u273"></script>
-<script src="js/gov-health.js?v=u273"></script>
-<script src="js/gov-audit.js?v=u273"></script>
-<script src="js/gov-overview.js?v=u273"></script>
-<script src="js/gov-subject.js?v=u273"></script>
-<script src="js/gov-consumption.js?v=u273"></script>
-<script src="js/gov-govmap.js?v=u273"></script>
-<script src="js/project.js?v=u273"></script>
-<script src="js/datamodel.js?v=u273"></script>
-<script src="js/home-dashboard.js?v=u273"></script>
-<script src="js/mdm.js?v=u273"></script>
-<script src="js/mdm-ingest.js?v=u273"></script>
-<script src="js/mdm-survivorship.js?v=u273"></script>
-<script src="js/mdm-approval.js?v=u273"></script>
-<script src="js/mdm-refdata.js?v=u273"></script>
-<script src="js/mdm-quality.js?v=u273"></script>
-<script src="js/mdm-pubsub.js?v=u273"></script>
-<script src="js/mdm-hierarchy.js?v=u273"></script>
-<script src="js/ai-agent.js?v=u273"></script>
+<script src="js/dn-common.js?v=u274"></script>
+<script src="js/gov-assets.js?v=u274"></script>
+<script src="js/gov-lineage.js?v=u274"></script>
+<script src="js/gov-quality.js?v=u274"></script>
+<script src="js/gov-standard.js?v=u274"></script>
+<script src="js/gov-classification.js?v=u274"></script>
+<script src="js/gov-security.js?v=u274"></script>
+<script src="js/gov-health.js?v=u274"></script>
+<script src="js/gov-audit.js?v=u274"></script>
+<script src="js/gov-overview.js?v=u274"></script>
+<script src="js/gov-subject.js?v=u274"></script>
+<script src="js/gov-consumption.js?v=u274"></script>
+<script src="js/gov-govmap.js?v=u274"></script>
+<script src="js/project.js?v=u274"></script>
+<script src="js/datamodel.js?v=u274"></script>
+<script src="js/home-dashboard.js?v=u274"></script>
+<script src="js/mdm.js?v=u274"></script>
+<script src="js/mdm-ingest.js?v=u274"></script>
+<script src="js/mdm-survivorship.js?v=u274"></script>
+<script src="js/mdm-approval.js?v=u274"></script>
+<script src="js/mdm-refdata.js?v=u274"></script>
+<script src="js/mdm-quality.js?v=u274"></script>
+<script src="js/mdm-pubsub.js?v=u274"></script>
+<script src="js/mdm-hierarchy.js?v=u274"></script>
+<script src="js/ai-agent.js?v=u274"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -8936,7 +8936,7 @@ function renderMetricList(metrics) {
   var _mtotal = (window._metricListData || []).length;
   var html = '<div style="padding:0 2px 8px;font-size:12px;color:var(--text-muted);">共 ' + metrics.length + (metrics.length !== _mtotal ? ' / ' + _mtotal : '') + ' 个指标</div>' +
     '<table class="quality-rules-table"><thead><tr>' +
-    _mth('指标名称', 'metricName') + _mth('编码', 'metricCode') + _mth('分类', 'category') + '<th>单位</th><th>新鲜度</th><th>数据来源</th>' + _mth('负责人', 'owner') + _mth('状态', 'status') + '<th>操作</th>' +
+    _mth('指标名称', 'metricName') + _mth('编码', 'metricCode') + _mth('分类', 'category') + '<th>单位</th><th title="数据最近取值的新鲜程度: 最新/陈旧(>26h)/未取值">新鲜度</th><th title="该指标的来源库表">数据来源</th>' + _mth('负责人', 'owner') + _mth('状态', 'status') + '<th>操作</th>' +
     '</tr></thead><tbody>';
   metrics.forEach(function(m) {
     var tagHtml = (m.tags || '').split(',').filter(Boolean).map(function(t) {
