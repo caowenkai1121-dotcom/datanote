@@ -845,3 +845,7 @@
 
 ## R331 [UI重构·第202轮] 通知下拉 Esc 关闭
 - workspace.html: 站内通知下拉(dnBellDrop)补 Esc 关闭+焦点还原铃铛(原仅外部点击可关, 键盘不一致)。AI输入已 Enter发送/Shift+Enter换行/isComposing/运行中插话(复核完备)。真机验证 铃铛开→Esc→关闭。?v=u272。
+
+## R332 [UI重构·第203轮] 登出二次确认 + 深度交互QA
+- 深度交互QA: cmdk/指标弹窗/账号抽屉 开关 0 控制台错误。账号抽屉用 DN.drawer(Esc/焦点陷阱已含); 改密有校验+busy态。
+- workspace.html: 账号抽屉"登出账号"加 DN.confirm 二次确认(danger, "未保存编辑将丢失"), 防误点登出(破坏性操作补确认范式)。真机验证 点登出→弹"确认登出当前账号"→取消不登出。?v=u273。
