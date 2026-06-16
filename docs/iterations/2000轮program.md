@@ -745,3 +745,6 @@
 
 ## R298 [UI重构·第169轮] 数据运维 末次子tab记忆
 - workspace.html: switchOpsTab 持久化 localStorage(dn.opsTab); operations init 深链 optab 优先, 否则恢复上次运维子tab(概览/数据集成/调度/补数/基线)。与 R296/R297 同范式。真机验证 选"基线管理"→去首页→回运维→仍"基线管理"。已清测试态。?v=u239。
+
+## R299 [UI重构·第170轮] 质量/指标/系统管理 末次子tab记忆(收口偏好持久化)
+- workspace.html: switchQualityTab/switchMetricsTab/switchSettingsTab 持久化 localStorage(dn.qualityTab/metricsTab/settingsTab); 三模块 init 深链优先, 否则恢复上次子tab(metrics detail临时态不记; 深链 editId/sm 优先)。至此全模块子导航记忆收口: dbsync/项目/文件树/治理/主数据/运维/质量/指标/系统管理。真机验证 系统管理"系统监控"+指标"指标取值"离开返回均保持; 质量同范式。已清测试态。?v=u240。
