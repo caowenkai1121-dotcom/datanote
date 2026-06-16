@@ -687,3 +687,6 @@
 
 ## R279 [UI重构·第150轮] 数据模型列表 列排序(完成三件套)
 - datamodel.js: 模型表头 8 列(编码/名称/类型/数仓层/主题域/状态/版本/实体)可点排序; DOM 原地重排保留搜索态; 版本/实体按数值, 其余 localeCompare; 切主题/类型重载后 _dmApplySort 保持排序与箭头。数据模型至此计数+搜索+导出+排序齐全。真机验证 实体数值升序 + 名称 locale 升序 + 箭头 ▲。?v=u220。
+
+## R280 [UI重构·第151轮] 数据地图表 粘性表头
+- modern.css: .datamap-table thead th 补 position:sticky(沿用 R134 粘性表头范式), 数据地图长表纵向滚动时表头列名常驻, 大表浏览不丢上下文。沿用各表自有不透明 th 背景。诚实标注: dbsync-table 因外层 overflow-x 容器使纵向 sticky 失效, 未纳入。真机验证 datamap-table th getComputedStyle.position=sticky。?v=u221。

@@ -122,6 +122,11 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 .quality-rules-table tbody tr:hover, .dbsync-exec-table tbody tr:hover {
   box-shadow: inset 3px 0 0 var(--primary);
 }
+/* R280: 粘性表头补齐 数据地图表(长表纵滚时表头常驻, 沿用 R134 范式)。dbsync-table 因外层 overflow-x 容器纵向 sticky 失效, 不纳入。 */
+.datamap-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  backdrop-filter: blur(2px);
+}
 /* 表格容器圆角观感(若直接在卡片内则继承) */
 #metricsListContent, #umUserBox, #dbsyncJobsContent { border-radius: var(--radius-lg); }
 
