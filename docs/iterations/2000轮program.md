@@ -1105,3 +1105,6 @@
 
 ## R417 [UI重构·第288轮] SQL结果"复制为Markdown表格"
 - workspace.html: 结果工具栏加"复制MD"(copyResultMarkdown: 生成 GFM 表格含表头分隔行 | --- |, 转义单元内 | 为 \|+换行净化, 上限200行), 一键贴 PR/Wiki/Issue。resultToggleActionBtns 同步可见性。真机验证 表头分隔行/| 转义/换行净化 全对。结果复制矩阵: TSV(R362)/单元格(R363)/整列(R404)/Markdown(R417)/CSV下载。?v=u359。
+
+## R418 [UI重构·第289轮] 质量规则配置上下文占位提示
+- workspace.html: onQualityRuleTypeChange 按规则类型设 qrConfig 上下文占位(值域→'值域范围, 如: {"min":0,"max":100}'; 正则→'正则模式, 如: {"pattern":"^[0-9]+$"}'), 配置引导更精准。真机切类型验证 值域/正则占位正确、空值检查隐藏配置行。?v=u360。
