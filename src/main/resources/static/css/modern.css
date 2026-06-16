@@ -133,6 +133,16 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
   position: sticky; top: 0; z-index: 1;
   backdrop-filter: blur(2px);
 }
+
+/* R369: 结果表行号列粘附左侧(宽结果集横向滚动时保留行号定位)。不透明背景, 避开 tr:hover td 的半透明色致穿透。 */
+#resultArea .result-table td:first-child,
+#resultArea .result-table th:first-child {
+  position: sticky; left: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+}
+#resultArea .result-table td:first-child { z-index: 3; }
+#resultArea .result-table th:first-child { z-index: 6; }
 /* 表格容器圆角观感(若直接在卡片内则继承) */
 #metricsListContent, #umUserBox, #dbsyncJobsContent { border-radius: var(--radius-lg); }
 

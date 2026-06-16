@@ -958,3 +958,6 @@
 
 ## R368 [UI重构·第239轮] 项目成员搜索无匹配空态
 - project.js: projFilterMembers 过滤(搜索/角色)后若全部隐藏, 原仅剩空表头无反馈, 现注入 #projMemberNoMatch 行"无匹配成员，试试调整搜索或角色筛选"; 重新匹配后自动移除。承全站无匹配空态体系(指标/质量/数据集成/用户等)。真机构造成员表验证 无匹配显示/恢复移除 全对。?v=u310。
+
+## R369 [UI重构·第240轮] SQL结果行号列横向冻结
+- modern.css: #resultArea 结果表行号列(td/th:first-child)position:sticky left:0, 宽结果集横向滚动时行号常驻左侧便于定位。不透明 bg-card 背景(避开 tr:hover td 半透明色致内容穿透), th 行号角 z-index 6 压住一切, td z-index 3。承粘性表头体系(result/quality/dbsync-exec/datamap)。真机验证 td/th computed position:sticky+left:0+不透明背景+z层级 全对。?v=u311。
