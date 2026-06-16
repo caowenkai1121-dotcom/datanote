@@ -754,3 +754,6 @@
 
 ## R301 [UI重构·第172轮] 指标/用户 表头排序可见性(⇅ 提示)
 - workspace.html: _mth(指标)/_uth(用户) 未排序的可排序列由"无指示"改为显 ⇅, 表明可点排序(与质量/模型/dbsync ⇅ 一致)。此前用户需盲试才知列可排序。真机验证 指标列表 5 个可排序列均显 ⇅。?v=u242。
+
+## R302 [UI重构·第173轮] 排序表头键盘可达(全站内联表)
+- workspace.html: dnA11yEnhance 选择器 + 全局 Enter/Space 处理器扩到 th[onclick](th 保留 columnheader 语义只补 tabindex, 不覆盖 role); renderMetricList/umRenderUsers/renderQualityRules + datamodel renderModels 渲染后调 dnA11yEnhance 使动态表头键盘可聚焦。此前可排序 th 仅鼠标可点。真机验证 指标表头 tabindex=0, 聚焦按 Enter 排序(⇅→▲)。?v=u243。

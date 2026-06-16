@@ -188,6 +188,7 @@
     });
     box.innerHTML = h + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
+    if (window.dnA11yEnhance) dnA11yEnhance(box);   // 排序表头键盘可达
     _dmApplySort(); // 重载后复用已选排序, 防切主题/类型后排序丢失
   }
 

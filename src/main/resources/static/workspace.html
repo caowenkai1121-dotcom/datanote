@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u242">
-<link rel="stylesheet" href="css/gov-modern.css?v=u242">
-<link rel="stylesheet" href="css/redesign.css?v=u242">
-<link rel="stylesheet" href="css/dn-design.css?v=u242">
+<link rel="stylesheet" href="css/app.css?v=u243">
+<link rel="stylesheet" href="css/gov-modern.css?v=u243">
+<link rel="stylesheet" href="css/redesign.css?v=u243">
+<link rel="stylesheet" href="css/dn-design.css?v=u243">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u242">
+<link rel="stylesheet" href="css/modern.css?v=u243">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u242"></script>
-<script src="js/gov-assets.js?v=u242"></script>
-<script src="js/gov-lineage.js?v=u242"></script>
-<script src="js/gov-quality.js?v=u242"></script>
-<script src="js/gov-standard.js?v=u242"></script>
-<script src="js/gov-classification.js?v=u242"></script>
-<script src="js/gov-security.js?v=u242"></script>
-<script src="js/gov-health.js?v=u242"></script>
-<script src="js/gov-audit.js?v=u242"></script>
-<script src="js/gov-overview.js?v=u242"></script>
-<script src="js/gov-subject.js?v=u242"></script>
-<script src="js/gov-consumption.js?v=u242"></script>
-<script src="js/gov-govmap.js?v=u242"></script>
-<script src="js/project.js?v=u242"></script>
-<script src="js/datamodel.js?v=u242"></script>
-<script src="js/home-dashboard.js?v=u242"></script>
-<script src="js/mdm.js?v=u242"></script>
-<script src="js/mdm-ingest.js?v=u242"></script>
-<script src="js/mdm-survivorship.js?v=u242"></script>
-<script src="js/mdm-approval.js?v=u242"></script>
-<script src="js/mdm-refdata.js?v=u242"></script>
-<script src="js/mdm-quality.js?v=u242"></script>
-<script src="js/mdm-pubsub.js?v=u242"></script>
-<script src="js/mdm-hierarchy.js?v=u242"></script>
-<script src="js/ai-agent.js?v=u242"></script>
+<script src="js/dn-common.js?v=u243"></script>
+<script src="js/gov-assets.js?v=u243"></script>
+<script src="js/gov-lineage.js?v=u243"></script>
+<script src="js/gov-quality.js?v=u243"></script>
+<script src="js/gov-standard.js?v=u243"></script>
+<script src="js/gov-classification.js?v=u243"></script>
+<script src="js/gov-security.js?v=u243"></script>
+<script src="js/gov-health.js?v=u243"></script>
+<script src="js/gov-audit.js?v=u243"></script>
+<script src="js/gov-overview.js?v=u243"></script>
+<script src="js/gov-subject.js?v=u243"></script>
+<script src="js/gov-consumption.js?v=u243"></script>
+<script src="js/gov-govmap.js?v=u243"></script>
+<script src="js/project.js?v=u243"></script>
+<script src="js/datamodel.js?v=u243"></script>
+<script src="js/home-dashboard.js?v=u243"></script>
+<script src="js/mdm.js?v=u243"></script>
+<script src="js/mdm-ingest.js?v=u243"></script>
+<script src="js/mdm-survivorship.js?v=u243"></script>
+<script src="js/mdm-approval.js?v=u243"></script>
+<script src="js/mdm-refdata.js?v=u243"></script>
+<script src="js/mdm-quality.js?v=u243"></script>
+<script src="js/mdm-pubsub.js?v=u243"></script>
+<script src="js/mdm-hierarchy.js?v=u243"></script>
+<script src="js/ai-agent.js?v=u243"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -8935,6 +8935,7 @@ function renderMetricList(metrics) {
   html += '</tbody></table>';
   container.innerHTML = html;
   if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
+  if (window.dnA11yEnhance) dnA11yEnhance(container);   // 排序表头键盘可达
   // P3 资产归属: 指标列表项目徽标(批量)
   dnAssetProjBadges('METRIC', metrics.map(function(m) { return m.id; })).then(function(map) {
     Array.prototype.slice.call(container.querySelectorAll('.dnpj')).forEach(function(el) {
@@ -9532,6 +9533,7 @@ function loadQualityRules() {
       html += '</tbody></table>';
       container.innerHTML = html;
       if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
+      if (window.dnA11yEnhance) dnA11yEnhance(container);   // 排序表头键盘可达
       _qualityApplySort(); // 重载后复用已选排序, 防编辑/删除后排序丢失
       // P1 资产归属 + N5 任务联动: 规则列表补 项目徽标+任务徽标(批量)
       var ruleIds = rules.map(function(r) { return r.id; });
@@ -10908,17 +10910,17 @@ document.addEventListener('wheel', function(e) {
 // a11y: 带 onclick 的 div/span 补 role=button+tabindex 使可键盘聚焦, 并支持 Enter/Space 激活(全站交互可达, 覆盖侧栏tab/hero按钮/result-tab/section展开等)
 window.dnA11yEnhance = function(root) {
   try {
-    (root || document).querySelectorAll('div[onclick],span[onclick]').forEach(function(el) {
+    (root || document).querySelectorAll('div[onclick],span[onclick],th[onclick]').forEach(function(el) {
       if (el.hasAttribute('tabindex') || el.isContentEditable || el.getAttribute('aria-hidden') === 'true') return;
       el.setAttribute('tabindex', '0');
-      if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+      if (el.tagName !== 'TH' && !el.hasAttribute('role')) el.setAttribute('role', 'button');   // th 保留 columnheader 语义, 仅补可聚焦
     });
   } catch (e) {}
 };
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   var el = e.target;
-  if (!el || (el.tagName !== 'DIV' && el.tagName !== 'SPAN') || !el.getAttribute('onclick') || el.isContentEditable) return;
+  if (!el || (el.tagName !== 'DIV' && el.tagName !== 'SPAN' && el.tagName !== 'TH') || !el.getAttribute('onclick') || el.isContentEditable) return;
   e.preventDefault(); el.click();
 });
 if (document.readyState !== 'loading') { setTimeout(function(){ dnA11yEnhance(document); }, 300); }
@@ -11799,6 +11801,7 @@ function loadDevRoots() {
         + '</td></tr>';
     });
     box.innerHTML = h + '</tbody></table>';
+    if (window.dnA11yEnhance) dnA11yEnhance(box);   // 排序表头键盘可达
   }).catch(function() { box.innerHTML = '<div style="color:var(--error);">加载失败</div>'; });
 }
 function devRootCreate() {
