@@ -1024,3 +1024,6 @@
 
 ## R390 [UI重构·第261轮] 字段映射"同步"列表头全选
 - workspace.html: dbsync 字段映射表"同步"列表头改为全选复选框(dbsyncToggleAllSync, 仅作用于 el.closest('table') 本表, 多表互不干扰), 多字段时一键全选/取消同步, 免逐行点。真机构造字段映射表验证 取消全选→全不勾, 再全选→全勾。?v=u332。
+
+## R391 [UI重构·第262轮] 字段映射全选框三态(indeterminate)
+- workspace.html: 字段映射行同步勾选变化时, 表头全选框反映三态(全选=checked / 全不选=unchecked / 部分=indeterminate, dbsyncSyncHeaderState 本表作用域)。配 R390 全选, 现代复选框触感。真机验证 部分→indeterminate/全取消→unchecked/全勾→checked。?v=u333。
