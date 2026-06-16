@@ -909,3 +909,6 @@
 
 ## R352 [UI重构·第223轮] 文件树节点键盘可达
 - workspace.html: loadFileTree 渲染后调 dnA11yEnhance, 文件树节点(.tree-file/.tree-folder-header div[onclick])补 role=button+tabindex(原动态渲染漏过一次性增强)。全局Enter激活。承动态节点a11y范式。真机验证 29文件节点 tabindex=0/role=button, 文件夹头 tabindex=0。?v=u294。
+
+## R353 [UI重构·第224轮] 全局a11y观察器(动态clickable自动键盘可达)
+- workspace.html: 加 MutationObserver(body childList+subtree, debounce 250ms, 仅扫新增子树)自动对动态渲染的 div/span/th[onclick] 调 dnA11yEnhance。一处覆盖所有未来动态可点元素(dbsync文件夹/kanban/各弹窗动态内容等), 免逐render手调。真机验证 动态插入 div[onclick]→500ms后 tabindex=0/role=button。?v=u295。
