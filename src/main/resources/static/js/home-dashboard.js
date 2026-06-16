@@ -87,6 +87,18 @@
       style: 'background:rgba(255,255,255,.18);color:var(--text-inverse);border-color:rgba(255,255,255,.35);margin-right:8px;',
       onclick: function () { if (window.homeAskAi) window.homeAskAi(); }
     });
+    // 快捷操作: 常用新建/入口一键直达(复用全站全局函数)
+    var qa = function (label, fn) {
+      return DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: label,
+        style: 'background:rgba(255,255,255,.18);color:var(--text-inverse);border-color:rgba(255,255,255,.35);',
+        onclick: fn });
+    };
+    var quickRow = DN.h('div', { class: 'h-quick', style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;' }, [
+      qa('＋ 新建脚本', function () { if (window.createNewScript) createNewScript(); else if (window.navigateTo) navigateTo('develop'); }),
+      qa('＋ 新建指标', function () { if (window.navigateTo) { navigateTo('metrics'); setTimeout(function () { if (window.showAddMetricDialog) showAddMetricDialog(); }, 250); } }),
+      qa('＋ 集成任务', function () { if (window.navigateTo) { navigateTo('operations'); setTimeout(function () { var n = document.getElementById('dbsyncJobsNav'); if (n && window.switchOpsTab) switchOpsTab(n, 'integration'); setTimeout(function () { if (window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 200); } }),
+      qa('✦ AI 助手', function () { if (window.openAiLauncher) openAiLauncher(); else if (window.navigateTo) navigateTo('assistant'); })
+    ]);
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
       DN.h('div', { class: 'h-title', text: greet + '，' + (window.__user ? window.__user : '欢迎回来') }),
       DN.h('div', { class: 'h-sub', text: 'DataNote · 数据资产驾驶舱 — 一屏掌握资产 / 治理 / 质量 / 消费 / 同步全景' }),
@@ -95,7 +107,8 @@
         DN.h('span', { text: '　' }),
         briefBtn,
         refreshBtn
-      ])
+      ]),
+      quickRow
     ]));
   }
 

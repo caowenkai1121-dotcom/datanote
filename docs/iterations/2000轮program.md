@@ -1129,3 +1129,6 @@
 
 ## R425 [UI重构·第296轮] 同步任务Cron常用周期预设
 - workspace.html+modern.css: 数据集成任务调度 Cron 输入下加 5 个常用周期预设 chip(每小时/每天0点/每天2点/每周一/每月1号, Quartz 6段格式匹配占位), dfsCronSet 一键填充+触发 dfsCronPreview。非专家免记 cron 语法。.cron-preset 样式(hover 主色)。真机验证 5预设+填充正确。?v=u366。
+
+## R426 [UI重构·第297轮] 首页hero快捷操作行
+- home-dashboard.js: renderHero 加"快捷操作"行(＋新建脚本/＋新建指标/＋集成任务/✦AI助手, 半透明白chip配hero渐变), 复用全站全局函数(createNewScript/navigateTo+showAddMetricDialog/dbsyncOpenCreateModal/openAiLauncher)。首页一键直达常用新建, 比命令面板更易发现。真机验证 4按钮渲染+新建脚本调createNewScript。?v=u367。
