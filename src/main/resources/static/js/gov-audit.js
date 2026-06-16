@@ -12,6 +12,11 @@
     LOGIN: 'info', DATA_ACCESS: 'ok', DATA_PREVIEW: 'warn', EXPORT: 'warn',
     PERM_CHANGE: 'err', META_CHANGE: 'info', RULE_CHANGE: 'info', LABEL_CHANGE: 'info', OTHER: 'muted'
   };
+  // actionType -> 中文(原 pill 显英文枚举)
+  var TYPE_LABEL = {
+    LOGIN: '登录', DATA_ACCESS: '数据访问', DATA_PREVIEW: '数据预览', EXPORT: '导出',
+    PERM_CHANGE: '权限变更', META_CHANGE: '元数据变更', RULE_CHANGE: '规则变更', LABEL_CHANGE: '标签变更', OTHER: '其他'
+  };
   var state = { page: 1, size: 50, total: 0 };
   var els = {};
   var auditTbl = null;
@@ -26,7 +31,7 @@
     return DN.table({
       columns: [
         { key: 'createdAt', label: '时间', render: function (r) { return DN.timeAgo(r && r.createdAt); } },
-        { key: 'actionType', label: '类型', render: function (r) { return r.actionType ? DN.pill(r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
+        { key: 'actionType', label: '类型', exportValue: function (r) { return TYPE_LABEL[r.actionType] || r.actionType || ''; }, render: function (r) { return r.actionType ? DN.pill(TYPE_LABEL[r.actionType] || r.actionType, TYPE_TONE[r.actionType] || 'muted') : '-'; } },
         { key: 'userName', label: '操作人', render: function (r) { return r.userName || '-'; } },
         { key: 'method', label: '方法', render: function (r) { return r.method || '-'; } },
         { key: 'path', label: '路径', copyable: true, exportValue: function (r) { return r.path || ''; }, render: function (r) { return truncSpan(r.path); } },
