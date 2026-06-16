@@ -1090,3 +1090,6 @@
 
 ## R412 [UI重构·第283轮] dnRelTime 委托 DN.fmtAgo(去重+统一措辞)
 - 发现 dn-common.js 早有规范相对时间助手 DN.fmtAgo(审计中心 gov-audit.js 在用, 含"昨天"/未来/ISO解析), 我 R409 的 dnRelTime 是劣质重复。重构 dnRelTime 委托 DN.fmtAgo(空→''供调用方绝对时间兜底), 统一 用户最后登录/通知/审计 全站相对时间措辞为"N 分钟前"(带空格)。curl 确认部署含委托逻辑; DN.fmtAgo 为生产已验证实现。(注: 本轮 Playwright 后端被前次测试残留 beforeunload 卡死, 改用 curl 验证部署 + 委托已验证助手佐证)。?v=u354。
+
+## R413 [UI重构·第284轮] 数据地图采集状态栏时间相对化
+- workspace.html: dmLoadCollectStatus 元数据采集时间改 dnRelTime 相对显示(绝对挂 title)。"22 小时前"比绝对时间戳更直观判断数据新鲜度。相对时间应用收尾(用户R409/通知R410/审计已有/采集R413)。真机验证 "✓ 22 小时前" title="2026-06-16 01:02:21" + 表/字段计数。?v=u355。
