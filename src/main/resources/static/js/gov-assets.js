@@ -334,7 +334,8 @@
       toolbar: assetToolbar,
       exportName: '资产清单',
       empty: '暂无资产，点击“采集全部”按钮',
-      emptyIcon: 'inbox'
+      emptyIcon: 'inbox',
+      onRow: function (r) { openAssetDetail(r.databaseName || '', r.tableName || ''); }   // 整行点击进资产详情(与树视图/详情按钮同效)
     });
     box.innerHTML = '';
     box.appendChild(assetTbl);
