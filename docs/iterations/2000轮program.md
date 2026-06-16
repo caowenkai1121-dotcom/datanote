@@ -940,3 +940,6 @@
 
 ## R362 [UI重构·第233轮] SQL结果 一键复制(TSV)
 - workspace.html: 执行结果工具栏加"复制"按钮(copyResultTSV: 表头+数据制表符分隔, 直接粘进 Excel/表格; 单元内 tab/换行替空格防错位; 上限500行)。区别于"下载CSV"(无文件即得)。真机验证 复制内容含tab、3行(头+2)、单元tab已净化。?v=u304。
+
+## R363 [UI重构·第234轮] SQL结果 双击单元格复制
+- workspace.html: resultBody 双击委托 resultCopyCell(取 title 原值, 空值复制为空, 跳过行号列); 状态栏追加"双击单元格可复制"提示。真机验证 复制张三/空值/行号忽略 全对。?v=u305。

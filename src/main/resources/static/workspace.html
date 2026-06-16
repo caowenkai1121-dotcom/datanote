@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u304">
-<link rel="stylesheet" href="css/gov-modern.css?v=u304">
-<link rel="stylesheet" href="css/redesign.css?v=u304">
-<link rel="stylesheet" href="css/dn-design.css?v=u304">
+<link rel="stylesheet" href="css/app.css?v=u305">
+<link rel="stylesheet" href="css/gov-modern.css?v=u305">
+<link rel="stylesheet" href="css/redesign.css?v=u305">
+<link rel="stylesheet" href="css/dn-design.css?v=u305">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u304">
+<link rel="stylesheet" href="css/modern.css?v=u305">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u304"></script>
-<script src="js/gov-assets.js?v=u304"></script>
-<script src="js/gov-lineage.js?v=u304"></script>
-<script src="js/gov-quality.js?v=u304"></script>
-<script src="js/gov-standard.js?v=u304"></script>
-<script src="js/gov-classification.js?v=u304"></script>
-<script src="js/gov-security.js?v=u304"></script>
-<script src="js/gov-health.js?v=u304"></script>
-<script src="js/gov-audit.js?v=u304"></script>
-<script src="js/gov-overview.js?v=u304"></script>
-<script src="js/gov-subject.js?v=u304"></script>
-<script src="js/gov-consumption.js?v=u304"></script>
-<script src="js/gov-govmap.js?v=u304"></script>
-<script src="js/project.js?v=u304"></script>
-<script src="js/datamodel.js?v=u304"></script>
-<script src="js/home-dashboard.js?v=u304"></script>
-<script src="js/mdm.js?v=u304"></script>
-<script src="js/mdm-ingest.js?v=u304"></script>
-<script src="js/mdm-survivorship.js?v=u304"></script>
-<script src="js/mdm-approval.js?v=u304"></script>
-<script src="js/mdm-refdata.js?v=u304"></script>
-<script src="js/mdm-quality.js?v=u304"></script>
-<script src="js/mdm-pubsub.js?v=u304"></script>
-<script src="js/mdm-hierarchy.js?v=u304"></script>
-<script src="js/ai-agent.js?v=u304"></script>
+<script src="js/dn-common.js?v=u305"></script>
+<script src="js/gov-assets.js?v=u305"></script>
+<script src="js/gov-lineage.js?v=u305"></script>
+<script src="js/gov-quality.js?v=u305"></script>
+<script src="js/gov-standard.js?v=u305"></script>
+<script src="js/gov-classification.js?v=u305"></script>
+<script src="js/gov-security.js?v=u305"></script>
+<script src="js/gov-health.js?v=u305"></script>
+<script src="js/gov-audit.js?v=u305"></script>
+<script src="js/gov-overview.js?v=u305"></script>
+<script src="js/gov-subject.js?v=u305"></script>
+<script src="js/gov-consumption.js?v=u305"></script>
+<script src="js/gov-govmap.js?v=u305"></script>
+<script src="js/project.js?v=u305"></script>
+<script src="js/datamodel.js?v=u305"></script>
+<script src="js/home-dashboard.js?v=u305"></script>
+<script src="js/mdm.js?v=u305"></script>
+<script src="js/mdm-ingest.js?v=u305"></script>
+<script src="js/mdm-survivorship.js?v=u305"></script>
+<script src="js/mdm-approval.js?v=u305"></script>
+<script src="js/mdm-refdata.js?v=u305"></script>
+<script src="js/mdm-quality.js?v=u305"></script>
+<script src="js/mdm-pubsub.js?v=u305"></script>
+<script src="js/mdm-hierarchy.js?v=u305"></script>
+<script src="js/ai-agent.js?v=u305"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -1779,7 +1779,7 @@
       <div class="result-body" id="resultArea" style="display:none;overflow:auto;">
         <table class="result-table" id="resultTable">
           <thead id="resultHead"></thead>
-          <tbody id="resultBody"></tbody>
+          <tbody id="resultBody" ondblclick="resultCopyCell(event)"></tbody>
         </table>
         <div id="resultEmpty" style="color:var(--text-muted);padding:12px;">暂无数据</div>
         <div id="resultStatusBar" style="position:sticky;bottom:0;background:var(--bg-card);border-top:1px solid var(--border);padding:4px 16px;font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0;"></div>
@@ -3993,6 +3993,7 @@ function resultRenderTable() {
   // 更新状态栏
   var statusText = filteredRows.length + ' 行';
   if (filteredRows.length !== _resultRows.length) statusText += '（共 ' + _resultRows.length + ' 行，已筛选）';
+  if (filteredRows.length) statusText += ' · 双击单元格可复制';
   var statusEl = document.getElementById('resultStatusBar');
   if (statusEl) statusEl.textContent = statusText;
 }
@@ -4261,6 +4262,16 @@ function copyResultTSV() {
   if (window.DN && DN.copy) DN.copy(text);
   else if (navigator.clipboard) navigator.clipboard.writeText(text);
   showToast('已复制 ' + n + ' 行' + (_resultRows.length > max ? '(前 500 行)' : '') + ', 可粘进 Excel', 'success');
+}
+
+// 双击单个单元格 → 复制其值（数据探索高频操作）
+function resultCopyCell(e) {
+  var td = e.target && e.target.closest ? e.target.closest('td') : null;
+  if (!td || td.cellIndex === 0) return; // 跳过行号列
+  var val = td.classList.contains('null-val') ? '' : (td.getAttribute('title') != null ? td.getAttribute('title') : td.textContent);
+  if (window.DN && DN.copy) DN.copy(val);
+  else if (navigator.clipboard) navigator.clipboard.writeText(val);
+  showToast(val === '' ? '已复制(空值)' : '已复制单元格', 'success');
 }
 
 function appendLog(html) {
