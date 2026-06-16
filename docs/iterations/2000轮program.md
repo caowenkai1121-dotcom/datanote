@@ -1099,3 +1099,6 @@
 
 ## R415 [UI重构·第286轮] 质量规则表单必填项标红*
 - workspace.html: 质量规则弹窗 规则名称/数据源/数据库/表名 label 加红*必填标记(对应 saveQualityRule 校验的 ruleName/datasourceId/databaseName/tableName); 规则类型等有默认值的不标。承 R414 指标必填标记。真机弹窗验证 4 必填项有*、规则类型无*。?v=u357。
+
+## R416 [UI重构·第287轮] 数据源表单必填项标红*
+- workspace.html: 数据源表单 名称/主机 label 加红*必填标记(对应 saveDatasource 校验 name+host)。**必填标记体系收尾(指标R414/质量R415/数据源R416)**。真机验证 名称*/主机*、类型无*。?v=u358。
