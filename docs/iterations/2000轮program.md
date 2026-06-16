@@ -1060,3 +1060,6 @@
 
 ## R402 [UI重构·第273轮] 调度批量"已选N"计数+全选三态
 - workspace.html: 调度任务批量栏加"已选 N"计数(schedUpdateSelCount, 承质量批量R306范式) + 全选框三态(部分选→indeterminate); 行复选框 onchange/renderSchedTasks/schedToggleSelectAll 均同步。一键重跑 空选=重跑全部失败(有意义)故不禁用, 仅加 title 说明。真机验证 勾2→已选2+indeterminate/全选→已选3+checked/清空→已选0。?v=u344。
+
+## R403 [UI重构·第274轮] 质量规则批量全选框三态
+- workspace.html: qualityUpdateSelCount 补全选框(qrSelAll)三态(按可见行: 全选checked/部分indeterminate/无unchecked, 与 qualityToggleAll 仅作用可见行一致)。承全选三态体系(R391字段映射/R402调度)。真机(u345)验证 部分→indeterminate/全选→checked/清空→均false。(注: 前次假阴=页面停旧?v, 已知坑)?v=u345。
