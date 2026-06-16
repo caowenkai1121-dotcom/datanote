@@ -1066,3 +1066,6 @@
 
 ## R404 [UI重构·第275轮] SQL结果列右键"复制此列"
 - workspace.html: 结果列表头右键菜单(resultColMenu)加"复制此列"(resultCopyColumn: 取当前筛选后行的该列全值, 每行一个换行拼接, 写 IN(...)/粘 Excel 列; 上限1000; DN.copy silent+计数toast)。配 R362整表TSV/R363单元格/R400列名 复制体系。真机注入结果验证 复制id列"1\n2\n3"+city列+计数toast。?v=u346。
+
+## R405 [UI重构·第276轮] SQL编辑器光标位置/选中状态(VS Code式)
+- workspace.html: 编辑器工具栏右端加 #editorCursorStat(dnUpdateCursorStat: "行 X, 列 Y", 有选区追加"· 选中 N 字符"); Monaco onDidChangeCursorPosition/Selection 钩子驱动。VS Code 式状态反馈。真机验证 光标"行2,列3" / 选中SELECT"行1,列7·选中6字符"。?v=u347。
