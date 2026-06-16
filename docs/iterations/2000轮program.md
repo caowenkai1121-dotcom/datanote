@@ -591,3 +591,6 @@
 ## R247 [UI重构·第118轮] 破坏性操作补二次确认(工作流3确认·HIGH)
 - datamodel.js: dmDelRelation(删数据模型关系)补 DN.confirm(danger)二次确认(原直接DELETE, 与 dmDeleteModel/dmDelEntity 模式对齐)。
 - workspace.html: clearSearchHistory(清空元数据搜索历史)补 DN.confirm(danger)。防误删不可恢复数据。?v=u188。
+
+## R248 [UI重构·第119轮] 表单前端校验补全(工作流3确认)
+- workspace.html: saveDatasource 补 端口1-65535范围校验 + PostgreSQL/SQLServer/Oracle 类型数据库名必填校验(原仅校验name/host, 非法值静默落库致连接失败); saveQualityRule ruleName 加 trim(白空格→空→被现有必填捕获); saveEnvConfig DataX Home 非空校验(防空值/危险字符拼shell); saveDatasourceConfig Doris 主机非空校验(防空值拼JDBC URL)。真机验证 端口99999→"端口须为1-65535的整数"被拦。?v=u189。
