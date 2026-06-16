@@ -985,3 +985,6 @@
 
 ## R377 [UI重构·第248轮] 项目成员搜索清除×按钮
 - project.js: projMemberSearch 加清除"×"(有输入才显, oninput 内联切显隐, projMemberSearchClear 清空+隐×+重筛+聚焦), 配合 R368 无匹配空态成完整搜索体验。承全站即时搜索×体系(文件树/指标/质量/数据集成/用户/模型/数据建模)。真机验证 projMemberSearchClear 清空+还原+聚焦; oninput 切显隐为已验证同范式。?v=u319。
+
+## R378 [UI重构·第249轮] 指标计算溯源公式/SQL一键复制
+- workspace.html: 指标详情"计算溯源"区 计算公式 + 最近一次计算SQL 各加"复制"链接(分析师高频复用)。值经 window.__metricTrace 暂存供 onclick 取, 免内联转义破坏; 走 DN.copy(execCommand 降级, HTTP 安全)。真机打开指标详情验证 渲染2复制链接、点击复制公式与暂存值一致。?v=u320。
