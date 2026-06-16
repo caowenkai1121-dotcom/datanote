@@ -1009,3 +1009,6 @@
 
 ## R385 [UI重构·第256轮] 数据探查表单元格双击复制+护栏
 - workspace.html: 数据探查(profiling)字段表接入双击复制(复用 dmPreviewCopyCell), 字段名加 title。dmPreviewCopyCell 加护栏: 含 a/button 的操作列不复制(探查表有"建质量规则"链接列), 并把 '-'/'NULL' 占位复制为空+trim。真机验证 字段名/类型复制、'-'复制空、操作列(含链接)跳过。?v=u327。
+
+## R386 [UI重构·第257轮] 文件树全部展开/折叠
+- workspace.html: 数据开发文件树筛选行加"展开/折叠"按钮(toggleAllFolders: 有任一未展开则全展开否则全折叠, 按钮文案随之切换, 复用 saveOpenFolderState 持久化)。深目录树一键操作。真机验证 9文件夹 全展开(按钮→折叠)/全折叠(按钮→展开)切换正确。?v=u328。
