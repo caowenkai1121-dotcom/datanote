@@ -651,3 +651,6 @@
 
 ## R267 [UI重构·第138轮] 数据模型列表行整行可点开详情
 - datamodel.js: 模型列表行 tr 加 cursor:pointer + onclick→dmOpenModel(守卫 closest('button,a,input,select'))。承 R263-265 行点击模式, 行点击现覆盖 指标/集成/用户/数据模型。真机验证 点名称单元格→触发 dmOpenModel。?v=u208。
+
+## R268 [UI重构·第139轮] 指标列表列排序
+- workspace.html: renderMetricList 加可点表头排序(指标名称/编码/分类/负责人/状态), metricSortBy 切 asc/desc(▲▼指示), 复用当前数据重渲染。数据表常用能力。真机验证 点指标名→升序[Alpha,Beta,Gamma]→再点降序。?v=u209。
