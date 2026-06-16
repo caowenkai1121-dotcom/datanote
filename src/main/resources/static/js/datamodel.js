@@ -317,7 +317,10 @@
     }).catch(function () { toast('保存失败', 'error'); });
   };
   window.dmDelRelation = function (relId, modelId) {
-    api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); }).catch(function () { toast('删除失败', 'error'); });
+    DN.confirm('确认删除该关系？断开后不可恢复。', { title: '删除关系', danger: true }).then(function (ok) {
+      if (!ok) return;
+      api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); }).catch(function () { toast('删除失败', 'error'); });
+    });
   };
   window.dmAddEntity = function (modelId) {
     var fi = 'class="dbsync-form-input" style="width:100%;"', lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';

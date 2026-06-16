@@ -587,3 +587,7 @@
 
 ## R246 [UI重构·第117轮] 数据集成任务空态区分筛选无匹配/无任务
 - workspace.html: dbsyncRenderJobs 空态原统一显"暂无同步任务+新建"(搜索/状态/目录筛选无果时误导)。改为检测筛选是否激活(搜索词/状态≠ALL/选了子目录)+_dbsyncAllJobs是否有数据: 有任务但筛选无匹配→"无匹配任务/调整筛选"; 真无任务→"暂无同步任务/新建"。真机验证 有任务+搜不存在词→"无匹配任务"。承 R221/R240 空态区分体系。?v=u187。
+
+## R247 [UI重构·第118轮] 破坏性操作补二次确认(工作流3确认·HIGH)
+- datamodel.js: dmDelRelation(删数据模型关系)补 DN.confirm(danger)二次确认(原直接DELETE, 与 dmDeleteModel/dmDelEntity 模式对齐)。
+- workspace.html: clearSearchHistory(清空元数据搜索历史)补 DN.confirm(danger)。防误删不可恢复数据。?v=u188。
