@@ -702,3 +702,6 @@
 
 ## R284 [UI重构·第155轮] 表字段明细 CSV 导出
 - workspace.html: dmRenderFields 字段明细加"导出CSV"(字段名/中文名/类型/注释; 复用 DN.exportRows; 文件名带表名)。便于建表参考/schema 文档化。真机验证 触发下载"字段清单_<表名>_<日期>.csv"。?v=u225。
+
+## R285 [UI重构·第156轮] 数据运维 调度任务名 搜索高亮
+- workspace.html: renderSchedTasks 任务名补搜索命中高亮(_shl, <mark>+warning-bg), 与全站即时搜索高亮一致(此前仅过滤不高亮)。真机验证 关键词 "ods" 在匹配任务名上 <mark> 高亮 1 处。?v=u226。
