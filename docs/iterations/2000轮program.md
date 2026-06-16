@@ -943,3 +943,6 @@
 
 ## R363 [UI重构·第234轮] SQL结果 双击单元格复制
 - workspace.html: resultBody 双击委托 resultCopyCell(取 title 原值, 空值复制为空, 跳过行号列); 状态栏追加"双击单元格可复制"提示。真机验证 复制张三/空值/行号忽略 全对。?v=u305。
+
+## R364 [UI重构·第235轮] 运行日志清空 + 修复复制按钮回归
+- workspace.html: 结果工具栏加"清空"(clearRunLog 重置日志区); 抽出 resultToggleActionBtns 按当前 tab 切换按钮(结果页→复制/下载, 日志页→清空), 查询完成也调用。**修复 R362 回归**: resultCopyBtn 类 result-download-btn 默认 display:none 但无 .visible 切换逻辑→永不显示, 现统一切换。真机验证 三态按钮可见性 + 清空 全对。?v=u306。
