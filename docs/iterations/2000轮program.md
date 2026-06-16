@@ -1132,3 +1132,6 @@
 
 ## R426 [UI重构·第297轮] 首页hero快捷操作行
 - home-dashboard.js: renderHero 加"快捷操作"行(＋新建脚本/＋新建指标/＋集成任务/✦AI助手, 半透明白chip配hero渐变), 复用全站全局函数(createNewScript/navigateTo+showAddMetricDialog/dbsyncOpenCreateModal/openAiLauncher)。首页一键直达常用新建, 比命令面板更易发现。真机验证 4按钮渲染+新建脚本调createNewScript。?v=u367。
+
+## R427 [UI重构·第298轮] 质量检查记录通过率按阈值着色
+- workspace.html: renderQualityHistory 通过率列按阈值着色(≥85绿/≥60橙/<60红, 文本色非图表), 一眼识别问题规则。真机 mock 验证 95%绿/70%橙/40%红。?v=u368。
