@@ -955,3 +955,6 @@
 
 ## R367 [UI重构·第238轮] 左面板(文件树)宽度持久化
 - workspace.html: 数据开发左侧文件树面板拖拽宽度记入 localStorage dn.leftPanelW, 下次加载恢复(原仅右面板内存 lastRightWidth 不跨刷新)。clamp LEFT_MIN~75% 防越界。真机验证 设320px reload 后 inlineWidth=320px 已恢复。?v=u309。
+
+## R368 [UI重构·第239轮] 项目成员搜索无匹配空态
+- project.js: projFilterMembers 过滤(搜索/角色)后若全部隐藏, 原仅剩空表头无反馈, 现注入 #projMemberNoMatch 行"无匹配成员，试试调整搜索或角色筛选"; 重新匹配后自动移除。承全站无匹配空态体系(指标/质量/数据集成/用户等)。真机构造成员表验证 无匹配显示/恢复移除 全对。?v=u310。

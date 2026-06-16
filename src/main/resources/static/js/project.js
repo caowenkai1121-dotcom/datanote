@@ -702,11 +702,21 @@ window.projToggleRoleFilter = function(r) {
 window.projFilterMembers = function() {
   var kw = (document.getElementById('projMemberSearch') || {}).value || ''; kw = kw.trim().toLowerCase();
   var rf = _projMemberRoleFilter;
-  Array.prototype.slice.call(document.querySelectorAll('#projMemberTbl .proj-member-row')).forEach(function(tr) {
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#projMemberTbl .proj-member-row'));
+  var visible = 0;
+  rows.forEach(function(tr) {
     var okKw = !kw || (tr.getAttribute('data-uname') || '').indexOf(kw) >= 0;
     var okRole = !rf || (tr.getAttribute('data-role') || '') === rf;
-    tr.style.display = (okKw && okRole) ? '' : 'none';
+    var show = okKw && okRole;
+    tr.style.display = show ? '' : 'none';
+    if (show) visible++;
   });
+  // 过滤后无匹配时给出反馈行
+  var tbody = document.querySelector('#projMemberTbl tbody');
+  var nm = document.getElementById('projMemberNoMatch');
+  if (visible === 0 && rows.length && tbody) {
+    if (!nm) { nm = document.createElement('tr'); nm.id = 'projMemberNoMatch'; nm.innerHTML = '<td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">无匹配成员，试试调整搜索或角色筛选</td>'; tbody.appendChild(nm); }
+  } else if (nm) { nm.remove(); }
 };
 window.projExportMembers = function() {
   var ms = _projMembers || []; if (!ms.length) { showToast('暂无成员', 'info'); return; }
