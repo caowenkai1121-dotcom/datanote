@@ -143,7 +143,10 @@
   function renderModels() {
     var box = document.getElementById('dmModelList'); if (!box) return;
     if (!DM.models.length) { box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="5" rx="1.5"/><rect x="3" y="18" width="11" height="3" rx="1.5"/></svg><div class="et">暂无模型</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">新建模型, 沉淀业务 / 逻辑 / 物理三层建模</div><button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="if(window.dmNewModel)dmNewModel()">＋ 新建模型</button></div>'; return; }
-    var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>编码</th><th>名称</th><th>类型</th><th>数仓层</th><th>主题域</th><th>状态</th><th>版本</th><th>实体</th><th style="width:280px;">操作</th></tr></thead><tbody>';
+    var h = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<input id="dmModelSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索编码/名称/类型/数仓层/主题域" oninput="dmFilterModels()">'
+      + '<span style="font-size:12px;color:var(--text-muted);">共 ' + DM.models.length + ' 个模型</span></div>'
+      + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>编码</th><th>名称</th><th>类型</th><th>数仓层</th><th>主题域</th><th>状态</th><th>版本</th><th>实体</th><th style="width:280px;">操作</th></tr></thead><tbody>';
     DM.models.forEach(function (m) {
       var tc = TYPE_COLOR[m.modelType] || 'var(--text-muted)';
       var typeBadge = '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);background:' + tc + '1a;color:' + tc + ';">' + (TYPE_LABEL[m.modelType] || m.modelType) + '</span>';
@@ -156,7 +159,8 @@
       if (m.modelType === 'PHYS') ops += '<a href="#" onclick="dmShowDdl(' + m.id + ');return false;" style="color:#e8590c;margin-right:8px;">DDL</a>';
       if (m.modelType === 'PHYS' && m.status === 'PUBLISHED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmPublishAsset(' + m.id + ');return false;" style="color:#1971c2;margin-right:8px;">落地资产</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
-      h += '<tr style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))dmOpenModel(' + m.id + ')"><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
+      var dmKey = ((m.modelCode || '') + ' ' + (m.modelName || '') + ' ' + (TYPE_LABEL[m.modelType] || m.modelType || '') + ' ' + (m.dwLayer || '') + ' ' + subName).toLowerCase();
+      h += '<tr class="dm-model-row" data-search="' + esc(dmKey) + '" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))dmOpenModel(' + m.id + ')"><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
         + '<td><b style="display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelName) + '">' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
         + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(subName) + '">' + esc(subName) + '</td><td>' + st + '</td>'
         + '<td>v' + (m.version || 1) + '</td><td>' + (m.entityCount || 0) + '</td><td style="white-space:nowrap;">' + ops + '</td></tr>';
@@ -164,6 +168,23 @@
     box.innerHTML = h + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
   }
+
+  // 模型列表即时搜索: 原地隐藏不匹配行(不重渲染防失焦), 全隐藏给"无匹配"反馈
+  window.dmFilterModels = function () {
+    var inp = document.getElementById('dmModelSearch'); if (!inp) return;
+    var kw = inp.value.trim().toLowerCase();
+    var rows = document.querySelectorAll('tr.dm-model-row'), visible = 0;
+    var tbody = rows[0] ? rows[0].parentElement : null;
+    rows.forEach(function (tr) {
+      var show = (!kw || (tr.getAttribute('data-search') || '').indexOf(kw) >= 0);
+      tr.style.display = show ? '' : 'none'; if (show) visible++;
+    });
+    var nm = document.getElementById('dmNoMatch');
+    if (tbody && rows.length && visible === 0) {
+      if (!nm) { nm = document.createElement('tr'); nm.id = 'dmNoMatch'; nm.innerHTML = '<td colspan="9" style="text-align:center;color:var(--text-muted);padding:18px;">无匹配模型，试试调整搜索词</td>'; tbody.appendChild(nm); }
+      nm.style.display = '';
+    } else if (nm) { nm.style.display = 'none'; }
+  };
 
   // ---------- 新建/编辑模型 ----------
   window.dmNewModel = function (model) {
