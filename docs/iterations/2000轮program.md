@@ -1159,3 +1159,6 @@
 
 ## R435 [UI重构·第306轮] 顶栏可见"?"帮助按钮
 - workspace.html: header-right 加 #dnHelpBtn "?" 按钮(onclick=wsShowShortcutHelp), 与主题/密度/铃铛并列。原帮助仅 ? 快捷键(新用户不知), 现有可见入口。真机点击验证 打开快捷键帮助浮层(含命令面板等条目)。?v=u376。
+
+## R436 [UI重构·第307轮] SQL运行破坏性语句二次确认(安全)
+- workspace.html: runTask 检测 DROP/TRUNCATE/DELETE FROM/ALTER TABLE 等破坏性 SQL → msgConfirm 二次确认(再入式 _skipConfirm 一次性放行重跑), 防误删/误改不可恢复。SELECT/WITH 不拦。真机 Monaco 验证 DROP触发确认+取消不执行、SELECT直接跑。?v=u377。
