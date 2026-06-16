@@ -879,3 +879,6 @@
 
 ## R342 [UI重构·第213轮] 停止调度引擎 二次确认 + catch
 - workspace.html: schedStop 加 msgConfirm 二次确认(停止会中断下游推进)+ .catch + 失败提示。承 R341 调度操作确认。真机验证 schedStop→弹"停止调度引擎"确认→取消不触发。?v=u284。
+
+## R343 [UI重构·第214轮] 调度统计点击联动筛选
+- workspace.html: 运维调度顶部统计(成功/失败/运行中/等待/暂停)改可点, 点击设对应状态筛选并滚到任务列表(schedStatFilter)。原纯展示。dnA11yEnhance 自动补 role/tabindex(span有onclick)+全局Enter激活。承首页/项目KPI磁贴联动范式。真机验证 点"失败"统计→状态筛选=-1。?v=u285。
