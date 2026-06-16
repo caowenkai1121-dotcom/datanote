@@ -285,6 +285,9 @@ function projRenderList(list) {
     + '<a href="#" onclick="projSetListView(\'table\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;' + (_projListView === 'table' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">表格</a>'
     + '<a href="#" onclick="projSetListView(\'card\');return false;" style="padding:3px 10px;font-size:12px;text-decoration:none;border-left:1px solid var(--border);' + (_projListView === 'card' ? 'background:var(--primary);color:var(--text-inverse);' : 'color:var(--text-regular);') + '">卡片</a></span></div>';
   if (_projListView === 'card') { box.innerHTML = lvTog + projListCards(rows); projFillHealthBadges(); return; }
+  // 搜索命中高亮(项目名/编码), 与全站即时搜索一致
+  var _pkw = ((document.getElementById('projSearch') || {}).value || '').trim().toLowerCase();
+  var _phl = function(t) { t = t == null ? '' : String(t); if (!_pkw) return escapeHtml(t); var i = t.toLowerCase().indexOf(_pkw); if (i < 0) return escapeHtml(t); return escapeHtml(t.slice(0, i)) + '<mark style="background:var(--warning-bg);color:inherit;padding:0 1px;border-radius:2px;">' + escapeHtml(t.slice(i, i + _pkw.length)) + '</mark>' + escapeHtml(t.slice(i + _pkw.length)); };
   var h = lvTog + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
     + '<th style="width:30px;"></th><th>项目名</th><th>编码</th><th>类型</th><th>环境</th><th>标签</th><th>负责人</th><th>状态</th><th>创建时间</th><th style="width:210px;">操作</th>'
     + '</tr></thead><tbody>';
@@ -303,8 +306,8 @@ function projRenderList(list) {
     }).join('');
     h += '<tr>'
       + '<td><a href="#" onclick="projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? 'var(--warning)' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></td>'
-      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + escapeHtml(p.projectName || '-') + '</b><span class="dnph" data-id="' + p.id + '"></span>' + (pinned ? ' <span style="font-size:var(--fs-xs);color:var(--warning);">置顶</span>' : '') + (p.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(p.description) + '">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
-      + '<td style="font-family:monospace;">' + escapeHtml(p.projectCode || '-') + '</td>'
+      + '<td ondblclick="projOpenDetail(' + p.id + ')" title="双击打开详情" style="cursor:pointer;"><b>' + _phl(p.projectName || '-') + '</b><span class="dnph" data-id="' + p.id + '"></span>' + (pinned ? ' <span style="font-size:var(--fs-xs);color:var(--warning);">置顶</span>' : '') + (p.description ? '<div style="font-size:var(--fs-xs);color:var(--text-muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(p.description) + '">' + escapeHtml(p.description) + '</div>' : '') + '</td>'
+      + '<td style="font-family:monospace;">' + _phl(p.projectCode || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_TYPE_LABEL[p.projectType] || p.projectType || '-') + '</td>'
       + '<td>' + escapeHtml(PROJ_ENV_LABEL[p.env] || p.env || '-') + '</td>'
       + '<td>' + (tagChips || '<span style="color:var(--text-muted);">-</span>') + '</td>'

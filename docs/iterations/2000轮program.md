@@ -705,3 +705,6 @@
 
 ## R285 [UI重构·第156轮] 数据运维 调度任务名 搜索高亮
 - workspace.html: renderSchedTasks 任务名补搜索命中高亮(_shl, <mark>+warning-bg), 与全站即时搜索高亮一致(此前仅过滤不高亮)。真机验证 关键词 "ods" 在匹配任务名上 <mark> 高亮 1 处。?v=u226。
+
+## R286 [UI重构·第157轮] 项目列表 搜索高亮(项目名/编码)
+- project.js: projRenderList 表格视图项目名+编码补搜索命中高亮(_phl, <mark>+warning-bg, 大小写不敏感), 与全站即时搜索一致(此前多字段搜索仅过滤不高亮)。真机验证(合成项目+关键词 ord) 命中 name "ord" + code "ORD" 两处 <mark>。?v=u227。
