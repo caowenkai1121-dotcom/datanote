@@ -645,3 +645,6 @@
 
 ## R265 [UI重构·第136轮] 用户管理表格行整行可点开详情
 - workspace.html: umRenderUsers 行 tr 加 cursor:pointer + onclick→umViewUser(守卫 closest('button,a,input,select') 不与复选/操作链接冲突)。承 R263/264 行点击模式。真机验证 点昵称单元格→触发 umViewUser。?v=u206。
+
+## R266 [UI重构·第137轮] 快捷键帮助新增"通用交互"组
+- workspace.html: ? 帮助浮层加"通用交互"组反映新增能力: 单击表格行打开详情(指标/集成/用户)、点击编码/表名复制、滚动到底返回顶部。保持帮助文档与实际功能同步。真机验证 ?面板含通用交互组全部条目。?v=u207。
