@@ -708,3 +708,6 @@
 
 ## R286 [UI重构·第157轮] 项目列表 搜索高亮(项目名/编码)
 - project.js: projRenderList 表格视图项目名+编码补搜索命中高亮(_phl, <mark>+warning-bg, 大小写不敏感), 与全站即时搜索一致(此前多字段搜索仅过滤不高亮)。真机验证(合成项目+关键词 ord) 命中 name "ord" + code "ORD" 两处 <mark>。?v=u227。
+
+## R287 [UI重构·第158轮] 项目卡片视图 搜索高亮
+- project.js: projListCards 卡片视图项目名+编码补搜索命中高亮(与 R286 表格视图一致), 切换视图高亮体验统一。真机验证(合成项目+ord) 卡片内 name "ord" + code "ORD" 两处 <mark>。?v=u228。

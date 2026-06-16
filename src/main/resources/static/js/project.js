@@ -245,6 +245,9 @@ var _projListView = (function() { try { return localStorage.getItem('proj.listVi
 window.projSetListView = function(v) { _projListView = v; try { localStorage.setItem('proj.listView', v); } catch (e) {} projRenderList(); };
 // 项目卡片视图(大功能): 网格卡片
 function projListCards(rows) {
+  // 搜索命中高亮(项目名/编码), 与表格视图一致
+  var _pkw = ((document.getElementById('projSearch') || {}).value || '').trim().toLowerCase();
+  var _phl = function(t) { t = t == null ? '' : String(t); if (!_pkw) return escapeHtml(t); var i = t.toLowerCase().indexOf(_pkw); if (i < 0) return escapeHtml(t); return escapeHtml(t.slice(0, i)) + '<mark style="background:var(--warning-bg);color:inherit;padding:0 1px;border-radius:2px;">' + escapeHtml(t.slice(i, i + _pkw.length)) + '</mark>' + escapeHtml(t.slice(i + _pkw.length)); };
   var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">';
   rows.forEach(function(p) {
     var st = PROJ_STATUS[p.status] || { t: p.status, c: 'var(--text-faint)' };
@@ -254,9 +257,9 @@ function projListCards(rows) {
     h += '<div style="border:1px solid var(--border);border-top:3px solid ' + st.c + ';border-radius:var(--radius-lg);padding:12px;background:var(--bg-card);cursor:pointer;transition:box-shadow var(--dur),transform var(--dur);" onclick="projOpenDetail(' + p.id + ')" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'\';this.style.transform=\'\'">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
       + (pinned ? '<span style="color:var(--warning);display:inline-flex;vertical-align:-2px;" title="置顶" aria-label="置顶">' + DN.icon('pin') + '</span>' : '')
-      + '<span style="font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(p.projectName || '') + '">' + escapeHtml(p.projectName || '-') + '<span class="dnph" data-id="' + p.id + '"></span></span>'
+      + '<span style="font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(p.projectName || '') + '">' + _phl(p.projectName || '-') + '<span class="dnph" data-id="' + p.id + '"></span></span>'
       + '<a href="#" onclick="event.stopPropagation();projToggleFav(' + p.id + ');return false;" title="收藏" style="text-decoration:none;font-size:15px;color:' + (fav ? 'var(--warning)' : 'var(--text-muted)') + ';">' + (fav ? '★' : '☆') + '</a></div>'
-      + '<div style="font-family:monospace;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:6px;">' + escapeHtml(p.projectCode || '-') + '</div>'
+      + '<div style="font-family:monospace;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:6px;">' + _phl(p.projectCode || '-') + '</div>'
       + (p.description ? '<div style="font-size:12px;color:var(--text-regular);margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHtml(p.description) + '</div>' : '')
       + (tagChips ? '<div style="margin-bottom:8px;">' + tagChips + '</div>' : '')
       + '<div style="display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--text-muted);flex-wrap:wrap;">'
