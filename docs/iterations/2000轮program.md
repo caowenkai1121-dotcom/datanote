@@ -609,3 +609,6 @@
 
 ## R253 [UI重构·第124轮] 顶栏当前模块 aria-current(a11y)
 - workspace.html: navigateTo 给激活的 .header-tab 设 aria-current="page"、其余移除。读屏宣告当前所在模块, 符合 WCAG 导航语义。真机验证 治理时=governance、切指标后转移、始终仅一个。?v=u194。
+
+## R254 [UI重构·第125轮] 侧栏当前子页 aria-current(a11y, DRY)
+- workspace.html: 全局委托——点 .ops-sidebar-item 后(setTimeout 0 待 switch 完成)按 .active 同步 aria-current="page"。一处覆盖 switchOpsTab/ProjectTab/SettingsTab/GovModule/MdmModule/QualityTab/MetricsTab 全部侧栏切换(DRY)。承 R253 顶栏 aria-current。真机验证 点运维"补数据"→该项 aria-current=page 且仅一个。?v=u195。
