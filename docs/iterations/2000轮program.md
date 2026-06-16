@@ -1069,3 +1069,6 @@
 
 ## R405 [UI重构·第276轮] SQL编辑器光标位置/选中状态(VS Code式)
 - workspace.html: 编辑器工具栏右端加 #editorCursorStat(dnUpdateCursorStat: "行 X, 列 Y", 有选区追加"· 选中 N 字符"); Monaco onDidChangeCursorPosition/Selection 钩子驱动。VS Code 式状态反馈。真机验证 光标"行2,列3" / 选中SELECT"行1,列7·选中6字符"。?v=u347。
+
+## R406 [UI重构·第277轮] 运行日志一键复制
+- workspace.html: 运行日志 tab 加"复制"按钮(copyRunLog 复制 logArea innerText, 分享报错给同事用; DN.copy execCommand 降级), 与"清空"同在日志 tab 显示(resultToggleActionBtns 同步切换)。配 R362结果复制/R364清空。真机验证 复制含INFO+ERROR全文+toast, 日志tab按钮可见性正确。?v=u348。
