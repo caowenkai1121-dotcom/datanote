@@ -922,3 +922,6 @@
 
 ## R356 [UI重构·第227轮] 审计概览大数加千分位
 - gov-audit.js: 审计概览"合计 N 条" + Top活跃操作人计数加千分位(toLocaleString), 4-5位数(5791→5,791)易读。MDM数据管家工作台复核完备(KPI联动/DN.table/空态/错误box)。真机验证 "合计 5,791 条"含逗号。?v=u298。
+
+## R357 [UI重构·第228轮] 表详情 tab 条 aria-selected
+- workspace.html: dmSwitchTab 切换时给 .datamap-detail-tab 设 aria-selected(选中true/其余false), 读屏宣告当前 tab(原仅 .active 视觉态)。真机验证 切"数据预览"→该tab aria-selected=true, 其余6个false。?v=u299。
