@@ -824,3 +824,6 @@
 
 ## R324 [UI重构·第195轮] 指标"无匹配"空态 一键清空筛选
 - workspace.html: 指标列表"无匹配指标"空态加"清空筛选"按钮(metricClearFilters: 清搜索+分类+新鲜度+对应localStorage→重载)。承项目列表清空筛选范式, 避免用户手动逐项复位。真机验证 metricClearFilters清空全部输入+localStorage; 强制无匹配分支渲染"清空筛选"按钮(onclick=metricClearFilters)。?v=u265。
+
+## R325 [UI重构·第196轮] 数据集成"无匹配任务"空态 一键清空筛选
+- workspace.html: 数据集成无匹配任务空态加"清空筛选"(dbsyncClearFilters: 搜索+状态(→ALL+localStorage)+目录(→0)+重渲文件夹页签→重过滤)。承指标/项目清空筛选范式。真机验证 dbsyncClearFilters 清空搜索+状态localStorage复位ALL。?v=u266。

@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u265">
-<link rel="stylesheet" href="css/gov-modern.css?v=u265">
-<link rel="stylesheet" href="css/redesign.css?v=u265">
-<link rel="stylesheet" href="css/dn-design.css?v=u265">
+<link rel="stylesheet" href="css/app.css?v=u266">
+<link rel="stylesheet" href="css/gov-modern.css?v=u266">
+<link rel="stylesheet" href="css/redesign.css?v=u266">
+<link rel="stylesheet" href="css/dn-design.css?v=u266">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u265">
+<link rel="stylesheet" href="css/modern.css?v=u266">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u265"></script>
-<script src="js/gov-assets.js?v=u265"></script>
-<script src="js/gov-lineage.js?v=u265"></script>
-<script src="js/gov-quality.js?v=u265"></script>
-<script src="js/gov-standard.js?v=u265"></script>
-<script src="js/gov-classification.js?v=u265"></script>
-<script src="js/gov-security.js?v=u265"></script>
-<script src="js/gov-health.js?v=u265"></script>
-<script src="js/gov-audit.js?v=u265"></script>
-<script src="js/gov-overview.js?v=u265"></script>
-<script src="js/gov-subject.js?v=u265"></script>
-<script src="js/gov-consumption.js?v=u265"></script>
-<script src="js/gov-govmap.js?v=u265"></script>
-<script src="js/project.js?v=u265"></script>
-<script src="js/datamodel.js?v=u265"></script>
-<script src="js/home-dashboard.js?v=u265"></script>
-<script src="js/mdm.js?v=u265"></script>
-<script src="js/mdm-ingest.js?v=u265"></script>
-<script src="js/mdm-survivorship.js?v=u265"></script>
-<script src="js/mdm-approval.js?v=u265"></script>
-<script src="js/mdm-refdata.js?v=u265"></script>
-<script src="js/mdm-quality.js?v=u265"></script>
-<script src="js/mdm-pubsub.js?v=u265"></script>
-<script src="js/mdm-hierarchy.js?v=u265"></script>
-<script src="js/ai-agent.js?v=u265"></script>
+<script src="js/dn-common.js?v=u266"></script>
+<script src="js/gov-assets.js?v=u266"></script>
+<script src="js/gov-lineage.js?v=u266"></script>
+<script src="js/gov-quality.js?v=u266"></script>
+<script src="js/gov-standard.js?v=u266"></script>
+<script src="js/gov-classification.js?v=u266"></script>
+<script src="js/gov-security.js?v=u266"></script>
+<script src="js/gov-health.js?v=u266"></script>
+<script src="js/gov-audit.js?v=u266"></script>
+<script src="js/gov-overview.js?v=u266"></script>
+<script src="js/gov-subject.js?v=u266"></script>
+<script src="js/gov-consumption.js?v=u266"></script>
+<script src="js/gov-govmap.js?v=u266"></script>
+<script src="js/project.js?v=u266"></script>
+<script src="js/datamodel.js?v=u266"></script>
+<script src="js/home-dashboard.js?v=u266"></script>
+<script src="js/mdm.js?v=u266"></script>
+<script src="js/mdm-ingest.js?v=u266"></script>
+<script src="js/mdm-survivorship.js?v=u266"></script>
+<script src="js/mdm-approval.js?v=u266"></script>
+<script src="js/mdm-refdata.js?v=u266"></script>
+<script src="js/mdm-quality.js?v=u266"></script>
+<script src="js/mdm-pubsub.js?v=u266"></script>
+<script src="js/mdm-hierarchy.js?v=u266"></script>
+<script src="js/ai-agent.js?v=u266"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -15000,6 +15000,15 @@ window.dbsyncFilterJobsDebounced = function() {
   _dbsyncSearchTimer = setTimeout(dbsyncFilterJobs, 200);
 };
 window.dbsyncSearchClear = function() { var i = document.getElementById('dbsyncSearchInput'); if (!i) return; i.value = ''; var c = document.getElementById('dbsyncSearchClr'); if (c) c.style.display = 'none'; dbsyncFilterJobs(); i.focus(); };
+// 一键清空数据集成全部筛选(搜索+状态+目录), 供"无匹配任务"空态快速复位
+window.dbsyncClearFilters = function() {
+  var si = document.getElementById('dbsyncSearchInput'); if (si) si.value = '';
+  var sc = document.getElementById('dbsyncSearchClr'); if (sc) sc.style.display = 'none';
+  _dbsyncStatusFilter = 'ALL'; try { localStorage.setItem('dbsync.statusFilter', 'ALL'); } catch (e) {}
+  _dbsyncSelectedFolderId = 0;
+  if (window.dbsyncRenderFolderTabs) dbsyncRenderFolderTabs();
+  dbsyncFilterJobs();
+};
 window.dbsyncFilterJobs = function() {
   var kw = (document.getElementById('dbsyncSearchInput').value || '').toLowerCase();
   var base = (_dbsyncSelectedFolderId === 0) ? _dbsyncAllJobs : (_dbsyncAllJobs || []).filter(function(j) {
@@ -15058,7 +15067,7 @@ function dbsyncRenderJobs(list) {
     var _kw = (document.getElementById('dbsyncSearchInput') || {}).value || '';
     var _filtered = !!(_kw.trim()) || _dbsyncStatusFilter !== 'ALL' || (_dbsyncSelectedFolderId !== 0 && _dbsyncSelectedFolderId != null);
     if (_filtered && _dbsyncAllJobs && _dbsyncAllJobs.length) {
-      container.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="et">无匹配任务</div><div style="font-size:12px;color:var(--text-faint);">试试调整搜索 / 状态 / 目录筛选</div></div>';
+      container.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="et">无匹配任务</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:6px;">试试调整搜索 / 状态 / 目录筛选</div><button class="btn btn-sm" onclick="dbsyncClearFilters()">清空筛选</button></div>';
     } else {
       container.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8M8 12h5"/></svg><div class="et">暂无同步任务</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">新建任务, 从源库把数据同步到数仓</div><button class="btn btn-sm btn-primary" data-perm="dbsync:edit" onclick="if(window.dbsyncOpenCreateModal)dbsyncOpenCreateModal()">＋ 新建任务</button></div>';
     }
