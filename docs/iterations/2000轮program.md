@@ -830,3 +830,6 @@
 
 ## R326 [UI重构·第197轮] 表详情收藏按钮 ★/☆ 图标 + toast 反馈
 - workspace.html: 数据地图表详情收藏按钮加 ★(已收藏)/☆(未收藏)图标(与项目列表★/☆收藏一致, 一眼辨状态), dmToggleFavorite 加 toast 操作反馈(原静默)。深度复核表详情视图: 返回/13动作按钮(flex-wrap不裁切)/8 tab/字段搜索计数导出/per字段编辑(保存默认display:none正确, 非bug已核实)/收藏态反射 — 均完备。真机验证 收藏按钮显"☆ 收藏"含星标。?v=u267。
+
+## R327 [UI重构·第198轮] 质量规则空态升级(gov-empty+图标+CTA)
+- workspace.html: 质量规则"暂无规则"空态由纯文本升级为 gov-empty(对勾盾图标+标题+说明+"＋ 新建规则"按钮), 与指标/项目/模型/数据集成空态范式统一。真机验证 window.showAddRuleDialog 存在, gov-empty 渲染。?v=u268。
