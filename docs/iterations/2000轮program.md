@@ -1147,3 +1147,6 @@
 
 ## R431 [UI重构·第302轮] 质量规则单条执行 loading+非阻塞反馈
 - workspace.html: runSingleQualityRule 改 接收btn→执行中禁用+"执行中…"+防重复, 起始用 showToast 非阻塞替代阻塞 msgBox, 完成 showToast 结果(通过率+通过/失败数, 成败着色)。真机 spy 验证 按钮禁用→恢复 + 结果toast。?v=u372。
+
+## R432 [UI重构·第303轮] 清理死码 runAllQualityRules
+- workspace.html: 删除 runAllQualityRules(全仓无任何调用方, 质量执行走 runSingleQualityRule/批量启停; 且其用阻塞msgBox+缺catch)。承死码清理(R249)。真机验证 函数已删除、质量规则正常渲染23条、0控制台错误(无引用断裂)。?v=u373。
