@@ -736,3 +736,6 @@
 
 ## R295 [UI重构·第166轮] 数据开发 文件树筛选偏好持久化
 - workspace.html: 文件树筛选(全部/我的/已上线)choice 持久化 localStorage(dn.treeFilter), 抽 _syncTreeFilterBtns 选中态同步函数, loadFileTree 启动回显。原每次刷新重置为"全部", 偏好"我的"的用户需反复点。承 dbsync.jobsView/projFilters 偏好持久化范式。真机验证 设"我的"→刷新→仍"我的"(按钮+变量同步), 复位"全部"。?v=u236。
+
+## R296 [UI重构·第167轮] 数据治理 末次子模块记忆
+- workspace.html: initGovCenter 读 localStorage(dn.govTab) 回到上次所在治理子模块(原恒为第一个 overview), switchGovModule 非深链点击时持久化(深链联动 ctx 不污染偏好)。深链 ctx.gov 仍随后覆盖。承文件树/dbsync/项目偏好持久化范式。真机验证 选"数据血缘"→去首页→回治理→仍"数据血缘"。复位 overview。?v=u237。
