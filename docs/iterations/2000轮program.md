@@ -627,3 +627,6 @@
 
 ## R259 [UI重构·第130轮] 模态焦点陷阱(WCAG·a11y收官)
 - workspace.html: 全局 Tab 处理——弹窗打开时(cmdkOverlay/projModalBox/.quality-modal-overlay/.dbsync-modal-overlay/.g-modal-overlay 任一可见)焦点循环锁在弹窗内: Shift+Tab 在首元素→跳末, Tab 在末元素→跳首, 不跑到背景。真机验证 新建指标弹窗12可聚焦元素, 末元素Tab→回首。a11y 焦点containment 收官。?v=u200。
+
+## R260 [UI重构·第131轮] 弹窗关闭焦点还原(a11y焦点生命周期完整)
+- workspace.html: showAddMetricDialog/showAddRuleDialog 记录触发元素(document.activeElement), closeMetricModal/closeRuleModal 关闭后还原焦点到触发元素。配合 R201/202即聚焦+R259焦点陷阱, 形成完整焦点生命周期(开→聚焦首字段→陷阱锁内→关→还原触发)。真机验证 点新建指标→焦点进mName→关→还原到按钮。?v=u201。
