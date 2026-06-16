@@ -711,3 +711,6 @@
 
 ## R287 [UI重构·第158轮] 项目卡片视图 搜索高亮
 - project.js: projListCards 卡片视图项目名+编码补搜索命中高亮(与 R286 表格视图一致), 切换视图高亮体验统一。真机验证(合成项目+ord) 卡片内 name "ord" + code "ORD" 两处 <mark>。?v=u228。
+
+## R288 [UI重构·第159轮] DN.table 搜索命中高亮(全治理/主数据/标准表)
+- dn-common.js: DN.table 渲染纯文本单元格时, 搜索关键词命中处 <mark>+warning-bg 高亮(hlMark; 仅纯文本cell, Node/html 自定义渲染不动, 不破坏 copyable/render)。一处改动覆盖所有 DN.table(gov-*/mdm/standard 数十张表)。真机验证 治理-标准表 kw "rt1" 命中 4 处 <mark>(大小写不敏感)。?v=u229。

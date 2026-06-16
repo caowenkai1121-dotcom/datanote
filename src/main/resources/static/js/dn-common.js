@@ -395,6 +395,8 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
     function csvCell(v) { var s = String(v == null ? '' : v).replace(/[\r\n]+/g, ' '); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }
+    // 搜索命中高亮(仅纯文本单元格; Node/html 自定义渲染不动), 与全站即时搜索一致
+    function hlMark(s) { if (!q) return null; var i = s.toLowerCase().indexOf(q); if (i < 0) return null; return DN.esc(s.slice(0, i)) + '<mark style="background:var(--warning-bg);color:inherit;padding:0 1px;border-radius:2px;">' + DN.esc(s.slice(i, i + q.length)) + '</mark>' + DN.esc(s.slice(i + q.length)); }
     function draw() {
       var data = filt(), total = data.length, pages = Math.max(1, Math.ceil(total / pageSize));
       if (page > pages) page = pages;
@@ -422,7 +424,7 @@
         cols.forEach(function (c) {
           var td = document.createElement('td'); if (c.align) { td.style.textAlign = c.align; if (c.align === 'right') td.style.fontVariantNumeric = 'tabular-nums'; }
           var cell = c.render ? c.render(r) : (r[c.key] == null ? '' : r[c.key]);
-          if (cell instanceof Node) td.appendChild(cell); else if (c.html) td.innerHTML = cell; else td.textContent = String(cell);
+          if (cell instanceof Node) td.appendChild(cell); else if (c.html) td.innerHTML = cell; else { var _cs = String(cell); var _hl = hlMark(_cs); if (_hl != null) td.innerHTML = _hl; else td.textContent = _cs; }
           if (c.copyable) {
             td.style.cursor = 'copy';
             var cv = c.exportValue ? c.exportValue(r) : (r[c.key] == null ? td.textContent : r[c.key]);
