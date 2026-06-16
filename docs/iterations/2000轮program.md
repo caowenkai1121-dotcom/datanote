@@ -1111,3 +1111,6 @@
 
 ## R419 [UI重构·第290轮] 登录页大写锁定提示
 - login.html: 密码框下加大写锁定警告(#capsWarn "⚠ 大写锁定已开启", keydown/keyup 检测 getModifierState('CapsLock'), 失焦隐藏), 防大写误输密码登录失败。真机模拟 CapsLock 验证 开→显/关→隐。login.html 独立部署(无需 bump workspace ?v)。
+
+## R420 [UI重构·第291轮] 数据源测试连接显延迟+toast
+- workspace.html: testDatasource 成功改 showToast"连接成功 (Nms)"(测耗时, 诊断慢连接, 比阻塞 msgBox 更顺滑); 失败仍用 msgBox(详情可读)。真机 spy 验证 "连接成功 (31ms)" 含延迟。?v=u361。
