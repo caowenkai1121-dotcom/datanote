@@ -642,3 +642,6 @@
 
 ## R264 [UI重构·第135轮] 数据集成任务表格行整行可点开详情
 - workspace.html: dbsyncJobsTable 表格行 tr 加 cursor:pointer + onclick→dbsyncOpenDetail(守卫 closest('button,a,input,select,.dbsync-more-trigger') 不与复选/操作冲突), 与卡片视图整卡点击一致、承 R263 指标行点击模式。(本会话集成列表为空无法真机点击, 代码已部署+逻辑同已验证模式。)?v=u205。
+
+## R265 [UI重构·第136轮] 用户管理表格行整行可点开详情
+- workspace.html: umRenderUsers 行 tr 加 cursor:pointer + onclick→umViewUser(守卫 closest('button,a,input,select') 不与复选/操作链接冲突)。承 R263/264 行点击模式。真机验证 点昵称单元格→触发 umViewUser。?v=u206。
