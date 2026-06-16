@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u189">
-<link rel="stylesheet" href="css/gov-modern.css?v=u189">
-<link rel="stylesheet" href="css/redesign.css?v=u189">
-<link rel="stylesheet" href="css/dn-design.css?v=u189">
+<link rel="stylesheet" href="css/app.css?v=u190">
+<link rel="stylesheet" href="css/gov-modern.css?v=u190">
+<link rel="stylesheet" href="css/redesign.css?v=u190">
+<link rel="stylesheet" href="css/dn-design.css?v=u190">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u189">
+<link rel="stylesheet" href="css/modern.css?v=u190">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u189"></script>
-<script src="js/gov-assets.js?v=u189"></script>
-<script src="js/gov-lineage.js?v=u189"></script>
-<script src="js/gov-quality.js?v=u189"></script>
-<script src="js/gov-standard.js?v=u189"></script>
-<script src="js/gov-classification.js?v=u189"></script>
-<script src="js/gov-security.js?v=u189"></script>
-<script src="js/gov-health.js?v=u189"></script>
-<script src="js/gov-audit.js?v=u189"></script>
-<script src="js/gov-overview.js?v=u189"></script>
-<script src="js/gov-subject.js?v=u189"></script>
-<script src="js/gov-consumption.js?v=u189"></script>
-<script src="js/gov-govmap.js?v=u189"></script>
-<script src="js/project.js?v=u189"></script>
-<script src="js/datamodel.js?v=u189"></script>
-<script src="js/home-dashboard.js?v=u189"></script>
-<script src="js/mdm.js?v=u189"></script>
-<script src="js/mdm-ingest.js?v=u189"></script>
-<script src="js/mdm-survivorship.js?v=u189"></script>
-<script src="js/mdm-approval.js?v=u189"></script>
-<script src="js/mdm-refdata.js?v=u189"></script>
-<script src="js/mdm-quality.js?v=u189"></script>
-<script src="js/mdm-pubsub.js?v=u189"></script>
-<script src="js/mdm-hierarchy.js?v=u189"></script>
-<script src="js/ai-agent.js?v=u189"></script>
+<script src="js/dn-common.js?v=u190"></script>
+<script src="js/gov-assets.js?v=u190"></script>
+<script src="js/gov-lineage.js?v=u190"></script>
+<script src="js/gov-quality.js?v=u190"></script>
+<script src="js/gov-standard.js?v=u190"></script>
+<script src="js/gov-classification.js?v=u190"></script>
+<script src="js/gov-security.js?v=u190"></script>
+<script src="js/gov-health.js?v=u190"></script>
+<script src="js/gov-audit.js?v=u190"></script>
+<script src="js/gov-overview.js?v=u190"></script>
+<script src="js/gov-subject.js?v=u190"></script>
+<script src="js/gov-consumption.js?v=u190"></script>
+<script src="js/gov-govmap.js?v=u190"></script>
+<script src="js/project.js?v=u190"></script>
+<script src="js/datamodel.js?v=u190"></script>
+<script src="js/home-dashboard.js?v=u190"></script>
+<script src="js/mdm.js?v=u190"></script>
+<script src="js/mdm-ingest.js?v=u190"></script>
+<script src="js/mdm-survivorship.js?v=u190"></script>
+<script src="js/mdm-approval.js?v=u190"></script>
+<script src="js/mdm-refdata.js?v=u190"></script>
+<script src="js/mdm-quality.js?v=u190"></script>
+<script src="js/mdm-pubsub.js?v=u190"></script>
+<script src="js/mdm-hierarchy.js?v=u190"></script>
+<script src="js/ai-agent.js?v=u190"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -3794,13 +3794,6 @@ function closeRightPanel() {
   });
 }
 
-function activateRightTab(idx) {
-  toggleRightTab(idx);
-}
-
-function switchRightTab(el, idx) {
-  toggleRightTab(idx);
-}
 
 // 默认不打开右侧面板
 
@@ -4392,17 +4385,6 @@ function saveScript() {
   }).catch(function(e) { msgBox('保存失败: ' + ((e && e.message) || '网络请求失败')); });
 }
 
-function autoSaveDatabaseName() {
-  if (!currentScriptId) return;
-  var dbInput = document.getElementById('propDatabaseName');
-  if (!dbInput) return;
-  fetch('/api/script/' + currentScriptId + '/database-name', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ databaseName: dbInput.value })
-  }).catch(function() { if (window.showToast) showToast('数据库名保存失败，请检查网络', 'error'); });
-}
-
 // Monaco Editor 初始化（用代理对象保持 codeArea.value 兼容性）
 var monacoEditor = null;
 var monacoReady = false;
@@ -4700,7 +4682,6 @@ function formatOneStatement(sql) {
   var result = [];
   var depth = 0;
   function pad(d) { var r = ''; for (var i = 0; i < d * 4; i++) r += ' '; return r; }
-  function padN(n) { var r = ''; for (var i = 0; i < n; i++) r += ' '; return r; }
 
   for (var li = 0; li < rawLines.length; li++) {
     var line = rawLines[li];
@@ -4770,252 +4751,6 @@ function formatOneStatement(sql) {
   var output = result.join('\n');
   for (var hi = 0; hi < holders.length; hi++) {
     output = output.replace('\x01H' + hi + '\x01', holders[hi]);
-  }
-  return output;
-}
-
-function formatOneStatement_old(sql) {
-  // 提取注释和字符串，保护不被拆分
-  var holders = [];
-  var safe = sql.replace(/--([^\n]*)/g, function(m) { holders.push(m); return '\x01' + (holders.length - 1) + '\x01'; });
-  safe = safe.replace(/'([^']*)'/g, function(m) { holders.push(m); return '\x01' + (holders.length - 1) + '\x01'; });
-
-  // 分词：按关键字、逗号、括号拆成 token 流
-  var tokens = [];
-  var re = /\b(INSERT\s+OVERWRITE\s+TABLE|CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS|CREATE\s+TABLE|PARTITIONED\s+BY|PARTITION\s+BY|STORED\s+AS|TBLPROPERTIES|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|CROSS\s+JOIN|FULL\s+JOIN|GROUP\s+BY|ORDER\s+BY|UNION\s+ALL|ROW_NUMBER\s*\(\s*\)\s*OVER|SELECT\b|FROM\b|WHERE\b|AND\b|OR\b|ON\b|JOIN\b|HAVING\b|LIMIT\b|UNION\b|CASE\b|WHEN\b|THEN\b|ELSE\b|END\b|AS\b|PARTITION\b|COMMENT\b)\b|([(),])|([^\s(),]+(?:\s*\x01\d+\x01)?)/gi;
-  var m;
-  while ((m = re.exec(safe)) !== null) {
-    var tok = m[0].trim();
-    if (tok) tokens.push(tok);
-  }
-
-  // 构建格式化输出
-  var lines = [];
-  var currentLine = '';
-  var depth = 0; // 括号深度
-  var afterSelect = false;
-  var afterGroupOrder = false;
-  var fieldIndex = 0;
-  var inCase = 0;
-
-  function pad(d) { var s = ''; for (var i = 0; i < d * 4; i++) s += ' '; return s; }
-  function flush() { if (currentLine.trim()) { lines.push(currentLine); currentLine = ''; } }
-  function newLine(content) { flush(); currentLine = pad(depth) + content; }
-
-  for (var i = 0; i < tokens.length; i++) {
-    var tok = tokens[i];
-    var upper = tok.toUpperCase().replace(/\s+/g, ' ');
-
-    if (upper === '(') {
-      newLine('(');
-      flush();
-      depth++;
-      afterSelect = false;
-      afterGroupOrder = false;
-      fieldIndex = 0;
-      continue;
-    }
-
-    if (upper === ')') {
-      flush();
-      depth = Math.max(0, depth - 1);
-      currentLine = pad(depth) + ')';
-      // 如果下一个 token 是别名（t1, t2 等）
-      if (i + 1 < tokens.length) {
-        var nextUp = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-        if (!nextUp.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|OR|GROUP|ORDER|HAVING|LIMIT|UNION|CASE|WHEN|ELSE|END|,|\(|\))/i)) {
-          currentLine += ' ' + tokens[i + 1];
-          i++;
-        }
-      }
-      flush();
-      afterSelect = false;
-      afterGroupOrder = false;
-      fieldIndex = 0;
-      continue;
-    }
-
-    if (upper === ',') {
-      flush();
-      currentLine = pad(depth) + '    ,';
-      // 下一个 token 是字段
-      if (i + 1 < tokens.length) {
-        var nextTok = tokens[i + 1];
-        var nextUp2 = nextTok.toUpperCase().replace(/\s+/g, ' ');
-        if (!nextUp2.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|\(|\))/)) {
-          currentLine += nextTok;
-          i++;
-          // 继续收集同一字段的后续部分（AS alias, COMMENT 'xxx' 等）
-          while (i + 1 < tokens.length) {
-            var peek = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-            if (peek === ',' || peek === '(' || peek === ')' || peek.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|HAVING|LIMIT|UNION|CASE|WHEN|ELSE)/)) break;
-            i++;
-            currentLine += ' ' + tokens[i];
-          }
-        }
-      }
-      continue;
-    }
-
-    // 主要关键字：独占一行，和当前深度的括号对齐
-    if (upper.match(/^(SELECT|FROM|WHERE|AND|OR|ON|LEFT JOIN|RIGHT JOIN|INNER JOIN|CROSS JOIN|FULL JOIN|JOIN|GROUP BY|ORDER BY|HAVING|LIMIT|UNION ALL|UNION)$/)) {
-      flush();
-      currentLine = pad(depth) + tok.toUpperCase().replace(/\s+/g, ' ');
-
-      if (upper === 'SELECT') {
-        flush();
-        afterSelect = true;
-        afterGroupOrder = false;
-        fieldIndex = 0;
-        // 收集 SELECT 后的第一个字段
-        if (i + 1 < tokens.length) {
-          var nxt = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-          if (!nxt.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|\(|\)|,)/)) {
-            i++;
-            currentLine = pad(depth) + '     ' + tokens[i];
-            // 继续收集（AS alias 等）
-            while (i + 1 < tokens.length) {
-              var pk = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-              if (pk === ',' || pk === '(' || pk === ')' || pk.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|HAVING|CASE|WHEN)/)) break;
-              i++;
-              currentLine += ' ' + tokens[i];
-            }
-          }
-        }
-        continue;
-      }
-
-      if (upper === 'GROUP BY' || upper === 'ORDER BY') {
-        flush();
-        afterGroupOrder = true;
-        afterSelect = false;
-        fieldIndex = 0;
-        // 收集第一个字段
-        if (i + 1 < tokens.length) {
-          var nxt2 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-          if (!nxt2.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|\(|\)|,)/)) {
-            i++;
-            currentLine = pad(depth) + '     ' + tokens[i];
-            while (i + 1 < tokens.length) {
-              var pk2 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-              if (pk2 === ',' || pk2.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|HAVING|\(|\))/)) break;
-              i++;
-              currentLine += ' ' + tokens[i];
-            }
-          }
-        }
-        continue;
-      }
-
-      // FROM, WHERE, ON, AND, LEFT JOIN 等：关键字后面跟内容在同一行
-      if (i + 1 < tokens.length) {
-        var nxt3 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-        if (nxt3 !== '(' && !nxt3.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|HAVING|,|\))/)) {
-          i++;
-          currentLine += ' ' + tokens[i];
-          // 继续收集
-          while (i + 1 < tokens.length) {
-            var pk3 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-            if (pk3 === ',' || pk3 === '(' || pk3 === ')' || pk3.match(/^(SELECT|FROM|WHERE|LEFT|RIGHT|JOIN|ON|AND|GROUP|ORDER|HAVING|LIMIT|UNION|CASE|WHEN|ELSE)/)) break;
-            i++;
-            currentLine += ' ' + tokens[i];
-          }
-        }
-      }
-      continue;
-    }
-
-    // INSERT OVERWRITE / CREATE TABLE
-    if (upper.match(/^(INSERT\s+OVERWRITE|CREATE\s+TABLE)/)) {
-      flush();
-      currentLine = pad(depth) + tok.replace(/\s+/g, ' ').toUpperCase();
-      // 收集后续内容到行尾
-      while (i + 1 < tokens.length) {
-        var pk4 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-        if (pk4.match(/^(SELECT|FROM|\(|,)/)) break;
-        i++;
-        currentLine += ' ' + tokens[i];
-      }
-      continue;
-    }
-
-    // CASE
-    if (upper === 'CASE') {
-      currentLine += (currentLine.trim() ? ' ' : pad(depth)) + 'CASE';
-      inCase++;
-      continue;
-    }
-    if (upper === 'WHEN' && inCase > 0) {
-      flush();
-      currentLine = pad(depth) + '        WHEN';
-      if (i + 1 < tokens.length) {
-        // 收集 WHEN 条件到 THEN
-        while (i + 1 < tokens.length) {
-          i++;
-          currentLine += ' ' + tokens[i];
-          if (tokens[i].toUpperCase() === 'THEN') {
-            // 收集 THEN 后的值
-            if (i + 1 < tokens.length) {
-              var pk5 = tokens[i + 1].toUpperCase();
-              if (pk5 !== 'WHEN' && pk5 !== 'ELSE' && pk5 !== 'END') {
-                i++;
-                currentLine += ' ' + tokens[i];
-              }
-            }
-            break;
-          }
-        }
-      }
-      continue;
-    }
-    if (upper === 'ELSE' && inCase > 0) {
-      flush();
-      currentLine = pad(depth) + '        ELSE';
-      if (i + 1 < tokens.length && tokens[i + 1].toUpperCase() !== 'END') {
-        i++;
-        currentLine += ' ' + tokens[i];
-      }
-      continue;
-    }
-    if (upper === 'END') {
-      flush();
-      currentLine = pad(depth) + '     END';
-      inCase = Math.max(0, inCase - 1);
-      // AS alias
-      if (i + 1 < tokens.length && tokens[i + 1].toUpperCase() === 'AS') {
-        i++;
-        currentLine += ' AS';
-        if (i + 1 < tokens.length) { i++; currentLine += ' ' + tokens[i]; }
-      }
-      continue;
-    }
-
-    // STORED AS, TBLPROPERTIES, PARTITIONED BY, COMMENT
-    if (upper.match(/^(STORED\s+AS|TBLPROPERTIES|PARTITIONED\s+BY|COMMENT)/)) {
-      flush();
-      currentLine = pad(depth) + tok.replace(/\s+/g, ' ').toUpperCase();
-      while (i + 1 < tokens.length) {
-        var pk6 = tokens[i + 1].toUpperCase().replace(/\s+/g, ' ');
-        if (pk6.match(/^(SELECT|FROM|WHERE|STORED|TBLPROPERTIES|PARTITIONED|;|CREATE|INSERT)/)) break;
-        i++;
-        currentLine += ' ' + tokens[i];
-      }
-      continue;
-    }
-
-    // 普通 token：追加到当前行
-    if (currentLine.trim()) {
-      currentLine += ' ' + tok;
-    } else {
-      currentLine = pad(depth) + tok;
-    }
-  }
-  flush();
-
-  // 还原注释和字符串
-  var output = lines.join('\n');
-  for (var hi = 0; hi < holders.length; hi++) {
-    output = output.replace('\x01' + hi + '\x01', holders[hi]);
   }
   return output;
 }
@@ -5531,21 +5266,6 @@ function onSchedPeriodChange() {
   document.getElementById('schedPreviewResult').style.display = 'none';
   document.getElementById('schedWeekRow').style.display = (period === 'weekly') ? 'flex' : 'none';
   document.getElementById('schedMonthRow').style.display = (period === 'monthly') ? 'flex' : 'none';
-}
-
-function previewCron() {
-  var cron = document.getElementById('schedCronInput').value.trim();
-  if (!cron) { DN.toast('请先输入 Cron 表达式', 'warn'); return; }
-  apiPost('/api/scheduler/cron-preview', {cron: cron}).then(function(res) {
-    var container = document.getElementById('cronPreviewResult');
-    if (res.code === 0 && res.data) {
-      container.innerHTML = '<div style="font-weight:600;margin-bottom:4px;">未来 5 次执行时间：</div>' + res.data.map(function(t) { return '<div>' + escapeHtml(t) + '</div>'; }).join('');
-      container.style.display = 'block';
-    } else {
-      container.innerHTML = '<div style="color:var(--error);">' + escapeHtml(res.msg || '预览失败') + '</div>';
-      container.style.display = 'block';
-    }
-  });
 }
 
 // R29: dbsync 新建表单 Cron 实时预览下次执行(onblur)
@@ -6232,12 +5952,6 @@ function proceedOffline() {
       }
     });
   });
-}
-
-// ===== 自动保存当前 tab =====
-function autoSaveCurrentTab() {
-  if (currentRightTab === 0) saveBasicInfoSilent();
-  else if (currentRightTab === 1) schedAutoSave();
 }
 
 function saveBasicInfo() {

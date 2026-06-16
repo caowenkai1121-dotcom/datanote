@@ -594,3 +594,6 @@
 
 ## R248 [UI重构·第119轮] 表单前端校验补全(工作流3确认)
 - workspace.html: saveDatasource 补 端口1-65535范围校验 + PostgreSQL/SQLServer/Oracle 类型数据库名必填校验(原仅校验name/host, 非法值静默落库致连接失败); saveQualityRule ruleName 加 trim(白空格→空→被现有必填捕获); saveEnvConfig DataX Home 非空校验(防空值/危险字符拼shell); saveDatasourceConfig Doris 主机非空校验(防空值拼JDBC URL)。真机验证 端口99999→"端口须为1-65535的整数"被拦。?v=u189。
+
+## R249 [UI重构·第120轮] 死代码清理(工作流3确认)
+- workspace.html: 删除7个确认零引用死函数: autoSaveCurrentTab/autoSaveDatabaseName(R235曾对其加catch,实为死码)/activateRightTab/switchRightTab/previewCron/padN(formatOneStatement内未用)/formatOneStatement_old(~245行legacy大块, 活版 formatOneStatement 仍用)。逐个 grep 验证仅定义无引用。真机验证 formatOneStatement 仍可用、SQL格式化正常、开发模块无破坏。净删~280行死码。?v=u190。
