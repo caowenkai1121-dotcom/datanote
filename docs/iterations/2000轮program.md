@@ -751,3 +751,6 @@
 
 ## R300 [UI重构·第171轮] 治理/主数据 动态侧栏 a11y 补全
 - workspace.html: initGovCenter/initMdmCenter 动态侧栏项补 role=button + tabindex=0 + Enter/Space 键盘激活 + aria-current=page; switchGovModule/switchMdmModule 切换时迁移 aria-current。此前动态侧栏(治理9项/主数据多项)无键盘可达, 与静态侧栏(运维/质量/指标/系统)不一致。真机验证 治理侧栏 role=button/tabindex=0/aria-current=page, Enter 激活"资产目录"且 aria-current 跟随。?v=u241。
+
+## R301 [UI重构·第172轮] 指标/用户 表头排序可见性(⇅ 提示)
+- workspace.html: _mth(指标)/_uth(用户) 未排序的可排序列由"无指示"改为显 ⇅, 表明可点排序(与质量/模型/dbsync ⇅ 一致)。此前用户需盲试才知列可排序。真机验证 指标列表 5 个可排序列均显 ⇅。?v=u242。
