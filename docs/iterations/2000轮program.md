@@ -867,3 +867,6 @@
 
 ## R338 [UI重构·第209轮] 角色列表计数
 - workspace.html: 角色与权限表加"共 N 个角色"计数(与用户表"共N/N"计数一致)。深度复核 gov-consumption(一键计算/单计算/数据集 均confirm+busy+toast+联动刷新, 取值toast含计算值)、gov-classification(gov-empty空态)全完备。真机验证 角色tab"共6个角色"。?v=u280。
+
+## R339 [UI重构·第210轮] 通知轮询失败退避(防控制台刷屏)
+- workspace.html: dnBellPoll(站内通知未读数 30s 轮询)改自调度+失败指数退避(连续失败间隔翻倍, 上限5min; 成功复位30s)。原 setInterval 固定30s, 接口不可用(本会话压测见过 /api/notify/unread-count ERR_EMPTY_RESPONSE 刷屏66条)时反复打请求刷控制台+增服务器负载。真机验证 badge=3 正常更新, _dnBellSchedule 自调度。?v=u281。
