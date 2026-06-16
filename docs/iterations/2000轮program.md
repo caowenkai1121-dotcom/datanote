@@ -1012,3 +1012,6 @@
 
 ## R386 [UI重构·第257轮] 文件树全部展开/折叠
 - workspace.html: 数据开发文件树筛选行加"展开/折叠"按钮(toggleAllFolders: 有任一未展开则全展开否则全折叠, 按钮文案随之切换, 复用 saveOpenFolderState 持久化)。深目录树一键操作。真机验证 9文件夹 全展开(按钮→折叠)/全折叠(按钮→展开)切换正确。?v=u328。
+
+## R387 [UI重构·第258轮] 权限树搜索清除×(用户/角色表单)
+- workspace.html: 用户/角色表单的权限点搜索框(umfPermSearch, 两处相同 replace_all)加清除"×"(有输入才显, 内联清空+隐×+umFilterPermTree('')+聚焦)。umFilterPermTree 对空树安全。完成即时搜索清除×backlog中的权限树项。真机构造验证 初始隐/输入显/清除隐+清空+聚焦。?v=u329。
