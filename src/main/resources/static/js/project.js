@@ -134,7 +134,7 @@ function projFillTagFilter() {
 
 function projTile(label, value, color, onclick) {
   // 不能给同一 div 拼两个 style 属性(HTML 只认第一个), 全部样式合并进一个 style
-  var clk = onclick ? ' title="点击筛选" onclick="' + onclick + '"' : '';
+  var clk = onclick ? ' title="点击筛选" role="button" tabindex="0" onclick="' + onclick + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();' + onclick + '}"' : '';   // a11y: 可点磁贴键盘可达
   return '<div' + clk + ' class="proj-kpi-tile" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:14px 18px;' + (onclick ? 'cursor:pointer;' : '') + '">'
     + '<div class="num" style="font-size:24px;font-weight:700;line-height:1.2;' + (color ? 'color:' + color + ';' : 'color:var(--text-primary);') + '">' + value + '</div>'
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">' + label + '</div></div>';

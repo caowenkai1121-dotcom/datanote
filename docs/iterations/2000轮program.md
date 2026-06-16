@@ -800,3 +800,6 @@
 
 ## R316 [UI重构·第187轮] AI 助手按钮 aria-label 补全
 - workspace.html: 顶栏 AI 助手图标按钮(aiLauncherBtn)补 aria-label="打开 AI 助手"(原仅 title, 读屏只读"AI"无意义)。至此顶栏全部图标按钮(命令面板/主题/密度/通知/AI)均有 aria-label+title。截图复核 datamodel 页视觉整洁(搜索/计数/排序/导出/徽标一致)。真机验证 aiLauncherBtn aria-label 生效。?v=u257。
+
+## R317 [UI重构·第188轮] 项目 KPI 磁贴键盘可达
+- project.js: projTile 可点磁贴(项目空间 总数/活跃/已归档/本月新增 等)补 role=button + tabindex=0 + Enter/Space 键盘激活(原仅 cursor:pointer 鼠标可点; 动态渲染漏过一次性 dnA11yEnhance)。截图复核项目工作台视觉整洁。真机验证 4 个可点磁贴 role=button/tabindex=0/onkeydown 齐备。?v=u258。
