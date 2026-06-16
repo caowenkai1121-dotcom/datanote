@@ -139,6 +139,10 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 .editor-newtab-btn:hover { background: var(--bg-hover); color: var(--primary); }
 .editor-newtab-btn:active { transform: scale(.92); }
 
+/* R425: cron 常用周期预设 chip */
+.cron-preset { font-size: var(--fs-xs); padding: 1px 9px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all var(--dur); }
+.cron-preset:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+
 /* R422: 结果表"换行显示"模式(读长 JSON/文本免横滚) */
 .result-table.result-wrap td { white-space: normal !important; word-break: break-word; max-width: 480px; }
 .result-download-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }

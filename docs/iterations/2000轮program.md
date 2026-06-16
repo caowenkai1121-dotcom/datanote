@@ -1126,3 +1126,6 @@
 
 ## R424 [UI重构·第295轮] 质量规则列表"库.表"可点跳数据地图
 - workspace.html: 质量规则列表 数据库.表 列改为可点链接→navigateTo('catalog',{openTable})(行无行级点击, 无需stopPropagation)。从规则直达该表字段/血缘/质量, 承 R423 指标来源表跨模块导航。真机23规则验证 库.表链接可点+navigateTo catalog。?v=u365。
+
+## R425 [UI重构·第296轮] 同步任务Cron常用周期预设
+- workspace.html+modern.css: 数据集成任务调度 Cron 输入下加 5 个常用周期预设 chip(每小时/每天0点/每天2点/每周一/每月1号, Quartz 6段格式匹配占位), dfsCronSet 一键填充+触发 dfsCronPreview。非专家免记 cron 语法。.cron-preset 样式(hover 主色)。真机验证 5预设+填充正确。?v=u366。
