@@ -888,3 +888,6 @@
 
 ## R345 [UI重构·第216轮] 补数据历史 计数 + 空态升级
 - workspace.html: loadOpsBackfillHistory 加"共 N 批补数据 · M 个任务日"计数; 空态纯文本→gov-empty(回退图标+CTA说明)。承计数/空态范式。真机验证(真实数据) "共 210 批补数据 · 210 个任务日"渲染。?v=u287。
+
+## R346 [UI重构·第217轮] 手动执行记录 状态中文化 + 空态升级
+- workspace.html: loadOpsManual 状态由英文裸值(SUCCESS/FAILED)改中文(成功/失败/运行中/待执行/异常, 大写键); 空态纯文本→gov-empty。承 i18n + 空态范式。真机验证(真实数据) 状态列全中文"成功"无英文裸值。?v=u288。
