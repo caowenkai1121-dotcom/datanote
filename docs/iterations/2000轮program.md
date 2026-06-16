@@ -797,3 +797,6 @@
 
 ## R315 [UI重构·第186轮] 可点击磁贴 hover 抬升强化
 - gov-modern.css: .gov-stat.clickable 加 hover 抬升(translateY -2px)+主色描边+阴影(原与不可点磁贴外观无区别, 仅 cursor 不同)。首页驾驶舱/治理/主数据/指标消费 7+ KPI 磁贴点击可达性更明确(配合已有 role=button/tabindex/keydown)。真机验证 磁贴 transition 含border+cursor:pointer+role=button。截图确认首页视觉现代整洁。?v=u256。
+
+## R316 [UI重构·第187轮] AI 助手按钮 aria-label 补全
+- workspace.html: 顶栏 AI 助手图标按钮(aiLauncherBtn)补 aria-label="打开 AI 助手"(原仅 title, 读屏只读"AI"无意义)。至此顶栏全部图标按钮(命令面板/主题/密度/通知/AI)均有 aria-label+title。截图复核 datamodel 页视觉整洁(搜索/计数/排序/导出/徽标一致)。真机验证 aiLauncherBtn aria-label 生效。?v=u257。
