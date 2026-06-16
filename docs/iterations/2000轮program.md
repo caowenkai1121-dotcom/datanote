@@ -597,3 +597,6 @@
 
 ## R249 [UI重构·第120轮] 死代码清理(工作流3确认)
 - workspace.html: 删除7个确认零引用死函数: autoSaveCurrentTab/autoSaveDatabaseName(R235曾对其加catch,实为死码)/activateRightTab/switchRightTab/previewCron/padN(formatOneStatement内未用)/formatOneStatement_old(~245行legacy大块, 活版 formatOneStatement 仍用)。逐个 grep 验证仅定义无引用。真机验证 formatOneStatement 仍可用、SQL格式化正常、开发模块无破坏。净删~280行死码。?v=u190。
+
+## R250 [UI重构·第121轮] 加载态文本→骨架屏批(工作流3确认)
+- workspace.html: 6处高频静态加载占位"加载中..."→ws-skel骨架屏: 文件树#fileTree/欢迎页最近编辑#welcomeRecentList/运维概览#opsOverviewContent/质量规则#qualityRulesContent/同步仪表板表#dbsyncDashboardBody/深度对账#dbsyncChecksumBody。与全站骨架屏体系一致。真机验证开发模块文件树+欢迎页正常渲染。?v=u191。
