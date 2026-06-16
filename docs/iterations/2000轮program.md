@@ -742,3 +742,6 @@
 
 ## R297 [UI重构·第168轮] 主数据中心 末次子模块记忆
 - workspace.html: initMdmCenter 读 localStorage(dn.mdmTab) 回到上次主数据子模块(原恒为 overview), switchMdmModule 非深链点击持久化。与 R296 治理子模块记忆同范式。真机验证 选"黄金记录"→去首页→回主数据→仍"黄金记录"。复位 overview。?v=u238。
+
+## R298 [UI重构·第169轮] 数据运维 末次子tab记忆
+- workspace.html: switchOpsTab 持久化 localStorage(dn.opsTab); operations init 深链 optab 优先, 否则恢复上次运维子tab(概览/数据集成/调度/补数/基线)。与 R296/R297 同范式。真机验证 选"基线管理"→去首页→回运维→仍"基线管理"。已清测试态。?v=u239。
