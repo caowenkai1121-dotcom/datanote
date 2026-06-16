@@ -794,3 +794,6 @@
 
 ## R314 [UI重构·第185轮] 数据集成 建/改任务 防重复提交
 - workspace.html: dbsyncSaveJob 保存中禁用 #dbsyncFormModal .btn-primary 并显"保存中..."(成功/失败/异常均还原), 防表单慢保存误双击建重复任务(承 saveMetric/saveQualityRule 范式)。真机验证 创建弹窗打开+保存按钮解析; curl 确认守卫部署。?v=u255。
+
+## R315 [UI重构·第186轮] 可点击磁贴 hover 抬升强化
+- gov-modern.css: .gov-stat.clickable 加 hover 抬升(translateY -2px)+主色描边+阴影(原与不可点磁贴外观无区别, 仅 cursor 不同)。首页驾驶舱/治理/主数据/指标消费 7+ KPI 磁贴点击可达性更明确(配合已有 role=button/tabindex/keydown)。真机验证 磁贴 transition 含border+cursor:pointer+role=button。截图确认首页视觉现代整洁。?v=u256。

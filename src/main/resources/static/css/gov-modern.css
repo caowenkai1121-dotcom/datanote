@@ -130,7 +130,9 @@
 @media (max-width:760px){ :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-card-bd.split { grid-template-columns:1fr; } }
 
 /* ---- 磁贴增强：图标渐变、可点击 ---- */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.clickable { cursor:pointer; }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.clickable { cursor:pointer; transition:border-color var(--dur),box-shadow var(--dur),transform var(--dur); }
+/* R315: 可点击磁贴 hover 抬升+主色描边, 明确可点(原与不可点磁贴外观无别) */
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.clickable:hover { border-color:var(--primary); box-shadow:0 4px 14px rgba(0,0,0,.08); transform:translateY(-2px); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .ic { transition:transform var(--dur); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat:hover .ic { transform:scale(1.08); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-ok .ic { background:linear-gradient(135deg,rgba(43,138,75,.16),rgba(43,138,75,.06)); }
