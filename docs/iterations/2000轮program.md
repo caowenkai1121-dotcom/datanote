@@ -897,3 +897,6 @@
 
 ## R348 [UI重构·第219轮] 审计中心 类型列中文化
 - gov-audit.js: 审计中心"类型"pill 由英文枚举(LOGIN/DATA_ACCESS等)改 TYPE_LABEL 中文(登录/数据访问/权限变更...), CSV导出值同步中文。承 i18n 线(继 R347 监控审计预览)。真机验证 审计表类型列"登录/权限变更"无英文裸值。?v=u290。
+
+## R349 [UI重构·第220轮] 调度日期切换即刷新
+- workspace.html: 运维周期任务日期选择器加 onchange=schedRefreshStatus(切日期自动刷新当日调度状态, 原需手点"刷新")+title提示。人性化减一次点击。真机验证 schedRunDate onchange 已挂。?v=u291。
