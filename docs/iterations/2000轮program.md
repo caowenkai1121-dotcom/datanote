@@ -855,3 +855,6 @@
 
 ## R334 [UI重构·第205轮] 质量规则级别中文化(修英文裸显bug)
 - workspace.html: 质量规则"级别"列原显英文裸值(medium/warning/error混杂, 且color映射只认info/warning/error致medium无色)。改为中文化+双口径兼容(HIGH/MEDIUM/LOW=高/中/低 + 历史info/warning/error=提示/警告/错误, 大写键查统一), color/排序ord/CSV导出同步。真机验证 12行级别全中文(警告/中..), 无英文裸值。?v=u276。
+
+## R335 [UI重构·第206轮] 质量检查记录 计数 + 状态大小写健壮
+- workspace.html: renderQualityHistory 加"共 N 条检查记录(近50条)"计数; 运行状态查表改大小写不敏感(SUCCESS/success 均→通过, 防大写裸显, 承 R334 健壮性)。真机验证(合成2条) 计数"共2条" + SUCCESS→通过/failed→未达标 无英文裸值。?v=u277。
