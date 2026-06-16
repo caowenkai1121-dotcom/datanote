@@ -1033,3 +1033,6 @@
 
 ## R393 [UI重构·第264轮] 残余硬编码色清零(深色一致性)
 - workspace.html: dbsync 样本预览关闭按钮 hover(rgba(0,0,0,.06)深色无反馈)→var(--bg-hover); 数据集成/建表向导面板图标背景(rgba(47,158,68,.08))→var(--success-bg)。grep 确认 workspace.html 内这两类硬编码清零。承深色硬编码扫除体系(R211-213/R220/R392)。页面真机加载 0 错误。?v=u335。
+
+## R394 [UI重构·第265轮] AI助手终答一键复制
+- ai-agent.js: assistantBubble 实质终答(非错误且长度>12)右下角加"⧉ 复制"链接, 复制原始 markdown 文本(DN.copy execCommand 降级 HTTP 安全)。短确认/错误气泡不加。真机发问→终答气泡渲染复制链接, 点击复制 120 字回答原文。?v=u336。

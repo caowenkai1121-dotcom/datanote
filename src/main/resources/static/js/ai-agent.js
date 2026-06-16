@@ -22,8 +22,15 @@
 
   // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
   function assistantBubble(text, tone) {
+    var raw = String(text == null ? '' : text);
     var inner = DN.h('div', { class: 'ai-md dn-ai-bubble assistant' + (tone === 'err' ? ' err' : ''), style: 'width:fit-content;overflow-x:auto;' });
-    renderMarkdown(inner, String(text == null ? '' : text));
+    renderMarkdown(inner, raw);
+    // 实质终答加"复制"(复制原始 markdown 文本, DN.copy 带 execCommand 降级)
+    if (tone !== 'err' && raw.trim().length > 12) {
+      inner.appendChild(DN.h('div', { style: 'text-align:right;margin-top:6px;' }, [
+        DN.h('a', { href: 'javascript:void(0)', text: '⧉ 复制', title: '复制此回答', style: 'font-size:11px;color:var(--text-muted);text-decoration:none;', onclick: function () { if (window.DN && DN.copy) DN.copy(raw); } })
+      ]));
+    }
     return inner;
   }
 
