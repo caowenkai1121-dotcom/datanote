@@ -1051,3 +1051,6 @@
 
 ## R399 [UI重构·第270轮] SQL结果区最大化/还原切换
 - workspace.html: 结果工具栏加"最大化/还原"按钮(toggleResultMax: 当前高度与 ~72vh 间切换, 记 _resultPrevH 还原, 标签随之切换)。看大结果集一键铺满, 配 R366 拖拽高度持久化。真机验证 最大化→536px(72vh)/还原→200px + 标签切换。?v=u341。
+
+## R400 [UI重构·第271轮] 表字段明细"复制列名"(写SELECT用)
+- workspace.html: 数据地图表字段明细工具栏加"复制列名"(dmCopyFieldNames: 全字段名逗号拼接, 跳过空名, DN.copy silent + 自定义 toast"已复制N个字段名"), 直接粘进 SELECT 子句。配 R382搜索/导出CSV。真机设 dmFieldsData 验证 复制"user_id, user_name, created_at"跳过空名 + toast计数。?v=u342。
