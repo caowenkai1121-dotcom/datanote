@@ -852,3 +852,6 @@
 
 ## R333 [UI重构·第204轮] 指标表 非自明列头补 title 提示
 - workspace.html: 指标列表"新鲜度""数据来源"列头补 title 悬停说明(新鲜度=最近取值新鲜程度 最新/陈旧>26h/未取值; 数据来源=来源库表)。深度复核指标模块: 删除impact确认/启停confirm+toast/freshness badge tooltip/行交互/排序三可达 — 全完备。真机验证 两列头 title 生效。?v=u274。
+
+## R334 [UI重构·第205轮] 质量规则级别中文化(修英文裸显bug)
+- workspace.html: 质量规则"级别"列原显英文裸值(medium/warning/error混杂, 且color映射只认info/warning/error致medium无色)。改为中文化+双口径兼容(HIGH/MEDIUM/LOW=高/中/低 + 历史info/warning/error=提示/警告/错误, 大写键查统一), color/排序ord/CSV导出同步。真机验证 12行级别全中文(警告/中..), 无英文裸值。?v=u276。

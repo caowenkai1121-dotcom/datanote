@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u274">
-<link rel="stylesheet" href="css/gov-modern.css?v=u274">
-<link rel="stylesheet" href="css/redesign.css?v=u274">
-<link rel="stylesheet" href="css/dn-design.css?v=u274">
+<link rel="stylesheet" href="css/app.css?v=u276">
+<link rel="stylesheet" href="css/gov-modern.css?v=u276">
+<link rel="stylesheet" href="css/redesign.css?v=u276">
+<link rel="stylesheet" href="css/dn-design.css?v=u276">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u274">
+<link rel="stylesheet" href="css/modern.css?v=u276">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u274"></script>
-<script src="js/gov-assets.js?v=u274"></script>
-<script src="js/gov-lineage.js?v=u274"></script>
-<script src="js/gov-quality.js?v=u274"></script>
-<script src="js/gov-standard.js?v=u274"></script>
-<script src="js/gov-classification.js?v=u274"></script>
-<script src="js/gov-security.js?v=u274"></script>
-<script src="js/gov-health.js?v=u274"></script>
-<script src="js/gov-audit.js?v=u274"></script>
-<script src="js/gov-overview.js?v=u274"></script>
-<script src="js/gov-subject.js?v=u274"></script>
-<script src="js/gov-consumption.js?v=u274"></script>
-<script src="js/gov-govmap.js?v=u274"></script>
-<script src="js/project.js?v=u274"></script>
-<script src="js/datamodel.js?v=u274"></script>
-<script src="js/home-dashboard.js?v=u274"></script>
-<script src="js/mdm.js?v=u274"></script>
-<script src="js/mdm-ingest.js?v=u274"></script>
-<script src="js/mdm-survivorship.js?v=u274"></script>
-<script src="js/mdm-approval.js?v=u274"></script>
-<script src="js/mdm-refdata.js?v=u274"></script>
-<script src="js/mdm-quality.js?v=u274"></script>
-<script src="js/mdm-pubsub.js?v=u274"></script>
-<script src="js/mdm-hierarchy.js?v=u274"></script>
-<script src="js/ai-agent.js?v=u274"></script>
+<script src="js/dn-common.js?v=u276"></script>
+<script src="js/gov-assets.js?v=u276"></script>
+<script src="js/gov-lineage.js?v=u276"></script>
+<script src="js/gov-quality.js?v=u276"></script>
+<script src="js/gov-standard.js?v=u276"></script>
+<script src="js/gov-classification.js?v=u276"></script>
+<script src="js/gov-security.js?v=u276"></script>
+<script src="js/gov-health.js?v=u276"></script>
+<script src="js/gov-audit.js?v=u276"></script>
+<script src="js/gov-overview.js?v=u276"></script>
+<script src="js/gov-subject.js?v=u276"></script>
+<script src="js/gov-consumption.js?v=u276"></script>
+<script src="js/gov-govmap.js?v=u276"></script>
+<script src="js/project.js?v=u276"></script>
+<script src="js/datamodel.js?v=u276"></script>
+<script src="js/home-dashboard.js?v=u276"></script>
+<script src="js/mdm.js?v=u276"></script>
+<script src="js/mdm-ingest.js?v=u276"></script>
+<script src="js/mdm-survivorship.js?v=u276"></script>
+<script src="js/mdm-approval.js?v=u276"></script>
+<script src="js/mdm-refdata.js?v=u276"></script>
+<script src="js/mdm-quality.js?v=u276"></script>
+<script src="js/mdm-pubsub.js?v=u276"></script>
+<script src="js/mdm-hierarchy.js?v=u276"></script>
+<script src="js/ai-agent.js?v=u276"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9512,7 +9512,10 @@ function loadQualityRules() {
         return;
       }
       var typeLabels = { null_check:'空值检查', unique_check:'唯一性检查', value_range:'值域检查', regex_check:'正则检查', custom_sql:'自定义SQL' };
-      var severityColors = { info:'var(--primary)', warning:'var(--warning)', error:'var(--error)' };
+      // 级别兼容两套口径(HIGH/MEDIUM/LOW 为建规则表单口径; info/warning/error 为历史值), 统一大写键查
+      var severityColors = { HIGH:'var(--error)', MEDIUM:'var(--warning)', LOW:'var(--primary)', ERROR:'var(--error)', WARNING:'var(--warning)', INFO:'var(--primary)' };
+      var severityLabels = { HIGH:'高', MEDIUM:'中', LOW:'低', ERROR:'错误', WARNING:'警告', INFO:'提示' };
+      var sevKey = function(s) { return String(s || '').toUpperCase(); };
       var html = '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
         '<span style="position:relative;display:inline-flex;align-items:center;">' +
           '<input id="qualityRuleSearch" class="dbsync-form-input" style="width:240px;max-width:100%;padding-right:24px;" placeholder="搜索规则名/库表/字段/创建人" oninput="var c=document.getElementById(\'qrSearchClr\');if(c)c.style.display=this.value?\'\':\'none\';qualityFilterRules()">' +
@@ -9535,9 +9538,9 @@ function loadQualityRules() {
         '<th onclick="qualitySortBy(\'status\')" style="cursor:pointer;" title="点击排序">状态<span data-qrarr="status"> ⇅</span></th><th>操作</th>' +
         '</tr></thead><tbody>';
       rules.forEach(function(r) {
-        var sevColor = severityColors[r.severity] || 'var(--text-faint)';
+        var sevColor = severityColors[sevKey(r.severity)] || 'var(--text-faint)';
         var searchKey = ((r.ruleName || '') + ' ' + (r.databaseName || '') + '.' + (r.tableName || '') + ' ' + (r.columnName || '') + ' ' + (r.createdBy || '') + ' ' + (typeLabels[r.ruleType] || '')).toLowerCase();
-        var sevOrd = { error: 0, warning: 1, info: 2 }[r.severity] != null ? { error: 0, warning: 1, info: 2 }[r.severity] : 9;
+        var sevOrd = { HIGH: 0, ERROR: 0, MEDIUM: 1, WARNING: 1, LOW: 2, INFO: 2 }[sevKey(r.severity)]; if (sevOrd == null) sevOrd = 9;
         html += '<tr class="quality-rule-row" data-search="' + escapeHtml(searchKey) + '"' +
           ' data-s-name="' + escapeHtml((r.ruleName || '').toLowerCase()) + '"' +
           ' data-s-type="' + escapeHtml((typeLabels[r.ruleType] || r.ruleType || '')) + '"' +
@@ -9552,7 +9555,7 @@ function loadQualityRules() {
           '<td>' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</td>' +
           '<td>' + escapeHtml(r.columnName || '-') + '</td>' +
           '<td style="color:var(--text-muted);">' + escapeHtml(r.createdBy || '-') + '</td>' +
-          '<td><span style="color:' + sevColor + '">' + escapeHtml(r.severity || '') + '</span></td>' +
+          '<td><span style="color:' + sevColor + '">' + escapeHtml(severityLabels[sevKey(r.severity)] || r.severity || '') + '</span></td>' +
           '<td>' + (r.status === 1 ? '<span class="gov-pill is-ok">启用</span>' : '<span class="gov-pill is-muted">禁用</span>') + '</td>' +
           '<td class="quality-actions">' +
             '<button class="btn btn-sm" data-perm="governance:quality" onclick="runSingleQualityRule(' + r.id + ')">执行</button>' +
@@ -9589,11 +9592,12 @@ window.qualityExportCsv = function() {
   var rules = window._qualityRules || [];
   if (!rules.length) { showToast('暂无规则可导出', 'info'); return; }
   var typeLabels = { null_check:'空值检查', unique_check:'唯一性检查', value_range:'值域检查', regex_check:'正则检查', custom_sql:'自定义SQL' };
+  var sevLabels = { HIGH:'高', MEDIUM:'中', LOW:'低', ERROR:'错误', WARNING:'警告', INFO:'提示' };
   var cols = ['规则名称', '类型', '数据库', '表', '字段', '级别', '状态', '创建人'];
   var q = function(v) { v = (v == null ? '' : String(v)); return '"' + v.replace(/"/g, '""') + '"'; };
   var lines = [cols.map(q).join(',')];
   rules.forEach(function(r) {
-    lines.push([r.ruleName, typeLabels[r.ruleType] || r.ruleType, r.databaseName, r.tableName, r.columnName || '', r.severity, (r.status === 1 ? '启用' : '禁用'), r.createdBy || ''].map(q).join(','));
+    lines.push([r.ruleName, typeLabels[r.ruleType] || r.ruleType, r.databaseName, r.tableName, r.columnName || '', (sevLabels[String(r.severity || '').toUpperCase()] || r.severity), (r.status === 1 ? '启用' : '禁用'), r.createdBy || ''].map(q).join(','));
   });
   var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   var a = document.createElement('a');
