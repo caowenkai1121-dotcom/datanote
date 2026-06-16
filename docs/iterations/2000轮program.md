@@ -757,3 +757,6 @@
 
 ## R302 [UI重构·第173轮] 排序表头键盘可达(全站内联表)
 - workspace.html: dnA11yEnhance 选择器 + 全局 Enter/Space 处理器扩到 th[onclick](th 保留 columnheader 语义只补 tabindex, 不覆盖 role); renderMetricList/umRenderUsers/renderQualityRules + datamodel renderModels 渲染后调 dnA11yEnhance 使动态表头键盘可聚焦。此前可排序 th 仅鼠标可点。真机验证 指标表头 tabindex=0, 聚焦按 Enter 排序(⇅→▲)。?v=u243。
+
+## R303 [UI重构·第174轮] 指标/用户 表头 aria-sort(读屏宣告排序)
+- workspace.html: _mth(指标)/_uth(用户) 补 aria-sort(none/ascending/descending), 读屏可宣告当前排序方向(承 R302 键盘可达; th 保留 columnheader 语义故 aria-sort 有效)。真机验证 指标表头 aria-sort 随点击 none→ascending→descending。质量/模型(排序后置DOM)aria-sort 留作后续。?v=u244。
