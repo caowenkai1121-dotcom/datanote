@@ -925,3 +925,6 @@
 
 ## R357 [UI重构·第228轮] 表详情 tab 条 aria-selected
 - workspace.html: dmSwitchTab 切换时给 .datamap-detail-tab 设 aria-selected(选中true/其余false), 读屏宣告当前 tab(原仅 .active 视觉态)。真机验证 切"数据预览"→该tab aria-selected=true, 其余6个false。?v=u299。
+
+## R358 [UI重构·第229轮] 代码输入框 monospace
+- workspace.html: 质量规则自定义SQL(qrCustomSql)/规则配置JSON(qrConfig)/指标计算公式SQL(mFormula)加 font-family:monospace(代码/JSON 等宽更易读, 对齐数字; 承 dbsyncPreSql 已 monospace 范式)。真机验证 qrCustomSql/qrConfig computed fontFamily 含 mono。?v=u300。
