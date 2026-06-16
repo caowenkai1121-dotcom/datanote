@@ -586,10 +586,11 @@
       projShowModalBox('物理模型 DDL', h);
     }).catch(function () { toast('生成失败', 'error'); });
   };
-  window.dmCopyDdl = function () { try { navigator.clipboard.writeText(window.__dmDdl || ''); toast('已复制', 'success'); } catch (e) { toast('复制失败', 'error'); } };
+  // 用 DN.copy(带 execCommand 降级): 本站走 HTTP 非安全上下文, navigator.clipboard 多为 undefined, 直接调用会"复制失败"
+  window.dmCopyDdl = function () { DN.copy(window.__dmDdl || ''); };
   // 闭合 建模→DDL→开发 链路: 复制 DDL 并跳数据开发, 用户新建脚本粘贴即可写 ETL
   window.dmGotoDevelopWithDdl = function () {
-    try { navigator.clipboard.writeText(window.__dmDdl || ''); } catch (e) {}
+    DN.copy(window.__dmDdl || '', true); // silent: 下方有自定义引导 toast
     projCloseModalBox();
     if (window.navigateTo) navigateTo('develop');
     toast('DDL 已复制，到数据开发新建脚本粘贴即可', 'success');

@@ -45,20 +45,20 @@
     }, 2600);
   };
 
-  /** 复制文本到剪贴板：优先 navigator.clipboard，降级 textarea+execCommand */
-  DN.copy = function (text) {
+  /** 复制文本到剪贴板：优先 navigator.clipboard，降级 textarea+execCommand。silent=true 不弹 toast(调用方自定义反馈) */
+  DN.copy = function (text, silent) {
     text = String(text == null ? '' : text);
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () { DN.toast('已复制', 'ok'); }, function () { DN.toast('复制失败', 'err'); });
+        navigator.clipboard.writeText(text).then(function () { if (!silent) DN.toast('已复制', 'ok'); }, function () { if (!silent) DN.toast('复制失败', 'err'); });
         return;
       }
     } catch (e) {}
     try {
       var ta = document.createElement('textarea'); ta.value = text;
       ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta); DN.toast('已复制', 'ok');
-    } catch (e2) { DN.toast('复制失败', 'err'); }
+      document.execCommand('copy'); document.body.removeChild(ta); if (!silent) DN.toast('已复制', 'ok');
+    } catch (e2) { if (!silent) DN.toast('复制失败', 'err'); }
   };
 
   /** DOM 简化器：DN.h('div', {class:'x', onclick:fn}, [child|text]) */

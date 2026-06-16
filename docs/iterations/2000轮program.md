@@ -976,3 +976,6 @@
 
 ## R374 [UI重构·第245轮] 修复 Monaco run-sql action 重复注册(R360回归)
 - workspace.html: R360 加 Ctrl+Enter 运行 action 时与已存在的 id='run-sql' 重复注册了两次(均 CtrlCmd|Enter), 删早先无 contextMenuGroupId 的那个, 保留带右键菜单分组的。死码清理, 功能不变。真机新建脚本加载 Monaco 验证 run/save/format 三 action 均存在。?v=u316。
+
+## R375 [UI重构·第246轮] 修复HTTP下DDL复制失效 + DN.copy加silent参
+- **真bug**: 本站走 HTTP 非安全上下文, navigator.clipboard 为 undefined(真机实测 clipboardDefined=false)。datamodel.js dmCopyDdl/dmGotoDevelopWithDdl 直调 navigator.clipboard.writeText → 抛错 → "复制失败"(DDL 复制功能在服务器上一直坏)。改走 DN.copy(已有 textarea+execCommand 降级)。dn-common.js DN.copy 加 silent 可选参(dmGotoDevelopWithDdl 自带引导 toast 故静默复制免双 toast)。真机验证 execCommand 降级被调用、silent 不弹 toast、dmCopyDdl 成功复制。?v=u317。
