@@ -1162,3 +1162,6 @@
 
 ## R436 [UI重构·第307轮] SQL运行破坏性语句二次确认(安全)
 - workspace.html: runTask 检测 DROP/TRUNCATE/DELETE FROM/ALTER TABLE 等破坏性 SQL → msgConfirm 二次确认(再入式 _skipConfirm 一次性放行重跑), 防误删/误改不可恢复。SELECT/WITH 不拦。真机 Monaco 验证 DROP触发确认+取消不执行、SELECT直接跑。?v=u377。
+
+## R437 [UI重构·第308轮] dbsync预览浮层Esc关闭
+- workspace.html: dbsyncShowPreview(样本/DDL预览浮层)补 Esc 关闭(keydown Escape→remove overlay+解绑), 原仅遮罩点击关闭。弹窗 Esc 一致性收口。curl 确认部署含逻辑(函数模块私有不可直调, 范式同已验证 R273/R331)。?v=u378。
