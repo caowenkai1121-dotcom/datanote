@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u331">
-<link rel="stylesheet" href="css/gov-modern.css?v=u331">
-<link rel="stylesheet" href="css/redesign.css?v=u331">
-<link rel="stylesheet" href="css/dn-design.css?v=u331">
+<link rel="stylesheet" href="css/app.css?v=u332">
+<link rel="stylesheet" href="css/gov-modern.css?v=u332">
+<link rel="stylesheet" href="css/redesign.css?v=u332">
+<link rel="stylesheet" href="css/dn-design.css?v=u332">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u331">
+<link rel="stylesheet" href="css/modern.css?v=u332">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u331"></script>
-<script src="js/gov-assets.js?v=u331"></script>
-<script src="js/gov-lineage.js?v=u331"></script>
-<script src="js/gov-quality.js?v=u331"></script>
-<script src="js/gov-standard.js?v=u331"></script>
-<script src="js/gov-classification.js?v=u331"></script>
-<script src="js/gov-security.js?v=u331"></script>
-<script src="js/gov-health.js?v=u331"></script>
-<script src="js/gov-audit.js?v=u331"></script>
-<script src="js/gov-overview.js?v=u331"></script>
-<script src="js/gov-subject.js?v=u331"></script>
-<script src="js/gov-consumption.js?v=u331"></script>
-<script src="js/gov-govmap.js?v=u331"></script>
-<script src="js/project.js?v=u331"></script>
-<script src="js/datamodel.js?v=u331"></script>
-<script src="js/home-dashboard.js?v=u331"></script>
-<script src="js/mdm.js?v=u331"></script>
-<script src="js/mdm-ingest.js?v=u331"></script>
-<script src="js/mdm-survivorship.js?v=u331"></script>
-<script src="js/mdm-approval.js?v=u331"></script>
-<script src="js/mdm-refdata.js?v=u331"></script>
-<script src="js/mdm-quality.js?v=u331"></script>
-<script src="js/mdm-pubsub.js?v=u331"></script>
-<script src="js/mdm-hierarchy.js?v=u331"></script>
-<script src="js/ai-agent.js?v=u331"></script>
+<script src="js/dn-common.js?v=u332"></script>
+<script src="js/gov-assets.js?v=u332"></script>
+<script src="js/gov-lineage.js?v=u332"></script>
+<script src="js/gov-quality.js?v=u332"></script>
+<script src="js/gov-standard.js?v=u332"></script>
+<script src="js/gov-classification.js?v=u332"></script>
+<script src="js/gov-security.js?v=u332"></script>
+<script src="js/gov-health.js?v=u332"></script>
+<script src="js/gov-audit.js?v=u332"></script>
+<script src="js/gov-overview.js?v=u332"></script>
+<script src="js/gov-subject.js?v=u332"></script>
+<script src="js/gov-consumption.js?v=u332"></script>
+<script src="js/gov-govmap.js?v=u332"></script>
+<script src="js/project.js?v=u332"></script>
+<script src="js/datamodel.js?v=u332"></script>
+<script src="js/home-dashboard.js?v=u332"></script>
+<script src="js/mdm.js?v=u332"></script>
+<script src="js/mdm-ingest.js?v=u332"></script>
+<script src="js/mdm-survivorship.js?v=u332"></script>
+<script src="js/mdm-approval.js?v=u332"></script>
+<script src="js/mdm-refdata.js?v=u332"></script>
+<script src="js/mdm-quality.js?v=u332"></script>
+<script src="js/mdm-pubsub.js?v=u332"></script>
+<script src="js/mdm-hierarchy.js?v=u332"></script>
+<script src="js/ai-agent.js?v=u332"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -13907,7 +13907,7 @@ window.dbsyncOnModeChange = function() {
 function dbsyncRenderFieldMapHtml(fields, targetColumns) {
   var hasTgtCols = targetColumns && targetColumns.length > 0;
   var html = '<table class="dfs-field-map-table"><thead><tr>'
-    + '<th style="width:32px;">同步</th><th style="min-width:140px;">源字段</th><th style="width:20px;text-align:center;">→</th><th style="min-width:140px;">目标字段</th>'
+    + '<th style="width:38px;text-align:center;" title="全选 / 取消全部同步"><input type="checkbox" class="dfs-fm-sync-all" checked onchange="dbsyncToggleAllSync(this)"></th><th style="min-width:140px;">源字段</th><th style="width:20px;text-align:center;">→</th><th style="min-width:140px;">目标字段</th>'
     + '<th style="width:90px;font-size:var(--fs-xs);">空值处理</th><th style="width:90px;font-size:var(--fs-xs);">默认值</th>'
     + '<th style="width:110px;font-size:var(--fs-xs);">转换</th><th style="width:80px;font-size:var(--fs-xs);">脱敏</th>'
     + '<th style="width:28px;"></th>'
@@ -14141,6 +14141,12 @@ window.dbsyncOnTgtTableChange = function(input) {
 window.dbsyncDelFieldMapRow = function(btn) {
   var tr = btn.closest('.dfs-field-map-row');
   if (tr) tr.remove();
+};
+// 表头"同步"全选/取消: 仅作用于本字段映射表
+window.dbsyncToggleAllSync = function(el) {
+  var tbl = el.closest('table');
+  if (!tbl) return;
+  tbl.querySelectorAll('.dfs-fm-sync').forEach(function(cb) { cb.checked = el.checked; });
 };
 
 /* ---------- 多表配置行 ---------- */

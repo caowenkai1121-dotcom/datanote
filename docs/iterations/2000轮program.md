@@ -1021,3 +1021,6 @@
 
 ## R389 [UI重构·第260轮] 脚本审批搜索清除×+无匹配反馈
 - workspace.html: 脚本审批中心搜索框(saprSearch)加清除"×"; saprApplySearch 加无匹配反馈行(#saprNoMatch, colspan 取首行列数)。完成即时搜索清除×backlog(仅余 dbsyncDetailLogKw 日志关键字过滤, 价值低暂不做)。真机(u331)验证 无匹配行创建/清除移除/行恢复。**验证教训: 改后须导航到新?v页面再测, 否则旧缓存函数致假阴**。?v=u331。
+
+## R390 [UI重构·第261轮] 字段映射"同步"列表头全选
+- workspace.html: dbsync 字段映射表"同步"列表头改为全选复选框(dbsyncToggleAllSync, 仅作用于 el.closest('table') 本表, 多表互不干扰), 多字段时一键全选/取消同步, 免逐行点。真机构造字段映射表验证 取消全选→全不勾, 再全选→全勾。?v=u332。
