@@ -730,3 +730,6 @@
 
 ## R293 [UI重构·第164轮] 数据模型 主题域树 选中态强化
 - datamodel.js: 主题域(L1-L5)树选中节点由原 --bg-hover(与悬停同色, 选中不明显)改为强化态 DM_SEL_STYLE(主色淡底 primary-bg + 左强调条 inset 3px primary + 加粗 600), "全部主题域"与各级节点统一。当前选中一目了然。真机验证 默认"全部主题域"节点 boxShadow inset + fontWeight 600 + primary-bg。?v=u234。
+
+## R294 [UI重构·第165轮] AI助手 定时/经验/审批面板 计数
+- ai-agent.js: renderCrons/renderMemories/renderApprovals 列表前加计数("共 N 个定时任务"/"共 N 条沉淀经验"/"共 N 项待审批")。承全站计数范式。验证: memories API 返实数据, curl 确认 3 处计数已部署(面板需 AI 面板交互打开, 未点穿; 计数为已验证范式同款)。?v=u235。

@@ -688,6 +688,7 @@
       body.innerHTML = '';
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无定时任务。可对 AI 说“每天9点生成治理简报”等让它自动排程。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
+      body.appendChild(DN.h('div', { text: '共 ' + arr.length + ' 个定时任务', style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
       arr.forEach(function (j) {
         var on = Number(j.enabled) === 1;
         var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--bg-body);' + (on ? '' : 'opacity:.62;') });
@@ -713,6 +714,7 @@
       body.innerHTML = '';
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
+      body.appendChild(DN.h('div', { text: '共 ' + arr.length + ' 条沉淀经验', style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
       arr.forEach(function (m) {
         var isSkill = m.type === 'skill';
         var isReview = m.type === 'review';
@@ -742,6 +744,7 @@
       body.innerHTML = '';
       var arr = list || [];
       if (!arr.length) { body.appendChild(DN.h('div', { text: '没有待审批的写操作。', style: 'color:var(--text-muted);font-size:13px;' })); return; }
+      body.appendChild(DN.h('div', { text: '共 ' + arr.length + ' 项待审批', style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
       arr.forEach(function (a) {
         var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;' });
         card.appendChild(DN.h('div', {}, [
