@@ -833,3 +833,6 @@
 
 ## R327 [UI重构·第198轮] 质量规则空态升级(gov-empty+图标+CTA)
 - workspace.html: 质量规则"暂无规则"空态由纯文本升级为 gov-empty(对勾盾图标+标题+说明+"＋ 新建规则"按钮), 与指标/项目/模型/数据集成空态范式统一。真机验证 window.showAddRuleDialog 存在, gov-empty 渲染。?v=u268。
+
+## R328 [UI重构·第199轮] 检查记录/基线 空态升级 gov-empty
+- workspace.html: 质量检查记录(2处)、运维基线 空态由纯文本升级 gov-empty(图标+标题+说明; 基线带"＋新建基线"CTA)。承 R327 空态范式统一。真机验证 基线空态渲染"暂无基线"+CTA(window.showCreateBaselineDialog存在), hasTable=false 确认空态分支。?v=u269。
