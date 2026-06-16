@@ -421,6 +421,13 @@
       });
       data.slice((page - 1) * pageSize, page * pageSize).forEach(function (r) {
         var tr = document.createElement('tr');
+        if (typeof o.onRow === 'function') {
+          tr.style.cursor = 'pointer';
+          tr.setAttribute('role', 'button'); tr.setAttribute('tabindex', '0');
+          var _fire = function (e) { if (e.target && e.target.closest && e.target.closest('a,button,input,select,label')) return; o.onRow(r); };
+          tr.addEventListener('click', _fire);
+          tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); o.onRow(r); } });
+        }
         cols.forEach(function (c) {
           var td = document.createElement('td'); if (c.align) { td.style.textAlign = c.align; if (c.align === 'right') td.style.fontVariantNumeric = 'tabular-nums'; }
           var cell = c.render ? c.render(r) : (r[c.key] == null ? '' : r[c.key]);

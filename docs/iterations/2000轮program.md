@@ -717,3 +717,7 @@
 
 ## R289 [UI重构·第160轮] 数据开发 文件树搜索 高亮+无匹配反馈
 - workspace.html: filterFileTree 补 文件名命中高亮(_hl, 原名存 data-orig 清空还原, <mark>) + 无匹配反馈(_ftSetNoMatch "无匹配节点", 原静默空树)。承全站搜索高亮范式。真机验证 28文件搜"本地"→1高亮; "zzznomatchxyz"→显无匹配; 清空→复原28且高亮清除。?v=u230。
+
+## R290 [UI重构·第161轮] DN.table 行点击支持 + 主数据域行点击下钻
+- dn-common.js: DN.table 加 onRow 选项(opt-in 向后兼容): 行 cursor:pointer + role=button/tabindex/Enter键, 点击触发 onRow(r); 内部点 a/button/input/select/label 不触发(动作链接照常)。
+- mdm.js: 主数据「域与实体建模」域表接 onRow→下钻该域实体(与"域名链接/实体按钮"同效)。真机验证 13域行可点(cursor:pointer/role=button), 整行点击下钻进 "SKU商品主数据RT13 · 实体"。?v=u231。

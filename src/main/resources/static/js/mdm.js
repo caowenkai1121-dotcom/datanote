@@ -154,7 +154,8 @@
               return box;
             } }
         ],
-        rows: rows, pageSize: 15, searchKeys: ['domainCode', 'domainName', 'category', 'owner'], searchPlaceholder: '搜索域编码/名称/类别/负责人', exportName: '主数据域'
+        rows: rows, pageSize: 15, searchKeys: ['domainCode', 'domainName', 'category', 'owner'], searchPlaceholder: '搜索域编码/名称/类别/负责人', exportName: '主数据域',
+        onRow: function (r) { _selDomain = r; _selEntity = null; renderModeling(c); }
       }));
     }).catch(function (e) {
       card.body.innerHTML = '';
