@@ -937,3 +937,6 @@
 
 ## R361 [UI重构·第232轮] SQL编辑器工具栏快捷键提示
 - workspace.html: 运行/保存/格式化 工具栏按钮加 title 显快捷键(Ctrl+Enter/Ctrl+S/Ctrl+Shift+F), 帮助面板"数据开发"组补格式化项, 提升快捷键可发现性。真机验证 三按钮 title 含对应快捷键。?v=u303。
+
+## R362 [UI重构·第233轮] SQL结果 一键复制(TSV)
+- workspace.html: 执行结果工具栏加"复制"按钮(copyResultTSV: 表头+数据制表符分隔, 直接粘进 Excel/表格; 单元内 tab/换行替空格防错位; 上限500行)。区别于"下载CSV"(无文件即得)。真机验证 复制内容含tab、3行(头+2)、单元tab已净化。?v=u304。
