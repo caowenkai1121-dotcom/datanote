@@ -827,3 +827,6 @@
 
 ## R325 [UI重构·第196轮] 数据集成"无匹配任务"空态 一键清空筛选
 - workspace.html: 数据集成无匹配任务空态加"清空筛选"(dbsyncClearFilters: 搜索+状态(→ALL+localStorage)+目录(→0)+重渲文件夹页签→重过滤)。承指标/项目清空筛选范式。真机验证 dbsyncClearFilters 清空搜索+状态localStorage复位ALL。?v=u266。
+
+## R326 [UI重构·第197轮] 表详情收藏按钮 ★/☆ 图标 + toast 反馈
+- workspace.html: 数据地图表详情收藏按钮加 ★(已收藏)/☆(未收藏)图标(与项目列表★/☆收藏一致, 一眼辨状态), dmToggleFavorite 加 toast 操作反馈(原静默)。深度复核表详情视图: 返回/13动作按钮(flex-wrap不裁切)/8 tab/字段搜索计数导出/per字段编辑(保存默认display:none正确, 非bug已核实)/收藏态反射 — 均完备。真机验证 收藏按钮显"☆ 收藏"含星标。?v=u267。

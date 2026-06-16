@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u266">
-<link rel="stylesheet" href="css/gov-modern.css?v=u266">
-<link rel="stylesheet" href="css/redesign.css?v=u266">
-<link rel="stylesheet" href="css/dn-design.css?v=u266">
+<link rel="stylesheet" href="css/app.css?v=u267">
+<link rel="stylesheet" href="css/gov-modern.css?v=u267">
+<link rel="stylesheet" href="css/redesign.css?v=u267">
+<link rel="stylesheet" href="css/dn-design.css?v=u267">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u266">
+<link rel="stylesheet" href="css/modern.css?v=u267">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u266"></script>
-<script src="js/gov-assets.js?v=u266"></script>
-<script src="js/gov-lineage.js?v=u266"></script>
-<script src="js/gov-quality.js?v=u266"></script>
-<script src="js/gov-standard.js?v=u266"></script>
-<script src="js/gov-classification.js?v=u266"></script>
-<script src="js/gov-security.js?v=u266"></script>
-<script src="js/gov-health.js?v=u266"></script>
-<script src="js/gov-audit.js?v=u266"></script>
-<script src="js/gov-overview.js?v=u266"></script>
-<script src="js/gov-subject.js?v=u266"></script>
-<script src="js/gov-consumption.js?v=u266"></script>
-<script src="js/gov-govmap.js?v=u266"></script>
-<script src="js/project.js?v=u266"></script>
-<script src="js/datamodel.js?v=u266"></script>
-<script src="js/home-dashboard.js?v=u266"></script>
-<script src="js/mdm.js?v=u266"></script>
-<script src="js/mdm-ingest.js?v=u266"></script>
-<script src="js/mdm-survivorship.js?v=u266"></script>
-<script src="js/mdm-approval.js?v=u266"></script>
-<script src="js/mdm-refdata.js?v=u266"></script>
-<script src="js/mdm-quality.js?v=u266"></script>
-<script src="js/mdm-pubsub.js?v=u266"></script>
-<script src="js/mdm-hierarchy.js?v=u266"></script>
-<script src="js/ai-agent.js?v=u266"></script>
+<script src="js/dn-common.js?v=u267"></script>
+<script src="js/gov-assets.js?v=u267"></script>
+<script src="js/gov-lineage.js?v=u267"></script>
+<script src="js/gov-quality.js?v=u267"></script>
+<script src="js/gov-standard.js?v=u267"></script>
+<script src="js/gov-classification.js?v=u267"></script>
+<script src="js/gov-security.js?v=u267"></script>
+<script src="js/gov-health.js?v=u267"></script>
+<script src="js/gov-audit.js?v=u267"></script>
+<script src="js/gov-overview.js?v=u267"></script>
+<script src="js/gov-subject.js?v=u267"></script>
+<script src="js/gov-consumption.js?v=u267"></script>
+<script src="js/gov-govmap.js?v=u267"></script>
+<script src="js/project.js?v=u267"></script>
+<script src="js/datamodel.js?v=u267"></script>
+<script src="js/home-dashboard.js?v=u267"></script>
+<script src="js/mdm.js?v=u267"></script>
+<script src="js/mdm-ingest.js?v=u267"></script>
+<script src="js/mdm-survivorship.js?v=u267"></script>
+<script src="js/mdm-approval.js?v=u267"></script>
+<script src="js/mdm-refdata.js?v=u267"></script>
+<script src="js/mdm-quality.js?v=u267"></script>
+<script src="js/mdm-pubsub.js?v=u267"></script>
+<script src="js/mdm-hierarchy.js?v=u267"></script>
+<script src="js/ai-agent.js?v=u267"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -735,7 +735,7 @@
             </div>
             <div class="datamap-detail-actions">
               <button class="btn btn-sm btn-primary" onclick="dmAskAi()" title="让 AI 智能体分析此表(资产/质量/血缘/敏感)">AI 分析此表</button>
-              <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">收藏</button>
+              <button class="btn btn-sm" id="dmFavBtn" onclick="dmToggleFavorite()">☆ 收藏</button>
               <button class="btn btn-sm" onclick="DN.copy(dmCurrentDb + '.' + dmCurrentTable)" title="复制 库.表 名, 可直接粘进 SQL">复制表名</button>
               <button class="btn btn-sm" data-perm="catalog:edit" onclick="dmEditTableMeta()" title="维护负责人/重要性/标签">编辑信息</button>
               <button class="btn btn-sm" onclick="dmGenDDL()">生成建表语句</button>
@@ -8022,7 +8022,7 @@ function dmOpenTable(db, table) {
       // 收藏按钮
       var favBtn = document.getElementById('dmFavBtn');
       if (favBtn) {
-        favBtn.textContent = d.favorited ? '取消收藏' : '收藏';
+        favBtn.textContent = d.favorited ? '★ 已收藏' : '☆ 收藏';   // ★/☆ 与项目列表收藏一致, 一眼辨状态
         favBtn.className = d.favorited ? 'btn btn-sm btn-primary' : 'btn btn-sm';
       }
       // 评论数
@@ -8190,8 +8190,9 @@ function dmToggleFavorite() {
     var fav = res.data && res.data.favorited;
     var btn = document.getElementById('dmFavBtn');
     if (!btn) return;
-    btn.textContent = fav ? '取消收藏' : '收藏';
+    btn.textContent = fav ? '★ 已收藏' : '☆ 收藏';
     btn.className = fav ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+    showToast(fav ? '已收藏该表' : '已取消收藏', fav ? 'success' : 'info');   // 操作反馈(原静默)
   }).catch(function(err){ msgBox('操作失败: ' + ((err && err.message) || '请检查网络')); });
 }
 
