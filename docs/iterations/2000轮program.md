@@ -600,3 +600,6 @@
 
 ## R250 [UI重构·第121轮] 加载态文本→骨架屏批(工作流3确认)
 - workspace.html: 6处高频静态加载占位"加载中..."→ws-skel骨架屏: 文件树#fileTree/欢迎页最近编辑#welcomeRecentList/运维概览#opsOverviewContent/质量规则#qualityRulesContent/同步仪表板表#dbsyncDashboardBody/深度对账#dbsyncChecksumBody。与全站骨架屏体系一致。真机验证开发模块文件树+欢迎页正常渲染。?v=u191。
+
+## R251 [UI重构·第122轮] closeAllDrawers 死查询清理(工作流3确认)
+- dn-common.js: DN.closeAllDrawers 删除 querySelectorAll('.dn-ai-mask, .dn-ai-drawer') 死查询(AI抽屉已统一为.gov-drawer, 上方已处理; 该选择器永不命中却每次导航都跑)。真机验证 closeAllDrawers 无异常。其余 perf 项(projResetFilters/collectAttrRows/projOpenDetail 微优化)经判断为非热路径/无实益, 按极简不改。**至此三轮工作流(共~88确认项)全部处置完毕(实修+合理否决)**。?v=u192。

@@ -490,9 +490,7 @@
     if (DN._drawerKey) { document.removeEventListener('keydown', DN._drawerKey); DN._drawerKey = null; }
     var gm = document.getElementById('govDrawerMask'); if (gm) gm.remove();
     Array.prototype.forEach.call(document.querySelectorAll('.gov-drawer'), function (d) { if (d.parentNode) d.remove(); });
-    // 2) AI 智能体抽屉(局部 closeDrawer 不可外部调用,直接移除其 DOM)
-    Array.prototype.forEach.call(document.querySelectorAll('.dn-ai-mask, .dn-ai-drawer'), function (d) { if (d.parentNode) d.remove(); });
-    // 3) 静态抽屉(项目详情/同步详情)走各自 close(含其状态清理),不存在则忽略
+    // 2) 静态抽屉(项目详情/同步详情)走各自 close(含其状态清理),不存在则忽略; AI抽屉已统一为 .gov-drawer(上方已处理)
     try { if (typeof window.projCloseDetail === 'function') window.projCloseDetail(); } catch (e) {}
     try { if (typeof window.dbsyncCloseDetail === 'function') window.dbsyncCloseDetail(); } catch (e) {}
   };
