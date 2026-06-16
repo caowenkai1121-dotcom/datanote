@@ -903,3 +903,6 @@
 
 ## R350 [UI重构·第221轮] 手动任务日期筛选即时应用
 - workspace.html: 手动任务 起/止日期(opsManualFrom/To)加 onchange=loadOpsManual(改日期即查, 原需手点"查询"; 任务下拉本就onchange)。承日期即时刷新范式(R349)。真机验证 两日期 onchange 已挂。?v=u292。
+
+## R351 [UI重构·第222轮] 主题域树节点键盘可达
+- datamodel.js: renderSubjectTree 渲染后调 dnA11yEnhance, 动态树节点(div[onclick])补 role=button+tabindex(原动态渲染漏过一次性 dnA11yEnhance, 仅鼠标可点)。全局Enter委托激活。承动态侧栏a11y范式(R290/R300/R317)。真机验证 树节点 role=button/tabindex=0。?v=u293。

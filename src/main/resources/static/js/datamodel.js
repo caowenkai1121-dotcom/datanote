@@ -74,6 +74,7 @@
     var h = '<div style="padding:4px 8px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (DM.curSubject == null ? DM_SEL_STYLE : '') + '" onclick="dmSetSubject(null)">全部主题域</div>';
     h += renderSubNodes(DM.subjects, 0);
     box.innerHTML = h;
+    if (window.dnA11yEnhance) dnA11yEnhance(box);   // 动态树节点(div[onclick])补键盘可达
   }
   function renderSubNodes(nodes, depth) {
     if (!nodes || !nodes.length) return '';
