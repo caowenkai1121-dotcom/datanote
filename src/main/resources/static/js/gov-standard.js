@@ -309,7 +309,7 @@
               ]);
             } }
         ],
-        rows: data || [], searchKeys: ['elementCode', 'nameCn'], searchPlaceholder: '搜索编码/中文名',
+        rows: data || [], searchKeys: ['elementCode', 'nameCn', 'dataType', 'valueDomain'], searchPlaceholder: '搜索编码/中文名/类型/值域',
         empty: '暂无数据元，使用上方表单新增', emptyIcon: 'doc'
       }));
     }).catch(function (e) { list.innerHTML = ''; list.appendChild(DN.errorBox('加载失败：' + (e && e.message || '未知错误'), function () { body.innerHTML = ''; renderElements(body); })); });

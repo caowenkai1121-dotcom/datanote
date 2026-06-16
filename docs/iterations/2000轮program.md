@@ -1039,3 +1039,6 @@
 
 ## R395 [UI重构·第266轮] AI代码块ChatGPT式复制按钮
 - ai-agent.js: renderMarkdown 代码块(```)右上角加"复制"按钮(position:absolute, 复制纯代码 buf.join, stopPropagation 防触发气泡, DN.copy execCommand 降级)。SQL/代码一键取用。真机请 AI 返回代码块验证 pre 含复制按钮, 点击复制"SELECT 1 FROM dual;"。?v=u337。
+
+## R396 [UI重构·第267轮] 数据元搜索扩展到类型/值域
+- gov-standard.js: 数据元清单 searchKeys 由 [编码,中文名] 扩为 [编码,中文名,类型,值域](列里有但原不可搜), placeholder 同步"搜索编码/中文名/类型/值域"。可按 STRING/VARCHAR 等类型快速筛选。真机验证 搜"STRING"→16筛到12行且全部命中类型列。?v=u338。
