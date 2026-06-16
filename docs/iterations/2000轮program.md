@@ -1045,3 +1045,6 @@
 
 ## R397 [UI重构·第268轮] 黄金记录按字段值搜索
 - mdm.js: 黄金记录清单 searchKeys 加 dataJson(原仅 bizKey/sourceSystem), placeholder→"搜索业务主键/来源/字段值"。可按记录任意属性值(如姓名/城市)定位主数据记录。真机构造含 dataJson 的 DN.table 验证 搜"上海"(仅在dataJson)精确筛出对应行。?v=u339。
+
+## R398 [UI重构·第269轮] 资产清单/冷数据表按来源类型搜索
+- gov-assets.js: 资产清单(assetTbl)+冷数据治理建议表 searchKeys 加 dbType(来源列有却不可文本搜), placeholder 同步加"来源"。可文本框直接搜 HIVE/MYSQL 等来源。真机 DN.table 验证 搜"HIVE"精确筛出 HIVE 表。承搜索域扩展(R396数据元/R397黄金记录)。?v=u340。
