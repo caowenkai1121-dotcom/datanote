@@ -1072,3 +1072,6 @@
 
 ## R406 [UI重构·第277轮] 运行日志一键复制
 - workspace.html: 运行日志 tab 加"复制"按钮(copyRunLog 复制 logArea innerText, 分享报错给同事用; DN.copy execCommand 降级), 与"清空"同在日志 tab 显示(resultToggleActionBtns 同步切换)。配 R362结果复制/R364清空。真机验证 复制含INFO+ERROR全文+toast, 日志tab按钮可见性正确。?v=u348。
+
+## R407 [UI重构·第278轮] ?帮助浮层同步本批新增交互
+- workspace.html: ?快捷键帮助面板 通用交互组补"双击结果单元格(复制)/右键结果列头(复制整列/筛选/搜索)", 数据开发组补"中键点击标签页(关闭)/标签栏+按钮(新建空白脚本)"。承文档同步(R266)。真机触发?浮层验证 4 新条目均在。?v=u349。
