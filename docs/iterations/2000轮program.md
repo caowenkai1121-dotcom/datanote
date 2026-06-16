@@ -733,3 +733,6 @@
 
 ## R294 [UI重构·第165轮] AI助手 定时/经验/审批面板 计数
 - ai-agent.js: renderCrons/renderMemories/renderApprovals 列表前加计数("共 N 个定时任务"/"共 N 条沉淀经验"/"共 N 项待审批")。承全站计数范式。验证: memories API 返实数据, curl 确认 3 处计数已部署(面板需 AI 面板交互打开, 未点穿; 计数为已验证范式同款)。?v=u235。
+
+## R295 [UI重构·第166轮] 数据开发 文件树筛选偏好持久化
+- workspace.html: 文件树筛选(全部/我的/已上线)choice 持久化 localStorage(dn.treeFilter), 抽 _syncTreeFilterBtns 选中态同步函数, loadFileTree 启动回显。原每次刷新重置为"全部", 偏好"我的"的用户需反复点。承 dbsync.jobsView/projFilters 偏好持久化范式。真机验证 设"我的"→刷新→仍"我的"(按钮+变量同步), 复位"全部"。?v=u236。
