@@ -900,3 +900,6 @@
 
 ## R349 [UI重构·第220轮] 调度日期切换即刷新
 - workspace.html: 运维周期任务日期选择器加 onchange=schedRefreshStatus(切日期自动刷新当日调度状态, 原需手点"刷新")+title提示。人性化减一次点击。真机验证 schedRunDate onchange 已挂。?v=u291。
+
+## R350 [UI重构·第221轮] 手动任务日期筛选即时应用
+- workspace.html: 手动任务 起/止日期(opsManualFrom/To)加 onchange=loadOpsManual(改日期即查, 原需手点"查询"; 任务下拉本就onchange)。承日期即时刷新范式(R349)。真机验证 两日期 onchange 已挂。?v=u292。
