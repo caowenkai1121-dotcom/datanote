@@ -321,12 +321,14 @@
         + (m.sourceModelName ? ' · 溯源: ' + esc(m.sourceModelName) : '')
         + (m.description ? '<div style="margin-top:4px;">' + esc(m.description) + '</div>' : '') + '</div>'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><b style="font-size:13px;">实体</b>'
+        + '<span style="font-size:12px;color:var(--text-muted);">' + ((m.entities || []).length) + ' 个</span>'
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddEntity(' + m.id + ')">+ 实体</button>' : '')
         + '<button class="btn btn-sm" onclick="dmShowER(' + m.id + ')" style="margin-left:auto;">🔗 ER 图</button>'
         + '<button class="btn btn-sm" onclick="dmShowVersions(' + m.id + ')">🕑 版本历史</button>'
         + '<button class="btn btn-sm" data-perm="data:grant" onclick="window.openDataAclModal && openDataAclModal(\'MODEL\',' + m.id + ',\'' + esc(m.modelName).replace(/'/g, "") + '\')" title="设置该模型可见范围">🔒 数据授权</button>'
         + '</div><div id="dmEntityBox"></div>'
         + '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px;"><b style="font-size:13px;">关系</b>'
+        + '<span style="font-size:12px;color:var(--text-muted);">' + ((m.relations || []).length) + ' 条</span>'
         + (canEdit ? '<button class="btn btn-sm" data-perm="datamodel:edit" onclick="dmAddRelation(' + m.id + ')">+ 关系</button>' : '')
         + '</div><div id="dmRelBox"></div>';
       if (lockHolder) {
@@ -359,6 +361,7 @@
       return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityName) + '">' + esc(e.entityName) + '</b> <span style="font-family:monospace;font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityCode) + '">' + esc(e.entityCode) + '</span> <span style="font-size:var(--fs-xs);color:var(--primary);flex-shrink:0;">L' + (e.level || 4) + '</span>'
         + (e.physicalTable ? ' <span style="font-size:var(--fs-xs);color:var(--text-faint);">→ ' + esc(e.physicalTable) + '</span>' : '')
+        + ' <span style="font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0;">' + attrs.length + ' 属性</span>'
         + (canEdit ? '<a href="#" data-perm="datamodel:edit" onclick="dmEditAttrs(' + e.id + ',' + m.id + ');return false;" style="margin-left:auto;font-size:12px;color:var(--primary);">编辑属性</a> <a href="#" data-perm="datamodel:edit" onclick="dmDelEntity(' + e.id + ',' + m.id + ');return false;" style="font-size:12px;color:var(--error);">删除</a>' : '')
         + '</div>'
         + '<table class="dbsync-exec-table" style="width:100%;font-size:12px;"><thead><tr><th>属性</th><th>名称</th><th>类型</th><th>可空</th><th>数据标准</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
