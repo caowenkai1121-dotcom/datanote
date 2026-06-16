@@ -145,7 +145,8 @@
     if (!DM.models.length) { box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="5" rx="1.5"/><rect x="3" y="18" width="11" height="3" rx="1.5"/></svg><div class="et">暂无模型</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">新建模型, 沉淀业务 / 逻辑 / 物理三层建模</div><button class="btn btn-sm btn-primary" data-perm="datamodel:edit" onclick="if(window.dmNewModel)dmNewModel()">＋ 新建模型</button></div>'; return; }
     var h = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'
       + '<input id="dmModelSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索编码/名称/类型/数仓层/主题域" oninput="dmFilterModels()">'
-      + '<span style="font-size:12px;color:var(--text-muted);">共 ' + DM.models.length + ' 个模型</span></div>'
+      + '<span style="font-size:12px;color:var(--text-muted);">共 ' + DM.models.length + ' 个模型</span>'
+      + '<button class="btn btn-sm" style="margin-left:auto;" onclick="dmExportModels()" title="导出模型列表为 CSV">导出CSV</button></div>'
       + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>编码</th><th>名称</th><th>类型</th><th>数仓层</th><th>主题域</th><th>状态</th><th>版本</th><th>实体</th><th style="width:280px;">操作</th></tr></thead><tbody>';
     DM.models.forEach(function (m) {
       var tc = TYPE_COLOR[m.modelType] || 'var(--text-muted)';
@@ -168,6 +169,24 @@
     box.innerHTML = h + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
   }
+
+  // 模型列表导出 CSV(BOM 防 Excel 乱码; 引号转义): 承质量/指标/用户导出范式
+  window.dmExportModels = function () {
+    var models = DM.models || [];
+    if (!models.length) { if (window.DN && DN.toast) DN.toast('暂无模型可导出', 'info'); return; }
+    var cols = ['编码', '名称', '类型', '数仓层', '主题域', '状态', '版本', '实体数'];
+    var q = function (v) { v = (v == null ? '' : String(v)); return '"' + v.replace(/"/g, '""') + '"'; };
+    var lines = [cols.map(q).join(',')];
+    models.forEach(function (m) {
+      lines.push([m.modelCode, m.modelName, (TYPE_LABEL[m.modelType] || m.modelType || ''), m.dwLayer || '', (findSubjectName(DM.subjects, m.subjectId) || '-'), (STATUS_LABEL[m.status] || m.status || ''), 'v' + (m.version || 1), (m.entityCount || 0)].map(q).join(','));
+    });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = '数据模型列表.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    if (window.DN && DN.toast) DN.toast('已导出 ' + models.length + ' 个模型', 'ok');
+  };
 
   // 模型列表即时搜索: 原地隐藏不匹配行(不重渲染防失焦), 全隐藏给"无匹配"反馈
   window.dmFilterModels = function () {
