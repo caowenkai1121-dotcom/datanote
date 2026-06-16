@@ -818,3 +818,6 @@
 
 ## R322 [UI重构·第193轮] 开发工作台 KPI 联动运维
 - workspace.html: 数据开发工作台「今日执行」「失败任务」磁贴改为可点(role=button/tabindex/Enter+cursor+title), 点击进数据运维·周期任务(指标归属页)。原静态展示无联动。截图复核 develop 工作台视觉现代(banner/KPI/快捷卡/最近编辑/右侧tab条)。真机验证 今日执行卡点击→#/operations 周期任务tab激活。?v=u263。
+
+## R323 [UI重构·第194轮] 开发工作台 KPI 全部联动(脚本总数/已上线)
+- workspace.html: 「脚本总数」→filterTree('all')、「已上线」→filterTree('online')筛选左侧文件树, 可点(role=button/tabindex/Enter/cursor/title)。承 R322(今日执行/失败任务→运维)。开发工作台 4 张 KPI 磁贴全部可点联动。真机验证 已上线卡点击→文件树筛选online激活。?v=u264。
