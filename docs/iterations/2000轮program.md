@@ -1027,3 +1027,6 @@
 
 ## R391 [UI重构·第262轮] 字段映射全选框三态(indeterminate)
 - workspace.html: 字段映射行同步勾选变化时, 表头全选框反映三态(全选=checked / 全不选=unchecked / 部分=indeterminate, dbsyncSyncHeaderState 本表作用域)。配 R390 全选, 现代复选框触感。真机验证 部分→indeterminate/全取消→unchecked/全勾→checked。?v=u333。
+
+## R392 [UI重构·第263轮] Doris/同步状态栏背景去硬编码(深色修复)
+- workspace.html: Doris 连接状态栏3背景(rgba(47,158,68,.08)/rgba(232,147,12,.08)/**rgba(0,0,0,.03)深色不可见**)+ 同步任务"已上线"状态栏(rgba(47,158,68,.10))改走令牌 var(--success-bg/--warning-bg/--bg-sunken)。深色实测 --bg-sunken 亮#eaedf4/暗#141823 双适配。承深色硬编码扫除体系(R211-213/R220)。?v=u334。
