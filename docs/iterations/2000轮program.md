@@ -1057,3 +1057,6 @@
 
 ## R401 [UI重构·第272轮] 数据地图查询语句"去开发查询"(catalog→develop工作流)
 - workspace.html: 表详情 DDL/SQL tab 的 SELECT 块加"去开发查询"(dmSelectToDevelop: 读块内pre的SQL→DN.copy silent→createNewScript→toast引导), 打通 探索表→新建脚本查询 闭环。承 datamodel dmGotoDevelopWithDdl 范式。真机构造代码块验证 复制SELECT全文+调createNewScript+toast。?v=u343。
+
+## R402 [UI重构·第273轮] 调度批量"已选N"计数+全选三态
+- workspace.html: 调度任务批量栏加"已选 N"计数(schedUpdateSelCount, 承质量批量R306范式) + 全选框三态(部分选→indeterminate); 行复选框 onchange/renderSchedTasks/schedToggleSelectAll 均同步。一键重跑 空选=重跑全部失败(有意义)故不禁用, 仅加 title 说明。真机验证 勾2→已选2+indeterminate/全选→已选3+checked/清空→已选0。?v=u344。
