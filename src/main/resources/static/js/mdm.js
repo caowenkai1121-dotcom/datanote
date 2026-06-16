@@ -611,7 +611,7 @@
         } });
       listBox.appendChild(DN.table({
         columns: cols, rows: rows, pageSize: 15,
-        searchKeys: ['bizKey', 'sourceSystem'], searchPlaceholder: '搜索业务主键/来源', exportName: '黄金记录_' + _grEntity.entityCode
+        searchKeys: ['bizKey', 'sourceSystem', 'dataJson'], searchPlaceholder: '搜索业务主键/来源/字段值', exportName: '黄金记录_' + _grEntity.entityCode
       }));
     }).catch(function (e) {
       listBox.innerHTML = '';

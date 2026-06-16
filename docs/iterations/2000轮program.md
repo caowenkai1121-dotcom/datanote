@@ -1042,3 +1042,6 @@
 
 ## R396 [UI重构·第267轮] 数据元搜索扩展到类型/值域
 - gov-standard.js: 数据元清单 searchKeys 由 [编码,中文名] 扩为 [编码,中文名,类型,值域](列里有但原不可搜), placeholder 同步"搜索编码/中文名/类型/值域"。可按 STRING/VARCHAR 等类型快速筛选。真机验证 搜"STRING"→16筛到12行且全部命中类型列。?v=u338。
+
+## R397 [UI重构·第268轮] 黄金记录按字段值搜索
+- mdm.js: 黄金记录清单 searchKeys 加 dataJson(原仅 bizKey/sourceSystem), placeholder→"搜索业务主键/来源/字段值"。可按记录任意属性值(如姓名/城市)定位主数据记录。真机构造含 dataJson 的 DN.table 验证 搜"上海"(仅在dataJson)精确筛出对应行。?v=u339。
