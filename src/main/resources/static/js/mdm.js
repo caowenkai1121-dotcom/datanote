@@ -1030,6 +1030,8 @@
           ]));
         }).catch(function (e) { rbtn._busy = false; rbtn.textContent = '反查'; rbtn.style.pointerEvents = ''; rout.innerHTML = ''; rout.appendChild(DN.errorBox('反查失败: ' + errMsg(e))); });
       };
+      var rEnter = function (e) { if (e.key === 'Enter') { e.preventDefault(); rbtn.onclick(); } }; // 回车即反查
+      sysIn.addEventListener('keydown', rEnter); idIn.addEventListener('keydown', rEnter);
       var rrow = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [sysIn, idIn, rbtn]);
       resolveCard.body.appendChild(rrow);
       resolveCard.body.appendChild(rout);

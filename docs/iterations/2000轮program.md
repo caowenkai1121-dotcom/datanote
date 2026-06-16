@@ -964,3 +964,6 @@
 
 ## R370 [UI重构·第241轮] 执行结果tab行数徽标
 - workspace.html: "执行结果"tab 追加 #resultTabCount 行数徽标(resultRenderTable 设 _resultRows.length→"(N)", 空则隐藏), 停在日志tab也能一眼看到结果行数。真机验证 3行显示(3)/空结果为空。?v=u312。
+
+## R371 [UI重构·第242轮] MDM交叉引用反查回车提交
+- mdm.js: "按源系统ID反查黄金记录"工具 sysIn/idIn 输入框补回车提交(Enter→rbtn.onclick, 空值仍走原校验toast), 原须点"反查"按钮。承表单回车提交体系(R228指标/R229质量/projShowModalBox)。真机渲染 xref 视图选实体后验证 回车触发 /api/mdm/xref/resolve、空值回车被拦截。?v=u313。
