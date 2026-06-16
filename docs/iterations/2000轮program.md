@@ -624,3 +624,6 @@
 
 ## R258 [UI重构·第129轮] 命令面板 role=dialog(a11y)
 - workspace.html: 命令面板 #cmdkPanel 加 role="dialog" aria-modal="true" aria-label="命令面板", 读屏识别为模态对话框。至此主要弹窗/面板(指标/质量/同步表单/通用projShowModalBox/命令面板)a11y 语义齐全。?v=u199。
+
+## R259 [UI重构·第130轮] 模态焦点陷阱(WCAG·a11y收官)
+- workspace.html: 全局 Tab 处理——弹窗打开时(cmdkOverlay/projModalBox/.quality-modal-overlay/.dbsync-modal-overlay/.g-modal-overlay 任一可见)焦点循环锁在弹窗内: Shift+Tab 在首元素→跳末, Tab 在末元素→跳首, 不跑到背景。真机验证 新建指标弹窗12可聚焦元素, 末元素Tab→回首。a11y 焦点containment 收官。?v=u200。
