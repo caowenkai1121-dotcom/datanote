@@ -1000,3 +1000,6 @@
 
 ## R382 [UI重构·第253轮] 数据建模字段搜索清除×
 - workspace.html: 模型字段明细搜索框(dmFieldSearch)加清除"×"(dmFieldFilter 本已有 #dmFieldNoMatch 无匹配空态)。真机构造字段表验证 清除×显隐/无匹配空态/清除后行重现。即时搜索清除×再+1。?v=u324。
+
+## R383 [UI重构·第254轮] 数据预览单元格双击复制+tooltip
+- workspace.html: 数据地图表详情"数据预览"表(dm-preview-table)加 单元格 title 全值 tooltip + 双击复制(dmPreviewCopyCell, NULL 复制空), 状态行加"双击单元格可复制"提示。与 SQL 结果表 R363 一致体验。真机构造预览表验证 双击复制张三/NULL复制空。?v=u325。

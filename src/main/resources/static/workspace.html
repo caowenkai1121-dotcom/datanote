@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u324">
-<link rel="stylesheet" href="css/gov-modern.css?v=u324">
-<link rel="stylesheet" href="css/redesign.css?v=u324">
-<link rel="stylesheet" href="css/dn-design.css?v=u324">
+<link rel="stylesheet" href="css/app.css?v=u325">
+<link rel="stylesheet" href="css/gov-modern.css?v=u325">
+<link rel="stylesheet" href="css/redesign.css?v=u325">
+<link rel="stylesheet" href="css/dn-design.css?v=u325">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u324">
+<link rel="stylesheet" href="css/modern.css?v=u325">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u324"></script>
-<script src="js/gov-assets.js?v=u324"></script>
-<script src="js/gov-lineage.js?v=u324"></script>
-<script src="js/gov-quality.js?v=u324"></script>
-<script src="js/gov-standard.js?v=u324"></script>
-<script src="js/gov-classification.js?v=u324"></script>
-<script src="js/gov-security.js?v=u324"></script>
-<script src="js/gov-health.js?v=u324"></script>
-<script src="js/gov-audit.js?v=u324"></script>
-<script src="js/gov-overview.js?v=u324"></script>
-<script src="js/gov-subject.js?v=u324"></script>
-<script src="js/gov-consumption.js?v=u324"></script>
-<script src="js/gov-govmap.js?v=u324"></script>
-<script src="js/project.js?v=u324"></script>
-<script src="js/datamodel.js?v=u324"></script>
-<script src="js/home-dashboard.js?v=u324"></script>
-<script src="js/mdm.js?v=u324"></script>
-<script src="js/mdm-ingest.js?v=u324"></script>
-<script src="js/mdm-survivorship.js?v=u324"></script>
-<script src="js/mdm-approval.js?v=u324"></script>
-<script src="js/mdm-refdata.js?v=u324"></script>
-<script src="js/mdm-quality.js?v=u324"></script>
-<script src="js/mdm-pubsub.js?v=u324"></script>
-<script src="js/mdm-hierarchy.js?v=u324"></script>
-<script src="js/ai-agent.js?v=u324"></script>
+<script src="js/dn-common.js?v=u325"></script>
+<script src="js/gov-assets.js?v=u325"></script>
+<script src="js/gov-lineage.js?v=u325"></script>
+<script src="js/gov-quality.js?v=u325"></script>
+<script src="js/gov-standard.js?v=u325"></script>
+<script src="js/gov-classification.js?v=u325"></script>
+<script src="js/gov-security.js?v=u325"></script>
+<script src="js/gov-health.js?v=u325"></script>
+<script src="js/gov-audit.js?v=u325"></script>
+<script src="js/gov-overview.js?v=u325"></script>
+<script src="js/gov-subject.js?v=u325"></script>
+<script src="js/gov-consumption.js?v=u325"></script>
+<script src="js/gov-govmap.js?v=u325"></script>
+<script src="js/project.js?v=u325"></script>
+<script src="js/datamodel.js?v=u325"></script>
+<script src="js/home-dashboard.js?v=u325"></script>
+<script src="js/mdm.js?v=u325"></script>
+<script src="js/mdm-ingest.js?v=u325"></script>
+<script src="js/mdm-survivorship.js?v=u325"></script>
+<script src="js/mdm-approval.js?v=u325"></script>
+<script src="js/mdm-refdata.js?v=u325"></script>
+<script src="js/mdm-quality.js?v=u325"></script>
+<script src="js/mdm-pubsub.js?v=u325"></script>
+<script src="js/mdm-hierarchy.js?v=u325"></script>
+<script src="js/ai-agent.js?v=u325"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -8554,7 +8554,7 @@ function dmLoadPreview() {
       if (rows.length === 0) { body.innerHTML = '<div class="datamap-empty">表中暂无数据</div>'; return; }
       window._dmPreviewData = { headers: headers, rows: rows };   // 供导出采样
       var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button class="btn btn-sm" onclick="dmPreviewExport()" title="导出当前预览采样为 CSV">导出CSV</button></div>'
-        + '<div style="overflow-x:auto;"><table class="dm-preview-table"><thead><tr>';
+        + '<div style="overflow-x:auto;"><table class="dm-preview-table" ondblclick="dmPreviewCopyCell(event)"><thead><tr>';
       headers.forEach(function(h) { html += '<th>' + escapeHtml(h == null ? '' : h) + '</th>'; });
       html += '</tr></thead><tbody>';
       rows.forEach(function(row) {
@@ -8562,12 +8562,12 @@ function dmLoadPreview() {
         (row || []).forEach(function(val) {
           var sval = val == null ? 'NULL' : String(val);
           var cls = sval === 'NULL' ? 'style="color:var(--text-muted);font-style:italic;"' : '';
-          html += '<td ' + cls + '>' + escapeHtml(sval) + '</td>';
+          html += '<td ' + cls + ' title="' + escapeHtml(sval) + '">' + escapeHtml(sval) + '</td>';
         });
         html += '</tr>';
       });
       html += '</tbody></table></div>';
-      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);">显示前 ' + rows.length + ' 行</div>';
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);">显示前 ' + rows.length + ' 行 · 双击单元格可复制</div>';
       body.innerHTML = html;
     }).catch(function(err){
       body.innerHTML = '<div class="datamap-empty">预览失败: ' + escapeHtml((err && err.message) || '请检查网络') + '</div>';
@@ -8578,6 +8578,14 @@ window.dmPreviewExport = function() {
   var d = window._dmPreviewData;
   if (!d || !d.rows || !d.rows.length) { showToast('无预览数据可导出', 'error'); return; }
   if (window.DN && DN.exportRows) DN.exportRows((dmCurrentTable || 'table') + '_预览', (d.headers || []), d.rows.map(function(r) { return (r || []).map(function(v) { return v == null ? '' : v; }); }));
+};
+// 双击预览单元格复制其值(与 SQL 结果表 R363 一致)
+window.dmPreviewCopyCell = function(e) {
+  var td = e.target && e.target.closest ? e.target.closest('td') : null;
+  if (!td) return;
+  var v = td.getAttribute('title'); if (v == null) v = td.textContent;
+  if (v === 'NULL') v = '';
+  DN.copy(v);
 };
 
 /* --- Tab: 数据探查 --- */
