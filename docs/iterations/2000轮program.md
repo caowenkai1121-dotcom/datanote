@@ -836,3 +836,6 @@
 
 ## R328 [UI重构·第199轮] 检查记录/基线 空态升级 gov-empty
 - workspace.html: 质量检查记录(2处)、运维基线 空态由纯文本升级 gov-empty(图标+标题+说明; 基线带"＋新建基线"CTA)。承 R327 空态范式统一。真机验证 基线空态渲染"暂无基线"+CTA(window.showCreateBaselineDialog存在), hasTable=false 确认空态分支。?v=u269。
+
+## R329 [UI重构·第200轮] 角色列表空态升级 gov-empty(空态范式收口)
+- workspace.html: 系统管理「角色与权限」空态由纯文本升级 gov-empty(用户组图标+标题+说明+"＋新建角色"CTA)。主内容区列表空态(指标/项目/模型/数据集成/质量/检查记录/基线/角色)全部 gov-empty 统一; 小面板/表格单元/下拉的"暂无"保留紧凑文本(gov-empty 44px图标过大不适)。真机验证 强制空渲染 gov-empty"暂无角色"+CTA(window.umRoleModal存在)。**第200轮里程碑**。?v=u270。
