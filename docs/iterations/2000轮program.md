@@ -770,3 +770,6 @@
 ## R306 [UI重构·第177轮] 质量规则 批量选择实时计数 + 全模块回归
 - 先回归: 13 模块 navigateTo 全遍历 0 控制台错误(确认 dn-common/datamodel/mdm/gov-standard/ai-agent/project 多文件改动无副作用; 焦点环[tabindex]:focus-visible 已覆盖新可聚焦th)。
 - workspace.html: 质量规则批量工具栏加"已选 N"实时计数(qualityUpdateSelCount, 选中变主色加粗; qr-chk onchange + qualityToggleAll 触发), 启停前清楚影响范围(承 dbsync"已选N"范式)。真机验证 已选 0→2→全选23。?v=u247。
+
+## R307 [UI重构·第178轮] 质量规则 批量按钮空选禁用
+- workspace.html: 质量批量"启用/停用选中"按钮(.qr-batch-btn)在 0 选中时禁用置灰(qualityUpdateSelCount 联动; 渲染后初始化), 明确可用边界、防空点。承用户表批量栏(选中才现)范式。真机验证 0选中→禁用, 勾1→启用, 取消→再禁用。?v=u248。
