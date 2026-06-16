@@ -906,3 +906,6 @@
 
 ## R351 [UI重构·第222轮] 主题域树节点键盘可达
 - datamodel.js: renderSubjectTree 渲染后调 dnA11yEnhance, 动态树节点(div[onclick])补 role=button+tabindex(原动态渲染漏过一次性 dnA11yEnhance, 仅鼠标可点)。全局Enter委托激活。承动态侧栏a11y范式(R290/R300/R317)。真机验证 树节点 role=button/tabindex=0。?v=u293。
+
+## R352 [UI重构·第223轮] 文件树节点键盘可达
+- workspace.html: loadFileTree 渲染后调 dnA11yEnhance, 文件树节点(.tree-file/.tree-folder-header div[onclick])补 role=button+tabindex(原动态渲染漏过一次性增强)。全局Enter激活。承动态节点a11y范式。真机验证 29文件节点 tabindex=0/role=button, 文件夹头 tabindex=0。?v=u294。
