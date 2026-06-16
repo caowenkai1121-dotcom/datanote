@@ -763,3 +763,6 @@
 
 ## R304 [UI重构·第175轮] 质量/数据模型 表头 aria-sort(收口排序无障碍)
 - workspace.html(_qualityApplySort)/datamodel.js(_dmApplySort): 排序重排时同步设置 th aria-sort(sorted列 ascending/descending, 其余 none)。承 R303(指标/用户)。至此全部内联可排序表(指标/用户/质量/数据模型)排序状态读屏可宣告, 配合 R302 键盘可达 = 鼠标+键盘+读屏三可达。真机验证 质量"规则名称"列 aria-sort 切 ascending→descending, 他列 none。?v=u245。
+
+## R305 [UI重构·第176轮] 数据集成 任务列表 CSV 导出
+- workspace.html: 同步任务列表工具栏(视图切换行)加"导出CSV"(dbsyncExportJobs: 任务名/同步模式/源端/目标端/状态/调度; 导出当前筛选+排序后列表 window._dbsyncExportList; 复用 csvCell 防注入; BOM)。补齐 dbsync 列表级导出(此前仅单任务配置/历史/审计/大盘可导)。真机验证 合成列表触发"同步任务列表.csv"(本环境0任务则toast"暂无任务可导出")。?v=u246。
