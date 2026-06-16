@@ -1087,3 +1087,6 @@
 
 ## R411 [UI重构·第282轮] 最近编辑列表行hover反馈
 - workspace.html: 开发欢迎页"最近编辑"可点行补 hover 高亮(onmouseover→var(--bg-hover), 移出还原, transition平滑)。原可点(cursor+role+keydown)但无悬停反馈。(注: script tree 节点无 updatedAt 字段, 故该列表不加时间, 已验证)。真机验证 hover→bg-hover/移出还原。?v=u353。
+
+## R412 [UI重构·第283轮] dnRelTime 委托 DN.fmtAgo(去重+统一措辞)
+- 发现 dn-common.js 早有规范相对时间助手 DN.fmtAgo(审计中心 gov-audit.js 在用, 含"昨天"/未来/ISO解析), 我 R409 的 dnRelTime 是劣质重复。重构 dnRelTime 委托 DN.fmtAgo(空→''供调用方绝对时间兜底), 统一 用户最后登录/通知/审计 全站相对时间措辞为"N 分钟前"(带空格)。curl 确认部署含委托逻辑; DN.fmtAgo 为生产已验证实现。(注: 本轮 Playwright 后端被前次测试残留 beforeunload 卡死, 改用 curl 验证部署 + 委托已验证助手佐证)。?v=u354。
