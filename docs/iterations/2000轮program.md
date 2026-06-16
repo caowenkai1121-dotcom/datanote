@@ -861,3 +861,6 @@
 
 ## R336 [UI重构·第207轮] 项目最近运行状态中文化
 - project.js: 项目工作台/详情"最近运行"小组件状态由英文裸值(SUCCESS/FAILED/RUNNING)改中文(成功/失败/运行中/异常/待执行, 大写键查)。承 R334/R335 i18n健壮。真机验证 project.js 加载正常(projRenderKpi/projRenderList存在), 项目页渲染无错。?v=u278。
+
+## R337 [UI重构·第208轮] 任务配置对比 枚举值中文化
+- workspace.html: dbsyncDoCompare 配置对比的同步模式/写入模式/写入通道/状态枚举值显示中文化(差异检测仍按原始值, 仅显示层翻译)。承 i18n 修复线。注: 本环境 0 任务无法点穿对比, 已核 dbsyncDoCompare 函数解析正常(无语法错)。?v=u279。

@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u278">
-<link rel="stylesheet" href="css/gov-modern.css?v=u278">
-<link rel="stylesheet" href="css/redesign.css?v=u278">
-<link rel="stylesheet" href="css/dn-design.css?v=u278">
+<link rel="stylesheet" href="css/app.css?v=u279">
+<link rel="stylesheet" href="css/gov-modern.css?v=u279">
+<link rel="stylesheet" href="css/redesign.css?v=u279">
+<link rel="stylesheet" href="css/dn-design.css?v=u279">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u278">
+<link rel="stylesheet" href="css/modern.css?v=u279">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u278"></script>
-<script src="js/gov-assets.js?v=u278"></script>
-<script src="js/gov-lineage.js?v=u278"></script>
-<script src="js/gov-quality.js?v=u278"></script>
-<script src="js/gov-standard.js?v=u278"></script>
-<script src="js/gov-classification.js?v=u278"></script>
-<script src="js/gov-security.js?v=u278"></script>
-<script src="js/gov-health.js?v=u278"></script>
-<script src="js/gov-audit.js?v=u278"></script>
-<script src="js/gov-overview.js?v=u278"></script>
-<script src="js/gov-subject.js?v=u278"></script>
-<script src="js/gov-consumption.js?v=u278"></script>
-<script src="js/gov-govmap.js?v=u278"></script>
-<script src="js/project.js?v=u278"></script>
-<script src="js/datamodel.js?v=u278"></script>
-<script src="js/home-dashboard.js?v=u278"></script>
-<script src="js/mdm.js?v=u278"></script>
-<script src="js/mdm-ingest.js?v=u278"></script>
-<script src="js/mdm-survivorship.js?v=u278"></script>
-<script src="js/mdm-approval.js?v=u278"></script>
-<script src="js/mdm-refdata.js?v=u278"></script>
-<script src="js/mdm-quality.js?v=u278"></script>
-<script src="js/mdm-pubsub.js?v=u278"></script>
-<script src="js/mdm-hierarchy.js?v=u278"></script>
-<script src="js/ai-agent.js?v=u278"></script>
+<script src="js/dn-common.js?v=u279"></script>
+<script src="js/gov-assets.js?v=u279"></script>
+<script src="js/gov-lineage.js?v=u279"></script>
+<script src="js/gov-quality.js?v=u279"></script>
+<script src="js/gov-standard.js?v=u279"></script>
+<script src="js/gov-classification.js?v=u279"></script>
+<script src="js/gov-security.js?v=u279"></script>
+<script src="js/gov-health.js?v=u279"></script>
+<script src="js/gov-audit.js?v=u279"></script>
+<script src="js/gov-overview.js?v=u279"></script>
+<script src="js/gov-subject.js?v=u279"></script>
+<script src="js/gov-consumption.js?v=u279"></script>
+<script src="js/gov-govmap.js?v=u279"></script>
+<script src="js/project.js?v=u279"></script>
+<script src="js/datamodel.js?v=u279"></script>
+<script src="js/home-dashboard.js?v=u279"></script>
+<script src="js/mdm.js?v=u279"></script>
+<script src="js/mdm-ingest.js?v=u279"></script>
+<script src="js/mdm-survivorship.js?v=u279"></script>
+<script src="js/mdm-approval.js?v=u279"></script>
+<script src="js/mdm-refdata.js?v=u279"></script>
+<script src="js/mdm-quality.js?v=u279"></script>
+<script src="js/mdm-pubsub.js?v=u279"></script>
+<script src="js/mdm-hierarchy.js?v=u279"></script>
+<script src="js/ai-agent.js?v=u279"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -15703,15 +15703,22 @@ window.dbsyncDoCompare = function(leftId) {
   Promise.all([api('/api/sync-job/' + leftId), api('/api/sync-job/' + rightId)]).then(function(arr) {
     var a = (arr[0] && arr[0].code === 0) ? arr[0].data : null, b = (arr[1] && arr[1].code === 0) ? arr[1].data : null;
     if (!a || !b) { box.innerHTML = '<div style="padding:20px;color:var(--error);">读取任务配置失败</div>'; return; }
-    var fmt = function(v) { return (v == null || v === '') ? '—' : escapeHtml(String(v)); };
+    // 枚举值展示中文化(差异检测仍按原始值, 仅显示层翻译)
+    var _CMP_LABELS = {
+      syncMode: { FULL: '全量', INCREMENTAL: '增量', CDC: 'CDC 实时' },
+      writeMode: { UPSERT: 'UPSERT（更新插入）', INSERT: 'INSERT（仅插入）', INSERT_IGNORE: 'INSERT IGNORE（忽略重复）' },
+      writeChannel: { JDBC: 'JDBC', STREAM_LOAD: 'STREAM_LOAD（Doris原生导入）' },
+      status: { CREATED: '未运行', RUNNING: '运行中', STOPPED: '已停止', FAILED: '失败', PAUSED: '暂停', SUCCESS: '成功' }
+    };
+    var fmt = function(v, key) { if (v == null || v === '') return '—'; var m = _CMP_LABELS[key]; return escapeHtml(String((m && m[v]) || v)); };
     var diffN = 0;
     var rows = _DBSYNC_CMP_FIELDS.map(function(f) {
       var va = a[f[0]], vb = b[f[0]];
       var diff = String(va == null ? '' : va) !== String(vb == null ? '' : vb);
       if (diff) diffN++;
       return '<tr' + (diff ? ' style="background:var(--warning-bg);"' : '') + '><td style="font-weight:500;color:var(--text-muted);white-space:nowrap;">' + f[1] + '</td>'
-        + '<td' + (diff ? ' style="color:var(--warning-text);font-weight:600;"' : '') + '>' + fmt(va) + '</td>'
-        + '<td' + (diff ? ' style="color:var(--warning-text);font-weight:600;"' : '') + '>' + fmt(vb) + '</td></tr>';
+        + '<td' + (diff ? ' style="color:var(--warning-text);font-weight:600;"' : '') + '>' + fmt(va, f[0]) + '</td>'
+        + '<td' + (diff ? ' style="color:var(--warning-text);font-weight:600;"' : '') + '>' + fmt(vb, f[0]) + '</td></tr>';
     }).join('');
     box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">共 ' + _DBSYNC_CMP_FIELDS.length + ' 项, <b style="color:var(--warning-text);">' + diffN + '</b> 项存在差异(橙色高亮)</div>'
       + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:110px;">配置项</th><th>' + escapeHtml(a.jobName || ('#' + leftId)) + '</th><th>' + escapeHtml(b.jobName || ('#' + rightId)) + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
