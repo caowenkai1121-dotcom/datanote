@@ -982,3 +982,6 @@
 
 ## R376 [UI重构·第247轮] 修复另两处HTTP下DDL复制失效(同R375根因)
 - workspace.html: 全量排查 navigator.clipboard 直调。intgCopyDDL(数据集成DDL)/iwCopyDDL(建表向导DDL)无守卫无降级, HTTP 下 navigator.clipboard undefined 抛错→复制失败。改走 DN.copy(silent)+保留各自提示。其余复制点(文件名/SQL块/连接信息/同步等)经核查均已有 execCommand else 兜底, 无需改。真机构造 DDL 容器验证 两函数走 execCommand 降级、无抛错。?v=u318。
+
+## R377 [UI重构·第248轮] 项目成员搜索清除×按钮
+- project.js: projMemberSearch 加清除"×"(有输入才显, oninput 内联切显隐, projMemberSearchClear 清空+隐×+重筛+聚焦), 配合 R368 无匹配空态成完整搜索体验。承全站即时搜索×体系(文件树/指标/质量/数据集成/用户/模型/数据建模)。真机验证 projMemberSearchClear 清空+还原+聚焦; oninput 切显隐为已验证同范式。?v=u319。

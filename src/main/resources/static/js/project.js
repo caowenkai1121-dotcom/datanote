@@ -677,7 +677,7 @@ window.projLoadMembers = function() {
       var roleCnt = {}; ms.forEach(function(m) { var r = m.projectRole || ''; roleCnt[r] = (roleCnt[r] || 0) + 1; });
       h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
       Object.keys(roleCnt).forEach(function(r) { var on = _projMemberRoleFilter === r; h += '<span onclick="projToggleRoleFilter(\'' + escapeHtml(r) + '\')" title="点击筛选该角色" style="cursor:pointer;font-size:var(--fs-xs);padding:1px 8px;border-radius:var(--radius-lg);background:' + (on ? 'var(--primary)' : 'var(--bg-hover)') + ';color:' + (on ? 'var(--text-inverse)' : 'var(--text-regular)') + ';">' + escapeHtml(projRoleLabel(r)) + ' ' + roleCnt[r] + '</span>'; });
-      h += '<input id="projMemberSearch" class="dbsync-form-input" style="width:140px;margin-left:auto;" placeholder="搜索成员" oninput="projFilterMembers()">';
+      h += '<span style="position:relative;display:inline-flex;align-items:center;margin-left:auto;"><input id="projMemberSearch" class="dbsync-form-input" style="width:140px;padding-right:22px;" placeholder="搜索成员" oninput="var c=document.getElementById(\'projMemberSearchClr\');if(c)c.style.display=this.value?\'\':\'none\';projFilterMembers()"><span id="projMemberSearchClr" onclick="projMemberSearchClear()" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span></span>';
       h += '<button class="btn btn-sm" onclick="projExportMembers()">导出CSV</button></div>';
       h += '<table class="dbsync-exec-table" id="projMemberTbl" style="width:100%;"><thead><tr><th>用户名</th><th>项目角色</th><th>加入时间</th><th style="width:80px;">操作</th></tr></thead><tbody>';
       ms.forEach(function(m) {
@@ -717,6 +717,11 @@ window.projFilterMembers = function() {
   if (visible === 0 && rows.length && tbody) {
     if (!nm) { nm = document.createElement('tr'); nm.id = 'projMemberNoMatch'; nm.innerHTML = '<td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">无匹配成员，试试调整搜索或角色筛选</td>'; tbody.appendChild(nm); }
   } else if (nm) { nm.remove(); }
+};
+window.projMemberSearchClear = function() {
+  var i = document.getElementById('projMemberSearch'); if (!i) return;
+  i.value = ''; var c = document.getElementById('projMemberSearchClr'); if (c) c.style.display = 'none';
+  projFilterMembers(); i.focus();
 };
 window.projExportMembers = function() {
   var ms = _projMembers || []; if (!ms.length) { showToast('暂无成员', 'info'); return; }
