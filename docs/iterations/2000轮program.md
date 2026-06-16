@@ -821,3 +821,6 @@
 
 ## R323 [UI重构·第194轮] 开发工作台 KPI 全部联动(脚本总数/已上线)
 - workspace.html: 「脚本总数」→filterTree('all')、「已上线」→filterTree('online')筛选左侧文件树, 可点(role=button/tabindex/Enter/cursor/title)。承 R322(今日执行/失败任务→运维)。开发工作台 4 张 KPI 磁贴全部可点联动。真机验证 已上线卡点击→文件树筛选online激活。?v=u264。
+
+## R324 [UI重构·第195轮] 指标"无匹配"空态 一键清空筛选
+- workspace.html: 指标列表"无匹配指标"空态加"清空筛选"按钮(metricClearFilters: 清搜索+分类+新鲜度+对应localStorage→重载)。承项目列表清空筛选范式, 避免用户手动逐项复位。真机验证 metricClearFilters清空全部输入+localStorage; 强制无匹配分支渲染"清空筛选"按钮(onclick=metricClearFilters)。?v=u265。
