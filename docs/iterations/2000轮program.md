@@ -739,3 +739,6 @@
 
 ## R296 [UI重构·第167轮] 数据治理 末次子模块记忆
 - workspace.html: initGovCenter 读 localStorage(dn.govTab) 回到上次所在治理子模块(原恒为第一个 overview), switchGovModule 非深链点击时持久化(深链联动 ctx 不污染偏好)。深链 ctx.gov 仍随后覆盖。承文件树/dbsync/项目偏好持久化范式。真机验证 选"数据血缘"→去首页→回治理→仍"数据血缘"。复位 overview。?v=u237。
+
+## R297 [UI重构·第168轮] 主数据中心 末次子模块记忆
+- workspace.html: initMdmCenter 读 localStorage(dn.mdmTab) 回到上次主数据子模块(原恒为 overview), switchMdmModule 非深链点击持久化。与 R296 治理子模块记忆同范式。真机验证 选"黄金记录"→去首页→回主数据→仍"黄金记录"。复位 overview。?v=u238。
