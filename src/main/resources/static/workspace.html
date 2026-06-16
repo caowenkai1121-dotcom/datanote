@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u209">
-<link rel="stylesheet" href="css/gov-modern.css?v=u209">
-<link rel="stylesheet" href="css/redesign.css?v=u209">
-<link rel="stylesheet" href="css/dn-design.css?v=u209">
+<link rel="stylesheet" href="css/app.css?v=u210">
+<link rel="stylesheet" href="css/gov-modern.css?v=u210">
+<link rel="stylesheet" href="css/redesign.css?v=u210">
+<link rel="stylesheet" href="css/dn-design.css?v=u210">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u209">
+<link rel="stylesheet" href="css/modern.css?v=u210">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u209"></script>
-<script src="js/gov-assets.js?v=u209"></script>
-<script src="js/gov-lineage.js?v=u209"></script>
-<script src="js/gov-quality.js?v=u209"></script>
-<script src="js/gov-standard.js?v=u209"></script>
-<script src="js/gov-classification.js?v=u209"></script>
-<script src="js/gov-security.js?v=u209"></script>
-<script src="js/gov-health.js?v=u209"></script>
-<script src="js/gov-audit.js?v=u209"></script>
-<script src="js/gov-overview.js?v=u209"></script>
-<script src="js/gov-subject.js?v=u209"></script>
-<script src="js/gov-consumption.js?v=u209"></script>
-<script src="js/gov-govmap.js?v=u209"></script>
-<script src="js/project.js?v=u209"></script>
-<script src="js/datamodel.js?v=u209"></script>
-<script src="js/home-dashboard.js?v=u209"></script>
-<script src="js/mdm.js?v=u209"></script>
-<script src="js/mdm-ingest.js?v=u209"></script>
-<script src="js/mdm-survivorship.js?v=u209"></script>
-<script src="js/mdm-approval.js?v=u209"></script>
-<script src="js/mdm-refdata.js?v=u209"></script>
-<script src="js/mdm-quality.js?v=u209"></script>
-<script src="js/mdm-pubsub.js?v=u209"></script>
-<script src="js/mdm-hierarchy.js?v=u209"></script>
-<script src="js/ai-agent.js?v=u209"></script>
+<script src="js/dn-common.js?v=u210"></script>
+<script src="js/gov-assets.js?v=u210"></script>
+<script src="js/gov-lineage.js?v=u210"></script>
+<script src="js/gov-quality.js?v=u210"></script>
+<script src="js/gov-standard.js?v=u210"></script>
+<script src="js/gov-classification.js?v=u210"></script>
+<script src="js/gov-security.js?v=u210"></script>
+<script src="js/gov-health.js?v=u210"></script>
+<script src="js/gov-audit.js?v=u210"></script>
+<script src="js/gov-overview.js?v=u210"></script>
+<script src="js/gov-subject.js?v=u210"></script>
+<script src="js/gov-consumption.js?v=u210"></script>
+<script src="js/gov-govmap.js?v=u210"></script>
+<script src="js/project.js?v=u210"></script>
+<script src="js/datamodel.js?v=u210"></script>
+<script src="js/home-dashboard.js?v=u210"></script>
+<script src="js/mdm.js?v=u210"></script>
+<script src="js/mdm-ingest.js?v=u210"></script>
+<script src="js/mdm-survivorship.js?v=u210"></script>
+<script src="js/mdm-approval.js?v=u210"></script>
+<script src="js/mdm-refdata.js?v=u210"></script>
+<script src="js/mdm-quality.js?v=u210"></script>
+<script src="js/mdm-pubsub.js?v=u210"></script>
+<script src="js/mdm-hierarchy.js?v=u210"></script>
+<script src="js/ai-agent.js?v=u210"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -11700,7 +11700,17 @@ window.umRenderUsers = function() {
     else { box.innerHTML = '<div class="gov-empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0112 0M17 11l2 2 3-3"/></svg><div class="et">暂无用户</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:4px;">创建第一个用户账号</div><button class="btn btn-sm btn-primary" data-perm="settings:user" onclick="if(window.umUserModal)umUserModal()">＋ 新建用户</button></div>'; }
     if (window.umRenderBatchBar) umRenderBatchBar(); return;
   }
-  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th><th>用户名</th><th>昵称</th><th>邮箱</th><th>手机号</th><th>部门</th><th>岗位</th><th>状态</th><th>角色</th><th>最后登录</th><th style="width:260px;">操作</th></tr></thead><tbody>';
+  // 列排序(可点表头)
+  var _us = window._umSort;
+  if (_us && _us.key) {
+    list = list.slice().sort(function(a, b) {
+      var va = (a[_us.key] == null ? '' : String(a[_us.key])).toLowerCase();
+      var vb = (b[_us.key] == null ? '' : String(b[_us.key])).toLowerCase();
+      return va < vb ? -_us.dir : va > vb ? _us.dir : 0;
+    });
+  }
+  function _uth(label, key) { var arr = (_us && _us.key === key) ? (_us.dir === 1 ? ' ▲' : ' ▼') : ''; return '<th style="cursor:pointer;user-select:none;" onclick="umSortBy(\'' + key + '\')" title="点击排序">' + label + arr + '</th>'; }
+  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th>' + _uth('用户名', 'username') + _uth('昵称', 'nickname') + '<th>邮箱</th><th>手机号</th>' + _uth('部门', 'department') + '<th>岗位</th><th>状态</th><th>角色</th>' + _uth('最后登录', 'lastLoginAt') + '<th style="width:260px;">操作</th></tr></thead><tbody>';
   list.forEach(function(u) {
     var on = u.status === 1 || u.status === '1';
     // 优先用后端返回的 roleNames(无需本地映射); 回退 roleIds
@@ -11733,6 +11743,11 @@ window.umToggleSelect = function(id, checked) {
   window._umSel = window._umSel || {};
   if (checked) window._umSel[id] = true; else delete window._umSel[id];
   umRenderBatchBar(); umSyncSelAll();
+};
+window.umSortBy = function(key) {
+  var s = window._umSort || {};
+  window._umSort = { key: key, dir: (s.key === key && s.dir === 1) ? -1 : 1 };
+  umRenderUsers();
 };
 window.umToggleSelectAll = function(checked) {
   window._umSel = window._umSel || {};

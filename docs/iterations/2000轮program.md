@@ -654,3 +654,6 @@
 
 ## R268 [UI重构·第139轮] 指标列表列排序
 - workspace.html: renderMetricList 加可点表头排序(指标名称/编码/分类/负责人/状态), metricSortBy 切 asc/desc(▲▼指示), 复用当前数据重渲染。数据表常用能力。真机验证 点指标名→升序[Alpha,Beta,Gamma]→再点降序。?v=u209。
+
+## R269 [UI重构·第140轮] 用户管理列排序
+- workspace.html: umRenderUsers 加可点表头排序(用户名/昵称/部门/最后登录), umSortBy 切 asc/desc(▲▼), 复用 _umUsers 过滤后列表重渲染。承 R268 指标排序。真机验证 点用户名→升序首admin→再点降序首zs01(4用户反转)。?v=u210。
