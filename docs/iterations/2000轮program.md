@@ -946,3 +946,6 @@
 
 ## R364 [UI重构·第235轮] 运行日志清空 + 修复复制按钮回归
 - workspace.html: 结果工具栏加"清空"(clearRunLog 重置日志区); 抽出 resultToggleActionBtns 按当前 tab 切换按钮(结果页→复制/下载, 日志页→清空), 查询完成也调用。**修复 R362 回归**: resultCopyBtn 类 result-download-btn 默认 display:none 但无 .visible 切换逻辑→永不显示, 现统一切换。真机验证 三态按钮可见性 + 清空 全对。?v=u306。
+
+## R365 [UI重构·第236轮] DN.table 搜索清除按钮空值隐藏(全站)
+- dn-common.js: DN.table 工厂的搜索清除"×"原一直常显(gov-search-clr 无 display:none 默认), 改为仅有输入时显示, 清除后隐藏。一处惠及全站所有 DN.table(治理/主数据/项目/建模等)。真机构造 DN.table 验证 初始隐藏/输入显示/清除隐藏+还原+聚焦 全对。?v=u307。
