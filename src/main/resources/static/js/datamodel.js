@@ -147,7 +147,16 @@
       + '<input id="dmModelSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索编码/名称/类型/数仓层/主题域" oninput="dmFilterModels()">'
       + '<span style="font-size:12px;color:var(--text-muted);">共 ' + DM.models.length + ' 个模型</span>'
       + '<button class="btn btn-sm" style="margin-left:auto;" onclick="dmExportModels()" title="导出模型列表为 CSV">导出CSV</button></div>'
-      + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th>编码</th><th>名称</th><th>类型</th><th>数仓层</th><th>主题域</th><th>状态</th><th>版本</th><th>实体</th><th style="width:280px;">操作</th></tr></thead><tbody>';
+      + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
+      + '<th onclick="dmSortBy(\'code\')" style="cursor:pointer;" title="点击排序">编码<span data-dmarr="code"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'name\')" style="cursor:pointer;" title="点击排序">名称<span data-dmarr="name"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'type\')" style="cursor:pointer;" title="点击排序">类型<span data-dmarr="type"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'layer\')" style="cursor:pointer;" title="点击排序">数仓层<span data-dmarr="layer"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'subject\')" style="cursor:pointer;" title="点击排序">主题域<span data-dmarr="subject"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'status\')" style="cursor:pointer;" title="点击排序">状态<span data-dmarr="status"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'ver\')" style="cursor:pointer;" title="点击排序">版本<span data-dmarr="ver"> ⇅</span></th>'
+      + '<th onclick="dmSortBy(\'ent\')" style="cursor:pointer;" title="点击排序">实体<span data-dmarr="ent"> ⇅</span></th>'
+      + '<th style="width:280px;">操作</th></tr></thead><tbody>';
     DM.models.forEach(function (m) {
       var tc = TYPE_COLOR[m.modelType] || 'var(--text-muted)';
       var typeBadge = '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);background:' + tc + '1a;color:' + tc + ';">' + (TYPE_LABEL[m.modelType] || m.modelType) + '</span>';
@@ -161,13 +170,47 @@
       if (m.modelType === 'PHYS' && m.status === 'PUBLISHED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmPublishAsset(' + m.id + ');return false;" style="color:#1971c2;margin-right:8px;">落地资产</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
       var dmKey = ((m.modelCode || '') + ' ' + (m.modelName || '') + ' ' + (TYPE_LABEL[m.modelType] || m.modelType || '') + ' ' + (m.dwLayer || '') + ' ' + subName).toLowerCase();
-      h += '<tr class="dm-model-row" data-search="' + esc(dmKey) + '" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))dmOpenModel(' + m.id + ')"><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
+      h += '<tr class="dm-model-row" data-search="' + esc(dmKey) + '"'
+        + ' data-s-code="' + esc((m.modelCode || '').toLowerCase()) + '"'
+        + ' data-s-name="' + esc((m.modelName || '').toLowerCase()) + '"'
+        + ' data-s-type="' + esc((TYPE_LABEL[m.modelType] || m.modelType || '')) + '"'
+        + ' data-s-layer="' + esc((m.dwLayer || '').toLowerCase()) + '"'
+        + ' data-s-subject="' + esc(subName.toLowerCase()) + '"'
+        + ' data-s-status="' + esc((STATUS_LABEL[m.status] || m.status || '')) + '"'
+        + ' data-s-ver="' + (m.version || 1) + '"'
+        + ' data-s-ent="' + (m.entityCount || 0) + '"'
+        + ' style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))dmOpenModel(' + m.id + ')"><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
         + '<td><b style="display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelName) + '">' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
         + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(subName) + '">' + esc(subName) + '</td><td>' + st + '</td>'
         + '<td>v' + (m.version || 1) + '</td><td>' + (m.entityCount || 0) + '</td><td style="white-space:nowrap;">' + ops + '</td></tr>';
     });
     box.innerHTML = h + '</tbody></table>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
+    _dmApplySort(); // 重载后复用已选排序, 防切主题/类型后排序丢失
+  }
+
+  // 模型列表列排序(DOM 原地重排, 保留搜索态; 版本/实体按数值, 其余字典序)
+  window._dmSort = { key: '', dir: 1 };
+  window.dmSortBy = function (key) {
+    var s = window._dmSort; s.dir = (s.key === key) ? -s.dir : 1; s.key = key; _dmApplySort();
+  };
+  function _dmApplySort() {
+    var s = window._dmSort; if (!s.key) return;
+    var rows = Array.prototype.slice.call(document.querySelectorAll('tr.dm-model-row'));
+    if (!rows.length) return;
+    var tbody = rows[0].parentElement;
+    var numeric = (s.key === 'ver' || s.key === 'ent');
+    var attr = 'data-s-' + s.key;
+    rows.sort(function (a, b) {
+      var va = a.getAttribute(attr) || '', vb = b.getAttribute(attr) || '';
+      if (numeric) return (parseFloat(va) - parseFloat(vb)) * s.dir;
+      return va.localeCompare(vb) * s.dir;
+    });
+    rows.forEach(function (tr) { tbody.appendChild(tr); });
+    var nm = document.getElementById('dmNoMatch'); if (nm) tbody.appendChild(nm);
+    Array.prototype.slice.call(document.querySelectorAll('[data-dmarr]')).forEach(function (sp) {
+      sp.textContent = sp.getAttribute('data-dmarr') === s.key ? (s.dir > 0 ? ' ▲' : ' ▼') : ' ⇅';
+    });
   }
 
   // 模型列表导出 CSV(BOM 防 Excel 乱码; 引号转义): 承质量/指标/用户导出范式
