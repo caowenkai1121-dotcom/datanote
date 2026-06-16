@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u250">
-<link rel="stylesheet" href="css/gov-modern.css?v=u250">
-<link rel="stylesheet" href="css/redesign.css?v=u250">
-<link rel="stylesheet" href="css/dn-design.css?v=u250">
+<link rel="stylesheet" href="css/app.css?v=u251">
+<link rel="stylesheet" href="css/gov-modern.css?v=u251">
+<link rel="stylesheet" href="css/redesign.css?v=u251">
+<link rel="stylesheet" href="css/dn-design.css?v=u251">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u250">
+<link rel="stylesheet" href="css/modern.css?v=u251">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u250"></script>
-<script src="js/gov-assets.js?v=u250"></script>
-<script src="js/gov-lineage.js?v=u250"></script>
-<script src="js/gov-quality.js?v=u250"></script>
-<script src="js/gov-standard.js?v=u250"></script>
-<script src="js/gov-classification.js?v=u250"></script>
-<script src="js/gov-security.js?v=u250"></script>
-<script src="js/gov-health.js?v=u250"></script>
-<script src="js/gov-audit.js?v=u250"></script>
-<script src="js/gov-overview.js?v=u250"></script>
-<script src="js/gov-subject.js?v=u250"></script>
-<script src="js/gov-consumption.js?v=u250"></script>
-<script src="js/gov-govmap.js?v=u250"></script>
-<script src="js/project.js?v=u250"></script>
-<script src="js/datamodel.js?v=u250"></script>
-<script src="js/home-dashboard.js?v=u250"></script>
-<script src="js/mdm.js?v=u250"></script>
-<script src="js/mdm-ingest.js?v=u250"></script>
-<script src="js/mdm-survivorship.js?v=u250"></script>
-<script src="js/mdm-approval.js?v=u250"></script>
-<script src="js/mdm-refdata.js?v=u250"></script>
-<script src="js/mdm-quality.js?v=u250"></script>
-<script src="js/mdm-pubsub.js?v=u250"></script>
-<script src="js/mdm-hierarchy.js?v=u250"></script>
-<script src="js/ai-agent.js?v=u250"></script>
+<script src="js/dn-common.js?v=u251"></script>
+<script src="js/gov-assets.js?v=u251"></script>
+<script src="js/gov-lineage.js?v=u251"></script>
+<script src="js/gov-quality.js?v=u251"></script>
+<script src="js/gov-standard.js?v=u251"></script>
+<script src="js/gov-classification.js?v=u251"></script>
+<script src="js/gov-security.js?v=u251"></script>
+<script src="js/gov-health.js?v=u251"></script>
+<script src="js/gov-audit.js?v=u251"></script>
+<script src="js/gov-overview.js?v=u251"></script>
+<script src="js/gov-subject.js?v=u251"></script>
+<script src="js/gov-consumption.js?v=u251"></script>
+<script src="js/gov-govmap.js?v=u251"></script>
+<script src="js/project.js?v=u251"></script>
+<script src="js/datamodel.js?v=u251"></script>
+<script src="js/home-dashboard.js?v=u251"></script>
+<script src="js/mdm.js?v=u251"></script>
+<script src="js/mdm-ingest.js?v=u251"></script>
+<script src="js/mdm-survivorship.js?v=u251"></script>
+<script src="js/mdm-approval.js?v=u251"></script>
+<script src="js/mdm-refdata.js?v=u251"></script>
+<script src="js/mdm-quality.js?v=u251"></script>
+<script src="js/mdm-pubsub.js?v=u251"></script>
+<script src="js/mdm-hierarchy.js?v=u251"></script>
+<script src="js/ai-agent.js?v=u251"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9496,7 +9496,10 @@ function loadQualityRules() {
       var typeLabels = { null_check:'空值检查', unique_check:'唯一性检查', value_range:'值域检查', regex_check:'正则检查', custom_sql:'自定义SQL' };
       var severityColors = { info:'var(--primary)', warning:'var(--warning)', error:'var(--error)' };
       var html = '<div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-        '<input id="qualityRuleSearch" class="dbsync-form-input" style="width:240px;max-width:100%;" placeholder="搜索规则名/库表/字段/创建人" oninput="qualityFilterRules()">' +
+        '<span style="position:relative;display:inline-flex;align-items:center;">' +
+          '<input id="qualityRuleSearch" class="dbsync-form-input" style="width:240px;max-width:100%;padding-right:24px;" placeholder="搜索规则名/库表/字段/创建人" oninput="var c=document.getElementById(\'qrSearchClr\');if(c)c.style.display=this.value?\'\':\'none\';qualityFilterRules()">' +
+          '<span id="qrSearchClr" onclick="qualitySearchClear()" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>' +
+        '</span>' +
         '<span style="font-size:12px;color:var(--text-muted);">共 ' + rules.length + ' 条规则</span>' +
         '<span style="margin-left:auto;font-size:12px;color:var(--text-muted);">批量:</span>' +
         '<span id="qrSelCount" style="font-size:12px;color:var(--text-muted);">已选 0</span>' +
@@ -9614,6 +9617,7 @@ function _qualityApplySort() {
 };
 
 // 质量规则列表内即时搜索: 原地隐藏不匹配行(不重渲染防失焦)
+window.qualitySearchClear = function() { var i = document.getElementById('qualityRuleSearch'); if (!i) return; i.value = ''; var c = document.getElementById('qrSearchClr'); if (c) c.style.display = 'none'; qualityFilterRules(); i.focus(); };
 function qualityFilterRules() {
   var inp = document.getElementById('qualityRuleSearch');
   if (!inp) return;
