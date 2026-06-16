@@ -912,3 +912,7 @@
 
 ## R353 [UI重构·第224轮] 全局a11y观察器(动态clickable自动键盘可达)
 - workspace.html: 加 MutationObserver(body childList+subtree, debounce 250ms, 仅扫新增子树)自动对动态渲染的 div/span/th[onclick] 调 dnA11yEnhance。一处覆盖所有未来动态可点元素(dbsync文件夹/kanban/各弹窗动态内容等), 免逐render手调。真机验证 动态插入 div[onclick]→500ms后 tabindex=0/role=button。?v=u295。
+
+## R354 [UI重构·第225轮] 数据预览采样 CSV 导出 + 全模块回归
+- 回归: MutationObserver(R353)上线后 13 模块导航 0 控制台错误; 表详情 数据预览/数据探查 真实数据渲染 0 错。
+- workspace.html: 数据预览 tab 加"导出CSV"(dmPreviewExport, 文件名带_预览明确为采样; 复用 DN.exportRows)。承 CSV 导出范式。真机验证(真实表) 触发"<表名>_预览_<日期>.csv"。?v=u296。
