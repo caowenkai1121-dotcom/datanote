@@ -669,3 +669,6 @@
 
 ## R273 [UI重构·第144轮] 补齐 Esc 关闭弹窗(键盘可达性)
 - workspace.html: 4 个遗漏弹窗补 Esc 关闭。dbsync Esc 处理器加 dbsyncChecksumModal/dbsyncFolderModal; 通用 Esc 处理器加 syncModal/intgModal(数据集成)。此前 gModal/metric/quality/cmdk/help/proj/dbsync(5个) 已支持; 现全站弹窗 Esc 一致可关。真机验证 4 个均 closedByEsc=true。?v=u214。
+
+## R274 [UI重构·第145轮] 质量规则列表 计数 + CSV 导出
+- workspace.html: 质量规则工具栏加"共 N 条规则"计数 + "导出CSV"(规则名/类型/库/表/字段/级别/状态/创建人; BOM 防乱码; 引号转义)。存 window._qualityRules 供导出。承指标(R271)/用户(R272)导出。真机验证 22 条规则触发下载"质量规则列表.csv"。?v=u215。
