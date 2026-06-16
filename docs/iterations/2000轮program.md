@@ -931,3 +931,6 @@
 
 ## R359 [UI重构·第230轮] 编辑器 tab 未保存圆点(VS Code风)
 - workspace.html: SQL编辑器 tab 加未保存指示——内容≠最后保存点时 tab 显橙色圆点(.tab-dirty-dot)。dnUpdateActiveTabDirty(codeArea.value vs cache.lastSavedContent)由 monacoEditor.onDidChangeModelContent(防抖200ms)驱动, 保存后清; 切签经setValue触发change自动刷新。modern.css 加圆点样式(dirty时×淡, hover还原)。真机验证 开脚本→编辑→tab .dirty+圆点出现。?v=u301。
+
+## R360 [UI重构·第231轮] SQL编辑器 Ctrl+Enter 运行 + 快捷键帮助补全
+- workspace.html: Monaco 加 Ctrl/Cmd+Enter 运行(addAction run-sql→runTask, 选中即跑选中否则全部; 现代SQL编辑器惯例; Ctrl+S保存本有)。快捷键帮助面板(?)加"数据开发"组(Ctrl+S保存/Ctrl+Enter运行/tab圆点=未保存)。真机验证 monacoEditor.getAction('run-sql')+('save-script')均存在。(附: 上轮R359 dirty态确认 beforeunload 守卫真生效——导航被未保存对话框拦截)。?v=u302。
