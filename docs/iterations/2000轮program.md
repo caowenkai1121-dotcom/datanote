@@ -864,3 +864,6 @@
 
 ## R337 [UI重构·第208轮] 任务配置对比 枚举值中文化
 - workspace.html: dbsyncDoCompare 配置对比的同步模式/写入模式/写入通道/状态枚举值显示中文化(差异检测仍按原始值, 仅显示层翻译)。承 i18n 修复线。注: 本环境 0 任务无法点穿对比, 已核 dbsyncDoCompare 函数解析正常(无语法错)。?v=u279。
+
+## R338 [UI重构·第209轮] 角色列表计数
+- workspace.html: 角色与权限表加"共 N 个角色"计数(与用户表"共N/N"计数一致)。深度复核 gov-consumption(一键计算/单计算/数据集 均confirm+busy+toast+联动刷新, 取值toast含计算值)、gov-classification(gov-empty空态)全完备。真机验证 角色tab"共6个角色"。?v=u280。
