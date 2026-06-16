@@ -1114,3 +1114,6 @@
 
 ## R420 [UI重构·第291轮] 数据源测试连接显延迟+toast
 - workspace.html: testDatasource 成功改 showToast"连接成功 (Nms)"(测耗时, 诊断慢连接, 比阻塞 msgBox 更顺滑); 失败仍用 msgBox(详情可读)。真机 spy 验证 "连接成功 (31ms)" 含延迟。?v=u361。
+
+## R421 [UI重构·第292轮] AI配置测试连接显延迟
+- workspace.html: testAiConfig 成功状态加连接延迟"✓ 连接成功 (Nms)"(AI API 延迟更关键, 承 R420 数据源延迟)。真机 spy 验证 "✓ 连接成功 (48ms)"。?v=u362。
