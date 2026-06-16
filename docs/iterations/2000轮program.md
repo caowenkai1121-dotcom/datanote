@@ -1030,3 +1030,6 @@
 
 ## R392 [UI重构·第263轮] Doris/同步状态栏背景去硬编码(深色修复)
 - workspace.html: Doris 连接状态栏3背景(rgba(47,158,68,.08)/rgba(232,147,12,.08)/**rgba(0,0,0,.03)深色不可见**)+ 同步任务"已上线"状态栏(rgba(47,158,68,.10))改走令牌 var(--success-bg/--warning-bg/--bg-sunken)。深色实测 --bg-sunken 亮#eaedf4/暗#141823 双适配。承深色硬编码扫除体系(R211-213/R220)。?v=u334。
+
+## R393 [UI重构·第264轮] 残余硬编码色清零(深色一致性)
+- workspace.html: dbsync 样本预览关闭按钮 hover(rgba(0,0,0,.06)深色无反馈)→var(--bg-hover); 数据集成/建表向导面板图标背景(rgba(47,158,68,.08))→var(--success-bg)。grep 确认 workspace.html 内这两类硬编码清零。承深色硬编码扫除体系(R211-213/R220/R392)。页面真机加载 0 错误。?v=u335。
