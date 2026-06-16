@@ -970,3 +970,6 @@
 
 ## R372 [UI重构·第243轮] 编辑器tab中键关闭
 - workspace.html: addOrActivateTab 创建的编辑器 tab 加中键(mousedown button===1)关闭(编辑器/浏览器惯例), e.preventDefault 防中键自动滚动, 复用 closeTab 自带未保存守卫。真机验证 中键关 tab1(2→1)、tab2 保留。?v=u314。
+
+## R373 [UI重构·第244轮] 编辑器tab栏"+新建脚本"常驻按钮
+- workspace.html+modern.css: #editorTabs 末尾加常驻 #editorNewTabBtn "+"(浏览器新标签式, position:sticky right 即便tab横滚也可见, onclick=createNewScript); addOrActivateTab 改 insertBefore(+) 保证新tab插在+前。比命令面板"新建脚本"更易发现。真机验证 +存在/sticky/多tab后+常驻末尾/点击调createNewScript。?v=u315。

@@ -134,6 +134,11 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
   backdrop-filter: blur(2px);
 }
 
+/* R373: 编辑器 tab 栏末尾"新建脚本"按钮(浏览器新标签式, 常驻右侧, 即便 tab 横向滚动也可见) */
+.editor-newtab-btn { flex: 0 0 auto; width: 34px; border: none; border-left: 1px solid var(--divider); background: var(--bg-card); color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer; position: sticky; right: 0; transition: background var(--dur), color var(--dur); }
+.editor-newtab-btn:hover { background: var(--bg-hover); color: var(--primary); }
+.editor-newtab-btn:active { transform: scale(.92); }
+
 /* R369: 结果表行号列粘附左侧(宽结果集横向滚动时保留行号定位)。不透明背景, 避开 tr:hover td 的半透明色致穿透。 */
 #resultArea .result-table td:first-child,
 #resultArea .result-table th:first-child {
