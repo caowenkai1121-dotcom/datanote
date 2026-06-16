@@ -618,3 +618,6 @@
 
 ## R256 [UI重构·第127轮] Toast 堆叠上限防溢出
 - workspace.html: showToast 追加后, stack 子项超 5 条即移除最旧, 防大量并发 toast(如批量操作多条结果)堆满/溢出屏幕。真机验证 连发8条→可见恰好5条。?v=u197。
+
+## R257 [UI重构·第128轮] 弹窗关闭按钮 aria-label(a11y)
+- workspace.html: 3个纯SVG关闭按钮(.close-btn: 质量规则/指标弹窗/右属性栏)加 aria-label="关闭"+title="关闭", 读屏可识别、鼠标悬停有提示。?v=u198。
