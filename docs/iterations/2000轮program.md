@@ -630,3 +630,6 @@
 
 ## R260 [UI重构·第131轮] 弹窗关闭焦点还原(a11y焦点生命周期完整)
 - workspace.html: showAddMetricDialog/showAddRuleDialog 记录触发元素(document.activeElement), closeMetricModal/closeRuleModal 关闭后还原焦点到触发元素。配合 R201/202即聚焦+R259焦点陷阱, 形成完整焦点生命周期(开→聚焦首字段→陷阱锁内→关→还原触发)。真机验证 点新建指标→焦点进mName→关→还原到按钮。?v=u201。
+
+## R261 [UI重构·第132轮] 数据地图最近搜索/收藏补 catch
+- workspace.html: loadDmSearchHistory/loadDmFavorites 原无 .catch(加载失败静默)。补 .catch→显"最近搜索加载失败"/"收藏加载失败"。(最近搜索/收藏项本就可点 dmOpenTable 直达表详情。)?v=u202。
