@@ -1120,3 +1120,6 @@
 
 ## R422 [UI重构·第293轮] SQL结果表换行/截断切换
 - workspace.html+modern.css: 结果工具栏加"换行"切换(toggleResultWrap 切 #resultTable .result-wrap 类→单元格 white-space:normal+word-break+max-width:480, 按钮 active 态), 读长 JSON/文本免横向滚动。resultToggleActionBtns 同步可见。真机验证 nowrap→normal切换+按钮态+切回。?v=u363。
+
+## R423 [UI重构·第294轮] 指标来源表可点跳数据地图
+- workspace.html: metricLoadRefs 来源表 chip 表名改为可点链接→navigateTo('catalog',{openTable:{db,table}})(line7626已处理→dmOpenTable), 从指标直达该表的字段/血缘/质量。承 AI linkChip openTable 深链。真机 spy 验证 chip"ods.t_user_login"可点+navigateTo('catalog',openTable)。?v=u364。
