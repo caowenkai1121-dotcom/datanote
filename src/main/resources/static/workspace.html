@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u229">
-<link rel="stylesheet" href="css/gov-modern.css?v=u229">
-<link rel="stylesheet" href="css/redesign.css?v=u229">
-<link rel="stylesheet" href="css/dn-design.css?v=u229">
+<link rel="stylesheet" href="css/app.css?v=u230">
+<link rel="stylesheet" href="css/gov-modern.css?v=u230">
+<link rel="stylesheet" href="css/redesign.css?v=u230">
+<link rel="stylesheet" href="css/dn-design.css?v=u230">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u229">
+<link rel="stylesheet" href="css/modern.css?v=u230">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u229"></script>
-<script src="js/gov-assets.js?v=u229"></script>
-<script src="js/gov-lineage.js?v=u229"></script>
-<script src="js/gov-quality.js?v=u229"></script>
-<script src="js/gov-standard.js?v=u229"></script>
-<script src="js/gov-classification.js?v=u229"></script>
-<script src="js/gov-security.js?v=u229"></script>
-<script src="js/gov-health.js?v=u229"></script>
-<script src="js/gov-audit.js?v=u229"></script>
-<script src="js/gov-overview.js?v=u229"></script>
-<script src="js/gov-subject.js?v=u229"></script>
-<script src="js/gov-consumption.js?v=u229"></script>
-<script src="js/gov-govmap.js?v=u229"></script>
-<script src="js/project.js?v=u229"></script>
-<script src="js/datamodel.js?v=u229"></script>
-<script src="js/home-dashboard.js?v=u229"></script>
-<script src="js/mdm.js?v=u229"></script>
-<script src="js/mdm-ingest.js?v=u229"></script>
-<script src="js/mdm-survivorship.js?v=u229"></script>
-<script src="js/mdm-approval.js?v=u229"></script>
-<script src="js/mdm-refdata.js?v=u229"></script>
-<script src="js/mdm-quality.js?v=u229"></script>
-<script src="js/mdm-pubsub.js?v=u229"></script>
-<script src="js/mdm-hierarchy.js?v=u229"></script>
-<script src="js/ai-agent.js?v=u229"></script>
+<script src="js/dn-common.js?v=u230"></script>
+<script src="js/gov-assets.js?v=u230"></script>
+<script src="js/gov-lineage.js?v=u230"></script>
+<script src="js/gov-quality.js?v=u230"></script>
+<script src="js/gov-standard.js?v=u230"></script>
+<script src="js/gov-classification.js?v=u230"></script>
+<script src="js/gov-security.js?v=u230"></script>
+<script src="js/gov-health.js?v=u230"></script>
+<script src="js/gov-audit.js?v=u230"></script>
+<script src="js/gov-overview.js?v=u230"></script>
+<script src="js/gov-subject.js?v=u230"></script>
+<script src="js/gov-consumption.js?v=u230"></script>
+<script src="js/gov-govmap.js?v=u230"></script>
+<script src="js/project.js?v=u230"></script>
+<script src="js/datamodel.js?v=u230"></script>
+<script src="js/home-dashboard.js?v=u230"></script>
+<script src="js/mdm.js?v=u230"></script>
+<script src="js/mdm-ingest.js?v=u230"></script>
+<script src="js/mdm-survivorship.js?v=u230"></script>
+<script src="js/mdm-approval.js?v=u230"></script>
+<script src="js/mdm-refdata.js?v=u230"></script>
+<script src="js/mdm-quality.js?v=u230"></script>
+<script src="js/mdm-pubsub.js?v=u230"></script>
+<script src="js/mdm-hierarchy.js?v=u230"></script>
+<script src="js/ai-agent.js?v=u230"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -11153,27 +11153,50 @@ function filterFileTree(keyword) {
   var tree = document.getElementById('fileTree');
   var items = tree.querySelectorAll('.tree-file, .tree-folder');
   var kw = keyword.trim().toLowerCase();
+  // 文件名命中高亮: 原名存 data-orig, 清空时还原(与全站搜索高亮一致)
+  var _hl = function(el) {
+    var n = el.querySelector('.file-name'); if (!n) return;
+    var orig = n.getAttribute('data-orig'); if (orig == null) { orig = n.textContent; n.setAttribute('data-orig', orig); }
+    var i = kw ? orig.toLowerCase().indexOf(kw) : -1;
+    if (i < 0) { n.textContent = orig; return; }
+    n.innerHTML = escapeHtml(orig.slice(0, i)) + '<mark style="background:var(--warning-bg);color:inherit;padding:0 1px;border-radius:2px;">' + escapeHtml(orig.slice(i, i + kw.length)) + '</mark>' + escapeHtml(orig.slice(i + kw.length));
+  };
   if (!kw) {
-    items.forEach(function(el) { el.style.display = ''; });
+    items.forEach(function(el) { el.style.display = ''; _hl(el); });
+    _ftSetNoMatch(tree, false);
     return;
   }
+  var anyFile = false;
   items.forEach(function(el) {
     if (el.classList.contains('tree-folder')) {
       // 文件夹：检查其下是否有匹配的文件
       var files = el.querySelectorAll('.tree-file');
       var hasMatch = false;
       files.forEach(function(f) {
-        var name = (f.querySelector('.file-name') || {}).textContent || '';
-        if (name.toLowerCase().indexOf(kw) >= 0) { hasMatch = true; f.style.display = ''; }
+        var nEl = f.querySelector('.file-name');
+        var name = nEl ? (nEl.getAttribute('data-orig') != null ? nEl.getAttribute('data-orig') : nEl.textContent) : '';
+        if (name.toLowerCase().indexOf(kw) >= 0) { hasMatch = true; anyFile = true; f.style.display = ''; _hl(f); }
         else { f.style.display = 'none'; }
       });
       el.style.display = hasMatch ? '' : 'none';
       if (hasMatch) el.classList.add('open');
     } else {
-      var name = (el.querySelector('.file-name') || {}).textContent || '';
-      el.style.display = name.toLowerCase().indexOf(kw) >= 0 ? '' : 'none';
+      var nEl2 = el.querySelector('.file-name');
+      var name2 = nEl2 ? (nEl2.getAttribute('data-orig') != null ? nEl2.getAttribute('data-orig') : nEl2.textContent) : '';
+      var show = name2.toLowerCase().indexOf(kw) >= 0;
+      el.style.display = show ? '' : 'none';
+      if (show) { anyFile = true; _hl(el); }
     }
   });
+  _ftSetNoMatch(tree, !anyFile);
+}
+// 文件树搜索无匹配反馈(原静默空树)
+function _ftSetNoMatch(tree, show) {
+  var nm = document.getElementById('fileTreeNoMatch');
+  if (show) {
+    if (!nm) { nm = document.createElement('div'); nm.id = 'fileTreeNoMatch'; nm.style.cssText = 'padding:16px;color:var(--text-muted);font-size:12px;text-align:center;'; nm.textContent = '无匹配节点'; tree.appendChild(nm); }
+    nm.style.display = '';
+  } else if (nm) { nm.style.display = 'none'; }
 }
 
 // ===== 版本查看 =====

@@ -714,3 +714,6 @@
 
 ## R288 [UI重构·第159轮] DN.table 搜索命中高亮(全治理/主数据/标准表)
 - dn-common.js: DN.table 渲染纯文本单元格时, 搜索关键词命中处 <mark>+warning-bg 高亮(hlMark; 仅纯文本cell, Node/html 自定义渲染不动, 不破坏 copyable/render)。一处改动覆盖所有 DN.table(gov-*/mdm/standard 数十张表)。真机验证 治理-标准表 kw "rt1" 命中 4 处 <mark>(大小写不敏感)。?v=u229。
+
+## R289 [UI重构·第160轮] 数据开发 文件树搜索 高亮+无匹配反馈
+- workspace.html: filterFileTree 补 文件名命中高亮(_hl, 原名存 data-orig 清空还原, <mark>) + 无匹配反馈(_ftSetNoMatch "无匹配节点", 原静默空树)。承全站搜索高亮范式。真机验证 28文件搜"本地"→1高亮; "zzznomatchxyz"→显无匹配; 清空→复原28且高亮清除。?v=u230。
