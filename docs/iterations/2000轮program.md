@@ -952,3 +952,6 @@
 
 ## R366 [UI重构·第237轮] 结果面板拖拽高度持久化
 - workspace.html: SQL结果/日志面板拖拽调整的高度记入 localStorage dn.resultPanelH, 下次加载恢复(承全站偏好持久化体系 dn.theme/density/last-route/treeFilter 等)。clamp 80~70vh 防越界。真机验证 设300px reload 后 cssText="height: 300px" 已恢复。?v=u308。
+
+## R367 [UI重构·第238轮] 左面板(文件树)宽度持久化
+- workspace.html: 数据开发左侧文件树面板拖拽宽度记入 localStorage dn.leftPanelW, 下次加载恢复(原仅右面板内存 lastRightWidth 不跨刷新)。clamp LEFT_MIN~75% 防越界。真机验证 设320px reload 后 inlineWidth=320px 已恢复。?v=u309。
