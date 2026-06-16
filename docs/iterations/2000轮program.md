@@ -636,3 +636,6 @@
 
 ## R262 [UI重构·第133轮] 全局未捕获Promise拒绝兜底(健壮性)
 - workspace.html: 加 window 'unhandledrejection' 监听, console.warn 暴露漏网异步失败便于排查 + 抑制控制台默认报错。不弹 toast(防 benign 中止/导航 fetch 误报刷屏)。一处兜住所有未补 catch 的边缘异步。真机冒烟首页0错误。?v=u203。
+
+## R263 [UI重构·第134轮] 指标列表整行可点开详情
+- workspace.html: 指标列表 tr 加 cursor:pointer + onclick→openMetricDetail(守卫 event.target.closest('button,a,input,select') 不与名称链接/操作按钮/开关冲突)。更大点击目标, 人性化。真机验证 点分类单元格→开详情驾驶舱。?v=u204。
