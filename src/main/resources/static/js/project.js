@@ -1048,9 +1048,11 @@ window.projLoadOverview = function() {
       var rec = g.recent || [];
       if (rec.length) {
         s += '<div style="font-size:12px;line-height:1.9;">';
+        var _stMap = { SUCCESS: '成功', FAILED: '失败', RUNNING: '运行中', ERROR: '异常', PENDING: '待执行' };   // 状态中文化(原显英文)
         rec.forEach(function(x) {
           var c = x.status === 'SUCCESS' ? 'var(--success)' : (x.status === 'FAILED' ? 'var(--error)' : (x.status === 'RUNNING' ? 'var(--primary)' : 'var(--text-faint)'));
-          s += '<div style="display:flex;gap:8px;"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(x.name || '-') + '</span><span style="color:' + c + ';">' + escapeHtml(x.status || '-') + (isQuality && x.passRate != null ? ' ' + x.passRate + '%' : '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((x.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
+          var stTxt = _stMap[String(x.status || '').toUpperCase()] || x.status || '-';
+          s += '<div style="display:flex;gap:8px;"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(x.name || '-') + '</span><span style="color:' + c + ';">' + escapeHtml(stTxt) + (isQuality && x.passRate != null ? ' ' + x.passRate + '%' : '') + '</span><span style="color:var(--text-muted);white-space:nowrap;">' + escapeHtml((x.at || '').replace('T', ' ').slice(0, 16)) + '</span></div>';
         });
         s += '</div>';
       }

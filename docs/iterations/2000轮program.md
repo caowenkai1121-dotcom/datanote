@@ -858,3 +858,6 @@
 
 ## R335 [UI重构·第206轮] 质量检查记录 计数 + 状态大小写健壮
 - workspace.html: renderQualityHistory 加"共 N 条检查记录(近50条)"计数; 运行状态查表改大小写不敏感(SUCCESS/success 均→通过, 防大写裸显, 承 R334 健壮性)。真机验证(合成2条) 计数"共2条" + SUCCESS→通过/failed→未达标 无英文裸值。?v=u277。
+
+## R336 [UI重构·第207轮] 项目最近运行状态中文化
+- project.js: 项目工作台/详情"最近运行"小组件状态由英文裸值(SUCCESS/FAILED/RUNNING)改中文(成功/失败/运行中/异常/待执行, 大写键查)。承 R334/R335 i18n健壮。真机验证 project.js 加载正常(projRenderKpi/projRenderList存在), 项目页渲染无错。?v=u278。
