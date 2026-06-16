@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u285">
-<link rel="stylesheet" href="css/gov-modern.css?v=u285">
-<link rel="stylesheet" href="css/redesign.css?v=u285">
-<link rel="stylesheet" href="css/dn-design.css?v=u285">
+<link rel="stylesheet" href="css/app.css?v=u286">
+<link rel="stylesheet" href="css/gov-modern.css?v=u286">
+<link rel="stylesheet" href="css/redesign.css?v=u286">
+<link rel="stylesheet" href="css/dn-design.css?v=u286">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u285">
+<link rel="stylesheet" href="css/modern.css?v=u286">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u285"></script>
-<script src="js/gov-assets.js?v=u285"></script>
-<script src="js/gov-lineage.js?v=u285"></script>
-<script src="js/gov-quality.js?v=u285"></script>
-<script src="js/gov-standard.js?v=u285"></script>
-<script src="js/gov-classification.js?v=u285"></script>
-<script src="js/gov-security.js?v=u285"></script>
-<script src="js/gov-health.js?v=u285"></script>
-<script src="js/gov-audit.js?v=u285"></script>
-<script src="js/gov-overview.js?v=u285"></script>
-<script src="js/gov-subject.js?v=u285"></script>
-<script src="js/gov-consumption.js?v=u285"></script>
-<script src="js/gov-govmap.js?v=u285"></script>
-<script src="js/project.js?v=u285"></script>
-<script src="js/datamodel.js?v=u285"></script>
-<script src="js/home-dashboard.js?v=u285"></script>
-<script src="js/mdm.js?v=u285"></script>
-<script src="js/mdm-ingest.js?v=u285"></script>
-<script src="js/mdm-survivorship.js?v=u285"></script>
-<script src="js/mdm-approval.js?v=u285"></script>
-<script src="js/mdm-refdata.js?v=u285"></script>
-<script src="js/mdm-quality.js?v=u285"></script>
-<script src="js/mdm-pubsub.js?v=u285"></script>
-<script src="js/mdm-hierarchy.js?v=u285"></script>
-<script src="js/ai-agent.js?v=u285"></script>
+<script src="js/dn-common.js?v=u286"></script>
+<script src="js/gov-assets.js?v=u286"></script>
+<script src="js/gov-lineage.js?v=u286"></script>
+<script src="js/gov-quality.js?v=u286"></script>
+<script src="js/gov-standard.js?v=u286"></script>
+<script src="js/gov-classification.js?v=u286"></script>
+<script src="js/gov-security.js?v=u286"></script>
+<script src="js/gov-health.js?v=u286"></script>
+<script src="js/gov-audit.js?v=u286"></script>
+<script src="js/gov-overview.js?v=u286"></script>
+<script src="js/gov-subject.js?v=u286"></script>
+<script src="js/gov-consumption.js?v=u286"></script>
+<script src="js/gov-govmap.js?v=u286"></script>
+<script src="js/project.js?v=u286"></script>
+<script src="js/datamodel.js?v=u286"></script>
+<script src="js/home-dashboard.js?v=u286"></script>
+<script src="js/mdm.js?v=u286"></script>
+<script src="js/mdm-ingest.js?v=u286"></script>
+<script src="js/mdm-survivorship.js?v=u286"></script>
+<script src="js/mdm-approval.js?v=u286"></script>
+<script src="js/mdm-refdata.js?v=u286"></script>
+<script src="js/mdm-quality.js?v=u286"></script>
+<script src="js/mdm-pubsub.js?v=u286"></script>
+<script src="js/mdm-hierarchy.js?v=u286"></script>
+<script src="js/ai-agent.js?v=u286"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9465,29 +9465,31 @@ function loadQualityOverview() {
       var container = document.getElementById('qualityOverviewContent');
       var successRate = d.totalRuns > 0 ? Math.round(d.successRuns * 100 / d.totalRuns) : 100;
       var failRate = d.totalRuns > 0 ? Math.round(d.failedRuns * 100 / d.totalRuns) : 0;
+      var _rules = ' style="cursor:pointer;" title="查看质量规则" onclick="qualityGotoTab(\'rules\')"';
+      var _hist = ' style="cursor:pointer;" title="查看检查历史" onclick="qualityGotoTab(\'history\')"';
       container.innerHTML =
         '<div class="quality-overview-cards">' +
-          '<div class="quality-card">' +
+          '<div class="quality-card"' + _rules + '>' +
             '<div class="quality-card-value">' + (d.totalRules || 0) + '</div>' +
             '<div class="quality-card-label">规则总数</div>' +
           '</div>' +
-          '<div class="quality-card">' +
+          '<div class="quality-card"' + _rules + '>' +
             '<div class="quality-card-value">' + (d.enabledRules || 0) + '</div>' +
             '<div class="quality-card-label">已启用</div>' +
           '</div>' +
-          '<div class="quality-card">' +
+          '<div class="quality-card"' + _hist + '>' +
             '<div class="quality-card-value">' + (d.totalRuns || 0) + '</div>' +
             '<div class="quality-card-label">24h 执行次数</div>' +
           '</div>' +
-          '<div class="quality-card quality-card-success">' +
+          '<div class="quality-card quality-card-success"' + _hist + '>' +
             '<div class="quality-card-value">' + successRate + '%</div>' +
             '<div class="quality-card-label">通过率</div>' +
           '</div>' +
-          '<div class="quality-card quality-card-fail">' +
+          '<div class="quality-card quality-card-fail"' + _hist + '>' +
             '<div class="quality-card-value">' + (d.failedRuns || 0) + '</div>' +
             '<div class="quality-card-label">检查异常</div>' +
           '</div>' +
-          '<div class="quality-card quality-card-error">' +
+          '<div class="quality-card quality-card-error"' + _hist + '>' +
             '<div class="quality-card-value">' + (d.errorRuns || 0) + '</div>' +
             '<div class="quality-card-label">执行错误</div>' +
           '</div>' +
@@ -9496,8 +9498,14 @@ function loadQualityOverview() {
           '<p>数据质量监控帮助您持续检测数据的完整性、一致性和准确性。</p>' +
           '<p>支持空值检查、唯一性检查、值域检查、正则匹配和自定义 SQL 五种规则类型。</p>' +
         '</div>';
+      if (window.dnA11yEnhance) dnA11yEnhance(container);   // 概览卡可点: 补键盘可达
     });
 }
+// 质量总览卡片 → 跳对应子tab(规则/历史)
+window.qualityGotoTab = function(tab) {
+  var items = document.querySelectorAll('#viewQuality .ops-sidebar-item');
+  for (var i = 0; i < items.length; i++) { if ((items[i].getAttribute('onclick') || '').indexOf("'" + tab + "'") >= 0) { switchQualityTab(items[i], tab); return; } }
+};
 
 function loadQualityRules() {
   fetch('/api/quality/rules')

@@ -882,3 +882,6 @@
 
 ## R343 [UI重构·第214轮] 调度统计点击联动筛选
 - workspace.html: 运维调度顶部统计(成功/失败/运行中/等待/暂停)改可点, 点击设对应状态筛选并滚到任务列表(schedStatFilter)。原纯展示。dnA11yEnhance 自动补 role/tabindex(span有onclick)+全局Enter激活。承首页/项目KPI磁贴联动范式。真机验证 点"失败"统计→状态筛选=-1。?v=u285。
+
+## R344 [UI重构·第215轮] 质量总览卡片联动子tab
+- workspace.html: 质量总览6卡片改可点(qualityGotoTab): 规则总数/已启用→质量规则tab; 24h执行/通过率/检查异常/执行错误→检查历史tab。dnA11yEnhance补键盘可达。原纯展示。承统计联动范式。真机验证 6卡可点, "执行错误"卡→切检查历史tab。?v=u286。
