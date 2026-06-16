@@ -1135,3 +1135,6 @@
 
 ## R427 [UI重构·第298轮] 质量检查记录通过率按阈值着色
 - workspace.html: renderQualityHistory 通过率列按阈值着色(≥85绿/≥60橙/<60红, 文本色非图表), 一眼识别问题规则。真机 mock 验证 95%绿/70%橙/40%红。?v=u368。
+
+## R428 [UI重构·第299轮] 项目Wiki编辑实时预览切换
+- project.js: Wiki 编辑表单加"预览/编辑"切换(projWikiTogglePreview 用 projMd 渲染 markdown 到 #pwPreview, 与 textarea 互斥显示, 按钮文案切换), 写文档边写边看效果。真机构造验证 预览渲染h1/strong/p+切回编辑。?v=u369。

@@ -1864,8 +1864,17 @@ function projWikiEditForm(p) {
   c.innerHTML = '<input type="hidden" id="pwId" value="' + (p.id || '') + '">'
     + '<div style="display:flex;gap:8px;margin-bottom:8px;"><input id="pwTitle" class="dbsync-form-input" style="flex:1;" placeholder="标题" value="' + escapeHtml(p.title || '') + '"><select id="pwParent" class="dbsync-form-select" style="width:140px;">' + parentOpts + '</select></div>'
     + '<textarea id="pwContent" style="width:100%;min-height:240px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-family:monospace;font-size:13px;box-sizing:border-box;" placeholder="Markdown 内容">' + escapeHtml(p.content || '') + '</textarea>'
-    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projWikiSave(this)">保存</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
+    + '<div id="pwPreview" class="proj-md" style="display:none;min-height:240px;border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:13px;line-height:1.7;"></div>'
+    + '<div style="margin-top:8px;"><button class="btn btn-sm btn-primary" data-perm="project:manage" onclick="projWikiSave(this)">保存</button> <button class="btn btn-sm" id="pwPreviewBtn" onclick="projWikiTogglePreview(this)">预览</button> <button class="btn btn-sm" onclick="projLoadWiki()">取消</button></div>';
 }
+// Wiki 编辑态 预览/编辑 切换(用 projMd 实时渲染 markdown)
+window.projWikiTogglePreview = function(btn) {
+  var ta = document.getElementById('pwContent'), pv = document.getElementById('pwPreview');
+  if (!ta || !pv) return;
+  var toPreview = pv.style.display === 'none';
+  if (toPreview) { pv.innerHTML = projMd(ta.value || '') || '<span style="color:var(--text-muted);">(空)</span>'; pv.style.display = ''; ta.style.display = 'none'; if (btn) btn.textContent = '编辑'; }
+  else { pv.style.display = 'none'; ta.style.display = ''; if (btn) btn.textContent = '预览'; ta.focus(); }
+};
 window.projWikiSave = function(btn) {
   var title = (document.getElementById('pwTitle').value || '').trim();
   if (!title) { showToast('请填写标题', 'error'); return; }
