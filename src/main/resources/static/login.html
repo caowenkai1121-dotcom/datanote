@@ -140,6 +140,7 @@
               <svg id="pwIcon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>
             </button>
           </div>
+          <div id="capsWarn" style="display:none;font-size:12px;color:#e8930c;margin-top:5px;">⚠ 大写锁定已开启</div>
         </div>
         <button class="login-btn" id="loginBtn" type="submit"><span id="loginBtnText">登 录</span></button>
         <div class="login-err" id="loginErr"></div>
@@ -169,6 +170,12 @@
       : '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>';
     pwInput.focus();
   });
+  // 大写锁定提示(防误输密码): 输入/失焦时检测 CapsLock
+  var capsWarn = document.getElementById('capsWarn');
+  var capsCheck = function (e) { if (!capsWarn || !e.getModifierState) return; capsWarn.style.display = e.getModifierState('CapsLock') ? '' : 'none'; };
+  pwInput.addEventListener('keydown', capsCheck);
+  pwInput.addEventListener('keyup', capsCheck);
+  pwInput.addEventListener('blur', function () { if (capsWarn) capsWarn.style.display = 'none'; });
 
   // 已登录则直接进主页；认证未启用(开发模式)也直接进
   fetch('/api/auth/status').then(function (r) { return r.json(); }).then(function (res) {

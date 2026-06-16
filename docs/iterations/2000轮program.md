@@ -1108,3 +1108,6 @@
 
 ## R418 [UI重构·第289轮] 质量规则配置上下文占位提示
 - workspace.html: onQualityRuleTypeChange 按规则类型设 qrConfig 上下文占位(值域→'值域范围, 如: {"min":0,"max":100}'; 正则→'正则模式, 如: {"pattern":"^[0-9]+$"}'), 配置引导更精准。真机切类型验证 值域/正则占位正确、空值检查隐藏配置行。?v=u360。
+
+## R419 [UI重构·第290轮] 登录页大写锁定提示
+- login.html: 密码框下加大写锁定警告(#capsWarn "⚠ 大写锁定已开启", keydown/keyup 检测 getModifierState('CapsLock'), 失焦隐藏), 防大写误输密码登录失败。真机模拟 CapsLock 验证 开→显/关→隐。login.html 独立部署(无需 bump workspace ?v)。
