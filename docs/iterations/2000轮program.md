@@ -1036,3 +1036,6 @@
 
 ## R394 [UI重构·第265轮] AI助手终答一键复制
 - ai-agent.js: assistantBubble 实质终答(非错误且长度>12)右下角加"⧉ 复制"链接, 复制原始 markdown 文本(DN.copy execCommand 降级 HTTP 安全)。短确认/错误气泡不加。真机发问→终答气泡渲染复制链接, 点击复制 120 字回答原文。?v=u336。
+
+## R395 [UI重构·第266轮] AI代码块ChatGPT式复制按钮
+- ai-agent.js: renderMarkdown 代码块(```)右上角加"复制"按钮(position:absolute, 复制纯代码 buf.join, stopPropagation 防触发气泡, DN.copy execCommand 降级)。SQL/代码一键取用。真机请 AI 返回代码块验证 pre 含复制按钮, 点击复制"SELECT 1 FROM dual;"。?v=u337。

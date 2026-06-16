@@ -88,8 +88,11 @@
         var buf = []; i++;
         while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
         i++; // 跳过收尾 ```
-        var pre = DN.h('pre', { style: 'background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
-        pre.appendChild(DN.h('code', { text: buf.join('\n'), style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
+        var _code = buf.join('\n');
+        var pre = DN.h('pre', { style: 'position:relative;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
+        pre.appendChild(DN.h('code', { text: _code, style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
+        // 代码块右上角复制按钮(ChatGPT 式, 复制纯代码; DN.copy execCommand 降级 HTTP 安全)
+        pre.appendChild(DN.h('button', { text: '复制', title: '复制代码', style: 'position:absolute;top:6px;right:6px;font-size:11px;padding:1px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-muted);cursor:pointer;opacity:.85;', onclick: (function (c) { return function (e) { e.stopPropagation(); if (window.DN && DN.copy) DN.copy(c); }; })(_code) }));
         container.appendChild(pre); continue;
       }
       // 标题 #..######
