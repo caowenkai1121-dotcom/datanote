@@ -621,3 +621,6 @@
 
 ## R257 [UI重构·第128轮] 弹窗关闭按钮 aria-label(a11y)
 - workspace.html: 3个纯SVG关闭按钮(.close-btn: 质量规则/指标弹窗/右属性栏)加 aria-label="关闭"+title="关闭", 读屏可识别、鼠标悬停有提示。?v=u198。
+
+## R258 [UI重构·第129轮] 命令面板 role=dialog(a11y)
+- workspace.html: 命令面板 #cmdkPanel 加 role="dialog" aria-modal="true" aria-label="命令面板", 读屏识别为模态对话框。至此主要弹窗/面板(指标/质量/同步表单/通用projShowModalBox/命令面板)a11y 语义齐全。?v=u199。
