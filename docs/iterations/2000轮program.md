@@ -1003,3 +1003,6 @@
 
 ## R383 [UI重构·第254轮] 数据预览单元格双击复制+tooltip
 - workspace.html: 数据地图表详情"数据预览"表(dm-preview-table)加 单元格 title 全值 tooltip + 双击复制(dmPreviewCopyCell, NULL 复制空), 状态行加"双击单元格可复制"提示。与 SQL 结果表 R363 一致体验。真机构造预览表验证 双击复制张三/NULL复制空。?v=u325。
+
+## R384 [UI重构·第255轮] dbsync源表样本预览单元格双击复制+tooltip
+- workspace.html: dbsyncPreviewSample 源表样本表加 单元格 title 全值 + 双击复制(复用 R383 通用 dmPreviewCopyCell), 计数行加"双击单元格可复制"。**单元格复制体系统一**: SQL结果(R363)/数据预览(R383)/dbsync样本(R384)。真机构造样本表验证 双击复制/NULL空。?v=u326。
