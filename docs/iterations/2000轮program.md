@@ -1144,3 +1144,6 @@
 
 ## R430 [UI重构·第301轮] 字段映射源字段搜索(宽表)
 - workspace.html: dbsyncRenderFieldMapHtml 字段>8列时在映射表上方加源字段搜索框(dbsyncFilterFieldMap 按 .dfs-fm-src 值过滤本表 .dfs-field-map-row), 宽表(100+列)快速定位字段。真机构造验证 搜"order"筛2行/清空恢复3行/作用域本表。?v=u371。
+
+## R431 [UI重构·第302轮] 质量规则单条执行 loading+非阻塞反馈
+- workspace.html: runSingleQualityRule 改 接收btn→执行中禁用+"执行中…"+防重复, 起始用 showToast 非阻塞替代阻塞 msgBox, 完成 showToast 结果(通过率+通过/失败数, 成败着色)。真机 spy 验证 按钮禁用→恢复 + 结果toast。?v=u372。
