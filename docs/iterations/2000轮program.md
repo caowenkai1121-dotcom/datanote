@@ -1015,3 +1015,6 @@
 
 ## R387 [UI重构·第258轮] 权限树搜索清除×(用户/角色表单)
 - workspace.html: 用户/角色表单的权限点搜索框(umfPermSearch, 两处相同 replace_all)加清除"×"(有输入才显, 内联清空+隐×+umFilterPermTree('')+聚焦)。umFilterPermTree 对空树安全。完成即时搜索清除×backlog中的权限树项。真机构造验证 初始隐/输入显/清除隐+清空+聚焦。?v=u329。
+
+## R388 [UI重构·第259轮] 依赖添加搜索清除×
+- workspace.html: 脚本依赖添加对话框任务搜索框(depSearchInput)加清除"×"(有输入才显, 内联清空+隐×+depSearchTasks重置+聚焦); depOpenAddDialog 重置时也隐藏×。真机(develop 内置对话框)验证 初始隐/输入显/清除隐+清空+(去抖后)结果重置。?v=u330。
