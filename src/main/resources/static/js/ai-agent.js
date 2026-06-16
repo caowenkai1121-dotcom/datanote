@@ -15,9 +15,16 @@
     return ({ gov: 'var(--chart-1)', quality: 'var(--chart-6)', lineage: 'var(--chart-3)', sync: 'var(--chart-4)', metadata: 'var(--chart-2)' })[g] || 'var(--chart-5)';
   }
 
-  // 用户气泡
+  // 用户气泡(含"↻ 重问": 把该问题填回输入框, 可编辑后重发)
   function userBubble(text) {
-    return DN.h('div', { class: 'dn-ai-bubble user', style: 'width:fit-content;white-space:pre-wrap;', text: text });
+    var b = DN.h('div', { class: 'dn-ai-bubble user', style: 'width:fit-content;white-space:pre-wrap;' });
+    b.appendChild(document.createTextNode(text == null ? '' : text));
+    if (text && String(text).trim().length > 6) {
+      b.appendChild(DN.h('div', { style: 'text-align:right;margin-top:4px;' }, [
+        DN.h('a', { href: 'javascript:void(0)', text: '↻ 重问', title: '把这条问题填回输入框, 可编辑后重新发送', style: 'font-size:11px;color:var(--text-inverse);opacity:.85;text-decoration:underline;', onclick: function () { if (inputEl) { inputEl.value = text; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; inputEl.focus(); } } })
+      ]));
+    }
+    return b;
   }
 
   // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
