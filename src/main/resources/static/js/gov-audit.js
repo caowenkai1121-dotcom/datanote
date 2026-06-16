@@ -204,13 +204,13 @@
         tc.body.appendChild(DN.line(vals, { height: 80, color: 'var(--primary)' }));
         var d0 = (trend[0] && trend[0].day) || '', dn = (trend[trend.length - 1] && trend[trend.length - 1].day) || '';
         var sum = vals.reduce(function (a, b) { return a + b; }, 0);
-        tc.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0;text-align:center', text: (d0 && dn ? d0 + ' ~ ' + dn + ' · ' : '') + '合计 ' + sum + ' 条' }));
+        tc.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0;text-align:center', text: (d0 && dn ? d0 + ' ~ ' + dn + ' · ' : '') + '合计 ' + Number(sum).toLocaleString() + ' 条' }));
       } else { tc.body.appendChild(DN.empty('暂无审计数据', 'clock')); }
       grid.appendChild(tc.el);
       // Top 操作人
       var uc = DN.card({ title: 'Top 活跃操作人', icon: 'user' });
       if (users.length) uc.body.appendChild(DN.bars(users.slice(0, 8).map(function (u) {
-        return { label: (u && u.userName) || '-', value: Number(u && u.cnt) || 0, tone: 'info', display: String((u && u.cnt) || 0),
+        return { label: (u && u.userName) || '-', value: Number(u && u.cnt) || 0, tone: 'info', display: (Number(u && u.cnt) || 0).toLocaleString(),
           onClick: function () { filterByUser(u && u.userName); } };
       })));
       else uc.body.appendChild(DN.empty('暂无数据', 'user'));
