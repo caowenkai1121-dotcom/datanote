@@ -916,3 +916,6 @@
 ## R354 [UI重构·第225轮] 数据预览采样 CSV 导出 + 全模块回归
 - 回归: MutationObserver(R353)上线后 13 模块导航 0 控制台错误; 表详情 数据预览/数据探查 真实数据渲染 0 错。
 - workspace.html: 数据预览 tab 加"导出CSV"(dmPreviewExport, 文件名带_预览明确为采样; 复用 DN.exportRows)。承 CSV 导出范式。真机验证(真实表) 触发"<表名>_预览_<日期>.csv"。?v=u296。
+
+## R355 [UI重构·第226轮] 数据探查结果 CSV 导出
+- workspace.html: 数据探查(字段质量画像: 空值率/唯一值/min/max)tab 加"导出CSV"(dmProfileExport)。是表非图(非报表组件), 可导出供离线分析/留档。承 CSV 范式。真机验证(真实表) 触发"<表名>_探查_<日期>.csv"。主题/密度偏好复核: 早期应用脚本防闪+localStorage持久+首访跟随系统深色, 完备。?v=u297。
