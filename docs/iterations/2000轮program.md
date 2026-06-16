@@ -1141,3 +1141,6 @@
 
 ## R429 [UI重构·第300轮里程碑] SQL运行按钮执行中禁用防重复
 - workspace.html: runTask 运行中禁用"运行"按钮(透明度.6)+ 已禁用时忽略重复触发(含Ctrl+Enter), 4个结束点(result/error/onerror/submit失败/catch)均 _restoreRunBtn 复原。防重复提交+执行态反馈。真机 Monaco+spy submit失败验证 禁用→恢复。?v=u370。**第300轮(30%)里程碑**。
+
+## R430 [UI重构·第301轮] 字段映射源字段搜索(宽表)
+- workspace.html: dbsyncRenderFieldMapHtml 字段>8列时在映射表上方加源字段搜索框(dbsyncFilterFieldMap 按 .dfs-fm-src 值过滤本表 .dfs-field-map-row), 宽表(100+列)快速定位字段。真机构造验证 搜"order"筛2行/清空恢复3行/作用域本表。?v=u371。
