@@ -675,3 +675,6 @@
 
 ## R275 [UI重构·第146轮] 质量规则列表 列排序
 - workspace.html: 质量规则表头 7 列(规则名/类型/库表/字段/创建人/级别/状态)可点排序; DOM 原地重排保留勾选与搜索态; 级别/状态按数值, 其余 localeCompare; 表头 ⇅/▲/▼ 指示; 无匹配行始终垫底。承指标(R268)/用户(R269)排序。真机验证 sev 数值升序 + name locale 升序 + 反向切换均正确。?v=u216。
+
+## R276 [UI重构·第147轮] 质量规则排序重载持久化(修 R275 体验缺口)
+- workspace.html: R275 的质量规则 DOM 排序在编辑/删除后列表重载会丢失。抽出 _qualityApplySort()(按当前排序态重排不切方向), qualitySortBy 调它, loadQualityRules 渲染后也调它。现 CRUD 重载后排序与表头箭头保持。真机验证 排序后 loadQualityRules 重载仍升序、箭头 ▲。?v=u217。
