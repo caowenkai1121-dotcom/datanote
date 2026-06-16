@@ -870,3 +870,6 @@
 
 ## R339 [UI重构·第210轮] 通知轮询失败退避(防控制台刷屏)
 - workspace.html: dnBellPoll(站内通知未读数 30s 轮询)改自调度+失败指数退避(连续失败间隔翻倍, 上限5min; 成功复位30s)。原 setInterval 固定30s, 接口不可用(本会话压测见过 /api/notify/unread-count ERR_EMPTY_RESPONSE 刷屏66条)时反复打请求刷控制台+增服务器负载。真机验证 badge=3 正常更新, _dnBellSchedule 自调度。?v=u281。
+
+## R340 [UI重构·第211轮] 调度状态轮询补 catch(防未处理拒绝)
+- workspace.html: schedRefreshStatus(运维5s调度状态轮询)补 .catch 静默(原无catch, 端点失败时未处理拒绝噪声; 5s下次自重试)。其余 setInterval(编辑锁心跳/监控10s/dbsync大盘5s)均页/弹窗作用域+可见性守卫, 离开即停, 风险低。真机验证 运维页加载0新错, schedRefreshStatus 函数正常。?v=u282。
