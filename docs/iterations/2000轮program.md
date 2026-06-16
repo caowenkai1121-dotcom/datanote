@@ -979,3 +979,6 @@
 
 ## R375 [UI重构·第246轮] 修复HTTP下DDL复制失效 + DN.copy加silent参
 - **真bug**: 本站走 HTTP 非安全上下文, navigator.clipboard 为 undefined(真机实测 clipboardDefined=false)。datamodel.js dmCopyDdl/dmGotoDevelopWithDdl 直调 navigator.clipboard.writeText → 抛错 → "复制失败"(DDL 复制功能在服务器上一直坏)。改走 DN.copy(已有 textarea+execCommand 降级)。dn-common.js DN.copy 加 silent 可选参(dmGotoDevelopWithDdl 自带引导 toast 故静默复制免双 toast)。真机验证 execCommand 降级被调用、silent 不弹 toast、dmCopyDdl 成功复制。?v=u317。
+
+## R376 [UI重构·第247轮] 修复另两处HTTP下DDL复制失效(同R375根因)
+- workspace.html: 全量排查 navigator.clipboard 直调。intgCopyDDL(数据集成DDL)/iwCopyDDL(建表向导DDL)无守卫无降级, HTTP 下 navigator.clipboard undefined 抛错→复制失败。改走 DN.copy(silent)+保留各自提示。其余复制点(文件名/SQL块/连接信息/同步等)经核查均已有 execCommand else 兜底, 无需改。真机构造 DDL 容器验证 两函数走 execCommand 降级、无抛错。?v=u318。
