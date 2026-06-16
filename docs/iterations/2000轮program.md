@@ -788,3 +788,6 @@
 
 ## R312 [UI重构·第183轮] Toast 读屏播报(aria-live)
 - workspace.html: dnToastStack 容器加 role=status + aria-live=polite + aria-atomic=false, 新提示读屏自动播报(此前视觉提示读屏用户无感知)。showToast 本就现代(玻璃卡/彩色accent+图标/堆叠cap5/点击关闭/滑入)。真机验证 stack role=status/aria-live=polite, toast 正常渲染。?v=u253。
+
+## R313 [UI重构·第184轮] 质量规则 Enter 提交防重复
+- workspace.html: saveQualityRule 未传 btn(modal Enter 提交路径)时自取 #qualityRuleModal .btn-primary, 保证 Enter 与点击两条路径都禁用按钮防重复提交(此前仅点击路径有保护)。saveMetric 本就自查按钮无此问题。真机验证 modal 打开 fallback 选择器解析到"保存"按钮。?v=u254。
