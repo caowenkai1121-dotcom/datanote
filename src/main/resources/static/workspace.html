@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u373">
-<link rel="stylesheet" href="css/gov-modern.css?v=u373">
-<link rel="stylesheet" href="css/redesign.css?v=u373">
-<link rel="stylesheet" href="css/dn-design.css?v=u373">
+<link rel="stylesheet" href="css/app.css?v=u374">
+<link rel="stylesheet" href="css/gov-modern.css?v=u374">
+<link rel="stylesheet" href="css/redesign.css?v=u374">
+<link rel="stylesheet" href="css/dn-design.css?v=u374">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u373">
+<link rel="stylesheet" href="css/modern.css?v=u374">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u373"></script>
-<script src="js/gov-assets.js?v=u373"></script>
-<script src="js/gov-lineage.js?v=u373"></script>
-<script src="js/gov-quality.js?v=u373"></script>
-<script src="js/gov-standard.js?v=u373"></script>
-<script src="js/gov-classification.js?v=u373"></script>
-<script src="js/gov-security.js?v=u373"></script>
-<script src="js/gov-health.js?v=u373"></script>
-<script src="js/gov-audit.js?v=u373"></script>
-<script src="js/gov-overview.js?v=u373"></script>
-<script src="js/gov-subject.js?v=u373"></script>
-<script src="js/gov-consumption.js?v=u373"></script>
-<script src="js/gov-govmap.js?v=u373"></script>
-<script src="js/project.js?v=u373"></script>
-<script src="js/datamodel.js?v=u373"></script>
-<script src="js/home-dashboard.js?v=u373"></script>
-<script src="js/mdm.js?v=u373"></script>
-<script src="js/mdm-ingest.js?v=u373"></script>
-<script src="js/mdm-survivorship.js?v=u373"></script>
-<script src="js/mdm-approval.js?v=u373"></script>
-<script src="js/mdm-refdata.js?v=u373"></script>
-<script src="js/mdm-quality.js?v=u373"></script>
-<script src="js/mdm-pubsub.js?v=u373"></script>
-<script src="js/mdm-hierarchy.js?v=u373"></script>
-<script src="js/ai-agent.js?v=u373"></script>
+<script src="js/dn-common.js?v=u374"></script>
+<script src="js/gov-assets.js?v=u374"></script>
+<script src="js/gov-lineage.js?v=u374"></script>
+<script src="js/gov-quality.js?v=u374"></script>
+<script src="js/gov-standard.js?v=u374"></script>
+<script src="js/gov-classification.js?v=u374"></script>
+<script src="js/gov-security.js?v=u374"></script>
+<script src="js/gov-health.js?v=u374"></script>
+<script src="js/gov-audit.js?v=u374"></script>
+<script src="js/gov-overview.js?v=u374"></script>
+<script src="js/gov-subject.js?v=u374"></script>
+<script src="js/gov-consumption.js?v=u374"></script>
+<script src="js/gov-govmap.js?v=u374"></script>
+<script src="js/project.js?v=u374"></script>
+<script src="js/datamodel.js?v=u374"></script>
+<script src="js/home-dashboard.js?v=u374"></script>
+<script src="js/mdm.js?v=u374"></script>
+<script src="js/mdm-ingest.js?v=u374"></script>
+<script src="js/mdm-survivorship.js?v=u374"></script>
+<script src="js/mdm-approval.js?v=u374"></script>
+<script src="js/mdm-refdata.js?v=u374"></script>
+<script src="js/mdm-quality.js?v=u374"></script>
+<script src="js/mdm-pubsub.js?v=u374"></script>
+<script src="js/mdm-hierarchy.js?v=u374"></script>
+<script src="js/ai-agent.js?v=u374"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -9184,8 +9184,10 @@ function _metricFreshAge(h) {
 }
 function _metricFreshBadge(fr) {
   if (!fr || fr.lastValueAt == null) return '<span class="gov-pill is-muted" title="尚未计算取值">未取值</span>';
-  if (fr.stale) return '<span class="gov-pill is-warn" title="超过26h未更新">陈旧 ' + _metricFreshAge(fr.ageHours) + '</span>';
-  return '<span class="gov-pill is-ok" title="数据新鲜">最新 ' + _metricFreshAge(fr.ageHours) + '</span>';
+  // 前置最新取值(免开详情看数), 后接新鲜度药丸
+  var val = fr.lastValue == null ? '' : '<b style="color:var(--text-regular);margin-right:6px;font-variant-numeric:tabular-nums;">' + escapeHtml(String(fr.lastValue)) + '</b>';
+  if (fr.stale) return val + '<span class="gov-pill is-warn" title="超过26h未更新, 最新值 ' + escapeHtml(String(fr.lastValue)) + '">陈旧 ' + _metricFreshAge(fr.ageHours) + '</span>';
+  return val + '<span class="gov-pill is-ok" title="数据新鲜, 最新值 ' + escapeHtml(String(fr.lastValue)) + '">最新 ' + _metricFreshAge(fr.ageHours) + '</span>';
 }
 function renderMetricList(metrics) {
   var container = document.getElementById('metricsListContent');

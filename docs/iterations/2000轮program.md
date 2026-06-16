@@ -1150,3 +1150,6 @@
 
 ## R432 [UI重构·第303轮] 清理死码 runAllQualityRules
 - workspace.html: 删除 runAllQualityRules(全仓无任何调用方, 质量执行走 runSingleQualityRule/批量启停; 且其用阻塞msgBox+缺catch)。承死码清理(R249)。真机验证 函数已删除、质量规则正常渲染23条、0控制台错误(无引用断裂)。?v=u373。
+
+## R433 [UI重构·第304轮] 指标列表新鲜度列前置最新取值
+- workspace.html: _metricFreshBadge 在新鲜度药丸前加粗显示 fr.lastValue(freshness接口已返但原未展示), tabular-nums 对齐, title 含值。免开详情即见指标最新值+新鲜度。真机验证 新鲜度列 <b>45</b>+药丸。?v=u374。
