@@ -876,3 +876,6 @@
 
 ## R341 [UI重构·第212轮] 开始今日调度 二次确认 + catch
 - workspace.html: schedStartDaily 加 msgConfirm 二次确认("会真实运行 ETL")+ .catch 网络异常提示。原无确认直接触发当日全量调度(真跑ETL), 误点代价高。承破坏性/高代价操作补确认范式。真机验证 调用 schedStartDaily→弹确认→取消不触发。smLoad 已含catch+可见性守卫(复核)。?v=u283。
+
+## R342 [UI重构·第213轮] 停止调度引擎 二次确认 + catch
+- workspace.html: schedStop 加 msgConfirm 二次确认(停止会中断下游推进)+ .catch + 失败提示。承 R341 调度操作确认。真机验证 schedStop→弹"停止调度引擎"确认→取消不触发。?v=u284。
