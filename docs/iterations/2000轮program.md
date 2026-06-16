@@ -1096,3 +1096,6 @@
 
 ## R414 [UI重构·第285轮] 新建指标表单必填项标红*
 - workspace.html: 指标名称/编码 label 加红色"*"必填标记(title="必填"), 上来即知哪些必填, 配 saveMetric 提交时的标红错误态。真机打开新建指标弹窗验证 名称/编码 label 含红*("指标名称 *")。?v=u356。
+
+## R415 [UI重构·第286轮] 质量规则表单必填项标红*
+- workspace.html: 质量规则弹窗 规则名称/数据源/数据库/表名 label 加红*必填标记(对应 saveQualityRule 校验的 ruleName/datasourceId/databaseName/tableName); 规则类型等有默认值的不标。承 R414 指标必填标记。真机弹窗验证 4 必填项有*、规则类型无*。?v=u357。
