@@ -615,3 +615,6 @@
 
 ## R255 [UI重构·第126轮] 静态弹窗补 role=dialog/aria-modal(a11y)
 - workspace.html: metricModal/qualityRuleModal/dbsyncFormModal 三个静态弹窗内层补 role="dialog" aria-modal="true" aria-labelledby(指向各自标题span), 读屏识别为模态对话框并朗读标题(projShowModalBox本就有)。?v=u196。
+
+## R256 [UI重构·第127轮] Toast 堆叠上限防溢出
+- workspace.html: showToast 追加后, stack 子项超 5 条即移除最旧, 防大量并发 toast(如批量操作多条结果)堆满/溢出屏幕。真机验证 连发8条→可见恰好5条。?v=u197。
