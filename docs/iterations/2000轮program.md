@@ -1117,3 +1117,6 @@
 
 ## R421 [UI重构·第292轮] AI配置测试连接显延迟
 - workspace.html: testAiConfig 成功状态加连接延迟"✓ 连接成功 (Nms)"(AI API 延迟更关键, 承 R420 数据源延迟)。真机 spy 验证 "✓ 连接成功 (48ms)"。?v=u362。
+
+## R422 [UI重构·第293轮] SQL结果表换行/截断切换
+- workspace.html+modern.css: 结果工具栏加"换行"切换(toggleResultWrap 切 #resultTable .result-wrap 类→单元格 white-space:normal+word-break+max-width:480, 按钮 active 态), 读长 JSON/文本免横向滚动。resultToggleActionBtns 同步可见。真机验证 nowrap→normal切换+按钮态+切回。?v=u363。

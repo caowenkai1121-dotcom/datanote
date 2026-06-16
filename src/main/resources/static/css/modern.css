@@ -139,6 +139,10 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 .editor-newtab-btn:hover { background: var(--bg-hover); color: var(--primary); }
 .editor-newtab-btn:active { transform: scale(.92); }
 
+/* R422: 结果表"换行显示"模式(读长 JSON/文本免横滚) */
+.result-table.result-wrap td { white-space: normal !important; word-break: break-word; max-width: 480px; }
+.result-download-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+
 /* R369: 结果表行号列粘附左侧(宽结果集横向滚动时保留行号定位)。不透明背景, 避开 tr:hover td 的半透明色致穿透。 */
 #resultArea .result-table td:first-child,
 #resultArea .result-table th:first-child {
