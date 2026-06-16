@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u300">
-<link rel="stylesheet" href="css/gov-modern.css?v=u300">
-<link rel="stylesheet" href="css/redesign.css?v=u300">
-<link rel="stylesheet" href="css/dn-design.css?v=u300">
+<link rel="stylesheet" href="css/app.css?v=u301">
+<link rel="stylesheet" href="css/gov-modern.css?v=u301">
+<link rel="stylesheet" href="css/redesign.css?v=u301">
+<link rel="stylesheet" href="css/dn-design.css?v=u301">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u300">
+<link rel="stylesheet" href="css/modern.css?v=u301">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u300"></script>
-<script src="js/gov-assets.js?v=u300"></script>
-<script src="js/gov-lineage.js?v=u300"></script>
-<script src="js/gov-quality.js?v=u300"></script>
-<script src="js/gov-standard.js?v=u300"></script>
-<script src="js/gov-classification.js?v=u300"></script>
-<script src="js/gov-security.js?v=u300"></script>
-<script src="js/gov-health.js?v=u300"></script>
-<script src="js/gov-audit.js?v=u300"></script>
-<script src="js/gov-overview.js?v=u300"></script>
-<script src="js/gov-subject.js?v=u300"></script>
-<script src="js/gov-consumption.js?v=u300"></script>
-<script src="js/gov-govmap.js?v=u300"></script>
-<script src="js/project.js?v=u300"></script>
-<script src="js/datamodel.js?v=u300"></script>
-<script src="js/home-dashboard.js?v=u300"></script>
-<script src="js/mdm.js?v=u300"></script>
-<script src="js/mdm-ingest.js?v=u300"></script>
-<script src="js/mdm-survivorship.js?v=u300"></script>
-<script src="js/mdm-approval.js?v=u300"></script>
-<script src="js/mdm-refdata.js?v=u300"></script>
-<script src="js/mdm-quality.js?v=u300"></script>
-<script src="js/mdm-pubsub.js?v=u300"></script>
-<script src="js/mdm-hierarchy.js?v=u300"></script>
-<script src="js/ai-agent.js?v=u300"></script>
+<script src="js/dn-common.js?v=u301"></script>
+<script src="js/gov-assets.js?v=u301"></script>
+<script src="js/gov-lineage.js?v=u301"></script>
+<script src="js/gov-quality.js?v=u301"></script>
+<script src="js/gov-standard.js?v=u301"></script>
+<script src="js/gov-classification.js?v=u301"></script>
+<script src="js/gov-security.js?v=u301"></script>
+<script src="js/gov-health.js?v=u301"></script>
+<script src="js/gov-audit.js?v=u301"></script>
+<script src="js/gov-overview.js?v=u301"></script>
+<script src="js/gov-subject.js?v=u301"></script>
+<script src="js/gov-consumption.js?v=u301"></script>
+<script src="js/gov-govmap.js?v=u301"></script>
+<script src="js/project.js?v=u301"></script>
+<script src="js/datamodel.js?v=u301"></script>
+<script src="js/home-dashboard.js?v=u301"></script>
+<script src="js/mdm.js?v=u301"></script>
+<script src="js/mdm-ingest.js?v=u301"></script>
+<script src="js/mdm-survivorship.js?v=u301"></script>
+<script src="js/mdm-approval.js?v=u301"></script>
+<script src="js/mdm-refdata.js?v=u301"></script>
+<script src="js/mdm-quality.js?v=u301"></script>
+<script src="js/mdm-pubsub.js?v=u301"></script>
+<script src="js/mdm-hierarchy.js?v=u301"></script>
+<script src="js/ai-agent.js?v=u301"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -3101,7 +3101,7 @@ function addOrActivateTab(id, name, type) {
     } else {
       iconSvg = '<svg class="sql-icon" viewBox="0 0 13 13" fill="none" stroke="var(--primary)" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="2"/><path d="M4 4.5h5M4 7h3.5"/></svg>';
     }
-    tab.innerHTML = iconSvg + ' ' + escapeHtml(name) + ' <span class="tab-close" onclick="event.stopPropagation();closeTab(this.parentElement)">&times;</span>';
+    tab.innerHTML = iconSvg + ' ' + escapeHtml(name) + '<span class="tab-dirty-dot" title="有未保存修改" aria-hidden="true"></span> <span class="tab-close" onclick="event.stopPropagation();closeTab(this.parentElement)">&times;</span>';
     tabBar.appendChild(tab);
     existing = tab;
     // Initialize content cache for this tab
@@ -3233,6 +3233,15 @@ function refreshRightPanelIfOpen() {
   }
 }
 
+// 活动 tab 未保存指示: 当前内容 != 最后保存点 → 标 .dirty(显小圆点); 编辑/保存/切签时刷新
+window.dnUpdateActiveTabDirty = function() {
+  try {
+    var tab = document.querySelector('#editorTabs .editor-tab.active'); if (!tab) return;
+    var c = tabContentCache[tab.dataset.id];
+    var dirty = c && typeof c.lastSavedContent === 'string' && codeArea.value !== c.lastSavedContent;
+    tab.classList.toggle('dirty', !!dirty);
+  } catch (e) {}
+};
 function closeTab(tabEl) {
   var tabId = tabEl.dataset.id;
   // 全站#5: 未保存守卫——活动 tab 的当前内容与最后保存点不一致时确认(统一用应用弹窗, 不用原生 confirm)
@@ -4499,6 +4508,13 @@ function _initMonacoAfterLoader() {
     }
     if (_codeAreaReadOnly) monacoEditor.updateOptions({ readOnly: true });
 
+    // 编辑内容变化 → 防抖刷新活动 tab 的未保存圆点
+    var _dnDirtyT = null;
+    monacoEditor.onDidChangeModelContent(function() {
+      clearTimeout(_dnDirtyT);
+      _dnDirtyT = setTimeout(function() { if (window.dnUpdateActiveTabDirty) dnUpdateActiveTabDirty(); }, 200);
+    });
+
     // SQL 关键词自动补全
     var sqlKeywords = [
       'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
@@ -5155,6 +5171,7 @@ function openScriptFromTree(el, scriptId, name) {
       dnApplyScriptLifecycle(scriptId);
       // Update cache with loaded content
       if (tabContentCache[tabId]) { tabContentCache[tabId].editorContent = codeArea.value; tabContentCache[tabId].lastSavedContent = codeArea.value; }
+      if (window.dnUpdateActiveTabDirty) dnUpdateActiveTabDirty();   // 保存后清未保存圆点
       loadScriptVersions(currentScriptId);
       // Load extended properties
       var script = res.data;

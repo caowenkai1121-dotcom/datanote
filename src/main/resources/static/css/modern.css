@@ -122,6 +122,12 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
 .quality-rules-table tbody tr:hover, .dbsync-exec-table tbody tr:hover {
   box-shadow: inset 3px 0 0 var(--primary);
 }
+/* R359: 编辑器 tab 未保存圆点(VS Code 风格, 内容≠最后保存点时显橙点) */
+.editor-tab .tab-dirty-dot { display: none; }
+.editor-tab.dirty .tab-dirty-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); margin: 0 3px; vertical-align: middle; }
+.editor-tab.dirty .tab-close { opacity: .55; }
+.editor-tab.dirty:hover .tab-close { opacity: 1; }
+
 /* R280: 粘性表头补齐 数据地图表(长表纵滚时表头常驻, 沿用 R134 范式)。dbsync-table 因外层 overflow-x 容器纵向 sticky 失效, 不纳入。 */
 .datamap-table thead th {
   position: sticky; top: 0; z-index: 1;

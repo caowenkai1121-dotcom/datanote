@@ -928,3 +928,6 @@
 
 ## R358 [UI重构·第229轮] 代码输入框 monospace
 - workspace.html: 质量规则自定义SQL(qrCustomSql)/规则配置JSON(qrConfig)/指标计算公式SQL(mFormula)加 font-family:monospace(代码/JSON 等宽更易读, 对齐数字; 承 dbsyncPreSql 已 monospace 范式)。真机验证 qrCustomSql/qrConfig computed fontFamily 含 mono。?v=u300。
+
+## R359 [UI重构·第230轮] 编辑器 tab 未保存圆点(VS Code风)
+- workspace.html: SQL编辑器 tab 加未保存指示——内容≠最后保存点时 tab 显橙色圆点(.tab-dirty-dot)。dnUpdateActiveTabDirty(codeArea.value vs cache.lastSavedContent)由 monacoEditor.onDidChangeModelContent(防抖200ms)驱动, 保存后清; 切签经setValue触发change自动刷新。modern.css 加圆点样式(dirty时×淡, hover还原)。真机验证 开脚本→编辑→tab .dirty+圆点出现。?v=u301。
