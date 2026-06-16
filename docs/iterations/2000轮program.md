@@ -606,3 +606,6 @@
 
 ## R252 [UI重构·第123轮] 数据集成任务表格搜索命中高亮
 - workspace.html: dbsyncJobsTable 加 _jhl() 高亮搜索关键词在任务名中的命中(<mark> warning-bg, title保持纯文本)。真机验证 真实任务"ces1"搜"ce"→命中高亮。至此搜索高亮覆盖命令面板/指标/数据地图/用户/数据集成全部主搜索列表。?v=u193。
+
+## R253 [UI重构·第124轮] 顶栏当前模块 aria-current(a11y)
+- workspace.html: navigateTo 给激活的 .header-tab 设 aria-current="page"、其余移除。读屏宣告当前所在模块, 符合 WCAG 导航语义。真机验证 治理时=governance、切指标后转移、始终仅一个。?v=u194。
