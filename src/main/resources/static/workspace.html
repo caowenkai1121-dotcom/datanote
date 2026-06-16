@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u251">
-<link rel="stylesheet" href="css/gov-modern.css?v=u251">
-<link rel="stylesheet" href="css/redesign.css?v=u251">
-<link rel="stylesheet" href="css/dn-design.css?v=u251">
+<link rel="stylesheet" href="css/app.css?v=u252">
+<link rel="stylesheet" href="css/gov-modern.css?v=u252">
+<link rel="stylesheet" href="css/redesign.css?v=u252">
+<link rel="stylesheet" href="css/dn-design.css?v=u252">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u251">
+<link rel="stylesheet" href="css/modern.css?v=u252">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u251"></script>
-<script src="js/gov-assets.js?v=u251"></script>
-<script src="js/gov-lineage.js?v=u251"></script>
-<script src="js/gov-quality.js?v=u251"></script>
-<script src="js/gov-standard.js?v=u251"></script>
-<script src="js/gov-classification.js?v=u251"></script>
-<script src="js/gov-security.js?v=u251"></script>
-<script src="js/gov-health.js?v=u251"></script>
-<script src="js/gov-audit.js?v=u251"></script>
-<script src="js/gov-overview.js?v=u251"></script>
-<script src="js/gov-subject.js?v=u251"></script>
-<script src="js/gov-consumption.js?v=u251"></script>
-<script src="js/gov-govmap.js?v=u251"></script>
-<script src="js/project.js?v=u251"></script>
-<script src="js/datamodel.js?v=u251"></script>
-<script src="js/home-dashboard.js?v=u251"></script>
-<script src="js/mdm.js?v=u251"></script>
-<script src="js/mdm-ingest.js?v=u251"></script>
-<script src="js/mdm-survivorship.js?v=u251"></script>
-<script src="js/mdm-approval.js?v=u251"></script>
-<script src="js/mdm-refdata.js?v=u251"></script>
-<script src="js/mdm-quality.js?v=u251"></script>
-<script src="js/mdm-pubsub.js?v=u251"></script>
-<script src="js/mdm-hierarchy.js?v=u251"></script>
-<script src="js/ai-agent.js?v=u251"></script>
+<script src="js/dn-common.js?v=u252"></script>
+<script src="js/gov-assets.js?v=u252"></script>
+<script src="js/gov-lineage.js?v=u252"></script>
+<script src="js/gov-quality.js?v=u252"></script>
+<script src="js/gov-standard.js?v=u252"></script>
+<script src="js/gov-classification.js?v=u252"></script>
+<script src="js/gov-security.js?v=u252"></script>
+<script src="js/gov-health.js?v=u252"></script>
+<script src="js/gov-audit.js?v=u252"></script>
+<script src="js/gov-overview.js?v=u252"></script>
+<script src="js/gov-subject.js?v=u252"></script>
+<script src="js/gov-consumption.js?v=u252"></script>
+<script src="js/gov-govmap.js?v=u252"></script>
+<script src="js/project.js?v=u252"></script>
+<script src="js/datamodel.js?v=u252"></script>
+<script src="js/home-dashboard.js?v=u252"></script>
+<script src="js/mdm.js?v=u252"></script>
+<script src="js/mdm-ingest.js?v=u252"></script>
+<script src="js/mdm-survivorship.js?v=u252"></script>
+<script src="js/mdm-approval.js?v=u252"></script>
+<script src="js/mdm-refdata.js?v=u252"></script>
+<script src="js/mdm-quality.js?v=u252"></script>
+<script src="js/mdm-pubsub.js?v=u252"></script>
+<script src="js/mdm-hierarchy.js?v=u252"></script>
+<script src="js/ai-agent.js?v=u252"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -907,8 +907,8 @@
                   <input type="text" id="metricSearchInput" placeholder="搜索指标名称/编码..." class="prop-input" style="width:200px;padding-right:24px;" oninput="var c=document.getElementById('metricSearchClr');if(c)c.style.display=this.value?'':'none';loadMetricListDebounced()">
                   <span id="metricSearchClr" onclick="metricSearchClear()" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>
                 </span>
-                <select id="metricCategoryFilter" onchange="loadMetricList()" class="prop-select" style="width:120px;"><option value="">全部分类</option></select>
-                <select id="metricFreshFilter" onchange="renderMetricList(window._metricListData||[])" class="prop-select" style="width:120px;" title="按新鲜度筛选"><option value="">全部新鲜度</option><option value="stale">仅陈旧</option><option value="fresh">仅最新</option><option value="never">仅未取值</option></select>
+                <select id="metricCategoryFilter" onchange="try{localStorage.setItem('dn.metricCat',this.value)}catch(e){};loadMetricList()" class="prop-select" style="width:120px;"><option value="">全部分类</option></select>
+                <select id="metricFreshFilter" onchange="try{localStorage.setItem('dn.metricFresh',this.value)}catch(e){};renderMetricList(window._metricListData||[])" class="prop-select" style="width:120px;" title="按新鲜度筛选"><option value="">全部新鲜度</option><option value="stale">仅陈旧</option><option value="fresh">仅最新</option><option value="never">仅未取值</option></select>
                 <button class="btn btn-sm" onclick="metricExportCsv()" title="导出当前指标列表为 CSV">导出CSV</button>
                 <button class="btn btn-primary btn-sm" data-perm="metrics:edit" onclick="showAddMetricDialog()">新建指标</button>
               </div>
@@ -8818,6 +8818,7 @@ function loadMetricList() {
     }
     window._metricFresh = {};
     if (fr && fr.code === 0) (fr.data || []).forEach(function(x) { window._metricFresh[x.metricId] = x; });
+    var _ff = document.getElementById('metricFreshFilter'); if (_ff && !_ff.value) { try { var sv = localStorage.getItem('dn.metricFresh'); if (sv) _ff.value = sv; } catch (e) {} }   // 回显持久化新鲜度筛选
     renderMetricList(res.data || []);
   });
 }
@@ -8852,11 +8853,12 @@ function loadMetricCategories() {
     .then(function(res) {
       if (res.code !== 0) { showToast('分类加载失败', 'warning'); return; }
       var sel = document.getElementById('metricCategoryFilter');
-      var current = sel.value;
+      var current = sel.value || (function(){ try { return localStorage.getItem('dn.metricCat') || ''; } catch(e){ return ''; } })();   // 回显持久化分类
       sel.innerHTML = '<option value="">全部分类</option>';
       (res.data || []).forEach(function(c) {
         sel.innerHTML += '<option value="' + escapeHtml(c) + '"' + (c === current ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
       });
+      if (current && sel.value === current) loadMetricList();   // 恢复的分类过滤需应用到列表
       // II-4: 弹窗分类 datalist 同源候选(允许新值)
       var dl = document.getElementById('mCategoryList');
       if (dl) dl.innerHTML = (res.data || []).map(function(c) { return '<option value="' + escapeHtml(c) + '">'; }).join('');

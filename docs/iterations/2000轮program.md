@@ -782,3 +782,6 @@
 
 ## R310 [UI重构·第181轮] 质量规则搜索 × 清除按钮(收口即时搜索清除)
 - workspace.html: 质量规则搜索框加 × 清除(qualitySearchClear, 有内容才现+回焦)。至此全部即时过滤搜索框(文件树/指标/质量)均有可见清除×, 与 DN.table 工厂搜索统一。真机验证 隐藏→输入显现→点击清空隐藏。?v=u251。
+
+## R311 [UI重构·第182轮] 指标 分类/新鲜度筛选 持久化
+- workspace.html: 指标列表 分类(dn.metricCat)+新鲜度(dn.metricFresh)筛选持久化 localStorage; loadMetricCategories 回显分类并应用, loadMetricList 回显新鲜度。原页面刷新丢失筛选。承全站偏好持久化范式。真机验证 设新鲜度"仅陈旧"→刷新→仍"仅陈旧"。?v=u252。
