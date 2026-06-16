@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u350">
-<link rel="stylesheet" href="css/gov-modern.css?v=u350">
-<link rel="stylesheet" href="css/redesign.css?v=u350">
-<link rel="stylesheet" href="css/dn-design.css?v=u350">
+<link rel="stylesheet" href="css/app.css?v=u351">
+<link rel="stylesheet" href="css/gov-modern.css?v=u351">
+<link rel="stylesheet" href="css/redesign.css?v=u351">
+<link rel="stylesheet" href="css/dn-design.css?v=u351">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u350">
+<link rel="stylesheet" href="css/modern.css?v=u351">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u350"></script>
-<script src="js/gov-assets.js?v=u350"></script>
-<script src="js/gov-lineage.js?v=u350"></script>
-<script src="js/gov-quality.js?v=u350"></script>
-<script src="js/gov-standard.js?v=u350"></script>
-<script src="js/gov-classification.js?v=u350"></script>
-<script src="js/gov-security.js?v=u350"></script>
-<script src="js/gov-health.js?v=u350"></script>
-<script src="js/gov-audit.js?v=u350"></script>
-<script src="js/gov-overview.js?v=u350"></script>
-<script src="js/gov-subject.js?v=u350"></script>
-<script src="js/gov-consumption.js?v=u350"></script>
-<script src="js/gov-govmap.js?v=u350"></script>
-<script src="js/project.js?v=u350"></script>
-<script src="js/datamodel.js?v=u350"></script>
-<script src="js/home-dashboard.js?v=u350"></script>
-<script src="js/mdm.js?v=u350"></script>
-<script src="js/mdm-ingest.js?v=u350"></script>
-<script src="js/mdm-survivorship.js?v=u350"></script>
-<script src="js/mdm-approval.js?v=u350"></script>
-<script src="js/mdm-refdata.js?v=u350"></script>
-<script src="js/mdm-quality.js?v=u350"></script>
-<script src="js/mdm-pubsub.js?v=u350"></script>
-<script src="js/mdm-hierarchy.js?v=u350"></script>
-<script src="js/ai-agent.js?v=u350"></script>
+<script src="js/dn-common.js?v=u351"></script>
+<script src="js/gov-assets.js?v=u351"></script>
+<script src="js/gov-lineage.js?v=u351"></script>
+<script src="js/gov-quality.js?v=u351"></script>
+<script src="js/gov-standard.js?v=u351"></script>
+<script src="js/gov-classification.js?v=u351"></script>
+<script src="js/gov-security.js?v=u351"></script>
+<script src="js/gov-health.js?v=u351"></script>
+<script src="js/gov-audit.js?v=u351"></script>
+<script src="js/gov-overview.js?v=u351"></script>
+<script src="js/gov-subject.js?v=u351"></script>
+<script src="js/gov-consumption.js?v=u351"></script>
+<script src="js/gov-govmap.js?v=u351"></script>
+<script src="js/project.js?v=u351"></script>
+<script src="js/datamodel.js?v=u351"></script>
+<script src="js/home-dashboard.js?v=u351"></script>
+<script src="js/mdm.js?v=u351"></script>
+<script src="js/mdm-ingest.js?v=u351"></script>
+<script src="js/mdm-survivorship.js?v=u351"></script>
+<script src="js/mdm-approval.js?v=u351"></script>
+<script src="js/mdm-refdata.js?v=u351"></script>
+<script src="js/mdm-quality.js?v=u351"></script>
+<script src="js/mdm-pubsub.js?v=u351"></script>
+<script src="js/mdm-hierarchy.js?v=u351"></script>
+<script src="js/ai-agent.js?v=u351"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -7985,6 +7985,22 @@ function formatNumber(n) {
   return '' + n;
 }
 
+// 相对时间(刚刚/N分钟前/N小时前/N天前/N个月前/N年前; GitHub 式, 绝对时间宜配 title 兜底)
+function dnRelTime(iso) {
+  if (!iso) return '';
+  var t = new Date(String(iso).replace(' ', 'T'));
+  if (isNaN(t.getTime())) return '';
+  var diff = Date.now() - t.getTime();
+  if (diff < 0) return '';
+  var min = 60000, hr = 3600000, day = 86400000;
+  if (diff < min) return '刚刚';
+  if (diff < hr) return Math.floor(diff / min) + '分钟前';
+  if (diff < day) return Math.floor(diff / hr) + '小时前';
+  if (diff < 30 * day) return Math.floor(diff / day) + '天前';
+  if (diff < 365 * day) return Math.floor(diff / (30 * day)) + '个月前';
+  return Math.floor(diff / (365 * day)) + '年前';
+}
+
 /* --- 搜索 --- */
 // 搜索去抖 + 防重: 250ms 内的连续触发只发一次, 同时阻止上一请求结果回填
 var dmSearchTimer = null;
@@ -12266,7 +12282,7 @@ window.umRenderUsers = function() {
     // 优先用后端返回的 roleNames(无需本地映射); 回退 roleIds
     var names = (u.roleNames && u.roleNames.length) ? u.roleNames : (u.roleIds || []).map(umRoleName);
     var chips = names.map(function(nm) { return '<span style="display:inline-block;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--radius-lg);margin:1px;background:var(--bg-hover);color:var(--text-regular);">' + escapeHtml(nm) + '</span>'; }).join('') || '<span style="color:var(--text-muted);">未分配</span>';
-    var lastLogin = u.lastLoginAt ? escapeHtml(String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) : '<span style="color:var(--text-faint);">从未登录</span>';
+    var lastLogin = u.lastLoginAt ? ('<span title="' + escapeHtml(String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) + '">' + escapeHtml(dnRelTime(u.lastLoginAt) || String(u.lastLoginAt).replace('T', ' ').slice(0, 16)) + '</span>') : '<span style="color:var(--text-faint);">从未登录</span>';
     var selChk = '<td><input type="checkbox" class="umSelChk" value="' + u.id + '" onclick="umToggleSelect(' + u.id + ',this.checked)"' + (window._umSel[u.id] ? ' checked' : '') + '></td>';
     var dash = '<span style="color:var(--text-faint);">-</span>';
     h += '<tr style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))umViewUser(' + u.id + ')">' + selChk + '<td><b>' + _uhl(u.username) + '</b></td><td>' + _uhl(u.nickname || '-') + '</td>'
