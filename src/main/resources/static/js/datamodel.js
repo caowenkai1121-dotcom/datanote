@@ -156,7 +156,7 @@
       if (m.modelType === 'PHYS') ops += '<a href="#" onclick="dmShowDdl(' + m.id + ');return false;" style="color:#e8590c;margin-right:8px;">DDL</a>';
       if (m.modelType === 'PHYS' && m.status === 'PUBLISHED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmPublishAsset(' + m.id + ');return false;" style="color:#1971c2;margin-right:8px;">落地资产</a>';
       ops += '<a href="#" data-perm="datamodel:edit" onclick="dmDeleteModel(' + m.id + ');return false;" style="color:var(--error);">删除</a>';
-      h += '<tr><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
+      h += '<tr style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))dmOpenModel(' + m.id + ')"><td style="font-family:monospace;"><span style="display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelCode) + '">' + esc(m.modelCode) + '</span></td>'
         + '<td><b style="display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;" title="' + esc(m.modelName) + '">' + esc(m.modelName) + '</b></td><td>' + typeBadge + '</td>'
         + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(subName) + '">' + esc(subName) + '</td><td>' + st + '</td>'
         + '<td>v' + (m.version || 1) + '</td><td>' + (m.entityCount || 0) + '</td><td style="white-space:nowrap;">' + ops + '</td></tr>';
