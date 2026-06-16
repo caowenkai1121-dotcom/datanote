@@ -961,3 +961,6 @@
 
 ## R369 [UI重构·第240轮] SQL结果行号列横向冻结
 - modern.css: #resultArea 结果表行号列(td/th:first-child)position:sticky left:0, 宽结果集横向滚动时行号常驻左侧便于定位。不透明 bg-card 背景(避开 tr:hover td 半透明色致内容穿透), th 行号角 z-index 6 压住一切, td z-index 3。承粘性表头体系(result/quality/dbsync-exec/datamap)。真机验证 td/th computed position:sticky+left:0+不透明背景+z层级 全对。?v=u311。
+
+## R370 [UI重构·第241轮] 执行结果tab行数徽标
+- workspace.html: "执行结果"tab 追加 #resultTabCount 行数徽标(resultRenderTable 设 _resultRows.length→"(N)", 空则隐藏), 停在日志tab也能一眼看到结果行数。真机验证 3行显示(3)/空结果为空。?v=u312。
