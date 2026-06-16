@@ -212,7 +212,9 @@
     rows.forEach(function (tr) { tbody.appendChild(tr); });
     var nm = document.getElementById('dmNoMatch'); if (nm) tbody.appendChild(nm);
     Array.prototype.slice.call(document.querySelectorAll('[data-dmarr]')).forEach(function (sp) {
-      sp.textContent = sp.getAttribute('data-dmarr') === s.key ? (s.dir > 0 ? ' ▲' : ' ▼') : ' ⇅';
+      var k = sp.getAttribute('data-dmarr');
+      sp.textContent = k === s.key ? (s.dir > 0 ? ' ▲' : ' ▼') : ' ⇅';
+      var th = sp.closest ? sp.closest('th') : null; if (th) th.setAttribute('aria-sort', k === s.key ? (s.dir > 0 ? 'ascending' : 'descending') : 'none');   // a11y: 读屏宣告排序
     });
   }
 

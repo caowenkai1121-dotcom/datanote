@@ -760,3 +760,6 @@
 
 ## R303 [UI重构·第174轮] 指标/用户 表头 aria-sort(读屏宣告排序)
 - workspace.html: _mth(指标)/_uth(用户) 补 aria-sort(none/ascending/descending), 读屏可宣告当前排序方向(承 R302 键盘可达; th 保留 columnheader 语义故 aria-sort 有效)。真机验证 指标表头 aria-sort 随点击 none→ascending→descending。质量/模型(排序后置DOM)aria-sort 留作后续。?v=u244。
+
+## R304 [UI重构·第175轮] 质量/数据模型 表头 aria-sort(收口排序无障碍)
+- workspace.html(_qualityApplySort)/datamodel.js(_dmApplySort): 排序重排时同步设置 th aria-sort(sorted列 ascending/descending, 其余 none)。承 R303(指标/用户)。至此全部内联可排序表(指标/用户/质量/数据模型)排序状态读屏可宣告, 配合 R302 键盘可达 = 鼠标+键盘+读屏三可达。真机验证 质量"规则名称"列 aria-sort 切 ascending→descending, 他列 none。?v=u245。
