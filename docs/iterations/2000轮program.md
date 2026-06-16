@@ -1156,3 +1156,6 @@
 
 ## R434 [UI重构·第305轮] 质量规则自定义SQL常驻格式提示
 - workspace.html: 自定义SQL 字段下加常驻提示"须返回 total_count/fail_count 两列, 通过率自动计算"(placeholder 输入后消失, 常驻提示更可靠), textarea 改 width:100% box-sizing。真机切类型验证 提示显示/切走隐藏。?v=u375。
+
+## R435 [UI重构·第306轮] 顶栏可见"?"帮助按钮
+- workspace.html: header-right 加 #dnHelpBtn "?" 按钮(onclick=wsShowShortcutHelp), 与主题/密度/铃铛并列。原帮助仅 ? 快捷键(新用户不知), 现有可见入口。真机点击验证 打开快捷键帮助浮层(含命令面板等条目)。?v=u376。
