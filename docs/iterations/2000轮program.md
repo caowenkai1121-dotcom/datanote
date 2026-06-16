@@ -639,3 +639,6 @@
 
 ## R263 [UI重构·第134轮] 指标列表整行可点开详情
 - workspace.html: 指标列表 tr 加 cursor:pointer + onclick→openMetricDetail(守卫 event.target.closest('button,a,input,select') 不与名称链接/操作按钮/开关冲突)。更大点击目标, 人性化。真机验证 点分类单元格→开详情驾驶舱。?v=u204。
+
+## R264 [UI重构·第135轮] 数据集成任务表格行整行可点开详情
+- workspace.html: dbsyncJobsTable 表格行 tr 加 cursor:pointer + onclick→dbsyncOpenDetail(守卫 closest('button,a,input,select,.dbsync-more-trigger') 不与复选/操作冲突), 与卡片视图整卡点击一致、承 R263 指标行点击模式。(本会话集成列表为空无法真机点击, 代码已部署+逻辑同已验证模式。)?v=u205。
