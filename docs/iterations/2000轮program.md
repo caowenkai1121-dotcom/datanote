@@ -666,3 +666,6 @@
 
 ## R272 [UI重构·第143轮] 用户管理 CSV 导出
 - workspace.html: 用户管理工具栏加"导出CSV" + umExportCsv(导出全部用户: 用户名/昵称/邮箱/手机/部门/岗位/最后登录/状态/角色; **不含密码**; BOM 防乱码)。承 R271 指标导出。真机验证 触发下载"用户列表.csv"。?v=u213。
+
+## R273 [UI重构·第144轮] 补齐 Esc 关闭弹窗(键盘可达性)
+- workspace.html: 4 个遗漏弹窗补 Esc 关闭。dbsync Esc 处理器加 dbsyncChecksumModal/dbsyncFolderModal; 通用 Esc 处理器加 syncModal/intgModal(数据集成)。此前 gModal/metric/quality/cmdk/help/proj/dbsync(5个) 已支持; 现全站弹窗 Esc 一致可关。真机验证 4 个均 closedByEsc=true。?v=u214。
