@@ -67,9 +67,11 @@
       renderSubjectTree();
     }).catch(function () {});
   }
+  // 选中主题域强化态: 主色淡底+左强调条+加粗(原仅 --bg-hover 与悬停同色, 选中不明显)
+  var DM_SEL_STYLE = 'background:var(--primary-bg,rgba(var(--primary-rgb),.1));box-shadow:inset 3px 0 0 var(--primary);font-weight:600;';
   function renderSubjectTree() {
     var box = document.getElementById('dmSubjectTree'); if (!box) return;
-    var h = '<div style="padding:4px 8px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (DM.curSubject == null ? 'background:var(--bg-hover);' : '') + '" onclick="dmSetSubject(null)">全部主题域</div>';
+    var h = '<div style="padding:4px 8px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (DM.curSubject == null ? DM_SEL_STYLE : '') + '" onclick="dmSetSubject(null)">全部主题域</div>';
     h += renderSubNodes(DM.subjects, 0);
     box.innerHTML = h;
   }
@@ -80,7 +82,7 @@
       var lt = n.layerType ? ' <span style="font-size:var(--fs-xs);color:var(--text-faint);">' + esc(n.layerType) + '</span>' : '';
       var on = DM.curSubject === n.id;
       var pad = 8 + depth * 14;
-      var s = '<div style="padding:4px 8px 4px ' + pad + 'px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (on ? 'background:var(--bg-hover);' : '') + '" onclick="dmSetSubject(' + n.id + ')">'
+      var s = '<div style="padding:4px 8px 4px ' + pad + 'px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (on ? DM_SEL_STYLE : '') + '" onclick="dmSetSubject(' + n.id + ')">'
         + '<span style="font-size:var(--fs-xs);color:var(--primary);">L' + lv + '</span> ' + esc(n.name) + lt + '</div>';
       s += renderSubNodes(n.children, depth + 1);
       return s;

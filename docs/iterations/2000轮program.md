@@ -727,3 +727,6 @@
 
 ## R292 [UI重构·第163轮] 数据标准 码表整行点击下钻明细项
 - gov-standard.js: 码表(dict)表接 onRow→openDictItems 下钻明细项(承 R290/R291 行下钻范式, 与 dictCode 链接同效)。注: 本环境 0 码表无法真机点击验证, 已 curl 确认 onRow 部署 + DN.table onRow 机制 R290/R291 真机证实(同一模式)。?v=u233。
+
+## R293 [UI重构·第164轮] 数据模型 主题域树 选中态强化
+- datamodel.js: 主题域(L1-L5)树选中节点由原 --bg-hover(与悬停同色, 选中不明显)改为强化态 DM_SEL_STYLE(主色淡底 primary-bg + 左强调条 inset 3px primary + 加粗 600), "全部主题域"与各级节点统一。当前选中一目了然。真机验证 默认"全部主题域"节点 boxShadow inset + fontWeight 600 + primary-bg。?v=u234。
