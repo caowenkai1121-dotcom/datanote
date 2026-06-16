@@ -1084,3 +1084,6 @@
 
 ## R410 [UI重构·第281轮] 通知铃铛时间相对化
 - workspace.html: dnBellLoadList 通知条目时间改 dnRelTime 相对显示(绝对时间挂 title 兜底)。通知最讲时效, "22小时前"比绝对时间戳更直观。承 R409 相对时间复用。真机7条通知验证显示"22小时前"title="2026-06-16 00:51"。?v=u352。
+
+## R411 [UI重构·第282轮] 最近编辑列表行hover反馈
+- workspace.html: 开发欢迎页"最近编辑"可点行补 hover 高亮(onmouseover→var(--bg-hover), 移出还原, transition平滑)。原可点(cursor+role+keydown)但无悬停反馈。(注: script tree 节点无 updatedAt 字段, 故该列表不加时间, 已验证)。真机验证 hover→bg-hover/移出还原。?v=u353。
