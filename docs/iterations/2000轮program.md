@@ -1063,3 +1063,6 @@
 
 ## R403 [UI重构·第274轮] 质量规则批量全选框三态
 - workspace.html: qualityUpdateSelCount 补全选框(qrSelAll)三态(按可见行: 全选checked/部分indeterminate/无unchecked, 与 qualityToggleAll 仅作用可见行一致)。承全选三态体系(R391字段映射/R402调度)。真机(u345)验证 部分→indeterminate/全选→checked/清空→均false。(注: 前次假阴=页面停旧?v, 已知坑)?v=u345。
+
+## R404 [UI重构·第275轮] SQL结果列右键"复制此列"
+- workspace.html: 结果列表头右键菜单(resultColMenu)加"复制此列"(resultCopyColumn: 取当前筛选后行的该列全值, 每行一个换行拼接, 写 IN(...)/粘 Excel 列; 上限1000; DN.copy silent+计数toast)。配 R362整表TSV/R363单元格/R400列名 复制体系。真机注入结果验证 复制id列"1\n2\n3"+city列+计数toast。?v=u346。

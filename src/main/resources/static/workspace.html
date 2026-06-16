@@ -5,43 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234051d3'/%3E%3Ctext x='8' y='12' font-size='10' fill='%23fff' text-anchor='middle' font-family='sans-serif'%3ED%3C/text%3E%3C/svg%3E">
 <title>DataNote - 数据开发平台</title>
-<link rel="stylesheet" href="css/app.css?v=u345">
-<link rel="stylesheet" href="css/gov-modern.css?v=u345">
-<link rel="stylesheet" href="css/redesign.css?v=u345">
-<link rel="stylesheet" href="css/dn-design.css?v=u345">
+<link rel="stylesheet" href="css/app.css?v=u346">
+<link rel="stylesheet" href="css/gov-modern.css?v=u346">
+<link rel="stylesheet" href="css/redesign.css?v=u346">
+<link rel="stylesheet" href="css/dn-design.css?v=u346">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/modern.css?v=u345">
+<link rel="stylesheet" href="css/modern.css?v=u346">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
 <body>
 <!-- 数据治理公共层 + 模块插件(原生整合进工作台,各模块自注册到 window.GOV_RENDERERS)。?v 版本号根治静态资源缓存,每次治理迭代递增即强制刷新 -->
-<script src="js/dn-common.js?v=u345"></script>
-<script src="js/gov-assets.js?v=u345"></script>
-<script src="js/gov-lineage.js?v=u345"></script>
-<script src="js/gov-quality.js?v=u345"></script>
-<script src="js/gov-standard.js?v=u345"></script>
-<script src="js/gov-classification.js?v=u345"></script>
-<script src="js/gov-security.js?v=u345"></script>
-<script src="js/gov-health.js?v=u345"></script>
-<script src="js/gov-audit.js?v=u345"></script>
-<script src="js/gov-overview.js?v=u345"></script>
-<script src="js/gov-subject.js?v=u345"></script>
-<script src="js/gov-consumption.js?v=u345"></script>
-<script src="js/gov-govmap.js?v=u345"></script>
-<script src="js/project.js?v=u345"></script>
-<script src="js/datamodel.js?v=u345"></script>
-<script src="js/home-dashboard.js?v=u345"></script>
-<script src="js/mdm.js?v=u345"></script>
-<script src="js/mdm-ingest.js?v=u345"></script>
-<script src="js/mdm-survivorship.js?v=u345"></script>
-<script src="js/mdm-approval.js?v=u345"></script>
-<script src="js/mdm-refdata.js?v=u345"></script>
-<script src="js/mdm-quality.js?v=u345"></script>
-<script src="js/mdm-pubsub.js?v=u345"></script>
-<script src="js/mdm-hierarchy.js?v=u345"></script>
-<script src="js/ai-agent.js?v=u345"></script>
+<script src="js/dn-common.js?v=u346"></script>
+<script src="js/gov-assets.js?v=u346"></script>
+<script src="js/gov-lineage.js?v=u346"></script>
+<script src="js/gov-quality.js?v=u346"></script>
+<script src="js/gov-standard.js?v=u346"></script>
+<script src="js/gov-classification.js?v=u346"></script>
+<script src="js/gov-security.js?v=u346"></script>
+<script src="js/gov-health.js?v=u346"></script>
+<script src="js/gov-audit.js?v=u346"></script>
+<script src="js/gov-overview.js?v=u346"></script>
+<script src="js/gov-subject.js?v=u346"></script>
+<script src="js/gov-consumption.js?v=u346"></script>
+<script src="js/gov-govmap.js?v=u346"></script>
+<script src="js/project.js?v=u346"></script>
+<script src="js/datamodel.js?v=u346"></script>
+<script src="js/home-dashboard.js?v=u346"></script>
+<script src="js/mdm.js?v=u346"></script>
+<script src="js/mdm-ingest.js?v=u346"></script>
+<script src="js/mdm-survivorship.js?v=u346"></script>
+<script src="js/mdm-approval.js?v=u346"></script>
+<script src="js/mdm-refdata.js?v=u346"></script>
+<script src="js/mdm-quality.js?v=u346"></script>
+<script src="js/mdm-pubsub.js?v=u346"></script>
+<script src="js/mdm-hierarchy.js?v=u346"></script>
+<script src="js/ai-agent.js?v=u346"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -4042,6 +4042,8 @@ function resultColMenu(e, colIdx) {
     + '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13" style="vertical-align:-2px;margin-right:6px;"><path d="M1 2h12L8 7.5V11l-2 1V7.5z"/></svg>筛选值</div>'
     + '<div class="ctx-item" onclick="resultShowSearch(' + colIdx + ')" style="padding:7px 12px;cursor:pointer;">'
     + '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13" style="vertical-align:-2px;margin-right:6px;"><circle cx="5.5" cy="5.5" r="3.5"/><path d="M8.5 8.5l3 3"/></svg>搜索</div>'
+    + '<div class="ctx-item" onclick="resultCopyColumn(' + colIdx + ')" style="padding:7px 12px;cursor:pointer;" title="复制本列全部值(每行一个, 可粘进 Excel 列 / 写 IN(...))">'
+    + '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13" style="vertical-align:-2px;margin-right:6px;"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M2 9V2h7"/></svg>复制此列</div>'
     + (_resultFilters[colIdx] || _resultSearch[colIdx] ? '<div style="border-top:1px solid var(--border);"></div><div class="ctx-item" onclick="resultClearColFilter(' + colIdx + ')" style="padding:7px 12px;cursor:pointer;color:var(--error);">'
     + '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13" style="vertical-align:-2px;margin-right:6px;"><path d="M3 3l8 8M11 3l-8 8"/></svg>清除筛选</div>' : '');
 
@@ -4049,6 +4051,19 @@ function resultColMenu(e, colIdx) {
 
   var closeMenu = function() { menu.remove(); document.removeEventListener('click', closeMenu); };
   setTimeout(function() { document.addEventListener('click', closeMenu); }, 0);
+}
+
+// 复制整列值(按当前筛选后的行, 每行一个, 写 IN(...)/粘 Excel 列; 上限1000)
+function resultCopyColumn(colIdx) {
+  var menu = document.getElementById('resultColMenuDiv'); if (menu) menu.remove();
+  var rows = resultGetFilteredRows();
+  if (!rows.length) { showToast('无数据可复制', 'info'); return; }
+  var max = 1000;
+  var vals = rows.slice(0, max).map(function(r) { var v = r[colIdx]; return v == null ? '' : String(v).replace(/[\r\n]+/g, ' '); });
+  var txt = vals.join('\n');
+  if (window.DN && DN.copy) DN.copy(txt, true);
+  else if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  showToast('已复制列「' + resultGetDisplayName(colIdx) + '」' + vals.length + ' 个值' + (rows.length > max ? '(前 1000)' : ''), 'success');
 }
 
 function resultShowFilter(colIdx) {
