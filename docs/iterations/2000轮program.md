@@ -633,3 +633,6 @@
 
 ## R261 [UI重构·第132轮] 数据地图最近搜索/收藏补 catch
 - workspace.html: loadDmSearchHistory/loadDmFavorites 原无 .catch(加载失败静默)。补 .catch→显"最近搜索加载失败"/"收藏加载失败"。(最近搜索/收藏项本就可点 dmOpenTable 直达表详情。)?v=u202。
+
+## R262 [UI重构·第133轮] 全局未捕获Promise拒绝兜底(健壮性)
+- workspace.html: 加 window 'unhandledrejection' 监听, console.warn 暴露漏网异步失败便于排查 + 抑制控制台默认报错。不弹 toast(防 benign 中止/导航 fetch 误报刷屏)。一处兜住所有未补 catch 的边缘异步。真机冒烟首页0错误。?v=u203。
