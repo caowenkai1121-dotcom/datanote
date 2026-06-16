@@ -191,7 +191,8 @@
               return box;
             } }
         ],
-        rows: rows, pageSize: 15, searchKeys: ['entityCode', 'entityName', 'description'], searchPlaceholder: '搜索实体编码/名称/描述', exportName: '实体_' + _selDomain.domainCode
+        rows: rows, pageSize: 15, searchKeys: ['entityCode', 'entityName', 'description'], searchPlaceholder: '搜索实体编码/名称/描述', exportName: '实体_' + _selDomain.domainCode,
+        onRow: function (r) { _selEntity = r; renderModeling(c); }
       }));
     }).catch(function (e) {
       card.body.innerHTML = '';

@@ -721,3 +721,6 @@
 ## R290 [UI重构·第161轮] DN.table 行点击支持 + 主数据域行点击下钻
 - dn-common.js: DN.table 加 onRow 选项(opt-in 向后兼容): 行 cursor:pointer + role=button/tabindex/Enter键, 点击触发 onRow(r); 内部点 a/button/input/select/label 不触发(动作链接照常)。
 - mdm.js: 主数据「域与实体建模」域表接 onRow→下钻该域实体(与"域名链接/实体按钮"同效)。真机验证 13域行可点(cursor:pointer/role=button), 整行点击下钻进 "SKU商品主数据RT13 · 实体"。?v=u231。
+
+## R291 [UI重构·第162轮] 主数据实体表 整行点击下钻属性
+- mdm.js: 主数据实体表接 onRow→下钻该实体属性(承 R290 域表下钻, 与"实体名链接/属性按钮"同效)。主数据建模 域→实体→属性 三级整行点击下钻链路打通。真机验证 域行点击进实体, 实体行点击进 "SKU商品主体 · 属性"。?v=u232。
