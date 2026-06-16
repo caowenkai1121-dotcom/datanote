@@ -785,3 +785,6 @@
 
 ## R311 [UI重构·第182轮] 指标 分类/新鲜度筛选 持久化
 - workspace.html: 指标列表 分类(dn.metricCat)+新鲜度(dn.metricFresh)筛选持久化 localStorage; loadMetricCategories 回显分类并应用, loadMetricList 回显新鲜度。原页面刷新丢失筛选。承全站偏好持久化范式。真机验证 设新鲜度"仅陈旧"→刷新→仍"仅陈旧"。?v=u252。
+
+## R312 [UI重构·第183轮] Toast 读屏播报(aria-live)
+- workspace.html: dnToastStack 容器加 role=status + aria-live=polite + aria-atomic=false, 新提示读屏自动播报(此前视觉提示读屏用户无感知)。showToast 本就现代(玻璃卡/彩色accent+图标/堆叠cap5/点击关闭/滑入)。真机验证 stack role=status/aria-live=polite, toast 正常渲染。?v=u253。
