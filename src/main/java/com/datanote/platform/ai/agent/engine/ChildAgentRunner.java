@@ -48,6 +48,7 @@ public class ChildAgentRunner {
     private final ObjectMapper objectMapper;
     private final DnAiSessionMapper sessionMapper;
     private final DnAiStepMapper stepMapper;
+    private final AgentAccessChecker accessChecker;
 
     // @Lazy 打破循环: AiToolRegistry 收集所有 AiTool(含 delegate_task→ChildAgentRunner), 此处惰性注入避免环
     @Lazy
@@ -184,6 +185,20 @@ public class ChildAgentRunner {
             }
             String vErr = Validation.validate(args, tool.paramsSchemaJson(), objectMapper);
             if (vErr != null) { budget.refund(); trace.append("（参数错: ").append(vErr).append("）\n"); continue; }
+            // 权限对齐(与主循环一致): 子代理以继承的发起人权限快照执行, 无功能权限或数据级受限 → 拒(防经 delegate_task 越权探查)
+            if (PermGate.check(tool, childCtx) == PermGate.Decision.DENY) {
+                budget.refund();
+                trace.append("（发起人无 ").append(tool.requiredPerm()).append(" 权限, 拒绝工具 ").append(name).append("）\n");
+                writeChildStep(child.getSessionId(), seq, "SKILL_CALL", "tool", null, name, now);
+                continue;
+            }
+            String dDeny = accessChecker.dataDeny(name, args, childCtx);
+            if (dDeny != null) {
+                budget.refund();
+                trace.append("（数据受限: ").append(dDeny).append("）\n");
+                writeChildStep(child.getSessionId(), seq, "SKILL_CALL", "tool", null, name, now);
+                continue;
+            }
             AiToolResult res;
             try { res = tool.invoke(args, childCtx); }
             catch (Exception ex) { res = AiToolResult.fail("exec_failed", ex.getMessage()); }
