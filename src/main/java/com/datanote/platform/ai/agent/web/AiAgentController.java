@@ -41,6 +41,7 @@ public class AiAgentController {
     private final com.datanote.platform.ai.agent.mapper.DnAiCronJobMapper cronMapper;
     private final ObjectMapper objectMapper;
     private final com.datanote.platform.ai.agent.engine.AgentPermResolver permResolver;
+    private final com.datanote.platform.iam.RbacService rbacService;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
@@ -146,10 +147,18 @@ public class AiAgentController {
         if (ap == null) return R.fail("审批不存在");
         if (!"pending".equals(ap.getStatus())) return R.fail("该审批已处理");
         String me = currentUser();
-        // 防自批提权: 审批人不得为会话发起人(匿名测试态放行)
         DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", ap.getSessionId()).last("LIMIT 1"));
-        if (s != null && me != null && !"anonymous".equals(me) && me.equals(s.getUserName())) {
-            return R.fail("不可自批(审批人须不同于会话发起人)");
+        // 权限对齐: 允许用户确认自己 agent 的动作(行使本人权限), 但确认人须真正拥有该写工具所需权限点。
+        if ("approved".equals(decision)) {
+            com.datanote.platform.ai.agent.tool.AiTool t = toolRegistry.find(ap.getSkillName());
+            String need = t == null ? null : t.requiredPerm();
+            if (need != null && me != null && !"anonymous".equals(me)) {
+                java.util.Set<String> myPerms;
+                try { myPerms = rbacService.getUserPermsByUsername(me); } catch (Exception e) { myPerms = java.util.Collections.emptySet(); }
+                if (!com.datanote.platform.iam.RbacService.hasPermission(myPerms, need)) {
+                    return R.fail("无该写操作权限(需要 " + need + "), 不能批准");
+                }
+            }
         }
         int rows = approvalMapper.update(null, new UpdateWrapper<DnAiApproval>()
                 .eq("id", id).eq("status", "pending")
