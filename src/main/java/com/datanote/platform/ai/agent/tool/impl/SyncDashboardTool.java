@@ -30,6 +30,7 @@ public class SyncDashboardTool implements AiTool {
     @Override public String paramsSchemaJson() { return "{}"; }
     @Override public boolean readOnly() { return true; }
     @Override public RiskLevel risk() { return RiskLevel.LOW; }
+    @Override public String requiredPerm() { return "dbsync:view"; }
 
     @Override
     public AiToolResult invoke(JsonNode args, AgentContext ctx) {

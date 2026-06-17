@@ -45,6 +45,7 @@ public class CreateQualityRuleTool implements AiTool {
     }
     @Override public boolean readOnly() { return false; }
     @Override public RiskLevel risk() { return RiskLevel.MEDIUM; }
+    @Override public String requiredPerm() { return "governance:quality"; }
 
     /** 归一化规则类型: 大写别名与合法小写值统一映射到库内小写词表, 未知返回 null */
     private static String normalizeRuleType(String t) {

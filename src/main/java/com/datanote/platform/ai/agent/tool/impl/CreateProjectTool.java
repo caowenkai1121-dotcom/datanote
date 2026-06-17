@@ -30,6 +30,7 @@ public class CreateProjectTool implements AiTool {
     }
     @Override public boolean readOnly() { return false; }
     @Override public RiskLevel risk() { return RiskLevel.MEDIUM; }
+    @Override public String requiredPerm() { return "project:manage"; }
 
     @Override
     public AiToolResult invoke(JsonNode args, AgentContext ctx) {
