@@ -352,8 +352,43 @@
     var s0 = document.getElementById('aiThinkSub'); if (s0) s0.textContent = '· 正在理解你的问题…';
     var stopped = false;
     var t0 = Date.now();
+    // SSE(特性C): 实时步骤 + 终答打字机; 打开成功则停轮询, 不支持/失败回退轮询(兜底铁律)
+    var sseOk = false, es = null, streamEl = null, streamBuf = '';
+    function closeSse() { try { if (es) es.close(); } catch (e) {} es = null; if (streamEl && streamEl.parentNode) streamEl.parentNode.removeChild(streamEl); streamEl = null; }
+    function streamClean() { return streamBuf.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<\/?(think|tool_call)>/g, '').trim(); }
+    try {
+      if (window.EventSource) {
+        es = new EventSource('/api/ai/agent/stream/' + sid);
+        es.addEventListener('open', function () { sseOk = true; });
+        es.addEventListener('step', function (ev) {
+          sseOk = true; var d = {}; try { d = JSON.parse(ev.data); } catch (e) {}
+          if (d.skill) { if (streamEl && streamEl.parentNode) streamEl.parentNode.removeChild(streamEl); streamEl = null; streamBuf = ''; } // 工具步: 清 token 预览(该轮非终答)
+          var sub = document.getElementById('aiThinkSub');
+          if (sub) { var el = Math.round((Date.now() - t0) / 1000); sub.textContent = d.skill ? ('· 正在' + toolLabel(d.skill) + '（已' + el + 's）') : ('· 思考中…（已' + el + 's）'); }
+        });
+        es.addEventListener('running', function (ev) {
+          sseOk = true; var d = {}; try { d = JSON.parse(ev.data); } catch (e) {}
+          var sub = document.getElementById('aiThinkSub'); if (sub && d.skill) sub.textContent = '· 正在' + toolLabel(d.skill) + '…';
+        });
+        es.addEventListener('token', function (ev) {
+          sseOk = true; var d = {}; try { d = JSON.parse(ev.data); } catch (e) {}
+          if (!d.t) return;
+          streamBuf += d.t;
+          var clean = streamClean();
+          if (!clean) return; // 仅 think/tool_call 内容: 不展示
+          if (!streamEl) {
+            streamEl = DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:6px 0;' },
+              [DN.h('div', { style: 'max-width:80%;background:var(--bg-card);border:1px solid var(--border);padding:8px 13px;border-radius:var(--radius-lg);font-size:13.5px;color:var(--text-regular);white-space:pre-wrap;word-break:break-word;' })]);
+            flowEl.insertBefore(streamEl, th);
+          }
+          streamEl.firstChild.textContent = clean;
+          scrollBottom();
+        });
+        es.onerror = function () { /* 回退轮询: 不置 sseOk, poll 继续 */ };
+      }
+    } catch (e) {}
     function poll() {
-      if (stopped) return;
+      if (stopped || sseOk) return;
       if (ep !== _epoch) { stopped = true; dropStale(); return; } // 已开新会话: 旧轮询立即终止
       DN.get('/api/ai/agent/session/' + sid).then(function (d) {
         if (stopped || ep !== _epoch) return;
@@ -368,17 +403,17 @@
         if (running) sub.textContent = '· 正在' + toolLabel(running.skillName) + '（第' + (done.length + 1) + '步 · 已' + el + 's）';
         else if (done.length) sub.textContent = '· 正在' + toolLabel(done[done.length - 1].skillName) + '（第' + done.length + '步 · 已' + el + 's）';
         else sub.textContent = '· 正在理解你的问题…（已' + el + 's）'; // 始终带计时, 让用户知道仍在运行不是卡死
-      }).catch(function () {}).then(function () { if (!stopped) setTimeout(poll, 1500); });
+      }).catch(function () {}).then(function () { if (!stopped && !sseOk) setTimeout(poll, 1500); });
     }
     setTimeout(poll, 1200);
     return DN.post(url, body).then(function (res) {
-      stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      stopped = true; closeSse(); if (th.parentNode) th.parentNode.removeChild(th);
       if (ep !== _epoch) { dropStale(); return res; } // 旧会话响应: 丢弃渲染, 不写 saveSid, 不碰锁
       setSending(false);
       renderTurn(res || {}, Math.round((Date.now() - t0) / 1000)); loadFiles(); scrollBottom();
       return res;
     }).catch(function (e) {
-      stopped = true; if (th.parentNode) th.parentNode.removeChild(th);
+      stopped = true; closeSse(); if (th.parentNode) th.parentNode.removeChild(th);
       if (ep !== _epoch) { dropStale(); throw e; } // 旧会话失败: 同样静默丢弃
       setSending(false);
       flowEl.appendChild(assistantBubble('请求失败：' + (e && e.message ? e.message : e), 'err')); scrollBottom();

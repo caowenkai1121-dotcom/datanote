@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -42,6 +43,7 @@ public class AiAgentController {
     private final ObjectMapper objectMapper;
     private final com.datanote.platform.ai.agent.engine.AgentPermResolver permResolver;
     private final com.datanote.platform.iam.RbacService rbacService;
+    private final com.datanote.platform.ai.agent.engine.AgentEventBus eventBus;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
@@ -75,6 +77,24 @@ public class AiAgentController {
         try { if (body != null && body.get("maxCycles") != null) maxCycles = Integer.parseInt(String.valueOf(body.get("maxCycles"))); } catch (Exception ignore) {}
         AgentContext ctx = buildCtx(sessionId, null, req);
         return R.ok(aiAgentService.pursue(sessionId, message.trim(), ctx, maxCycles));
+    }
+
+    /** SSE 流式事件订阅(特性C): 前端发起 /chat 前打开, 实时收 step/running/token/approval/question/done。
+     *  纯附加: SSE 不可用/断开时前端回退 1.5s 轮询(兜底)。会话尚未创建时放行(随后 /chat 以同 sid 创建)。 */
+    @GetMapping("/stream/{sessionId}")
+    public SseEmitter stream(@PathVariable("sessionId") String sessionId) {
+        DnAiSession s = sessionMapper.selectOne(
+                new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (s != null) {
+            String me = currentUser();
+            if (me != null && !"anonymous".equals(me) && !"admin".equals(me)
+                    && s.getUserName() != null && !"anonymous".equals(s.getUserName()) && !me.equals(s.getUserName())) {
+                SseEmitter em = new SseEmitter(0L);
+                try { em.send(SseEmitter.event().name("error").data("无权访问该会话")); em.complete(); } catch (Exception ignore) {}
+                return em; // 越权: 即时关闭
+            }
+        }
+        return eventBus.register(sessionId);
     }
 
     /** 查会话与全量步骤轨迹（可回放）。 */

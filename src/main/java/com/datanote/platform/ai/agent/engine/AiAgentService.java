@@ -53,6 +53,7 @@ public class AiAgentService {
     private final DocIngestService docIngestService;
     private final AgentPermResolver permResolver;
     private final AgentAccessChecker accessChecker;
+    private final AgentEventBus eventBus;
 
     /** cron 定时无人值守模式(ThreadLocal): 禁 cron_job(防递归排程)/ask_user(无人应答), 不写记忆 */
     private static final ThreadLocal<Boolean> CRON_MODE = ThreadLocal.withInitial(() -> false);
@@ -230,7 +231,11 @@ public class AiAgentService {
             first = false;
 
             long t0 = System.currentTimeMillis();
-            String raw = callLlmWithRetry(userPrompt, context); // 抖动退避一次性重试: 单次 LLM 抖动不再直接中止全程
+            // 流式(特性C): 首轮 LLM 调用在有 SSE 订阅者时走 chatStream 逐字推送 token(单轮问答/文档RAG 常见路径真流式);
+            // 多步工具轮不流式(其输出是 tool_call JSON, 无展示价值), 仍走非流式 + step 事件实时反馈。
+            String raw = (iter == 1 && eventBus.hasSubscribers(session.getSessionId()))
+                    ? callLlmStreaming(userPrompt, context, session.getSessionId())
+                    : callLlmWithRetry(userPrompt, context); // 抖动退避一次性重试: 单次 LLM 抖动不再直接中止全程
             // 反应式超窗恢复: 若报上下文超长, 强制压缩后重试一次(借鉴 hermes context overflow 压缩重试)
             if (isAiError(raw) && ErrorClassifier.classify(raw) == ErrorClassifier.Action.CONTEXT_OVERFLOW
                     && contextCompressor.forceCompress(st, userMessage)) {
@@ -576,8 +581,16 @@ public class AiAgentService {
                 : (st.blockReason != null ? st.blockReason : "（无答复）"));
         resp.put("steps", stepsToDto(newSteps));
         if (!previews.isEmpty()) resp.put("previews", previews); // 表数据预览(前端渲染数据表格)
+        // SSE(特性C): 推送 done 事件(状态+退出原因), 前端据此收尾(无订阅者 no-op)
+        try {
+            Map<String, Object> done = new LinkedHashMap<>();
+            done.put("status", finalStatus);
+            done.put("exitReason", st.exitReason);
+            eventBus.emit(session.getSessionId(), "done", done);
+        } catch (Exception ignore) {}
         return resp;
         } finally {
+            try { eventBus.complete(session.getSessionId()); } catch (Exception ignore) {} // 关闭并清理 SSE 连接
             _lk.unlock(); // 释放会话级互斥
         }
     }
@@ -984,6 +997,15 @@ public class AiAgentService {
         step.setLatencyMs(latency);
         step.setCreatedAt(LocalDateTime.now());
         stepMapper.insert(step);
+        // SSE(特性C): 实时推送步骤事件(无订阅者 no-op)
+        try {
+            Map<String, Object> ev = new LinkedHashMap<>();
+            ev.put("seq", step.getSeq());
+            ev.put("type", step.getStepType());
+            ev.put("skill", step.getSkillName());
+            ev.put("status", step.getResultStatus());
+            eventBus.emit(st.session.getSessionId(), "step", ev);
+        } catch (Exception ignore) {}
         return step;
     }
 
@@ -1002,6 +1024,7 @@ public class AiAgentService {
             m.setRiskLevel("LOW");
             m.setCreatedAt(LocalDateTime.now());
             stepMapper.insert(m);
+            try { eventBus.emit(st.session.getSessionId(), "running", java.util.Collections.singletonMap("skill", toolName)); } catch (Exception ignore) {}
             return m.getId();
         } catch (Exception e) { return null; }
     }
@@ -1365,6 +1388,16 @@ public class AiAgentService {
      * 首调若为瞬时错(AI请求失败/空返回/格式异常), 抖动退避后重试 1 次; 仍错则返回首个错误串。
      * 单次 DeepSeek 抖动不再直接拖垮整轮 agent 运行。
      */
+    /** 流式首轮调用(特性C): chatStream 逐字回调 → 发 token 事件; chatStream 内部已含失败回退非流式。 */
+    private String callLlmStreaming(String userPrompt, String context, String sid) {
+        try {
+            return aiAssistService.chatStream(userPrompt, context,
+                    tok -> eventBus.emit(sid, "token", java.util.Collections.singletonMap("t", tok)));
+        } catch (Exception e) {
+            return callLlmWithRetry(userPrompt, context);
+        }
+    }
+
     private String callLlmWithRetry(String userPrompt, String context) {
         String raw = aiAssistService.chat(userPrompt, context);
         if (!isAiError(raw)) return raw;

@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * AI 辅助开发服务 — 调用 Claude API 实现 NL2SQL、SQL 解释等智能功能
@@ -191,6 +192,126 @@ public class AiAssistService {
             log.error("AI 助手调用异常", e);
             return "AI 请求失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 流式对话(SSE 用): 逐增量回调 onToken, 返回累计全文。不动 chat() 签名(红线)。
+     * 降级铁律: 流式失败且未产出任何增量 → 回退非流式 chat() 取全文并整段回调; 已产出部分则返回已累计。
+     */
+    public String chatStream(String userMessage, String context, Consumer<String> onToken) {
+        AiConf c = this.conf; // 单次 volatile 读, 全程用自洽快照
+        if (c.apiKey == null || c.apiKey.isEmpty()) {
+            String r = "AI 功能未配置。请在【系统配置 → AI 配置】中设置 API Key。";
+            emit(onToken, r); return r;
+        }
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            String r = "AI 请求失败: 用户消息不能为空"; emit(onToken, r); return r;
+        }
+        StringBuilder acc = new StringBuilder();
+        try {
+            String fullMessage = userMessage;
+            if (context != null && !context.isEmpty()) {
+                fullMessage = "当前上下文：\n" + context + "\n\n用户问题：" + userMessage;
+            }
+            String override = MODEL_OVERRIDE.get();
+            String activeModel = override != null ? override : c.model;
+            boolean openai = isOpenAiCompatible(c.provider);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", activeModel);
+            requestBody.put("max_tokens", 4096);
+            requestBody.put("stream", true);
+            List<Map<String, String>> messages = new ArrayList<>();
+            if (openai) {
+                Map<String, String> sysMsg = new HashMap<>();
+                sysMsg.put("role", "system"); sysMsg.put("content", SYSTEM_PROMPT);
+                messages.add(sysMsg);
+            } else {
+                requestBody.put("system", SYSTEM_PROMPT);
+            }
+            Map<String, String> msg = new HashMap<>();
+            msg.put("role", "user"); msg.put("content", fullMessage);
+            messages.add(msg);
+            requestBody.put("messages", messages);
+            callApiStream(objectMapper.writeValueAsString(requestBody), openai, c.apiKey, c.baseUrl,
+                    delta -> { acc.append(delta); emit(onToken, delta); });
+        } catch (Exception e) {
+            log.warn("AI 流式调用异常, 回退非流式: {}", e.getMessage());
+        }
+        if (acc.length() > 0) return acc.toString();
+        // 未产出任何增量 → 回退非流式取全文, 整段回调一次
+        String full = chat(userMessage, context);
+        emit(onToken, full);
+        return full;
+    }
+
+    private static void emit(Consumer<String> onToken, String s) {
+        if (onToken == null || s == null || s.isEmpty()) return;
+        try { onToken.accept(s); } catch (Exception ignore) {}
+    }
+
+    /** 读 SSE 流, 解析 data: 行增量(OpenAI choices[].delta.content / Anthropic content_block_delta.delta.text), 回调 onDelta。 */
+    private void callApiStream(String body, boolean openai, String key, String base, Consumer<String> onDelta) throws Exception {
+        String endpoint = openai ? "/v1/chat/completions" : "/v1/messages";
+        HttpURLConnection conn = (HttpURLConnection) new URL(base + endpoint).openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(120000);
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Accept", "text/event-stream");
+        if (openai) {
+            conn.setRequestProperty("Authorization", "Bearer " + key);
+        } else {
+            conn.setRequestProperty("x-api-key", key);
+            conn.setRequestProperty("anthropic-version", "2023-06-01");
+        }
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(body.getBytes(StandardCharsets.UTF_8));
+        }
+        int code = conn.getResponseCode();
+        if (code >= 400) {
+            java.io.InputStream es = conn.getErrorStream();
+            String err = "";
+            if (es != null) { err = new String(readAll(es), StandardCharsets.UTF_8); es.close(); }
+            conn.disconnect();
+            throw new RuntimeException("stream HTTP " + code + " " + (err.length() > 200 ? err.substring(0, 200) : err));
+        }
+        try (java.io.BufferedReader br = new java.io.BufferedReader(
+                new java.io.InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.isEmpty() || !line.startsWith("data:")) continue;
+                String data = line.substring(5).trim();
+                if (data.isEmpty()) continue;
+                if ("[DONE]".equals(data)) break;
+                try {
+                    JsonNode node = objectMapper.readTree(data);
+                    String delta = null;
+                    if (openai) {
+                        JsonNode ch = node.path("choices");
+                        if (ch.isArray() && ch.size() > 0) {
+                            JsonNode d = ch.get(0).path("delta").path("content");
+                            if (d.isTextual()) delta = d.asText();
+                        }
+                    } else if ("content_block_delta".equals(node.path("type").asText())) {
+                        JsonNode t = node.path("delta").path("text");
+                        if (t.isTextual()) delta = t.asText();
+                    }
+                    if (delta != null && !delta.isEmpty()) onDelta.accept(delta);
+                } catch (Exception ignore) {
+                    // 单行解析失败不中断整流(SSE 心跳/注释行等)
+                }
+            }
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private static byte[] readAll(java.io.InputStream is) throws Exception {
+        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[4096]; int n;
+        while ((n = is.read(buf)) != -1) b.write(buf, 0, n);
+        return b.toByteArray();
     }
 
     /**
