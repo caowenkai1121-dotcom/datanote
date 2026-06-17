@@ -22,7 +22,8 @@ class DataMapCommentTest {
     @Mock private DnTableCommentMapper tableCommentMapper;
 
     private DataMapService svc() {
-        return new DataMapService(null, tableCommentMapper, null, null, null, null, null, null);
+        return new DataMapService(null, tableCommentMapper, null, null, null, null, null, null,
+                org.mockito.Mockito.mock(com.datanote.platform.ai.vector.SemanticSearchService.class));
     }
 
     private DnTableComment comment(long id, String by) {

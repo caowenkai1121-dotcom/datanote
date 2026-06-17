@@ -22,7 +22,9 @@ class MetricSaveUniqueTest {
     @Mock private DnMetricMapper metricMapper;
 
     private MetricController ctrl() {
-        return new MetricController(metricMapper, null, null, null, null, null, null, null);
+        return new MetricController(metricMapper, null, null, null, null, null, null, null,
+                org.mockito.Mockito.mock(com.datanote.platform.ai.vector.SemanticSearchService.class),
+                org.mockito.Mockito.mock(com.datanote.platform.ai.vector.VectorIndexService.class));
     }
 
     private DnMetric metric(String code, String name) {

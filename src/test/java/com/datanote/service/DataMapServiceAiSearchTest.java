@@ -41,7 +41,8 @@ class DataMapServiceAiSearchTest {
 
     private DataMapService svc() {
         return new DataMapService(aiAssistService, tableCommentMapper, tableFavoriteMapper,
-                searchHistoryMapper, tableMetaMapper, columnMetaMapper, exploreService, dataAclService);
+                searchHistoryMapper, tableMetaMapper, columnMetaMapper, exploreService, dataAclService,
+                org.mockito.Mockito.mock(com.datanote.platform.ai.vector.SemanticSearchService.class));
     }
 
     @Test

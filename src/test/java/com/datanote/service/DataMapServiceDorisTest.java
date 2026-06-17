@@ -126,7 +126,8 @@ class DataMapServiceDorisTest {
                 tableMetaMapper,
                 org.mockito.Mockito.mock(com.datanote.domain.metadata.mapper.DnColumnMetaMapper.class),
                 new DatasourceExploreService(hiveConfig, org.mockito.Mockito.mock(com.datanote.domain.governance.MaskingService.class)),
-                acl
+                acl,
+                org.mockito.Mockito.mock(com.datanote.platform.ai.vector.SemanticSearchService.class)
         );
     }
 }
