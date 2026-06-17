@@ -195,6 +195,15 @@ public class VectorStoreClient {
         return r != null;
     }
 
+    /** 按 point id 列表删点(实体删除时清理其索引点)。不可用/失败返 false。 */
+    public boolean deletePointIds(List<String> ids) {
+        if (!available() || ids == null || ids.isEmpty()) return false;
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("points", ids);
+        String r = http("POST", "/collections/" + collection + "/points/delete?wait=true", toJson(body));
+        return r != null;
+    }
+
     /** 按 payload 字段等值删点(如文档删除级联清其所有向量块)。不可用/失败返 false。 */
     public boolean deleteByFilter(String key, Object value) {
         if (!available() || key == null || value == null) return false;

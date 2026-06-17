@@ -389,6 +389,42 @@ public class VectorIndexService {
         return sb.toString();
     }
 
+    /**
+     * 单条增量索引(实体保存后即时可被语义检索, 不必全量重建)。异步, 向量/embedding 不可用静默跳过。
+     * text=嵌入文本(name+说明等), title=展示标题。kind 与全量索引一致(metric/glossary/dataelement/table…)。
+     */
+    @Async("aiIndexExecutor")
+    public void indexEntityAsync(String kind, Long id, String name, String title, String text) {
+        try {
+            if (!vector.available() || !embedding.isAvailable() || id == null || text == null || text.trim().isEmpty()) return;
+            if (!vector.ensureCollection(embedding.dim())) return;
+            float[] v = embedding.embed(text.trim());
+            if (v == null) return;
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("kind", kind);
+            payload.put("name", name);
+            payload.put("title", nz(title));
+            payload.put("text", text);
+            Map<String, Object> pt = new LinkedHashMap<>();
+            pt.put("id", pointId(kind, id));
+            pt.put("vector", v);
+            pt.put("payload", payload);
+            vector.upsert(java.util.Collections.singletonList(pt));
+        } catch (Exception e) {
+            log.warn("[vector] 增量索引失败 kind={} id={}: {}", kind, id, e.getMessage());
+        }
+    }
+
+    /** 删除单条索引点(实体删除时清理, 防孤儿向量在检索中出现)。异步。 */
+    @Async("aiIndexExecutor")
+    public void deleteEntityAsync(String kind, Long id) {
+        try {
+            if (vector.available() && id != null) vector.deletePointIds(java.util.Collections.singletonList(pointId(kind, id)));
+        } catch (Exception e) {
+            log.warn("[vector] 删除索引点失败 kind={} id={}: {}", kind, id, e.getMessage());
+        }
+    }
+
     /** 稳定 point id(更新而非重插): UUID(kind:id)。 */
     private static String pointId(String kind, Object id) {
         return UUID.nameUUIDFromBytes((kind + ":" + id).getBytes()).toString();

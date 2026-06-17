@@ -38,6 +38,7 @@ public class AssetDetailService {
     private final HiveConfig hiveConfig;
     private final com.datanote.domain.integration.connector.ConnectionManager connectionManager; // 源库取数(看真实表数据)
     private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;   // 相似资产推荐(向量召回)
+    private final com.datanote.platform.ai.vector.VectorIndexService vectorIndexService;   // 术语增量索引(保存即可检索)
 
     /** Profiler 单次探查的最大字段数，防止数仓聚合查询过慢 */
     static final int MAX_PROFILE_FIELDS = 30;
@@ -304,11 +305,17 @@ public class AssetDetailService {
             term.setCreatedAt(LocalDateTime.now());
             glossaryTermMapper.insert(term);
         }
+        // 增量索引: 术语保存后即可被语义检索(异步, 向量不可用静默跳过)
+        StringBuilder gt = new StringBuilder("业务术语 ").append(term.getTerm() == null ? "" : term.getTerm());
+        if (term.getAlias() != null && !term.getAlias().trim().isEmpty()) gt.append("(别名:").append(term.getAlias()).append(")");
+        if (term.getDefinition() != null && !term.getDefinition().trim().isEmpty()) gt.append(" 定义:").append(term.getDefinition());
+        vectorIndexService.indexEntityAsync("glossary", term.getId(), term.getTerm(), term.getDefinition(), gt.toString());
         return term;
     }
 
     public void deleteTerm(Long id) {
         glossaryTermMapper.deleteById(id);
+        vectorIndexService.deleteEntityAsync("glossary", id);   // 清理术语索引点
     }
 
     // ========== 纯函数（便于单测） ==========

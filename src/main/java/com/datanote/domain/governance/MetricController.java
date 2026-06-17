@@ -36,6 +36,7 @@ public class MetricController {
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;
     private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤/守卫受限指标
     private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;   // 向量语义检索(降级关键字)
+    private final com.datanote.platform.ai.vector.VectorIndexService vectorIndexService;   // 增量索引(保存即可检索)
 
     /**
      * 指标列表（支持关键词搜索和分类筛选）
@@ -148,7 +149,45 @@ public class MetricController {
             }
             metricMapper.insert(metric);
         }
+        // 增量索引: 保存后即可被语义检索/查重(异步, 向量不可用静默跳过)
+        vectorIndexService.indexEntityAsync("metric", metric.getId(), metric.getMetricName(),
+                metric.getDescription(), metricText(metric));
         return R.ok(metric);
+    }
+
+    /** 指标嵌入文本: 名称 + 编码 + 说明(与全量索引口径一致)。 */
+    private static String metricText(DnMetric m) {
+        StringBuilder sb = new StringBuilder("指标 ").append(m.getMetricName() == null ? "" : m.getMetricName());
+        if (m.getMetricCode() != null && !m.getMetricCode().trim().isEmpty()) sb.append("(").append(m.getMetricCode()).append(")");
+        if (m.getDescription() != null && !m.getDescription().trim().isEmpty()) sb.append(" 说明:").append(m.getDescription());
+        return sb.toString();
+    }
+
+    /** 语义查重: 建/改指标时按名称+说明召回相似已有指标(相关度>0.6), 供前端提示"疑似重复, 考虑复用"(不阻断)。 */
+    @GetMapping("/dedup-check")
+    public R<List<Map<String, Object>>> dedupCheck(@RequestParam(required = false) String keyword) {
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        if (keyword == null || keyword.trim().isEmpty()) return R.ok(out);
+        try {
+            Map<String, Object> rag = semanticSearchService.search(keyword.trim(), "metric", 5);
+            if (rag != null && "vector".equals(rag.get("engine")) && rag.get("results") instanceof List) {
+                for (Object o : (List<?>) rag.get("results")) {
+                    if (!(o instanceof Map)) continue;
+                    Map<?, ?> h = (Map<?, ?>) o;
+                    Object score = h.get("score");
+                    double sc = 0;
+                    try { sc = score == null ? 0 : Double.parseDouble(String.valueOf(score)); } catch (Exception ig) {}
+                    if (sc < 0.6) continue;   // 仅较相似的才作为查重提示
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("name", h.get("name"));
+                    m.put("title", h.get("title"));
+                    m.put("score", score);
+                    out.add(m);
+                }
+            }
+        } catch (Exception ignore) {
+        }
+        return R.ok(out);
     }
 
     /**
@@ -159,6 +198,7 @@ public class MetricController {
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public R<String> delete(@PathVariable Long id) {
         metricMapper.deleteById(id);
+        vectorIndexService.deleteEntityAsync("metric", id);   // 清理该指标索引点, 防孤儿向量
         metricRefMapper.delete(new QueryWrapper<DnMetricRef>().eq("metric_id", id));
         alertRuleMapper.delete(new QueryWrapper<com.datanote.domain.consumption.model.DnMetricAlertRule>().eq("metric_id", id));
         metricValueMapper.delete(new QueryWrapper<com.datanote.domain.consumption.model.DnMetricValue>().eq("metric_id", id));
