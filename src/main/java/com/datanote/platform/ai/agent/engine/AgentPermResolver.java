@@ -25,7 +25,7 @@ public class AgentPermResolver {
     private final AuthProperties authProperties;
 
     public void resolveInto(AgentContext ctx, String caller) {
-        if (ctx == null) return;
+        if (ctx == null) return; // null ctx 属调用方 bug, 不标记已解析(调用链 Controller/Cron/resume 不会传 null)
         Set<String> perms;
         List<String> roles;
         if (!authProperties.isEnabled()) {

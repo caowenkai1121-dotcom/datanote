@@ -49,6 +49,7 @@ class AgentPermResolverTest {
         AgentContext c = new AgentContext("bob", "ip", null, "sid", null);
         r.resolveInto(c, "bob");
         assertTrue(c.getPerms().isEmpty());   // fail-closed: 异常→空集(无任何写权限)
+        assertTrue(c.getRoles().isEmpty()); // fail-closed: roles 同样为空集
         assertTrue(c.isPermsResolved());
     }
 }
