@@ -91,6 +91,51 @@ public class DataAclService {
         }
     }
 
+    // ---------- 显式入参重载(供 agent 异步线程用, 不读 ThreadLocal) ----------
+
+    /** 显式入参版 bypass: 不读 ThreadLocal, 直接用传入的 caller/perms 判定。 */
+    private boolean bypassAs(String caller, Set<String> perms) {
+        if (!authProperties.isEnabled()) return true;
+        if (caller == null || "anonymous".equals(caller) || "admin".equals(caller)) return true;
+        if (perms == null) return false;   // 未解析 fail-closed
+        return perms.contains("*") || perms.contains("data:all");
+    }
+
+    /** 单资源访问校验(显式入参, 不读 ThreadLocal)。 */
+    public boolean canAccessAs(String caller, List<String> roles, Set<String> perms, String resourceType, String resourceId) {
+        if (resourceId == null) return true;
+        if (bypassAs(caller, perms)) return true;
+        List<DnDataGrant> grants = grantMapper.selectList(new QueryWrapper<DnDataGrant>()
+                .eq("resource_type", resourceType).eq("resource_id", resourceId));
+        if (grants == null || grants.isEmpty()) return true;   // 默认公开
+        List<String> rs = roles == null ? new ArrayList<>() : roles;
+        for (DnDataGrant g : grants) {
+            if ("USER".equals(g.getPrincipalType()) && caller != null && caller.equals(g.getPrincipal())) return true;
+            if ("ROLE".equals(g.getPrincipalType()) && rs.contains(g.getPrincipal())) return true;
+        }
+        return false;
+    }
+
+    /** 批量过滤(显式入参版): 返回受限且未授权的 resourceId 集。 */
+    public Set<String> deniedIdsAs(String caller, List<String> roles, Set<String> perms, String resourceType) {
+        Set<String> denied = new HashSet<>();
+        if (bypassAs(caller, perms)) return denied;
+        List<DnDataGrant> all = grantMapper.selectList(new QueryWrapper<DnDataGrant>()
+                .eq("resource_type", resourceType));
+        if (all == null || all.isEmpty()) return denied;
+        List<String> rs = roles == null ? new ArrayList<>() : roles;
+        java.util.Map<String, Boolean> allowByRes = new java.util.HashMap<>();
+        for (DnDataGrant g : all) {
+            boolean hit = ("USER".equals(g.getPrincipalType()) && caller != null && caller.equals(g.getPrincipal()))
+                    || ("ROLE".equals(g.getPrincipalType()) && rs.contains(g.getPrincipal()));
+            allowByRes.merge(g.getResourceId(), hit, (a, b) -> a || b);
+        }
+        for (java.util.Map.Entry<String, Boolean> e : allowByRes.entrySet()) {
+            if (!e.getValue()) denied.add(e.getKey());
+        }
+        return denied;
+    }
+
     // ---------- 管理(需 data:grant, 由拦截器把关) ----------
 
     /** 某资源的授权清单。 */
