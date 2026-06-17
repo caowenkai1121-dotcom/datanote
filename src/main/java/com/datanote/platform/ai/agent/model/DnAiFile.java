@@ -21,4 +21,8 @@ public class DnAiFile {
     private String source;
     private String sessionId;
     private LocalDateTime createdAt;
+    /** 文档知识库索引状态(特性B): null/none=不适用; pending/indexing/indexed/failed。 */
+    private String indexStatus;
+    /** 已入库向量块数(特性B)。 */
+    private Integer chunkCount;
 }

@@ -50,6 +50,7 @@ public class AiAgentService {
     private final DnAiApprovalMapper approvalMapper;
     private final ContextCompressorService contextCompressor;
     private final AiFileService aiFileService;
+    private final DocIngestService docIngestService;
     private final AgentPermResolver permResolver;
     private final AgentAccessChecker accessChecker;
 
@@ -75,6 +76,7 @@ public class AiAgentService {
     private static final int STORE_RESULT_CAP = 16000;
     /** RAG 召回条数 */
     private static final int RAG_TOPK = 5;
+    private static final int DOC_TOPK = 4; // 文档知识库 RAG 召回片段数
     /** RAG 注入文本上限(控 token) */
     private static final int RAG_TEXT_CAP = 800;
     /** 自学习记忆召回条数 */
@@ -189,7 +191,7 @@ public class AiAgentService {
         }
         String today = LocalDate.now().toString();
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
-        String ragText = buildRagText(userMessage);   // 循环外算一次, 自动 grounding
+        String ragText = buildRagText(userMessage, ctx == null ? null : ctx.getUserName());   // 循环外算一次, 自动 grounding(资产+文档)
         String memoryText = aiMemoryService.recall(userMessage, ctx == null ? null : ctx.getUserName(), MEM_TOPK); // 自学习记忆召回(只读上下文)
         String filesText = buildFilesText(ctx == null ? null : ctx.getUserName()); // 已上传文件清单(让 agent 感知, 可 file_read)
         boolean first = true;
@@ -1059,9 +1061,44 @@ public class AiAgentService {
         return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
     }
 
+    /** 资产 RAG + 文档知识库 RAG 合并注入首轮 prompt(文档按发起人 owner 隔离)。 */
+    private String buildRagText(String query, String owner) {
+        String asset = buildAssetRagText(query);
+        String doc = buildDocText(query, owner);
+        if (asset == null) return doc;
+        if (doc == null) return asset;
+        return asset + "\n\n" + doc;
+    }
+
+    /** 文档知识库 RAG: 召回用户上传文档相关片段, 渲染"相关文档"段。无命中/向量不可用返 null。 */
+    @SuppressWarnings("unchecked")
+    private String buildDocText(String query, String owner) {
+        try {
+            Map<String, Object> r = docIngestService.searchDocs(query, owner, DOC_TOPK);
+            Object resObj = r == null ? null : r.get("results");
+            if (!(resObj instanceof List)) return null;
+            List<Map<String, Object>> results = (List<Map<String, Object>>) resObj;
+            if (results.isEmpty()) return null;
+            StringBuilder sb = new StringBuilder("# 相关文档片段(来自我上传的文档, 据此作答并注明来源文件名)\n");
+            for (Map<String, Object> m : results) {
+                if (m == null) continue;
+                Object fn = m.get("file_name"), txt = m.get("text");
+                if (txt == null) continue;
+                String t = String.valueOf(txt).replaceAll("\\s+", " ").trim();
+                if (t.length() > 300) t = t.substring(0, 300) + "…";
+                sb.append("- 《").append(fn == null ? "?" : fn).append("》: ").append(t).append('\n');
+                if (sb.length() >= 1600) break;
+            }
+            String s = sb.toString().trim();
+            return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** RAG: 向量召回与目标相关的资产, 渲染为线索文本注入首轮 prompt; 仅向量引擎命中才注入(关键字噪音大跳过), 异常返 null 降级。 */
     @SuppressWarnings("unchecked")
-    private String buildRagText(String query) {
+    private String buildAssetRagText(String query) {
         try {
             Map<String, Object> rag = semanticSearchService.search(query, null, RAG_TOPK);
             if (rag == null || !"vector".equals(rag.get("engine"))) return null;

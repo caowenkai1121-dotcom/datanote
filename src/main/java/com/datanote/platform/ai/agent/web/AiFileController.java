@@ -2,6 +2,7 @@ package com.datanote.platform.ai.agent.web;
 
 import com.datanote.common.model.R;
 import com.datanote.platform.ai.agent.engine.AiFileService;
+import com.datanote.platform.ai.agent.engine.DocIngestService;
 import com.datanote.platform.ai.agent.model.DnAiFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class AiFileController {
 
     private final AiFileService fileService;
+    private final DocIngestService docIngestService;
 
     /** 上传(支持多文件)。 */
     @PostMapping("/upload")
@@ -41,6 +43,7 @@ public class AiFileController {
         for (MultipartFile f : files) {
             try {
                 DnAiFile m = fileService.save(f, owner, sessionId, "user");
+                docIngestService.ingestAsync(m); // 文档类(pdf/docx/txt/md)异步入向量库; 非文档类内部跳过
                 out.add(meta(m));
             } catch (IllegalArgumentException e) {
                 Map<String, Object> err = new LinkedHashMap<>();
@@ -88,7 +91,9 @@ public class AiFileController {
     /** 删除(owner 作用域)。 */
     @PostMapping("/{id}/remove")
     public R<Void> remove(@PathVariable("id") Long id) {
-        return fileService.delete(id, currentUser()) ? R.ok() : R.fail("文件不存在或无权");
+        boolean ok = fileService.delete(id, currentUser());
+        if (ok) docIngestService.deletePoints(id); // 级联清文档向量块
+        return ok ? R.ok() : R.fail("文件不存在或无权");
     }
 
     private Map<String, Object> meta(DnAiFile m) {
@@ -98,6 +103,8 @@ public class AiFileController {
         x.put("size", m.getSizeBytes());
         x.put("source", m.getSource());
         x.put("createdAt", m.getCreatedAt());
+        x.put("indexStatus", m.getIndexStatus());
+        x.put("chunkCount", m.getChunkCount());
         return x;
     }
 

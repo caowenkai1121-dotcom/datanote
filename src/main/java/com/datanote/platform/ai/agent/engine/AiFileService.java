@@ -143,8 +143,24 @@ public class AiFileService {
                 return new Object[]{m.getFileName(), "(xlsx 解析失败: " + e.getMessage() + ")", false};
             }
         }
+        if ("pdf".equals(ext)) {
+            try {
+                String t = PdfTextExtractor.extract(p, 100, maxChars);
+                return new Object[]{m.getFileName(), "(PDF 文本)\n" + t, true};
+            } catch (Exception e) {
+                return new Object[]{m.getFileName(), "(pdf 解析失败: " + e.getMessage() + ")", false};
+            }
+        }
+        if ("docx".equals(ext)) {
+            try {
+                String t = DocxTextExtractor.extract(p, maxChars);
+                return new Object[]{m.getFileName(), "(Word 文本)\n" + t, true};
+            } catch (Exception e) {
+                return new Object[]{m.getFileName(), "(docx 解析失败: " + e.getMessage() + ")", false};
+            }
+        }
         if (!TEXT_EXT.contains(ext)) {
-            return new Object[]{m.getFileName(), "(二进制文件 " + ext + ", 暂不支持直接读取内容; 可读 csv/txt/json/md/xml/log/xlsx)", false};
+            return new Object[]{m.getFileName(), "(二进制文件 " + ext + ", 暂不支持直接读取内容; 可读 csv/txt/json/md/xml/log/xlsx/pdf/docx)", false};
         }
         try {
             byte[] b = Files.readAllBytes(p);
@@ -172,6 +188,11 @@ public class AiFileService {
         try { Files.deleteIfExists(p); } catch (IOException ignore) {}
         fileMapper.deleteById(m.getId());
         return true;
+    }
+
+    /** owner 访问许可(供文档索引/检索复用同一文件 ACL 语义, 单一事实来源): !ownerDenied。 */
+    public static boolean ownerCanAccess(String caller, String fileOwner) {
+        return !ownerDenied(caller, fileOwner);
     }
 
     /** owner 越权判定: 实名用户访问他人文件即拒。超管放行; 调用者匿名 或 文件无主/开放态(anonymous)放行。 */

@@ -896,15 +896,37 @@
       var arr = list || [];
       if (!arr.length) { fileListEl.appendChild(DN.h('div', { text: '暂无文件。上传后在此查看与下载。', style: 'color:var(--text-muted);font-size:12px;line-height:1.8;' })); return; }
       arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
+      // 文档异步索引中: 单次延迟刷新拿到最终状态(终态后不再轮询)
+      if (arr.some(function (f) { return f && (f.indexStatus === 'indexing' || f.indexStatus === 'pending'); })) {
+        setTimeout(loadFiles, 2500);
+      }
     }).catch(function () {});
+  }
+
+  // 文档知识库索引状态徽标(已索引/索引中/失败); 非文档类无状态返 null
+  function idxBadge(f) {
+    var s = f && f.indexStatus;
+    if (!s || s === 'none') return null;
+    var map = {
+      indexing: ['索引中…', 'var(--text-muted)'],
+      pending: ['待索引', 'var(--text-muted)'],
+      indexed: ['📚 已索引' + (f.chunkCount ? ' ' + f.chunkCount + '块' : ''), 'var(--success, #16a34a)'],
+      failed: ['索引失败', 'var(--danger, #dc2626)']
+    };
+    var t = map[s]; if (!t) return null;
+    return DN.h('span', { text: t[0], style: 'font-size:var(--fs-xs);color:' + t[1] + ';margin-left:6px;white-space:nowrap;' });
   }
 
   function fileRow(f) {
     var agent = f.source === 'agent';
     var row = DN.h('div', { class: 'dn-ai-file' });
+    var meta2 = DN.h('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;margin-top:2px;' }, [
+      DN.h('span', { text: fmtSize(f.size) + (agent ? ' · AI生成' : ''), style: 'font-size:var(--fs-xs);color:var(--text-muted);' })
+    ]);
+    var badge = idxBadge(f); if (badge) meta2.appendChild(badge);
     var info = DN.h('div', { style: 'flex:1;min-width:0;' }, [
       DN.h('div', { text: (agent ? '🤖 ' : '📄 ') + (f.fileName || ''), title: f.fileName, style: 'font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-      DN.h('div', { text: fmtSize(f.size) + (agent ? ' · AI生成' : ''), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;' })
+      meta2
     ]);
     var dl = DN.h('a', { href: '/api/ai/agent/files/' + f.id + '/download', title: '下载', text: '↓', style: 'flex:0 0 auto;text-decoration:none;color:var(--primary);font-size:17px;font-weight:700;padding:0 5px;' });
     var del = DN.h('span', { title: '删除', text: '✕', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });

@@ -121,6 +121,22 @@ public class VectorStoreClient {
         return r != null;
     }
 
+    /** 按 payload 字段等值删点(如文档删除级联清其所有向量块)。不可用/失败返 false。 */
+    public boolean deleteByFilter(String key, Object value) {
+        if (!available() || key == null || value == null) return false;
+        Map<String, Object> match = new LinkedHashMap<>();
+        match.put("value", value);
+        Map<String, Object> cond = new LinkedHashMap<>();
+        cond.put("key", key);
+        cond.put("match", match);
+        Map<String, Object> filter = new LinkedHashMap<>();
+        filter.put("must", java.util.Collections.singletonList(cond));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("filter", filter);
+        String r = http("POST", "/collections/" + collection + "/points/delete?wait=true", toJson(body));
+        return r != null;
+    }
+
     /** 向量检索 + 可选 kind 过滤。返回 [{id,score,payload}]; 失败返 null。 */
     public List<Map<String, Object>> search(float[] vector, String kind, int limit) {
         if (!available() || vector == null || vector.length == 0) return null;
