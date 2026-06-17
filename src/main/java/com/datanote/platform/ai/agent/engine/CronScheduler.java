@@ -32,6 +32,7 @@ public class CronScheduler {
 
     private final DnAiCronJobMapper cronMapper;
     private final AiAgentService aiAgentService;
+    private final AgentPermResolver permResolver;
 
     @javax.annotation.Resource(name = "aiCronExecutor")
     private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor cronExecutor;
@@ -80,6 +81,7 @@ public class CronScheduler {
             String status = "error", sid = null;
             try {
                 AgentContext ctx = new AgentContext(owner, null, null, null, null);
+                permResolver.resolveInto(ctx, owner);   // cron 以任务 owner 身份执行
                 Map<String, Object> r = aiAgentService.runCron(prompt, ctx);
                 status = r == null ? "error" : String.valueOf(r.get("status"));
                 sid = r == null ? null : String.valueOf(r.get("sessionId"));

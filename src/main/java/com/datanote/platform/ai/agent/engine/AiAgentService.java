@@ -50,6 +50,7 @@ public class AiAgentService {
     private final DnAiApprovalMapper approvalMapper;
     private final ContextCompressorService contextCompressor;
     private final AiFileService aiFileService;
+    private final AgentPermResolver permResolver;
 
     /** cron 定时无人值守模式(ThreadLocal): 禁 cron_job(防递归排程)/ask_user(无人应答), 不写记忆 */
     private static final ThreadLocal<Boolean> CRON_MODE = ThreadLocal.withInitial(() -> false);
@@ -635,6 +636,7 @@ public class AiAgentService {
 
         // 重放身份: 写入归属(createdBy/owner)取【会话发起人】, 审计 actor 记【实际触发 resume 者】, 二者分离防冒名。
         AgentContext writeCtx = new AgentContext(session.getUserName(), ctx == null ? null : ctx.getIp(), null, sessionId, null);
+        permResolver.resolveInto(writeCtx, session.getUserName());   // 重放以会话发起人权限校验
         String actor = ctx == null ? null : ctx.getUserName();
 
         AgentState st = new AgentState();

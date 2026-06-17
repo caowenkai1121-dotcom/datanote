@@ -40,6 +40,7 @@ public class AiAgentController {
     private final DnAiMemorySkillMapper memoryMapper;
     private final com.datanote.platform.ai.agent.mapper.DnAiCronJobMapper cronMapper;
     private final ObjectMapper objectMapper;
+    private final com.datanote.platform.ai.agent.engine.AgentPermResolver permResolver;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
@@ -52,7 +53,7 @@ public class AiAgentController {
         }
         Object ctxObj = body == null ? null : body.get("ctx");
         Map<String, Object> bizCtx = (ctxObj instanceof Map) ? (Map<String, Object>) ctxObj : null;
-        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, bizCtx);
+        AgentContext ctx = buildCtx(sessionId, bizCtx, req);
         // 模型热切: 本请求覆盖模型档位(同 provider), 边界 set/clear 防泄漏到其它请求
         String modelOverride = body == null || body.get("model") == null ? null : String.valueOf(body.get("model"));
         com.datanote.platform.ai.AiAssistService.setModelOverride(modelOverride);
@@ -71,7 +72,7 @@ public class AiAgentController {
         String sessionId = (body == null || body.get("sessionId") == null) ? null : String.valueOf(body.get("sessionId"));
         int maxCycles = 2;
         try { if (body != null && body.get("maxCycles") != null) maxCycles = Integer.parseInt(String.valueOf(body.get("maxCycles"))); } catch (Exception ignore) {}
-        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        AgentContext ctx = buildCtx(sessionId, null, req);
         return R.ok(aiAgentService.pursue(sessionId, message.trim(), ctx, maxCycles));
     }
 
@@ -171,7 +172,7 @@ public class AiAgentController {
         Object ansObj = body == null ? null : body.get("answers");
         String msg = formatAnswers(ansObj);
         if (msg == null) return R.fail("answers 不能为空");
-        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        AgentContext ctx = buildCtx(sessionId, null, req);
         return R.ok(aiAgentService.run(sessionId, msg, ctx));
     }
 
@@ -278,8 +279,15 @@ public class AiAgentController {
     /** 恢复执行: 按已批 args 精确重放已批准未执行的写动作(不重跑 LLM 规划, 消除 args 漂移)。 */
     @PostMapping("/{sessionId}/resume")
     public R<Map<String, Object>> resume(@PathVariable("sessionId") String sessionId, HttpServletRequest req) {
-        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, null);
+        AgentContext ctx = buildCtx(sessionId, null, req);
         return R.ok(aiAgentService.resume(sessionId, ctx));
+    }
+
+    /** 构造执行上下文并填充发起人权限快照。 */
+    private AgentContext buildCtx(String sessionId, Map<String, Object> bizCtx, HttpServletRequest req) {
+        AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, bizCtx);
+        permResolver.resolveInto(ctx, ctx.getUserName());
+        return ctx;
     }
 
     private String currentUser() {

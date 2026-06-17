@@ -140,6 +140,11 @@ public class ChildAgentRunner {
                 parentCtx == null ? null : parentCtx.getUserName(),
                 parentCtx == null ? null : parentCtx.getIp(),
                 null, child.getSessionId(), null);
+        if (parentCtx != null) {                         // 子继承父权限快照(同用户, 不放大)
+            childCtx.setPerms(parentCtx.getPerms());
+            childCtx.setRoles(parentCtx.getRoles());
+            childCtx.setPermsResolved(parentCtx.isPermsResolved());
+        }
         IterationBudget budget = new IterationBudget(MAX_CHILD_STEPS);
         String manifest = toolRegistry.toToolsManifestJson(t -> t.readOnly() && !CHILD_BLOCKED.contains(t.name()));
         String today = LocalDate.now().toString();
