@@ -19,7 +19,7 @@ public class StopSyncJobTool implements AiTool {
     private final SyncJobExecutor syncJobExecutor;
 
     @Override public String name() { return "stop_sync_job"; }
-    @Override public String group() { return "ops"; }
+    @Override public String group() { return "sync"; }
     @Override public String description() {
         return "停止一个正在运行的数据同步任务。写操作需审批。";
     }
@@ -36,8 +36,9 @@ public class StopSyncJobTool implements AiTool {
             Long jobId = AgentArgs.longOrCtx(args, "jobId", ctx);
             if (jobId == null) return AiToolResult.fail("bad_arguments", "jobId 不能为空");
             boolean stopped = syncJobExecutor.stop(jobId);
+            if (!stopped) return AiToolResult.fail("conflict", "任务不在运行中, 无需停止");
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("stopped", stopped);
+            out.put("stopped", true);
             return AiToolResult.ok(out);
         } catch (IllegalArgumentException e) {
             return AiToolResult.fail("bad_arguments", e.getMessage());

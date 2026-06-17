@@ -22,7 +22,7 @@ public class RunBackfillTool implements AiTool {
     @Override public String name() { return "run_backfill"; }
     @Override public String group() { return "ops"; }
     @Override public String description() {
-        return "对指定根任务发起补数据(backfill), 指定补数日期(yyyy-MM-dd), 返回批次号 batchId, 由调度引擎异步执行。写操作需审批。";
+        return "对指定根任务发起补数据(backfill), 指定补数日期(yyyy-MM-dd), 返回批次号 batchId, 由调度引擎异步执行。写操作需审批。(仅对该根任务补数, 不自动扩散下游链路)";
     }
     @Override public String paramsSchemaJson() {
         return "{\"taskId\":{\"type\":\"number\",\"required\":true,\"desc\":\"根任务ID\"}," +

@@ -22,7 +22,7 @@ public class BaselineStatusTool implements AiTool {
     @Override public String name() { return "baseline_status"; }
     @Override public String group() { return "ops"; }
     @Override public String description() {
-        return "查看今日基线(baseline)达成状态: 各基线 met/broken/pending + 未达任务明细。只读。";
+        return "查看今日基线(baseline)达成状态: 各基线 met/broken/pending + 未达任务明细。数据日期口径为 T-1(昨日调度数据)。只读。";
     }
     @Override public String paramsSchemaJson() { return "{}"; }
     @Override public boolean readOnly() { return true; }

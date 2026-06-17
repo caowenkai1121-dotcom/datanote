@@ -19,7 +19,7 @@ public class RunSyncJobTool implements AiTool {
     private final SyncJobExecutor syncJobExecutor;
 
     @Override public String name() { return "run_sync_job"; }
-    @Override public String group() { return "ops"; }
+    @Override public String group() { return "sync"; }
     @Override public String description() {
         return "运行(触发)一个已存在的数据同步任务, 异步执行, 返回执行ID(execId); 用 sync_job_detail/sync_job_checkpoints 查进度。写操作需审批。";
     }

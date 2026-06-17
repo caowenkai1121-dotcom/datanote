@@ -38,10 +38,12 @@ public class ScheduleRerunTool implements AiTool {
             taskExecutionService.retryTask(runId);
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("runId", runId);
-            out.put("note", "已发起重跑");
+            out.put("note", "已发起重跑(调度引擎已触发)");
             return AiToolResult.ok(out);
         } catch (IllegalArgumentException e) {
             return AiToolResult.fail("bad_arguments", e.getMessage());
+        } catch (com.datanote.common.exception.BusinessException e) {
+            return AiToolResult.fail("conflict", e.getMessage());
         } catch (Exception e) {
             return AiToolResult.fail("exec_failed", e.getMessage());
         }
