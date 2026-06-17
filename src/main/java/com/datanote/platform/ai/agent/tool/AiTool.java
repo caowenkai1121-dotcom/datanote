@@ -28,4 +28,8 @@ public interface AiTool {
 
     /** 执行：args 为模型给出的入参，ctx 为执行上下文。实现内自行 try/catch 翻译为 AiToolResult。 */
     AiToolResult invoke(JsonNode args, AgentContext ctx);
+
+    /** 执行该工具所需的 RBAC 权限点(PermCatalog 编码, 如 develop:edit)。null=仅需登录(读类默认)。
+     *  写工具与敏感读工具就近 override 声明; PermGate 据此对发起人鉴权。 */
+    default String requiredPerm() { return null; }
 }
