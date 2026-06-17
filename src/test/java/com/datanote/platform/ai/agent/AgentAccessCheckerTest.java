@@ -23,7 +23,7 @@ class AgentAccessCheckerTest {
 
     @Test void nonTableScopedToolAllows() throws Exception {
         DataAclService acl = mock(DataAclService.class);
-        AgentAccessChecker chk = new AgentAccessChecker(acl, om);
+        AgentAccessChecker chk = new AgentAccessChecker(acl);
         assertNull(chk.dataDeny("gov_overview", om.readTree("{}"), ctx()));
         verifyNoInteractions(acl);
     }
@@ -31,7 +31,7 @@ class AgentAccessCheckerTest {
     @Test void tableScopedDeniedReturnsReason() throws Exception {
         DataAclService acl = mock(DataAclService.class);
         when(acl.canAccessAs(eq("bob"), any(), any(), eq("TABLE"), eq("ods.t1"))).thenReturn(false);
-        AgentAccessChecker chk = new AgentAccessChecker(acl, om);
+        AgentAccessChecker chk = new AgentAccessChecker(acl);
         String reason = chk.dataDeny("table_data", om.readTree("{\"db\":\"ods\",\"table\":\"t1\"}"), ctx());
         assertNotNull(reason);
     }
@@ -39,13 +39,13 @@ class AgentAccessCheckerTest {
     @Test void tableScopedAllowedReturnsNull() throws Exception {
         DataAclService acl = mock(DataAclService.class);
         when(acl.canAccessAs(eq("bob"), any(), any(), eq("TABLE"), eq("ods.t1"))).thenReturn(true);
-        AgentAccessChecker chk = new AgentAccessChecker(acl, om);
+        AgentAccessChecker chk = new AgentAccessChecker(acl);
         assertNull(chk.dataDeny("asset_detail", om.readTree("{\"db\":\"ods\",\"table\":\"t1\"}"), ctx()));
     }
 
     @Test void tableScopedMissingArgsAllows() throws Exception {
         DataAclService acl = mock(DataAclService.class);
-        AgentAccessChecker chk = new AgentAccessChecker(acl, om);
+        AgentAccessChecker chk = new AgentAccessChecker(acl);
         // 无 db/table 无从判定 → 不拦(交由工具自身缺参处理), 避免误伤
         assertNull(chk.dataDeny("table_data", om.readTree("{}"), ctx()));
     }

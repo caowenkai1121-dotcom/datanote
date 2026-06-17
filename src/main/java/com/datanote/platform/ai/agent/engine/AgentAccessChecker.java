@@ -3,7 +3,6 @@ package com.datanote.platform.ai.agent.engine;
 import com.datanote.platform.ai.agent.tool.AgentContext;
 import com.datanote.platform.iam.DataAclService;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,9 +19,9 @@ import java.util.Set;
 public class AgentAccessChecker {
 
     private final DataAclService dataAclService;
-    private final ObjectMapper objectMapper;
 
     /** 涉及具体库表的工具(读源库/元数据/血缘): 需对 db.table 做数据级校验。 */
+    // 注意: 工具名须与各工具 AiTool.name() 返回值一致, 否则该工具的数据级校验会被静默跳过。
     private static final Set<String> TABLE_SCOPED = new HashSet<>(Arrays.asList(
             "asset_detail", "table_data", "table_profile",
             "lineage_impact", "lineage_trace", "lineage_graph",
@@ -34,7 +33,7 @@ public class AgentAccessChecker {
         String db = pick(args, ctx, "db");
         String table = pick(args, ctx, "table");
         if (db == null || db.isEmpty() || table == null || table.isEmpty()) return null; // 无从判定→不拦
-        String resourceId = db + "." + table;
+        String resourceId = db + "." + table; // 大小写须与 dn_data_grant.resource_id 存储一致(同 DataMapService.tableKey, 按源大小写)
         String caller = ctx == null ? null : ctx.getUserName();
         boolean ok = dataAclService.canAccessAs(caller,
                 ctx == null ? null : ctx.getRoles(),
