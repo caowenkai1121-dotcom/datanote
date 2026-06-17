@@ -26,6 +26,7 @@ public class AgentPermResolver {
 
     public void resolveInto(AgentContext ctx, String caller) {
         if (ctx == null) return; // null ctx 属调用方 bug, 不标记已解析(调用链 Controller/Cron/resume 不会传 null)
+        if (ctx.isPermsResolved()) return; // 幂等: 已解析过的快照不重复查库/覆盖(同一 ctx 只解析一次)
         Set<String> perms;
         List<String> roles;
         if (!authProperties.isEnabled()) {

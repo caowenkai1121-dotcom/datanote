@@ -52,4 +52,17 @@ class AgentPermResolverTest {
         assertTrue(c.getRoles().isEmpty()); // fail-closed: roles 同样为空集
         assertTrue(c.isPermsResolved());
     }
+
+    @Test void alreadyResolvedIsIdempotentNoReQuery() {
+        AuthProperties ap = mock(AuthProperties.class);
+        when(ap.isEnabled()).thenReturn(true);
+        RbacService rbac = mock(RbacService.class);
+        AgentPermResolver r = new AgentPermResolver(rbac, ap);
+        AgentContext c = new AgentContext("alice", "ip", null, "sid", null);
+        c.setPerms(new HashSet<>(Arrays.asList("develop:edit")));
+        c.setPermsResolved(true);               // 已解析
+        r.resolveInto(c, "alice");
+        assertTrue(c.getPerms().contains("develop:edit")); // 原快照保留
+        verifyNoInteractions(rbac);             // 不再查库
+    }
 }
