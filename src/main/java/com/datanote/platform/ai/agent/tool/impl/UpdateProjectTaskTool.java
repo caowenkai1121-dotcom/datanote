@@ -52,9 +52,6 @@ public class UpdateProjectTaskTool implements AiTool {
             t.setStatus(AgentArgs.str(args, "status"));
             t.setAssignee(AgentArgs.str(args, "assignee"));
             t.setPriority(AgentArgs.str(args, "priority"));
-            if (ctx != null && ctx.getUserName() != null && t.getId() == null) {
-                t.setCreatedBy(ctx.getUserName());
-            }
             Map<String, Object> result = projectTaskService.saveTaskAndSync(projectId, t);
             return AiToolResult.ok(result);
         } catch (IllegalArgumentException e) {

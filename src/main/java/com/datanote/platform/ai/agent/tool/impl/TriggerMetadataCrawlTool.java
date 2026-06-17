@@ -34,11 +34,19 @@ public class TriggerMetadataCrawlTool implements AiTool {
     @Override
     public AiToolResult invoke(JsonNode args, AgentContext ctx) {
         try {
-            Long datasourceId = AgentArgs.longOrCtx(args, "datasourceId", ctx);
+            Long datasourceId = AgentArgs.longVal(args, "datasourceId");
             if (datasourceId == null) return AiToolResult.fail("bad_arguments", "datasourceId 不能为空");
             DnMetaCollectLog log = metadataCrawlerService.crawlDatasource(datasourceId);
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("result", log);
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("datasourceId", log.getDatasourceId());
+            summary.put("status", log.getStatus());
+            summary.put("tableCount", log.getTableCount());
+            summary.put("columnCount", log.getColumnCount());
+            summary.put("durationMs", log.getDurationMs());
+            summary.put("startedAt", log.getStartedAt());
+            summary.put("finishedAt", log.getFinishedAt());
+            out.put("result", summary);
             out.put("note", "采集完成, 数据地图已更新");
             return AiToolResult.ok(out);
         } catch (IllegalArgumentException e) {

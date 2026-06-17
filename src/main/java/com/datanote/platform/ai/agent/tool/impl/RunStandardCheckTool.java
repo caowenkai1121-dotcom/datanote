@@ -1,6 +1,7 @@
 package com.datanote.platform.ai.agent.tool.impl;
 
 import com.datanote.domain.governance.StandardService;
+import com.datanote.domain.governance.model.DnStandardCheckRun;
 import com.datanote.platform.ai.agent.tool.AgentContext;
 import com.datanote.platform.ai.agent.tool.AiTool;
 import com.datanote.platform.ai.agent.tool.AiToolResult;
@@ -35,9 +36,16 @@ public class RunStandardCheckTool implements AiTool {
     public AiToolResult invoke(JsonNode args, AgentContext ctx) {
         try {
             String scope = AgentArgs.str(args, "scope"); // null 表示全量
-            Object checkResult = standardService.runCheck(scope);
+            DnStandardCheckRun run = standardService.runCheck(scope);
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("check", checkResult);
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("id", run.getId());
+            summary.put("scope", run.getScope());
+            summary.put("totalCount", run.getTotalCount());
+            summary.put("violationCount", run.getViolationCount());
+            summary.put("passRate", run.getPassRate());
+            summary.put("createdAt", run.getCreatedAt());
+            out.put("check", summary);
             return AiToolResult.ok(out);
         } catch (IllegalArgumentException e) {
             return AiToolResult.fail("bad_arguments", e.getMessage());
