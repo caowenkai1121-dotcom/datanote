@@ -1,4 +1,4 @@
-package com.datanote.ai.agent;
+package com.datanote.platform.ai.agent;
 
 import com.datanote.platform.ai.agent.engine.PermGate;
 import com.datanote.platform.ai.agent.tool.AgentContext;
@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
