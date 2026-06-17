@@ -44,32 +44,68 @@ public class DataMapService {
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;   // 表详情合并离线业务属性
     private final DatasourceExploreService exploreService;
     private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤受限库表
+    private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;   // 向量语义检索(降级关键字)
 
     // ========== 搜索（基于在线全表摘要） ==========
 
+    private static final int SEARCH_LIMIT = 50;
+
+    /**
+     * 表搜索: 向量库可用时按语义相关度排序(中文同义召回, 如"支付"命中交易/订单/付款), 关键字 LIKE 兜底填充;
+     * 向量不可用则纯 LIKE(行为与改造前一致)。数据权限过滤受限表。
+     */
     public List<Map<String, Object>> searchTables(String keyword) throws SQLException {
         if (keyword == null || keyword.trim().isEmpty()) {
             throw new BusinessException("搜索关键词不能为空");
         }
         List<Map<String, Object>> allTables = exploreService.getAllTablesSummary();
-        List<Map<String, Object>> matched = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
         if (allTables == null || allTables.isEmpty()) {
-            return matched;
+            return result;
         }
-        String kw = keyword.trim().toLowerCase();
         Set<String> denied = dataAclService.deniedIds("TABLE");   // 受限且当前用户未授权的 db.table
+        // 建库.表(小写) → 表摘要 索引(已过滤受限表), 供向量命中回填完整记录
+        Map<String, Map<String, Object>> byKey = new LinkedHashMap<String, Map<String, Object>>();
         for (Map<String, Object> t : allTables) {
-            if (t == null) continue;
-            if (denied.contains(tableKey(t))) continue;   // 数据权限: 跳过受限不可见表
+            if (t == null || denied.contains(tableKey(t))) continue;
+            byKey.put(tableKey(t).toLowerCase(), t);
+        }
+        Set<String> added = new HashSet<String>();
+        // 1) 向量语义排序在前(仅向量引擎命中才用, 关键字降级噪音大不掺入排序)
+        try {
+            Map<String, Object> rag = semanticSearchService.search(keyword.trim(), "table", SEARCH_LIMIT);
+            if (rag != null && "vector".equals(rag.get("engine")) && rag.get("results") instanceof List) {
+                for (Object o : (List<?>) rag.get("results")) {
+                    if (!(o instanceof Map)) continue;
+                    Map<?, ?> hit = (Map<?, ?>) o;
+                    Object db = hit.get("db"), name = hit.get("name");
+                    if (db == null || name == null) continue;
+                    String key = (db + "." + name).toLowerCase();
+                    Map<String, Object> t = byKey.get(key);
+                    if (t != null && added.add(key)) {
+                        result.add(t);
+                        if (result.size() >= SEARCH_LIMIT) return result;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("表语义检索失败, 降级关键字: {}", e.getMessage());
+        }
+        // 2) 关键字 LIKE 兜底填充(向量未命中或不可用; 不丢子串匹配)
+        String kw = keyword.trim().toLowerCase();
+        for (Map.Entry<String, Map<String, Object>> en : byKey.entrySet()) {
+            if (result.size() >= SEARCH_LIMIT) break;
+            if (added.contains(en.getKey())) continue;
+            Map<String, Object> t = en.getValue();
             String tableName = t.get("TABLE_NAME") != null ? String.valueOf(t.get("TABLE_NAME")).toLowerCase() : "";
             String dbName = t.get("TABLE_SCHEMA") != null ? String.valueOf(t.get("TABLE_SCHEMA")).toLowerCase() : "";
             String comment = t.get("TABLE_COMMENT") != null ? String.valueOf(t.get("TABLE_COMMENT")).toLowerCase() : "";
             if (tableName.contains(kw) || dbName.contains(kw) || comment.contains(kw)) {
-                matched.add(t);
-                if (matched.size() >= 50) break;
+                result.add(t);
+                added.add(en.getKey());
             }
         }
-        return matched;
+        return result;
     }
 
     /** 表唯一键 schema.name(与 dn_data_grant.resource_id 对齐, 大小写按源)。 */

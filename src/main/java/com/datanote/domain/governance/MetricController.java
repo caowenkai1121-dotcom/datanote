@@ -35,6 +35,7 @@ public class MetricController {
     private final IssueService issueService;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;
     private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤/守卫受限指标
+    private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;   // 向量语义检索(降级关键字)
 
     /**
      * 指标列表（支持关键词搜索和分类筛选）
@@ -44,22 +45,50 @@ public class MetricController {
     public R<List<DnMetric>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category) {
-        QueryWrapper<DnMetric> qw = new QueryWrapper<>();
-        if (keyword != null && !keyword.isEmpty()) {
-            qw.and(w -> w.like("metric_name", keyword)
-                    .or().like("metric_code", keyword)
-                    .or().like("description", keyword));
-        }
-        if (category != null && !category.isEmpty()) {
-            qw.eq("category", category);
-        }
-        qw.orderByDesc("updated_at");
-        List<DnMetric> list = metricMapper.selectList(qw);
         java.util.Set<String> denied = dataAclService.deniedIds("METRIC");
-        if (!denied.isEmpty() && list != null) {
-            list.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
+        boolean hasKw = keyword != null && !keyword.trim().isEmpty();
+        if (!hasKw) {
+            QueryWrapper<DnMetric> qw = new QueryWrapper<>();
+            if (category != null && !category.isEmpty()) qw.eq("category", category);
+            qw.orderByDesc("updated_at");
+            List<DnMetric> list = metricMapper.selectList(qw);
+            if (!denied.isEmpty() && list != null) {
+                list.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
+            }
+            return R.ok(list);
         }
-        return R.ok(list);
+        // 关键词搜索: 候选=该分类全部指标(数量小, 内存排序); 向量语义相关在前 + 关键字 LIKE 兜底
+        QueryWrapper<DnMetric> base = new QueryWrapper<>();
+        if (category != null && !category.isEmpty()) base.eq("category", category);
+        List<DnMetric> all = metricMapper.selectList(base);
+        if (all == null) all = new java.util.ArrayList<>();
+        if (!denied.isEmpty()) all.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
+        java.util.Map<String, DnMetric> byName = new java.util.LinkedHashMap<>();
+        for (DnMetric m : all) if (m != null && m.getMetricName() != null) byName.put(m.getMetricName().toLowerCase(), m);
+        List<DnMetric> ordered = new java.util.ArrayList<>();
+        java.util.Set<Long> added = new java.util.HashSet<>();
+        try {
+            Map<String, Object> rag = semanticSearchService.search(keyword.trim(), "metric", 50);
+            if (rag != null && "vector".equals(rag.get("engine")) && rag.get("results") instanceof List) {
+                for (Object o : (List<?>) rag.get("results")) {
+                    if (!(o instanceof Map)) continue;
+                    Object nm = ((Map<?, ?>) o).get("name");
+                    if (nm == null) continue;
+                    DnMetric m = byName.get(String.valueOf(nm).toLowerCase());
+                    if (m != null && m.getId() != null && added.add(m.getId())) ordered.add(m);
+                }
+            }
+        } catch (Exception ignore) {
+        }
+        String kw = keyword.trim().toLowerCase();
+        for (DnMetric m : all) {
+            if (m == null || m.getId() == null || added.contains(m.getId())) continue;
+            String n = m.getMetricName() == null ? "" : m.getMetricName().toLowerCase();
+            String c = m.getMetricCode() == null ? "" : m.getMetricCode().toLowerCase();
+            String d = m.getDescription() == null ? "" : m.getDescription().toLowerCase();
+            if (n.contains(kw) || c.contains(kw) || d.contains(kw)) { ordered.add(m); added.add(m.getId()); }
+        }
+        return R.ok(ordered);
     }
 
     /**
