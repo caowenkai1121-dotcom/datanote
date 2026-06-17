@@ -1,6 +1,5 @@
 package com.datanote.platform.ai.agent;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.platform.config.AuthProperties;
 import com.datanote.platform.iam.DataAclService;
 import com.datanote.platform.iam.RbacService;
@@ -52,6 +51,19 @@ class DataAclServiceAsTest {
         DataAclService svc = new DataAclService(m, mock(RbacService.class), enabledAuth());
         assertTrue(svc.canAccessAs("bob", Collections.<String>emptyList(),
                 new java.util.HashSet<>(Arrays.asList("data:all")), "TABLE", "ods.t1"));
+    }
+
+    @Test void deniedIdsReturnsOnlyRestrictedUngranted() {
+        DnDataGrantMapper m = mock(DnDataGrantMapper.class);
+        // r1 授权给 alice, r2 授权给 bob; 公开资源(无授权)不会出现在 all 里
+        when(m.selectList(any())).thenReturn(Arrays.asList(
+                grant("TABLE", "ods.r1", "USER", "alice"),
+                grant("TABLE", "ods.r2", "USER", "bob")));
+        DataAclService svc = new DataAclService(m, mock(RbacService.class), enabledAuth());
+        java.util.Set<String> denied = svc.deniedIdsAs("alice", Collections.<String>emptyList(),
+                Collections.<String>emptySet(), "TABLE");
+        assertTrue(denied.contains("ods.r2"));   // alice 不在 r2 名单 → 受限
+        assertFalse(denied.contains("ods.r1"));  // alice 在 r1 名单 → 可见
     }
 
     private AuthProperties enabledAuth() {

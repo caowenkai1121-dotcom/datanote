@@ -97,7 +97,7 @@ public class DataAclService {
     private boolean bypassAs(String caller, Set<String> perms) {
         if (!authProperties.isEnabled()) return true;
         if (caller == null || "anonymous".equals(caller) || "admin".equals(caller)) return true;
-        if (perms == null) return false;   // 未解析 fail-closed
+        if (perms == null) return false;   // null=perms 未解析(非"已解析但空集"), fail-closed 拒绝; 调用方应传空 Set 表示"已解析无特殊权限"
         return perms.contains("*") || perms.contains("data:all");
     }
 
