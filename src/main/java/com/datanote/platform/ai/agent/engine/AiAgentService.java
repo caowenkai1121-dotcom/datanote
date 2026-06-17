@@ -51,6 +51,7 @@ public class AiAgentService {
     private final ContextCompressorService contextCompressor;
     private final AiFileService aiFileService;
     private final AgentPermResolver permResolver;
+    private final AgentAccessChecker accessChecker;
 
     /** cron 定时无人值守模式(ThreadLocal): 禁 cron_job(防递归排程)/ask_user(无人应答), 不写记忆 */
     private static final ThreadLocal<Boolean> CRON_MODE = ThreadLocal.withInitial(() -> false);
@@ -280,6 +281,8 @@ public class AiAgentService {
                     JsonNode a = c.get("arguments");
                     String sig = nm + "|" + argsToStr(a);
                     if (t == null || PARALLEL_EXCLUDE.contains(nm) || Guardrail.gate(t) != Guardrail.Gate.PASS
+                            || PermGate.check(t, ctx) != PermGate.Decision.ALLOW
+                            || accessChecker.dataDeny(nm, a, ctx) != null
                             || Validation.validate(a, t.paramsSchemaJson(), objectMapper) != null
                             || seenCalls.containsKey(sig) || batchSeen.contains(sig)) { ok = false; break; }
                     batchSeen.add(sig);
@@ -409,6 +412,25 @@ public class AiAgentService {
                 appendTrace(st, toolName, callJson, r);
                 newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
                         null, "error", "forbidden", tool.readOnly(), riskName, latency));
+                continue;
+            }
+            // ===== 功能级权限闸门: 发起人无该权限点 → 硬拒绝(不进审批, 不可绕过) =====
+            if (PermGate.check(tool, ctx) == PermGate.Decision.DENY) {
+                String need = tool.requiredPerm();
+                AiToolResult r = AiToolResult.fail("permission_denied",
+                        "当前用户无 " + need + " 权限, 无法执行 " + toolName + "(请联系管理员分配)");
+                appendTrace(st, toolName, callJson, r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                        null, "error", "permission_denied", tool.readOnly(), riskName, latency));
+                continue;
+            }
+            // ===== 数据级闸门: 发起人无该资源数据权限 → 拒 =====
+            String dataDeny = accessChecker.dataDeny(toolName, argsNode, ctx);
+            if (dataDeny != null) {
+                AiToolResult r = AiToolResult.fail("data_denied", dataDeny);
+                appendTrace(st, toolName, callJson, r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
+                        null, "error", "data_denied", tool.readOnly(), riskName, latency));
                 continue;
             }
             if (gate == Guardrail.Gate.NEED_APPROVAL) {
@@ -652,6 +674,15 @@ public class AiAgentService {
             String riskName = tool.risk() == null ? "HIGH" : tool.risk().name();
             // 防御: 重放仅限写工具且非永久禁区(审批记录本不应出现禁区/只读, 双保险)
             if (tool.readOnly() || Guardrail.gate(tool) == Guardrail.Gate.DENY) { markExecuted(ap); continue; }
+            // 重放再校验功能权限: 会话发起人若已被回收该权限, 不再执行(防权限变更后旧审批越权落地)
+            if (PermGate.check(tool, writeCtx) == PermGate.Decision.DENY) {
+                AiToolResult r = AiToolResult.fail("permission_denied", "发起人已无 " + tool.requiredPerm() + " 权限, 跳过重放");
+                appendTrace(st, tool.name(), ap.getArgsJson(), r);
+                newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, tool.name(), ap.getArgsJson(),
+                        null, "error", "permission_denied", false, riskName, null));
+                markExecuted(ap);   // 标记已处理, 不反复重试
+                continue;
+            }
             JsonNode argsNode = null;
             try {
                 argsNode = (ap.getArgsJson() == null || ap.getArgsJson().isEmpty())
