@@ -37,6 +37,7 @@ public class AssetDetailService {
     private final DnGlossaryTermMapper glossaryTermMapper;
     private final HiveConfig hiveConfig;
     private final com.datanote.domain.integration.connector.ConnectionManager connectionManager; // 源库取数(看真实表数据)
+    private final com.datanote.platform.ai.vector.SemanticSearchService semanticSearchService;   // 相似资产推荐(向量召回)
 
     /** Profiler 单次探查的最大字段数，防止数仓聚合查询过慢 */
     static final int MAX_PROFILE_FIELDS = 30;
@@ -68,7 +69,37 @@ public class AssetDetailService {
             if (columns == null) columns = new ArrayList<DnColumnMeta>();
         }
         result.put("columns", columns);
+        result.put("similarTables", similarTables(db, table, meta));   // 相似资产推荐(向量召回, 排除自身)
         return result;
+    }
+
+    /** 向量召回与本表语义相近的其它表(排除自身), 最多 6 张; 向量不可用返空。 */
+    private List<Map<String, Object>> similarTables(String db, String table, DnTableMeta meta) {
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        try {
+            String q = (meta != null && meta.getTableComment() != null && !meta.getTableComment().trim().isEmpty())
+                    ? meta.getTableComment() : table;
+            Map<String, Object> rag = semanticSearchService.search(q, "table", 8);
+            if (rag == null || !"vector".equals(rag.get("engine")) || !(rag.get("results") instanceof List)) return out;
+            String self = (db + "." + table).toLowerCase();
+            for (Object o : (List<?>) rag.get("results")) {
+                if (!(o instanceof Map)) continue;
+                Map<?, ?> h = (Map<?, ?>) o;
+                Object hdb = h.get("db"), hname = h.get("name");
+                if (hdb == null || hname == null) continue;
+                if ((hdb + "." + hname).toLowerCase().equals(self)) continue;   // 排除自身
+                Map<String, Object> m = new HashMap<String, Object>();
+                m.put("db", hdb);
+                m.put("table", hname);
+                m.put("title", h.get("title"));
+                m.put("score", h.get("score"));
+                out.add(m);
+                if (out.size() >= 6) break;
+            }
+        } catch (Exception e) {
+            log.warn("相似资产召回失败: {}", e.getMessage());
+        }
+        return out;
     }
 
     private DnTableMeta findTableMeta(String db, String table) {

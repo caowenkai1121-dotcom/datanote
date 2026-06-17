@@ -572,6 +572,22 @@
         exportName: db + '_' + table + '_columns',
         empty: '无字段元数据（请先采集）'
       }));
+      // 相似资产推荐(向量语义召回, 排除自身): 可点跳转该表详情
+      var sim = (d && Array.isArray(d.similarTables)) ? d.similarTables : [];
+      if (sim.length) {
+        box.appendChild(DN.h('div', { style: 'margin-top:14px;font-weight:600;font-size:13px;color:var(--text-primary);' }, [
+          DN.h('span', { text: '🔗 相似资产' }),
+          DN.h('span', { text: ' (语义相关, 点击查看)', style: 'font-size:12px;color:var(--text-muted);font-weight:400;' })
+        ]));
+        var simWrap = DN.h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;' });
+        sim.forEach(function (s) {
+          var label = (s.db ? s.db + '.' : '') + (s.table || '') + (s.title ? ' · ' + clip(String(s.title), 20) : '');
+          simWrap.appendChild(DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: label,
+            title: '相关度 ' + (s.score != null ? Number(s.score).toFixed(2) : '-'),
+            onclick: (function (db2, tb2) { return function () { openAssetDetail(db2, tb2); }; })(s.db, s.table) }));
+        });
+        box.appendChild(simWrap);
+      }
     }).catch(function (e) {
       box.innerHTML = ''; box.appendChild(DN.errorBox('加载失败: ' + e.message, function () { load(); }));
     });
