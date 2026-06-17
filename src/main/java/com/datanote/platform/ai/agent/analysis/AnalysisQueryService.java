@@ -1,5 +1,13 @@
 package com.datanote.platform.ai.agent.analysis;
 
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.SQLSelect;
+import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
+import com.alibaba.druid.sql.ast.statement.SQLWithSubqueryClause;
+import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
+import com.alibaba.druid.stat.TableStat;
+import com.alibaba.druid.util.JdbcConstants;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.domain.governance.AssetDetailService;
 import com.datanote.domain.governance.MaskingService;
@@ -8,7 +16,6 @@ import com.datanote.domain.integration.connector.ConnectionManager;
 import com.datanote.domain.integration.util.SqlExecutor;
 import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnTableMeta;
-import com.datanote.domain.orchestration.TaskDependencyService;
 import com.datanote.platform.ai.agent.tool.AgentContext;
 import com.datanote.platform.config.HiveConfig;
 import com.datanote.platform.iam.DataAclService;
@@ -21,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +38,8 @@ import java.util.Set;
  * 只读分析查询安全栈 — 供 run_analysis 工具调用。
  *
  * 安全顺序（强制，缺任一层即不执行）：
- *  1) SQL 语法验证：非空、去注释、单语句、SELECT/WITH 开头、拒 INTO OUTFILE/DUMPFILE
- *  2) 数据级 ACL：按 SQL 中引用的每张表调用 DataAclService.canAccessAs
+ *  1) SQL 语法验证：非空、拒可执行注释/*!、去注释、单语句、SELECT/WITH 开头、拒 INTO OUTFILE/DUMPFILE
+ *  2) 数据级 ACL：Druid 解析提取每张引用表的真实(schema,table)逐表 DataAclService.canAccessAs；解析失败 fail-closed
  *  3) 脱敏改写(fail-closed)：SqlMaskRewriter.rewrite；SELECT* / 子查询含策略时抛 MaskRewriteException
  *  4) 执行：数据源路由(源库MySQL/数仓Doris) + setMaxRows(2000) + setQueryTimeout(30)
  */
@@ -49,7 +57,6 @@ public class AnalysisQueryService {
     private final HiveConfig hiveConfig;
     private final MaskingService maskingService;
     private final DataAclService dataAclService;
-    private final TaskDependencyService taskDependencyService;
     private final DnTableMetaMapper tableMetaMapper;
 
     /**
@@ -69,6 +76,11 @@ public class AnalysisQueryService {
         // ── 第一层：SQL 语法验证 ────────────────────────────────────────────
         if (sql == null || sql.trim().isEmpty()) {
             throw new IllegalArgumentException("sql 不能为空");
+        }
+
+        // 拒绝 MySQL 可执行注释 /*! ... */（去注释正则会吞掉它, 故先用原始 sql 检测）
+        if (sql.contains("/*!")) {
+            throw new IllegalArgumentException("不支持可执行注释 /*! */");
         }
 
         // 去注释：行注释 -- ... 和块注释 /* ... */
@@ -99,14 +111,17 @@ public class AnalysisQueryService {
             throw new IllegalArgumentException("禁止 INTO OUTFILE/DUMPFILE 导出语句");
         }
 
-        // ── 第二层：数据级 ACL ──────────────────────────────────────────────
-        Set<String> tables = taskDependencyService.parseSQLTables(sql);
-        if (!tables.isEmpty()) {
+        // ── 第二层：数据级 ACL（Druid 解析真实库名，覆盖跨库/逗号连接/子查询每张表）─────
+        // 用 clean(已去注释)解析，提取所有引用表的 (schema, table)。解析失败 fail-closed 拒绝。
+        List<TableRef> refs = extractReferencedTables(clean);
+        if (!refs.isEmpty()) {
             String caller = ctx.getUserName();
             List<String> roles = ctx.getRoles();
             Set<String> perms = ctx.getPerms();
-            for (String table : tables) {
-                String rid = (db != null ? db : "") + "." + table;
+            for (TableRef ref : refs) {
+                // schema 非空用真实库名, 否则回退到 db 参数(默认数仓库)
+                String schema = (ref.db != null && !ref.db.isEmpty()) ? ref.db : (db != null ? db : "");
+                String rid = schema + "." + ref.table;
                 if (!dataAclService.canAccessAs(caller, roles, perms, "TABLE", rid)) {
                     throw new SecurityException("无数据资源 " + rid + " 访问权限");
                 }
@@ -162,6 +177,82 @@ public class AnalysisQueryService {
                 try { conn.close(); } catch (Exception ignore) {}
             }
         }
+    }
+
+    /** 引用表：库(可空) + 表。 */
+    private static final class TableRef {
+        final String db;
+        final String table;
+        TableRef(String db, String table) { this.db = db; this.table = table; }
+    }
+
+    /**
+     * 用 Druid 解析 SQL，提取所有引用表的真实 (schema, table)。
+     * 复用 SqlLineageParser 同款 SchemaStatVisitor 用法(MySQL 方言, Doris 兼容)，
+     * 覆盖跨库 db.table、逗号连接 FROM a,b、JOIN、子查询的每张物理表；剔除 CTE(WITH)别名。
+     *
+     * fail-closed：解析抛异常(无法确定引用表)→ 抛 SecurityException 拒绝执行。
+     * 解析成功但零物理表(如 SELECT 1 字面量)→ 返回空列表(无数据访问，放行)。
+     */
+    private List<TableRef> extractReferencedTables(String clean) {
+        List<TableRef> out = new ArrayList<>();
+        List<SQLStatement> stmts;
+        try {
+            stmts = SQLUtils.parseStatements(clean, JdbcConstants.MYSQL);
+        } catch (Exception e) {
+            throw new SecurityException("无法解析查询引用的表, 拒绝执行: " + e.getMessage());
+        }
+        if (stmts == null || stmts.isEmpty()) {
+            throw new SecurityException("无法解析查询引用的表, 拒绝执行");
+        }
+        try {
+            // 收集所有 CTE 名(WITH 子查询别名, 非物理表)
+            Set<String> cteNames = new HashSet<>();
+            SchemaStatVisitor visitor = SQLUtils.createSchemaStatVisitor(JdbcConstants.MYSQL);
+            for (SQLStatement stmt : stmts) {
+                stmt.accept(visitor);
+                if (stmt instanceof SQLSelectStatement) {
+                    SQLSelect select = ((SQLSelectStatement) stmt).getSelect();
+                    if (select != null) collectCteNames(select.getWithSubQuery(), cteNames);
+                }
+            }
+            Set<String> seen = new HashSet<>();
+            for (TableStat.Name name : visitor.getTables().keySet()) {
+                String full = name.getName(); // 形如 db.table 或 table
+                if (full == null) continue;
+                String lower = full.toLowerCase();
+                if (cteNames.contains(lower)) continue; // CTE 名剔除
+                TableRef ref = parseQualified(full);
+                if (ref == null) continue;
+                if (seen.add((ref.db == null ? "" : ref.db.toLowerCase()) + "." + ref.table.toLowerCase())) {
+                    out.add(ref);
+                }
+            }
+        } catch (SecurityException se) {
+            throw se;
+        } catch (Exception e) {
+            // 提取过程异常同样 fail-closed
+            throw new SecurityException("解析查询引用表失败, 拒绝执行: " + e.getMessage());
+        }
+        return out;
+    }
+
+    private static void collectCteNames(SQLWithSubqueryClause with, Set<String> out) {
+        if (with == null || with.getEntries() == null) return;
+        for (SQLWithSubqueryClause.Entry entry : with.getEntries()) {
+            if (entry.getAlias() != null) out.add(entry.getAlias().toLowerCase());
+        }
+    }
+
+    /** 解析 db.table / table 全名 → TableRef(去反引号)。 */
+    private static TableRef parseQualified(String raw) {
+        String s = raw.replace("`", "").trim();
+        if (s.isEmpty()) return null;
+        int dot = s.lastIndexOf('.');
+        if (dot >= 0) {
+            return new TableRef(s.substring(0, dot), s.substring(dot + 1));
+        }
+        return new TableRef(null, s);
     }
 
     /** 数据源路由结果 */
