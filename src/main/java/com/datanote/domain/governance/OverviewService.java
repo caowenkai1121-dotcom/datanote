@@ -34,6 +34,7 @@ public class OverviewService {
     private final DnQualityRunMapper qualityRunMapper;
     private final DnGovernanceIssueMapper issueMapper;
     private final QualityService qualityService;
+    private final com.datanote.platform.cache.CacheService cacheService;   // 热读缓存(fail-open)
 
     // ========== 纯函数：近期通过率（仅 SUCCESS 且 passRate 非空，均值 *100，保留 1 位） ==========
 
@@ -55,6 +56,13 @@ public class OverviewService {
     // ========== 聚合 ==========
 
     public Map<String, Object> overview() {
+        // 治理总览聚合(多张 GROUP BY/COUNT); 缓存 120s, Redis 不可用直查(fail-open)
+        return cacheService.getOrLoad("gov:overview", 120,
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {},
+                this::computeOverview);
+    }
+
+    private Map<String, Object> computeOverview() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("health", health());
         result.put("assets", assets());

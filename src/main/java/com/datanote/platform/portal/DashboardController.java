@@ -51,6 +51,7 @@ public class DashboardController {
     private final DnScriptMapper scriptMapper;
     private final DnSchedulerRunMapper schedulerRunMapper;
     private final DataSource dataSource;
+    private final com.datanote.platform.cache.CacheService cacheService;   // 热读缓存(fail-open)
 
     /** 服务探活 TCP 连接超时(毫秒) */
     private static final int SERVICE_CONNECT_TIMEOUT_MS = 1000;
@@ -63,11 +64,21 @@ public class DashboardController {
     @Operation(summary = "Dashboard statistics")
     @GetMapping("/stats")
     public R<Map<String, Object>> stats(@RequestParam(required = false) Boolean myTask) {
-        Map<String, Object> data = new HashMap<>();
+        boolean mine = Boolean.TRUE.equals(myTask);
         String currentUser = CurrentUserUtil.currentUser();
+        // 缓存看板聚合计数(60s; 全局/本人分键); Redis 不可用自动直查(fail-open)
+        String cacheKey = "dash:stats:" + (mine ? "u:" + currentUser : "all");
+        Map<String, Object> data = cacheService.getOrLoad(cacheKey, 60,
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {},
+                () -> computeStats(mine, currentUser));
+        return R.ok(data);
+    }
+
+    private Map<String, Object> computeStats(boolean mine, String currentUser) {
+        Map<String, Object> data = new HashMap<>();
 
         QueryWrapper<DnScript> scriptQw = new QueryWrapper<>();
-        if (Boolean.TRUE.equals(myTask)) {
+        if (mine) {
             scriptQw.eq("created_by", currentUser);
         }
         long scriptCount = scriptMapper.selectCount(scriptQw);
@@ -78,7 +89,7 @@ public class DashboardController {
 
         QueryWrapper<DnScript> onlineScriptQw = new QueryWrapper<>();
         onlineScriptQw.eq("schedule_status", Constants.SCHEDULE_ONLINE);
-        if (Boolean.TRUE.equals(myTask)) {
+        if (mine) {
             onlineScriptQw.eq("created_by", currentUser);
         }
         long onlineScriptCount = scriptMapper.selectCount(onlineScriptQw);
@@ -103,7 +114,7 @@ public class DashboardController {
                 .eq("status", DnSchedulerRun.STATUS_FAILED);
         data.put("todayFailed", schedulerRunMapper.selectCount(todayFailQw));
 
-        return R.ok(data);
+        return data;
     }
 
     @Operation(summary = "Service status")
