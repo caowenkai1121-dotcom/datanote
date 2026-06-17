@@ -29,6 +29,20 @@ class PermGateTest {
         };
     }
 
+    /** 写工具(readOnly=false), 指定 requiredPerm。 */
+    private AiTool writeTool(final String perm) {
+        return new AiTool() {
+            public String name() { return "w"; }
+            public String group() { return "test"; }
+            public String description() { return ""; }
+            public String paramsSchemaJson() { return "{}"; }
+            public boolean readOnly() { return false; }
+            public RiskLevel risk() { return RiskLevel.MEDIUM; }
+            public AiToolResult invoke(JsonNode args, AgentContext ctx) { return AiToolResult.ok(null); }
+            public String requiredPerm() { return perm; }
+        };
+    }
+
     private AgentContext ctxWith(String... perms) {
         AgentContext c = new AgentContext("u", "ip", null, "sid", null);
         c.setPerms(new HashSet<>(Arrays.asList(perms)));
@@ -63,5 +77,15 @@ class PermGateTest {
 
     @Test void nullCtxFailClosedWhenPermRequired() {
         assertEquals(PermGate.Decision.DENY, PermGate.check(tool("t", "develop:edit"), null));
+    }
+
+    @Test void writeToolWithoutPermNeedsSuperadmin() {
+        assertEquals(PermGate.Decision.ALLOW, PermGate.check(writeTool(null), ctxWith("*")));
+        assertEquals(PermGate.Decision.DENY, PermGate.check(writeTool(null), ctxWith("develop:edit")));
+    }
+
+    @Test void readToolWithoutPermStillAllows() {
+        // 只读未声明权限点仍仅需登录(回归: 不被写工具规则误伤)
+        assertEquals(PermGate.Decision.ALLOW, PermGate.check(tool("r", null), ctxWith("develop:view")));
     }
 }

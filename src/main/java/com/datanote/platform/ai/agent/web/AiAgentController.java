@@ -152,6 +152,7 @@ public class AiAgentController {
         if ("approved".equals(decision)) {
             com.datanote.platform.ai.agent.tool.AiTool t = toolRegistry.find(ap.getSkillName());
             String need = t == null ? null : t.requiredPerm();
+            if (need == null && t != null && !t.readOnly()) need = "*"; // 漏标权限点的写工具: 视为需超管才能批准(fail-closed)
             if (need != null && me != null && !"anonymous".equals(me)) {
                 java.util.Set<String> myPerms;
                 try { myPerms = rbacService.getUserPermsByUsername(me); } catch (Exception e) { myPerms = java.util.Collections.emptySet(); }

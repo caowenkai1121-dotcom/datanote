@@ -18,7 +18,12 @@ public final class PermGate {
     public static Decision check(AiTool tool, AgentContext ctx) {
         if (tool == null) return Decision.DENY;
         String need = tool.requiredPerm();
-        if (need == null || need.isEmpty()) return Decision.ALLOW;     // 仅需登录
+        if (need == null || need.isEmpty()) {
+            if (tool.readOnly()) return Decision.ALLOW;          // 只读未声明权限点: 仅需登录放行
+            // 写工具(有副作用)未声明 requiredPerm = 漏标, fail-closed 视为高危: 仅超管('*')可执行(spec §十)
+            return (ctx != null && ctx.getPerms() != null && ctx.getPerms().contains("*"))
+                    ? Decision.ALLOW : Decision.DENY;
+        }
         if (ctx == null || ctx.getPerms() == null) return Decision.DENY; // fail-closed: 未解析却要权限
         return RbacService.hasPermission(ctx.getPerms(), need) ? Decision.ALLOW : Decision.DENY;
     }
