@@ -32,6 +32,7 @@ public class LineageController {
     private final TaskDependencyService taskDependencyService;
     private final LineageEdgeService lineageEdgeService;
     private final SqlLineageService sqlLineageService;
+    private final LineageQueryService lineageQueryService;   // 血缘查询图优先+MySQL兜底
 
     @GetMapping("/{scriptId}")
     @Operation(summary = "查询脚本血缘关系")
@@ -171,15 +172,36 @@ public class LineageController {
     }
 
     @GetMapping("/impact")
-    @Operation(summary = "下游影响清单(BFS)")
+    @Operation(summary = "下游影响清单(图优先,MySQL兜底)")
     public R<List<Map<String, Object>>> impact(@RequestParam String db, @RequestParam String table) {
-        return R.ok(lineageEdgeService.impact(db, table));
+        return R.ok(lineageQueryService.impact(db, table));
     }
 
     @GetMapping("/trace")
-    @Operation(summary = "上游溯源清单(BFS)")
+    @Operation(summary = "上游溯源清单(图优先,MySQL兜底)")
     public R<List<Map<String, Object>>> trace(@RequestParam String db, @RequestParam String table) {
-        return R.ok(lineageEdgeService.trace(db, table));
+        return R.ok(lineageQueryService.trace(db, table));
+    }
+
+    @GetMapping("/cycles")
+    @Operation(summary = "血缘环检测(循环依赖, 图库独有能力)")
+    public R<Map<String, Object>> cycles() {
+        List<String> c = lineageQueryService.detectCycles();
+        Map<String, Object> m = new HashMap<>();
+        m.put("graphAvailable", lineageQueryService.graphAvailable());
+        m.put("hasCycle", !c.isEmpty());
+        m.put("tables", c);
+        return R.ok(m);
+    }
+
+    @GetMapping("/blast-radius")
+    @Operation(summary = "爆炸半径: 下游受影响表数(图优先)")
+    public R<Map<String, Object>> blastRadius(@RequestParam String db, @RequestParam String table) {
+        List<Map<String, Object>> down = lineageQueryService.impact(db, table);
+        Map<String, Object> m = new HashMap<>();
+        m.put("count", down.size());
+        m.put("downstream", down);
+        return R.ok(m);
     }
 
     @GetMapping("/graph")
