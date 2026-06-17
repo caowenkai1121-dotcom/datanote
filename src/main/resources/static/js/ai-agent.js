@@ -251,6 +251,43 @@
     scroll.appendChild(tbl); card.appendChild(scroll);
     return card;
   }
+  // 图表卡: 把 chart 工具返回的 _chart spec 渲染成 DN.* 图表
+  function chartCard(spec) {
+    spec = spec || {};
+    var type = (spec.type || 'bar').toLowerCase();
+    var data = spec.data;
+    var inner;
+    try {
+      if (type === 'line') {
+        var vals = Array.isArray(data) ? data.map(function (x) {
+          return (x && typeof x === 'object') ? Number(x.value) : Number(x);
+        }) : (data && Array.isArray(data.values) ? data.values.map(Number) : []);
+        vals = vals.filter(function (n) { return !isNaN(n); });
+        inner = vals.length >= 2 ? DN.line(vals, { area: true }) : DN.empty('折线数据不足(需≥2点)', 'chart');
+      } else if (type === 'pie') {
+        var segs = (Array.isArray(data) ? data : []).map(function (d) {
+          return { label: String(d.label != null ? d.label : ''), value: Number(d.value) || 0 };
+        });
+        inner = segs.length ? DN.donut(segs, { legend: true }) : DN.empty('暂无饼图数据', 'chart');
+      } else if (type === 'radar') {
+        var dims = (Array.isArray(data) ? data : []).map(function (d) {
+          return { label: String(d.label != null ? d.label : ''), value: Math.max(0, Math.min(100, Number(d.value) || 0)) };
+        });
+        inner = dims.length ? DN.radar(dims) : DN.empty('暂无雷达数据', 'chart');
+      } else {
+        var items = (Array.isArray(data) ? data : []).map(function (d) {
+          return { label: String(d.label != null ? d.label : ''), value: Number(d.value) || 0 };
+        });
+        inner = items.length ? DN.bars(items) : DN.empty('暂无柱状数据', 'chart');
+      }
+    } catch (e) {
+      inner = DN.empty('图表渲染失败: ' + (e && e.message ? e.message : e), 'chart');
+    }
+    var title = spec.title ? DN.h('div', { class: 'dn-chart-title', style: 'font-weight:600;margin-bottom:8px;color:var(--text-primary)', text: String(spec.title) }) : null;
+    var card = DN.h('div', { class: 'dn-chart-card', style: 'margin:8px 0;padding:14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card)' }, [title, inner].filter(Boolean));
+    return card;
+  }
+
   function renderPreviews(steps) {
     (steps || []).forEach(function (s) { if (s && s.resultData) { var p = extractPreview(s.resultData); if (p) flowEl.appendChild(dataGridCard(p)); } });
   }
@@ -616,7 +653,10 @@
     if (toolSteps.length) flowEl.appendChild(processToggle(toolSteps, res.plan, elapsed));
     // 表数据预览常显(不折叠): 优先用未截断的 previews 通道(宽表完整); 回退到步骤结果解析
     if (res.previews && res.previews.length) {
-      res.previews.forEach(function (d) { if (d && d._preview && d._preview.columns) flowEl.appendChild(dataGridCard({ pv: d._preview, db: d.db, table: d.table })); });
+      res.previews.forEach(function (d) {
+        if (d && d._chart) flowEl.appendChild(chartCard(d._chart));
+        else if (d && d._preview && d._preview.columns) flowEl.appendChild(dataGridCard({ pv: d._preview, db: d.db, table: d.table }));
+      });
     } else {
       renderPreviews(res.steps);
     }
