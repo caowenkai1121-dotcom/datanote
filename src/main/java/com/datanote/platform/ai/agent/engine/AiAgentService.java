@@ -314,7 +314,7 @@ public class AiAgentService {
                             catch (Exception e) { fs.get(k).cancel(true); res = AiToolResult.fail("exec_failed", msgOf(e)); }
                             seenCalls.merge(nm + "|" + argsToStr(a), 1, Integer::sum);
                             appendTrace(st, nm, c.toString(), res);
-                            if (res.isOk() && res.getData() instanceof Map && ((Map<?, ?>) res.getData()).containsKey("_preview")) {
+                            if (res.isOk() && res.getData() instanceof Map && (((Map<?, ?>) res.getData()).containsKey("_preview") || ((Map<?, ?>) res.getData()).containsKey("_chart"))) {
                                 previews.add((Map<String, Object>) res.getData());
                             }
                             AiTool t = toolRegistry.find(nm);
@@ -492,7 +492,7 @@ public class AiAgentService {
             appendTrace(st, toolName, callJson, result);
             // 表数据预览: 用【未截断】的原始结果走独立通道回传(stepsToDto 的 resultData 会被 cap 截断, 宽表 JSON 解析不出),
             // 让前端能完整渲染数据表格
-            if (result.isOk() && result.getData() instanceof Map && ((Map<?, ?>) result.getData()).containsKey("_preview")) {
+            if (result.isOk() && result.getData() instanceof Map && (((Map<?, ?>) result.getData()).containsKey("_preview") || ((Map<?, ?>) result.getData()).containsKey("_chart"))) {
                 previews.add((Map<String, Object>) result.getData());
             }
             String resultData = toJson(result);
