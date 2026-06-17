@@ -1,5 +1,8 @@
 package com.datanote.platform.ai.graph;
 
+import com.datanote.common.util.CryptoUtil;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.model.DnSystemConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -33,27 +36,58 @@ public class GraphStoreClient {
             "CREATE CONSTRAINT dn_table_fqn IF NOT EXISTS FOR (t:Table) REQUIRE t.fqn IS UNIQUE";
 
     private final ObjectMapper objectMapper;
+    private final DnSystemConfigMapper systemConfigMapper;
 
+    // env 兜底种子(DB 未配时使用)
     @Value("${datanote.graph.enabled:false}")
-    private boolean enabled;
+    private boolean envEnabled;
     @Value("${datanote.graph.base-url:}")
-    private String baseUrl;
+    private String envBaseUrl;
     @Value("${datanote.graph.user:neo4j}")
-    private String user;
+    private String envUser;
     @Value("${datanote.graph.password:}")
-    private String password;
+    private String envPassword;
+    @Value("${datanote.crypto.key:}")
+    private String cryptoKey;
+
+    // 运行时配置(DB store.graph.* 优先, env 兜底; reloadConfig 热刷)
+    private volatile boolean enabled;
+    private volatile String baseUrl;
+    private volatile String user;
+    private volatile String password;
 
     private volatile boolean ready = false;
     private volatile long lastProbe = 0L;
 
-    public GraphStoreClient(ObjectMapper objectMapper) {
+    public GraphStoreClient(ObjectMapper objectMapper, DnSystemConfigMapper systemConfigMapper) {
         this.objectMapper = objectMapper;
+        this.systemConfigMapper = systemConfigMapper;
     }
 
     @PostConstruct
     public void init() {
+        reloadConfig();
+    }
+
+    /** 重载配置(DB store.graph.* 优先, env 兜底)并重新探活+建唯一约束。配置页保存后热生效。 */
+    public synchronized void reloadConfig() {
+        String dbEnabled = db("store.graph.enabled");
+        this.enabled = nonEmpty(dbEnabled) ? "true".equalsIgnoreCase(dbEnabled.trim()) : envEnabled;
+        String dbUrl = db("store.graph.base-url");
+        this.baseUrl = nonEmpty(dbUrl) ? dbUrl.trim() : envBaseUrl;
+        String dbUser = db("store.graph.user");
+        this.user = nonEmpty(dbUser) ? dbUser.trim() : envUser;
+        String dbPwdEnc = db("store.graph.password");
+        if (nonEmpty(dbPwdEnc)) {
+            String dec = CryptoUtil.decryptSafe(dbPwdEnc, cryptoKey);
+            this.password = dec != null ? dec : dbPwdEnc;
+        } else {
+            this.password = envPassword;
+        }
+        this.ready = false;
+        this.lastProbe = 0L;
         if (!enabled || baseUrl == null || baseUrl.trim().isEmpty()) {
-            log.info("[graph] 图数据库未启用(graph.enabled=false)");
+            log.info("[graph] 图数据库未启用(enabled=false 或 url 空)");
             return;
         }
         try {
@@ -69,6 +103,19 @@ public class GraphStoreClient {
         } catch (Exception e) {
             log.warn("[graph] 探活失败, 降级禁用: {}", e.getMessage());
         }
+    }
+
+    private String db(String key) {
+        try {
+            DnSystemConfig c = systemConfigMapper.selectById(key);
+            return c == null ? null : c.getConfigValue();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static boolean nonEmpty(String s) {
+        return s != null && !s.trim().isEmpty();
     }
 
     public boolean available() {
@@ -132,6 +179,40 @@ public class GraphStoreClient {
         } catch (Exception e) {
             log.warn("[graph] run 失败: {}", e.getMessage());
             return null;
+        }
+    }
+
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    public boolean enabled() {
+        return enabled;
+    }
+
+    /** 测试给定连接(不改运行态): POST {baseUrl}/db/neo4j/tx/commit RETURN 1。配置页"测连接"用。 */
+    public boolean testConnection(String testUrl, String testUser, String testPwd) {
+        if (testUrl == null || testUrl.trim().isEmpty()) return false;
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(testUrl.replaceAll("/+$", "") + "/db/neo4j/tx/commit").openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            String cred = Base64.getEncoder().encodeToString(
+                    ((testUser == null ? "" : testUser) + ":" + (testPwd == null ? "" : testPwd)).getBytes(StandardCharsets.UTF_8));
+            conn.setRequestProperty("Authorization", "Basic " + cred);
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(8000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write("{\"statements\":[{\"statement\":\"RETURN 1 AS ok\"}]}".getBytes(StandardCharsets.UTF_8));
+            }
+            int code = conn.getResponseCode();
+            return code >= 200 && code < 300;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 

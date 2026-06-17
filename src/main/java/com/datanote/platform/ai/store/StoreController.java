@@ -12,6 +12,7 @@ import com.datanote.platform.config.mapper.DnSystemConfigMapper;
 import com.datanote.platform.config.model.DnSystemConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,9 +37,14 @@ public class StoreController {
     private final VectorIndexService vectorIndex;
     private final SemanticSearchService semanticSearch;
     private final DnSystemConfigMapper systemConfigMapper;
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
+    @Value("${spring.redis.host:127.0.0.1}")
+    private String redisHost;
+    @Value("${spring.redis.port:6379}")
+    private String redisPort;
 
     /** 健康检查: 向量库/图库/嵌入 三态。 */
     @GetMapping("/health")
@@ -136,6 +142,126 @@ public class StoreController {
         }
         embedding.reloadConfig();   // 热生效
         return R.ok();
+    }
+
+    /** 三库(向量/图/Redis)连接配置(密钥脱敏)+ 运行态。 */
+    @GetMapping("/db-config")
+    public R<Map<String, Object>> getDbConfig() {
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("enabled", vector.enabled());
+        v.put("baseUrl", cfg("store.vector.base-url", vector.baseUrl()));
+        v.put("collection", vector.collection());
+        v.put("apiKeyMasked", mask(cfgRaw("store.vector.api-key")));
+        v.put("ready", vector.available());
+        Map<String, Object> g = new LinkedHashMap<>();
+        g.put("enabled", graph.enabled());
+        g.put("baseUrl", cfg("store.graph.base-url", graph.baseUrl()));
+        g.put("user", cfg("store.graph.user", "neo4j"));
+        g.put("passwordMasked", mask(cfgRaw("store.graph.password")));
+        g.put("ready", graph.available());
+        Map<String, Object> rd = new LinkedHashMap<>();
+        rd.put("host", cfg("store.redis.host", redisHost));
+        rd.put("port", cfg("store.redis.port", redisPort));
+        rd.put("passwordMasked", mask(cfgRaw("store.redis.password")));
+        rd.put("ready", redisPing());
+        rd.put("note", "Redis 连接在服务启动时装配, 修改后需重启服务生效");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("vector", v);
+        out.put("graph", g);
+        out.put("redis", rd);
+        return R.ok(out);
+    }
+
+    /** 保存三库连接配置: 向量/图热生效, Redis 存配置(需重启)。密钥 AES 加密存。 */
+    @PostMapping("/db-config")
+    public R<Map<String, Object>> saveDbConfig(@RequestBody Map<String, Object> body) {
+        if (body == null) return R.fail("参数为空");
+        Map<String, Object> vec = asMap(body.get("vector"));
+        if (vec != null) {
+            if (vec.get("enabled") != null) saveCfg("store.vector.enabled", String.valueOf(toBool(vec.get("enabled"))), "向量库启用");
+            saveCfg("store.vector.base-url", str(vec.get("baseUrl")), "向量库 base-url");
+            saveCfg("store.vector.collection", str(vec.get("collection")), "向量库 collection");
+            saveSecret("store.vector.api-key", str(vec.get("apiKey")), "向量库 api-key(加密)");
+        }
+        Map<String, Object> gr = asMap(body.get("graph"));
+        if (gr != null) {
+            if (gr.get("enabled") != null) saveCfg("store.graph.enabled", String.valueOf(toBool(gr.get("enabled"))), "图库启用");
+            saveCfg("store.graph.base-url", str(gr.get("baseUrl")), "图库 base-url");
+            saveCfg("store.graph.user", str(gr.get("user")), "图库 user");
+            saveSecret("store.graph.password", str(gr.get("password")), "图库 password(加密)");
+        }
+        Map<String, Object> rd = asMap(body.get("redis"));
+        boolean redisChanged = false;
+        if (rd != null) {
+            if (rd.get("host") != null) { saveCfg("store.redis.host", str(rd.get("host")), "Redis host"); redisChanged = true; }
+            if (rd.get("port") != null) { saveCfg("store.redis.port", str(rd.get("port")), "Redis port"); redisChanged = true; }
+            String p = str(rd.get("password"));
+            if (p != null && !p.isEmpty() && !p.contains("***")) { saveSecret("store.redis.password", p, "Redis password(加密)"); redisChanged = true; }
+        }
+        vector.reloadConfig();  // 向量/图热生效
+        graph.reloadConfig();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("vectorReady", vector.available());
+        out.put("graphReady", graph.available());
+        out.put("redisNeedRestart", redisChanged);
+        return R.ok(out);
+    }
+
+    /** 逐库测连接(优先用提交的值测, 不改运行态; 未提供则测当前已存配置)。 */
+    @PostMapping("/test")
+    public R<Map<String, Object>> testConn(@RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        Map<String, Object> vec = body == null ? null : asMap(body.get("vector"));
+        String vUrl = (vec != null && str(vec.get("baseUrl")) != null) ? str(vec.get("baseUrl")) : cfg("store.vector.base-url", vector.baseUrl());
+        String vKey = vec != null ? str(vec.get("apiKey")) : null;
+        if (vKey == null || vKey.isEmpty() || vKey.contains("***")) vKey = decryptCfg("store.vector.api-key");
+        out.put("vector", vector.testConnection(vUrl, vKey));
+        Map<String, Object> gr = body == null ? null : asMap(body.get("graph"));
+        String gUrl = (gr != null && str(gr.get("baseUrl")) != null) ? str(gr.get("baseUrl")) : cfg("store.graph.base-url", graph.baseUrl());
+        String gUser = (gr != null && str(gr.get("user")) != null) ? str(gr.get("user")) : cfg("store.graph.user", "neo4j");
+        String gPwd = gr != null ? str(gr.get("password")) : null;
+        if (gPwd == null || gPwd.isEmpty() || gPwd.contains("***")) gPwd = decryptCfg("store.graph.password");
+        out.put("graph", graph.testConnection(gUrl, gUser, gPwd));
+        out.put("redis", redisPing());
+        return R.ok(out);
+    }
+
+    /** 加密保存密钥(空或含*** 占位则跳过, 不覆盖已存)。 */
+    private void saveSecret(String key, String plain, String desc) {
+        if (plain == null || plain.isEmpty() || plain.contains("***")) return;
+        String enc = CryptoUtil.encrypt(plain, cryptoKey);
+        saveCfg(key, enc != null ? enc : plain, desc);
+    }
+
+    private String decryptCfg(String key) {
+        String enc = cfgRaw(key);
+        if (enc == null || enc.isEmpty()) return null;
+        String d = CryptoUtil.decryptSafe(enc, cryptoKey);
+        return d != null ? d : enc;
+    }
+
+    private boolean redisPing() {
+        org.springframework.data.redis.connection.RedisConnection c = null;
+        try {
+            c = redisTemplate.getRequiredConnectionFactory().getConnection();
+            c.ping();
+            return true;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (c != null) try { c.close(); } catch (Exception ignore) {}
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object o) {
+        return o instanceof Map ? (Map<String, Object>) o : null;
+    }
+
+    private static boolean toBool(Object o) {
+        if (o instanceof Boolean) return (Boolean) o;
+        String s = String.valueOf(o).trim();
+        return "true".equalsIgnoreCase(s) || "1".equals(s) || "on".equalsIgnoreCase(s);
     }
 
     private String cfg(String key, String def) {

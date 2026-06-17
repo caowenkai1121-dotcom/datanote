@@ -69,6 +69,8 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/datamodel", "datamodel:edit"),
             // 密钥/敏感配置写: AI 模型密钥(embedding/chat key)、连接测试 须 settings:config(原仅 assistant:use 过低)
             prefix("/api/ai/store/config", "settings:config"),
+            prefix("/api/ai/store/db-config", "settings:config"),   // 三库连接配置写: 与系统配置同权
+            prefix("/api/ai/store/test", "settings:config"),        // 三库测连接: 含连接信息
             prefix("/api/ai/config", "settings:config"),
             prefix("/api/ai/test-connection", "settings:config"),
             prefix("/api/scheduler/backfill", "operations:backfill"),
@@ -125,6 +127,8 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/system/config", "settings:config"),
             // AI 配置(provider/baseUrl/model + apiKey 前 8 位)读须与写同权
             prefix("/api/ai/config", "settings:config"),
+            // 三库连接配置读(含 url/掩码密钥)须与写同权
+            prefix("/api/ai/store/db-config", "settings:config"),
             // 数据授权清单泄露资源可见范围, 读须 data:grant(与写同权)
             prefix("/api/data-acl", "data:grant"),
             // 各模块导出(审计已单列): 工单/指标/同步等导出按模块 view 保护

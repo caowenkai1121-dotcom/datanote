@@ -1284,6 +1284,11 @@
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">语义检索的向量嵌入(DeepSeek 不支持,推荐阿里百炼)+ 向量库/图库运行态。</div>
                 <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="openStoreConfig()">配置嵌入与存储</button>
               </div>
+              <div style="flex:1;min-width:280px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;">
+                <div style="font-weight:600;margin-bottom:6px;">数据存储与中间件</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">向量库(Qdrant)/图库(Neo4j)/Redis 连接信息配置与测连接。向量/图热生效,Redis 改后需重启。</div>
+                <button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="openDbConfig()">配置数据存储</button>
+              </div>
             </div>
           </div>
           <div class="ops-dashboard" id="settingsMonitorPanel" style="display:none;">
@@ -13475,6 +13480,75 @@ function reindexStore() {
     var d = res.data || {};
     st.innerHTML = '<span style="color:var(--success);">✓ 图库边 ' + (d.graphEdges != null ? d.graphEdges : '-') + ' · 向量点 ' + (d.vectorPoints != null ? d.vectorPoints : '-') + '</span>';
   }).catch(function() { st.innerHTML = '<span style="color:var(--error);">✗ 重建失败</span>'; });
+}
+
+// ===== 数据存储与中间件: 向量库/图库/Redis 连接配置(向量/图热生效, Redis 需重启) =====
+function openDbConfig() {
+  api('/api/ai/store/db-config').then(function(res) {
+    var d = (res.code === 0 && res.data) ? res.data : {};
+    var v = d.vector || {}, g = d.graph || {}, r = d.redis || {};
+    function dot(ok) { return ok ? '<span style="color:var(--success)">✓就绪</span>' : '<span style="color:var(--error-text)">✗未连</span>'; }
+    showModal('数据存储与中间件配置', '<div style="display:flex;flex-direction:column;gap:12px;max-height:62vh;overflow:auto;">'
+      + '<div style="font-weight:600;font-size:13px;color:var(--primary);">向量库 Qdrant ' + dot(v.ready) + '</div>'
+      + dbcfgCb('dbVecEnabled', '启用向量库', v.enabled)
+      + dbcfgText('dbVecUrl', 'Base URL (如 http://127.0.0.1:6333)', v.baseUrl)
+      + dbcfgPwd('dbVecKey', 'API Key (可空)', v.apiKeyMasked)
+      + dbcfgText('dbVecColl', 'Collection', v.collection)
+      + '<div style="font-weight:600;font-size:13px;color:var(--primary);border-top:1px solid var(--border);padding-top:10px;">图库 Neo4j ' + dot(g.ready) + '</div>'
+      + dbcfgCb('dbGraphEnabled', '启用图库', g.enabled)
+      + dbcfgText('dbGraphUrl', 'HTTP URL (如 http://127.0.0.1:7474)', g.baseUrl)
+      + dbcfgText('dbGraphUser', '用户名', g.user)
+      + dbcfgPwd('dbGraphPwd', '密码', g.passwordMasked)
+      + '<div style="font-weight:600;font-size:13px;color:var(--primary);border-top:1px solid var(--border);padding-top:10px;">Redis ' + dot(r.ready) + '</div>'
+      + '<div style="font-size:12px;color:var(--warning,#b45309);">Redis 连接在服务启动时装配,修改后需<b>重启服务</b>生效。</div>'
+      + dbcfgText('dbRedisHost', 'Host', r.host)
+      + dbcfgText('dbRedisPort', 'Port', r.port)
+      + dbcfgPwd('dbRedisPwd', '密码 (可空)', r.passwordMasked)
+      + '<div id="dbCfgStatus" style="font-size:12px;"></div></div>',
+      '<button class="btn btn-sm" data-perm="settings:config" onclick="testDbConn()" style="margin-right:8px;" title="用当前填写的值逐库测连接">测连接</button>'
+      + '<button class="btn btn-primary btn-sm" data-perm="settings:config" onclick="saveDbConfig()">保存</button>'
+      + '<button class="btn btn-sm" onclick="closeModal()" style="margin-left:4px;">取消</button>',
+      { width: '480px' });
+  });
+}
+function dbcfgText(id, label, val) {
+  return '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">' + label + '</label>'
+    + '<input id="' + id + '" class="prop-input" style="width:100%;" value="' + escapeHtml(val == null ? '' : String(val)) + '"></div>';
+}
+function dbcfgPwd(id, label, masked) {
+  return '<div><label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;">' + label + '</label>'
+    + '<div style="display:flex;gap:4px;align-items:center;"><input id="' + id + '" class="prop-input" type="password" style="flex:1;" placeholder="' + escapeHtml(masked || '') + '">'
+    + '<button type="button" class="btn btn-sm" onclick="dnTogglePwd(this,\'' + id + '\')" title="显示">👁</button></div></div>';
+}
+function dbcfgCb(id, label, checked) {
+  return '<div style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '>'
+    + '<label for="' + id + '" style="font-size:12px;color:var(--text-regular);">' + label + '</label></div>';
+}
+function collectDbCfg() {
+  function pwd(id) { var x = document.getElementById(id).value; return (x && x.indexOf('***') === -1 && x.indexOf('已配置') === -1) ? x : undefined; }
+  return {
+    vector: { enabled: document.getElementById('dbVecEnabled').checked, baseUrl: document.getElementById('dbVecUrl').value, apiKey: pwd('dbVecKey'), collection: document.getElementById('dbVecColl').value },
+    graph: { enabled: document.getElementById('dbGraphEnabled').checked, baseUrl: document.getElementById('dbGraphUrl').value, user: document.getElementById('dbGraphUser').value, password: pwd('dbGraphPwd') },
+    redis: { host: document.getElementById('dbRedisHost').value, port: document.getElementById('dbRedisPort').value, password: pwd('dbRedisPwd') }
+  };
+}
+function testDbConn() {
+  var st = document.getElementById('dbCfgStatus');
+  st.innerHTML = '<span style="color:var(--text-muted);">测连接中...</span>';
+  apiPost('/api/ai/store/test', collectDbCfg()).then(function(res) {
+    var d = res.data || {};
+    function m(ok) { return ok ? '<span style="color:var(--success)">✓</span>' : '<span style="color:var(--error-text)">✗</span>'; }
+    st.innerHTML = '向量 ' + m(d.vector) + ' · 图库 ' + m(d.graph) + ' · Redis ' + m(d.redis);
+  }).catch(function() { st.innerHTML = '<span style="color:var(--error);">✗ 测试失败</span>'; });
+}
+function saveDbConfig() {
+  apiPost('/api/ai/store/db-config', collectDbCfg()).then(function(res) {
+    if (res.code === 0) {
+      var d = res.data || {};
+      closeModal();
+      msgBox('已保存。向量 ' + (d.vectorReady ? '✓就绪' : '✗未连') + ' · 图库 ' + (d.graphReady ? '✓就绪' : '✗未连') + (d.redisNeedRestart ? ' · Redis 改动需重启服务生效' : ''));
+    } else msgBox('保存失败: ' + (res.msg || '未知错误'));
+  });
 }
 
 // ===== Hash 路由 =====

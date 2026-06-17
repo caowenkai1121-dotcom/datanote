@@ -1,5 +1,8 @@
 package com.datanote.platform.ai.vector;
 
+import com.datanote.common.util.CryptoUtil;
+import com.datanote.platform.config.mapper.DnSystemConfigMapper;
+import com.datanote.platform.config.model.DnSystemConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -25,32 +28,63 @@ import java.util.Map;
 public class VectorStoreClient {
 
     private final ObjectMapper objectMapper;
+    private final DnSystemConfigMapper systemConfigMapper;
 
+    // env 兜底种子(DB 未配时使用)
     @Value("${datanote.vector.enabled:false}")
-    private boolean enabled;
+    private boolean envEnabled;
     @Value("${datanote.vector.base-url:}")
-    private String baseUrl;
+    private String envBaseUrl;
     @Value("${datanote.vector.api-key:}")
-    private String apiKey;
+    private String envApiKey;
     @Value("${datanote.vector.collection:dn_meta}")
-    private String collection;
+    private String envCollection;
+    @Value("${datanote.crypto.key:}")
+    private String cryptoKey;
+
+    // 运行时配置(DB store.vector.* 优先, env 兜底; reloadConfig 热刷)
+    private volatile boolean enabled;
+    private volatile String baseUrl;
+    private volatile String apiKey;
+    private volatile String collection;
 
     private volatile boolean ready = false;
     private volatile long lastProbe = 0L;
 
-    public VectorStoreClient(ObjectMapper objectMapper) {
+    public VectorStoreClient(ObjectMapper objectMapper, DnSystemConfigMapper systemConfigMapper) {
         this.objectMapper = objectMapper;
+        this.systemConfigMapper = systemConfigMapper;
     }
 
     @PostConstruct
     public void init() {
+        reloadConfig();
+    }
+
+    /** 重载配置(DB store.vector.* 优先, env 兜底)并重新探活。配置页保存后热生效。 */
+    public synchronized void reloadConfig() {
+        String dbEnabled = db("store.vector.enabled");
+        this.enabled = nonEmpty(dbEnabled) ? "true".equalsIgnoreCase(dbEnabled.trim()) : envEnabled;
+        String dbUrl = db("store.vector.base-url");
+        this.baseUrl = nonEmpty(dbUrl) ? dbUrl.trim() : envBaseUrl;
+        String dbKeyEnc = db("store.vector.api-key");
+        if (nonEmpty(dbKeyEnc)) {
+            String dec = CryptoUtil.decryptSafe(dbKeyEnc, cryptoKey);
+            this.apiKey = dec != null ? dec : dbKeyEnc;
+        } else {
+            this.apiKey = envApiKey;
+        }
+        String dbColl = db("store.vector.collection");
+        this.collection = nonEmpty(dbColl) ? dbColl.trim() : (nonEmpty(envCollection) ? envCollection : "dn_meta");
+        // 重新探活
+        this.ready = false;
+        this.lastProbe = 0L;
         if (!enabled || baseUrl == null || baseUrl.trim().isEmpty()) {
-            log.info("[vector] 向量库未启用(vector.enabled=false)");
+            log.info("[vector] 向量库未启用(enabled=false 或 url 空)");
             return;
         }
         try {
-            String r = http("GET", "/collections", null);
-            if (r != null) {
+            if (http("GET", "/collections", null) != null) {
                 ready = true;
                 log.info("[vector] 向量库已就绪: {} (collection={})", baseUrl, collection);
             } else {
@@ -59,6 +93,19 @@ public class VectorStoreClient {
         } catch (Exception e) {
             log.warn("[vector] 探活失败, 降级禁用: {}", e.getMessage());
         }
+    }
+
+    private String db(String key) {
+        try {
+            DnSystemConfig c = systemConfigMapper.selectById(key);
+            return c == null ? null : c.getConfigValue();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static boolean nonEmpty(String s) {
+        return s != null && !s.trim().isEmpty();
     }
 
     public boolean available() {
@@ -84,6 +131,33 @@ public class VectorStoreClient {
 
     public String collection() {
         return collection;
+    }
+
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    public boolean enabled() {
+        return enabled;
+    }
+
+    /** 测试给定连接(不改运行态): GET {baseUrl}/collections。配置页"测连接"用。 */
+    public boolean testConnection(String testUrl, String testKey) {
+        if (testUrl == null || testUrl.trim().isEmpty()) return false;
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(testUrl.replaceAll("/+$", "") + "/collections").openConnection();
+            conn.setRequestMethod("GET");
+            if (testKey != null && !testKey.isEmpty()) conn.setRequestProperty("api-key", testKey);
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(8000);
+            int code = conn.getResponseCode();
+            return code >= 200 && code < 300;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     /** 幂等建集合(已存在则跳过)。返回是否就绪。 */
