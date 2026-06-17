@@ -207,21 +207,29 @@ public class StoreController {
         return R.ok(out);
     }
 
-    /** 逐库测连接(优先用提交的值测, 不改运行态; 未提供则测当前已存配置)。 */
+    /**
+     * 逐库测连接: 若提交了该库的密钥(明文, 非掩码)→ 用提交值瞬时测(不改运行态, 验证新连接);
+     * 否则测当前运行态 available()(因密钥可能来自 env 无法回取, 测当前最可靠)。
+     */
     @PostMapping("/test")
     public R<Map<String, Object>> testConn(@RequestBody(required = false) Map<String, Object> body) {
         Map<String, Object> out = new LinkedHashMap<>();
         Map<String, Object> vec = body == null ? null : asMap(body.get("vector"));
-        String vUrl = (vec != null && str(vec.get("baseUrl")) != null) ? str(vec.get("baseUrl")) : cfg("store.vector.base-url", vector.baseUrl());
-        String vKey = vec != null ? str(vec.get("apiKey")) : null;
-        if (vKey == null || vKey.isEmpty() || vKey.contains("***")) vKey = decryptCfg("store.vector.api-key");
-        out.put("vector", vector.testConnection(vUrl, vKey));
+        String vKey = vec == null ? null : str(vec.get("apiKey"));
+        if (vKey != null && !vKey.isEmpty() && !vKey.contains("***")) {
+            out.put("vector", vector.testConnection(str(vec.get("baseUrl")), vKey));
+        } else {
+            out.put("vector", vector.available());
+        }
         Map<String, Object> gr = body == null ? null : asMap(body.get("graph"));
-        String gUrl = (gr != null && str(gr.get("baseUrl")) != null) ? str(gr.get("baseUrl")) : cfg("store.graph.base-url", graph.baseUrl());
-        String gUser = (gr != null && str(gr.get("user")) != null) ? str(gr.get("user")) : cfg("store.graph.user", "neo4j");
-        String gPwd = gr != null ? str(gr.get("password")) : null;
-        if (gPwd == null || gPwd.isEmpty() || gPwd.contains("***")) gPwd = decryptCfg("store.graph.password");
-        out.put("graph", graph.testConnection(gUrl, gUser, gPwd));
+        String gPwd = gr == null ? null : str(gr.get("password"));
+        if (gPwd != null && !gPwd.isEmpty() && !gPwd.contains("***")) {
+            String gUser = str(gr.get("user"));
+            if (gUser == null || gUser.isEmpty()) gUser = cfg("store.graph.user", "neo4j");
+            out.put("graph", graph.testConnection(str(gr.get("baseUrl")), gUser, gPwd));
+        } else {
+            out.put("graph", graph.available());
+        }
         out.put("redis", redisPing());
         return R.ok(out);
     }
@@ -231,13 +239,6 @@ public class StoreController {
         if (plain == null || plain.isEmpty() || plain.contains("***")) return;
         String enc = CryptoUtil.encrypt(plain, cryptoKey);
         saveCfg(key, enc != null ? enc : plain, desc);
-    }
-
-    private String decryptCfg(String key) {
-        String enc = cfgRaw(key);
-        if (enc == null || enc.isEmpty()) return null;
-        String d = CryptoUtil.decryptSafe(enc, cryptoKey);
-        return d != null ? d : enc;
     }
 
     private boolean redisPing() {
