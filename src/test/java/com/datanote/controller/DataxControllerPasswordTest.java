@@ -38,7 +38,7 @@ class DataxControllerPasswordTest {
         datasource.setPassword(CryptoUtil.encrypt("source-secret", "DataNote_AES_Key"));
         when(mapper.selectById(2L)).thenReturn(datasource);
 
-        DataxController controller = new DataxController(null, null, null, mapper, null, null);
+        DataxController controller = new DataxController(null, null, null, mapper, null, null, null);
         ReflectionTestUtils.setField(controller, "cryptoKey", "DataNote_AES_Key");
 
         DnDatasource resolved = ReflectionTestUtils.invokeMethod(controller, "resolveDatasource", "2");
@@ -76,7 +76,7 @@ class DataxControllerPasswordTest {
         when(dataxService.registerJob("/tmp/job.json")).thenReturn("job-1");
 
         DataxController controller = new DataxController(
-                dataxService, metadataService, hiveService, mapper, mock(DnTaskExecutionMapper.class), null);
+                dataxService, metadataService, hiveService, mapper, mock(DnTaskExecutionMapper.class), null, null);
         ReflectionTestUtils.setField(controller, "cryptoKey", "DataNote_AES_Key");
 
         DataxGenerateJobRequest request = new DataxGenerateJobRequest();
@@ -99,7 +99,7 @@ class DataxControllerPasswordTest {
     void runRejectsRawServerJobPath() throws Exception {
         DataxService dataxService = mock(DataxService.class);
         DataxController controller = new DataxController(
-                dataxService, null, null, null, null, null);
+                dataxService, null, null, null, null, null, null);
 
         com.datanote.domain.integration.dto.DataxRunRequest request =
                 new com.datanote.domain.integration.dto.DataxRunRequest();
@@ -153,7 +153,7 @@ class DataxControllerPasswordTest {
 
         DataxController controller = new DataxController(
                 dataxService, metadataService, hiveService,
-                datasourceMapper, mock(DnTaskExecutionMapper.class), syncTaskMapper);
+                datasourceMapper, mock(DnTaskExecutionMapper.class), syncTaskMapper, null);
         ReflectionTestUtils.setField(controller, "cryptoKey", "DataNote_AES_Key");
 
         DataxCreateAndSyncRequest request = new DataxCreateAndSyncRequest();

@@ -43,6 +43,7 @@ public class DataxController {
     private final DnDatasourceMapper datasourceMapper;
     private final DnTaskExecutionMapper taskExecutionMapper;
     private final DnSyncTaskMapper syncTaskMapper;
+    private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据源访问权限校验(与新同步域一致)
 
     @Value("${spring.datasource.url:}")
     private String defaultDbUrl;
@@ -79,6 +80,8 @@ public class DataxController {
             result.put("jobId", jobId);
             result.put("odsTable", odsTable);
             return R.ok(result);
+        } catch (com.datanote.common.exception.BusinessException be) {
+            return R.fail(be.getMessage());   // 权限/校验类: 透出明确原因(如"无权访问该数据源")
         } catch (Exception e) {
             log.error("生成 DataX 任务配置失败", e);
             return R.fail("生成任务配置失败");
@@ -177,6 +180,8 @@ public class DataxController {
             data.put("success", execResult.getExitCode() == 0);
             data.put("output", safeExecOutput);
             return R.ok(data);
+        } catch (com.datanote.common.exception.BusinessException be) {
+            return R.fail(be.getMessage());   // 权限/校验类: 透出明确原因, 不计为执行失败
         } catch (Exception e) {
             log.error("一键建表并同步失败", e);
             // 更新执行记录为失败
@@ -207,6 +212,11 @@ public class DataxController {
             try {
                 DnDatasource ds = datasourceMapper.selectById(Long.valueOf(dsIdStr));
                 if (ds != null) {
+                    // 数据源访问权限(与新同步域 SyncJobService.requireDatasourceAccess 一致): 防旧 DataX 入口绕过数据源 ACL 读任意库凭据/数据
+                    if (dataAclService != null && ds.getId() != null
+                            && !dataAclService.canAccess("DATASOURCE", String.valueOf(ds.getId()))) {
+                        throw new com.datanote.common.exception.BusinessException("无权访问该数据源");
+                    }
                     ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
                     return ds;
                 }
