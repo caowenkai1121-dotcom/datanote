@@ -41,8 +41,8 @@ public class DataAclService {
 
     /** 单资源访问校验: 公开(无授权)或被授权(用户名/角色命中)或豁免 → true。 */
     public boolean canAccess(String resourceType, String resourceId) {
-        if (resourceId == null) return true;
         if (bypass()) return true;
+        if (resourceId == null) return false;   // P1-09 收紧: 无资源标识 fail-closed(当前调用方均传具体id, 防御未来 null 绕过)
         List<DnDataGrant> grants = grantMapper.selectList(new QueryWrapper<DnDataGrant>()
                 .eq("resource_type", resourceType).eq("resource_id", resourceId));
         if (grants == null || grants.isEmpty()) return true;   // 默认公开: 无授权=不受限
@@ -103,8 +103,8 @@ public class DataAclService {
 
     /** 单资源访问校验(显式入参, 不读 ThreadLocal)。 */
     public boolean canAccessAs(String caller, List<String> roles, Set<String> perms, String resourceType, String resourceId) {
-        if (resourceId == null) return true;
         if (bypassAs(caller, perms)) return true;
+        if (resourceId == null) return false;   // P1-09 收紧: 无资源标识 fail-closed(防御未来 null 绕过)
         List<DnDataGrant> grants = grantMapper.selectList(new QueryWrapper<DnDataGrant>()
                 .eq("resource_type", resourceType).eq("resource_id", resourceId));
         if (grants == null || grants.isEmpty()) return true;   // 默认公开
