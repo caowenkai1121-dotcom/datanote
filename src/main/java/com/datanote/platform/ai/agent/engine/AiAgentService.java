@@ -945,6 +945,10 @@ public class AiAgentService {
                 .append(" → ").append(result.getStatus());
         if (result.isOk()) {
             Object data = result.getData();
+            // 空结果显式标注(SWE-agent ACI: 给 LLM 明确的"无数据"反馈, 防臆造内容或对空结果反复重查)
+            if (isEmptyResult(data)) {
+                st.trace.append(": (空结果/无匹配数据 — 据此判断, 勿臆造内容; 必要时换查询条件, 或如实告知用户暂无)");
+            } else
             // 表数据预览: trace 不喂全部行(已经数据表格直接展示给用户), 只留紧凑摘要, 省大量 token 提速
             if (data instanceof Map && ((Map<?, ?>) data).containsKey("_preview")) {
                 Map<?, ?> dm = (Map<?, ?>) data;
@@ -970,6 +974,15 @@ public class AiAgentService {
             st.trace.append("(").append(result.getType()).append("): ").append(cap(result.getMessage(), 400));
         }
         st.trace.append('\n');
+    }
+
+    /** 工具结果是否"空"(null/空Map/空集合/空串): 用于给 LLM 明确的无数据反馈。 */
+    private static boolean isEmptyResult(Object data) {
+        if (data == null) return true;
+        if (data instanceof Map) return ((Map<?, ?>) data).isEmpty();
+        if (data instanceof java.util.Collection) return ((java.util.Collection<?>) data).isEmpty();
+        if (data instanceof CharSequence) return ((CharSequence) data).length() == 0;
+        return false;
     }
 
     /** 若结果含字段清单(asset_detail 的 detail.columns / 顶层 columns), 压成紧凑 name(type)[注释] 串(宽表也不折叠), 否则返回 null。 */
