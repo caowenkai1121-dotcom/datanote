@@ -46,11 +46,19 @@ public class CacheService {
         try { redis.delete(key); } catch (Exception ignore) {}
     }
 
-    /** 按前缀批量删(模块数据变更时失效该模块所有缓存)。 */
+    /** 按前缀批量删(模块数据变更时失效该模块所有缓存)。P2-05: 用 SCAN 游标分批删, 避免 KEYS 在大 keyspace 阻塞 Redis。 */
     public void evictPrefix(String prefix) {
         try {
-            Set<String> keys = redis.keys(prefix + "*");
-            if (keys != null && !keys.isEmpty()) redis.delete(keys);
+            org.springframework.data.redis.core.ScanOptions opts =
+                    org.springframework.data.redis.core.ScanOptions.scanOptions().match(prefix + "*").count(500).build();
+            java.util.List<String> batch = new java.util.ArrayList<>();
+            try (org.springframework.data.redis.core.Cursor<String> cur = redis.scan(opts)) {
+                while (cur.hasNext()) {
+                    batch.add(cur.next());
+                    if (batch.size() >= 500) { redis.delete(batch); batch.clear(); }
+                }
+            }
+            if (!batch.isEmpty()) redis.delete(batch);
         } catch (Exception ignore) {}
     }
 

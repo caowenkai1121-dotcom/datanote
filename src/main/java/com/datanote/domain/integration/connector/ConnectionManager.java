@@ -47,8 +47,9 @@ public class ConnectionManager {
         // 批量重写：让 addBatch/executeBatch 真正合并为单次往返（否则驱动逐条发送，批处理形同虚设）。
         // 放在固定串内、extraParams 之前，用户仍可在 extraParams 覆盖（MySQL 取后者）。
         url.append("&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048");
-        if (extraParams != null && !extraParams.isEmpty()) {
-            url.append("&").append(extraParams);
+        String safeExtra = JdbcExtraParamsSanitizer.sanitize(extraParams, '&');   // P2-04: 过滤危险驱动属性
+        if (!safeExtra.isEmpty()) {
+            url.append("&").append(safeExtra);
         }
         return url.toString();
     }
@@ -59,8 +60,9 @@ public class ConnectionManager {
         if (db != null && !db.isEmpty()) {
             url.append(db);
         }
-        if (extraParams != null && !extraParams.isEmpty()) {
-            url.append("?").append(extraParams);
+        String safeExtra = JdbcExtraParamsSanitizer.sanitize(extraParams, '&');   // P2-04
+        if (!safeExtra.isEmpty()) {
+            url.append("?").append(safeExtra);
         }
         return url.toString();
     }
@@ -72,8 +74,9 @@ public class ConnectionManager {
             url.append("databaseName=").append(db).append(";");
         }
         url.append("encrypt=false;trustServerCertificate=true;loginTimeout=10");
-        if (extraParams != null && !extraParams.isEmpty()) {
-            url.append(";").append(extraParams);
+        String safeExtra = JdbcExtraParamsSanitizer.sanitize(extraParams, ';');   // P2-04
+        if (!safeExtra.isEmpty()) {
+            url.append(";").append(safeExtra);
         }
         return url.toString();
     }
