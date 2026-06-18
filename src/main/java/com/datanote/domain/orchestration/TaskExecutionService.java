@@ -317,14 +317,17 @@ public class TaskExecutionService {
         // ========== 第三步：执行 DataX ==========
 
         logBuilder.append("[DataX] 开始同步数据...\n");
-        ProcessUtil.ExecResult result = dataxService.runJob(jobFile);
-        logBuilder.append(result.getOutput());
-
-        // 执行完删除含密码的临时文件
+        ProcessUtil.ExecResult result;
         try {
-            new java.io.File(jobFile).delete();
-        } catch (Exception e) {
-            log.warn("删除 DataX 临时配置文件失败: {} - {}", jobFile, e.getMessage());
+            result = dataxService.runJob(jobFile);
+            logBuilder.append(result.getOutput());
+        } finally {
+            // 含密码临时文件: 无论 runJob 成功或抛异常都删除(P1: 异常路径防凭据残留)
+            try {
+                new java.io.File(jobFile).delete();
+            } catch (Exception e) {
+                log.warn("删除 DataX 临时配置文件失败: {} - {}", jobFile, e.getMessage());
+            }
         }
 
         if (result.getExitCode() != 0) {

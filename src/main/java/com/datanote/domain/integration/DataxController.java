@@ -155,11 +155,15 @@ public class DataxController {
                     ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
                     db, table, odsTable, columns, today);
 
-            ProcessUtil.ExecResult execResult = dataxService.runJob(jobPath);
-            String safeExecOutput = safeOutput(execResult.getOutput(), ds.getPassword(), defaultDbPass);
-
-            // 执行完成后清理含密码的 JSON 配置文件
-            try { new java.io.File(jobPath).delete(); } catch (Exception ignored) {}
+            ProcessUtil.ExecResult execResult;
+            String safeExecOutput;
+            try {
+                execResult = dataxService.runJob(jobPath);
+                safeExecOutput = safeOutput(execResult.getOutput(), ds.getPassword(), defaultDbPass);
+            } finally {
+                // 含密码 JSON: 无论成功或抛异常都清理(P1: 异常路径防凭据残留)
+                try { new java.io.File(jobPath).delete(); } catch (Exception ignored) {}
+            }
 
             // 更新执行记录
             if (exec.getId() != null) {

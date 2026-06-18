@@ -169,6 +169,13 @@ public class AiAgentController {
         if (!"pending".equals(ap.getStatus())) return R.fail("该审批已处理");
         String me = currentUser();
         DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", ap.getSessionId()).last("LIMIT 1"));
+        // 会话归属校验(P1): 只能审批自己发起的 Agent 操作(设计本意=用户确认本人 agent);
+        // 防有权限的他人按审批 id 批他人 agent 动作。admin 与开放/匿名态例外(与 assertSessionOwner 一致)。
+        if (me != null && !"anonymous".equals(me) && !"admin".equals(me)
+                && s != null && s.getUserName() != null && !"anonymous".equals(s.getUserName())
+                && !me.equals(s.getUserName())) {
+            return R.fail("无权审批他人发起的 Agent 操作");
+        }
         // 权限对齐: 允许用户确认自己 agent 的动作(行使本人权限), 但确认人须真正拥有该写工具所需权限点。
         if ("approved".equals(decision)) {
             com.datanote.platform.ai.agent.tool.AiTool t = toolRegistry.find(ap.getSkillName());
