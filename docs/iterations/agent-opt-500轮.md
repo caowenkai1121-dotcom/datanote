@@ -23,3 +23,6 @@ ReAct 循环 + 并行工具 + think 留痕 + todo/plan + steering + ask_user + C
 
 ## 路线储备(后续轮次取材)
 LLM Condenser✓(R1) / 目标复述✓(R2) / 验证回写飞轮(approved样本→向量金样本) / inline security_risk 自评 / EventLog 可重放+checkpoint / 语义层上下文选择器(Neo4j血缘+PageRank选喂哪些表字段) / 周期性强制规划步(smolagents planning_interval) / 工具 ACI 反馈格式统一(SWE-agent: 空结果文案/大结果分页/写后校验) / 结构化输出约束 / self-consistency 多采样投票(高价值只读决策) / 工具结果按类型定向摘要 / 子代理 context-folding / 经验 insight 蒸馏(ExpeL) / A-MEM 记忆图召回 / 模型档位按任务难度自适应路由。
+
+### 批 C(R7)— 验证回写飞轮
+- **R7 验证回写飞轮**(Vanna/WrenAI): AiMemoryService.learnVerifiedAction —— 成功的中/高风险写操作异步沉淀为高置信"操作技能"(intent→tool+参数形态, hit_count 初始2、每次验证+2 强化, 按工具去重不刷屏), 经现有 recall 优先召回; 让 agent 同类意图直接选对工具、参数形态有参考。调用点: AiAgentService 写成功钩子(risk≠LOW)。

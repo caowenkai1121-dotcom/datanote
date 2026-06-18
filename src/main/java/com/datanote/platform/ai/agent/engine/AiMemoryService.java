@@ -201,6 +201,52 @@ public class AiMemoryService {
     }
 
     /**
+     * 验证回写飞轮(借鉴 Vanna/WrenAI: 确认正确的操作回写为高质量示例): 把【成功执行的写操作】
+     * 沉淀为高置信"操作技能", 同类意图优先召回"用哪个工具+参数形态", 直接降工具选错/参数错。
+     * 按工具去重(一工具一条金样本, 每次验证 hit_count+2 强化置信、刷新最近意图), 不刷屏。失败静默。
+     */
+    @Async("aiLearnExecutor")
+    public void learnVerifiedAction(String goal, String owner, String toolName, String argsJson) {
+        try {
+            if (goal == null || goal.trim().isEmpty() || toolName == null || toolName.trim().isEmpty()) return;
+            String trigger = cap(AgentTextUtil.redactSecrets(goal.trim()), 240);
+            String title = cap("已验证操作·" + toolName, 240);
+            String content = cap(AgentTextUtil.redactSecrets(
+                    "意图『" + cap(goal.trim(), 120) + "』曾用工具 " + toolName + " 成功完成; 参数形态参考: "
+                    + cap(argsJson == null ? "{}" : argsJson, 280)
+                    + "(高置信样本: 同类意图可优先选此工具; 具体参数按当前实际重填, 写操作仍走审批)"), 900);
+            // 去重: 同 owner 同工具已有金样本 → 强化(hit_count+2)并刷新意图, 不重复入库
+            DnAiMemorySkill dup = memoryMapper.selectOne(new QueryWrapper<DnAiMemorySkill>()
+                    .eq("title", title).eq("status", "active")
+                    .apply(owner != null, "owner = {0}", owner).last("LIMIT 1"));
+            if (dup != null) {
+                dup.setHitCount((dup.getHitCount() == null ? 0 : dup.getHitCount()) + 2);
+                dup.setTriggerHint(trigger);
+                dup.setContent(content);
+                dup.setUpdatedAt(LocalDateTime.now());
+                memoryMapper.updateById(dup);
+                indexVector(dup);
+                return;
+            }
+            DnAiMemorySkill m = new DnAiMemorySkill();
+            m.setType("skill");
+            m.setTitle(title);
+            m.setContent(content);
+            m.setTriggerHint(trigger);
+            m.setOwner(owner);
+            m.setStatus("active");
+            m.setHitCount(2); // 验证样本初始置信高于普通经验(0), 优先召回
+            m.setCreatedAt(LocalDateTime.now());
+            m.setUpdatedAt(LocalDateTime.now());
+            memoryMapper.insert(m);
+            indexVector(m);
+            log.info("[memory] 验证回写飞轮: tool={}, owner={}", toolName, owner);
+        } catch (Exception e) {
+            log.warn("[memory] learnVerifiedAction 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 后台复盘(W6 自我改进): 复杂会话异步复盘执行质量, 找可改进点(绕路/冗余/遗漏/更优路径),
      * 沉淀为 type=review 记忆, 未来 recall 注入提醒"下次更好"。区别于 learn(沉淀成功经验)。失败静默。
      */

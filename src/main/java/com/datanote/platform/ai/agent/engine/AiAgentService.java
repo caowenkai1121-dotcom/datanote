@@ -503,6 +503,9 @@ public class AiAgentService {
                 if (!result.isOk()) {
                     st.hadWriteFailure = true;
                     st.writeFailureNote = toolName + "→" + (result.getType() == null ? "失败" : result.getType());
+                } else if (tool.risk() != null && tool.risk() != com.datanote.platform.ai.agent.tool.RiskLevel.LOW) {
+                    // 验证回写飞轮(R7, 借鉴 Vanna/WrenAI): 成功的中/高风险写操作 → 异步沉淀高置信操作技能, 同类意图优先召回正确工具+参数形态
+                    aiMemoryService.learnVerifiedAction(userMessage, ctx == null ? null : ctx.getUserName(), toolName, argsToStr(argsNode));
                 }
             }
 
