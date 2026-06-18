@@ -348,6 +348,40 @@ public class TaskExecutionService {
         logBuilder.append("\n[完成] 耗时: ").append(result.getDurationMs() / 1000).append("秒\n");
     }
 
+    /**
+     * 手动触发运行一个 ODS 同步任务(DnSyncTask), 复用与调度一致的 {@link #executeSyncTask} 核心
+     * (预检→幂等建表→DataX 同步→ANALYZE), 并记录一条 manual 执行记录。供 AI 工具 run_ods_task / 手动触发复用。
+     * 同步执行(阻塞至完成); 日志脱敏后入库。返回执行记录(含 status/log)。
+     */
+    public com.datanote.domain.orchestration.model.DnTaskExecution runSyncTaskManually(Long taskId, String triggerUser) {
+        DnSyncTask task = syncTaskMapper.selectById(taskId);
+        if (task == null) throw new BusinessException("ODS 同步任务不存在: " + taskId);
+        com.datanote.domain.orchestration.model.DnTaskExecution exec = new com.datanote.domain.orchestration.model.DnTaskExecution();
+        exec.setSyncTaskId(taskId);
+        exec.setTaskType(Constants.TASK_TYPE_SYNC_TASK);
+        exec.setTriggerType("manual");
+        exec.setStatus("RUNNING");
+        exec.setStartTime(LocalDateTime.now());
+        taskExecutionMapper.insert(exec);
+        long startMs = System.currentTimeMillis();
+        StringBuilder logBuilder = new StringBuilder();
+        try {
+            String bizdate = java.time.LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            executeSyncTask(taskId, bizdate, logBuilder);   // 复用调度同款核心(零重复)
+            exec.setStatus("SUCCESS");
+        } catch (Exception e) {
+            logBuilder.append("\n[ERROR] ").append(SecretRedactor.redact(e.getMessage() == null ? "" : e.getMessage()));
+            exec.setStatus("FAILED");
+        } finally {
+            exec.setEndTime(LocalDateTime.now());
+            exec.setDuration((int) ((System.currentTimeMillis() - startMs) / 1000));
+            String lg = SecretRedactor.redact(logBuilder.toString());   // 日志脱敏(防 DataX 输出残留凭据)
+            exec.setLog(lg.length() > 50000 ? lg.substring(lg.length() - 50000) : lg);
+            taskExecutionMapper.updateById(exec);
+        }
+        return exec;
+    }
+
     private DnDatasource resolveDatasource(DnSyncTask task) {
         if (task.getSourceDsId() == null) {
             throw new RuntimeException("同步任务未配置源数据源");
