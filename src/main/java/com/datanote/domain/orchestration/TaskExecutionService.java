@@ -390,7 +390,8 @@ public class TaskExecutionService {
             }
             String[] cmd = {"/bin/bash", "-c", executeSql};
             int timeout = script.getTimeoutSeconds() != null ? script.getTimeoutSeconds() : 3600;
-            ProcessUtil.ExecResult result = ProcessUtil.exec(cmd, timeout);
+            // P1-03 强约束: 清子进程敏感环境变量, 防 Shell 任务读取系统凭据(密码/密钥/token)
+            ProcessUtil.ExecResult result = ProcessUtil.exec(cmd, timeout, true);
             logBuilder.append(result.getOutput());
             if (result.getExitCode() != 0) {
                 throw new RuntimeException("Shell 执行失败，退出码: " + result.getExitCode());

@@ -38,10 +38,26 @@ public class ProcessUtil {
      * @param timeoutSec 超时时间（秒）
      */
     public static ExecResult exec(String[] cmd, int timeoutSec) throws Exception {
+        return exec(cmd, timeoutSec, false);
+    }
+
+    /**
+     * @param sanitizeEnv true 时清除子进程环境中的敏感变量(含 PASSWORD/SECRET/TOKEN/KEY 及
+     *                    DATANOTE_ 、DB_ 、REDIS_ 前缀), 防 Shell 任务经 env 读取系统凭据(P1-03 强约束)。
+     */
+    public static ExecResult exec(String[] cmd, int timeoutSec, boolean sanitizeEnv) throws Exception {
         long start = System.currentTimeMillis();
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(true);
+        if (sanitizeEnv) {
+            pb.environment().keySet().removeIf(k -> {
+                String u = k == null ? "" : k.toUpperCase();
+                return u.contains("PASSWORD") || u.contains("SECRET") || u.contains("TOKEN")
+                        || u.contains("KEY") || u.contains("PWD")
+                        || u.startsWith("DATANOTE_") || u.startsWith("DB_") || u.startsWith("REDIS_");
+            });
+        }
         Process process = pb.start();
 
         ExecutorService outputReader = Executors.newSingleThreadExecutor(r -> {

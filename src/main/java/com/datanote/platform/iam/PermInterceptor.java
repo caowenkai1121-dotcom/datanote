@@ -149,7 +149,10 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/scheduler/logs", "operations:schedule"),
             prefix("/api/task-execution", "operations:schedule"),
             // 数据源读: 列表/详情/库/表/列均暴露连接配置与源库结构(原 GET 仅要求登录), 须 datasource:view
-            prefix("/api/datasource", "datasource:view")
+            prefix("/api/datasource", "datasource:view"),
+            // 系统监控指标/服务态(JVM/CPU/磁盘/DB/服务探活): 系统管理页专属, 与页面同权 settings:view(原任意登录可见); /api/dashboard/stats 首页计数不限
+            prefix("/api/dashboard/metrics", "settings:view"),
+            prefix("/api/dashboard/services", "settings:view")
     );
 
     /** 纯函数: 求该请求所需权限点(null=只要求登录)。包级可见便于单测。 */
