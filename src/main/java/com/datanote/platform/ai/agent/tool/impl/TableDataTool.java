@@ -1,6 +1,8 @@
 package com.datanote.platform.ai.agent.tool.impl;
 
 import com.datanote.domain.governance.AssetDetailService;
+import com.datanote.domain.governance.MaskingService;
+import com.datanote.domain.governance.SqlMaskRewriter;
 import com.datanote.platform.ai.agent.tool.AgentContext;
 import com.datanote.platform.ai.agent.tool.AiTool;
 import com.datanote.platform.ai.agent.tool.AiToolResult;
@@ -24,6 +26,7 @@ public class TableDataTool implements AiTool {
     private static final int MAX_LIMIT = 50;
 
     private final AssetDetailService assetDetailService;
+    private final MaskingService maskingService;   // P0: AI 读样例对脱敏列 fail-closed 盖 ***, 防明文泄露
 
     @Override public String name() { return "table_data"; }
     @Override public String group() { return "gov"; }
@@ -64,6 +67,7 @@ public class TableDataTool implements AiTool {
                 }
                 return AiToolResult.fail("exec_failed", "查表数据失败: " + qe.getMessage());
             }
+            maskPreview(preview, db, table);       // P0: 脱敏列盖 ***(fail-closed), AI/前端均不见明文
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("db", db);
             out.put("table", table);
@@ -73,6 +77,38 @@ public class TableDataTool implements AiTool {
             return AiToolResult.ok(out);
         } catch (Exception e) {
             return AiToolResult.fail("exec_failed", e.getMessage());
+        }
+    }
+
+    /** 对配置了脱敏策略的列, 把样例结果该列值盖为 ***(fail-closed); columns/rows 位对齐。 */
+    @SuppressWarnings("unchecked")
+    private void maskPreview(Map<String, Object> preview, String db, String table) {
+        if (preview == null) return;
+        Object colsObj = preview.get("columns");
+        Object rowsObj = preview.get("rows");
+        if (!(colsObj instanceof java.util.List) || !(rowsObj instanceof java.util.List)) return;
+        java.util.List<SqlMaskRewriter.ColumnMask> masks;
+        try { masks = maskingService.resolveColumnMasks(); } catch (Exception e) { return; }
+        if (masks == null || masks.isEmpty()) return;
+        java.util.List<?> cols = (java.util.List<?>) colsObj;
+        java.util.Set<Integer> maskedIdx = new java.util.HashSet<>();
+        for (int i = 0; i < cols.size(); i++) {
+            String cn = String.valueOf(cols.get(i));
+            for (SqlMaskRewriter.ColumnMask m : masks) {
+                if (m == null || m.getColumn() == null) continue;
+                boolean dbOk = m.getDb() == null || m.getDb().isEmpty() || m.getDb().equalsIgnoreCase(db);
+                boolean tbOk = m.getTable() == null || m.getTable().isEmpty() || m.getTable().equalsIgnoreCase(table);
+                if (cn.equalsIgnoreCase(m.getColumn()) && dbOk && tbOk) { maskedIdx.add(i); break; }
+            }
+        }
+        if (maskedIdx.isEmpty()) return;
+        for (Object ro : (java.util.List<?>) rowsObj) {
+            if (ro instanceof java.util.List) {
+                java.util.List<Object> row = (java.util.List<Object>) ro;
+                for (Integer idx : maskedIdx) {
+                    if (idx < row.size() && row.get(idx) != null) row.set(idx, "***");
+                }
+            }
         }
     }
 }
