@@ -524,7 +524,9 @@ public class AiAgentService {
                 consecToolFails[0] = 0;
             } else if (++consecToolFails[0] >= 3) {
                 st.trace.append("【连续失败提示】已连续 ").append(consecToolFails[0])
-                        .append(" 步工具失败; 请停止重复同类尝试, 改换方案, 或调用 ask_user 让用户补充信息/确认方向。\n");
+                        .append(" 步工具失败; 请停止重复同类尝试, 改换方案")
+                        .append(cronMode ? ", 或如实记录失败原因并结束本次自治运行(定时模式不可询问用户)。\n"
+                                         : ", 或调用 ask_user 让用户补充信息/确认方向。\n");
                 consecToolFails[0] = 0;
             }
             // 表数据预览: 用【未截断】的原始结果走独立通道回传(stepsToDto 的 resultData 会被 cap 截断, 宽表 JSON 解析不出),
