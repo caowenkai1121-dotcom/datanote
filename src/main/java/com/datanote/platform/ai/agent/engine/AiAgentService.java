@@ -70,6 +70,8 @@ public class AiAgentService {
     private static final int MAX_PRODUCTIVE_STEPS = 16;
     /** 总迭代硬顶(含被退还的废步), 防模型连犯格式错时失控刷屏 */
     private static final int HARD_ITER_CAP = 40;
+    /** 周期性规划检查点间隔(生产步): 每 N 步暂停审视目标/剩余, 防长任务漂移(借鉴 smolagents planning_interval) */
+    private static final int PLAN_INTERVAL = 6;
     /** 单轮 run 墙钟上限(ms): 防 LLM 挂起/超长把 Tomcat 工作线程长期占满拖垮 Web 服务 */
     private static final long RUN_WALLCLOCK_MS = 300_000L;
     /** trace 中单条结果摘要上限(放宽: 表/字段清单等不被折叠致 agent 看不全, 解决"仅提取前5字段") */
@@ -226,6 +228,11 @@ public class AiAgentService {
             }
             budget.consume(); // 先占一个生产步; 可纠正废步在下方 refund 退还(借鉴 hermes refund)
             contextCompressor.maybeCompress(st, userMessage); // 上下文压缩: trace 超阈值时摘要早期步骤(防长任务超窗)
+            // 周期性规划检查点(借鉴 smolagents planning_interval): 每 PLAN_INTERVAL 步暂停审视目标/剩余, 防长任务漂移空转
+            if (!first && budget.used() > 0 && budget.used() % PLAN_INTERVAL == 0) {
+                st.trace.append("【规划检查点】已执行 ").append(budget.used())
+                        .append(" 步。请暂停审视: 对照目标更新『已知事实/剩余步骤』(可 todo update), 判断是否已可收口或是否偏题, 再继续下一步。\n");
+            }
             String planText = live == null ? null : renderPlan(live.getPlanJson());
             String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText);
             String userPrompt = first

@@ -27,6 +27,8 @@ public class ContextCompressorService {
     private int compressThreshold;
     /** 保护近期比例: 保后 45% 逐字, 压前 55% 为摘要 */
     private static final double PROTECT_TAIL_RATIO = 0.45;
+    /** 保护最早 K 字符逐字(初始计划/首批发现, primacy; OpenHands keep_first): 只摘要"中段"被遗忘部分 */
+    private static final int HEAD_KEEP_CHARS = 1500;
     /** 早期段短于此字符不值得摘要 */
     private static final int MIN_HEAD_CHARS = 1200;
     /** 防抖动: 距上次压缩新增不足此字符数则跳过 */
@@ -75,22 +77,35 @@ public class ContextCompressorService {
         return true;
     }
 
-    /** 按字符比例: 压前 ~55% 为摘要 + 保后 ~45% 逐字(适配"少量长行"的 trace 结构)。不可压/失败返 null。 */
+    /**
+     * 三段式(OpenHands keep_first + lost-in-the-middle): 保首 K 逐字(初始计划/发现) + 摘要中段 + 保尾逐字(近期)。
+     * 中段太短退化为"保尾 + 摘要其余"。不可压/失败返 null。
+     */
     private String compress(String trace, String goal) {
-        int cut = (int) (trace.length() * (1.0 - PROTECT_TAIL_RATIO));
-        if (cut < MIN_HEAD_CHARS) return null; // 早期段太短, 不值得
-        // 尽量在换行处切, 避免切断一行
-        int nl = trace.indexOf('\n', cut);
-        if (nl > 0 && nl < trace.length() - 1) cut = nl + 1;
-        String head = trace.substring(0, cut);
-        String tail = trace.substring(cut);
+        int tailCut = (int) (trace.length() * (1.0 - PROTECT_TAIL_RATIO));
+        if (tailCut < MIN_HEAD_CHARS) return null; // 待压段太短, 不值得
+        int nlT = trace.indexOf('\n', tailCut);
+        if (nlT > 0 && nlT < trace.length() - 1) tailCut = nlT + 1;
+        String tail = trace.substring(tailCut);
 
-        String summary = summarize(head, goal);
+        // 首段保护: 取 min(HEAD_KEEP_CHARS, 待压段) 逐字; 仅当中段(headEnd..tailCut)够长才单独保首
+        int headEnd = Math.min(HEAD_KEEP_CHARS, tailCut);
+        int nlH = trace.indexOf('\n', headEnd);
+        if (nlH > 0 && nlH < tailCut) headEnd = nlH + 1;
+        boolean keepHead = (tailCut - headEnd) >= MIN_HEAD_CHARS;
+
+        String middle = keepHead ? trace.substring(headEnd, tailCut) : trace.substring(0, tailCut);
+        String summary = summarize(middle, goal);
         if (summary == null || summary.trim().isEmpty()) return null;
         summary = AgentTextUtil.redactSecrets(AgentTextUtil.sanitize(summary)).trim();
 
-        return "（以下为早期执行步骤的压缩摘要，保留关键结论与已知事实）\n"
-                + summary + "\n\n（以下为近期步骤原文）\n" + tail;
+        StringBuilder sb = new StringBuilder();
+        if (keepHead) {
+            sb.append("（以下为任务最初的计划与首批发现，原文保留）\n").append(trace, 0, headEnd).append('\n');
+        }
+        sb.append("（以下为中段执行步骤的压缩摘要，保留关键结论与已知事实）\n").append(summary)
+                .append("\n\n（以下为近期步骤原文）\n").append(tail);
+        return sb.toString();
     }
 
     /** 辅助 LLM 把早期步骤压成简明摘要; 失败返 null。 */

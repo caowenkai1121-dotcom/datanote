@@ -19,7 +19,9 @@ public class PromptBuilder {
             "# 工具调用协议（严格遵守）\n" +
             "0. 每次回复请先用一句 <think>…</think> 写出简短思路（为何选此工具/已掌握什么/下一步打算），再输出工具调用或最终答复。"
             + "该 <think> 仅作过程留痕、不会作为最终答复展示给用户，请务必带上。\n" +
-            "1. 你只能调用上面【可用工具】清单中列出的工具，不得臆造工具名。\n" +
+            "1. 你只能调用真实存在的工具，不得臆造工具名。清单可能因工具众多只列出核心工具——"
+            + "若清单里没有你需要的工具，先用 tool_search 按【意图自然语言】(如『把表数据拉到数仓』『看表字段空值率』)发现，"
+            + "它按语义返回匹配工具的 name 与 params(参数schema)，据此直接正确调用。\n" +
             "2. 当你需要更多信息时，输出工具调用，格式严格为：\n" +
             "   <tool_call>{\"name\":\"工具名\",\"arguments\":{...}}</tool_call>\n" +
             "   【提速】若要做【多个相互独立的只读查询】(如同时查多张表的字段/多条血缘/多个指标)，可在【同一条回复】里输出【多个】<tool_call>，"
@@ -107,6 +109,12 @@ public class PromptBuilder {
         sb.append("# 当前日期\n").append(today == null ? "" : today).append("\n\n");
         if (traceText != null && !traceText.trim().isEmpty()) {
             sb.append("# 已执行步骤与工具结果\n").append(traceText.trim()).append('\n');
+        }
+        // 目标复述(lost-in-the-middle 缓解, 借鉴 Manus recitation): 长 trace 会把顶部目标推离 recency 区,
+        // 在末尾重述目标 + 收敛指令, 让 agent 始终对齐目标、及时收口, 不偏题不空转。
+        if (goal != null && !goal.trim().isEmpty() && traceText != null && traceText.length() > 4000) {
+            sb.append("\n# ⟳ 始终对齐本次目标\n").append(goal.trim())
+              .append("\n对照目标自问: 信息是否已足够作答? 足够则【直接给最终中文答复】不再调工具; 否则【只输出下一个必要的 tool_call】, 不重复已做过的调用。\n");
         }
         return sb.toString();
     }
