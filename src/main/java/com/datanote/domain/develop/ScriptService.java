@@ -35,6 +35,8 @@ public class ScriptService {
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;  // 脚本保存→异步重建SQL血缘
     private final com.datanote.platform.collab.EditLockService editLockService;          // 并发编辑防护: 保存须持锁 + 版本校验
+    private final com.datanote.platform.iam.RbacService rbacService;
+    private final com.datanote.platform.iam.DataAclService dataAclService;
 
     // ========== 文件树 ==========
 
@@ -42,9 +44,9 @@ public class ScriptService {
         QueryWrapper<DnScriptFolder> qw = new QueryWrapper<>();
         qw.orderByAsc("sort_order", "id");
         List<DnScriptFolder> folders = folderMapper.selectList(qw);
-        List<DnScript> scripts = scriptMapper.selectList(null);
-        List<DnDatasource> datasources = datasourceMapper.selectList(null);
-        List<DnSyncTask> syncTasks = syncTaskMapper.selectList(null);
+        List<DnScript> scripts = filterReadableScripts(scriptMapper.selectList(null));
+        List<DnDatasource> datasources = filterDatasources(datasourceMapper.selectList(null));
+        List<DnSyncTask> syncTasks = filterReadableSyncTasks(syncTaskMapper.selectList(null));
         // selectList 理论可返回 null,统一兜底空列表,buildTree 内不再判空
         return buildTree(folders == null ? new ArrayList<>() : folders,
                 scripts == null ? new ArrayList<>() : scripts,
@@ -121,7 +123,9 @@ public class ScriptService {
 
     public DnScript getById(Long id) {
         if (id == null) return null;
-        return scriptMapper.selectById(id);
+        DnScript script = scriptMapper.selectById(id);
+        if (script != null) requireScriptReadAccess(script);
+        return script;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -134,6 +138,7 @@ public class ScriptService {
             if (existing == null) {
                 throw new ResourceNotFoundException("脚本");
             }
+            requireScriptWriteAccess(existing);
             // 并发编辑防护: ①他人持编辑锁则拒(服务端兜底, 防绕过前端) ②乐观版本校验(自上次加载后被他人改过则拒)
             editLockService.assertHeld("SCRIPT", String.valueOf(script.getId()));
             if (script.getBaseUpdatedAt() != null && existing.getUpdatedAt() != null
@@ -171,6 +176,7 @@ public class ScriptService {
             throw new BusinessException("脚本 ID 不能为空");
         }
         if (body == null || body.isEmpty()) return;   // 无字段可更新,直接返回
+        requireScriptWriteAccess(id);
         DnScript script = new DnScript();
         script.setId(id);
         if (body.containsKey("taskType")) script.setTaskType(body.get("taskType"));
@@ -182,7 +188,9 @@ public class ScriptService {
 
     public void updateDatabaseName(Long id, String databaseName) {
         if (id == null) throw new BusinessException("脚本 ID 不能为空");
-        if (scriptMapper.selectById(id) == null) throw new ResourceNotFoundException("脚本");   // 防对不存在脚本静默空更新
+        DnScript existing = scriptMapper.selectById(id);
+        if (existing == null) throw new ResourceNotFoundException("脚本");   // 防对不存在脚本静默空更新
+        requireScriptWriteAccess(existing);
         DnScript script = new DnScript();
         script.setId(id);
         script.setDatabaseName(databaseName);
@@ -196,6 +204,7 @@ public class ScriptService {
         name = name.trim();
         DnScript script = scriptMapper.selectById(id);
         if (script == null) throw new ResourceNotFoundException("脚本");
+        requireScriptWriteAccess(script);
         if (name.equals(script.getScriptName())) return;
         Long dup = scriptMapper.selectCount(new QueryWrapper<DnScript>().eq("script_name", name));
         if (dup != null && dup > 0) throw new com.datanote.common.exception.BusinessException("已存在同名脚本: " + name);
@@ -209,6 +218,7 @@ public class ScriptService {
     public void delete(Long id) {
         // 全站#2 删除门禁: 已上线脚本(调度运行中)禁删, 先下线再删——防误删生产任务
         DnScript script = scriptMapper.selectById(id);
+        if (script != null) requireScriptWriteAccess(script);
         if (script != null && "online".equalsIgnoreCase(script.getScheduleStatus())) {
             throw new com.datanote.common.exception.BusinessException("脚本「" + script.getScriptName() + "」已上线调度, 请先下线再删除");
         }
@@ -222,6 +232,7 @@ public class ScriptService {
     public void moveScript(Long id, Long targetFolderId) {
         DnScript script = scriptMapper.selectById(id);
         if (script == null) throw new ResourceNotFoundException("脚本");
+        requireScriptWriteAccess(script);
         DnScriptFolder targetFolder = folderMapper.selectById(targetFolderId);
         if (targetFolder == null) throw new ResourceNotFoundException("目标文件夹");
         DnScript update = new DnScript();
@@ -236,6 +247,7 @@ public class ScriptService {
         List<Map<String, Object>> result = new ArrayList<>();
         if (scripts != null) for (DnScript s : scripts) {
             if (s == null) continue;
+            if (!canReadScript(s)) continue;
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("name", s.getScriptName());
@@ -248,6 +260,7 @@ public class ScriptService {
         List<DnSyncTask> syncTasks = syncTaskMapper.selectList(null);
         if (syncTasks != null) for (DnSyncTask t : syncTasks) {
             if (t == null) continue;
+            if (!canReadSyncTask(t)) continue;
             Map<String, Object> m = new HashMap<>();
             m.put("id", t.getId());
             m.put("name", t.getTargetTable());
@@ -263,6 +276,7 @@ public class ScriptService {
 
     public List<DnScriptVersion> listVersions(Long scriptId) {
         if (scriptId == null) return new ArrayList<>();
+        requireScriptReadAccess(scriptId);
         // 最近版本(保存+上线混排)取前10
         QueryWrapper<DnScriptVersion> recentQ = new QueryWrapper<>();
         recentQ.eq("script_id", scriptId).orderByDesc("committed_at", "id").last("LIMIT 10");
@@ -296,6 +310,7 @@ public class ScriptService {
         if (scriptId == null || versionId == null) throw new BusinessException("脚本ID与版本ID不能为空");
         DnScript script = scriptMapper.selectById(scriptId);
         if (script == null) throw new ResourceNotFoundException("脚本");
+        requireScriptWriteAccess(script);
         DnScriptVersion ver = scriptVersionMapper.selectById(versionId);
         if (ver == null || !scriptId.equals(ver.getScriptId())) throw new BusinessException("版本不存在或不属于该脚本");
         createScriptVersion(script);   // 当前内容先存为历史版本, 保留回滚前现状
@@ -400,6 +415,7 @@ public class ScriptService {
     public DnSyncTask saveSyncTask(DnSyncTask task) {
         if (task.getId() != null) {
             DnSyncTask old = syncTaskMapper.selectById(task.getId());
+            if (old != null) requireSyncTaskWriteAccess(old);
             // 任务三态: 已上线不可直接改, 须先下线(转草稿)再编辑——防改动静默作用于在跑任务(服务端兜底, 防绕过前端只读)
             if (old != null && "online".equalsIgnoreCase(old.getScheduleStatus())) {
                 throw new BusinessException("该同步任务已上线, 请先下线(转为草稿)再编辑");
@@ -428,10 +444,119 @@ public class ScriptService {
     }
 
     public DnSyncTask getSyncTask(Long id) {
-        return id == null ? null : syncTaskMapper.selectById(id);
+        if (id == null) return null;
+        DnSyncTask task = syncTaskMapper.selectById(id);
+        if (task != null) requireSyncTaskReadAccess(task);
+        return task;
     }
 
     public void deleteSyncTask(Long id) {
+        if (id != null) {
+            DnSyncTask task = syncTaskMapper.selectById(id);
+            if (task != null) requireSyncTaskWriteAccess(task);
+        }
         syncTaskMapper.deleteById(id);
+    }
+
+    private List<DnScript> filterReadableScripts(List<DnScript> scripts) {
+        List<DnScript> out = new ArrayList<>();
+        if (scripts == null) return out;
+        for (DnScript script : scripts) {
+            if (script != null && canReadScript(script)) out.add(script);
+        }
+        return out;
+    }
+
+    private List<DnSyncTask> filterReadableSyncTasks(List<DnSyncTask> tasks) {
+        List<DnSyncTask> out = new ArrayList<>();
+        if (tasks == null) return out;
+        for (DnSyncTask task : tasks) {
+            if (task != null && canReadSyncTask(task)) out.add(task);
+        }
+        return out;
+    }
+
+    private List<DnDatasource> filterDatasources(List<DnDatasource> datasources) {
+        List<DnDatasource> out = new ArrayList<>();
+        if (datasources == null) return out;
+        Set<String> denied;
+        try {
+            denied = dataAclService == null ? Collections.emptySet() : dataAclService.deniedIds("DATASOURCE");
+        } catch (Exception e) {
+            return out;
+        }
+        for (DnDatasource datasource : datasources) {
+            if (datasource == null) continue;
+            Long id = datasource.getId();
+            if (id == null || !denied.contains(String.valueOf(id))) out.add(datasource);
+        }
+        return out;
+    }
+
+    private void requireScriptReadAccess(Long scriptId) {
+        if (scriptId == null || scriptMapper == null) return;
+        DnScript script = scriptMapper.selectById(scriptId);
+        if (script == null) throw new ResourceNotFoundException("脚本");
+        requireScriptReadAccess(script);
+    }
+
+    private void requireScriptWriteAccess(Long scriptId) {
+        if (scriptId == null || scriptMapper == null) return;
+        DnScript script = scriptMapper.selectById(scriptId);
+        if (script == null) throw new ResourceNotFoundException("脚本");
+        requireScriptWriteAccess(script);
+    }
+
+    private void requireScriptReadAccess(DnScript script) {
+        if (!canReadScript(script)) throw new BusinessException("无权访问该脚本");
+    }
+
+    private void requireScriptWriteAccess(DnScript script) {
+        if (!canWriteScript(script)) throw new BusinessException("无权修改该脚本");
+    }
+
+    private boolean canReadScript(DnScript script) {
+        return canAccessOwnedResource(script == null ? null : script.getCreatedBy(),
+                new HashSet<>(Arrays.asList("develop:view", "develop:edit", "develop:approve")));
+    }
+
+    private boolean canWriteScript(DnScript script) {
+        return canAccessOwnedResource(script == null ? null : script.getCreatedBy(),
+                new HashSet<>(Arrays.asList("develop:edit", "develop:approve")));
+    }
+
+    private void requireSyncTaskReadAccess(DnSyncTask task) {
+        if (!canReadSyncTask(task)) throw new BusinessException("无权访问该同步任务");
+    }
+
+    private void requireSyncTaskWriteAccess(DnSyncTask task) {
+        if (!canWriteSyncTask(task)) throw new BusinessException("无权修改该同步任务");
+    }
+
+    private boolean canReadSyncTask(DnSyncTask task) {
+        return canAccessOwnedResource(task == null ? null : task.getCreatedBy(),
+                new HashSet<>(Arrays.asList("develop:view", "develop:edit", "dbsync:view", "dbsync:edit", "operations:schedule")));
+    }
+
+    private boolean canWriteSyncTask(DnSyncTask task) {
+        return canAccessOwnedResource(task == null ? null : task.getCreatedBy(),
+                new HashSet<>(Arrays.asList("develop:edit", "dbsync:edit", "operations:schedule")));
+    }
+
+    private boolean canAccessOwnedResource(String owner, Set<String> allowedPerms) {
+        String user = com.datanote.platform.iam.CurrentUserUtil.currentUser();
+        if (user == null || "anonymous".equals(user)) return true;
+        if (owner != null && user.equals(owner)) return true;
+        try {
+            Set<String> perms = rbacService == null ? Collections.emptySet() : rbacService.getUserPermsByUsername(user);
+            if (perms == null || perms.isEmpty()) return false;
+            if (perms.contains("*")) return true;
+            for (String perm : allowedPerms) {
+                if (perms.contains(perm)) return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

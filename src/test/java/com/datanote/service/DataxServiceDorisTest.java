@@ -22,11 +22,11 @@ class DataxServiceDorisTest {
         DataxService service = new DataxService();
         ReflectionTestUtils.setField(service, "jobDir", jobDir.toString());
         ReflectionTestUtils.setField(service, "dataxMode", "local");
-        ReflectionTestUtils.setField(service, "dorisHost", "38.76.183.50");
+        ReflectionTestUtils.setField(service, "dorisHost", "doris.example.internal");
         ReflectionTestUtils.setField(service, "dorisQueryPort", 9030);
         ReflectionTestUtils.setField(service, "dorisDatabase", "ods");
         ReflectionTestUtils.setField(service, "dorisUsername", "root");
-        ReflectionTestUtils.setField(service, "dorisPassword", "123456");
+        ReflectionTestUtils.setField(service, "dorisPassword", "doris_pass");
 
         String jobPath = service.generateJobJson("127.0.0.1", 3306, "src_user", "src_pass",
                 "mall", "orders", "ods_mall_orders_df",
@@ -39,9 +39,9 @@ class DataxServiceDorisTest {
         assertTrue(json.contains("SELECT '2026-05-24' AS `dt`, `id` AS `id`, `amount` AS `amount` FROM `mall`.`orders`"));
         assertTrue(json.contains("\"name\":\"mysqlwriter\""));
         assertTrue(json.contains("jdbc:mysql://127.0.0.1:3306/mall?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true"));
-        assertTrue(json.contains("jdbc:mysql://38.76.183.50:9030/ods"));
+        assertTrue(json.contains("jdbc:mysql://doris.example.internal:9030/ods"));
         assertTrue(json.contains("\"username\":\"root\""));
-        assertTrue(json.contains("\"password\":\"123456\""));
+        assertTrue(json.contains("\"password\":\"doris_pass\""));
         assertTrue(json.contains("DELETE FROM `ods`.`ods_mall_orders_df` WHERE `dt` = '2026-05-24'"));
         assertFalse(json.contains("hdfswriter"));
         assertFalse(json.contains("hdfs://"));
@@ -54,6 +54,28 @@ class DataxServiceDorisTest {
                 .getJSONArray("connection").getJSONObject(0)
                 .get("jdbcUrl");
         assertTrue(writerJdbcUrl instanceof String);
+    }
+
+    @Test
+    void generateJobJsonString_removesTemporaryJobFile() throws Exception {
+        Path jobDir = Files.createTempDirectory("datanote-datax-json-string");
+        DataxService service = new DataxService();
+        ReflectionTestUtils.setField(service, "jobDir", jobDir.toString());
+        ReflectionTestUtils.setField(service, "dataxMode", "local");
+        ReflectionTestUtils.setField(service, "dorisHost", "doris.example.internal");
+        ReflectionTestUtils.setField(service, "dorisQueryPort", 9030);
+        ReflectionTestUtils.setField(service, "dorisDatabase", "ods");
+        ReflectionTestUtils.setField(service, "dorisUsername", "root");
+        ReflectionTestUtils.setField(service, "dorisPassword", "doris_pass");
+
+        String json = service.generateJobJsonString("127.0.0.1", 3306, "src_user", "src_pass",
+                "mall", "orders", "ods_mall_orders_df", Arrays.asList(column("id")));
+
+        assertNotNull(json);
+        assertTrue(json.contains("src_pass"));
+        try (java.util.stream.Stream<Path> files = Files.list(jobDir)) {
+            assertEquals(0L, files.count());
+        }
     }
 
     private ColumnInfo column(String name) {

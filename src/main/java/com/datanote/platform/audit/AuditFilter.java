@@ -2,6 +2,7 @@ package com.datanote.platform.audit;
 
 import com.datanote.platform.config.WebMvcConfig;
 import com.datanote.platform.audit.AuditService;
+import com.datanote.common.util.ClientIpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -69,11 +70,6 @@ public class AuditFilter extends OncePerRequestFilter {
 
     /** 客户端 IP：优先 X-Forwarded-For 首段，否则 remoteAddr。 */
     private String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isEmpty()) {
-            int comma = xff.indexOf(',');
-            return comma > 0 ? xff.substring(0, comma).trim() : xff.trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIpUtil.resolve(request);
     }
 }

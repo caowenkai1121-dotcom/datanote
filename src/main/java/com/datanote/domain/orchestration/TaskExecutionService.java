@@ -18,6 +18,7 @@ import com.datanote.domain.integration.DataxService;
 import com.datanote.domain.integration.HiveService;
 import com.datanote.common.Constants;
 import com.datanote.common.util.CryptoUtil;
+import com.datanote.common.util.SecretRedactor;
 import com.datanote.domain.orchestration.util.ProcessUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -59,6 +60,9 @@ public class TaskExecutionService {
 
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
+
+    @Value("${datanote.task.shell-enabled:false}")
+    private boolean shellEnabled;
 
     // 指数退避参数
     private static final long RETRY_BASE_MS = 5000;    // 5 秒
@@ -154,8 +158,9 @@ public class TaskExecutionService {
 
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            logBuilder.append("\n[ERROR] ").append(cause != null ? cause.getMessage() : e.getMessage());
-            handleTaskFailure(run, logBuilder, cause != null ? cause.getMessage() : e.getMessage());
+            String errorMsg = cause != null ? cause.getMessage() : e.getMessage();
+            logBuilder.append("\n[ERROR] ").append(SecretRedactor.redact(errorMsg));
+            handleTaskFailure(run, logBuilder, errorMsg);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -173,7 +178,7 @@ public class TaskExecutionService {
      * 处理任务失败：记录状态，判断是否自动重试
      */
     private void handleTaskFailure(DnSchedulerRun run, StringBuilder logBuilder, String errorMsg) {
-        log.error("任务执行失败: {} {} - {}", run.getTaskType(), run.getTaskId(), errorMsg);
+        log.error("任务执行失败: {} {} - {}", run.getTaskType(), run.getTaskId(), SecretRedactor.redact(errorMsg));
 
         // 重查 DB 状态：若已被手动停止(stopTask 置 FAILED)，不再重试/覆盖，保留手动停止结果
         DnSchedulerRun curRun = runMapper.selectById(run.getId());
@@ -377,6 +382,9 @@ public class TaskExecutionService {
         String scriptType = script.getScriptType() != null ? script.getScriptType().toLowerCase() : "hive";
 
         if ("shell".equals(scriptType)) {
+            if (!shellEnabled) {
+                throw new BusinessException("Shell 脚本执行已禁用");
+            }
             String[] cmd = {"/bin/bash", "-c", executeSql};
             int timeout = script.getTimeoutSeconds() != null ? script.getTimeoutSeconds() : 3600;
             ProcessUtil.ExecResult result = ProcessUtil.exec(cmd, timeout);
@@ -480,7 +488,7 @@ public class TaskExecutionService {
             logBuilder.setLength(MAX_LOG_SIZE);
             logBuilder.append("\n\n[日志已截断，超过 1MB 限制]");
         }
-        return logBuilder.toString();
+        return SecretRedactor.redact(logBuilder.toString());
     }
 
     private String nowTime() {

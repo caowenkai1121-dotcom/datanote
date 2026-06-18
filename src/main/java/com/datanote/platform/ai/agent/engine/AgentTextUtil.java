@@ -1,5 +1,7 @@
 package com.datanote.platform.ai.agent.engine;
 
+import com.datanote.common.util.SecretRedactor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -53,14 +55,7 @@ public final class AgentTextUtil {
 
     /** 脱敏: 把常见 凭据(键值/连接串口令/bearer/PEM/已知前缀)替换为 ***REDACTED***(任何持久化文本必过, 落地禁写凭据红线)。 */
     public static String redactSecrets(String text) {
-        if (text == null) return null;
-        String t = text;
-        t = SECRET_PEM.matcher(t).replaceAll("-----REDACTED PRIVATE KEY-----");
-        t = SECRET_KV.matcher(t).replaceAll("$1=***REDACTED***");
-        t = SECRET_URI.matcher(t).replaceAll("$1***REDACTED***$3");
-        t = SECRET_BEARER.matcher(t).replaceAll("$1***REDACTED***");
-        t = SECRET_PREFIX.matcher(t).replaceAll("***REDACTED***");
-        return t;
+        return SecretRedactor.redact(text);
     }
 
     /** 剥除 NUL 与控制字符（保留 \n \r \t）。null → ""。 */

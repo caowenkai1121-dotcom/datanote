@@ -1,11 +1,32 @@
-# -*- coding: utf-8 -*-
-import paramiko
-HOST, USER, PWD = "38.76.183.50", "root", "Cwk@19901121"
+﻿# -*- coding: utf-8 -*-
+import os, paramiko
+def load_deploy_env():
+    cfg = {}
+    path = os.environ.get("DATANOTE_DEPLOY_ENV", "deploy.env")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fp:
+            for line in fp:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                cfg[k.strip()] = v.strip().strip('"').strip("'")
+    return cfg
+def deploy_creds():
+    cfg = load_deploy_env()
+    host = os.environ.get("DEPLOY_HOST") or cfg.get("DEPLOY_HOST")
+    user = os.environ.get("DEPLOY_USER") or cfg.get("DEPLOY_USER")
+    pwd = os.environ.get("DEPLOY_PASSWORD") or cfg.get("DEPLOY_PASSWORD")
+    port = int(os.environ.get("DEPLOY_PORT") or cfg.get("DEPLOY_PORT") or "22")
+    if not host or not user or not pwd:
+        raise SystemExit("Missing DEPLOY_HOST/DEPLOY_USER/DEPLOY_PASSWORD; set env vars or local deploy.env")
+    return host, user, pwd, port
+HOST, USER, PWD, PORT = deploy_creds()
 def run(c, cmd, t=120):
     _, so, se = c.exec_command(cmd, timeout=t)
     return so.read().decode("utf-8","replace").strip(), se.read().decode("utf-8","replace").strip()
 c = paramiko.SSHClient(); c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect(HOST, username=USER, password=PWD, timeout=30)
+c.connect(HOST, port=PORT, username=USER, password=PWD, timeout=30)
 
 print("=== BEFORE ===")
 o,_ = run(c, "systemctl is-active datanote"); print("datanote:", o)

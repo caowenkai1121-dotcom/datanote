@@ -35,7 +35,7 @@ public class DolphinService {
     @Value("${dolphin.tenant-code:default}")
     private String tenantCode;
 
-    @Value("${doris.host:38.76.183.50}")
+    @Value("${doris.host:}")
     private String dorisHost;
 
     @Value("${doris.query-port:9030}")
@@ -47,7 +47,7 @@ public class DolphinService {
     @Value("${doris.username:root}")
     private String dorisUsername;
 
-    @Value("${doris.password:123456}")
+    @Value("${doris.password:}")
     private String dorisPassword;
 
     // ======================== 通用 HTTP 方法 ========================
@@ -462,6 +462,7 @@ public class DolphinService {
             case "sql":
             default:
                 // DorisSQL 统一用 SHELL 类型，通过 mysql 客户端执行，避免依赖 DS 数据源配置
+                validateDorisConfig();
                 taskType = "SHELL";
                 String shellScript = "#!/bin/bash\n"
                         + "# DataNote Doris SQL: " + name + "\n"
@@ -480,5 +481,11 @@ public class DolphinService {
         taskDef.put("taskType", taskType);
         taskDef.put("taskParams", taskParams.toJSONString()); // DS 3.x 要求 taskParams 为 JSON 字符串
         return taskDef;
+    }
+
+    private void validateDorisConfig() {
+        if (dorisHost == null || dorisHost.trim().isEmpty()) {
+            throw new IllegalStateException("Doris host is not configured. Set DORIS_HOST before publishing Doris SQL tasks.");
+        }
     }
 }

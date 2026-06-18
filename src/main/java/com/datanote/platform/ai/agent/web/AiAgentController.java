@@ -3,6 +3,7 @@ package com.datanote.platform.ai.agent.web;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.common.model.R;
+import com.datanote.common.util.ClientIpUtil;
 import com.datanote.platform.ai.agent.engine.AiAgentService;
 import com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper;
 import com.datanote.platform.ai.agent.mapper.DnAiMemorySkillMapper;
@@ -333,11 +334,6 @@ public class AiAgentController {
     }
 
     private String clientIp(HttpServletRequest req) {
-        if (req == null) return null;
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.trim().isEmpty()) {
-            return xff.split(",")[0].trim();
-        }
-        return req.getRemoteAddr();
+        return ClientIpUtil.resolve(req);
     }
 }

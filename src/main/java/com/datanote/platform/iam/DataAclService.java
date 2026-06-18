@@ -30,7 +30,7 @@ public class DataAclService {
     private boolean bypass() {
         if (!authProperties.isEnabled()) return true;
         String u = CurrentUserUtil.currentUser();
-        if (u == null || "anonymous".equals(u) || "admin".equals(u)) return true;
+        if (u == null || "anonymous".equals(u)) return false;
         try {
             Set<String> perms = rbacService.getUserPermsByUsername(u);
             return perms.contains("*") || perms.contains("data:all");
@@ -96,7 +96,7 @@ public class DataAclService {
     /** 显式入参版 bypass: 不读 ThreadLocal, 直接用传入的 caller/perms 判定。 */
     private boolean bypassAs(String caller, Set<String> perms) {
         if (!authProperties.isEnabled()) return true;
-        if (caller == null || "anonymous".equals(caller) || "admin".equals(caller)) return true;
+        if (caller == null || "anonymous".equals(caller)) return false;
         if (perms == null) return false;   // null=perms 未解析(非"已解析但空集"), fail-closed 拒绝; 调用方应传空 Set 表示"已解析无特殊权限"
         return perms.contains("*") || perms.contains("data:all");
     }

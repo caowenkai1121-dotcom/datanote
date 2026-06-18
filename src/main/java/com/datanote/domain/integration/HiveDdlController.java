@@ -12,9 +12,11 @@ import com.datanote.common.model.R;
 import com.datanote.domain.integration.dto.HiveCreateTableRequest;
 import com.datanote.domain.integration.dto.HiveExecuteRequest;
 import com.datanote.domain.integration.HiveService;
+import com.datanote.domain.integration.util.SqlTableReferenceExtractor;
 import com.datanote.common.LogBroadcastService;
 import com.datanote.domain.governance.MaskingService;
 import com.datanote.domain.datasource.MetadataService;
+import com.datanote.platform.iam.DataAclService;
 import com.datanote.platform.iam.RbacService;
 import com.datanote.domain.governance.SqlMaskRewriter;
 import com.datanote.common.util.CryptoUtil;
@@ -52,6 +54,7 @@ public class HiveDdlController {
     private final DnSyncTaskMapper syncTaskMapper;
     private final MaskingService maskingService;
     private final RbacService rbacService;
+    private final DataAclService dataAclService;
 
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
@@ -173,6 +176,7 @@ public class HiveDdlController {
 
             for (int i = 0; i < totalStmts; i++) {
                 String stmt = validStmts.get(i);
+                requireSqlTableAccess(stmt);
                 // M9：执行前脱敏改写（绕过用户为原样，受限用户改写失败 fail-closed 抛 BusinessException）
                 if (!bypassMask) {
                     stmt = applyMasking(stmt, masks, rowFilters);
@@ -219,11 +223,7 @@ public class HiveDdlController {
             log.error("执行 HiveSQL 失败", e);
             // 把异常信息塞进 data 返回给前端
             Map<String, Object> errData = new java.util.HashMap<>();
-            errData.put("error", e.getMessage());
-            // 提取根因
-            Throwable cause = e;
-            while (cause.getCause() != null) cause = cause.getCause();
-            if (cause != e) errData.put("rootCause", cause.getMessage());
+            errData.put("error", "SQL 执行失败，请查看服务端日志");
             R<Map<String, Object>> resp = R.ok(errData);
             resp.setCode(-1);
             resp.setMsg("执行 SQL 失败");
@@ -242,6 +242,11 @@ public class HiveDdlController {
         String sql = (String) body.get("sql");
         if (sql == null || sql.trim().isEmpty()) {
             return R.fail("SQL 不能为空");
+        }
+        try {
+            requireSqlTableAccess(sql);
+        } catch (BusinessException e) {
+            return R.fail(e.getMessage());
         }
         Long scriptId = body.get("scriptId") != null ? Long.valueOf(body.get("scriptId").toString()) : null;
         Long syncTaskId = body.get("syncTaskId") != null ? Long.valueOf(body.get("syncTaskId").toString()) : null;
@@ -286,6 +291,18 @@ public class HiveDdlController {
         }
 
         // M9：执行前脱敏改写。绕过用户原样；受限用户逐条改写，失败则 fail-closed 拒绝（发送 error 并结束）。
+        try {
+            requireSqlTableAccess(execSql);
+        } catch (BusinessException e) {
+            updateExecution(execId, "FAILED", "[ERROR] " + e.getMessage() + "\n", System.currentTimeMillis());
+            try {
+                emitter.send(SseEmitter.event().name("error").data(
+                        java.util.Collections.singletonMap("message", e.getMessage())));
+                emitter.complete();
+            } catch (Exception ignored) {}
+            return emitter;
+        }
+
         final String maskedSql;
         if (isUnmaskedUser()) {
             maskedSql = execSql;
@@ -405,6 +422,28 @@ public class HiveDdlController {
             return null;
         }
         return auth.getName();
+    }
+
+    private void requireSqlTableAccess(String sql) {
+        List<SqlTableReferenceExtractor.TableRef> refs;
+        try {
+            refs = SqlTableReferenceExtractor.extract(sql);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(e.getMessage());
+        }
+        for (SqlTableReferenceExtractor.TableRef ref : refs) {
+            String db = ref.getDb();
+            if (db == null || db.trim().isEmpty()) {
+                db = defaultDb;
+            }
+            if (db == null || db.trim().isEmpty()) {
+                throw new BusinessException("SQL 引用表缺少库名, 无法校验数据权限");
+            }
+            String resourceId = db.trim() + "." + ref.getTable().trim();
+            if (!dataAclService.canAccess("TABLE", resourceId)) {
+                throw new BusinessException("无权访问数据表: " + resourceId);
+            }
+        }
     }
 
     /**

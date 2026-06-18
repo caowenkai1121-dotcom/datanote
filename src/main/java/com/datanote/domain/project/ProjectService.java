@@ -8,8 +8,6 @@ import com.datanote.domain.project.model.DnProject;
 import com.datanote.domain.project.model.DnProjectMember;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,14 +33,15 @@ public class ProjectService {
     boolean canSeeAllProjects() {
         if (!authProperties.isEnabled()) return true;
         String u = currentUser();
-        if (u == null || "anonymous".equals(u)) return true;   // 未认证由 SecurityConfig 拦, 此处不重复
+        if (u == null || "anonymous".equals(u)) return false;   // 未认证按最小权限处理
         java.util.Set<String> perms;
         try {
             perms = rbacService.getUserPermsByUsername(u);
         } catch (Exception e) {
-            return true;   // 权限查询异常时不阻断业务(fail-open 读场景)
+            log.warn("项目全量权限查询失败, 按最小权限处理: user={}, err={}", u, e.getMessage());
+            return false;
         }
-        if (perms.isEmpty() && u.equals(authProperties.getUsername())) return true;   // 内存兜底 admin
+        if ((perms == null || perms.isEmpty()) && u.equals(authProperties.getUsername())) return true;   // 内存兜底 admin
         return com.datanote.platform.iam.RbacService.hasPermission(perms, "project:all-data");
     }
 
@@ -120,6 +119,7 @@ public class ProjectService {
             addOwnerMember(p, user);
         } else {
             DnProject old = getById(p.getId());
+            requireProjectPermission(p.getId(), "project:edit");
             if (p.getProjectCode() != null && !p.getProjectCode().trim().isEmpty()
                     && !p.getProjectCode().trim().equals(old.getProjectCode())) {
                 p.setProjectCode(ensureCodeUnique(p.getProjectCode().trim(), p.getId()));
@@ -155,6 +155,25 @@ public class ProjectService {
     }
 
     /** 项目角色门禁：归档/软删须 project:edit(仅 OWNER/ADMIN)；超管/project:all-data 放行。 */
+    public DnProject requireProjectPermission(Long projectId, String perm) {
+        DnProject p = getById(projectId);
+        if (canSeeAllProjects()) return p;
+        String u = currentUser();
+        String role;
+        if (u != null && (u.equals(p.getOwner()) || u.equals(p.getCreatedBy()))) {
+            role = "OWNER";
+        } else {
+            DnProjectMember m = memberMapper.selectOne(new LambdaQueryWrapper<DnProjectMember>()
+                    .eq(DnProjectMember::getProjectId, p.getId())
+                    .eq(DnProjectMember::getUsername, u).last("LIMIT 1"));
+            role = m == null ? null : m.getProjectRole();
+        }
+        if (!ProjectRoles.can(role, perm)) {
+            throw new BusinessException("无权操作该项目: 需要 " + perm + " 权限");
+        }
+        return p;
+    }
+
     private void requireEditRole(DnProject p) {
         if (canSeeAllProjects()) return;
         String u = currentUser();
@@ -220,15 +239,6 @@ public class ProjectService {
     }
 
     static String currentUser() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated()
-                    && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
-                return auth.getName();
-            }
-        } catch (Exception ignore) {
-            // 取不到身份按 admin 兜底（鉴权当前开放）
-        }
-        return "admin";
+        return com.datanote.platform.iam.CurrentUserUtil.currentUser();
     }
 }

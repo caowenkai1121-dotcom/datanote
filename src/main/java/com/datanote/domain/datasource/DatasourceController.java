@@ -1,6 +1,7 @@
 package com.datanote.domain.datasource;
 
 import com.datanote.common.Constants;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.exception.ResourceNotFoundException;
 import com.datanote.domain.metadata.model.ColumnInfo;
 import com.datanote.domain.datasource.model.DnDatasource;
@@ -9,6 +10,7 @@ import com.datanote.domain.datasource.mapper.DnDatasourceMapper;
 import com.datanote.domain.datasource.MetadataService;
 import com.datanote.domain.integration.connector.ConnectionManager;
 import com.datanote.common.util.CryptoUtil;
+import com.datanote.platform.iam.DataAclService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 数据源管理 Controller
@@ -37,6 +40,7 @@ public class DatasourceController {
     private final MetadataCrawlerService metadataCrawlerService;   // 删除数据源时级联清理采集元数据
     private final ConnectionManager connectionManager;
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
+    private final DataAclService dataAclService;
 
     @Value("${datanote.crypto.key}")
     private String cryptoKey;
@@ -50,6 +54,15 @@ public class DatasourceController {
     @GetMapping("/list")
     public R<List<DnDatasource>> list() {
         List<DnDatasource> result = datasourceMapper.selectList(null);
+        if (result == null) {
+            result = new java.util.ArrayList<>();
+        } else {
+            result = new java.util.ArrayList<>(result);
+        }
+        Set<String> denied = dataAclService.deniedIds("DATASOURCE");
+        if (denied != null && !denied.isEmpty()) {
+            result.removeIf(ds -> ds == null || (ds.getId() != null && denied.contains(String.valueOf(ds.getId()))));
+        }
         result.forEach(ds -> ds.setPassword(Constants.PASSWORD_MASK));
         return R.ok(result);
     }
@@ -68,6 +81,7 @@ public class DatasourceController {
             throw new ResourceNotFoundException("数据源");
         }
         // 前端不需要看到真实密码，只需知道是否已设置
+        requireDatasourceAccess(id);
         ds.setPassword(Constants.PASSWORD_MASK);
         return R.ok(ds);
     }
@@ -82,6 +96,7 @@ public class DatasourceController {
     @PostMapping("/save")
     public R<DnDatasource> save(@RequestBody DnDatasource ds) {
         if (ds.getId() != null) {
+            requireDatasourceAccess(ds.getId());
             ds.setUpdatedAt(LocalDateTime.now());
             if (Constants.PASSWORD_MASK.equals(ds.getPassword())) {
                 // 前端未修改密码，保留数据库中已加密的密码
@@ -117,6 +132,7 @@ public class DatasourceController {
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Long id) {
         // 先清该源采集的元数据(表/字段/采集日志), 防遗留鬼表污染数据地图
+        requireDatasourceAccess(id);
         int removed = metadataCrawlerService.deleteByDatasource(id);
         datasourceMapper.deleteById(id);
         // 删除后关闭并移除该数据源的所有连接池，避免池泄漏
@@ -132,6 +148,9 @@ public class DatasourceController {
     @PostMapping("/test")
     public R<String> testConnection(@RequestBody DnDatasource ds) {
         try {
+            if (ds.getId() != null) {
+                requireDatasourceAccess(ds.getId());
+            }
             String pwd = ds.getPassword();
             if (Constants.PASSWORD_MASK.equals(pwd) && ds.getId() != null) {
                 // 前端未修改密码，从数据库取已加密密码并解密
@@ -221,12 +240,23 @@ public class DatasourceController {
     }
 
     private DnDatasource requireDatasource(Long id) {
+        requireDatasourceAccess(id);
         DnDatasource ds = datasourceMapper.selectById(id);
         if (ds == null) {
             throw new ResourceNotFoundException("数据源");
         }
         ds.setPassword(CryptoUtil.decryptSafe(ds.getPassword(), cryptoKey));
         return ds;
+    }
+
+    private boolean canAccessDatasource(Long id) {
+        return id == null || dataAclService.canAccess("DATASOURCE", String.valueOf(id));
+    }
+
+    private void requireDatasourceAccess(Long id) {
+        if (!canAccessDatasource(id)) {
+            throw new BusinessException("无权访问该数据源");
+        }
     }
 
 }

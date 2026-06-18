@@ -24,7 +24,7 @@ class ScriptServiceVersionTest {
     @Mock private DnScriptVersionMapper scriptVersionMapper;
 
     private ScriptService svc() {
-        return new ScriptService(null, null, null, scriptVersionMapper, null, null, null, null);
+        return new ScriptService(null, null, null, scriptVersionMapper, null, null, null, null, null, null);
     }
 
     private DnScriptVersion v(long id, String type, LocalDateTime at) {

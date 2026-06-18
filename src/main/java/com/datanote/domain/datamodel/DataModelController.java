@@ -36,6 +36,7 @@ public class DataModelController {
         List<DnModel> list = service.listModels(type, subjectId, status);
         java.util.Set<String> denied = dataAclService.deniedIds("MODEL");
         if (!denied.isEmpty() && list != null) {
+            list = new java.util.ArrayList<>(list);
             list.removeIf(m -> m != null && m.getId() != null && denied.contains(String.valueOf(m.getId())));
         }
         return R.ok(list);

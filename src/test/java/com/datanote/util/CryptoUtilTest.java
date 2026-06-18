@@ -70,4 +70,15 @@ class CryptoUtilTest {
     void decryptWithCorruptedCipherText_shouldThrow() {
         assertThrows(Exception.class, () -> CryptoUtil.decrypt("not-valid-base64!!", KEY));
     }
+
+    @Test
+    void decryptSafe_plainText_returnsOriginalForCompatibility() {
+        assertEquals("legacy-password", CryptoUtil.decryptSafe("legacy-password", KEY));
+    }
+
+    @Test
+    void decryptSafe_encryptedValueWithWrongKey_shouldThrow() {
+        String encrypted = CryptoUtil.encrypt("secret", KEY);
+        assertThrows(RuntimeException.class, () -> CryptoUtil.decryptSafe(encrypted, "fedcba0987654321"));
+    }
 }

@@ -122,13 +122,16 @@ nohup java \
   --spring.datasource.url="jdbc:mysql://${DB_HOST}:${DB_PORT}/datanote?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true" \
   --spring.datasource.username=$DB_USER \
   --spring.datasource.password=$DB_PASS \
-  --datanote.crypto.key=${CRYPTO_KEY:-DataNote_AES_Key} \
-  --doris.host=${DORIS_HOST:-38.76.183.50} \
+  --datanote.crypto.key=${CRYPTO_KEY:-} \
+  --datanote.auth.enabled=${DATANOTE_AUTH_ENABLED:-true} \
+  --datanote.auth.username=${DATANOTE_USERNAME:-admin} \
+  --datanote.auth.password=${DATANOTE_PASSWORD:-} \
+  --doris.host=${DORIS_HOST:-} \
   --doris.query-port=${DORIS_QUERY_PORT:-9030} \
   --doris.database=${DORIS_DATABASE:-ods} \
-  --doris.url="jdbc:mysql://${DORIS_HOST:-38.76.183.50}:${DORIS_QUERY_PORT:-9030}/${DORIS_DATABASE:-ods}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true" \
+  --doris.url="${DORIS_URL:-}" \
   --doris.username=${DORIS_USERNAME:-root} \
-  --doris.password=${DORIS_PASSWORD:-123456} \
+  --doris.password=${DORIS_PASSWORD:-} \
   --datax.mode=${DATAX_MODE:-local} \
   --server.port=${DATANOTE_PORT:-8099} \
   > /tmp/datanote.log 2>&1 &

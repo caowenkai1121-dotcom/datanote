@@ -26,9 +26,9 @@ public final class ProjectRoles {
         LABELS.put("DEVELOPER", "开发");
         LABELS.put("OPS", "运维");
         LABELS.put("VIEWER", "访客");
-        PERMS.put("OWNER", perms("project:edit", "member:manage", "asset:manage", "release:submit", "release:approve", "run", "read"));
-        PERMS.put("ADMIN", perms("project:edit", "member:manage", "asset:manage", "release:submit", "release:approve", "run", "read"));
-        PERMS.put("DEVELOPER", perms("asset:manage", "release:submit", "run", "read"));
+        PERMS.put("OWNER", perms("project:edit", "member:manage", "asset:manage", "task:manage", "release:submit", "release:approve", "run", "read"));
+        PERMS.put("ADMIN", perms("project:edit", "member:manage", "asset:manage", "task:manage", "release:submit", "release:approve", "run", "read"));
+        PERMS.put("DEVELOPER", perms("asset:manage", "task:manage", "release:submit", "run", "read"));
         PERMS.put("OPS", perms("run", "read"));
         PERMS.put("VIEWER", perms("read"));
     }

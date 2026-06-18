@@ -14,6 +14,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.platform.config.HiveConfig;
 import com.datanote.domain.governance.util.SensitiveDetector;
+import com.datanote.platform.iam.CurrentUserUtil;
+import com.datanote.platform.iam.DataAclService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,6 +45,7 @@ public class ClassificationService {
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnTableMetaMapper tableMetaMapper;
     private final HiveConfig hiveConfig;
+    private final DataAclService dataAclService;
 
     private static final int SAMPLE_LIMIT = 100;
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
@@ -96,6 +99,7 @@ public class ClassificationService {
             if (!(tid instanceof Number)) continue;
             DnTableMeta tm = metaMap.get(((Number) tid).longValue());
             if (tm == null) continue; // 元数据已删的脏行跳过,不返回无法定位的虚表名
+            if (!canAccessTable(tm.getDatabaseName(), tm.getTableName())) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("db", tm.getDatabaseName());
             m.put("table", tm.getTableName());
@@ -121,6 +125,7 @@ public class ClassificationService {
     public List<DnLabelAudit> auditTrail(String db, String table) {
         if (db == null || db.trim().isEmpty()) throw new BusinessException("库名不能为空");
         if (table == null || table.trim().isEmpty()) throw new BusinessException("表名不能为空");
+        requireTableAccess(db, table);
         QueryWrapper<DnTableMeta> tq = new QueryWrapper<>();
         tq.eq("database_name", db.trim()).eq("table_name", table.trim()).last("LIMIT 1");
         DnTableMeta tm = tableMetaMapper.selectOne(tq);
@@ -198,6 +203,7 @@ public class ClassificationService {
         // 仅允许字母/数字/下划线，杜绝 SQL 注入（库表名拼入 SQL，不能走参数化）
         if (!db.matches(NAME_PATTERN)) throw new BusinessException("非法库名(仅允许字母数字下划线): " + db);
         if (!table.matches(NAME_PATTERN)) throw new BusinessException("非法表名(仅允许字母数字下划线): " + table);
+        requireTableAccess(db, table);
         List<DnSensitiveRule> rules = enabledRules();
         List<Map<String, Object>> candidates = new ArrayList<>();
 
@@ -270,6 +276,7 @@ public class ClassificationService {
         if (table == null || table.trim().isEmpty()) throw new BusinessException("表名不能为空");
         if (column == null || column.trim().isEmpty()) throw new BusinessException("列名不能为空");
         // 密级必须为分级字典中已定义的合法值，杜绝任意/拼写错误密级污染分级覆盖统计与脱敏装配
+        requireTableAccess(db, table);
         validateLevel(newLevel);
         Long tableMetaId = getOrCreateTableMetaId(db, table);
         DnColumnMeta cm = findColumnMeta(tableMetaId, column);
@@ -297,7 +304,7 @@ public class ClassificationService {
         audit.setOldLevel(oldLevel);
         audit.setNewLevel(newLevel);
         audit.setSensitiveType(sensitiveType);
-        audit.setOperator(operator != null ? operator : "default");
+        audit.setOperator(CurrentUserUtil.currentUser());
         audit.setReason(reason);
         audit.setCreatedAt(LocalDateTime.now());
         auditMapper.insert(audit);
@@ -337,6 +344,7 @@ public class ClassificationService {
         Map<Long, Long> sensCntMap = countSensitiveColumnsByTable(tids);
         List<Map<String, Object>> out = new ArrayList<>();
         for (DnTableMeta t : tables) {
+            if (!canAccessTable(t.getDatabaseName(), t.getTableName())) continue;
             long sensCnt = (t.getId() == null) ? 0L : sensCntMap.getOrDefault(t.getId(), 0L);
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("databaseName", t.getDatabaseName());
@@ -393,6 +401,17 @@ public class ClassificationService {
         QueryWrapper<DnColumnMeta> qw = new QueryWrapper<>();
         qw.eq("table_meta_id", tableMetaId).eq("column_name", column).last("LIMIT 1");
         return columnMetaMapper.selectOne(qw);
+    }
+
+    private boolean canAccessTable(String db, String table) {
+        if (db == null || table == null) return false;
+        return dataAclService.canAccess("TABLE", db.trim() + "." + table.trim());
+    }
+
+    private void requireTableAccess(String db, String table) {
+        if (!canAccessTable(db, table)) {
+            throw new BusinessException("鏃犳潈璁块棶璇ヨ〃");
+        }
     }
 
     private Long findTableMetaId(String db, String table) {

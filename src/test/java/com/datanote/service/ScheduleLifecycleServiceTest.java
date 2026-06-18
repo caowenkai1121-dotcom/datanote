@@ -41,28 +41,10 @@ class ScheduleLifecycleServiceTest {
     @InjectMocks private ScheduleLifecycleService service;
 
     @Test
-    void onlineRemoteScript_writesDsResultAndOnline() throws Exception {
-        DnScript s = new DnScript();
-        s.setId(5L); s.setContent("select 1"); s.setScheduleCron("0 0 * * * ?");
-        s.setScriptName("t"); s.setScriptType("sql");
-        when(scriptMapper.selectById(5L)).thenReturn(s);
-        Map<String, Object> ds = new HashMap<>();
-        ds.put("dsProjectCode", 1L); ds.put("dsWorkflowCode", 2L);
-        ds.put("dsTaskCode", 3L); ds.put("dsScheduleId", 4);
-        when(dolphinService.onlineScript(anyString(), anyString(), anyString(),
-                any(), any(), any(), anyString(), anyInt(), anyInt(), anyInt(), any())).thenReturn(ds);
-
-        Map<String, Object> r = service.onlineRemote(5L, ScheduleTargetType.SCRIPT);
-        assertSame(ds, r);
-
-        ArgumentCaptor<DnScript> cap = ArgumentCaptor.forClass(DnScript.class);
-        verify(scriptMapper).updateById(cap.capture());
-        DnScript u = cap.getValue();
-        assertEquals(Long.valueOf(1L), u.getDsProjectCode());
-        assertEquals(Long.valueOf(2L), u.getDsWorkflowCode());
-        assertEquals(Long.valueOf(3L), u.getDsTaskCode());
-        assertEquals(Integer.valueOf(4), u.getDsScheduleId());
-        assertEquals("online", u.getScheduleStatus());
+    void onlineRemoteScript_requiresApprovalFlow() {
+        assertThrows(BusinessException.class, () -> service.onlineRemote(5L, ScheduleTargetType.SCRIPT));
+        verifyNoInteractions(dolphinService);
+        verify(scriptMapper, never()).updateById(any());
     }
 
     @Test
@@ -74,12 +56,19 @@ class ScheduleLifecycleServiceTest {
     }
 
     @Test
-    void onlineLocalScript_createsVersionSnapshotAndRefreshes() {
+    void onlineLocalScript_requiresApprovalFlow() {
+        assertThrows(BusinessException.class, () -> service.onlineLocal(5L, ScheduleTargetType.SCRIPT));
+        verifyNoInteractions(scriptVersionMapper, taskDependencyService);
+        verify(scriptMapper, never()).updateById(any());
+    }
+
+    @Test
+    void onlineLocalScriptAfterApproval_createsVersionSnapshotAndRefreshes() {
         DnScript s = new DnScript(); s.setId(5L); s.setContent("select 1");
         when(scriptMapper.selectById(5L)).thenReturn(s);
         when(scriptVersionMapper.selectOne(any())).thenReturn(null);
 
-        service.onlineLocal(5L, ScheduleTargetType.SCRIPT);
+        service.onlineLocalAfterApproval(5L, ScheduleTargetType.SCRIPT);
 
         verify(scriptVersionMapper).insert(any(DnScriptVersion.class));
         verify(taskDependencyService).refreshAllDependencies();

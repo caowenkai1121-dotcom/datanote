@@ -8,6 +8,7 @@ import com.datanote.domain.consumption.model.DnMetricAlertRule;
 import com.datanote.domain.consumption.model.DnMetricValue;
 import com.datanote.domain.governance.mapper.DnMetricMapper;
 import com.datanote.domain.governance.model.DnMetric;
+import com.datanote.platform.iam.CurrentUserUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ConsumptionController {
 
     /** 取已发布(status=1)指标; 未发布/不存在返回 null(调用方按自身返回体处理拒绝)。 */
     private DnMetric publishedMetric(Long id) {
+        valueService.requireMetricAccess(id);
         DnMetric m = metricMapper.selectById(id);
         return (m == null || m.getStatus() == null || m.getStatus() != 1) ? null : m;
     }
@@ -45,7 +47,7 @@ public class ConsumptionController {
     @PostMapping("/metric/{id}/calc")
     public R<DnMetricValue> calc(@PathVariable Long id, @RequestParam(required = false) String operator) {
         try {
-            return R.ok(valueService.calc(id, operator));
+            return R.ok(valueService.calc(id, CurrentUserUtil.currentUser()));
         } catch (BusinessException e) {
             return R.fail(e.getMessage());
         }
@@ -54,7 +56,7 @@ public class ConsumptionController {
     @Operation(summary = "批量计算全部启用指标")
     @PostMapping("/metric/calc-all")
     public R<Map<String, Object>> calcAll(@RequestParam(required = false) String operator) {
-        return R.ok(valueService.calcAllEnabled(operator == null ? "calc-all" : operator, null));
+        return R.ok(valueService.calcAllEnabled(CurrentUserUtil.currentUser(), null));
     }
 
     @Operation(summary = "指标详情驾驶舱聚合(当前值/目标/达成率/环比同比/预测/趋势/告警/质量/血缘/相关)")
@@ -73,8 +75,9 @@ public class ConsumptionController {
         if (publishedMetric(id) == null) {
             return R.fail("指标未发布(status≠1)，不可消费");
         }
+        String who = CurrentUserUtil.currentUser();
         DnMetricValue v = valueService.latest(id);
-        valueService.logConsumption(consumer, "METRIC_VALUE", v == null ? null : v.getMetricCode(), "QUERY",
+        valueService.logConsumption(who, "METRIC_VALUE", v == null ? null : v.getMetricCode(), "QUERY",
                 v == null ? 0L : 1L, null, v != null, v == null ? "无值" : "ok");
         return R.ok(v);
     }
@@ -89,11 +92,12 @@ public class ConsumptionController {
             return R.fail("指标未发布(status≠1)，不可消费");
         }
         List<DnMetricValue> rows = valueService.history(id, limit);
+        String who = CurrentUserUtil.currentUser();
         // 落 targetCode: 趋势查看计入消费排行/热度(行有 code 直取, 空历史回查指标)
         String code = null;
         for (DnMetricValue v : rows) { if (v != null && v.getMetricCode() != null) { code = v.getMetricCode(); break; } }
         if (code == null) code = metric.getMetricCode();
-        valueService.logConsumption(consumer, "METRIC_HISTORY", code, "QUERY", (long) rows.size(), null, true, "history " + rows.size());
+        valueService.logConsumption(who, "METRIC_HISTORY", code, "QUERY", (long) rows.size(), null, true, "history " + rows.size());
         return R.ok(rows);
     }
 
@@ -157,6 +161,7 @@ public class ConsumptionController {
     @Operation(summary = "指标预警规则列表")
     @GetMapping("/metric/{id}/alert-rules")
     public R<List<DnMetricAlertRule>> alertRules(@PathVariable Long id) {
+        valueService.requireMetricAccess(id);
         return R.ok(alertRuleMapper.selectList(new QueryWrapper<DnMetricAlertRule>().eq("metric_id", id).orderByDesc("updated_at")));
     }
 
@@ -167,6 +172,7 @@ public class ConsumptionController {
             return R.fail("metricId 和 op 不能为空");
         }
         // 阈值校验: 防止缺界/min>max 的规则静默永不触发(与 isBreach 判定口径对齐)
+        valueService.requireMetricAccess(rule.getMetricId());
         String op = rule.getOp().trim().toUpperCase();
         if ("IN".equals(op) || "OUT".equals(op)) {
             if (rule.getThresholdMin() == null || rule.getThresholdMax() == null) {
@@ -192,6 +198,8 @@ public class ConsumptionController {
     @Operation(summary = "删除指标预警规则")
     @DeleteMapping("/metric/alert-rule/{ruleId}")
     public R<String> deleteAlertRule(@PathVariable Long ruleId) {
+        DnMetricAlertRule rule = alertRuleMapper.selectById(ruleId);
+        if (rule != null) valueService.requireMetricAccess(rule.getMetricId());
         alertRuleMapper.deleteById(ruleId);
         return R.ok("删除成功");
     }
@@ -235,7 +243,7 @@ public class ConsumptionController {
             }
             body = sb.toString().getBytes(StandardCharsets.UTF_8); ct = "text/csv; charset=UTF-8"; fn = safeCode + ".csv";
         }
-        valueService.logConsumption(consumer, "EXPORT", code, "EXPORT", (long) rows.size(), null, true, "导出 " + format);
+        valueService.logConsumption(CurrentUserUtil.currentUser(), "EXPORT", code, "EXPORT", (long) rows.size(), null, true, "导出 " + format);
         return ResponseEntity.ok()
                 .header("Content-Type", ct)
                 .header("Content-Disposition", "attachment; filename=\"" + fn + "\"")

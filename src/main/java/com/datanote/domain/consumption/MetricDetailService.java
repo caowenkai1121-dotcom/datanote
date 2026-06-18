@@ -36,6 +36,7 @@ public class MetricDetailService {
     private final com.datanote.domain.consumption.mapper.DnConsumptionLogMapper logMapper;
 
     public Map<String, Object> detail(Long id) {
+        valueService.requireMetricAccess(id);
         DnMetric m = metricMapper.selectById(id);
         if (m == null) throw new BusinessException("指标不存在: " + id);
 

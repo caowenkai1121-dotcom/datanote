@@ -19,13 +19,13 @@ import java.sql.SQLException;
 @Configuration
 public class HiveConfig {
 
-    @Value("${doris.url:jdbc:mysql://38.76.183.50:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}")
+    @Value("${doris.url:}")
     private String envDorisUrl;
 
     @Value("${doris.username:root}")
     private String envDorisUsername;
 
-    @Value("${doris.password:123456}")
+    @Value("${doris.password:}")
     private String envDorisPassword;
 
     @Value("${hive.url:}")

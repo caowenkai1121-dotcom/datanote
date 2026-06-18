@@ -1,5 +1,6 @@
 package com.datanote.common;
 
+import com.datanote.common.util.SecretRedactor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -90,6 +91,10 @@ public class LogBroadcastService {
     /** 统一发送：广播为辅助通知，失败(broker 不可用/序列化异常)只记日志，绝不冒泡中断调用方业务流程。 */
     private void send(String destination, Map<String, Object> payload) {
         try {
+            Object message = payload.get("message");
+            if (message instanceof String) {
+                payload.put("message", SecretRedactor.redact((String) message));
+            }
             messagingTemplate.convertAndSend(destination, payload);
         } catch (Exception e) {
             log.warn("WebSocket 广播失败 dest={}: {}", destination, e.getMessage());

@@ -8,10 +8,10 @@
 <link rel="stylesheet" href="css/app.css?v=u378">
 <link rel="stylesheet" href="css/gov-modern.css?v=u378">
 <link rel="stylesheet" href="css/redesign.css?v=u378">
-<link rel="stylesheet" href="css/dn-design.css?v=u378">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/modern.css?v=u378">
+<link rel="stylesheet" href="css/dn-design.css?v=u378">
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://unpkg.com/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
 <script>/* 早期应用主题/密度, 防刷新闪变; 首访跟随系统深色偏好(人性化) */(function(){try{var t=localStorage.getItem('dn-theme');var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&sysDark))document.documentElement.setAttribute('data-theme','dark');var d=localStorage.getItem('dn-density');if(d==='compact')document.documentElement.setAttribute('data-density','compact');}catch(e){}})();</script>
 </head>
@@ -199,7 +199,7 @@
           片段
         </button>
         <div class="tool-sep"></div>
-        <button class="tool-btn" id="toolbarOnlineBtn" data-perm="operations:schedule" onclick="toolbarOnline()" style="display:none;">
+        <button class="tool-btn" id="toolbarOnlineBtn" data-perm="develop:edit" onclick="toolbarOnline()" style="display:none;">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg>
           上线
         </button>
@@ -527,6 +527,7 @@
               新建文件夹
             </button>
           </div>
+          <div id="dbsyncLogsNav" style="display:none;" aria-hidden="true"></div>
         </div>
         <!-- 右侧内容区 -->
         <div class="ops-main">
@@ -1206,7 +1207,7 @@
             <!-- Doris 连接配置 -->
             <div style="max-width:520px;">
               <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-regular);">Doris 连接</div>
-              <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="38.76.183.50" value="38.76.183.50"></div>
+              <div class="ds-form-row"><label>主机地址</label><input id="cfgHiveHost" placeholder="Doris FE 主机地址"></div>
               <div class="ds-form-row"><label>端口</label><input id="cfgHivePort" placeholder="9030" value="9030" type="number"></div>
               <div class="ds-form-row"><label>认证方式</label>
                 <select id="cfgHiveAuth" style="flex:1;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
@@ -2536,7 +2537,7 @@ function msgAlert(title, msg, type) {
     var icon = type === 'error' ? _msgErrIcon : type === 'ok' ? _msgOkIcon : type === 'warn' ? _msgWarnIcon : _msgInfoIcon;
     document.getElementById('msgBoxIcon').innerHTML = icon;
     document.getElementById('msgBoxTitle').textContent = title;
-    document.getElementById('msgBoxMsg').innerHTML = msg || '';
+    document.getElementById('msgBoxMsg').textContent = msg || '';
     document.getElementById('msgBoxInput').style.display = 'none';
     document.getElementById('msgBoxBtns').innerHTML = '<button class="btn btn-primary" onclick="closeMsgBox(true)">确定</button>';
     document.getElementById('msgBox').classList.add('show');
@@ -2549,7 +2550,7 @@ function msgConfirm(title, msg, okText) {
   return new Promise(function(resolve) {
     document.getElementById('msgBoxIcon').innerHTML = _msgWarnIcon;
     document.getElementById('msgBoxTitle').textContent = title;
-    document.getElementById('msgBoxMsg').innerHTML = msg || '';
+    document.getElementById('msgBoxMsg').textContent = msg || '';
     document.getElementById('msgBoxInput').style.display = 'none';
     document.getElementById('msgBoxBtns').innerHTML = '<button class="btn" onclick="closeMsgBox(false)">取消</button><button class="btn" style="background:var(--error);color:var(--text-inverse);" onclick="closeMsgBox(true)">' + (okText || '确定删除') + '</button>';
     document.getElementById('msgBox').classList.add('show');
@@ -5723,6 +5724,7 @@ function updateToolbarOnlineBtn() {
       btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 12V5M4 8l3-3 3 3"/><path d="M2 2h10"/></svg> ' + prefix + '上线';
     }
   });
+  if (window.dnApplyBtnPerms) dnApplyBtnPerms();
 }
 
 function toolbarOnline() {
@@ -9579,7 +9581,7 @@ function renderMetricDetail(d, id) {
     + '    <div style="font-size:13px;color:var(--text-regular);margin-top:8px;">指标口径：' + escapeHtml(m.description || '（未填写业务口径）') + '</div>'
     + '  </div>'
     + '  <div style="display:flex;gap:6px;flex-wrap:wrap;">'
-    + '    <button class="btn btn-sm btn-primary" data-perm="metrics:run" onclick="metricDetailCalc(' + id + ', this)">立即计算</button>'
+    + '    <button class="btn btn-sm btn-primary" data-perm="metrics:edit" onclick="metricDetailCalc(' + id + ', this)">立即计算</button>'
     + '    <button class="btn btn-sm" data-perm="metrics:edit" onclick="editMetric(' + id + ')">编辑</button>'
     + '    <button class="btn btn-sm" onclick="window.dnAskAi(\'解读指标「' + escapeHtml((m.metricName || '').replace(/'/g, "")) + '」(metricId=' + id + '):结合当前值/目标/达成率/环比同比/趋势/预警,分析现状、异常波动原因与改进建议。\', {route:\'metrics\',metricId:' + id + '})">AI 深度解读</button>'
     + '  </div>'
@@ -10443,8 +10445,8 @@ function switchOpsTab(el, tab) {
     if (_folderNav) _folderNav.classList.remove('collapsed');
     var _ft = document.getElementById('dbsyncFolderToggle');
     if (_ft) _ft.classList.remove('collapsed');
-    if (window.dbsyncLoadFolders) { window.dbsyncLoadFolders().then(function(){ if (window.dbsyncLoadJobs) window.dbsyncLoadJobs(); }); }
-    else if (window.dbsyncLoadJobs) window.dbsyncLoadJobs();
+    if (window.dbsyncLoadFolders) { window.dbsyncLoadFolders().then(function() { window.dbsyncLoadJobs(); }); window.dbsyncRefreshLogFilter(); }
+    else { if (window.dbsyncLoadJobs) window.dbsyncLoadJobs(); if (window.dbsyncRefreshLogFilter) window.dbsyncRefreshLogFilter(); }
   }
 }
 
@@ -12011,6 +12013,9 @@ window.dnToggleDensity = function() {
 
 /* ===== 全局命令面板(Ctrl/⌘+K): 跨模块导航 + 常用动作 + 主题, 模糊搜索 + 键盘上下 Enter ===== */
 var _cmdkItems = null, _cmdkActiveIdx = 0, _cmdkFiltered = [];
+function dnCmdKCanRun(it) {
+  return !it || !it.perm || !window.__authEnabled || !window.dnHasPerm || window.dnHasPerm(it.perm);
+}
 function dnCmdKBuildItems() {
   var nav = [
     ['首页', 'home', '🏠', 'home sy shouye index'], ['数据开发', 'develop', '⌗', 'develop dev kf sjkf code'], ['数据运维', 'operations', '⚙', 'operations ops yw sjyw'],
@@ -12018,27 +12023,27 @@ function dnCmdKBuildItems() {
     ['主数据', 'mdm', '◆', 'mdm master zsj'], ['指标管理', 'metrics', '📊', 'metrics metric zb zbgl kpi'], ['项目管理', 'project', '📁', 'project proj xm xmgl kanban'],
     ['系统管理', 'settings', '⚙', 'settings system xt xtgl admin'], ['AI 助手', 'assistant', '✦', 'ai assistant zs aizhushou']
   ];
-  var items = nav.map(function(n) { return { group: '前往', label: n[0], icon: n[2], kw: n[3] || '', run: function() { navigateTo(n[1]); } }; });
+  var items = nav.map(function(n) { return { group: '前往', label: n[0], icon: n[2], kw: n[3] || '', perm: n[1] === 'home' ? null : n[1] + ':view', run: function() { navigateTo(n[1]); } }; });
   // 系统管理子页深链(走 __navCtx.sm 机制直达对应侧栏)
   var sub = [
     ['系统监控', 'monitor', 'monitor jiankong xtjk'], ['安全设置', 'security', 'security aqsz audit'],
     ['数据源管理', 'datasource', 'datasource sjy connection'], ['开发目录', 'devroot', 'devroot kfml directory'],
     ['环境配置', 'env', 'env hjpz config'], ['AI 配置', 'ai', 'ai config peizhi']
   ];
-  sub.forEach(function(s) { items.push({ group: '前往 · 系统管理', label: s[0], icon: '⚙', kw: s[2], run: (function(key){ return function(){ navigateTo('settings', { sm: key }); }; })(s[1]) }); });
+  sub.forEach(function(s) { items.push({ group: '前往 · 系统管理', label: s[0], icon: '⚙', kw: s[2], perm: 'settings:view', run: (function(key){ return function(){ navigateTo('settings', { sm: key }); }; })(s[1]) }); });
   // 项目管理子页深链(走 __navCtx.ptab 机制直达对应侧栏)
   var pj = [['项目空间', 'space', 'space xmkj project list'], ['模板管理', 'template', 'template mbgl moban'], ['发布管理', 'release', 'release fbgl publish']];
-  pj.forEach(function(p) { items.push({ group: '前往 · 项目管理', label: p[0], icon: '📁', kw: p[2], run: (function(key){ return function(){ navigateTo('project', { ptab: key }); }; })(p[1]) }); });
+  pj.forEach(function(p) { items.push({ group: '前往 · 项目管理', label: p[0], icon: '📁', kw: p[2], perm: 'project:view', run: (function(key){ return function(){ navigateTo('project', { ptab: key }); }; })(p[1]) }); });
   // 数据运维子页深链(走 __navCtx.optab 机制直达对应侧栏)
   var op = [['运维概览', 'overview', 'overview ywgl'], ['周期任务', 'periodic', 'periodic zqrw schedule'], ['补数据', 'backfill', 'backfill bsj'], ['手动任务', 'manual', 'manual sdrw'], ['基线管理', 'baseline', 'baseline jxgl'], ['数据集成', 'integration', 'integration sjjc etl']];
-  op.forEach(function(o) { items.push({ group: '前往 · 数据运维', label: o[0], icon: '⚙', kw: o[2], run: (function(key){ return function(){ navigateTo('operations', { optab: key }); }; })(o[1]) }); });
+  op.forEach(function(o) { items.push({ group: '前往 · 数据运维', label: o[0], icon: '⚙', kw: o[2], perm: 'operations:view', run: (function(key){ return function(){ navigateTo('operations', { optab: key }); }; })(o[1]) }); });
   // 数据治理/主数据子模块深链(从源数组自动派生, 走 __navCtx.gov/.mdm 机制)
-  try { GOV_MODS_VISIBLE.forEach(function(m) { items.push({ group: '前往 · 数据治理', label: m.label, icon: '🛡', kw: m.key, run: (function(k){ return function(){ navigateTo('governance', { gov: k }); }; })(m.key) }); }); } catch (e) {}
-  try { MDM_MODS_VISIBLE.forEach(function(m) { items.push({ group: '前往 · 主数据', label: m.label, icon: '◆', kw: m.key, run: (function(k){ return function(){ navigateTo('mdm', { mdm: k }); }; })(m.key) }); }); } catch (e) {}
+  try { GOV_MODS_VISIBLE.forEach(function(m) { items.push({ group: '前往 · 数据治理', label: m.label, icon: '🛡', kw: m.key, perm: 'governance:view', run: (function(k){ return function(){ navigateTo('governance', { gov: k }); }; })(m.key) }); }); } catch (e) {}
+  try { MDM_MODS_VISIBLE.forEach(function(m) { items.push({ group: '前往 · 主数据', label: m.label, icon: '◆', kw: m.key, perm: 'mdm:view', run: (function(k){ return function(){ navigateTo('mdm', { mdm: k }); }; })(m.key) }); }); } catch (e) {}
   // 常用动作
-  items.push({ group: '操作', label: '新建脚本', icon: '＋', kw: 'new script xjjb develop sql kaifa', run: function() { if (window.createNewScript) createNewScript(); else navigateTo('develop'); } });
-  items.push({ group: '操作', label: '新建指标', icon: '＋', kw: 'new metric xjzb add zhibiao', run: function() { navigateTo('metrics'); setTimeout(function(){ if (window.showAddMetricDialog) showAddMetricDialog(); }, 200); } });
-  items.push({ group: '操作', label: '数据集成 · 新建任务', icon: '＋', kw: 'new task integration xjrw etl jicheng', run: function() { navigateTo('operations'); setTimeout(function(){ var n=document.getElementById('dbsyncJobsNav'); if(n) switchOpsTab(n,'integration'); setTimeout(function(){ if(window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 150); } });
+  items.push({ group: '操作', label: '新建脚本', icon: '＋', kw: 'new script xjjb develop sql kaifa', perm: 'develop:edit', run: function() { if (window.createNewScript) createNewScript(); else navigateTo('develop'); } });
+  items.push({ group: '操作', label: '新建指标', icon: '＋', kw: 'new metric xjzb add zhibiao', perm: 'metrics:edit', run: function() { navigateTo('metrics'); setTimeout(function(){ if (window.showAddMetricDialog) showAddMetricDialog(); }, 200); } });
+  items.push({ group: '操作', label: '数据集成 · 新建任务', icon: '＋', kw: 'new task integration xjrw etl jicheng', perm: 'dbsync:edit', run: function() { navigateTo('operations'); setTimeout(function(){ var n=document.getElementById('dbsyncJobsNav'); if(n) switchOpsTab(n,'integration'); setTimeout(function(){ if(window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 150); } });
   items.push({ group: '操作', label: '打开 AI 助手', icon: '✦', kw: 'ai assistant zhushou', run: function() { openAiLauncher(); } });
   items.push({ group: '偏好', label: '切换深色/浅色模式', icon: '◐', kw: 'theme dark light sm zhuti mode', run: function() { dnToggleTheme(); } });
   items.push({ group: '偏好', label: '切换紧凑/舒适密度', icon: '☰', kw: 'density compact md jincou', run: function() { dnToggleDensity(); } });
@@ -12075,7 +12080,7 @@ window.dnCmdK = function() {
     if (e.key === 'Escape') { dnCmdKClose(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); _cmdkActiveIdx = Math.min(_cmdkActiveIdx + 1, _cmdkFiltered.length - 1); dnCmdKHighlight(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); _cmdkActiveIdx = Math.max(_cmdkActiveIdx - 1, 0); dnCmdKHighlight(); }
-    else if (e.key === 'Enter') { e.preventDefault(); var it = _cmdkFiltered[_cmdkActiveIdx]; if (it) { dnCmdKRecord(it.label); dnCmdKClose(); setTimeout(it.run, 0); } }
+    else if (e.key === 'Enter') { e.preventDefault(); var it = _cmdkFiltered[_cmdkActiveIdx]; if (it && dnCmdKCanRun(it)) { dnCmdKRecord(it.label); dnCmdKClose(); setTimeout(it.run, 0); } }
   });
   dnCmdKRender('');
   setTimeout(function() { input.focus(); }, 30);
@@ -12085,9 +12090,10 @@ function dnCmdKRecentLabels() { try { return JSON.parse(localStorage.getItem('dn
 function dnCmdKRecord(label) { try { var r = dnCmdKRecentLabels().filter(function(x) { return x !== label; }); r.unshift(label); localStorage.setItem('dn-cmdk-recent', JSON.stringify(r.slice(0, 4))); } catch (e) {} }
 function dnCmdKRender(q) {
   q = (q || '').trim().toLowerCase();
-  var base = _cmdkItems.filter(function(it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || it.group.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
+  var permittedItems = _cmdkItems.filter(dnCmdKCanRun);
+  var base = permittedItems.filter(function(it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || it.group.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
   if (!q) {
-    var recent = dnCmdKRecentLabels().map(function(lb) { var f = _cmdkItems.filter(function(x) { return x.label === lb; })[0]; return f ? { label: f.label, icon: f.icon, run: f.run, group: '最近' } : null; }).filter(Boolean);
+    var recent = dnCmdKRecentLabels().map(function(lb) { var f = permittedItems.filter(function(x) { return x.label === lb; })[0]; return f ? { label: f.label, icon: f.icon, perm: f.perm, run: f.run, group: '最近' } : null; }).filter(Boolean);
     // 默认视图只显顶级模块+常用动作, 子页深链(前往 · xxx)仅搜索时浮现, 保持打开整洁
     var topLevel = base.filter(function(it) { return it.group.indexOf('前往 · ') !== 0; });
     _cmdkFiltered = recent.concat(topLevel);
@@ -12110,7 +12116,7 @@ function dnCmdKRender(q) {
   list.innerHTML = html;
   dnCmdKHighlight();
 }
-window.dnCmdKRun = function(i) { var it = _cmdkFiltered[i]; if (it) { dnCmdKRecord(it.label); dnCmdKClose(); setTimeout(it.run, 0); } };
+window.dnCmdKRun = function(i) { var it = _cmdkFiltered[i]; if (it && dnCmdKCanRun(it)) { dnCmdKRecord(it.label); dnCmdKClose(); setTimeout(it.run, 0); } };
 window.dnCmdKHover = function(i) { if (i === _cmdkActiveIdx) return; _cmdkActiveIdx = i; dnCmdKHighlight(); };
 function dnCmdKHighlight() {
   var items = document.querySelectorAll('#cmdkList .cmdk-item');
@@ -13012,7 +13018,7 @@ function testHiveConnection() {
   result.textContent = '连接中...';
 
   var body = {
-    host: document.getElementById('cfgHiveHost').value || '38.76.183.50',
+    host: document.getElementById('cfgHiveHost').value,
     port: document.getElementById('cfgHivePort').value || '9030',
     authMode: document.getElementById('cfgHiveAuth').value,
     database: document.getElementById('cfgHiveDb').value || 'ods',

@@ -1,7 +1,9 @@
 package com.datanote.service;
 
 import com.datanote.common.LogBroadcastService;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.datasource.MetadataService;
+import com.datanote.domain.develop.model.DnScript;
 import com.datanote.domain.integration.DataxService;
 import com.datanote.domain.integration.HiveService;
 import com.datanote.domain.orchestration.TaskDependencyService;
@@ -22,6 +24,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -30,6 +34,34 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TaskExecutionServiceDorisTest {
+
+    @Test
+    void shellScriptExecutionDisabledByDefault() {
+        DnScriptMapper scriptMapper = mock(DnScriptMapper.class);
+        DnScript script = new DnScript();
+        script.setId(9L);
+        script.setScriptName("danger");
+        script.setScriptType("shell");
+        script.setContent("echo should-not-run");
+        when(scriptMapper.selectById(9L)).thenReturn(script);
+
+        TaskExecutionService service = new TaskExecutionService(
+                scriptMapper,
+                mock(DnSyncTaskMapper.class),
+                mock(DnSchedulerRunMapper.class),
+                mock(DnDatasourceMapper.class),
+                mock(DnTaskExecutionMapper.class),
+                mock(HiveService.class),
+                mock(DataxService.class),
+                mock(MetadataService.class),
+                mock(TaskDependencyService.class),
+                mock(LogBroadcastService.class),
+                mock(TaskSchedulerService.class),
+                mock(com.datanote.platform.notify.NotificationService.class));
+
+        assertThrows(BusinessException.class, () ->
+                ReflectionTestUtils.invokeMethod(service, "executeScript", 9L, "2026-05-25", new StringBuilder()));
+    }
 
     @Test
     void scheduledSyncUsesSelectedDatasourceForColumnsAndDataxPassword() throws Exception {
@@ -98,5 +130,29 @@ class TaskExecutionServiceDorisTest {
         verify(metadataService).getColumnsByConnection(
                 "1.95.167.10", 3306, "root", "source-secret", "xh_dms", "t_after_sales_order_header");
         verify(metadataService, never()).getColumns("xh_dms", "t_after_sales_order_header");
+    }
+
+    @Test
+    void truncateLog_redactsSecretsBeforePersisting() {
+        TaskExecutionService service = new TaskExecutionService(
+                mock(DnScriptMapper.class),
+                mock(DnSyncTaskMapper.class),
+                mock(DnSchedulerRunMapper.class),
+                mock(DnDatasourceMapper.class),
+                mock(DnTaskExecutionMapper.class),
+                mock(HiveService.class),
+                mock(DataxService.class),
+                mock(MetadataService.class),
+                mock(TaskDependencyService.class),
+                mock(LogBroadcastService.class),
+                mock(TaskSchedulerService.class),
+                mock(com.datanote.platform.notify.NotificationService.class));
+
+        String log = ReflectionTestUtils.invokeMethod(service, "truncateLog",
+                new StringBuilder("password=plain-secret jdbc:mysql://root:db-secret@127.0.0.1/db token=abcdef123456"));
+
+        assertFalse(log.contains("plain-secret"));
+        assertFalse(log.contains("db-secret"));
+        assertFalse(log.contains("abcdef123456"));
     }
 }

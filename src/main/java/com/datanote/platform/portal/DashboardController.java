@@ -61,6 +61,12 @@ public class DashboardController {
     @Value("${spring.datasource.url:jdbc:mysql://127.0.0.1:3306/datanote}")
     private String dataSourceUrl;
 
+    @Value("${doris.host:}")
+    private String dorisHost;
+
+    @Value("${doris.query-port:9030}")
+    private int dorisQueryPort;
+
     @Operation(summary = "Dashboard statistics")
     @GetMapping("/stats")
     public R<Map<String, Object>> stats(@RequestParam(required = false) Boolean myTask) {
@@ -121,7 +127,9 @@ public class DashboardController {
     @GetMapping("/services")
     public R<List<Map<String, Object>>> services() {
         List<Map<String, Object>> list = new ArrayList<>();
-        list.add(checkService("Doris FE", "38.76.183.50", 9030, "Doris query service"));
+        list.add(hasText(dorisHost)
+                ? checkService("Doris FE", dorisHost, dorisQueryPort, "Doris query service")
+                : serviceUnavailable("Doris FE", dorisQueryPort, "Doris query service (not configured)"));
         list.add(checkService("DolphinScheduler", "127.0.0.1", 12345, "Task scheduler"));
         list.add(checkService("MySQL", getMysqlHost(), getMysqlPort(), "DataNote metadata database"));
         return R.ok(list);
@@ -236,5 +244,18 @@ public class DashboardController {
         }
         svc.put("alive", alive);
         return svc;
+    }
+
+    private Map<String, Object> serviceUnavailable(String name, int port, String desc) {
+        Map<String, Object> svc = new HashMap<>();
+        svc.put("name", name);
+        svc.put("port", port);
+        svc.put("desc", desc);
+        svc.put("alive", false);
+        return svc;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

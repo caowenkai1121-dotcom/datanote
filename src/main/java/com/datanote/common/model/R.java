@@ -1,5 +1,6 @@
 package com.datanote.common.model;
 
+import com.datanote.common.util.SecretRedactor;
 import lombok.Data;
 
 /**
@@ -53,7 +54,7 @@ public class R<T> {
     public static <T> R<T> fail(String msg) {
         R<T> r = new R<>();
         r.setCode(CODE_FAIL);
-        r.setMsg(msg);
+        r.setMsg(SecretRedactor.redact(msg));
         return r;
     }
 
@@ -67,7 +68,7 @@ public class R<T> {
     public static <T> R<T> fail(int code, String msg) {
         R<T> r = new R<>();
         r.setCode(code);
-        r.setMsg(msg);
+        r.setMsg(SecretRedactor.redact(msg));
         return r;
     }
 }

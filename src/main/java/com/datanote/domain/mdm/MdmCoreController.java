@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -320,6 +318,7 @@ public class MdmCoreController {
         // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批); 自己提交的申请禁止自批,
         //      admin 用户例外放行(单管理员环境防锁死: 否则 admin 提交的申请无人能批)。
         String reviewer = currentUser();
+        // admin(单管理员环境)例外放行, 与上方注释一致: 否则 admin 提交的 MDM 申请无人能批, 流程永久卡死
         if (!"admin".equals(reviewer) && reviewer.equals(req.getRequestedBy())) {
             throw new BusinessException("不能审批自己的变更申请");
         }
@@ -432,14 +431,7 @@ public class MdmCoreController {
 
     /** #19: 当前登录用户(审批人身份), 写法参考 ProjectService.currentUser; 取不到身份按 admin 兜底(鉴权当前开放)。 */
     private static String currentUser() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated()
-                    && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
-                return auth.getName();
-            }
-        } catch (Exception ignore) {}
-        return "admin";
+        return com.datanote.platform.iam.CurrentUserUtil.currentUser();
     }
 
     // ===== 源自 MdmStewardController.java =====

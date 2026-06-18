@@ -3,6 +3,7 @@ package com.datanote.domain.consumption;
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
 import com.datanote.domain.consumption.model.DnDataset;
+import com.datanote.platform.iam.CurrentUserUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +56,7 @@ public class DatasetController {
     @PostMapping("/{id}/query")
     public R<Map<String, Object>> query(@PathVariable Long id, @RequestParam(required = false) String consumer) {
         try {
-            return R.ok(datasetService.query(id, consumer));
+            return R.ok(datasetService.query(id, CurrentUserUtil.currentUser()));
         } catch (BusinessException e) {
             return R.fail(e.getMessage());
         }

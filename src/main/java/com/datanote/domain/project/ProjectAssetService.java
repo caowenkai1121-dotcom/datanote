@@ -12,6 +12,9 @@ import com.datanote.domain.governance.model.DnQualityRule;
 import com.datanote.domain.integration.model.DnSyncJob;
 import com.datanote.domain.project.model.DnProjectAsset;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.common.exception.BusinessException;
+import com.datanote.platform.iam.CurrentUserUtil;
+import com.datanote.platform.iam.DataAclService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +33,7 @@ public class ProjectAssetService {
     private final DnDatasourceMapper datasourceMapper;
     private final DnQualityRuleMapper qualityRuleMapper;
     private final com.datanote.domain.governance.mapper.DnMetricMapper metricMapper;
+    private final DataAclService dataAclService;
 
     public static final List<String> TYPES = Collections.unmodifiableList(
             Arrays.asList("SYNC_JOB", "SCRIPT", "DATASOURCE", "QUALITY_RULE", "METRIC"));
@@ -50,10 +54,11 @@ public class ProjectAssetService {
     }
 
     public DnProjectAsset bind(Long projectId, String type, Long assetId, String assetName) {
-        com.datanote.domain.project.model.DnProject proj = projectService.getById(projectId);
+        com.datanote.domain.project.model.DnProject proj = projectService.requireProjectPermission(projectId, "asset:manage");
         if ("ARCHIVED".equals(proj.getStatus())) throw new IllegalArgumentException("项目已归档, 仅可查看, 不能绑定资产");
         if (!TYPES.contains(type)) throw new IllegalArgumentException("非法资产类型: " + type);
         if (assetId == null) throw new IllegalArgumentException("资产ID不能为空");
+        requireAssetAccess(type, assetId);
         Long dup = assetMapper.selectCount(new LambdaQueryWrapper<DnProjectAsset>()
                 .eq(DnProjectAsset::getProjectId, projectId)
                 .eq(DnProjectAsset::getAssetType, type)
@@ -70,6 +75,7 @@ public class ProjectAssetService {
     }
 
     public void unbind(Long projectId, Long rowId) {
+        projectService.requireProjectPermission(projectId, "asset:manage");
         com.datanote.domain.project.model.DnProjectAsset a = assetMapper.selectById(rowId);
         if (a == null || projectId == null || !projectId.equals(a.getProjectId())) {
             throw new IllegalArgumentException("资产不存在或不属于该项目");
@@ -89,6 +95,7 @@ public class ProjectAssetService {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Object[] idName : allOfType(type)) {
             Long id = (Long) idName[0];
+            if (!canAccessAsset(type, id)) continue;
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", id);
             m.put("name", idName[1]);
@@ -177,6 +184,60 @@ public class ProjectAssetService {
     /** null 安全：selectList 理论可返回 null,统一兜底空列表,for-each 不再 NPE。 */
     private static <T> List<T> nz(List<T> l) {
         return l == null ? Collections.emptyList() : l;
+    }
+
+    private void requireAssetAccess(String type, Long assetId) {
+        if (!canAccessAsset(type, assetId)) {
+            throw new BusinessException("无权访问该资产");
+        }
+    }
+
+    private boolean canAccessAsset(String type, Long assetId) {
+        if (assetId == null) return true;
+        switch (type) {
+            case "DATASOURCE":
+                return canAccessDataAcl("DATASOURCE", String.valueOf(assetId));
+            case "METRIC":
+                return canAccessDataAcl("METRIC", String.valueOf(assetId));
+            case "SYNC_JOB":
+                return canAccessSyncJob(syncJobMapper.selectById(assetId));
+            case "SCRIPT":
+                DnScript script = scriptMapper.selectById(assetId);
+                return canAccessOwned(script == null ? null : script.getCreatedBy());
+            case "QUALITY_RULE":
+                return canAccessQualityRule(qualityRuleMapper.selectById(assetId));
+            default:
+                return false;
+        }
+    }
+
+    private boolean canAccessSyncJob(DnSyncJob job) {
+        if (job == null) return false;
+        if (job.getSourceDsId() != null && !canAccessDataAcl("DATASOURCE", String.valueOf(job.getSourceDsId()))) return false;
+        if (job.getTargetDsId() != null && !canAccessDataAcl("DATASOURCE", String.valueOf(job.getTargetDsId()))) return false;
+        return canAccessOwned(job.getCreatedBy());
+    }
+
+    private boolean canAccessQualityRule(DnQualityRule rule) {
+        if (rule == null) return false;
+        if (rule.getDatabaseName() != null && rule.getTableName() != null) {
+            return canAccessDataAcl("TABLE", rule.getDatabaseName().trim() + "." + rule.getTableName().trim());
+        }
+        if (rule.getDatasourceId() != null) {
+            return canAccessDataAcl("DATASOURCE", String.valueOf(rule.getDatasourceId()));
+        }
+        return canAccessOwned(rule.getCreatedBy());
+    }
+
+    private boolean canAccessOwned(String owner) {
+        if (projectService.canSeeAllProjects()) return true;
+        if (owner == null || owner.trim().isEmpty()) return true;
+        String user = CurrentUserUtil.currentUser();
+        return user != null && !"anonymous".equals(user) && owner.equals(user);
+    }
+
+    private boolean canAccessDataAcl(String resourceType, String resourceId) {
+        return dataAclService == null || dataAclService.canAccess(resourceType, resourceId);
     }
 
     private List<Object[]> allOfType(String type) {

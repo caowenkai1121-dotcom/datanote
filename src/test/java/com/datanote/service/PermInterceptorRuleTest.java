@@ -31,6 +31,8 @@ class PermInterceptorRuleTest {
         assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/run-log/5"));
         assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/log-detail/12"));
         assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/scheduler/logs/3"));
+        assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/task-execution/12"));
+        assertEquals("operations:schedule", PermInterceptor.requiredPerm("GET", "/api/task-execution/task/7"));
         // 今日状态/运行记录非敏感, 仍只要求登录
         assertNull(PermInterceptor.requiredPerm("GET", "/api/scheduler/today"));
         assertNull(PermInterceptor.requiredPerm("GET", "/api/scheduler/task-runs"));
@@ -38,6 +40,8 @@ class PermInterceptorRuleTest {
         assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/list"));
         assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/5"));
         assertEquals("datasource:view", PermInterceptor.requiredPerm("GET", "/api/datasource/5/tables"));
+        // 同步坏行/CDC 死信含原始行数据, GET 须 dbsync:view
+        assertEquals("dbsync:view", PermInterceptor.requiredPerm("GET", "/api/sync-job/7/error-rows"));
         // 脚本上线审批队列含 payload SQL+申请人, 仅审批人(更具体规则须先于 /api/script 匹配)
         assertEquals("develop:approve", PermInterceptor.requiredPerm("GET", "/api/script/changes"));
         assertEquals("develop:approve", PermInterceptor.requiredPerm("GET", "/api/script/changes/pending-count"));
@@ -46,6 +50,9 @@ class PermInterceptorRuleTest {
         assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/123/versions"));
         assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/tree"));
         assertEquals("develop:view", PermInterceptor.requiredPerm("GET", "/api/script/all-with-content"));
+        // 数据模型审批队列含模型变更信息, 仅审批人可见
+        assertEquals("datamodel:approve", PermInterceptor.requiredPerm("GET", "/api/datamodel/changes"));
+        assertEquals("datamodel:approve", PermInterceptor.requiredPerm("GET", "/api/datamodel/changes?status=pending"));
         // 系统配置 / AI 配置读须与写同权 settings:config
         assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/system/config/doris"));
         assertEquals("settings:config", PermInterceptor.requiredPerm("GET", "/api/ai/config"));
@@ -65,6 +72,9 @@ class PermInterceptorRuleTest {
         assertEquals("operations:schedule", PermInterceptor.requiredPerm("POST", "/api/scheduler/config/3"));
         assertEquals("operations:baseline", PermInterceptor.requiredPerm("POST", "/api/baseline/create"));
         assertEquals("project:approve", PermInterceptor.requiredPerm("POST", "/api/project/releases/7/approve"));
+        assertEquals("project:approve", PermInterceptor.requiredPerm("POST", "/api/project/releases/7/reject"));
+        assertEquals("project:approve", PermInterceptor.requiredPerm("POST", "/api/project/releases/7/release"));
+        assertEquals("project:approve", PermInterceptor.requiredPerm("POST", "/api/project/releases/7/rollback"));
         assertEquals("assistant:approve", PermInterceptor.requiredPerm("POST", "/api/ai/agent/approval/3/confirm"));
         assertEquals("assistant:use", PermInterceptor.requiredPerm("POST", "/api/ai/agent/chat"));
     }

@@ -88,16 +88,18 @@
       onclick: function () { if (window.homeAskAi) window.homeAskAi(); }
     });
     // 快捷操作: 常用新建/入口一键直达(复用全站全局函数)
-    var qa = function (label, fn) {
-      return DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: label,
+    var qa = function (label, perm, fn) {
+      var attrs = { class: 'btn btn-sm', href: 'javascript:void(0)', text: label,
         style: 'background:rgba(255,255,255,.18);color:var(--text-inverse);border-color:rgba(255,255,255,.35);',
-        onclick: fn });
+        onclick: fn };
+      if (perm) attrs['data-perm'] = perm;
+      return DN.h('a', attrs);
     };
     var quickRow = DN.h('div', { class: 'h-quick', style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;' }, [
-      qa('＋ 新建脚本', function () { if (window.createNewScript) createNewScript(); else if (window.navigateTo) navigateTo('develop'); }),
-      qa('＋ 新建指标', function () { if (window.navigateTo) { navigateTo('metrics'); setTimeout(function () { if (window.showAddMetricDialog) showAddMetricDialog(); }, 250); } }),
-      qa('＋ 集成任务', function () { if (window.navigateTo) { navigateTo('operations'); setTimeout(function () { var n = document.getElementById('dbsyncJobsNav'); if (n && window.switchOpsTab) switchOpsTab(n, 'integration'); setTimeout(function () { if (window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 200); } }),
-      qa('✦ AI 助手', function () { if (window.openAiLauncher) openAiLauncher(); else if (window.navigateTo) navigateTo('assistant'); })
+      qa('＋ 新建脚本', 'develop:edit', function () { if (window.createNewScript) createNewScript(); else if (window.navigateTo) navigateTo('develop'); }),
+      qa('＋ 新建指标', 'metrics:edit', function () { if (window.navigateTo) { navigateTo('metrics'); setTimeout(function () { if (window.showAddMetricDialog) showAddMetricDialog(); }, 250); } }),
+      qa('＋ 集成任务', 'dbsync:edit', function () { if (window.navigateTo) { navigateTo('operations'); setTimeout(function () { var n = document.getElementById('dbsyncJobsNav'); if (n && window.switchOpsTab) switchOpsTab(n, 'integration'); setTimeout(function () { if (window.dbsyncOpenCreateModal) dbsyncOpenCreateModal(); }, 300); }, 200); } }),
+      qa('✦ AI 助手', 'assistant:use', function () { if (window.openAiLauncher) openAiLauncher(); else if (window.navigateTo) navigateTo('assistant'); })
     ]);
     box.appendChild(DN.h('div', { class: 'dash-hero' }, [
       DN.h('div', { class: 'h-title', text: greet + '，' + (window.__user ? window.__user : '欢迎回来') }),
@@ -110,6 +112,7 @@
       ]),
       quickRow
     ]));
+    if (window.dnApplyBtnPerms) dnApplyBtnPerms(quickRow);
   }
 
   // ========== 7 KPI：多源并发，各源独立 .catch 降级为 {} ==========

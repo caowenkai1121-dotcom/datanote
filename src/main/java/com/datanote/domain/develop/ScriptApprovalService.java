@@ -99,7 +99,7 @@ public class ScriptApprovalService {
                 if ("OFFLINE".equals(c.getChangeType())) {
                     scheduleLifecycleService.offlineLocal(c.getScriptId(), ScheduleTargetType.SCRIPT);
                 } else {
-                    scheduleLifecycleService.onlineLocal(c.getScriptId(), ScheduleTargetType.SCRIPT);
+                    scheduleLifecycleService.onlineLocalAfterApproval(c.getScriptId(), ScheduleTargetType.SCRIPT);
                 }
             } catch (Exception e) {
                 throw new BusinessException("审批通过但执行" + c.getChangeType() + "失败: " + e.getMessage());

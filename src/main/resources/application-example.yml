@@ -27,12 +27,12 @@ mybatis-plus:
 # -------------------- Doris JDBC --------------------
 # 连接 Doris FE MySQL 协议端口，用于执行 Doris SQL 脚本
 doris:
-  host: 38.76.183.50
+  host: your_doris_host
   query-port: 9030
   database: ods
-  url: jdbc:mysql://38.76.183.50:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+  url: jdbc:mysql://your_doris_host:9030/ods?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
   username: root
-  password: "123456"
+  password: your_doris_password
 
 # -------------------- DataX 数据同步 --------------------
 # home: DataX 安装目录（需包含 bin/datax.py）
@@ -61,6 +61,7 @@ datanote:
   crypto:
     key: your_crypto_key_here
   auth:
+    enabled: ${DATANOTE_AUTH_ENABLED:true}
     username: admin
     password: your_admin_password
   ai:

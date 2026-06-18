@@ -119,4 +119,4 @@ docker exec $CONTAINER_NAME python /opt/datax/bin/datax.py -h >/dev/null 2>&1 ||
 sed -i '' "s/^DATAX_MODE=.*/DATAX_MODE=docker/" "$CONF_FILE" 2>/dev/null || \
 sed -i "s/^DATAX_MODE=.*/DATAX_MODE=docker/" "$CONF_FILE"
 
-info "DataX is ready. Doris target: ${DORIS_HOST:-38.76.183.50}:${DORIS_QUERY_PORT:-9030}"
+info "DataX is ready. Doris target: ${DORIS_HOST:-<not configured>}:${DORIS_QUERY_PORT:-9030}"

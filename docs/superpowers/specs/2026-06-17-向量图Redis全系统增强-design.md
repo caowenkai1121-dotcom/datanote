@@ -1,9 +1,9 @@
-# 向量库 / 图库 / Redis 全系统深度应用 — 设计方案(总体方案)
+﻿# 向量库 / 图库 / Redis 全系统深度应用 — 设计方案(总体方案)
 
 - 日期：2026-06-17
 - 状态：已评审通过(业主"按规划全部开始")
 - 范围：`com.datanote.platform.ai.vector.*` / `ai.graph.*` / `ai.store.*` / `platform.iam.*` / `domain.governance.*` / `domain.orchestration.*` / `portal.*` / `collab.*` + 前端系统管理页
-- 关联:[[server-deploy-datax]](三库已部署 38.76.183.50)、[[ai-agent-perm-program]](向量/图/Redis 基础设施)
+- 关联:[[server-deploy-datax]](三库已部署 <测试服务器>)、[[ai-agent-perm-program]](向量/图/Redis 基础设施)
 
 ---
 

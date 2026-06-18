@@ -48,6 +48,7 @@ public class ScheduleLifecycleService {
         requireId(id);
         requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
+            rejectDirectScriptOnline();
             DnScript script = requireScript(id);
             requireNotEmpty(script.getContent(), "脚本内容为空，无法上线");
             requireNotEmpty(script.getScheduleCron(), "请先配置调度 cron 表达式");
@@ -116,6 +117,22 @@ public class ScheduleLifecycleService {
         requireId(id);
         requireType(type);
         if (type == ScheduleTargetType.SCRIPT) {
+            rejectDirectScriptOnline();
+        }
+        onlineLocalInternal(id, type);
+    }
+
+    public void onlineLocalAfterApproval(Long id, ScheduleTargetType type) {
+        requireId(id);
+        requireType(type);
+        if (type != ScheduleTargetType.SCRIPT) {
+            throw new BusinessException("仅脚本上线审批可调用审批后上线入口");
+        }
+        onlineLocalInternal(id, type);
+    }
+
+    private void onlineLocalInternal(Long id, ScheduleTargetType type) {
+        if (type == ScheduleTargetType.SCRIPT) {
             DnScript script = requireScript(id);
             requireNotEmpty(script.getContent(), "脚本内容为空，无法上线");
             createOnlineVersion(script);
@@ -125,6 +142,10 @@ public class ScheduleLifecycleService {
             setSyncStatus(id, Constants.SCHEDULE_ONLINE);
         }
         taskDependencyService.refreshAllDependencies();
+    }
+
+    private void rejectDirectScriptOnline() {
+        throw new BusinessException("脚本上线请先提交并通过上线审批");
     }
 
     /** 本地下线（脚本/同步统一）：仅置 OFFLINE，不刷新依赖（与重构前一致）。 */
@@ -183,18 +204,37 @@ public class ScheduleLifecycleService {
     /** 同步任务 DataX shell 脚本生成（自 LocalSchedulerController.syncOnline 整段迁入，逐字不变）。 */
     private String buildSyncShellScript(DnSyncTask task) {
         requireNotEmpty(task.getTargetTable(), "同步任务未配置目标表(targetTable)，无法生成 DataX 作业");
-        String jobFile = jobDir + "/" + task.getTargetTable() + ".json";
+        String targetTable = requireSafeShellToken(task.getTargetTable(), "targetTable");
+        String sourceDb = requireSafeShellToken(task.getSourceDb(), "sourceDb");
+        String sourceTable = requireSafeShellToken(task.getSourceTable(), "sourceTable");
+        String jobFile = jobDir + "/" + targetTable + ".json";
         return "#!/bin/bash\n"
-                + "# DataNote 同步任务: " + task.getTaskName() + "\n"
+                + "# DataNote 同步任务: " + oneLine(task.getTaskName()) + "\n"
                 + "DT=${1:-$(date -d '-1 day' +%Y-%m-%d)}\n"
-                + "echo \"同步任务: " + task.getSourceDb() + "." + task.getSourceTable()
-                + " -> ods." + task.getTargetTable() + ", dt=$DT\"\n"
+                + "echo " + shellQuote("同步任务: " + sourceDb + "." + sourceTable
+                + " -> ods." + targetTable + ", dt=") + "\"$DT\"\n"
                 + "java -server -Xms1g -Xmx1g"
-                + " -Ddatax.home=" + dataxHome
-                + " -classpath " + dataxHome + "/lib/*"
+                + " -Ddatax.home=" + shellQuote(dataxHome)
+                + " -classpath " + shellQuote(dataxHome + "/lib/*")
                 + " com.alibaba.datax.core.Engine"
                 + " -mode standalone -jobid -1"
-                + " -job " + jobFile + "\n";
+                + " -job " + shellQuote(jobFile) + "\n";
+    }
+
+    private String requireSafeShellToken(String value, String field) {
+        requireNotEmpty(value, field + " 不能为空");
+        if (!value.matches("[A-Za-z0-9._-]+")) {
+            throw new BusinessException(field + " 含非法字符");
+        }
+        return value;
+    }
+
+    private String shellQuote(String value) {
+        return "'" + String.valueOf(value == null ? "" : value).replace("'", "'\"'\"'") + "'";
+    }
+
+    private String oneLine(String value) {
+        return value == null ? "" : value.replaceAll("[\\r\\n]+", " ").trim();
     }
 
     /** 上线时创建版本快照，commitMsg 含"上线"以区分（自 Controller 迁入，逐字不变）。 */

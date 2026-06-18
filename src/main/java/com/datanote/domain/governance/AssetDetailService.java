@@ -9,6 +9,7 @@ import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.governance.model.DnGlossaryTerm;
 import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.platform.iam.DataAclService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class AssetDetailService {
 
+    private final DataAclService dataAclService;
     private final DnTableMetaMapper tableMetaMapper;
     private final DnColumnMetaMapper columnMetaMapper;
     private final DnGlossaryTermMapper glossaryTermMapper;
@@ -58,7 +60,16 @@ public class AssetDetailService {
 
     // ========== 资产详情：表 + 字段级元数据 ==========
 
+    private void requireTableAccess(String db, String table) {
+        if (!dataAclService.canAccess("TABLE", db.trim() + "." + table.trim())) {
+            throw new BusinessException("鏃犳潈璁块棶璇ヨ〃(鏁版嵁鏉冮檺鍙楅檺), 璇疯仈绯荤鐞嗗憳鎺堟潈");
+        }
+    }
+
     public Map<String, Object> assetDetail(String db, String table) {
+        requireIdentifier(db, "鏁版嵁搴撳悕");
+        requireIdentifier(table, "琛ㄥ悕");
+        requireTableAccess(db, table);
         DnTableMeta meta = findTableMeta(db, table);
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("table", meta);
@@ -114,6 +125,7 @@ public class AssetDetailService {
     public Map<String, Object> profile(String db, String table) throws SQLException {
         requireIdentifier(db, "数据库名");   // db/table 拼入原生 COUNT/聚合 SQL,先校验防注入
         requireIdentifier(table, "表名");
+        requireTableAccess(db, table);
         List<String> columnNames = listColumnNames(db, table);
         long totalRows = 0;
         int max = limitFields(columnNames.size(), MAX_PROFILE_FIELDS);
@@ -176,6 +188,7 @@ public class AssetDetailService {
     private Map<String, Object> read(String db, String table, int n) throws SQLException {
         requireIdentifier(db, "数据库名");   // db/table 拼入原生 SQL,先校验防注入
         requireIdentifier(table, "表名");
+        requireTableAccess(db, table);
         DnTableMeta meta = findTableMeta(db, table);
         boolean useSource = meta != null && meta.getDatasourceId() != null
                 && meta.getDbType() != null && meta.getDbType().toUpperCase().contains("MYSQL");

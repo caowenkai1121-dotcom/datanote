@@ -126,6 +126,9 @@ public class MdmGoldenController {
     public R<DnMdmGoldenRecord> publish(@PathVariable Long id) {
         DnMdmGoldenRecord rec = goldenMapper.selectById(id);
         if (rec == null) throw new ResourceNotFoundException("黄金记录");
+        if ("draft".equals(rec.getStatus())) {
+            throw new BusinessException("草稿黄金记录请先提交主数据变更审批");
+        }
         rec.setStatus("active");
         rec.setUpdatedAt(LocalDateTime.now());
         goldenMapper.updateById(rec);

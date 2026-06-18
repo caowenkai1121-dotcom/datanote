@@ -62,6 +62,7 @@ public class ProjectReleaseService {
             if (r == null) continue;
             Map<String, Object> m = om.convertValue(r, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
             DnProject p = byId.get(r.getProjectId());
+            if (p == null) continue;
             m.put("projectName", p != null ? p.getProjectName() : "项目已删除");
             out.add(m);
         }
@@ -69,7 +70,7 @@ public class ProjectReleaseService {
     }
 
     public synchronized DnProjectRelease submit(Long projectId, String title, String content, String targetEnv, String assetJson) {
-        DnProject proj = projectService.getById(projectId);
+        DnProject proj = projectService.requireProjectPermission(projectId, "release:submit");
         if ("ARCHIVED".equals(proj.getStatus())) throw new IllegalArgumentException("项目已归档, 仅可查看, 不能提交发布");
         validateAssetJson(projectId, assetJson);   // N6: 清单项必须是本项目绑定资产
         DnProjectRelease r = new DnProjectRelease();

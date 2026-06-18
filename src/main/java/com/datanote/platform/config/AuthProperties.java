@@ -12,16 +12,19 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "datanote.auth")
 public class AuthProperties {
 
+    /** 是否启用登录认证，默认开启。 */
+    private boolean enabled = true;
+
     /** 登录用户名 */
     private String username = "admin";
 
-    /** 登录密码，为空则不启用认证 */
+    /** 内存兜底账号密码；为空时不创建可猜测的兜底密码。 */
     private String password = "";
 
     /**
-     * 判断是否启用认证（密码非空时启用）
+     * 判断是否启用认证（仅显式 enabled=false 时关闭）
      */
     public boolean isEnabled() {
-        return password != null && !password.trim().isEmpty();
+        return enabled;
     }
 }

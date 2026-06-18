@@ -1,6 +1,7 @@
 package com.datanote.common.exception;
 
 import com.datanote.common.model.R;
+import com.datanote.common.util.SecretRedactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -24,8 +25,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ResourceNotFoundException.class)
     public R<?> handleNotFound(ResourceNotFoundException e) {
-        log.warn("资源不存在: {}", e.getMessage());
-        return R.fail(R.CODE_NOT_FOUND, e.getMessage());
+        String msg = SecretRedactor.redact(e.getMessage());
+        log.warn("资源不存在: {}", msg);
+        return R.fail(R.CODE_NOT_FOUND, msg);
     }
 
     /**
@@ -33,8 +35,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public R<?> handleBusiness(BusinessException e) {
-        log.warn("业务异常: {}", e.getMessage());
-        return R.fail(e.getMessage());
+        String msg = SecretRedactor.redact(e.getMessage());
+        log.warn("业务异常: {}", msg);
+        return R.fail(msg);
     }
 
     /**

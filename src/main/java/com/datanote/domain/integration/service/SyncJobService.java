@@ -15,6 +15,9 @@ import com.datanote.domain.integration.connector.DbConnector;
 import com.datanote.domain.integration.connector.MysqlConnector;
 import com.datanote.domain.integration.connector.TableMeta;
 import com.datanote.domain.integration.dto.TableSyncConfig;
+import com.datanote.platform.iam.CurrentUserUtil;
+import com.datanote.platform.iam.DataAclService;
+import com.datanote.platform.iam.RbacService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -28,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,6 +52,44 @@ public class SyncJobService {
     private final com.datanote.domain.project.ProjectAssetCleaner projectAssetCleaner;   // N4 删除联动清理项目引用
     private final ApplicationEventPublisher eventPublisher;   // #17 任务变更发事件, 血缘侧监听重建(解耦, 不直接注入 orchestration)
     private final com.datanote.platform.collab.EditLockService editLockService;   // 并发编辑防护: 保存须无他人持锁(服务端兜底, 防绕过前端)
+    private final RbacService rbacService;
+    private final DataAclService dataAclService;
+
+    public void requireJobAccess(Long jobId) {
+        DnSyncJob job = syncJobMapper.selectById(jobId);
+        if (job == null) {
+            throw new BusinessException("同步任务不存在: " + jobId);
+        }
+        requireJobAccess(job);
+    }
+
+    private void requireJobAccess(DnSyncJob job) {
+        if (!canAccessJob(job)) {
+            throw new BusinessException("无权访问该同步任务");
+        }
+    }
+
+    private boolean canAccessJob(DnSyncJob job) {
+        if (job == null) return false;
+        String user = CurrentUserUtil.currentUser();
+        if (user == null || "anonymous".equals(user)) return true;
+        if (job.getCreatedBy() != null && user.equals(job.getCreatedBy())) return true;
+        try {
+            Set<String> perms = rbacService == null ? java.util.Collections.emptySet()
+                    : rbacService.getUserPermsByUsername(user);
+            return perms != null && (perms.contains("*") || perms.contains("dbsync:edit")
+                    || perms.contains("dbsync:run") || perms.contains("operations:schedule"));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void requireDatasourceAccess(Long datasourceId) {
+        if (datasourceId == null || dataAclService == null) return;
+        if (!dataAclService.canAccess("DATASOURCE", String.valueOf(datasourceId))) {
+            throw new BusinessException("无权访问该数据源");
+        }
+    }
 
     /**
      * 任务列表：列表页不需要 tableConfig/fieldMapping 两个 LONGTEXT，查出后置 null 以减少
@@ -59,6 +101,8 @@ public class SyncJobService {
         if (jobs == null) {
             return new ArrayList<>();
         }
+        jobs = new ArrayList<>(jobs);
+        jobs.removeIf(job -> !canAccessJob(job));
         for (DnSyncJob job : jobs) {
             if (job == null) {
                 continue;
@@ -74,11 +118,17 @@ public class SyncJobService {
         if (id == null) {
             throw new BusinessException("任务 id 不能为空");
         }
-        return syncJobMapper.selectById(id);
+        DnSyncJob job = syncJobMapper.selectById(id);
+        if (job != null) requireJobAccess(job);
+        return job;
     }
 
     private static final Set<String> SYNC_MODES = new HashSet<>(Arrays.asList("FULL", "INCREMENTAL", "CDC"));
     private static final Set<String> WRITE_MODES = new HashSet<>(Arrays.asList("UPSERT", "INSERT", "INSERT_IGNORE"));
+    private static final Set<String> HOOK_SQL_ALLOWED_PREFIXES = new HashSet<>(Arrays.asList("ANALYZE", "OPTIMIZE", "REFRESH", "SET"));
+    private static final Set<String> HOOK_SQL_DENIED_PREFIXES = new HashSet<>(Arrays.asList(
+            "ALTER", "CALL", "CREATE", "DELETE", "DROP", "GRANT", "INSERT", "LOAD", "MERGE",
+            "REPLACE", "REVOKE", "TRUNCATE", "UPDATE", "UPSERT"));
 
     /** 保存前服务端校验：必填项 / 同步模式 / 写入模式 / cron / tableConfig JSON / 增量字段。非法抛 IllegalArgumentException。 */
     void validate(DnSyncJob job) {
@@ -106,6 +156,8 @@ public class SyncJobService {
                 throw new IllegalArgumentException("非法 cron 表达式: " + job.getScheduleCron());
             }
         }
+        validateHookSql(job.getPreSql(), "preSql");
+        validateHookSql(job.getPostSql(), "postSql");
         List<TableSyncConfig> tables;
         if (!isBlank(job.getTableConfig())) {
             try {
@@ -129,14 +181,39 @@ public class SyncJobService {
             if ("INCREMENTAL".equals(mode) && isBlank(t.getIncrementalField())) {
                 throw new IllegalArgumentException("增量模式下表 " + t.getSourceTable() + " 缺少 incrementalField");
             }
+            validateHookSql(t.getPreSql(), "tableConfig.preSql");
+            validateHookSql(t.getPostSql(), "tableConfig.postSql");
+        }
+    }
+
+    private static void validateHookSql(String sql, String field) {
+        if (isBlank(sql)) return;
+        String body = sql.replaceAll("/\\*[\\s\\S]*?\\*/", " ");
+        StringBuilder sb = new StringBuilder();
+        for (String line : body.split("\\r?\\n")) {
+            int comment = line.indexOf("--");
+            sb.append(comment >= 0 ? line.substring(0, comment) : line).append('\n');
+        }
+        body = sb.toString().trim();
+        if (body.endsWith(";")) body = body.substring(0, body.length() - 1).trim();
+        if (body.isEmpty()) return;
+        if (body.indexOf(';') >= 0) {
+            throw new IllegalArgumentException(field + " 仅允许单条安全维护语句");
+        }
+        String first = body.split("\\s+", 2)[0].toUpperCase(Locale.ROOT);
+        if (HOOK_SQL_DENIED_PREFIXES.contains(first) || !HOOK_SQL_ALLOWED_PREFIXES.contains(first)) {
+            throw new IllegalArgumentException(field + " 仅允许 ANALYZE/OPTIMIZE/REFRESH/SET 等安全维护语句");
         }
     }
 
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public DnSyncJob save(DnSyncJob job) {
         validate(job);
+        requireDatasourceAccess(job.getSourceDsId());
+        requireDatasourceAccess(job.getTargetDsId());
         if (job.getId() != null) {
             DnSyncJob old = syncJobMapper.selectById(job.getId());
+            if (old != null) requireJobAccess(old);
             // 任务三态: 已上线不可直接改, 须先下线(转草稿)再编辑——防改动静默作用于在跑任务
             if (old != null && "online".equalsIgnoreCase(old.getScheduleStatus())) {
                 throw new IllegalArgumentException("该同步任务已上线, 请先下线(转为草稿)再编辑");
@@ -186,6 +263,7 @@ public class SyncJobService {
         if (id == null) {
             throw new BusinessException("任务 id 不能为空");
         }
+        requireJobAccess(id);
         syncJobMapper.deleteById(id);
         projectAssetCleaner.onAssetDeleted("SYNC_JOB", id);
         // #17 删除成功后发布变更事件, 血缘侧异步重建(清掉该任务来源的 MAPPING 边)
@@ -535,6 +613,7 @@ public class SyncJobService {
         if (datasourceId == null) {
             throw new IllegalArgumentException("数据源 id 不能为空");
         }
+        requireDatasourceAccess(datasourceId);
         DnDatasource ds = datasourceMapper.selectById(datasourceId);
         if (ds == null) {
             throw new IllegalArgumentException("数据源不存在: " + datasourceId);

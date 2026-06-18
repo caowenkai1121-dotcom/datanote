@@ -143,7 +143,7 @@
     box.appendChild(card.el);
 
     if (!records.length) { card.body.appendChild(DN.empty('该实体暂无可校验的黄金记录', 'inbox')); return; }
-    if (!bad.length) { card.body.appendChild(DN.empty('全部 ' + records.length + ' 条记录均合规 🎉', 'check')); return; }
+    if (!bad.length) { card.body.appendChild(DN.empty('全部 ' + records.length + ' 条记录均合规', 'check')); return; }
 
     card.body.appendChild(DN.table({
       columns: [

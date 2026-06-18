@@ -73,6 +73,7 @@ class DataxControllerPasswordTest {
                 eq("xh_dms"), eq("t_after_sales_order_header"),
                 eq("ods_xh_dms_t_after_sales_order_header_df"), anyList()))
                 .thenReturn("/tmp/job.json");
+        when(dataxService.registerJob("/tmp/job.json")).thenReturn("job-1");
 
         DataxController controller = new DataxController(
                 dataxService, metadataService, hiveService, mapper, mock(DnTaskExecutionMapper.class), null);
@@ -87,9 +88,27 @@ class DataxControllerPasswordTest {
         R<Map<String, String>> response = controller.generateJob(request);
 
         assertEquals(0, response.getCode());
+        assertEquals("job-1", response.getData().get("jobId"));
+        org.junit.jupiter.api.Assertions.assertFalse(response.getData().containsKey("jobPath"));
         verify(metadataService).getColumnsByConnection(
                 "1.95.167.10", 3306, "root", "source-secret", "xh_dms", "t_after_sales_order_header");
         verify(metadataService, never()).getColumns(anyString(), anyString());
+    }
+
+    @Test
+    void runRejectsRawServerJobPath() throws Exception {
+        DataxService dataxService = mock(DataxService.class);
+        DataxController controller = new DataxController(
+                dataxService, null, null, null, null, null);
+
+        com.datanote.domain.integration.dto.DataxRunRequest request =
+                new com.datanote.domain.integration.dto.DataxRunRequest();
+        request.setJobPath("/tmp/job.json");
+
+        R<Map<String, Object>> response = controller.run(request);
+
+        assertEquals(-1, response.getCode());
+        verify(dataxService, never()).runJob(anyString());
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.datanote.platform.iam;
 
 import com.datanote.platform.config.AuthProperties;
 import com.datanote.common.model.R;
+import com.datanote.common.util.ClientIpUtil;
 import com.datanote.platform.iam.RbacService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -90,12 +91,7 @@ public class AuthController {
 
     /** 客户端 IP: 优先 X-Forwarded-For 首段。 */
     private String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isEmpty()) {
-            int c = xff.indexOf(',');
-            return c > 0 ? xff.substring(0, c).trim() : xff.trim();
-        }
-        return request.getRemoteAddr();
+        return ClientIpUtil.resolve(request);
     }
 
     /**

@@ -10,6 +10,7 @@ import com.datanote.domain.metadata.model.DnTableMeta;
 import com.datanote.platform.portal.model.DnSearchHistory;
 import com.datanote.domain.metadata.DataMapService;
 import com.datanote.domain.datasource.DatasourceExploreService;
+import com.datanote.platform.iam.DataAclService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,8 @@ import java.util.*;
 @Tag(name = "数据地图", description = "元数据查询、AI搜索、收藏、评论等")
 public class MetadataController {
 
+    private final DataAclService dataAclService;
+
     private final DataMapService dataMapService;          // 离线目录：搜索/收藏/评论/历史/表详情
     private final DatasourceExploreService exploreService; // 在线探查：库/表/列/预览/探查/DDL/分区
     private final DnTableMetaMapper tableMetaMapper;       // R35 表元数据(挂主题域)
@@ -38,6 +41,7 @@ public class MetadataController {
         String db = req.get("db") == null ? null : String.valueOf(req.get("db"));
         String table = req.get("table") == null ? null : String.valueOf(req.get("table"));
         if (db == null || table == null) return R.fail("缺少 db/table");
+        if (!canAccessTable(db, table)) return tableDenied();
         Long sid = req.get("subjectId") == null || String.valueOf(req.get("subjectId")).isEmpty()
                 ? null : Long.valueOf(String.valueOf(req.get("subjectId")));
         DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
@@ -57,6 +61,7 @@ public class MetadataController {
     @Operation(summary = "查询表所属主题域(R35)")
     @GetMapping("/table/subject")
     public R<Map<String, Object>> getSubject(@RequestParam String db, @RequestParam String table) {
+        if (!canAccessTable(db, table)) return tableDenied();
         DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
                 .eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
         Map<String, Object> m = new HashMap<>();
@@ -65,6 +70,14 @@ public class MetadataController {
     }
 
     private static final String NAME_PATTERN = "[a-zA-Z0-9_]+";
+
+    private boolean canAccessTable(String db, String table) {
+        return dataAclService.canAccess("TABLE", db.trim() + "." + table.trim());
+    }
+
+    private <T> R<T> tableDenied() {
+        return R.fail("鏃犳潈璁块棶璇ヨ〃(鏁版嵁鏉冮檺鍙楅檺), 璇疯仈绯荤鐞嗗憳鎺堟潈");
+    }
 
     /**
      * 数据扫描类查询失败时，识别 Doris BE(计算/存储后端)不可用的情况，给出清晰可操作提示，
@@ -113,6 +126,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
+            if (!canAccessTable(db, table)) return tableDenied();
             return R.ok(exploreService.getHiveColumns(db, table));
         } catch (Exception e) {
             log.error("获取字段列表失败", e);
@@ -251,6 +265,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
+            if (!canAccessTable(db, table)) return tableDenied();
             return R.ok(exploreService.preview(db, table));
         } catch (Exception e) {
             log.error("数据预览失败: {}.{}", db, table, e);
@@ -267,6 +282,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
+            if (!canAccessTable(db, table)) return tableDenied();
             return R.ok(exploreService.profile(db, table));
         } catch (Exception e) {
             log.error("数据探查失败: {}.{}", db, table, e);
@@ -283,6 +299,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
+            if (!canAccessTable(db, table)) return tableDenied();
             return R.ok(exploreService.generateDdlAndSelect(db, table));
         } catch (Exception e) {
             log.error("获取DDL失败: {}.{}", db, table, e);
@@ -317,6 +334,7 @@ public class MetadataController {
             return R.fail("非法的库名或表名");
         }
         try {
+            if (!canAccessTable(db, table)) return tableDenied();
             return R.ok(exploreService.getPartitions(db, table));
         } catch (Exception e) {
             log.error("获取分区信息失败: {}.{}", db, table, e);

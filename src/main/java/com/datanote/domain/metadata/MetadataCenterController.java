@@ -7,8 +7,10 @@ import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnColumnMeta;
 import com.datanote.domain.metadata.model.DnMetaCollectLog;
 import com.datanote.domain.metadata.model.DnTableMeta;
+import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
 import com.datanote.domain.datasource.MetadataCrawlerService;
+import com.datanote.platform.iam.DataAclService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 元数据中心 Controller — 表/字段元数据管理
@@ -33,6 +36,7 @@ public class MetadataCenterController {
     private final DnColumnMetaMapper columnMetaMapper;
     private final MetadataCrawlerService crawlerService;
     private final DnMetaCollectLogMapper collectLogMapper;
+    private final DataAclService dataAclService;
 
     /** 表搜索默认/最大分页与采集日志条数限制 */
     private static final int DEFAULT_PAGE_SIZE = 100;
@@ -72,9 +76,10 @@ public class MetadataCenterController {
         int lim = (limit == null || limit <= 0) ? DEFAULT_PAGE_SIZE : Math.min(limit, MAX_PAGE_SIZE);   // 无参默认 100 行为不变
         int off = (offset == null || offset < 0) ? 0 : offset;
         qw.last("LIMIT " + lim + " OFFSET " + off);
+        List<DnTableMeta> rows = filterTables(tableMetaMapper.selectList(qw));
         Map<String, Object> data = new HashMap<>();
-        data.put("rows", tableMetaMapper.selectList(qw));
-        data.put("total", total);
+        data.put("rows", rows);
+        data.put("total", rows.size());
         data.put("limit", lim);
         data.put("offset", off);
         return R.ok(data);
@@ -90,6 +95,7 @@ public class MetadataCenterController {
         if (meta == null) {
             return R.fail("表元数据不存在");
         }
+        requireTableAccess(meta);
         QueryWrapper<DnColumnMeta> colQw = new QueryWrapper<>();
         colQw.eq("table_meta_id", id).orderByAsc("id");
         List<DnColumnMeta> columns = columnMetaMapper.selectList(colQw);
@@ -107,9 +113,13 @@ public class MetadataCenterController {
     @PostMapping("/table/save")
     public R<DnTableMeta> saveTable(@RequestBody DnTableMeta meta) {
         if (meta.getId() != null) {
+            DnTableMeta old = tableMetaMapper.selectById(meta.getId());
+            if (old != null) requireTableAccess(old);
+            requireTableAccess(meta);
             meta.setUpdatedAt(LocalDateTime.now());
             tableMetaMapper.updateById(meta);
         } else {
+            requireTableAccess(meta);
             meta.setCreatedAt(LocalDateTime.now());
             meta.setUpdatedAt(LocalDateTime.now());
             tableMetaMapper.insert(meta);
@@ -124,6 +134,8 @@ public class MetadataCenterController {
     @Operation(summary = "删除表元数据")
     @DeleteMapping("/table/{id}")
     public R<String> deleteTable(@PathVariable Long id) {
+        DnTableMeta meta = tableMetaMapper.selectById(id);
+        if (meta != null) requireTableAccess(meta);
         tableMetaMapper.deleteById(id);
         // 同时删除关联的字段元数据
         QueryWrapper<DnColumnMeta> colQw = new QueryWrapper<>();
@@ -138,6 +150,7 @@ public class MetadataCenterController {
     @Operation(summary = "保存字段元数据")
     @PostMapping("/column/save")
     public R<DnColumnMeta> saveColumn(@RequestBody DnColumnMeta meta) {
+        requireTableMetaIdAccess(meta.getTableMetaId());
         if (meta.getId() != null) {
             meta.setUpdatedAt(LocalDateTime.now());
             columnMetaMapper.updateById(meta);
@@ -157,6 +170,7 @@ public class MetadataCenterController {
     @PostMapping("/columns/batch-save")
     public R<String> batchSaveColumns(@RequestBody List<DnColumnMeta> columns) {
         for (DnColumnMeta col : columns) {
+            requireTableMetaIdAccess(col.getTableMetaId());
             if (col.getId() != null) {
                 col.setUpdatedAt(LocalDateTime.now());
                 columnMetaMapper.updateById(col);
@@ -192,6 +206,7 @@ public class MetadataCenterController {
     @Operation(summary = "采集指定数据源元数据")
     @PostMapping("/crawl/datasource/{id}")
     public R<DnMetaCollectLog> crawlDatasource(@PathVariable Long id) {
+        requireDatasourceAccess(id);
         return R.ok(crawlerService.crawlDatasource(id));
     }
 
@@ -223,5 +238,40 @@ public class MetadataCenterController {
         QueryWrapper<DnMetaCollectLog> qw = new QueryWrapper<>();
         qw.orderByDesc("started_at").last("LIMIT " + COLLECT_LOG_LIMIT);
         return R.ok(collectLogMapper.selectList(qw));
+    }
+
+    private List<DnTableMeta> filterTables(List<DnTableMeta> rows) {
+        if (rows == null || rows.isEmpty()) return new java.util.ArrayList<>();
+        List<DnTableMeta> visible = new java.util.ArrayList<>(rows);
+        Set<String> denied = dataAclService.deniedIds("TABLE");
+        if (denied != null && !denied.isEmpty()) {
+            visible.removeIf(meta -> meta == null || denied.contains(tableResourceId(meta)));
+        }
+        return visible;
+    }
+
+    private void requireTableMetaIdAccess(Long tableMetaId) {
+        if (tableMetaId == null) return;
+        DnTableMeta meta = tableMetaMapper.selectById(tableMetaId);
+        if (meta != null) requireTableAccess(meta);
+    }
+
+    private void requireTableAccess(DnTableMeta meta) {
+        if (meta == null) return;
+        if (!dataAclService.canAccess("TABLE", tableResourceId(meta))) {
+            throw new BusinessException("无权访问该表");
+        }
+    }
+
+    private String tableResourceId(DnTableMeta meta) {
+        String db = meta.getDatabaseName() == null ? "" : meta.getDatabaseName().trim();
+        String table = meta.getTableName() == null ? "" : meta.getTableName().trim();
+        return db + "." + table;
+    }
+
+    private void requireDatasourceAccess(Long id) {
+        if (id != null && !dataAclService.canAccess("DATASOURCE", String.valueOf(id))) {
+            throw new BusinessException("无权访问该数据源");
+        }
     }
 }

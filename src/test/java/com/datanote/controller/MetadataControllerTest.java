@@ -6,6 +6,7 @@ import com.datanote.domain.metadata.model.DnTableComment;
 import com.datanote.common.model.R;
 import com.datanote.domain.metadata.DataMapService;
 import com.datanote.domain.datasource.DatasourceExploreService;
+import com.datanote.platform.iam.DataAclService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,8 +28,16 @@ class MetadataControllerTest {
     @Mock
     private DatasourceExploreService exploreService;
 
+    @Mock
+    private DataAclService dataAclService;
+
     @InjectMocks
     private MetadataController controller;
+
+    @BeforeEach
+    void setUpAcl() {
+        lenient().when(dataAclService.canAccess(anyString(), anyString())).thenReturn(true);
+    }
 
     // ========== 基础元数据 ==========
 
@@ -149,6 +158,36 @@ class MetadataControllerTest {
     void preview_invalidTableName_returnsFail() {
         R<Map<String, Object>> r = controller.preview("datanote", "dn script");
         assertEquals(-1, r.getCode());
+    }
+
+    @Test
+    void preview_deniedByTableAcl_doesNotReadRows() throws Exception {
+        when(dataAclService.canAccess("TABLE", "datanote.dn_script")).thenReturn(false);
+
+        R<Map<String, Object>> r = controller.preview("datanote", "dn_script");
+
+        assertEquals(-1, r.getCode());
+        verify(exploreService, never()).preview(anyString(), anyString());
+    }
+
+    @Test
+    void profile_deniedByTableAcl_doesNotReadRows() throws Exception {
+        when(dataAclService.canAccess("TABLE", "datanote.dn_script")).thenReturn(false);
+
+        R<Map<String, Object>> r = controller.profile("datanote", "dn_script");
+
+        assertEquals(-1, r.getCode());
+        verify(exploreService, never()).profile(anyString(), anyString());
+    }
+
+    @Test
+    void ddl_deniedByTableAcl_doesNotExposeSql() throws Exception {
+        when(dataAclService.canAccess("TABLE", "datanote.dn_script")).thenReturn(false);
+
+        R<Map<String, String>> r = controller.ddl("datanote", "dn_script");
+
+        assertEquals(-1, r.getCode());
+        verify(exploreService, never()).generateDdlAndSelect(anyString(), anyString());
     }
 
     @Test

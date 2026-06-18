@@ -1,5 +1,6 @@
 package com.datanote.domain.governance;
 
+import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.governance.model.DnClassificationLevel;
 import com.datanote.domain.governance.model.DnSensitiveRule;
 import com.datanote.common.model.R;
@@ -93,9 +94,11 @@ public class ClassificationController {
         }
         try {
             return R.ok(classificationService.scanTable(db, table));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("采样识别失败: {}.{}", db, table, e);
-            return R.fail("采样识别失败: " + e.getMessage());
+            log.error("采样识别失败: {}.{} type={}", db, table, e.getClass().getName());
+            return R.fail("采样识别失败");
         }
     }
 

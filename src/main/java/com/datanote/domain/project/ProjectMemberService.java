@@ -25,7 +25,7 @@ public class ProjectMemberService {
     }
 
     public DnProjectMember add(Long projectId, String username, String role) {
-        projectService.getById(projectId);
+        projectService.requireProjectPermission(projectId, "member:manage");
         if (username == null || username.trim().isEmpty()) throw new IllegalArgumentException("用户名不能为空");
         username = username.trim();
         if (!ProjectRoles.isValid(role)) throw new IllegalArgumentException("非法项目角色: " + role);
@@ -46,6 +46,7 @@ public class ProjectMemberService {
     }
 
     public void changeRole(Long projectId, Long memberId, String role) {
+        projectService.requireProjectPermission(projectId, "member:manage");
         projectService.getById(projectId);   // 数据级访问校验(canAccessProject), 防 IDOR
         if (!ProjectRoles.isValid(role)) throw new IllegalArgumentException("非法项目角色: " + role);
         DnProjectMember m = memberMapper.selectById(memberId);
@@ -59,6 +60,7 @@ public class ProjectMemberService {
     }
 
     public void remove(Long projectId, Long memberId) {
+        projectService.requireProjectPermission(projectId, "member:manage");
         projectService.getById(projectId);   // 数据级访问校验(canAccessProject), 防 IDOR
         DnProjectMember m = memberMapper.selectById(memberId);
         if (m == null) return;

@@ -1,4 +1,4 @@
-# AI Agent 能力增强与权限对齐 — 设计方案
+﻿# AI Agent 能力增强与权限对齐 — 设计方案
 
 - 日期: 2026-06-17
 - 状态: 待用户评审
@@ -239,7 +239,7 @@ DataAclService.deniedIdsAs(String caller, List<String> roles, Set<String> perms,
 - **A**:只读校验拒绝 DDL/DML/多语句;图表卡真机渲染;数据级拒绝越权库。
 - **B**:PDF/docx 提取正确;异步入库;owner 隔离;RAG 引用来源。
 - **C**:SSE token 流 + 事件序;降级回退轮询。
-- 全程:`mvn -o clean package` 绿;真实远程库(38.76.183.50:3307)E2E;前端 Playwright 真机零 console error。
+- 全程:`mvn -o clean package` 绿;真实远程库(<测试服务器>:3307)E2E;前端 Playwright 真机零 console error。
 
 ## 十、风险与缓解
 

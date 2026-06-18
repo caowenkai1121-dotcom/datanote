@@ -94,8 +94,20 @@ public final class CryptoUtil {
         try {
             return decrypt(password, key);
         } catch (Exception e) {
+            if (looksEncrypted(password)) {
+                throw new RuntimeException("AES decrypt failed", e);
+            }
             // 兼容历史未加密的明文密码
             return password;
+        }
+    }
+
+    private static boolean looksEncrypted(String value) {
+        try {
+            byte[] decoded = Base64.getDecoder().decode(value);
+            return decoded.length > IV_LENGTH && (decoded.length - IV_LENGTH) % IV_LENGTH == 0;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

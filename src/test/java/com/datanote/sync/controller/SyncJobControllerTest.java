@@ -34,7 +34,8 @@ class SyncJobControllerTest {
             mock(com.datanote.domain.integration.mapper.DnSyncErrorRowMapper.class),
             mock(com.datanote.domain.integration.mapper.DnCdcDeadLetterMapper.class),
             mock(com.datanote.domain.integration.schema.TableSchemaService.class),
-            mock(com.datanote.domain.integration.schema.SchemaDriftService.class));
+            mock(com.datanote.domain.integration.schema.SchemaDriftService.class),
+            mock(com.datanote.platform.iam.DataAclService.class));
 
     @Test
     void stop_hitRunningTask_returnsOk() {

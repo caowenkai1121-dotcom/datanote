@@ -21,7 +21,7 @@
       + '    <a href="#" data-perm="datamodel:edit" onclick="dmNewSubject();return false;" style="font-size:12px;color:var(--primary);">+ 新建</a></div>'
       + '  <div id="dmSubjectTree" style="padding:0 6px 12px;"></div>'
       + '  <div style="border-top:1px solid var(--border);margin-top:6px;padding:10px 14px;">'
-      + '    <a href="#" onclick="dmShowChanges();return false;" style="font-size:13px;color:var(--primary);">📋 审批工单 <span id="dmChangeBadge" style="font-size:var(--fs-xs);"></span></a></div>'
+      + '    <a href="#" data-perm="datamodel:approve" onclick="dmShowChanges();return false;" style="font-size:13px;color:var(--primary);">审批工单 <span id="dmChangeBadge" style="font-size:var(--fs-xs);"></span></a></div>'
       + '</div>'
       + '<div class="ops-main" style="flex:1;overflow:auto;padding:16px 20px;">'
       + '  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'

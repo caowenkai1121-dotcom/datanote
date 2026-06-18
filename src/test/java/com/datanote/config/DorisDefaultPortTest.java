@@ -36,8 +36,7 @@ class DorisDefaultPortTest {
     private void assertYamlUses9030(Path path) throws Exception {
         String yaml = Files.readString(path);
         assertTrue(yaml.contains("DORIS_QUERY_PORT:9030") || yaml.contains("query-port: 9030"));
-        assertTrue(yaml.contains("38.76.183.50:9030/ods"));
-        assertFalse(yaml.contains("38.76.183.50:903/ods"));
+        assertFalse(yaml.contains(":903/ods"));
         assertFalse(yaml.contains("DORIS_QUERY_PORT:903}"));
         assertFalse(Pattern.compile("(?m)^\\s*query-port:\\s*903\\s*$").matcher(yaml).find());
     }

@@ -53,6 +53,22 @@ class DataAclServiceAsTest {
                 new java.util.HashSet<>(Arrays.asList("data:all")), "TABLE", "ods.t1"));
     }
 
+    @Test void anonymousDoesNotBypassRestrictedResource() {
+        DnDataGrantMapper m = mock(DnDataGrantMapper.class);
+        when(m.selectList(any())).thenReturn(Arrays.asList(grant("TABLE", "ods.t1", "USER", "alice")));
+        DataAclService svc = new DataAclService(m, mock(RbacService.class), enabledAuth());
+        assertFalse(svc.canAccessAs("anonymous", Collections.<String>emptyList(),
+                Collections.<String>emptySet(), "TABLE", "ods.t1"));
+    }
+
+    @Test void adminNameDoesNotBypassWithoutPermission() {
+        DnDataGrantMapper m = mock(DnDataGrantMapper.class);
+        when(m.selectList(any())).thenReturn(Arrays.asList(grant("TABLE", "ods.t1", "USER", "alice")));
+        DataAclService svc = new DataAclService(m, mock(RbacService.class), enabledAuth());
+        assertFalse(svc.canAccessAs("admin", Collections.<String>emptyList(),
+                Collections.<String>emptySet(), "TABLE", "ods.t1"));
+    }
+
     @Test void deniedIdsReturnsOnlyRestrictedUngranted() {
         DnDataGrantMapper m = mock(DnDataGrantMapper.class);
         // r1 授权给 alice, r2 授权给 bob; 公开资源(无授权)不会出现在 all 里

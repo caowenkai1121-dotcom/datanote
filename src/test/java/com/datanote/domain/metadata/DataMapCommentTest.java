@@ -2,7 +2,9 @@ package com.datanote.domain.metadata;
 
 import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.metadata.mapper.DnTableCommentMapper;
+import com.datanote.domain.metadata.mapper.DnTableMetaMapper;
 import com.datanote.domain.metadata.model.DnTableComment;
+import com.datanote.platform.iam.DataAclService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -20,9 +22,11 @@ import static org.mockito.Mockito.*;
 class DataMapCommentTest {
 
     @Mock private DnTableCommentMapper tableCommentMapper;
+    @Mock private DnTableMetaMapper tableMetaMapper;
+    @Mock private DataAclService dataAclService;
 
     private DataMapService svc() {
-        return new DataMapService(null, tableCommentMapper, null, null, null, null, null, null,
+        return new DataMapService(null, tableCommentMapper, null, null, tableMetaMapper, null, null, dataAclService,
                 org.mockito.Mockito.mock(com.datanote.platform.ai.vector.SemanticSearchService.class));
     }
 

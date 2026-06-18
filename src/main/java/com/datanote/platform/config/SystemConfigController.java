@@ -32,7 +32,7 @@ public class SystemConfigController {
     @Value("${datanote.crypto.key:}")
     private String cryptoKey;
 
-    @Value("${doris.password:123456}")
+    @Value("${doris.password:}")
     private String envDorisPassword;
 
     @GetMapping("/{group}")
@@ -91,11 +91,18 @@ public class SystemConfigController {
 
     @PostMapping({"/test-doris", "/test-hive"})
     public R<String> testDoris(@RequestBody Map<String, String> params) {
-        String host = params.getOrDefault("host", "38.76.183.50");
-        String port = params.getOrDefault("port", "9030");
-        String database = params.getOrDefault("database", "ods");
-        String username = params.getOrDefault("username", "root");
+        if (params == null) {
+            return R.fail("请填写 Doris 连接信息");
+        }
+        String host = trim(params.get("host"));
+        String port = trim(params.getOrDefault("port", "9030"));
+        String database = trim(params.getOrDefault("database", "ods"));
+        String username = trim(params.getOrDefault("username", "root"));
         String password = resolveDorisPassword(params.get("password"));
+
+        if (host.isEmpty()) {
+            return R.fail("请填写 Doris 主机地址");
+        }
 
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database
                 + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true";
@@ -114,6 +121,10 @@ public class SystemConfigController {
         } catch (Exception e) {
             return R.fail("Doris connection failed: " + e.getMessage());
         }
+    }
+
+    private String trim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private String resolveDorisPassword(String submittedPassword) {

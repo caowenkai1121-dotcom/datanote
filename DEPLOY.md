@@ -1,14 +1,14 @@
 # DataNote 部署指南（Doris 版）
 
-本版本将数仓执行引擎从 Hive 切到 Doris。默认 Doris 连接为：
+本版本将数仓执行引擎从 Hive 切到 Doris。Doris 连接必须由部署环境显式配置，不在仓库内提供默认主机或默认口令。
 
 | 项 | 值 |
 |---|---|
-| Host | `38.76.183.50` |
+| Host | `your_doris_host` |
 | Query Port | `9030` |
 | Database | `ods` |
 | Username | `root` |
-| Password | `123456` |
+| Password | `your_doris_password` |
 
 ## 1. 准备服务
 
@@ -17,7 +17,7 @@
 | 服务 | 用途 | 默认地址 |
 |---|---|---|
 | MySQL 8.0 | DataNote 元数据库 | `127.0.0.1:3306` |
-| Doris FE | 数仓建表、SQL 执行、DataX 写入 | `38.76.183.50:9030` |
+| Doris FE | 数仓建表、SQL 执行、DataX 写入 | `${DORIS_HOST}:9030` |
 
 可选服务：
 
@@ -33,13 +33,13 @@
 ```bash
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
-MYSQL_PASSWORD=root
+MYSQL_PASSWORD=your_mysql_password
 
-DORIS_HOST=38.76.183.50
+DORIS_HOST=your_doris_host
 DORIS_QUERY_PORT=9030
 DORIS_DATABASE=ods
 DORIS_USERNAME=root
-DORIS_PASSWORD=123456
+DORIS_PASSWORD=your_doris_password
 ```
 
 ## 3. 启动 DataX（可选）
@@ -62,8 +62,8 @@ DORIS_PASSWORD=123456
 
 **Doris 连接失败**
 
-检查 `38.76.183.50:9030` 是否可达，以及 `root / 123456` 是否有 `ods` 库的建表、查询、写入权限。
+检查 `${DORIS_HOST}:9030` 是否可达，以及配置的 Doris 账号是否有 `ods` 库的建表、查询、写入权限。
 
 **DataX 同步失败**
 
-DataX 现在生成 `mysqlreader -> mysqlwriter` 任务，写入 Doris 的 MySQL 协议端口 `9030`。确认 DataX 容器可以访问源 MySQL 和 `38.76.183.50:9030`。
+DataX 现在生成 `mysqlreader -> mysqlwriter` 任务，写入 Doris 的 MySQL 协议端口 `9030`。确认 DataX 容器可以访问源 MySQL 和 `${DORIS_HOST}:9030`。

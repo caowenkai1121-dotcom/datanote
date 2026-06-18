@@ -73,9 +73,10 @@ public class DataxController {
             String jobPath = dataxService.generateJobJson(
                     ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
                     db, table, odsTable, columns);
+            String jobId = dataxService.registerJob(jobPath);
 
             Map<String, String> result = new HashMap<>();
-            result.put("jobPath", jobPath);
+            result.put("jobId", jobId);
             result.put("odsTable", odsTable);
             return R.ok(result);
         } catch (Exception e) {
@@ -90,19 +91,28 @@ public class DataxController {
     @Operation(summary = "执行 DataX 同步任务")
     @PostMapping("/run")
     public R<Map<String, Object>> run(@RequestBody DataxRunRequest body) {
+        String jobPath = null;
         try {
-            String jobPath = body.getJobPath();
+            String jobId = body == null ? null : body.getJobId();
+            if (jobId == null || jobId.trim().isEmpty()) {
+                return R.fail("DataX jobId 不能为空");
+            }
+            jobPath = dataxService.consumeJob(jobId);
             ProcessUtil.ExecResult execResult = dataxService.runJob(jobPath);
 
             Map<String, Object> data = new HashMap<>();
             data.put("exitCode", execResult.getExitCode());
             data.put("durationMs", execResult.getDurationMs());
-            data.put("output", execResult.getOutput());
+            data.put("output", safeOutput(execResult.getOutput(), defaultDbPass));
             data.put("success", execResult.getExitCode() == 0);
             return R.ok(data);
         } catch (Exception e) {
             log.error("执行 DataX 同步任务失败", e);
             return R.fail("执行同步任务失败");
+        } finally {
+            if (jobPath != null) {
+                try { new java.io.File(jobPath).delete(); } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -143,6 +153,7 @@ public class DataxController {
                     db, table, odsTable, columns, today);
 
             ProcessUtil.ExecResult execResult = dataxService.runJob(jobPath);
+            String safeExecOutput = safeOutput(execResult.getOutput(), ds.getPassword(), defaultDbPass);
 
             // 执行完成后清理含密码的 JSON 配置文件
             try { new java.io.File(jobPath).delete(); } catch (Exception ignored) {}
@@ -152,9 +163,9 @@ public class DataxController {
                 exec.setStatus(execResult.getExitCode() == 0 ? "SUCCESS" : "FAILED");
                 exec.setEndTime(java.time.LocalDateTime.now());
                 exec.setDuration((int)((System.currentTimeMillis() - startMs) / 1000));
-                exec.setLog(execResult.getOutput() != null && execResult.getOutput().length() > 50000
-                        ? execResult.getOutput().substring(execResult.getOutput().length() - 50000)
-                        : execResult.getOutput());
+                exec.setLog(safeExecOutput != null && safeExecOutput.length() > 50000
+                        ? safeExecOutput.substring(safeExecOutput.length() - 50000)
+                        : safeExecOutput);
                 taskExecutionMapper.updateById(exec);
             }
 
@@ -164,7 +175,7 @@ public class DataxController {
             data.put("exitCode", execResult.getExitCode());
             data.put("durationMs", execResult.getDurationMs());
             data.put("success", execResult.getExitCode() == 0);
-            data.put("output", execResult.getOutput());
+            data.put("output", safeExecOutput);
             return R.ok(data);
         } catch (Exception e) {
             log.error("一键建表并同步失败", e);
@@ -173,7 +184,7 @@ public class DataxController {
                 exec.setStatus("FAILED");
                 exec.setEndTime(java.time.LocalDateTime.now());
                 exec.setDuration((int)((System.currentTimeMillis() - startMs) / 1000));
-                exec.setLog(e.getMessage());
+                exec.setLog(safeOutput(e.getMessage(), defaultDbPass));
                 taskExecutionMapper.updateById(exec);
             }
             return R.fail("建表同步操作失败");
@@ -225,5 +236,23 @@ public class DataxController {
         ds.setUsername(defaultDbUser);
         ds.setPassword(defaultDbPass);
         return ds;
+    }
+
+    private String safeOutput(String output, String... secrets) {
+        if (output == null) {
+            return null;
+        }
+        String safe = output;
+        if (secrets != null) {
+            for (String secret : secrets) {
+                if (secret != null && !secret.trim().isEmpty()) {
+                    safe = safe.replace(secret, "******");
+                }
+            }
+        }
+        safe = safe.replaceAll("(?i)(\"password\"\\s*:\\s*\")[^\"]*(\")", "$1******$2");
+        safe = safe.replaceAll("(?i)(password\\s*[:=]\\s*)[^\\s,;]+", "$1******");
+        safe = safe.replaceAll("(?i)(pwd\\s*[:=]\\s*)[^\\s,;]+", "$1******");
+        return safe;
     }
 }

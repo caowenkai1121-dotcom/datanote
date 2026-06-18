@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 class SyncJobServiceValidateTest {
 
-    private final SyncJobService svc = new SyncJobService(null, null, null, null, null, null, null, null, null);
+    private final SyncJobService svc = new SyncJobService(null, null, null, null, null, null, null, null, null, null, null);
 
     private static DnSyncJob base() {
         DnSyncJob j = new DnSyncJob();
@@ -61,6 +61,20 @@ class SyncJobServiceValidateTest {
     void rejectsBadTableConfigJson() {
         DnSyncJob j = base();
         j.setTableConfig("{not-json");
+        assertThrows(IllegalArgumentException.class, () -> svc.validate(j));
+    }
+
+    @Test
+    void rejectsDangerousJobLevelPreSql() {
+        DnSyncJob j = base();
+        j.setPreSql("DROP TABLE ods.customer");
+        assertThrows(IllegalArgumentException.class, () -> svc.validate(j));
+    }
+
+    @Test
+    void rejectsDangerousTableLevelPostSql() {
+        DnSyncJob j = base();
+        j.setTableConfig("[{\"sourceTable\":\"s\",\"targetTable\":\"t\",\"postSql\":\"DELETE FROM ods.t\"}]");
         assertThrows(IllegalArgumentException.class, () -> svc.validate(j));
     }
 

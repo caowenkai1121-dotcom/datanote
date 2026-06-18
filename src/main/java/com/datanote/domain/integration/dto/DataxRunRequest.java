@@ -7,5 +7,6 @@ import lombok.Data;
  */
 @Data
 public class DataxRunRequest {
+    private String jobId;
     private String jobPath;
 }

@@ -19,14 +19,15 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.Arrays;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletResponse;
 
 /**
  * Spring Security 配置
  * <p>
- * 当 datanote.auth.password 为空时，放行所有请求（方便本地开发）；
- * 密码非空时，/api/** 需要认证，静态资源和 Swagger 等放行。
+ * datanote.auth.enabled 默认开启；仅显式设为 false 时放行所有请求。
+ * 启用时，/api/** 和 WebSocket 握手需要认证，静态资源和 Swagger 等放行。
  */
 @Configuration
 @EnableWebSecurity
@@ -61,10 +62,13 @@ public class SecurityConfig {
         dbProvider.setHideUserNotFoundExceptions(false);
 
         // 内存兜底 provider（沿用原配置 admin），保证 dn_user 为空/未建表时仍可登录、不锁死
+        String fallbackPassword = authProperties.getPassword();
+        if (fallbackPassword == null || fallbackPassword.trim().isEmpty()) {
+            fallbackPassword = UUID.randomUUID().toString();
+        }
         InMemoryUserDetailsManager inMemory = new InMemoryUserDetailsManager(
                 User.withUsername(authProperties.getUsername())
-                        .password(encoder.encode(
-                                authProperties.isEnabled() ? authProperties.getPassword() : "disabled"))
+                        .password(encoder.encode(fallbackPassword))
                         .roles("ADMIN")
                         .build());
         DaoAuthenticationProvider memProvider = new DaoAuthenticationProvider();
@@ -91,9 +95,9 @@ public class SecurityConfig {
                     // 静态资源
                     .antMatchers("/*.html", "/css/**", "/js/**", "/favicon.ico").permitAll()
                     // Swagger / OpenAPI
-                    .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                    .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
                     // WebSocket
-                    .antMatchers("/ws/**").permitAll()
+                    .antMatchers("/ws/**").authenticated()
                     // 认证接口
                     .antMatchers("/api/auth/login", "/api/auth/status").permitAll()
                     // 当前用户探测接口（未登录返回匿名信息，便于前端判断登录态）

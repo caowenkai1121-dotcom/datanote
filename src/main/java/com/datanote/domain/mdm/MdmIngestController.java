@@ -2,6 +2,7 @@ package com.datanote.domain.mdm;
 
 import com.datanote.common.exception.BusinessException;
 import com.datanote.common.model.R;
+import com.datanote.platform.iam.CurrentUserUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,7 @@ public class MdmIngestController {
         String sourceIdColumn = str(body.get("sourceIdColumn"));
         int limit = body.get("limit") == null ? 500 : asInt(body.get("limit"), 500);
         boolean activate = Boolean.TRUE.equals(body.get("activate")) || "true".equals(String.valueOf(body.get("activate")));
-        String operator = str(body.get("operator"));
+        String operator = CurrentUserUtil.currentUser();
         try {
             return R.ok(ingestService.importFromTable(entityId, db, table, mapping, sourceSystem, sourceIdColumn, limit, activate, operator));
         } catch (BusinessException be) {

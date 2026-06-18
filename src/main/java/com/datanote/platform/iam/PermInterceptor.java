@@ -62,8 +62,8 @@ public class PermInterceptor implements HandlerInterceptor {
     private static final List<Rule> WRITE_RULES = Arrays.asList(
             // --- 特例: 审批/运行类动作权限 ---
             regex("^/api/mdm/approval/\\d+/(approve|reject)$", "mdm:approve"),
-            regex("^/api/project/.*/releases/\\d+/approve$", "project:approve"),
-            regex("^/api/project/releases/\\d+/approve$", "project:approve"),
+            regex("^/api/project/.*/releases/\\d+/(approve|reject|release|rollback)$", "project:approve"),
+            regex("^/api/project/releases/\\d+/(approve|reject|release|rollback)$", "project:approve"),
             prefix("/api/ai/agent/approval", "assistant:approve"),
             regex("^/api/datamodel/change/\\d+/(approve|reject)$", "datamodel:approve"),
             prefix("/api/datamodel", "datamodel:edit"),
@@ -123,6 +123,8 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/script/changes", "develop:approve"),
             // 单脚本详情/版本/树含完整 SQL(原 GET 仅要求登录, 按自增 id 可枚举读他人脚本内容)
             prefix("/api/script", "develop:view"),
+            // 数据模型审批队列含申请人/原因/模型变更信息, 仅审批人可见
+            prefix("/api/datamodel/changes", "datamodel:approve"),
             // 系统配置(库/仓库连接 host/port/用户名/jdbc url, 密码已脱敏)读须与写同权
             prefix("/api/system/config", "settings:config"),
             // AI 配置(provider/baseUrl/model + apiKey 前 8 位)读须与写同权
@@ -135,6 +137,7 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/gov/health/issues/export", "governance:view"),
             prefix("/api/consumption/metric", "metrics:view"),
             // 同步样本预览/枚举表名: 直读源库明文数据与表名(原 GET 仅要求登录, 任意用户可拖库)
+            regex("^/api/sync-job/\\d+/error-rows$", "dbsync:view"),
             prefix("/api/sync-job/preview", "dbsync:view"),
             prefix("/api/sync-job/match-tables", "dbsync:view"),
             // Doris/Hive 流式执行 GET 可跑任意 SQL/DDL(原 GET 仅要求登录, 绕过写权限)
@@ -144,6 +147,7 @@ public class PermInterceptor implements HandlerInterceptor {
             prefix("/api/scheduler/run-log", "operations:schedule"),
             prefix("/api/scheduler/log-detail", "operations:schedule"),
             prefix("/api/scheduler/logs", "operations:schedule"),
+            prefix("/api/task-execution", "operations:schedule"),
             // 数据源读: 列表/详情/库/表/列均暴露连接配置与源库结构(原 GET 仅要求登录), 须 datasource:view
             prefix("/api/datasource", "datasource:view")
     );

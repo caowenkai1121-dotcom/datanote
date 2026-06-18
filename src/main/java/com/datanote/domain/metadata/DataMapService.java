@@ -114,6 +114,16 @@ public class DataMapService {
         return (db == null ? "" : String.valueOf(db)) + "." + (tb == null ? "" : String.valueOf(tb));
     }
 
+    private static String tableKey(String db, String table) {
+        return (db == null ? "" : db.trim()) + "." + (table == null ? "" : table.trim());
+    }
+
+    private void requireTableAccess(String db, String table) {
+        if (!dataAclService.canAccess("TABLE", tableKey(db, table))) {
+            throw new BusinessException("无权访问该表(数据权限受限), 请联系管理员授权");
+        }
+    }
+
     public Map<String, Object> aiSearch(String query) throws Exception {
         if (query == null || query.trim().isEmpty()) {
             throw new BusinessException("AI 搜索的查询内容不能为空");
@@ -208,11 +218,19 @@ public class DataMapService {
         QueryWrapper<DnTableFavorite> qw = new QueryWrapper<DnTableFavorite>();
         qw.eq("created_by", com.datanote.platform.iam.CurrentUserUtil.currentUser());   // 仅看自己的收藏
         qw.orderByDesc("created_at").last("LIMIT 30");
-        return tableFavoriteMapper.selectList(qw);
+        List<DnTableFavorite> rows = tableFavoriteMapper.selectList(qw);
+        if (rows == null || rows.isEmpty()) return new ArrayList<DnTableFavorite>();
+        Set<String> denied = dataAclService.deniedIds("TABLE");
+        List<DnTableFavorite> out = new ArrayList<DnTableFavorite>();
+        for (DnTableFavorite f : rows) {
+            if (f != null && !denied.contains(tableKey(f.getDatabaseName(), f.getTableName()))) out.add(f);
+        }
+        return out;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public boolean toggleFavorite(String db, String table) {
+        requireTableAccess(db, table);
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("收藏操作的库名和表名不能为空");
         }
@@ -235,6 +253,7 @@ public class DataMapService {
     }
 
     public boolean isFavorited(String db, String table) {
+        requireTableAccess(db, table);
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("查询收藏状态的库名和表名不能为空");
         }
@@ -254,11 +273,13 @@ public class DataMapService {
           .orderByDesc("count(*)").last("LIMIT 10")
           .select("database_name", "table_name", "count(*) as cnt");
         List<Map<String, Object>> historyList = searchHistoryMapper.selectMaps(qw);
+        Set<String> denied = dataAclService.deniedIds("TABLE");
 
         List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
         if (historyList != null) {
             for (Map<String, Object> h : historyList) {
                 if (h == null) continue;
+                if (denied.contains(tableKey(String.valueOf(h.get("database_name")), String.valueOf(h.get("table_name"))))) continue;
                 Map<String, Object> row = new LinkedHashMap<String, Object>();
                 row.put("TABLE_SCHEMA", h.get("database_name"));
                 row.put("TABLE_NAME", h.get("table_name"));
@@ -281,6 +302,7 @@ public class DataMapService {
                 for (Map<String, Object> t : allTables) {
                     if (result.size() >= 10) break;
                     if (t == null) continue;
+                    if (denied.contains(tableKey(t))) continue;
                     String key = t.get("TABLE_SCHEMA") + "." + t.get("TABLE_NAME");
                     if (existing.add(key)) {   // add 返回 false 表示已存在, 同时把新键纳入去重集, 防止 allTables 自身重复表被重复填充
                         result.add(t);
@@ -295,6 +317,7 @@ public class DataMapService {
 
     @Transactional(rollbackFor = Exception.class)
     public List<DnTableComment> getComments(String db, String table) {
+        requireTableAccess(db, table);
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("查询评论的库名和表名不能为空");
         }
@@ -307,6 +330,7 @@ public class DataMapService {
 
     @Transactional(rollbackFor = Exception.class)
     public DnTableComment addComment(String db, String table, String content) {
+        requireTableAccess(db, table);
         if (db == null || db.trim().isEmpty() || table == null || table.trim().isEmpty()) {
             throw new BusinessException("新增评论的库名和表名不能为空");
         }
@@ -330,6 +354,8 @@ public class DataMapService {
         // 行级归属: 仅评论作者(或 admin)可删, 防任意登录用户按自增ID枚举删他人评论(IDOR)
         DnTableComment comment = tableCommentMapper.selectById(id);
         if (comment == null) return;
+        DnTableMeta meta = tableMetaMapper.selectById(comment.getTableMetaId());
+        if (meta != null) requireTableAccess(meta.getDatabaseName(), meta.getTableName());
         String me = com.datanote.platform.iam.CurrentUserUtil.currentUser();
         if (!"admin".equals(me) && me != null && !me.equals(comment.getCreatedBy())) {
             throw new BusinessException("只能删除自己发表的评论");

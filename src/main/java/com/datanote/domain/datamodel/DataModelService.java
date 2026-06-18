@@ -6,6 +6,7 @@ import com.datanote.common.exception.BusinessException;
 import com.datanote.domain.datamodel.mapper.*;
 import com.datanote.domain.datamodel.model.*;
 import com.datanote.platform.iam.CurrentUserUtil;
+import com.datanote.platform.iam.DataAclService;
 import com.datanote.platform.notify.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,10 +39,30 @@ public class DataModelService {
     private final com.datanote.domain.metadata.mapper.DnTableMetaMapper tableMetaMapper;
     private final com.datanote.domain.metadata.mapper.DnColumnMetaMapper columnMetaMapper;
     private final com.datanote.platform.collab.EditLockService editLockService;   // 并发编辑防护: 模型级编辑锁
+    private final DataAclService dataAclService;
 
     /** 模型级编辑锁断言: 他人持锁则拒(服务端兜底, 防绕过前端)。 */
     private void assertModelHeld(Long modelId) {
         if (modelId != null) editLockService.assertHeld("MODEL", String.valueOf(modelId));
+    }
+
+    private void requireModelAccess(Long modelId) {
+        if (modelId != null && !dataAclService.canAccess("MODEL", String.valueOf(modelId))) {
+            throw new BusinessException("无权访问该模型");
+        }
+    }
+
+    private boolean canAccessModel(Long modelId) {
+        return modelId == null || dataAclService.canAccess("MODEL", String.valueOf(modelId));
+    }
+
+    private void requireTableAccess(com.datanote.domain.metadata.model.DnTableMeta table) {
+        if (table == null) return;
+        String db = table.getDatabaseName() == null ? "" : table.getDatabaseName().trim();
+        String name = table.getTableName() == null ? "" : table.getTableName().trim();
+        if (!dataAclService.canAccess("TABLE", db + "." + name)) {
+            throw new BusinessException("无权访问该表");
+        }
     }
     private final DnModelVersionMapper versionMapper;
     private final com.datanote.domain.governance.mapper.DnDataElementMapper dataElementMapper;
@@ -58,6 +79,12 @@ public class DataModelService {
         if (status != null && !status.isEmpty()) qw.eq("status", status);
         qw.orderByDesc("updated_at");
         List<DnModel> list = modelMapper.selectList(qw);
+        if (list == null) return new ArrayList<>();
+        java.util.Set<String> denied = dataAclService.deniedIds("MODEL");
+        if (denied != null && !denied.isEmpty()) {
+            list = new ArrayList<>(list);
+            list.removeIf(m -> m == null || (m.getId() != null && denied.contains(String.valueOf(m.getId()))));
+        }
         if (list.isEmpty()) return list;
         List<Long> ids = list.stream().map(DnModel::getId).collect(Collectors.toList());
         // 批量实体数: 一条 group by 聚合替代逐模型 selectCount(消除 N+1)
@@ -83,6 +110,7 @@ public class DataModelService {
 
     /** 模型详情: 含实体(每实体含属性)与关系。 */
     public DnModel getModelDetail(Long id) {
+        requireModelAccess(id);
         DnModel m = modelMapper.selectById(id);
         if (m == null) throw new BusinessException("模型不存在");
         List<DnModelEntity> entities = entityMapper.selectList(
@@ -98,6 +126,7 @@ public class DataModelService {
 
     /** 新建/更新模型。编码唯一校验、命名规范校验。 */
     public DnModel saveModel(DnModel model) {
+        if (model != null && model.getId() != null) requireModelAccess(model.getId());
         validateCode(model.getModelCode(), "模型编码");
         if (model.getModelName() == null || model.getModelName().trim().isEmpty()) {
             throw new BusinessException("模型名称不能为空");
@@ -140,6 +169,7 @@ public class DataModelService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteModel(Long id) {
+        requireModelAccess(id);
         DnModel m = modelMapper.selectById(id);
         if (m == null) return;
         // 级联删实体/属性/关系/变更工单
@@ -159,6 +189,7 @@ public class DataModelService {
     /** 模型可编辑校验: 审批中(PENDING)的模型禁止任何增改删, 防审批闭环被旁路。 */
     private void assertModelEditable(Long modelId) {
         if (modelId == null) return;
+        requireModelAccess(modelId);
         assertModelHeld(modelId);   // 并发编辑防护: 他人持模型编辑锁则拒(覆盖实体/属性/关系所有子改动)
         DnModel m = modelMapper.selectById(modelId);
         if (m != null && "PENDING".equals(m.getStatus())) {
@@ -227,6 +258,7 @@ public class DataModelService {
      *      逻辑模型属性建议绑数据标准(warning)。
      */
     public java.util.Map<String, Object> validateModel(Long modelId) {
+        requireModelAccess(modelId);
         DnModel m = modelMapper.selectById(modelId);
         if (m == null) throw new BusinessException("模型不存在");
         List<String> errors = new ArrayList<>();
@@ -277,6 +309,7 @@ public class DataModelService {
     /** 提交模型审批: DRAFT/REJECTED → PENDING, 建变更工单(快照)。提交前强校验规范。 */
     @Transactional(rollbackFor = Exception.class)
     public DnModelChange submitForApproval(Long modelId, String reason) {
+        requireModelAccess(modelId);
         DnModel m = modelMapper.selectById(modelId);
         if (m == null) throw new BusinessException("模型不存在");
         if ("PENDING".equals(m.getStatus())) throw new BusinessException("模型已在审批中, 请勿重复提交");
@@ -312,6 +345,7 @@ public class DataModelService {
         if (c == null) throw new BusinessException("变更工单不存在");
         if (!"pending".equals(c.getStatus())) throw new BusinessException("该工单已审批, 不能重复操作");
 
+        requireModelAccess(c.getModelId());
         String reviewer = CurrentUserUtil.currentUser();
         // 禁自批: 自己提交的申请不能自己审批(admin 例外, 防单管理员环境锁死)
         if (reviewer != null && reviewer.equals(c.getRequestedBy()) && !"admin".equals(reviewer)) {
@@ -383,6 +417,12 @@ public class DataModelService {
         if (status != null && !status.isEmpty()) qw.eq("status", status);
         qw.orderByDesc("created_at");
         List<DnModelChange> list = changeMapper.selectList(qw);
+        if (list == null) return new ArrayList<>();
+        java.util.Set<String> denied = dataAclService.deniedIds("MODEL");
+        if (denied != null && !denied.isEmpty() && list != null) {
+            list = new ArrayList<>(list);
+            list.removeIf(c -> c == null || (c.getModelId() != null && denied.contains(String.valueOf(c.getModelId()))));
+        }
         if (list.isEmpty()) return list;
         // 批量模型名/编码: 一次 selectBatchIds 替代逐工单 selectById(消除 N+1)
         List<Long> mids = list.stream().map(DnModelChange::getModelId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
@@ -403,6 +443,7 @@ public class DataModelService {
     /** 由逻辑模型生成物理模型(实体→表、属性→字段、类型映射, 溯源回填)。 */
     @Transactional(rollbackFor = Exception.class)
     public DnModel generatePhysical(Long logicalModelId) {
+        requireModelAccess(logicalModelId);
         DnModel logical = modelMapper.selectById(logicalModelId);
         if (logical == null) throw new BusinessException("源逻辑模型不存在");
         if (!"LOGIC".equals(logical.getModelType())) throw new BusinessException("仅逻辑模型可生成物理模型");
@@ -461,6 +502,7 @@ public class DataModelService {
     /** 由业务模型生成逻辑模型(业务对象 L3→逻辑实体 L4, 复制属性, 溯源回填)。 */
     @Transactional(rollbackFor = Exception.class)
     public DnModel generateLogical(Long bizModelId) {
+        requireModelAccess(bizModelId);
         DnModel biz = modelMapper.selectById(bizModelId);
         if (biz == null) throw new BusinessException("源业务模型不存在");
         if (!"BIZ".equals(biz.getModelType())) throw new BusinessException("仅业务模型可生成逻辑模型");
@@ -517,6 +559,7 @@ public class DataModelService {
     @Transactional(rollbackFor = Exception.class)
     public DnModel reverseFromTable(Long tableMetaId, Long subjectId) {
         com.datanote.domain.metadata.model.DnTableMeta tbl = tableMetaMapper.selectById(tableMetaId);
+        requireTableAccess(tbl);
         if (tbl == null) throw new BusinessException("物理表元数据不存在, 请先在数据地图采集该表");
 
         DnModel phys = new DnModel();
@@ -561,6 +604,7 @@ public class DataModelService {
 
     /** 物理模型生成建表 DDL(每实体一张表)。 */
     public String generateDdl(Long physicalModelId) {
+        requireModelAccess(physicalModelId);
         DnModel m = modelMapper.selectById(physicalModelId);
         if (m == null) throw new BusinessException("模型不存在");
         if (!"PHYS".equals(m.getModelType())) throw new BusinessException("仅物理模型可生成 DDL, 请先由逻辑模型生成物理模型");
@@ -598,6 +642,7 @@ public class DataModelService {
     // ---------------- 版本历史 ----------------
 
     public List<DnModelVersion> listVersions(Long modelId) {
+        requireModelAccess(modelId);
         return versionMapper.selectList(
                 new QueryWrapper<DnModelVersion>().eq("model_id", modelId).orderByDesc("version", "id"));
     }
@@ -606,6 +651,12 @@ public class DataModelService {
     public java.util.Map<String, Object> buildDashboard() {
         java.util.Map<String, Object> r = new java.util.HashMap<>();
         List<DnModel> models = modelMapper.selectList(null);
+        if (models == null) models = new ArrayList<>();
+        java.util.Set<String> denied = dataAclService.deniedIds("MODEL");
+        if (denied != null && !denied.isEmpty()) {
+            models = new ArrayList<>(models);
+            models.removeIf(m -> m == null || (m.getId() != null && denied.contains(String.valueOf(m.getId()))));
+        }
         r.put("totalModels", models.size());
         java.util.Map<String, Integer> byType = new java.util.LinkedHashMap<>();
         java.util.Map<String, Integer> byStatus = new java.util.LinkedHashMap<>();
@@ -652,6 +703,7 @@ public class DataModelService {
             if (e == null) continue;
             DnModel m = modMap.get(e.getModelId());
             if (m == null) continue;
+            if (!canAccessModel(m.getId())) continue;
             java.util.Map<String, Object> row = new java.util.HashMap<>();
             row.put("modelCode", m.getModelCode());
             row.put("modelName", m.getModelName());
@@ -667,7 +719,9 @@ public class DataModelService {
     }
 
     public DnModelVersion getVersion(Long versionId) {
-        return versionMapper.selectById(versionId);
+        DnModelVersion version = versionMapper.selectById(versionId);
+        if (version != null) requireModelAccess(version.getModelId());
+        return version;
     }
 
     /** 两版本字段级差异对比(实体增删 + 属性增删改)。 */
@@ -675,6 +729,8 @@ public class DataModelService {
         DnModelVersion fromV = versionMapper.selectById(fromVid);
         DnModelVersion toV = versionMapper.selectById(toVid);
         if (fromV == null || toV == null) throw new BusinessException("版本不存在");
+        requireModelAccess(fromV.getModelId());
+        requireModelAccess(toV.getModelId());
         DnModel fm = JSON.parseObject(fromV.getSnapshotJson(), DnModel.class);
         DnModel tm = JSON.parseObject(toV.getSnapshotJson(), DnModel.class);
         java.util.Map<String, DnModelEntity> fe = indexEntities(fm), te = indexEntities(tm);
@@ -738,6 +794,7 @@ public class DataModelService {
     /** 已发布物理模型落地为数据资产: 实体→表元数据, 属性→字段元数据, 注册到数据地图(可被治理/血缘消费)。 */
     @Transactional(rollbackFor = Exception.class)
     public java.util.Map<String, Object> publishToAsset(Long physModelId) {
+        requireModelAccess(physModelId);
         DnModel m = modelMapper.selectById(physModelId);
         if (m == null) throw new BusinessException("模型不存在");
         if (!"PHYS".equals(m.getModelType())) throw new BusinessException("仅物理模型可落地为数据资产");

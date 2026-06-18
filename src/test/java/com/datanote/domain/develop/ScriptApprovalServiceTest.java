@@ -110,7 +110,7 @@ class ScriptApprovalServiceTest {
         c.setRequestedBy("anonymous");   // 与单测中的 currentUser 相同 → 禁自批
         when(changeMapper.selectById(5L)).thenReturn(c);
         assertThrows(BusinessException.class, () -> svc().review(5L, "approved", "ok"));
-        verify(scheduleLifecycleService, never()).onlineLocal(any(), any());
+        verify(scheduleLifecycleService, never()).onlineLocalAfterApproval(any(), any());
     }
 
     @Test
@@ -127,7 +127,7 @@ class ScriptApprovalServiceTest {
         DnScriptChange out = svc().review(5L, "approved", "通过");
         assertEquals("approved", out.getStatus());
         assertEquals("anonymous", out.getReviewer());
-        verify(scheduleLifecycleService).onlineLocal(eq(1L), eq(ScheduleTargetType.SCRIPT));
+        verify(scheduleLifecycleService).onlineLocalAfterApproval(eq(1L), eq(ScheduleTargetType.SCRIPT));
     }
 
     @Test
@@ -142,7 +142,7 @@ class ScriptApprovalServiceTest {
         when(changeMapper.selectById(5L)).thenReturn(c);
         when(scriptMapper.selectById(1L)).thenReturn(script("draft", "select 2"));  // 现内容已变
         assertThrows(BusinessException.class, () -> svc().review(5L, "approved", "通过"));
-        verify(scheduleLifecycleService, never()).onlineLocal(any(), any());
+        verify(scheduleLifecycleService, never()).onlineLocalAfterApproval(any(), any());
     }
 
     @Test
@@ -218,7 +218,7 @@ class ScriptApprovalServiceTest {
         when(scriptMapper.selectById(1L)).thenReturn(script("draft", "select 1"));
         DnScriptChange out = svc().review(5L, "rejected", "驳回");
         assertEquals("rejected", out.getStatus());
-        verify(scheduleLifecycleService, never()).onlineLocal(any(), any());
+        verify(scheduleLifecycleService, never()).onlineLocalAfterApproval(any(), any());
         verify(scheduleLifecycleService, never()).offlineLocal(any(), any());
     }
 }

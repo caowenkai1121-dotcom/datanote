@@ -41,6 +41,7 @@ public class SyncJobController {
     private final com.datanote.domain.integration.mapper.DnCdcDeadLetterMapper cdcDeadLetterMapper;   // 全站#21 CDC死信合并展示
     private final com.datanote.domain.integration.schema.TableSchemaService tableSchemaService;
     private final com.datanote.domain.integration.schema.SchemaDriftService schemaDriftService;
+    private final com.datanote.platform.iam.DataAclService dataAclService;
 
     @Operation(summary = "任务列表")
     @GetMapping("/list")
@@ -81,6 +82,7 @@ public class SyncJobController {
     @GetMapping("/{id}/error-rows")
     public R<List<DnSyncErrorRow>> errorRows(@PathVariable Long id,
                                              @RequestParam(defaultValue = "200") int limit) {
+        syncJobService.requireJobAccess(id);
         int n = Math.min(Math.max(limit, 1), 1000);
         List<DnSyncErrorRow> rows = syncErrorRowMapper.selectList(
                 new LambdaQueryWrapper<DnSyncErrorRow>()
@@ -122,6 +124,7 @@ public class SyncJobController {
     @Operation(summary = "清空坏行(DLQ, 含 CDC 死信)")
     @DeleteMapping("/{id}/error-rows")
     public R<String> clearErrorRows(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         int del = syncErrorRowMapper.delete(
                 new LambdaQueryWrapper<DnSyncErrorRow>().eq(DnSyncErrorRow::getJobId, id));
         int delCdc = cdcDeadLetterMapper.delete(
@@ -137,6 +140,7 @@ public class SyncJobController {
                                                     @RequestParam(defaultValue = "20") int limit) {
         int n = Math.min(Math.max(limit, 1), 200);
         try {
+            if (!canAccessTable(db, table)) return R.fail("无权访问该表(数据权限受限), 请联系管理员授权");
             com.datanote.domain.integration.connector.DbConnector c = syncJobService.buildConnector(dsId, db);
             String sql = "SELECT * FROM " + com.datanote.domain.integration.util.SqlIdentifiers.quote(db) + "."
                     + com.datanote.domain.integration.util.SqlIdentifiers.quote(table) + " LIMIT " + n;
@@ -176,6 +180,10 @@ public class SyncJobController {
     }
 
     /** 按列名命中常见敏感字段, 返回 PiiMasker 脱敏类型; 未命中返回 null(不脱敏)。 */
+    private boolean canAccessTable(String db, String table) {
+        return dataAclService.canAccess("TABLE", (db == null ? "" : db.trim()) + "." + (table == null ? "" : table.trim()));
+    }
+
     private static String sensitiveMaskType(String columnName) {
         if (columnName == null) return null;
         String n = columnName.toLowerCase();
@@ -201,7 +209,13 @@ public class SyncJobController {
         try {
             com.datanote.domain.integration.connector.DbConnector c = syncJobService.buildConnector(dsId, db);
             java.util.List<String> all = c.listTables(db);
-            return R.ok(com.datanote.domain.integration.util.RegexTableMatcher.match(all, include, exclude));
+            java.util.List<String> visible = new java.util.ArrayList<>();
+            if (all != null) {
+                for (String table : all) {
+                    if (canAccessTable(db, table)) visible.add(table);
+                }
+            }
+            return R.ok(com.datanote.domain.integration.util.RegexTableMatcher.match(visible, include, exclude));
         } catch (java.util.regex.PatternSyntaxException e) {
             return R.fail("正则非法: " + e.getMessage());
         } catch (Exception e) {
@@ -212,6 +226,7 @@ public class SyncJobController {
     @Operation(summary = "重置源表schema快照(人工确认危险漂移后恢复同步)")
     @DeleteMapping("/{id}/schema-snapshot")
     public R<String> resetSchemaSnapshot(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.requireJobAccess(id);
         int n = schemaDriftService.reset(id, table);
         return R.ok("已重置 " + n + " 条快照，下次运行将以当前 schema 重建基线");
     }
@@ -245,6 +260,7 @@ public class SyncJobController {
     @PostMapping("/{id}/run")
     public R<Long> run(@PathVariable Long id) {
         try {
+            syncJobService.requireJobAccess(id);
             Long execId = syncJobExecutor.run(id, "manual");
             return R.ok(execId);
         } catch (Exception e) {
@@ -256,6 +272,7 @@ public class SyncJobController {
     @Operation(summary = "停止运行中的任务（全量/增量）")
     @PostMapping("/{id}/stop")
     public R<String> stop(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         boolean hit = syncJobExecutor.stop(id);
         return hit ? R.ok("已请求停止") : R.fail("任务当前不在运行中");
     }
@@ -263,6 +280,7 @@ public class SyncJobController {
     @Operation(summary = "移动任务到文件夹")
     @PostMapping("/{id}/move")
     public R<String> move(@PathVariable Long id, @RequestParam Long folderId) {
+        syncJobService.requireJobAccess(id);
         if (folderId == null || folderId < 0) {
             return R.fail("目标文件夹非法");
         }
@@ -285,6 +303,7 @@ public class SyncJobController {
     @Operation(summary = "执行历史")
     @GetMapping("/{id}/executions")
     public R<List<DnTaskExecution>> executions(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         LambdaQueryWrapper<DnTaskExecution> wrapper = new LambdaQueryWrapper<DnTaskExecution>()
                 .eq(DnTaskExecution::getSyncTaskId, id)
                 .eq(DnTaskExecution::getTaskType, "DbSync")
@@ -296,6 +315,7 @@ public class SyncJobController {
     @Operation(summary = "操作审计历史")
     @GetMapping("/{id}/audit")
     public R<List<com.datanote.domain.integration.model.DnSyncJobAudit>> audit(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         return R.ok(auditMapper.selectList(new LambdaQueryWrapper<com.datanote.domain.integration.model.DnSyncJobAudit>()
             .eq(com.datanote.domain.integration.model.DnSyncJobAudit::getJobId, id)
             .orderByDesc(com.datanote.domain.integration.model.DnSyncJobAudit::getId).last("LIMIT 100")));
@@ -304,6 +324,7 @@ public class SyncJobController {
     @Operation(summary = "启用定时调度")
     @PostMapping("/{id}/online")
     public R<String> online(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         DnSyncJob job = syncJobMapper.selectById(id);
         if (job == null) {
             return R.fail("任务不存在: " + id);
@@ -316,6 +337,7 @@ public class SyncJobController {
     @Operation(summary = "停用定时调度")
     @PostMapping("/{id}/offline")
     public R<String> offline(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         DnSyncJob job = syncJobMapper.selectById(id);
         if (job == null) {
             return R.fail("任务不存在: " + id);
@@ -331,6 +353,7 @@ public class SyncJobController {
     @PostMapping("/{id}/reconcile")
     public R<java.util.Map<String, Object>> reconcile(@PathVariable Long id) {
         try {
+            syncJobService.requireJobAccess(id);
             return R.ok(reconciliationService.reconcile(id));
         } catch (Exception e) {
             log.error("对账失败: id={}", id, e);
@@ -341,7 +364,7 @@ public class SyncJobController {
     @Operation(summary = "分片checksum深度对账")
     @PostMapping("/{id}/checksum")
     public R<java.util.Map<String, Object>> checksum(@PathVariable Long id) {
-        try { return R.ok(reconciliationService.checksum(id)); }
+        try { syncJobService.requireJobAccess(id); return R.ok(reconciliationService.checksum(id)); }
         catch (Exception e) { return R.fail("checksum对账失败: " + e.getMessage()); }
     }
 
@@ -387,6 +410,10 @@ public class SyncJobController {
     public R<java.util.Map<String, Object>> dashboardSummary() {
         java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
         java.util.List<DnSyncJob> jobs = syncJobService.list();
+        java.util.List<Long> visibleJobIds = new java.util.ArrayList<>();
+        for (DnSyncJob j : jobs) {
+            if (j != null && j.getId() != null) visibleJobIds.add(j.getId());
+        }
         long running = 0, paused = 0, failed = 0;
         for (DnSyncJob j : jobs) {
             String st = j.getStatus();
@@ -400,19 +427,22 @@ public class SyncJobController {
         m.put("failed", failed);
         // 近200次 DbSync 执行算成功率 + 今日执行聚合
         // 仅取聚合所需列（避免加载 LONGTEXT log 列）+ 限行，防大盘 5s 轮询拖垮 DB
-        java.util.List<DnTaskExecution> recent = taskExecutionMapper.selectList(
+        java.util.List<DnTaskExecution> recent = visibleJobIds.isEmpty() ? new java.util.ArrayList<>() : taskExecutionMapper.selectList(
                 new LambdaQueryWrapper<DnTaskExecution>()
                         .select(DnTaskExecution::getStatus)
                         .eq(DnTaskExecution::getTaskType, "DbSync")
+                        .in(DnTaskExecution::getSyncTaskId, visibleJobIds)
                         .orderByDesc(DnTaskExecution::getId).last("LIMIT 200"));
         java.time.LocalDateTime todayStart = java.time.LocalDate.now().atStartOfDay();
-        java.util.List<DnTaskExecution> today = taskExecutionMapper.selectList(
+        java.util.List<DnTaskExecution> today = visibleJobIds.isEmpty() ? new java.util.ArrayList<>() : taskExecutionMapper.selectList(
                 new LambdaQueryWrapper<DnTaskExecution>()
                         .select(DnTaskExecution::getStatus, DnTaskExecution::getWriteCount)
                         .eq(DnTaskExecution::getTaskType, "DbSync")
+                        .in(DnTaskExecution::getSyncTaskId, visibleJobIds)
                         .ge(DnTaskExecution::getStartTime, todayStart).last("LIMIT 5000"));
         m.putAll(aggregateRuns(recent, today));
-        long dlq = syncErrorRowMapper.selectCount(new LambdaQueryWrapper<DnSyncErrorRow>());
+        long dlq = visibleJobIds.isEmpty() ? 0L : syncErrorRowMapper.selectCount(
+                new LambdaQueryWrapper<DnSyncErrorRow>().in(DnSyncErrorRow::getJobId, visibleJobIds));
         m.put("dlqTotal", dlq);
         // CDC 最大延迟
         long maxLag = -1;
@@ -463,12 +493,14 @@ public class SyncJobController {
     @Operation(summary = "查看断点(增量水位+chunk)")
     @GetMapping("/{id}/checkpoints")
     public R<java.util.Map<String, Object>> checkpoints(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         return R.ok(syncJobService.getCheckpoints(id));
     }
 
     @Operation(summary = "重置增量水位")
     @PostMapping("/{id}/checkpoint/reset-incremental")
     public R<String> resetIncr(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.requireJobAccess(id);
         syncJobService.resetIncremental(id, table);
         return R.ok("已重置增量水位");
     }
@@ -476,6 +508,7 @@ public class SyncJobController {
     @Operation(summary = "重置全量chunk断点")
     @PostMapping("/{id}/checkpoint/reset-chunk")
     public R<String> resetChunk(@PathVariable Long id, @RequestParam String table) {
+        syncJobService.requireJobAccess(id);
         syncJobService.clearChunkCursor(id, table);
         return R.ok("已重置chunk断点");
     }
@@ -485,6 +518,7 @@ public class SyncJobController {
     @Operation(summary = "查看上游依赖")
     @GetMapping("/{id}/dependencies")
     public R<List<com.datanote.domain.integration.model.DnSyncJobDependency>> dependencies(@PathVariable Long id) {
+        syncJobService.requireJobAccess(id);
         return R.ok(syncJobService.listDependencies(id));
     }
 
@@ -492,6 +526,8 @@ public class SyncJobController {
     @PostMapping("/{id}/dependencies")
     public R<String> addDependency(@PathVariable Long id, @RequestParam Long upstreamId) {
         try {
+            syncJobService.requireJobAccess(id);
+            syncJobService.requireJobAccess(upstreamId);
             syncJobService.addDependency(id, upstreamId);
             return R.ok("已添加上游依赖");
         } catch (IllegalArgumentException e) {
@@ -502,6 +538,8 @@ public class SyncJobController {
     @Operation(summary = "移除上游依赖")
     @DeleteMapping("/{id}/dependencies")
     public R<String> removeDependency(@PathVariable Long id, @RequestParam Long upstreamId) {
+        syncJobService.requireJobAccess(id);
+        syncJobService.requireJobAccess(upstreamId);
         syncJobService.removeDependency(id, upstreamId);
         return R.ok("已移除上游依赖");
     }

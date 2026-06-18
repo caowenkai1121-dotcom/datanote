@@ -23,6 +23,7 @@ public class ProjectTaskService {
     private final DnProjectTaskMapper taskMapper;
     private final DnProjectMilestoneMapper milestoneMapper;
     private final ProjectService projectService;
+    private final com.datanote.domain.project.mapper.DnProjectMemberMapper memberMapper;
     private final com.datanote.domain.project.mapper.DnProjectMapper projectMapper;
     private final com.datanote.domain.project.mapper.DnProjectAssetMapper assetMapper;
     private final com.datanote.domain.project.mapper.DnProjectTaskCommentMapper commentMapper;
@@ -38,7 +39,7 @@ public class ProjectTaskService {
     }
 
     public DnProjectTask saveTask(Long projectId, DnProjectTask t) {
-        com.datanote.domain.project.model.DnProject proj = projectService.getById(projectId);
+        com.datanote.domain.project.model.DnProject proj = projectService.requireProjectPermission(projectId, "task:manage");
         if ("ARCHIVED".equals(proj.getStatus())) throw new IllegalArgumentException("项目已归档, 仅可查看, 不能新建/修改任务");
         if (t == null) throw new IllegalArgumentException("任务内容不能为空");
         if (t.getTitle() == null || t.getTitle().trim().isEmpty()) throw new IllegalArgumentException("任务标题不能为空");
@@ -51,6 +52,7 @@ public class ProjectTaskService {
         }
         if (t.getRefType() == null) t.setRefId(null);
         validateRef(projectId, t);
+        validateAssignee(projectId, t);
         t.setProjectId(projectId);
         String prevAssignee = null;
         if (t.getId() == null) {
@@ -106,6 +108,19 @@ public class ProjectTaskService {
      * (OPEN→FIXING→RESOLVED 两跳 / FIXING→RESOLVED 一跳); 复检拦截时任务照常保存, 返回 warning。
      * @return {task, warning?}
      */
+    private void validateAssignee(Long projectId, DnProjectTask t) {
+        if (t.getAssignee() == null || t.getAssignee().trim().isEmpty()) {
+            t.setAssignee(null);
+            return;
+        }
+        String assignee = t.getAssignee().trim();
+        Long n = memberMapper.selectCount(new LambdaQueryWrapper<com.datanote.domain.project.model.DnProjectMember>()
+                .eq(com.datanote.domain.project.model.DnProjectMember::getProjectId, projectId)
+                .eq(com.datanote.domain.project.model.DnProjectMember::getUsername, assignee));
+        if (n == null || n == 0) throw new IllegalArgumentException("任务指派人必须是项目成员: " + assignee);
+        t.setAssignee(assignee);
+    }
+
     public Map<String, Object> saveTaskAndSync(Long projectId, DnProjectTask t) {
         String oldStatus = null;
         if (t != null && t.getId() != null) {
@@ -171,6 +186,7 @@ public class ProjectTaskService {
     }
 
     public void deleteTask(Long projectId, Long taskId) {
+        projectService.requireProjectPermission(projectId, "task:manage");
         projectService.getById(projectId);   // 数据级访问校验, 防跨项目越权
         DnProjectTask t = taskMapper.selectById(taskId);
         if (t == null) return;
@@ -223,7 +239,7 @@ public class ProjectTaskService {
     }
 
     public DnProjectMilestone saveMilestone(Long projectId, DnProjectMilestone m) {
-        projectService.getById(projectId);
+        projectService.requireProjectPermission(projectId, "project:edit");
         if (m == null) throw new IllegalArgumentException("里程碑内容不能为空");
         if (m.getName() == null || m.getName().trim().isEmpty()) throw new IllegalArgumentException("里程碑名称不能为空");
         m.setName(m.getName().trim());
@@ -240,6 +256,7 @@ public class ProjectTaskService {
 
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void deleteMilestone(Long projectId, Long milestoneId) {
+        projectService.requireProjectPermission(projectId, "project:edit");
         DnProjectMilestone m = milestoneMapper.selectById(milestoneId);
         if (m == null) return;
         if (!projectId.equals(m.getProjectId())) throw new IllegalArgumentException("里程碑不属于该项目");
