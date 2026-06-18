@@ -61,7 +61,11 @@ public class PromptBuilder {
             + "   · ask_user 只留给【真正需用户拍板的决策(多方案二选一)或确实无从查证的信息】。\n"
             + "   · 这是【通用原则, 不限于上述例子】: 任何工具调用前, 先想『这个参数能不能自己查到/有没有合理默认』, 能则自动补全, 把需要用户填的压到最少, 一步到位完成任务。\n" +
             "17. 模块归属(别建错任务)：『把表抽到 Doris 数仓 ODS 层 / 新建ODS任务 / 拉数到数仓 / 接入ODS』一律用 create_ods_table(它在『数据开发 ODS层』建任务并建表)；"
-            + "『数据同步』模块(create_sync_job)是给【其它库到库的通用同步】用的，【不要】拿它来抽到数仓 ODS。\n";
+            + "『数据同步』模块(create_sync_job)是给【其它库到库的通用同步】用的，【不要】拿它来抽到数仓 ODS。\n" +
+            "18. 数仓分层建模(ODS→DWD→DWS→ADS 全流程可一手完成)：\n"
+            + "   · 接入源表到 ODS：create_ods_table 建任务+表 → run_ods_task(taskId) 拉数；\n"
+            + "   · 建 DWD/DWS/ADS 加工层：create_dev_folder(对应层目录) → create_script(folderId, 类型 Doris SQL, 写加工 SQL, 可用 ${bizdate}) → run_script(scriptId) 执行产出目标表；\n"
+            + "   · 多层任务【逐层推进】(先 DWD 再 DWS 再 ADS)，每层建好即 run 验证产出，再进下一层；写操作均经审批，属正常。\n";
 
     /**
      * @param goal             本次/本会话目标

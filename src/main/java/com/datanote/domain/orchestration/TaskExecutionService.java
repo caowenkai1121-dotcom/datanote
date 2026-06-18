@@ -382,6 +382,40 @@ public class TaskExecutionService {
         return exec;
     }
 
+    /**
+     * 手动触发运行一个开发脚本(DnScript, 如 DWD/DWS/ADS 加工 SQL), 复用与调度一致的 {@link #executeScript} 核心,
+     * 记录 manual 执行记录, 日志脱敏。供 AI 工具 run_script / 手动触发复用。同步执行(阻塞至完成)。
+     */
+    public com.datanote.domain.orchestration.model.DnTaskExecution runScriptManually(Long scriptId, String triggerUser) {
+        DnScript script = scriptMapper.selectById(scriptId);
+        if (script == null) throw new BusinessException("脚本不存在: " + scriptId);
+        com.datanote.domain.orchestration.model.DnTaskExecution exec = new com.datanote.domain.orchestration.model.DnTaskExecution();
+        exec.setScriptId(scriptId);
+        exec.setTaskType(Constants.TASK_TYPE_SCRIPT);
+        exec.setTriggerType("manual");
+        exec.setStatus("RUNNING");
+        exec.setStartTime(LocalDateTime.now());
+        if (triggerUser != null) exec.setExecutor(triggerUser);
+        taskExecutionMapper.insert(exec);
+        long startMs = System.currentTimeMillis();
+        StringBuilder logBuilder = new StringBuilder();
+        try {
+            String bizdate = java.time.LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            executeScript(scriptId, bizdate, logBuilder);   // 复用调度同款核心(零重复)
+            exec.setStatus("SUCCESS");
+        } catch (Exception e) {
+            logBuilder.append("\n[ERROR] ").append(SecretRedactor.redact(e.getMessage() == null ? "" : e.getMessage()));
+            exec.setStatus("FAILED");
+        } finally {
+            exec.setEndTime(LocalDateTime.now());
+            exec.setDuration((int) ((System.currentTimeMillis() - startMs) / 1000));
+            String lg = SecretRedactor.redact(logBuilder.toString());
+            exec.setLog(lg.length() > 50000 ? lg.substring(lg.length() - 50000) : lg);
+            taskExecutionMapper.updateById(exec);
+        }
+        return exec;
+    }
+
     private DnDatasource resolveDatasource(DnSyncTask task) {
         if (task.getSourceDsId() == null) {
             throw new RuntimeException("同步任务未配置源数据源");
