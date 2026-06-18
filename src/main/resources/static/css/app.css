@@ -1805,6 +1805,11 @@ table, .iw-form-input, .dbsync-form-input, .g-modal-input, input[type="number"],
 }
 /* 响应式优化 */
 @media (max-width: 768px) {
+  /* 小屏顶栏防横向溢出(P1-08): 隐藏环境徽标省空间, 收紧间距; tabs 仍横向滚动, 命令面板/用户入口保留可达 */
+  .header-right { gap: 6px; }
+  .env-badge { display: none; }
+  .dev-header .logo { margin-right: 8px; }
+  .header-tab { padding: 0 9px; }
   .datamap-search-wrap {
     padding: 32px 16px 24px;
   }
