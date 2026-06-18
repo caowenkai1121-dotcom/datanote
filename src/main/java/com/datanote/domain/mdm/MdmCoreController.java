@@ -315,11 +315,11 @@ public class MdmCoreController {
             String rc = body == null ? null : body.getReviewComment();
             if (rc == null || rc.trim().isEmpty()) throw new BusinessException("驳回必须填写原因");
         }
-        // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批); 自己提交的申请禁止自批,
-        //      admin 用户例外放行(单管理员环境防锁死: 否则 admin 提交的申请无人能批)。
+        // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批)。严格职责分离(SoD):
+        //      任何人(含 admin)都不能审批自己提交的变更申请(见 MdmCoreControllerReviewTest)。
+        //      单管理员环境如需推进 MDM 审批, 由另一账号提交或审批。
         String reviewer = currentUser();
-        // admin(单管理员环境)例外放行, 与上方注释一致: 否则 admin 提交的 MDM 申请无人能批, 流程永久卡死
-        if (!"admin".equals(reviewer) && reviewer.equals(req.getRequestedBy())) {
+        if (reviewer.equals(req.getRequestedBy())) {
             throw new BusinessException("不能审批自己的变更申请");
         }
         // 并发幂等: 用条件更新 status=pending→target 原子占行, 影响行数为 0 说明已被他人处理,
