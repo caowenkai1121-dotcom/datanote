@@ -512,13 +512,23 @@ public class HiveDdlController {
         return sb.toString();
     }
 
-    /** 通过 WebSocket 实时推送 SQL 执行日志 */
+    /** 通过 WebSocket 实时推送 SQL 执行日志。私有化(P0): 鉴权下推执行者私有队列, 开放/匿名回退全局。
+     *  本方法在同步 /execute 请求线程调用, currentUsername() 即执行者。 */
     private void pushSqlLog(String level, String message) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("level", level);
         payload.put("message", message);
         payload.put("time", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
-        messagingTemplate.convertAndSend("/topic/sql-log", payload);
+        try {
+            String user = currentUsername();
+            if (user != null && !user.isEmpty()) {
+                messagingTemplate.convertAndSendToUser(user, "/queue/sql-log", payload);
+            } else {
+                messagingTemplate.convertAndSend("/topic/sql-log", payload);   // 开放/匿名模式回退
+            }
+        } catch (Exception e) {
+            log.warn("SQL 日志广播失败: {}", e.getMessage());
+        }
     }
 
     private List<ColumnInfo> resolveColumns(String datasourceId, Long syncTaskId, String db, String table) throws Exception {

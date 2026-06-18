@@ -24,10 +24,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // 客户端订阅前缀：/topic/xxx
-        config.enableSimpleBroker("/topic");
+        // 订阅前缀: /topic(全局广播) + /queue(配合 /user 的私有用户队列, P0 跨用户隔离)
+        config.enableSimpleBroker("/topic", "/queue");
         // 客户端发送前缀：/app/xxx
         config.setApplicationDestinationPrefixes("/app");
+        // 私有用户目的地前缀: convertAndSendToUser(user, "/queue/x") → 客户端订阅 "/user/queue/x", 按会话 Principal 隔离
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override

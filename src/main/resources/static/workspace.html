@@ -17662,16 +17662,13 @@ window.dbsyncClearErrorRows = function(jobId) {
         });
 
         // 订阅 SQL 实时执行日志
-        stompClient.subscribe('/topic/sql-log', function(msg) {
-          var data = JSON.parse(msg.body);
-          var logArea = document.getElementById('logArea');
-          if (!logArea || logArea.style.display === 'none') return;
-          var cls = data.level === 'ERROR' ? 'log-err' : data.level === 'OK' ? 'log-ok' : 'log-info';
-          appendLog('<span class="' + cls + '">[' + data.time + '] ' + data.level + '</span> ' + (data.message || '').replace(/</g,'&lt;'));
-          // 自动滚到底部
-          var panel = logArea.closest('.result-body');
-          if (panel) panel.scrollTop = panel.scrollHeight;
-        });
+        stompClient.subscribe('/topic/sql-log', function(msg) { onSqlLog(JSON.parse(msg.body)); });
+
+        // P0 私有队列: 鉴权下日志按任务属主/执行者路由到 /user/queue/*(Spring 按会话隔离, 他人收不到);
+        // 与 /topic 并存 —— 开放模式或无主任务回退 /topic, 故两路都订阅。
+        stompClient.subscribe('/user/queue/task-log', function(msg) { onTaskLog(JSON.parse(msg.body)); });
+        stompClient.subscribe('/user/queue/task-status', function(msg) { onTaskStatusChange(JSON.parse(msg.body)); });
+        stompClient.subscribe('/user/queue/sql-log', function(msg) { onSqlLog(JSON.parse(msg.body)); });
       }, function() {
         wsConnected = false;
         console.log('[WS] Disconnected, retry in 5s');
@@ -17681,6 +17678,15 @@ window.dbsyncClearErrorRows = function(jobId) {
       console.log('[WS] Connection failed:', e);
       reconnectTimer = setTimeout(connectWebSocket, 5000);
     }
+  }
+
+  function onSqlLog(data) {
+    var logArea = document.getElementById('logArea');
+    if (!logArea || logArea.style.display === 'none') return;
+    var cls = data.level === 'ERROR' ? 'log-err' : data.level === 'OK' ? 'log-ok' : 'log-info';
+    appendLog('<span class="' + cls + '">[' + data.time + '] ' + data.level + '</span> ' + (data.message || '').replace(/</g, '&lt;'));
+    var panel = logArea.closest('.result-body');
+    if (panel) panel.scrollTop = panel.scrollHeight;
   }
 
   function onTaskLog(data) {

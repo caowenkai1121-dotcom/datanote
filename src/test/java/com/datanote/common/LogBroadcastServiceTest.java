@@ -16,7 +16,8 @@ class LogBroadcastServiceTest {
     @Test
     void broadcastTaskLog_redactsSecretsInMessage() {
         SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
-        LogBroadcastService service = new LogBroadcastService(messagingTemplate);
+        // 传 null(authProperties/mappers): 鉴权视为关闭 → 走全局 /topic, 验证脱敏行为不变
+        LogBroadcastService service = new LogBroadcastService(messagingTemplate, null, null, null, null);
 
         service.broadcastTaskLog(1L, "script", "INFO",
                 "password=plain-secret jdbc:mysql://root:db-secret@127.0.0.1/db token=abcdef123456");
