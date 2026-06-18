@@ -166,7 +166,9 @@ public class AuditService {
         a.setPath(path == null ? null : (path.length() > 255 ? path.substring(0, 255) : path));
         a.setIp(ip == null ? null : (ip.length() > 64 ? ip.substring(0, 64) : ip));
         a.setStatus(status);
-        a.setDetail(detail == null ? null : (detail.length() > 60000 ? detail.substring(0, 60000) : detail));
+        // P2: detail 入库前统一脱敏(防 SQL/连接串中的密码/token 明文落审计日志)
+        String safeDetail = detail == null ? null : com.datanote.common.util.SecretRedactor.redact(detail);
+        a.setDetail(safeDetail == null ? null : (safeDetail.length() > 60000 ? safeDetail.substring(0, 60000) : safeDetail));
         return a;
     }
 

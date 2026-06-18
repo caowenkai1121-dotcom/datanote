@@ -75,8 +75,17 @@ public class AiFileController {
         if (r == null) return ResponseEntity.notFound().build();
         DnAiFile m = (DnAiFile) r[0];
         Path p = (Path) r[1];
-        String ct = (m.getContentType() == null || m.getContentType().isEmpty())
-                ? MediaType.APPLICATION_OCTET_STREAM_VALUE : m.getContentType();
+        // P2: 危险可执行类型(html/svg/xml/js)统一 octet-stream, 与 attachment 一起防内联渲染/XSS; 其余保留原类型
+        String stored = m.getContentType();
+        String ct;
+        if (stored == null || stored.isEmpty()) {
+            ct = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        } else {
+            String low = stored.toLowerCase();
+            boolean risky = low.contains("html") || low.contains("svg") || low.contains("xml")
+                    || low.contains("javascript") || low.contains("xhtml");
+            ct = risky ? MediaType.APPLICATION_OCTET_STREAM_VALUE : stored;
+        }
         String fn = m.getFileName() == null ? ("file-" + id) : m.getFileName();
         String encoded;
         try { encoded = URLEncoder.encode(fn, "UTF-8").replace("+", "%20"); }
