@@ -3,6 +3,34 @@
   'use strict';
   var DN = {};
 
+  // CSRF(P1): 鉴权开启后写请求自动带 X-XSRF-TOKEN(读 Spring 下发的 XSRF-TOKEN cookie)。
+  // 仅同源 + 非安全方法注入; 开放模式无该 cookie 则跳过。一处覆盖 DN.* 与所有裸 fetch。
+  (function () {
+    if (global.__dnCsrfPatched || typeof global.fetch !== 'function') return;
+    global.__dnCsrfPatched = true;
+    var _fetch = global.fetch.bind(global);
+    function csrfToken() {
+      var m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+    global.fetch = function (input, init) {
+      init = init || {};
+      var method = (init.method || (input && typeof input === 'object' && input.method) || 'GET').toUpperCase();
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var sameOrigin = url.charAt(0) === '/' || url.indexOf(global.location.origin) === 0;
+      if (sameOrigin && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+        var t = csrfToken();
+        if (t) {
+          var h = new Headers(init.headers || {});
+          if (!h.has('X-XSRF-TOKEN')) h.set('X-XSRF-TOKEN', t);
+          init.headers = h;
+        }
+        if (!init.credentials) init.credentials = 'same-origin';
+      }
+      return _fetch(input, init);
+    };
+  })();
+
   /** 统一请求：解析 R<T> 信封（code===0 成功），失败抛 Error */
   DN.api = function (url, options) {
     return fetch(url, options || {}).then(function (resp) {

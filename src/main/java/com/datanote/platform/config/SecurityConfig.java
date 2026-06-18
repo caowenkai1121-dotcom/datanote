@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -80,16 +81,19 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // 禁用 CSRF（SPA + Session 认证）
-        http.csrf().disable();
-
         // CORS：委托给已有的 CorsFilter Bean
         http.cors();
 
         if (!authProperties.isEnabled()) {
-            // 密码为空 → 放行所有请求
+            // 开放模式: 放行所有请求, 同时关 CSRF(无会话语义)
+            http.csrf().disable();
             http.authorizeRequests().anyRequest().permitAll();
         } else {
+            // CSRF(P1): Session+Cookie 认证下启用。CookieCsrfTokenRepository 下发可读 XSRF-TOKEN cookie,
+            // 前端 fetch 包装读 cookie 发 X-XSRF-TOKEN 头。放行: 登录(尚无 token)、WebSocket/SockJS(xhr_send 走 POST 传输)。
+            http.csrf()
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    .ignoringAntMatchers("/api/auth/login", "/ws/**");
             // 密码非空 → 启用认证
             http.authorizeRequests()
                     // 静态资源
