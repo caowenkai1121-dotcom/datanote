@@ -201,6 +201,7 @@ public class AiAgentService {
         int iter = 0;
         long runDeadline = System.currentTimeMillis() + RUN_WALLCLOCK_MS; // 墙钟封顶
         java.util.Map<String, Integer> seenCalls = new java.util.HashMap<>(); // 死循环护栏: 工具+参数签名计数
+        java.util.Set<String> critiqueNudged = new java.util.HashSet<>();     // CRITIC 自校验: 每类写工具只提示核实一次, 防刷屏
 
         while (budget.remaining() > 0 && iter < HARD_ITER_CAP && System.currentTimeMillis() < runDeadline
                 && !st.done && !st.blocked && !st.awaitingApproval && !st.awaitingInput) {
@@ -498,6 +499,15 @@ public class AiAgentService {
             }
 
             appendTrace(st, toolName, callJson, result);
+            // CRITIC 工具增强自校验(借鉴 CRITIC, arXiv 2305.11738): HIGH 写成功后提示 agent 调只读工具查真值核实再报成功,
+            // 把"内省式自纠"升级为"对真值验证"(数据平台 DDL/行数/血缘可验), 防仅凭返回值谎报成功。每类写工具只提示一次。
+            if (!tool.readOnly() && result.isOk()
+                    && tool.risk() == com.datanote.platform.ai.agent.tool.RiskLevel.HIGH
+                    && critiqueNudged.add(toolName)) {
+                st.trace.append("【自校验提示】写操作 ").append(toolName)
+                        .append(" 已执行成功; 在向用户断言成功前, 请调用只读工具核实真实结果")
+                        .append("(如建表/同步后用 asset_detail 或 table_profile 核对表存在与行数, 建质量规则后用 quality_score 看影响面), 勿仅凭返回值即报成功。\n");
+            }
             // 表数据预览: 用【未截断】的原始结果走独立通道回传(stepsToDto 的 resultData 会被 cap 截断, 宽表 JSON 解析不出),
             // 让前端能完整渲染数据表格
             if (result.isOk() && result.getData() instanceof Map && (((Map<?, ?>) result.getData()).containsKey("_preview") || ((Map<?, ?>) result.getData()).containsKey("_chart"))) {

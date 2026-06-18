@@ -1,11 +1,13 @@
 package com.datanote.platform.ai.agent.tool.impl;
 
+import com.datanote.platform.ai.agent.engine.ToolRetrievalService;
 import com.datanote.platform.ai.agent.tool.AgentContext;
 import com.datanote.platform.ai.agent.tool.AiTool;
 import com.datanote.platform.ai.agent.tool.AiToolRegistry;
 import com.datanote.platform.ai.agent.tool.AiToolResult;
 import com.datanote.platform.ai.agent.tool.RiskLevel;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -30,10 +32,14 @@ public class ToolSearchTool implements AiTool {
     @Autowired
     private AiToolRegistry toolRegistry;
 
+    private final ToolRetrievalService toolRetrieval;   // Tool RAG 语义打分(降级回退关键字)
+    private final ObjectMapper objectMapper;            // 解析参数 schema 随结果返回
+
     @Override public String name() { return "tool_search"; }
     @Override public String group() { return "agent"; }
     @Override public String description() {
-        return "按意图/关键词检索可用工具(当上文未列出你想要的工具时, 用它发现)。参数 query(自然语言或关键词), limit(默认8)。返回匹配工具的 name/desc 供你随后直接调用。";
+        return "按意图语义检索可用工具(当上文未列出你想要的工具时, 用它发现)。参数 query(自然语言描述你想做什么), limit(默认8)。"
+                + "返回匹配工具的 name/desc/params(含参数schema), 发现后即可直接按 params 正确调用。优先用自然语言意图描述而非单关键词。";
     }
     @Override public String paramsSchemaJson() {
         return "{\"query\":{\"type\":\"string\",\"required\":true,\"desc\":\"想做什么/关键词\"},"
@@ -51,27 +57,35 @@ public class ToolSearchTool implements AiTool {
         if (limit > 30) limit = 30;
         String[] terms = query.toLowerCase().split("[\\s,，、/]+");
 
+        // Tool RAG: 先取语义相似度(EmbeddingService 不可用则 null, 回退纯关键字)
+        Map<String, Double> sem = toolRetrieval.semanticScores(query, toolRegistry.all());
+        boolean semantic = sem != null;
+
         List<Map<String, Object>> scored = new ArrayList<>();
         for (AiTool t : toolRegistry.all()) {
             if (t == null || "tool_search".equals(t.name())) continue;
             String hay = (nz(t.name()) + " " + nz(t.group()) + " " + nz(t.description())).toLowerCase();
-            int score = 0;
+            int kw = 0;
             for (String term : terms) {
                 if (term.isEmpty()) continue;
-                if (hay.contains(term)) score += 2;
-                if (t.name().toLowerCase().contains(term)) score += 3; // 命中工具名加权
+                if (hay.contains(term)) kw += 2;
+                if (t.name().toLowerCase().contains(term)) kw += 3; // 命中工具名加权
             }
-            if (score > 0) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("name", t.name());
-                m.put("group", t.group());
-                m.put("desc", t.description());
-                m.put("readOnly", t.readOnly());
-                m.put("_score", score);
-                scored.add(m);
-            }
+            double semScore = (semantic && sem.containsKey(t.name())) ? sem.get(t.name()) : 0d;
+            // 候选: 关键字命中 或 语义相似度达阈值(纯关键字模式仅看 kw)
+            if (kw == 0 && !(semantic && semScore >= 0.25)) continue;
+            // 综合分: 语义为主(×100)叠加关键字加权(精确名命中等); 纯关键字模式仅用 kw
+            double combined = semantic ? semScore * 100 + kw : kw;
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("name", t.name());
+            m.put("group", t.group());
+            m.put("desc", t.description());
+            m.put("readOnly", t.readOnly());
+            m.put("params", parseParams(t.paramsSchemaJson())); // 带参数 schema, 发现后即可正确调用
+            m.put("_score", combined);
+            scored.add(m);
         }
-        scored.sort((a, b) -> ((Integer) b.get("_score")) - ((Integer) a.get("_score")));
+        scored.sort((a, b) -> Double.compare((Double) b.get("_score"), (Double) a.get("_score")));
         List<Map<String, Object>> top = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, scored.size()); i++) {
             Map<String, Object> m = scored.get(i);
@@ -80,10 +94,16 @@ public class ToolSearchTool implements AiTool {
         }
         Map<String, Object> d = new LinkedHashMap<>();
         d.put("query", query);
+        d.put("engine", semantic ? "semantic" : "keyword");
         d.put("count", top.size());
         d.put("tools", top);
-        if (top.isEmpty()) d.put("note", "无匹配工具, 换关键词或查看已列出的工具");
+        if (top.isEmpty()) d.put("note", "无匹配工具, 换种意图描述或查看已列出的工具");
         return AiToolResult.ok(d);
+    }
+
+    private Object parseParams(String schema) {
+        if (schema == null || schema.isEmpty()) return new LinkedHashMap<>();
+        try { return objectMapper.readTree(schema); } catch (Exception e) { return schema; }
     }
 
     private static String nz(String s) { return s == null ? "" : s; }
