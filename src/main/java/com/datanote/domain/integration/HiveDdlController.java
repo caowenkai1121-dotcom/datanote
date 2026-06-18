@@ -443,6 +443,7 @@ public class HiveDdlController {
     }
 
     private void requireSqlTableAccess(String sql) {
+        requireSqlDangerPerm(sql);   // P1-04: 破坏性语句(DROP/TRUNCATE/GRANT 等)默认拒绝, 须 sql:danger
         List<SqlTableReferenceExtractor.TableRef> refs;
         try {
             refs = SqlTableReferenceExtractor.extract(sql);
@@ -462,6 +463,31 @@ public class HiveDdlController {
                 throw new BusinessException("无权访问数据表: " + resourceId);
             }
         }
+    }
+
+    /** P1-04: 破坏性 SQL(DROP/TRUNCATE/GRANT/REVOKE/ALTER..DROP)默认拒绝, 仅 sql:danger 或超管(*)可执行。开放模式放行。 */
+    private void requireSqlDangerPerm(String sql) {
+        String me = currentUsername();
+        if (me == null) return;   // 开放模式(无鉴权)放行
+        if (!isDangerousSql(sql)) return;
+        java.util.Set<String> perms;
+        try { perms = rbacService.getUserPermsByUsername(me); } catch (Exception e) { perms = java.util.Collections.emptySet(); }
+        if (!com.datanote.platform.iam.RbacService.hasPermission(perms, "sql:danger")) {
+            throw new BusinessException("破坏性 SQL(DROP/TRUNCATE/GRANT/REVOKE 等)需 sql:danger 权限, 已拒绝");
+        }
+    }
+
+    /** 是否含破坏性语句: 去注释后逐语句查首关键字。包级静态便于单测。 */
+    static boolean isDangerousSql(String sql) {
+        if (sql == null) return false;
+        String cleaned = sql.replaceAll("(?s)/\\*.*?\\*/", " ").replaceAll("--[^\\n]*", " ");
+        for (String stmt : cleaned.split(";")) {
+            String u = stmt.trim().toUpperCase();
+            if (u.isEmpty()) continue;
+            if (u.matches("(?s)^(DROP|TRUNCATE|GRANT|REVOKE)\\b.*")) return true;
+            if (u.matches("(?s)^ALTER\\s+TABLE\\b.*\\bDROP\\b.*")) return true;
+        }
+        return false;
     }
 
     /**

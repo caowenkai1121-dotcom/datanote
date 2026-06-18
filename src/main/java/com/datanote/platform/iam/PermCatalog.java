@@ -51,6 +51,7 @@ public final class PermCatalog {
             // 数据地图
             new Perm("catalog:view", "进入数据地图", "catalog", "数据地图", true),
             new Perm("catalog:edit", "元数据/DDL 维护", "catalog", "数据地图", false),
+            new Perm("sql:danger", "执行破坏性SQL(DROP/TRUNCATE/GRANT)", "catalog", "数据地图", false),
             // 数据模型(三层建模 + L1-L5)
             new Perm("datamodel:view", "进入数据模型", "datamodel", "数据模型", true),
             new Perm("datamodel:edit", "模型/实体/属性建模", "datamodel", "数据模型", false),
