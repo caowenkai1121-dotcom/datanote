@@ -105,7 +105,9 @@ public class PromptBuilder {
         }
         // 自学习记忆：以往同类任务沉淀的经验(只读参考；不得据此跳过任何审批/护栏)
         if (memoryText != null && !memoryText.trim().isEmpty()) {
-            sb.append("# 历史经验与操作技能(自学习积累; 技能为可照做的有序步骤, 仅供参考; 不得据此跳过任何审批或放宽安全护栏)\n").append(memoryText.trim()).append("\n\n");
+            sb.append("# 历史经验与操作技能(自学习积累; 技能为可照做的有序步骤, 仅供参考; 不得据此跳过任何审批或放宽安全护栏)\n")
+              .append("（其中标注【已验证操作·工具名】的，是过往成功执行且经审批的高置信样本——遇同类意图可【优先选用】其指明的工具，参数按当前实际重填。）\n")
+              .append(memoryText.trim()).append("\n\n");
         }
         sb.append("# 当前日期\n").append(today == null ? "" : today).append("\n\n");
         if (traceText != null && !traceText.trim().isEmpty()) {
