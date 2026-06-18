@@ -231,8 +231,16 @@ public class HiveDdlController {
         }
     }
 
-    // 存储待执行的 SQL（POST 提交 → GET SSE 订阅）
-    private final java.util.concurrent.ConcurrentHashMap<Long, String> pendingSql = new java.util.concurrent.ConcurrentHashMap<>();
+    // 存储待执行的 SQL（POST 提交 → GET SSE 订阅）。executionId 是自增 DB id(可枚举),
+    // 故 pending 值绑定提交者 owner: 仅提交者本人可消费/观察, 防他人按 id 越权消费(P0)。
+    private static final class PendingExec {
+        final String sql;
+        final String owner;   // 提交者(开放模式为 null)
+        final long createdAt;
+        PendingExec(String sql, String owner) { this.sql = sql; this.owner = owner; this.createdAt = System.currentTimeMillis(); }
+    }
+    private static final long PENDING_TTL_MS = 10 * 60 * 1000L;
+    private final java.util.concurrent.ConcurrentHashMap<Long, PendingExec> pendingSql = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * 提交 SQL 执行请求（POST），返回 executionId，前端用 executionId 订阅 SSE
@@ -260,7 +268,10 @@ public class HiveDdlController {
         exec.setStartTime(java.time.LocalDateTime.now());
         taskExecutionMapper.insert(exec);
 
-        pendingSql.put(exec.getId(), sql);
+        // 清理过期未消费项, 防泄漏堆积
+        long now = System.currentTimeMillis();
+        pendingSql.entrySet().removeIf(en -> now - en.getValue().createdAt > PENDING_TTL_MS);
+        pendingSql.put(exec.getId(), new PendingExec(sql, currentUsername()));
 
         Map<String, Object> result = new HashMap<>();
         result.put("executionId", exec.getId());
@@ -281,14 +292,21 @@ public class HiveDdlController {
         // 删除旧的 ?sql=... 直传分支 —— GET 直传 SQL 可绕过写权限拦截执行任意 DDL/DML(含 DROP), 且易被 CSRF/预取触发。
         final String execSql;
         final Long execId;
-        if (executionId != null && pendingSql.containsKey(executionId)) {
-            execSql = pendingSql.remove(executionId);
-            execId = executionId;
-        } else {
+        PendingExec pe = executionId == null ? null : pendingSql.get(executionId);
+        if (pe == null) {
             try { emitter.send(SseEmitter.event().name("error").data(
                     java.util.Collections.singletonMap("message", "没有可执行的 SQL（请先通过提交执行获取 executionId）"))); emitter.complete(); } catch (Exception ignored) {}
             return emitter;
         }
+        // owner 绑定: 仅提交者本人可消费(开放模式 owner 均为 null 相等); 非本人越权 → 拒绝, 条目保留给真正提交者
+        if (!java.util.Objects.equals(pe.owner, currentUsername())) {
+            try { emitter.send(SseEmitter.event().name("error").data(
+                    java.util.Collections.singletonMap("message", "无权消费该执行会话"))); emitter.complete(); } catch (Exception ignored) {}
+            return emitter;
+        }
+        pendingSql.remove(executionId);   // 一次性消费
+        execSql = pe.sql;
+        execId = executionId;
 
         // M9：执行前脱敏改写。绕过用户原样；受限用户逐条改写，失败则 fail-closed 拒绝（发送 error 并结束）。
         try {

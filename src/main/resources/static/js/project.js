@@ -648,7 +648,7 @@ function projLoadPane(tab) {
   else if (tab === 'activity' && window.projLoadActivities) projLoadActivities();
   else if (tab === 'task' && window.projLoadTasks) projLoadTasks();
   else if (tab === 'wiki' && window.projLoadWiki) projLoadWiki();
-  else { var el = document.getElementById('projPane_' + tab); if (el) el.innerHTML = '<div style="padding:24px;color:var(--text-muted);">即将完善</div>'; }
+  else { var el = document.getElementById('projPane_' + tab); if (el) el.innerHTML = '<div style="padding:24px;color:var(--text-muted);">该标签暂无内容</div>'; }
 }
 function projRenderDetailHead(p) {
   document.getElementById('projDetailName').textContent = p.projectName || ('项目#' + p.id);
