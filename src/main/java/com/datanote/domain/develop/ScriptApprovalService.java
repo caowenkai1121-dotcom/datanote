@@ -74,7 +74,8 @@ public class ScriptApprovalService {
         if (c == null) throw new BusinessException("工单不存在");
         if (!"pending".equals(c.getStatus())) throw new BusinessException("该工单已审批, 不能重复操作");
         String reviewer = CurrentUserUtil.currentUser();
-        if (!"admin".equals(reviewer) && reviewer.equals(c.getRequestedBy())) {
+        // 严格职责分离(SoD): 任何人(含 admin)都不能审批自己提交的申请, 与 MDM 审批一致(审查 03-doc)
+        if (reviewer != null && reviewer.equals(c.getRequestedBy())) {
             throw new BusinessException("不能审批自己提交的申请");
         }
         boolean approved = "approved".equalsIgnoreCase(target);
