@@ -169,7 +169,7 @@ public class ChildAgentRunner {
             String raw = aiAssistService.chat(userPrompt, ctx);
             if (isErr(raw)) { budget.refund(); break; }
             List<String> tcs = AgentTextUtil.parseToolCalls(raw);
-            if (tcs.isEmpty()) { finalAnswer = AgentTextUtil.sanitize(AgentTextUtil.stripThink(raw)); break; }
+            if (tcs.isEmpty()) { finalAnswer = AgentTextUtil.cleanFinal(raw); break; }
             JsonNode call;
             try { call = objectMapper.readTree(tcs.get(0)); }
             catch (Exception e) { budget.refund(); continue; }
@@ -212,7 +212,7 @@ public class ChildAgentRunner {
             String ctx = promptBuilder.build(goal, manifest, trace.toString(), today, null, null, null);
             String raw = aiAssistService.isAvailable()
                     ? aiAssistService.chat("请基于以上信息给出该子任务的最终中文小结(保留关键明细: 表名/字段名/类型/数值, 不要过度概括)，不再调用工具。", ctx) : null;
-            finalAnswer = isErr(raw) ? "(子任务未得出明确结论)" : AgentTextUtil.sanitize(AgentTextUtil.stripThink(raw));
+            finalAnswer = isErr(raw) ? "(子任务未得出明确结论)" : AgentTextUtil.cleanFinal(raw);
         }
         writeChildStep(child.getSessionId(), seq, "FINAL", "assistant", finalAnswer, null, now);
         try {

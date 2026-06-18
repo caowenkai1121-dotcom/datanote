@@ -65,10 +65,11 @@ public class AiAgentService {
     private static final java.util.Set<String> CORE_READ = new java.util.HashSet<>(java.util.Arrays.asList(
             "semantic_search", "graph_impact", "graph_trace", "graph_neighbors", "gov_overview", "tool_search"));
 
-    /** 生产步上限(成功执行工具/给出终答才计数); 借鉴 hermes IterationBudget, 可纠正废步退还不蚕食 */
-    private static final int MAX_PRODUCTIVE_STEPS = 8;
+    /** 生产步上限(成功执行工具/给出终答才计数); 借鉴 hermes IterationBudget, 可纠正废步退还不蚕食。
+     *  16 步: 支撑多工序长链(如探查→建表→建脚本→运行 的分层加工), 墙钟 300s 仍为最终兜底防失控 */
+    private static final int MAX_PRODUCTIVE_STEPS = 16;
     /** 总迭代硬顶(含被退还的废步), 防模型连犯格式错时失控刷屏 */
-    private static final int HARD_ITER_CAP = 24;
+    private static final int HARD_ITER_CAP = 40;
     /** 单轮 run 墙钟上限(ms): 防 LLM 挂起/超长把 Tomcat 工作线程长期占满拖垮 Web 服务 */
     private static final long RUN_WALLCLOCK_MS = 300_000L;
     /** trace 中单条结果摘要上限(放宽: 表/字段清单等不被折叠致 agent 看不全, 解决"仅提取前5字段") */
@@ -255,14 +256,14 @@ public class AiAgentService {
 
             List<String> toolJsons = AgentTextUtil.parseToolCalls(raw);
             if (toolJsons.isEmpty()) {
-                // 终答(剥除 <think> 过程留痕) → 反思自检(多工具证据时, 把结论与证据对齐降幻觉)
-                String draft = AgentTextUtil.sanitize(AgentTextUtil.stripThink(raw));
+                // 终答(剥除 <think> 过程留痕 + <tool_call> 块, 防工具调用 JSON 泄漏) → 反思自检(多工具证据时, 把结论与证据对齐降幻觉)
+                String draft = AgentTextUtil.cleanFinal(raw);
                 // 空答兜底: 模型只写了 <think> 或返回空 → 再要一次面向用户的明确终答, 防前端"（无答复）"
                 if (draft == null || draft.trim().isEmpty()) {
                     String reAsk = callLlmWithRetry(
                             "请直接面向用户给出最终中文答复(结论+关键信息, 有下载链接请用 [文件名](URL) 给出), 不要只写思考过程, 不要再调用工具。",
                             promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText));
-                    draft = AgentTextUtil.sanitize(AgentTextUtil.stripThink(reAsk));
+                    draft = AgentTextUtil.cleanFinal(reAsk);
                     if (draft == null || draft.trim().isEmpty()) draft = "已完成。如需更多信息或具体数据/下载，请告诉我。";
                 }
                 st.finalAnswer = reflectIfNeeded(draft, newSteps, userMessage, manifest,
@@ -521,8 +522,13 @@ public class AiAgentService {
                 String raw = callLlmWithRetry(
                         "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
                 String think = AgentTextUtil.extractThink(raw);
+                String cleaned = isAiError(raw) ? null : AgentTextUtil.cleanFinal(raw);
                 st.finalAnswer = isAiError(raw)
-                        ? "已收集到部分信息但收尾应答失败，请稍后重试或换种问法。" : AgentTextUtil.sanitize(AgentTextUtil.stripThink(raw));
+                        ? "已收集到部分信息但收尾应答失败，请稍后重试或换种问法。"
+                        : (cleaned == null || cleaned.trim().isEmpty()
+                            // 模型在收尾轮仍只吐工具调用(被 stripToolCalls 清空): 给长任务分步引导, 不泄漏 JSON、不空答
+                            ? "本次任务步骤较多，已完成部分工序(见上方执行过程)。请说『继续』我接着做下一步；逐层建 DWD→DWS→ADS 时, 分步推进(先建 DWD, 再 DWS, 再 ADS)更稳。"
+                            : cleaned);
                 st.done = true; st.exitReason = budget.remaining() <= 0 ? "BUDGET_EXHAUSTED" : "HARD_CAP_EXHAUSTED";
                 newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, think, null, null, null, "ok", null, true, "LOW", null));
             }
@@ -1340,7 +1346,7 @@ public class AiAgentService {
                     + "若与证据矛盾则按证据更正; 若关键信息缺失就如实告知用户缺什么、建议怎么补(或提示需要 ask_user 澄清)。"
                     + "直接输出修正后的最终中文答复, 不要再调用任何工具, 不要解释你改了什么。", ctx);
             if (isAiError(reflected)) return draft;
-            String r = AgentTextUtil.sanitize(AgentTextUtil.stripThink(reflected));
+            String r = AgentTextUtil.cleanFinal(reflected);
             return (r == null || r.trim().isEmpty()) ? draft : r;
         } catch (Exception e) {
             return draft;

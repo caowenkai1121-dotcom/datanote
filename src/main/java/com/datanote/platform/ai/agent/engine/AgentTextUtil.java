@@ -87,6 +87,18 @@ public final class AgentTextUtil {
         return out;
     }
 
+    /** 剥除 &lt;tool_call&gt;...&lt;/tool_call&gt; 块与残留标签, 防工具调用 JSON 泄漏进面向用户的终答(模型在收尾轮仍硬吐工具调用时尤需)。 */
+    public static String stripToolCalls(String text) {
+        if (text == null) return null;
+        String t = TOOL_CALL.matcher(text).replaceAll(" ");
+        return t.replaceAll("(?i)</?tool_call\\s*>", " ");
+    }
+
+    /** 面向用户终答统一清洗: 去 &lt;think&gt; 过程留痕 + 去 &lt;tool_call&gt; 块 + 控制字符 sanitize。 */
+    public static String cleanFinal(String text) {
+        return sanitize(stripToolCalls(stripThink(text)));
+    }
+
     /** 从可能含 ``` 围栏/散文的文本抠出首个平衡 {...} JSON 子串；无则 null。 */
     public static String extractJson(String text) {
         if (text == null) return null;
