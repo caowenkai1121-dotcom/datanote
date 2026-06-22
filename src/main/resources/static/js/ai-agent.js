@@ -371,7 +371,11 @@
     todo: '拆解任务计划', delegate_task: '并行分派子任务', read_tool_result: '取回完整结果', metric_detail: '查看指标口径', table_data: '查看表的数据',
     project_overview: '查看项目', issue_stats: '统计工单', health_trend: '看健康趋势', skill_library: '翻阅操作技能', tool_search: '寻找合适工具',
     create_ods_table: '新建ODS同步任务(抽到数仓)', create_sync_job: '准备建同步任务', create_quality_rule: '准备建质量规则', create_metric: '准备建指标',
-    create_project: '准备建项目', create_script: '准备建脚本'
+    create_project: '准备建项目', create_script: '准备建脚本',
+    create_artifact: '生成预览内容', create_page: '生成网页', create_dev_folder: '准备建开发目录', run_ods_task: '运行ODS拉数',
+    run_script: '运行脚本', run_sync_job: '运行同步', run_quality_rule: '运行质量规则', chart: '生成图表', ask_user: '向你确认',
+    classify_column: '字段分类分级', calc_metric: '计算指标值', create_subject: '准备建主题域', save_wiki_page: '保存Wiki',
+    rebuild_lineage: '重建血缘', run_backfill: '运行回填', datamodel_generate: '生成数据模型', cron_job: '排程定时任务'
   };
   function toolLabel(n) { return TOOL_LABEL[n] || (n ? n + ' 处理中' : '处理'); }
 
