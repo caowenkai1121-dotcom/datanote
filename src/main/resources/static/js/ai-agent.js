@@ -14,6 +14,7 @@
   var _sessionFilter = ''; // 历史搜索关键词
   var _kbBound = false;    // 全局快捷键是否已绑定(防重复)
   var _previewW = '46%';   // 预览面板上次宽度(跨打开记忆)
+  var _lastSent = '';      // 上一条发送的消息(↑ 调出)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -931,6 +932,7 @@
     if (sending || !inputEl) return; // 共用发送锁: 锁定期间不可重复提交
     var msg = (inputEl.value || '').trim();
     if (!msg) { DN.toast('请输入问题', 'warn'); return; }
+    _lastSent = msg; // 记上一条供 ↑ 调出
     flowEl.appendChild(userBubble(msg));
     inputEl.value = ''; inputEl.style.height = '';   // 发送后高度复位(配合自动增高)
     runRequest('/api/ai/agent/chat', { message: msg, ctx: pendingCtx, model: selectedModel || undefined })
@@ -1354,6 +1356,7 @@
     inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
+      else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条
     });
     inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; });   // 聊天输入随内容自动增高(≤160px)
     sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
