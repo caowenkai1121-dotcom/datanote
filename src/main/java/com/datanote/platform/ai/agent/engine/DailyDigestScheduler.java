@@ -28,10 +28,15 @@ public class DailyDigestScheduler {
     @javax.annotation.Resource(name = "aiLearnExecutor")
     private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
 
+    /** ops 开关: 可关闭每日画像汇总(LLM 成本作业), 默认开 */
+    @org.springframework.beans.factory.annotation.Value("${datanote.ai.digest-enabled:true}")
+    private boolean digestEnabled;
+
     private static final String MARK = "__digest_date__";
 
     @Scheduled(fixedDelay = 1800_000L) // 每 30min 检查一次; 跨自然日才真正执行
     public void tick() {
+        if (!digestEnabled) return;
         String today = LocalDate.now().toString();
         DnAiProjectProfile mark;
         try {
