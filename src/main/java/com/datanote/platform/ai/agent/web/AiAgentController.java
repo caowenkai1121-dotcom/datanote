@@ -170,6 +170,17 @@ public class AiAgentController {
         return R.ok(m);
     }
 
+    /** Agent 运维健康快照: 工具数 / 待审批数 / 运行中(含自主)会话数。便于监控与排障。 */
+    @GetMapping("/health")
+    public R<Map<String, Object>> health() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("tools", toolRegistry.size());
+        try { m.put("pendingApprovals", approvalMapper.selectCount(new QueryWrapper<DnAiApproval>().eq("status", "pending"))); } catch (Exception e) { m.put("pendingApprovals", -1); }
+        try { m.put("runningSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().eq("status", "running"))); } catch (Exception e) { m.put("runningSessions", -1); }
+        try { m.put("autonomousSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().eq("autonomous", 1).eq("status", "running"))); } catch (Exception e) { m.put("autonomousSessions", -1); }
+        return R.ok(m);
+    }
+
     /** 列出已注册工具（机读清单）。 */
     @GetMapping("/tools")
     public R<Map<String, Object>> tools() {
