@@ -13,6 +13,7 @@
   var _sessionList = [];   // 历史会话原始列表(供搜索过滤)
   var _sessionFilter = ''; // 历史搜索关键词
   var _kbBound = false;    // 全局快捷键是否已绑定(防重复)
+  var _previewW = '46%';   // 预览面板上次宽度(跨打开记忆)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -337,7 +338,7 @@
     var side = root.querySelector('.dn-ai-side'); if (side) side.style.display = 'none'; // 预览时收起左数据中心栏, 让聊天+预览有空间(防三列挤垮)
     var panel = document.getElementById('aiPreviewPanel');
     if (!panel) {
-      panel = DN.h('div', { id: 'aiPreviewPanel', style: 'flex:0 0 46%;min-width:340px;max-width:62%;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--bg-body);min-height:0;' });
+      panel = DN.h('div', { id: 'aiPreviewPanel', style: 'flex:0 0 ' + _previewW + ';min-width:340px;max-width:80%;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--bg-body);min-height:0;' });
       root.appendChild(panel);
     }
     panel.innerHTML = '';
@@ -362,7 +363,7 @@
     var grip = DN.h('div', { style: 'position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:6;' });
     grip.onmousedown = function (e) {
       e.preventDefault();
-      function mv(ev) { var r = root.getBoundingClientRect(); var w = r.right - ev.clientX; if (w > 300 && w < r.width - 300) { panel.style.flex = '0 0 ' + w + 'px'; panel.style.maxWidth = 'none'; } }
+      function mv(ev) { var r = root.getBoundingClientRect(); var w = r.right - ev.clientX; if (w > 300 && w < r.width - 300) { panel.style.flex = '0 0 ' + w + 'px'; panel.style.maxWidth = 'none'; _previewW = w + 'px'; } }
       function up() { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); }
       document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
     };
