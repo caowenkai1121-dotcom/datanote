@@ -33,6 +33,13 @@
     var raw = String(text == null ? '' : text);
     var inner = DN.h('div', { class: 'ai-md dn-ai-bubble assistant' + (tone === 'err' ? ' err' : ''), style: 'width:fit-content;overflow-x:auto;' });
     renderMarkdown(inner, raw);
+    // 网页深链拦截: 答复里指向 /files/{id}/view 的链接, 点击改为右侧预览(不跳新页, 与 artifact 体验一致)
+    try {
+      inner.querySelectorAll('a[href*="/files/"]').forEach(function (a) {
+        var href = a.getAttribute('href') || '';
+        if (/\/files\/\d+\/view/.test(href)) a.addEventListener('click', function (e) { e.preventDefault(); openPreview(href, a.textContent || '网页预览'); });
+      });
+    } catch (e) {}
     // 实质终答加"复制"(复制原始 markdown 文本, DN.copy 带 execCommand 降级)
     if (tone !== 'err' && raw.trim().length > 12) {
       inner.appendChild(DN.h('div', { style: 'text-align:right;margin-top:6px;' }, [
