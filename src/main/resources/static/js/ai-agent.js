@@ -1112,6 +1112,9 @@
     var pB = sec('📦 项目画像 · 全局积累');
     DN.get('/api/ai/agent/user-profile').then(function (d) { if (d && d.content) uB.textContent = d.content; }).catch(function () {});
     DN.get('/api/ai/agent/project-profile').then(function (d) { if (d && d.content) pB.textContent = d.content; }).catch(function () {});
+    var gen = DN.h('a', { href: 'javascript:void(0)', text: '↻ 立即生成/更新画像', title: '从近期经验蒸馏画像(异步, 稍候刷新)', style: 'font-size:12px;color:var(--primary);text-decoration:none;display:inline-block;margin-bottom:8px;' });
+    gen.onclick = function () { DN.post('/api/ai/agent/profile-digest/run', {}).then(function () { DN.toast('已触发画像汇总, 约 30s 后重开本面板查看', 'ok'); }).catch(function (e) { DN.toast('触发失败：' + (e && e.message ? e.message : e), 'err'); }); };
+    box.appendChild(gen);
   }
   function renderMemories(body) {
     body.innerHTML = '';
