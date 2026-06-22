@@ -762,12 +762,16 @@
   // 无人值守自主执行: 后台监视轮询(进度横幅 + 步数变化时重建对话 + 高危写挂起时弹审批 + 终态收尾)
   var _autoWatch = null;
   function autoBanner() {
-    var b = document.getElementById('aiAutoBanner');
-    if (!b && inputBarEl && inputBarEl.parentNode) {
-      b = DN.h('div', { id: 'aiAutoBanner', style: 'margin:0 0 6px;padding:7px 12px;border-radius:var(--radius-md);background:var(--primary-bg, rgba(64,128,255,.12));color:var(--primary);font-size:12.5px;font-weight:600;' });
+    var msg = document.getElementById('aiAutoMsg');
+    if (!msg && inputBarEl && inputBarEl.parentNode) {
+      var b = DN.h('div', { id: 'aiAutoBanner', style: 'display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:7px 12px;border-radius:var(--radius-md);background:var(--primary-bg, rgba(64,128,255,.12));color:var(--primary);font-size:12.5px;font-weight:600;' });
+      msg = DN.h('span', { id: 'aiAutoMsg', style: 'flex:1;' });
+      var stop = DN.h('button', { class: 'btn btn-sm', text: '⏹ 停止', title: '停止无人值守自主执行', style: 'flex:0 0 auto;' });
+      stop.onclick = function () { var sid = _autoWatch; if (sid) DN.post('/api/ai/agent/' + sid + '/interrupt', {}).then(function () { DN.toast('已请求停止，本轮结束后停下', 'ok'); }).catch(function () {}); _autoWatch = null; removeAutoBanner(); };
+      b.appendChild(msg); b.appendChild(stop);
       inputBarEl.parentNode.insertBefore(b, inputBarEl);
     }
-    return b;
+    return msg;
   }
   function removeAutoBanner() { var b = document.getElementById('aiAutoBanner'); if (b) b.remove(); }
   function watchAutonomous(id) {
