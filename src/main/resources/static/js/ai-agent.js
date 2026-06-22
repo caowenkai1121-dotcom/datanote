@@ -952,6 +952,7 @@
       if (!ap) return;
       var card = DN.h('div', { class: 'dn-ai-approval', style: 'margin-left:18px;' });
       card.appendChild(DN.h('div', { style: 'font-weight:600;color:var(--warning-text);margin-bottom:6px;', text: '⚠ 待审批: ' + (ap.actionSummary || ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
+      if (ap.riskLevel === 'HIGH') card.appendChild(DN.h('div', { text: '🔴 高危操作，可能不可逆，请仔细核对参数后再批准', style: 'font-size:12px;color:var(--danger,#e5484d);margin-bottom:6px;font-weight:600;' }));
       if (ap.argsJson) { var dt = DN.h('details', { style: 'margin-bottom:8px;' }, [DN.h('summary', { text: '查看参数', style: 'font-size:12px;color:var(--text-muted);cursor:pointer;' }), DN.h('div', { style: 'font-size:12px;color:var(--text-muted);word-break:break-all;margin-top:4px;', text: ap.argsJson })]); card.appendChild(dt); }
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
