@@ -94,9 +94,61 @@ public final class AgentTextUtil {
         return t.replaceAll("(?i)</?tool_call\\s*>", " ");
     }
 
-    /** 面向用户终答统一清洗: 去 &lt;think&gt; 过程留痕 + 去 &lt;tool_call&gt; 块 + 控制字符 sanitize。 */
+    /** 面向用户终答统一清洗: 去 &lt;think&gt; 过程留痕 + 去 &lt;tool_call&gt; 块 + 去泄漏的网页源码/工具调用JSON + 控制字符 sanitize。 */
     public static String cleanFinal(String text) {
-        return sanitize(stripToolCalls(stripThink(text)));
+        return sanitize(stripLeakedArtifacts(stripToolCalls(stripThink(text)))).trim();
+    }
+
+    // 完整 HTML 文档(可选 DOCTYPE + <html>…</html>): 网页归 create_page artifact, 不该出现在聊天答复
+    private static final Pattern HTML_DOC =
+            Pattern.compile("(?is)(?:<!DOCTYPE\\s+html[^>]*>\\s*)?<html[\\s>].*?</html\\s*>");
+    // 空代码围栏(剥完内容后残留的 ``` ```)
+    private static final Pattern EMPTY_FENCE = Pattern.compile("(?s)```[a-zA-Z]*\\s*```");
+
+    /**
+     * 终答防泄漏: 去掉模型误塞进答复的 完整HTML文档 / tool_call 形 JSON(含 "name"+"arguments") / 残留空围栏。
+     * (网页源码归 create_page artifact 右侧预览, 工具调用 JSON 不该展示给用户)。
+     */
+    public static String stripLeakedArtifacts(String text) {
+        if (text == null) return null;
+        String t = HTML_DOC.matcher(text).replaceAll("");
+        t = stripToolCallJson(t);
+        t = EMPTY_FENCE.matcher(t).replaceAll("");
+        return t;
+    }
+
+    /** 删除文本中所有 工具调用形 平衡 JSON 对象(同时含 "name" 与 "arguments"); 字符串内花括号不计深度。 */
+    private static String stripToolCallJson(String t) {
+        if (t == null || t.indexOf('{') < 0) return t;
+        StringBuilder out = new StringBuilder(t.length());
+        int i = 0, n = t.length();
+        while (i < n) {
+            char c = t.charAt(i);
+            if (c == '{') {
+                int end = balancedEnd(t, i);
+                if (end > i) {
+                    String block = t.substring(i, end + 1);
+                    if (block.contains("\"name\"") && block.contains("\"arguments\"")) { i = end + 1; continue; }
+                }
+            }
+            out.append(c);
+            i++;
+        }
+        return out.toString();
+    }
+
+    /** 从 start('{') 起找平衡闭合 '}' 的下标(字符串内花括号忽略); 无则 -1。 */
+    private static int balancedEnd(String t, int start) {
+        int depth = 0; boolean inStr = false; char prev = 0;
+        for (int i = start; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (inStr) { if (c == '"' && prev != '\\') inStr = false; }
+            else if (c == '"') inStr = true;
+            else if (c == '{') depth++;
+            else if (c == '}') { depth--; if (depth == 0) return i; }
+            prev = c;
+        }
+        return -1;
     }
 
     /** 从可能含 ``` 围栏/散文的文本抠出首个平衡 {...} JSON 子串；无则 null。 */
