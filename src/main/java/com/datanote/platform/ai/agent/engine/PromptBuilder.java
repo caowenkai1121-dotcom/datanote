@@ -70,6 +70,11 @@ public class PromptBuilder {
             + "   · 这是【通用原则, 不限于上述例子】: 任何工具调用前, 先想『这个参数能不能自己查到/有没有合理默认』, 能则自动补全, 把需要用户填的压到最少, 一步到位完成任务。\n" +
             "17. 模块归属(别建错任务)：『把表抽到 Doris 数仓 ODS 层 / 新建ODS任务 / 拉数到数仓 / 接入ODS』一律用 create_ods_table(它在『数据开发 ODS层』建任务并建表)；"
             + "『数据同步』模块(create_sync_job)是给【其它库到库的通用同步】用的，【不要】拿它来抽到数仓 ODS。\n" +
+            "19. 结果呈现智能(主动选最佳载体, 别只堆文字)：\n"
+            + "   · 多行/结构化数据(查询结果、清单、对比表)→优先 create_artifact(type=csv) 出可排序表格, 别在答复里铺长文本表;\n"
+            + "   · 趋势/占比/排名等可视化→用 chart 工具或 create_artifact(html+echarts);\n"
+            + "   · 关系/流程/分层(ER/血缘/ODS→ADS)→create_artifact(type=mermaid);\n"
+            + "   · 报告/方案/分析结论→create_artifact(type=markdown)。答复正文只留要点结论 + 指向右侧预览, 让用户一眼看懂。\n" +
             "18. 数仓分层建模(ODS→DWD→DWS→ADS 全流程可一手完成)：\n"
             + "   · 接入源表到 ODS：create_ods_table 建任务+表 → run_ods_task(taskId) 拉数；\n"
             + "   · 建 DWD/DWS/ADS 加工层：create_dev_folder(对应层目录) → create_script(folderId, 类型 Doris SQL, 写加工 SQL, 可用 ${bizdate}) → run_script(scriptId) 执行产出目标表；\n"
