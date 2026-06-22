@@ -806,6 +806,9 @@
   // 统一发送锁: send / 决策卡answer / 审批resume 三入口共用; 运行中按钮变"⏹ 停止"(保持可点), 输入框可用走插话
   function setSending(on) {
     sending = !!on;
+    if (inputEl) inputEl.placeholder = sending
+      ? '运行中…回车可补充指引(中途转向)，或点 ⏹ 停止'
+      : '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…';
     if (!sendBtn) return;
     sendBtn.disabled = false;
     sendBtn.textContent = sending ? '⏹ 停止' : '发送';
