@@ -84,6 +84,10 @@ public class SecurityConfig {
         // CORS：委托给已有的 CorsFilter Bean
         http.cors();
 
+        // X-Frame-Options: 默认 DENY 会连同源 iframe 一起拦(致 create_page 网页右侧预览"拒绝连接")。
+        // 放开为 SAMEORIGIN: 仅允许本应用自己内联预览自己的页面; 跨源框架仍禁(防点击劫持)。
+        http.headers().frameOptions().sameOrigin();
+
         if (!authProperties.isEnabled()) {
             // 开放模式: 放行所有请求, 同时关 CSRF(无会话语义)
             http.csrf().disable();
