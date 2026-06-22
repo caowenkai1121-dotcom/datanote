@@ -317,7 +317,8 @@
   function pageCard(pg) {
     if (!pg) return DN.h('span');
     var card = DN.h('div', { class: 'dn-ai-pagecard', style: 'margin:4px 0 8px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;background:var(--bg-body);display:flex;align-items:center;gap:10px;' });
-    card.appendChild(DN.h('div', { text: '🌐', style: 'font-size:22px;flex:0 0 auto;' }));
+    var icon = ({ markdown: '📝', mermaid: '🧩', code: '💻', csv: '📊', json: '🔧', svg: '🖼', html: '🌐' })[pg.artifactType] || '🌐';
+    card.appendChild(DN.h('div', { text: icon, style: 'font-size:22px;flex:0 0 auto;' }));
     card.appendChild(DN.h('div', { style: 'flex:1;min-width:0;' }, [
       DN.h('div', { text: pg.title || pg.fileName || '网页', style: 'font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
       DN.h('div', { text: (pg.artifactType ? String(pg.artifactType).toUpperCase() + ' · ' : '') + '点击预览，在右侧渲染', style: 'font-size:12px;color:var(--text-muted);' })
