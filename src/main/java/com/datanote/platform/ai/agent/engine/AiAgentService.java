@@ -815,7 +815,7 @@ public class AiAgentService {
 
         // 一次 LLM 收尾汇报(不再调用工具)
         String manifest = toolRegistry.toToolsManifestJson();
-        String today = LocalDate.now().toString();
+        String today = richToday();
         String context = promptBuilder.build(session.getGoalIntent(), manifest, st.trace.toString(), today, null, null, null);
         String raw = aiAssistService.isAvailable()
                 ? callLlmWithRetry("以上为已通过人工审批并按原始参数执行的写操作结果。请用中文向用户简要汇报: 做了什么、成功或失败、关键产出(ID/名称)与后续建议。不要再调用任何工具。", context)
