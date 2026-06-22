@@ -67,7 +67,7 @@ public class AiProfileService {
         try {
             List<DnAiMemorySkill> ds = memoryMapper.selectList(new QueryWrapper<DnAiMemorySkill>()
                     .select("DISTINCT owner").eq("status", "active").isNotNull("owner")
-                    .ge("updated_at", cutoff));
+                    .ge("updated_at", cutoff).last("LIMIT 200")); // 封顶每日蒸馏用户数, 防大规模时 LLM 成本失控
             for (DnAiMemorySkill m : ds) if (m.getOwner() != null && !"anonymous".equals(m.getOwner())) owners.add(m.getOwner());
         } catch (Exception e) { log.warn("[profile] 取活跃用户失败: {}", e.getMessage()); }
         for (String owner : owners) {
