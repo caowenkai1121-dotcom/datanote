@@ -121,6 +121,7 @@ public class AiFileController {
                         + "img-src data: blob: https:; font-src data: https:; "
                         + "connect-src 'none'; form-action 'none'")
                 .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300") // artifact 按文件id不可变, 重开预览秒显
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 .body(new FileSystemResource(p.toFile()));
     }
