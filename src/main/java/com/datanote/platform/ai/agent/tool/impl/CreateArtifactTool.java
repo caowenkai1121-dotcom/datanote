@@ -54,6 +54,7 @@ public class CreateArtifactTool implements AiTool {
         if (content == null || content.trim().isEmpty()) return AiToolResult.fail("bad_arguments", "content 不能为空");
         if (title == null || title.trim().isEmpty()) title = "内容";
         if (type == null || type.isEmpty()) type = "markdown";
+        if (!"html".equals(type) && !"htm".equals(type)) content = stripFence(content); // 剥 LLM 误加的外层```围栏(html除外)
         String html;
         try {
             html = render(type, title, content, language);
@@ -210,6 +211,15 @@ public class CreateArtifactTool implements AiTool {
     }
     private static String escScript(String s) { // 防 </script> 提前闭合
         return s == null ? "" : s.replace("</", "<\\/");
+    }
+    /** 剥除内容外层 ```lang ... ``` 围栏(LLM 常误包)。 */
+    private static String stripFence(String c) {
+        String t = c.trim();
+        if (t.startsWith("```")) {
+            int nl = t.indexOf('\n');
+            if (nl > 0) { t = t.substring(nl + 1); if (t.endsWith("```")) t = t.substring(0, t.length() - 3); return t.trim(); }
+        }
+        return c;
     }
     private static String lower(String s) { return s == null ? null : s.trim().toLowerCase(); }
     private static String sanitize(String t) {
