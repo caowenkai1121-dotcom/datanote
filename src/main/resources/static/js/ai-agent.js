@@ -776,6 +776,7 @@
     if (flowEl) { flowEl.innerHTML = ''; flowEl.appendChild(welcome()); }
     _autoWatch = null; removeAutoBanner(); // 停掉旧会话的自主监视
     closePreview(); // 关右侧网页预览
+    _sessionFilter = ''; var _hs = document.getElementById('aiHistSearch'); if (_hs) _hs.value = ''; // 重置历史搜索
     loadSessions(); // 刷新列表(清除高亮)
   }
 
@@ -1206,7 +1207,7 @@
       DN.h('span', { text: '✚ 新', title: '开始新会话', style: 'cursor:pointer;font-size:12px;color:var(--primary);', onclick: newSession })
     ]);
     panel.appendChild(histHd);
-    var histSearch = DN.h('input', { type: 'text', placeholder: '搜索历史…', style: 'margin:0 18px 6px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-body);color:var(--text-primary);flex:0 0 auto;' });
+    var histSearch = DN.h('input', { id: 'aiHistSearch', type: 'text', placeholder: '搜索历史…', style: 'margin:0 18px 6px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-body);color:var(--text-primary);flex:0 0 auto;' });
     histSearch.addEventListener('input', function () { _sessionFilter = histSearch.value; renderSessionRows(); });
     panel.appendChild(histSearch);
     histListEl = DN.h('div', { id: 'aiHistList', style: 'flex:0 0 auto;max-height:240px;overflow-y:auto;padding:0 18px 8px;border-bottom:1px solid var(--border);margin-bottom:6px;' });
