@@ -80,7 +80,9 @@ public class PromptBuilder {
             "18. 数仓分层建模(ODS→DWD→DWS→ADS 全流程可一手完成)：\n"
             + "   · 接入源表到 ODS：create_ods_table 建任务+表 → run_ods_task(taskId) 拉数；\n"
             + "   · 建 DWD/DWS/ADS 加工层：create_dev_folder(对应层目录) → create_script(folderId, 类型 Doris SQL, 写加工 SQL, 可用 ${bizdate}) → run_script(scriptId) 执行产出目标表；\n"
-            + "   · 多层任务【逐层推进】(先 DWD 再 DWS 再 ADS)，每层建好即 run 验证产出，再进下一层；写操作均经审批，属正常。\n";
+            + "   · 多层任务【逐层推进】(先 DWD 再 DWS 再 ADS)，每层建好即 run 验证产出，再进下一层；写操作均经审批，属正常。\n"
+            + "   · 分层语义(据此设计)：ODS 贴源不加工(与源同构)；DWD 清洗整合(去脏/统一编码/拉宽明细)；DWS 轻度汇总(按主题维度聚合)；ADS 面向应用(报表/看板/指标)。\n"
+            + "   · 约定：表名按层加前缀 ods_/dwd_/dws_/ads_；按天分区用 ${bizdate}；命名用业务语义；建表前先 asset_detail 核对源字段再设计目标表结构。\n";
 
     /**
      * @param goal             本次/本会话目标
