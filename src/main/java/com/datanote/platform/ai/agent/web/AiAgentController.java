@@ -24,6 +24,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +121,32 @@ public class AiAgentController {
         return R.ok(m);
     }
 
+    /**
+     * 列出【当前用户自己】的历史会话(会话隔离: 严格按 user_name=本人, admin 也只看自己, 匿名态看匿名)。
+     * 返回精简列表供左侧历史面板渲染; 轨迹详情走 /session/{id}(同款归属校验)。
+     */
+    @GetMapping("/sessions")
+    public R<List<Map<String, Object>>> sessions(@RequestParam(value = "limit", required = false, defaultValue = "50") int limit) {
+        String me = currentUser();
+        if (me == null) return R.ok(new ArrayList<>());
+        if (limit < 1) limit = 1;
+        if (limit > 200) limit = 200;
+        List<DnAiSession> list = sessionMapper.selectList(new QueryWrapper<DnAiSession>()
+                .eq("user_name", me)                       // 严格限本人: 用户只能返回自己的记录
+                .orderByDesc("updated_at").orderByDesc("id")
+                .last("LIMIT " + limit));
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (DnAiSession s : list) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("sessionId", s.getSessionId());
+            m.put("title", s.getGoalIntent());             // 标题=会话目标/意图(为空时前端兜底)
+            m.put("status", s.getStatus());
+            m.put("updatedAt", s.getUpdatedAt());
+            out.add(m);
+        }
+        return R.ok(out);
+    }
+
     /** 列出已注册工具（机读清单）。 */
     @GetMapping("/tools")
     public R<Map<String, Object>> tools() {
@@ -193,9 +220,12 @@ public class AiAgentController {
                 .eq("id", id).eq("status", "pending")
                 .set("status", decision).set("decided_by", me).set("decided_at", LocalDateTime.now()));
         if (rows == 0) return R.fail("审批已被处理(竞态)");
-        // 会话状态: 批准→paused(待恢复), 拒绝→blocked
+        // 会话状态: 批准→paused(待恢复); 自主会话批准→running(后台驱动器自动续驱, 无需手动 resume); 拒绝→blocked
         if (s != null) {
-            s.setStatus("approved".equals(decision) ? "paused" : "blocked");
+            String ns = "approved".equals(decision)
+                    ? (Integer.valueOf(1).equals(s.getAutonomous()) ? "running" : "paused")
+                    : "blocked";
+            s.setStatus(ns);
             s.setUpdatedAt(LocalDateTime.now());
             sessionMapper.updateById(s);
         }
@@ -285,7 +315,7 @@ public class AiAgentController {
         R<Void> denied = assertSessionOwner(sessionId);
         if (denied != null) return denied;
         int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
-                .eq("session_id", sessionId).set("interrupt_flag", 1).set("updated_at", LocalDateTime.now()));
+                .eq("session_id", sessionId).set("interrupt_flag", 1).set("autonomous", 0).set("updated_at", LocalDateTime.now()));
         return n > 0 ? R.ok() : R.fail("会话不存在");
     }
 
@@ -326,6 +356,25 @@ public class AiAgentController {
     public R<Map<String, Object>> approveAll(@PathVariable("sessionId") String sessionId, HttpServletRequest req) {
         AgentContext ctx = buildCtx(sessionId, null, req);
         return R.ok(aiAgentService.approveAllAndContinue(sessionId, ctx));
+    }
+
+    /**
+     * 启动无人值守自主执行: body {maxSteps?:300, maxHours?:2}。后台驱动器按 todo 计划持续推进至完成/预算耗尽。
+     * 常规写自动执行, 高危(HIGH)写仍挂起等批; PermGate/DataAcl 仍逐个拦; 仅本人可启。
+     */
+    @PostMapping("/{sessionId}/autonomous")
+    public R<Map<String, Object>> autonomous(@PathVariable("sessionId") String sessionId,
+                                             @RequestBody(required = false) Map<String, Object> body, HttpServletRequest req) {
+        int maxSteps = 300;
+        long maxMs = 7200_000L;
+        if (body != null) {
+            Object ms = body.get("maxSteps");
+            if (ms != null) try { maxSteps = Integer.parseInt(String.valueOf(ms)); } catch (Exception ignore) {}
+            Object mh = body.get("maxHours");
+            if (mh != null) try { maxMs = (long) (Double.parseDouble(String.valueOf(mh)) * 3600_000L); } catch (Exception ignore) {}
+        }
+        AgentContext ctx = buildCtx(sessionId, null, req);
+        return R.ok(aiAgentService.startAutonomous(sessionId, maxSteps, maxMs, ctx));
     }
 
     /** 构造执行上下文并填充发起人权限快照。 */

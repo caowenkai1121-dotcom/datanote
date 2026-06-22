@@ -59,6 +59,13 @@ public class AiAgentService {
     private static final ThreadLocal<Boolean> CRON_MODE = ThreadLocal.withInitial(() -> false);
     private static final java.util.Set<String> CRON_BLOCKED =
             new java.util.HashSet<>(java.util.Arrays.asList("cron_job", "ask_user"));
+    /** 无人值守自主模式禁用工具: ask_user(改为自决继续, 不停等人) */
+    private static final java.util.Set<String> AUTONOMOUS_BLOCKED =
+            new java.util.HashSet<>(java.util.Arrays.asList("ask_user"));
+    /** 自主任务步数硬上限(防失控/成本失控; startAutonomous 入参超此值截到此) */
+    private static final int AUTONOMOUS_MAX_STEPS_CAP = 2000;
+    /** 自主连续无进展周期数达此值则熔断停(防空转烧预算) */
+    private static final int AUTONOMOUS_IDLE_LIMIT = 3;
     /** 渐进工具披露: 工具数超阈值时只放核心(写/agent元/核心检索)+ tool_search, 其余按需发现 */
     @org.springframework.beans.factory.annotation.Value("${datanote.ai.tool-disclosure-threshold:50}")
     private int toolDisclosureThreshold;
@@ -184,14 +191,16 @@ public class AiAgentService {
         newSteps.add(writeStep(st, "USER", "user", userMessage, null, null, null, null, null, null, true, "LOW", null));
 
         boolean cronMode = Boolean.TRUE.equals(CRON_MODE.get());
+        boolean autonomousMode = !cronMode && Integer.valueOf(1).equals(session.getAutonomous()); // 无人值守自主: 抑制 ask_user, 自决继续
         String manifest;
         if (cronMode) {
             manifest = toolRegistry.toToolsManifestJson(t -> !CRON_BLOCKED.contains(t.name())); // cron: 隐藏 cron_job/ask_user
         } else if (toolRegistry.size() > toolDisclosureThreshold) {
             // 渐进披露: 工具多时只放 写/agent元/核心检索 + tool_search, 其余经 tool_search 发现再调用
-            manifest = toolRegistry.toToolsManifestJson(t -> !t.readOnly() || "agent".equals(t.group()) || CORE_READ.contains(t.name()));
+            manifest = toolRegistry.toToolsManifestJson(t -> (!t.readOnly() || "agent".equals(t.group()) || CORE_READ.contains(t.name()))
+                    && !(autonomousMode && AUTONOMOUS_BLOCKED.contains(t.name())));
         } else {
-            manifest = toolRegistry.toToolsManifestJson();
+            manifest = toolRegistry.toToolsManifestJson(t -> !(autonomousMode && AUTONOMOUS_BLOCKED.contains(t.name())));
         }
         String today = LocalDate.now().toString();
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
@@ -451,7 +460,8 @@ public class AiAgentService {
                 continue;
             }
             if (gate == Guardrail.Gate.NEED_APPROVAL) {
-                boolean autoAppr = live != null && Integer.valueOf(1).equals(live.getAutoApprove()); // 本任务批量自动批准
+                boolean autoAppr = live != null && (Integer.valueOf(1).equals(live.getAutoApprove())
+                        || (Integer.valueOf(1).equals(live.getAutonomous()) && !Guardrail.isHigh(tool))); // 批量自批 / 自主模式非HIGH写自批(HIGH仍挂起等人)
                 ApprovalGate.Outcome oc = approvalGate.check(st.session.getSessionId(), st.seq, tool, argsToStr(argsNode), Guardrail.isHigh(tool), autoAppr);
                 if (oc == ApprovalGate.Outcome.PENDING) {
                     st.awaitingApproval = true; st.exitReason = "AWAIT_APPROVAL";
@@ -534,8 +544,8 @@ public class AiAgentService {
             }
             // 表数据预览: 用【未截断】的原始结果走独立通道回传(stepsToDto 的 resultData 会被 cap 截断, 宽表 JSON 解析不出),
             // 让前端能完整渲染数据表格
-            if (result.isOk() && result.getData() instanceof Map && (((Map<?, ?>) result.getData()).containsKey("_preview") || ((Map<?, ?>) result.getData()).containsKey("_chart"))) {
-                previews.add((Map<String, Object>) result.getData());
+            if (result.isOk() && result.getData() instanceof Map && (((Map<?, ?>) result.getData()).containsKey("_preview") || ((Map<?, ?>) result.getData()).containsKey("_chart") || ((Map<?, ?>) result.getData()).containsKey("_page"))) {
+                previews.add((Map<String, Object>) result.getData()); // _preview/_chart/_page 共用 previews 通道回传前端
             }
             String resultData = toJson(result);
             newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, think, toolName, argsToStr(argsNode),
@@ -585,7 +595,8 @@ public class AiAgentService {
                 .set("status", finalStatus)
                 .set("budget_steps_used", st.seq)
                 .set("updated_at", LocalDateTime.now());
-        if (taskEnded) finUw.set("auto_approve", 0);
+        // 终态清批量自批与自主标志(防遗留致后续手动会话被静默自动批/自主); 自主续跑由驱动器逐周期重申 autonomous=1
+        if (taskEnded) finUw.set("auto_approve", 0).set("autonomous", 0);
         sessionMapper.update(null, finUw);
         // 批量任务收尾: 已批未执行的审批标记已执行, 防后续 resume 重放与本次 run 内联执行双跑
         if (taskEnded) try { approvalGate.markSessionExecuted(session.getSessionId()); } catch (Exception ignore) {}
@@ -819,6 +830,7 @@ public class AiAgentService {
                 .set("status", "done")
                 .set("budget_steps_used", st.seq)
                 .set("auto_approve", 0)
+                .set("autonomous", 0)
                 .set("updated_at", LocalDateTime.now()));
 
         if (executed > 0) {
@@ -866,6 +878,155 @@ public class AiAgentService {
         return run(sessionId,
                 "已开启本任务批量自动批准。请继续执行计划中所有剩余步骤(逐层 ODS→DWD→DWS→ADS), 一路做到全部完成, 无需再逐个等待审批。",
                 ctx);
+    }
+
+    // ==================== 无人值守自主执行(Autonomous) ====================
+
+    /**
+     * 启动无人值守自主执行: 置 autonomous=1 + 步数/墙钟预算, 由后台 AutonomousScheduler 持续驱动至
+     * 计划完成/预算耗尽/熔断。安全: 非HIGH写自动批, HIGH写仍挂起等人(decide后自动续驱); PermGate/DataAcl 仍逐个拦; 红线禁区永久禁。仅本人可启。
+     */
+    public Map<String, Object> startAutonomous(String sessionId, int maxSteps, long maxMillis, AgentContext ctx) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (s == null) { resp.put("status", "error"); resp.put("finalAnswer", "会话不存在"); return resp; }
+        if (!ownerOk(s, ctx)) { resp.put("status", "blocked"); resp.put("finalAnswer", "无权操作该会话(越权隔离)。"); return resp; }
+        int steps = maxSteps <= 0 ? 300 : Math.min(maxSteps, AUTONOMOUS_MAX_STEPS_CAP);
+        long ms = maxMillis <= 0 ? 7200_000L : maxMillis;
+        LocalDateTime until = LocalDateTime.now().plus(java.time.Duration.ofMillis(ms));
+        sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId)
+                .set("autonomous", 1).set("auto_max_steps", steps)
+                .set("autonomous_until", until).set("auto_idle_count", 0)
+                .set("last_heartbeat", null).set("status", "running")
+                .set("updated_at", LocalDateTime.now()));
+        resp.put("sessionId", sessionId);
+        resp.put("status", "autonomous_started");
+        resp.put("finalAnswer", "已进入无人值守自主执行模式(预算 " + steps + " 步 / 截止 " + until
+                + ")。后台将按 todo 计划持续推进直至完成; 常规写操作自动执行, 高危写操作仍会挂起等你批准。");
+        return resp;
+    }
+
+    /**
+     * 后台自主驱动: 循环 run() 周期推进, 直到 计划完成(交付)/预算耗尽/墙钟到/连续无进展熔断/挂起HIGH审批/被中断。
+     * 由 AutonomousScheduler 异步调用(每会话占一线程, 心跳防重复领取)。
+     */
+    public void driveAutonomous(String sessionId) {
+        int guard = 0;
+        while (guard++ < 10000) {
+            DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+            if (s == null) return;
+            if (!Integer.valueOf(1).equals(s.getAutonomous())) return;   // 已收尾/被中断
+            if (!"running".equals(s.getStatus())) return;                // 挂起(wait_approval等)/终态 → 让位
+            int used = s.getBudgetStepsUsed() == null ? 0 : s.getBudgetStepsUsed();
+            if (s.getAutoMaxSteps() != null && s.getAutoMaxSteps() > 0 && used >= s.getAutoMaxSteps()) {
+                finalizeAutonomous(sessionId, "done", "已达自主步数预算上限(" + s.getAutoMaxSteps() + " 步), 自动收尾。"); return;
+            }
+            if (s.getAutonomousUntil() != null && LocalDateTime.now().isAfter(s.getAutonomousUntil())) {
+                finalizeAutonomous(sessionId, "done", "已达自主墙钟截止, 自动收尾。"); return;
+            }
+            if (isPlanComplete(s.getPlanJson())) { finalizeAutonomousDeliver(sessionId, s); return; } // 计划全done → 交付
+            // 心跳占行(表明本会话正被驱动, 防多实例/多线程重复领取)
+            sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                    .set("last_heartbeat", LocalDateTime.now()).set("updated_at", LocalDateTime.now()));
+            AgentContext ctx = new AgentContext(s.getUserName(), null, null, sessionId, null);
+            permResolver.resolveInto(ctx, s.getUserName());   // 写入归属=会话发起人
+            Map<String, Object> r;
+            try {
+                r = run(sessionId, "【无人值守自主模式】请继续按 todo 计划执行剩余步骤: 不要调用 ask_user(按合理默认自决继续); "
+                        + "每完成一步用 todo update 标 done; 全部步骤完成后给出最终交付汇报并停止, 不再调工具。", ctx);
+            } catch (Exception e) {
+                log.warn("[autonomous] 驱动异常 session={}: {}", sessionId, e.getMessage());
+                finalizeAutonomous(sessionId, "blocked", "自主执行异常: " + msgOf(e)); return;
+            }
+            if (r != null && "running".equals(r.get("status"))) { // 会话被其它线程占用(锁冲突): 清心跳让下次 tick 尽快重领, 本线程退出防空转
+                clearHeartbeat(sessionId); return;
+            }
+            DnAiSession after = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+            if (after == null) return;
+            String st = after.getStatus();
+            if ("wait_approval".equals(st)) { clearHeartbeat(sessionId); return; } // HIGH写挂起 → 清心跳, 人工批准(decide置running)后下次 tick 立即续驱
+            if ("wait_input".equals(st)) { finalizeAutonomous(sessionId, "wait_input", null); return; } // 兜底(已抑制ask_user, 理论不达)
+            if ("cancelled".equals(st) || "blocked".equals(st)) {
+                sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                        .set("autonomous", 0).set("auto_approve", 0).set("last_heartbeat", null).set("updated_at", LocalDateTime.now()));
+                return;
+            }
+            // 本周期收尾为 done: 计划全完成 或 本周期无工具进展(借鉴 pursue: 无工具=任务到头/无更多动作) → 交付收尾
+            if (isPlanComplete(after.getPlanJson()) || countToolSteps(r) == 0) {
+                finalizeAutonomousDeliver(sessionId, after); return;
+            }
+            // 有进展 → 重申 autonomous=1(run 终态已清, 此处续驱) + status=running 继续下一周期(不间断)
+            sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                    .set("status", "running").set("autonomous", 1).set("auto_idle_count", 0).set("updated_at", LocalDateTime.now()));
+        }
+        log.warn("[autonomous] 内部循环 guard 耗尽(10000周期) session={}, 强制收尾", sessionId);
+        finalizeAutonomous(sessionId, "blocked", "自主执行达内部循环上限, 已停止, 请人工检查。");
+    }
+
+    /** 清心跳(让调度器下次 tick 可立即重领该会话续驱)。 */
+    private void clearHeartbeat(String sessionId) {
+        sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                .set("last_heartbeat", null).set("updated_at", LocalDateTime.now()));
+    }
+
+    /** 统计一轮 run 结果里的工具调用步数(SKILL_CALL)。0 = 本周期纯答复无动作。 */
+    @SuppressWarnings("unchecked")
+    private int countToolSteps(Map<String, Object> r) {
+        if (r == null) return 0;
+        Object steps = r.get("steps");
+        if (!(steps instanceof java.util.List)) return 0;
+        int c = 0;
+        for (Object o : (java.util.List<Object>) steps) {
+            if (o instanceof Map) {
+                Map<?, ?> m = (Map<?, ?>) o;
+                if ("SKILL_CALL".equals(String.valueOf(m.get("stepType"))) && m.get("skillName") != null) c++;
+            }
+        }
+        return c;
+    }
+
+    /** todo 计划是否全部完成(非空且每步 status=done)。 */
+    private boolean isPlanComplete(String planJson) {
+        if (planJson == null || planJson.trim().isEmpty()) return false;
+        try {
+            JsonNode n = objectMapper.readTree(planJson);
+            JsonNode steps = n.isArray() ? n : n.get("steps");
+            if (steps == null || !steps.isArray() || steps.size() == 0) return false;
+            for (JsonNode step : steps) if (!"done".equals(step.path("status").asText())) return false;
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
+    /** 自主收尾(非交付路径): 关 autonomous, 置终态/挂起态, 可留一条 FINAL 说明原因。 */
+    private void finalizeAutonomous(String sessionId, String status, String note) {
+        if (note != null) {
+            try {
+                DnAiSession s = sessionMapper.selectOne(new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+                if (s != null) {
+                    AgentState st = new AgentState(); st.session = s; st.seq = nextSeq(sessionId);
+                    writeStep(st, "FINAL", "assistant", note, null, null, null, null, "ok", null, true, "LOW", null);
+                }
+            } catch (Exception ignore) {}
+        }
+        sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                .set("autonomous", 0).set("auto_approve", 0).set("last_heartbeat", null)
+                .set("status", status).set("updated_at", LocalDateTime.now()));
+    }
+
+    /** 自主交付收尾: 计划全完成 → 最后一轮只汇报不调工具 → 关 autonomous 置 done。 */
+    private void finalizeAutonomousDeliver(String sessionId, DnAiSession s) {
+        AgentContext ctx = new AgentContext(s.getUserName(), null, null, sessionId, null);
+        permResolver.resolveInto(ctx, s.getUserName());
+        try {
+            run(sessionId, "【无人值守自主模式·收尾交付】todo 计划已全部完成。请不要再调用任何工具, 直接用中文给出最终交付汇报: "
+                    + "做了什么、产出物(表/脚本/任务的名称与ID)、关键结果与后续建议。", ctx);
+        } catch (Exception e) {
+            log.warn("[autonomous] 收尾交付异常 session={}: {}", sessionId, e.getMessage());
+        }
+        sessionMapper.update(null, new UpdateWrapper<DnAiSession>().eq("session_id", sessionId)
+                .set("autonomous", 0).set("auto_approve", 0).set("last_heartbeat", null)
+                .set("status", "done").set("updated_at", LocalDateTime.now()));
     }
 
     /** 标记审批已执行(防 resume 重复执行同一写动作)。 */

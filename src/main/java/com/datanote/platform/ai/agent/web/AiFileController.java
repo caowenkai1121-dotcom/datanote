@@ -97,6 +97,34 @@ public class AiFileController {
                 .body(new FileSystemResource(p.toFile()));
     }
 
+    /**
+     * 内联预览(仅 html): 供前端右侧面板 iframe 渲染 agent 生成的网页(create_page)。
+     * 安全: CSP `sandbox`(不透明源, 即使被直接打开也隔离同源 cookie/DOM, 防 XSS/CSRF) + allow-scripts(放行图表/mermaid CDN) + owner 校验。非 html 一律 404(走 /download)。
+     */
+    @GetMapping("/{id}/view")
+    public ResponseEntity<Resource> view(@PathVariable("id") Long id) {
+        Object[] r = fileService.resolve(id, currentUser());
+        if (r == null) return ResponseEntity.notFound().build();
+        DnAiFile m = (DnAiFile) r[0];
+        Path p = (Path) r[1];
+        String name = m.getFileName() == null ? "" : m.getFileName().toLowerCase();
+        if (!name.endsWith(".html") && !name.endsWith(".htm")) return ResponseEntity.notFound().build(); // 仅网页可内联, 其余防 XSS 走下载
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/html; charset=utf-8"))
+                .header("Content-Security-Policy",
+                        // sandbox 不透明源隔离(无 allow-same-origin → 偷不到 app cookie/DOM); 去 allow-forms;
+                        // connect-src/form-action 'none' → 禁 fetch/XHR/表单外泄(防沙箱页把用户输入回传攻击者域);
+                        // script/style 允许 https CDN + inline(图表 mermaid/echarts 自渲染), img/font 仅 data/blob/https
+                        "sandbox allow-scripts allow-popups allow-modals; "
+                        + "default-src 'none'; "
+                        + "script-src 'unsafe-inline' 'unsafe-eval' https:; style-src 'unsafe-inline' https:; "
+                        + "img-src data: blob: https:; font-src data: https:; "
+                        + "connect-src 'none'; form-action 'none'")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .body(new FileSystemResource(p.toFile()));
+    }
+
     /** 删除(owner 作用域)。 */
     @PostMapping("/{id}/remove")
     public R<Void> remove(@PathVariable("id") Long id) {

@@ -65,6 +65,23 @@ public class AiAsyncConfig {
     }
 
     /**
+     * 无人值守自主执行器: 后台驱动器持续推进自主会话(每会话占一线程循环跑数小时直到计划完成/预算耗尽)。
+     * core2/max2 → 至多 2 个自主会话并发; 满则丢(下次 tick 凭心跳过期重新领取, 不重复)。
+     */
+    @Bean("aiAutonomousExecutor")
+    public ThreadPoolTaskExecutor aiAutonomousExecutor() {
+        ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
+        ex.setCorePoolSize(2);
+        ex.setMaxPoolSize(2);
+        ex.setQueueCapacity(8);
+        ex.setThreadNamePrefix("ai-auto-");
+        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy()); // 满则抛, 调度器回退心跳下次 tick 再领(不丢)
+        ex.setWaitForTasksToCompleteOnShutdown(false);
+        ex.initialize();
+        return ex;
+    }
+
+    /**
      * 重型索引执行器(单线程): 列级向量重建等大批量嵌入作业不阻塞 HTTP 请求线程。
      * 单线程串行 + 浅队列(满则丢弃), 同一时刻至多一个重建在跑。
      */

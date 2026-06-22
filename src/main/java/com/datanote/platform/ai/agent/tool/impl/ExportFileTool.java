@@ -42,6 +42,10 @@ public class ExportFileTool implements AiTool {
         String fileName = AgentArgs.str(args, "fileName");
         String content = AgentArgs.str(args, "content");
         if (fileName == null) return AiToolResult.fail("bad_arguments", "fileName 不能为空(带扩展名)");
+        String ln = fileName.toLowerCase();
+        if (ln.endsWith(".html") || ln.endsWith(".htm")) { // 网页改用 create_page(可右侧预览), export_file 仅做 csv/txt/json/md 等下载
+            return AiToolResult.fail("use_create_page", "导出网页请改用 create_page 工具(返回可在右侧直接预览的链接), export_file 不用于 HTML。");
+        }
         if (content == null) content = "";
         try {
             byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
@@ -68,6 +72,7 @@ public class ExportFileTool implements AiTool {
         if (n.endsWith(".json")) return "application/json; charset=utf-8";
         if (n.endsWith(".md")) return "text/markdown; charset=utf-8";
         if (n.endsWith(".xml")) return "application/xml; charset=utf-8";
+        if (n.endsWith(".html") || n.endsWith(".htm")) return "text/html; charset=utf-8";
         return "text/plain; charset=utf-8";
     }
 }

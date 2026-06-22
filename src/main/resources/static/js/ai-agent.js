@@ -9,6 +9,7 @@
   var pendingCtx = null;   // 情境入口透传的业务上下文, 随下一次 chat 上送
   var selectedModel = '';  // 模型热切档位(空=默认), 随 chat 上送 model 覆盖
   var fileListEl = null;   // 数据中心文件列表容器
+  var histListEl = null;   // 左侧历史会话列表容器
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -288,8 +289,56 @@
     return card;
   }
 
+  // 网页 artifact 卡片(create_page 产物): 点击在右侧面板渲染, 像 Codex/Claude artifact
+  function pageCard(pg) {
+    if (!pg) return DN.h('span');
+    var card = DN.h('div', { class: 'dn-ai-pagecard', style: 'margin:4px 0 8px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;background:var(--bg-body);display:flex;align-items:center;gap:10px;' });
+    card.appendChild(DN.h('div', { text: '🌐', style: 'font-size:22px;flex:0 0 auto;' }));
+    card.appendChild(DN.h('div', { style: 'flex:1;min-width:0;' }, [
+      DN.h('div', { text: pg.title || pg.fileName || '网页', style: 'font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+      DN.h('div', { text: '点击预览，在右侧渲染', style: 'font-size:12px;color:var(--text-muted);' })
+    ]));
+    var open = DN.h('button', { class: 'btn btn-sm btn-primary', text: '预览', style: 'flex:0 0 auto;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+    open.onclick = function () { openPreview(pg.previewUrl, pg.title || pg.fileName); };
+    card.appendChild(open);
+    if (pg.downloadUrl) card.appendChild(DN.h('a', { href: pg.downloadUrl, title: '下载', text: '↓', style: 'flex:0 0 auto;color:var(--primary);text-decoration:none;font-size:17px;font-weight:700;padding:0 4px;' }));
+    return card;
+  }
+
+  // 右侧网页预览面板(Codex 式分屏): iframe 沙箱渲染(no allow-same-origin → 不透明源, 配合后端 CSP sandbox 双重隔离)
+  function openPreview(url, title) {
+    if (!url) return;
+    var root = document.getElementById('aiAgentRoot'); if (!root) return;
+    var side = root.querySelector('.dn-ai-side'); if (side) side.style.display = 'none'; // 预览时收起左数据中心栏, 让聊天+预览有空间(防三列挤垮)
+    var panel = document.getElementById('aiPreviewPanel');
+    if (!panel) {
+      panel = DN.h('div', { id: 'aiPreviewPanel', style: 'flex:0 0 46%;min-width:340px;max-width:62%;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--bg-body);min-height:0;' });
+      root.appendChild(panel);
+    }
+    panel.innerHTML = '';
+    panel.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex:0 0 auto;' }, [
+      DN.h('div', { text: '🌐 ' + (title || '网页预览'), style: 'flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);' }),
+      DN.h('a', { href: url, target: '_blank', rel: 'noopener', text: '↗ 新窗口', title: '在新标签打开', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' }),
+      DN.h('span', { text: '✕', title: '关闭预览', style: 'cursor:pointer;font-size:15px;color:var(--text-muted);padding:0 4px;flex:0 0 auto;', onclick: closePreview })
+    ]));
+    panel.appendChild(DN.h('iframe', { src: url, sandbox: 'allow-scripts allow-popups allow-modals', style: 'flex:1;border:0;width:100%;background:#fff;min-height:0;' }));
+  }
+  function closePreview() {
+    var p = document.getElementById('aiPreviewPanel'); if (p) p.remove();
+    var root = document.getElementById('aiAgentRoot');
+    var side = root && root.querySelector('.dn-ai-side'); if (side) side.style.display = ''; // 恢复左数据中心栏
+  }
+  function extractPage(resultData) {
+    try { var o = JSON.parse(resultData); var data = (o && o.data) ? o.data : o; return (data && data._page) ? data._page : null; }
+    catch (e) { return null; }
+  }
+
   function renderPreviews(steps) {
-    (steps || []).forEach(function (s) { if (s && s.resultData) { var p = extractPreview(s.resultData); if (p) flowEl.appendChild(dataGridCard(p)); } });
+    (steps || []).forEach(function (s) {
+      if (!s || !s.resultData) return;
+      var p = extractPreview(s.resultData); if (p) flowEl.appendChild(dataGridCard(p));
+      var pg = extractPage(s.resultData); if (pg) flowEl.appendChild(pageCard(pg));
+    });
   }
 
   function routeName(r) {
@@ -589,6 +638,24 @@
     var id; try { id = localStorage.getItem('aiSessionId'); } catch (e) { id = null; }
     if (!id) return;
     sessionId = id;
+    renderHistory(id);
+  }
+
+  // 点击左侧历史会话: 切到该会话(仅本人, 后端 /session/{id} 带归属校验), 重建对话并可继续
+  function openSession(id) {
+    if (!id || id === sessionId) return;
+    _epoch++;                 // 纪元自增: 旧会话在途回调失效
+    setSending(false);
+    _autoWatch = null; removeAutoBanner(); closePreview(); // 停旧会话自主监视+关预览(切到的新会话若在自主中, renderHistory 会重启)
+    var pb = document.getElementById('aiPendingAsk'); if (pb) pb.remove();
+    sessionId = id; saveSid(id);
+    if (flowEl) flowEl.innerHTML = '';
+    renderHistory(id);
+    loadSessions();           // 刷新列表高亮
+  }
+
+  // 按 sessionId 拉取并重建一段会话(restoreHistory / openSession 共用)
+  function renderHistory(id) {
     var ep = _epoch; // 捕获发起纪元: 恢复期间若已开新会话, 放弃重建旧历史
     DN.get('/api/ai/agent/session/' + id).then(function (d) {
       if (ep !== _epoch) return;
@@ -619,6 +686,10 @@
       else if (sess.status === 'wait_approval') {
         loadApproval(id);
       }
+      // 刷新/切回时若【当前活动会话】仍在无人值守自主执行 → 恢复监视轮询(限活动会话+幂等, 防非活动会话误起轮询)
+      if (id === sessionId && Number(sess.autonomous) === 1 && (sess.status === 'running' || sess.status === 'wait_approval')) {
+        watchAutonomous(id);
+      }
       scrollBottom();
     }).catch(function () {});
   }
@@ -631,6 +702,90 @@
     var pb = document.getElementById('aiPendingAsk'); if (pb) pb.remove(); // 旧会话的待回答找回条一并清掉
     try { localStorage.removeItem('aiSessionId'); } catch (e) {}
     if (flowEl) { flowEl.innerHTML = ''; flowEl.appendChild(welcome()); }
+    _autoWatch = null; removeAutoBanner(); // 停掉旧会话的自主监视
+    closePreview(); // 关右侧网页预览
+    loadSessions(); // 刷新列表(清除高亮)
+  }
+
+  // 拉取并渲染左侧历史会话列表(仅本人; 后端 /sessions 严格按 user_name 过滤)
+  function loadSessions() {
+    if (!histListEl) return;
+    DN.get('/api/ai/agent/sessions?limit=50').then(function (list) {
+      if (!histListEl) return;
+      list = list || [];
+      histListEl.innerHTML = '';
+      if (!list.length) {
+        histListEl.appendChild(DN.h('div', { text: '暂无历史会话', style: 'color:var(--text-muted);font-size:12px;padding:6px 2px;' }));
+        return;
+      }
+      list.forEach(function (s) {
+        if (!s || !s.sessionId) return;
+        var active = s.sessionId === sessionId;
+        var title = (s.title && String(s.title).trim()) ? String(s.title).trim() : '未命名会话';
+        if (title.length > 28) title = title.slice(0, 28) + '…';
+        var row = DN.h('div', {
+          title: (s.title || '') + '  ·  ' + (s.status || ''),
+          style: 'cursor:pointer;border-radius:var(--radius-md);padding:6px 8px;margin-bottom:3px;font-size:12.5px;line-height:1.5;'
+            + (active ? 'background:var(--primary-bg, rgba(64,128,255,.12));color:var(--primary);font-weight:600;' : 'color:var(--text-regular);')
+        }, [
+          DN.h('div', { text: title, style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+          DN.h('div', { text: (statusLabel(s.status) + ' · ' + fmtTime(s.updatedAt)), style: 'font-size:11px;color:var(--text-muted);margin-top:1px;' })
+        ]);
+        row.onmouseenter = function () { if (!active) row.style.background = 'var(--bg-hover, rgba(0,0,0,.04))'; };
+        row.onmouseleave = function () { if (!active) row.style.background = ''; };
+        row.onclick = function () { openSession(s.sessionId); };
+        histListEl.appendChild(row);
+      });
+    }).catch(function () {});
+  }
+
+  function statusLabel(st) {
+    return ({ done: '完成', running: '运行中', wait_approval: '待审批', wait_input: '待回答', blocked: '中止', cancelled: '已取消', paused: '已暂停' })[st] || (st || '');
+  }
+  function fmtTime(t) {
+    if (!t) return '';
+    var s = String(t).replace('T', ' ');
+    return s.length >= 16 ? s.slice(5, 16) : s; // MM-DD HH:mm
+  }
+
+  // 无人值守自主执行: 后台监视轮询(进度横幅 + 步数变化时重建对话 + 高危写挂起时弹审批 + 终态收尾)
+  var _autoWatch = null;
+  function autoBanner() {
+    var b = document.getElementById('aiAutoBanner');
+    if (!b && inputBarEl && inputBarEl.parentNode) {
+      b = DN.h('div', { id: 'aiAutoBanner', style: 'margin:0 0 6px;padding:7px 12px;border-radius:var(--radius-md);background:var(--primary-bg, rgba(64,128,255,.12));color:var(--primary);font-size:12.5px;font-weight:600;' });
+      inputBarEl.parentNode.insertBefore(b, inputBarEl);
+    }
+    return b;
+  }
+  function removeAutoBanner() { var b = document.getElementById('aiAutoBanner'); if (b) b.remove(); }
+  function watchAutonomous(id) {
+    if (!id || _autoWatch === id) return; // 幂等: 已在监视该会话则不重复启动(防 renderHistory/autoBtn 多入口重复起轮询)
+    _autoWatch = id;
+    var ep = _epoch, lastLen = -1;
+    (function poll() {
+      if (ep !== _epoch || _autoWatch !== id) { removeAutoBanner(); return; } // 切会话/开新会话 → 停止监视
+      DN.get('/api/ai/agent/session/' + id).then(function (d) {
+        if (ep !== _epoch || _autoWatch !== id) { removeAutoBanner(); return; }
+        var sess = (d && d.session) || {}, steps = (d && d.steps) || [];
+        if (steps.length !== lastLen) { lastLen = steps.length; renderHistory(id); } // 仅步数变化才重建, 防闪烁
+        var st = sess.status, auton = Number(sess.autonomous) === 1;
+        var used = sess.budgetStepsUsed || 0, mx = sess.autoMaxSteps || 0;
+        var b = autoBanner();
+        if (st === 'wait_approval') {
+          if (b) b.textContent = '⏸ 高危写操作待你批准（批准后自动继续无人值守）';
+          loadApproval(id); setTimeout(poll, 4000); return;
+        }
+        if (st === 'running' || auton) {
+          if (b) b.textContent = '🚀 无人值守自主执行中… 已 ' + used + (mx ? ' / ' + mx : '') + ' 步（可点⏹停止）';
+          setTimeout(poll, 4000); return;
+        }
+        // 终态: 收尾
+        removeAutoBanner(); _autoWatch = null;
+        DN.toast(st === 'done' ? '✅ 自主任务已完成，成品见上方' : ('自主任务结束：' + statusLabel(st)), st === 'done' ? 'ok' : 'warn');
+        loadSessions();
+      }).catch(function () { if (ep === _epoch && _autoWatch === id) setTimeout(poll, 5000); });
+    })();
   }
 
   // 统一发送锁: send / 决策卡answer / 审批resume 三入口共用; 运行中按钮变"⏹ 停止"(保持可点), 输入框可用走插话
@@ -677,6 +832,7 @@
   function renderTurn(res, elapsed) {
     sessionId = res.sessionId || sessionId;
     saveSid(sessionId);
+    loadSessions(); // 新会话/状态变化后刷新左侧历史列表与高亮
     // 等待用户输入: 渲染决策/协助卡片(人在环交互), 优先, 不出普通终答气泡
     if (res.status === 'wait_input' && res.questions && res.questions.length) {
       flowEl.appendChild(askingPreview(res.questions));
@@ -687,14 +843,17 @@
     var toolSteps = (res.steps || []).filter(function (s) { return s && s.stepType === 'SKILL_CALL' && s.skillName; });
     if (toolSteps.length) flowEl.appendChild(processToggle(toolSteps, res.plan, elapsed));
     // 表数据预览常显(不折叠): 优先用未截断的 previews 通道(宽表完整); 回退到步骤结果解析
+    var firstPage = null;
     if (res.previews && res.previews.length) {
       res.previews.forEach(function (d) {
         if (d && d._chart) flowEl.appendChild(chartCard(d._chart));
+        else if (d && d._page) { flowEl.appendChild(pageCard(d._page)); if (!firstPage) firstPage = d._page; }
         else if (d && d._preview && d._preview.columns) flowEl.appendChild(dataGridCard({ pv: d._preview, db: d.db, table: d.table }));
       });
     } else {
       renderPreviews(res.steps);
     }
+    if (firstPage) openPreview(firstPage.previewUrl, firstPage.title || firstPage.fileName); // 生成网页即自动右侧预览(Codex 式)
     var tone = res.status === 'blocked' ? 'err' : null;
     flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
     if (res.status === 'wait_approval') loadApproval(res.sessionId);
@@ -741,6 +900,7 @@
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
       var allBtn = DN.h('button', { class: 'btn btn-sm', text: '批准并自动批准后续', title: '本任务剩余写操作免逐个审批, 一路执行到底(仍受功能/数据权限拦截)', 'data-perm': 'assistant:approve' });
+      var autoBtn = DN.h('button', { class: 'btn btn-sm', text: '🚀 自主执行', title: '无人值守: 批准并让 AI 按计划自主跑到交付(常规写自动, 高危写仍会挂起等批)', 'data-perm': 'assistant:approve', style: 'border-color:var(--primary);color:var(--primary);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve' });
       okBtn.onclick = function () {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
@@ -768,14 +928,29 @@
           })
           .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('批量执行失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; allBtn.disabled = false; noBtn.disabled = false; allBtn.textContent = '批准并自动批准后续'; });
       };
+      autoBtn.onclick = function () {
+        if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; }
+        var ep = _epoch; // 捕获纪元: 启动期间若切了会话则丢弃, 不在旧会话起监视
+        okBtn.disabled = true; allBtn.disabled = true; autoBtn.disabled = true; noBtn.disabled = true; autoBtn.textContent = '启动中…';
+        // 进入无人值守自主执行: 后端置 autonomous=1, 后台驱动器接管; 前端转为监视轮询
+        DN.post('/api/ai/agent/' + sid + '/autonomous', { maxSteps: 300, maxHours: 2 })
+          .then(function (res) {
+            if (ep !== _epoch) return; // 已切会话: 丢弃
+            card.remove();
+            flowEl.appendChild(assistantBubble((res && res.finalAnswer) ? res.finalAnswer : '已进入无人值守自主执行模式。', null));
+            scrollBottom();
+            watchAutonomous(sid);
+          })
+          .catch(function (e) { DN.toast('启动自主执行失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = allBtn.disabled = autoBtn.disabled = noBtn.disabled = false; autoBtn.textContent = '🚀 自主执行'; });
+      };
       noBtn.onclick = function () {
         var ep = _epoch; // 捕获发起纪元: 新会话后不再往新消息流写旧拒绝提示
-        okBtn.disabled = true; allBtn.disabled = true; noBtn.disabled = true;
+        okBtn.disabled = true; allBtn.disabled = true; autoBtn.disabled = true; noBtn.disabled = true;
         DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'rejected' })
           .then(function () { card.remove(); if (ep !== _epoch) return; flowEl.appendChild(assistantBubble('已拒绝该写操作。', 'err')); scrollBottom(); })
-          .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; allBtn.disabled = false; noBtn.disabled = false; });
+          .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; allBtn.disabled = false; autoBtn.disabled = false; noBtn.disabled = false; });
       };
-      btns.appendChild(okBtn); btns.appendChild(allBtn); btns.appendChild(noBtn); card.appendChild(btns);
+      btns.appendChild(okBtn); btns.appendChild(allBtn); btns.appendChild(autoBtn); btns.appendChild(noBtn); card.appendChild(btns);
       flowEl.appendChild(card); scrollBottom();
     }).catch(function () {});
   }
@@ -898,6 +1073,15 @@
     hd.appendChild(DN.h('div', { text: '📚 数据中心', style: 'font-size:15px;font-weight:650;color:var(--text-primary);' }));
     hd.appendChild(DN.h('div', { text: '上传文件留存, 可随时下载', style: 'font-size:12px;color:var(--text-muted);margin-top:3px;' }));
     panel.appendChild(hd);
+
+    // 历史会话(常驻左侧, 仅本人; 点击切换并可继续)
+    var histHd = DN.h('div', { style: 'display:flex;align-items:center;gap:6px;padding:2px 18px 6px;flex:0 0 auto;' }, [
+      DN.h('div', { text: '🕘 历史会话', style: 'font-size:12.5px;font-weight:600;color:var(--text-regular);flex:1;' }),
+      DN.h('span', { text: '✚ 新', title: '开始新会话', style: 'cursor:pointer;font-size:12px;color:var(--primary);', onclick: newSession })
+    ]);
+    panel.appendChild(histHd);
+    histListEl = DN.h('div', { id: 'aiHistList', style: 'flex:0 0 auto;max-height:240px;overflow-y:auto;padding:0 18px 8px;border-bottom:1px solid var(--border);margin-bottom:6px;' });
+    panel.appendChild(histListEl);
 
     // 拖拽/点击上传区
     var dz = DN.h('div', { class: 'dn-ai-drop' });
@@ -1037,6 +1221,7 @@
     built = true;
     loadToolsHint();
     loadFiles();
+    loadSessions();   // 左侧历史会话列表(仅本人)
     restoreHistory(); // 刷新后恢复上次会话历史
   }
 

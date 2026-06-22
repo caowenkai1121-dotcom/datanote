@@ -36,7 +36,8 @@ public class AiFileService {
 
     /** 允许的扩展名(无可执行类型) */
     private static final Set<String> ALLOWED = new HashSet<>(java.util.Arrays.asList(
-            "xlsx", "xls", "csv", "pdf", "txt", "json", "docx", "doc", "md", "png", "jpg", "jpeg", "gif"));
+            "xlsx", "xls", "csv", "pdf", "txt", "json", "docx", "doc", "md", "png", "jpg", "jpeg", "gif",
+            "html", "htm")); // html: 仅经 /view 沙箱内联(CSP sandbox)预览, /download 仍强制 octet-stream+attachment 防 XSS
     private static final long MAX_BYTES = 20L * 1024 * 1024; // 20MB
 
     private Path storageRoot() throws IOException {
