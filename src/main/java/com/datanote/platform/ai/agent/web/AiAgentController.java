@@ -48,6 +48,11 @@ public class AiAgentController {
     private final com.datanote.platform.ai.agent.engine.AgentEventBus eventBus;
     private final com.datanote.platform.ai.agent.engine.AiProfileService aiProfileService;
 
+    @org.springframework.beans.factory.annotation.Value("${datanote.ai.auto-default-steps:300}")
+    private int autoDefaultSteps;
+    @org.springframework.beans.factory.annotation.Value("${datanote.ai.auto-default-hours:2}")
+    private double autoDefaultHours;
+
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
     @SuppressWarnings("unchecked")
@@ -435,8 +440,8 @@ public class AiAgentController {
     @PostMapping("/{sessionId}/autonomous")
     public R<Map<String, Object>> autonomous(@PathVariable("sessionId") String sessionId,
                                              @RequestBody(required = false) Map<String, Object> body, HttpServletRequest req) {
-        int maxSteps = 300;
-        long maxMs = 7200_000L;
+        int maxSteps = autoDefaultSteps;
+        long maxMs = (long) (autoDefaultHours * 3600_000L);
         if (body != null) {
             Object ms = body.get("maxSteps");
             if (ms != null) try { maxSteps = Integer.parseInt(String.valueOf(ms)); } catch (Exception ignore) {}
