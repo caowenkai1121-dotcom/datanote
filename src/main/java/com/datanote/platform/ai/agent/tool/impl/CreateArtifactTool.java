@@ -204,7 +204,8 @@ public class CreateArtifactTool implements AiTool {
             + "th{background:#f3f4f6;cursor:pointer;position:sticky;top:0;user-select:none}th:hover{background:#e9ebef}"
             + "tr:nth-child(even){background:#fafbfc}"
             + ".svg-box{display:flex;justify-content:center;padding:10px}.svg-box svg{max-width:100%;height:auto}"
-            + ".mermaid{display:flex;justify-content:center}";
+            + ".mermaid{display:flex;justify-content:center}"
+            + "@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0;max-width:none}.hd{background:#fff}pre{white-space:pre-wrap}}"; // Ctrl+P 存干净 PDF
 
     private static String esc(String s) {
         return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
