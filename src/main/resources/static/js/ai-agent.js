@@ -243,7 +243,21 @@
     var rows = pv.rows || [], cols = pv.columns || [];
     var title = '📋 ' + (p.db ? p.db + '.' : '') + (p.table || '表') + ' 数据预览（' + (pv.returned != null ? pv.returned : rows.length) + ' 行）';
     var card = DN.h('div', { style: 'margin:8px 0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;' });
-    card.appendChild(DN.h('div', { text: title, style: 'padding:8px 12px;font-weight:600;font-size:12.5px;color:var(--text-primary);background:var(--bg-main);border-bottom:1px solid var(--divider);' }));
+    var hdr = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-main);border-bottom:1px solid var(--divider);' }, [
+      DN.h('div', { text: title, style: 'flex:1;font-weight:600;font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' })
+    ]);
+    if (rows.length) {
+      var exp = DN.h('span', { text: '⬇ 导出CSV', title: '下载当前预览为CSV', style: 'flex:0 0 auto;cursor:pointer;font-size:11px;color:var(--primary);' });
+      exp.onclick = function () {
+        function esc(v) { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+        var lines = [cols.map(esc).join(',')];
+        rows.forEach(function (r) { lines.push((Array.isArray(r) ? r : cols.map(function (c) { return r[c]; })).map(esc).join(',')); });
+        var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (p.table || 'data') + '.csv'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      };
+      hdr.appendChild(exp);
+    }
+    card.appendChild(hdr);
     if (!rows.length) { card.appendChild(DN.h('div', { text: '（表中无数据行）', style: 'padding:10px 12px;color:var(--text-muted);font-size:12px;' })); return card; }
     var scroll = DN.h('div', { style: 'overflow:auto;max-height:340px;' });
     var tbl = DN.h('table', { style: 'border-collapse:collapse;width:100%;font-size:12px;' });
