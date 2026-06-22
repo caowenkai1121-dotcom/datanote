@@ -203,7 +203,7 @@ public class AiAgentService {
         } else {
             manifest = toolRegistry.toToolsManifestJson(t -> !(autonomousMode && AUTONOMOUS_BLOCKED.contains(t.name())));
         }
-        String today = LocalDate.now().toString();
+        String today = richToday(); // 富日期: 周几 + 本月/上月起止, 助相对日期计算
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
         String ragText = buildRagText(userMessage, ctx == null ? null : ctx.getUserName());   // 循环外算一次, 自动 grounding(资产+文档)
         String memoryText = aiMemoryService.recall(userMessage, ctx == null ? null : ctx.getUserName(), MEM_TOPK); // 自学习记忆召回(只读上下文)
@@ -1095,6 +1095,15 @@ public class AiAgentService {
         s.setUpdatedAt(LocalDateTime.now());
         sessionMapper.insert(s);
         return s;
+    }
+
+    /** 富日期上下文: 当天+周几+本月/上月起止, 注入 prompt 助 agent 算相对日期(本月销量等)。 */
+    private static String richToday() {
+        java.time.LocalDate d = java.time.LocalDate.now();
+        String[] wk = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        String w = wk[d.getDayOfWeek().getValue() - 1];
+        java.time.LocalDate m1 = d.withDayOfMonth(1);
+        return d + " (" + w + "); 本月: " + m1 + " ~ " + d + "; 上月: " + m1.minusMonths(1) + " ~ " + m1.minusDays(1);
     }
 
     private int nextSeq(String sessionId) {
