@@ -134,6 +134,7 @@ public class AiAgentController {
         if (limit > 200) limit = 200;
         List<DnAiSession> list = sessionMapper.selectList(new QueryWrapper<DnAiSession>()
                 .eq("user_name", me)                       // 严格限本人: 用户只能返回自己的记录
+                .ne("status", "deleted")                   // 排除用户已删除的历史
                 .orderByDesc("updated_at").orderByDesc("id")
                 .last("LIMIT " + limit));
         List<Map<String, Object>> out = new ArrayList<>();
@@ -341,6 +342,16 @@ public class AiAgentController {
     private String ownerScope() {
         String me = currentUser();
         return (me == null || "anonymous".equals(me) || "admin".equals(me)) ? null : me;
+    }
+
+    /** 软删除自己的历史会话(从历史列表隐藏, 同时停掉其自主执行; 仅本人)。 */
+    @PostMapping("/{sessionId}/delete")
+    public R<Void> deleteSession(@PathVariable("sessionId") String sessionId) {
+        R<Void> denied = assertSessionOwner(sessionId);
+        if (denied != null) return denied;
+        int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId).set("status", "deleted").set("autonomous", 0).set("updated_at", LocalDateTime.now()));
+        return n > 0 ? R.ok() : R.fail("会话不存在");
     }
 
     /** 协作式中断: 置中断标志, 运行中的 agent 在下一轮工序边界自行停止(替代SSE的DB标志位)。 */

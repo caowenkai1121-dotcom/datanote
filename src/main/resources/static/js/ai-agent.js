@@ -736,14 +736,25 @@
         if (title.length > 28) title = title.slice(0, 28) + '…';
         var row = DN.h('div', {
           title: (s.title || '') + '  ·  ' + (s.status || ''),
-          style: 'cursor:pointer;border-radius:var(--radius-md);padding:6px 8px;margin-bottom:3px;font-size:12.5px;line-height:1.5;'
+          style: 'cursor:pointer;border-radius:var(--radius-md);padding:6px 8px;margin-bottom:3px;font-size:12.5px;line-height:1.5;display:flex;align-items:center;gap:6px;'
             + (active ? 'background:var(--primary-bg, rgba(64,128,255,.12));color:var(--primary);font-weight:600;' : 'color:var(--text-regular);')
         }, [
-          DN.h('div', { text: title, style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-          DN.h('div', { text: (statusLabel(s.status) + ' · ' + fmtTime(s.updatedAt)), style: 'font-size:11px;color:var(--text-muted);margin-top:1px;' })
+          DN.h('div', { style: 'flex:1;min-width:0;' }, [
+            DN.h('div', { text: title, style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+            DN.h('div', { text: (statusLabel(s.status) + ' · ' + fmtTime(s.updatedAt)), style: 'font-size:11px;color:var(--text-muted);margin-top:1px;' })
+          ])
         ]);
-        row.onmouseenter = function () { if (!active) row.style.background = 'var(--bg-hover, rgba(0,0,0,.04))'; };
-        row.onmouseleave = function () { if (!active) row.style.background = ''; };
+        var del = DN.h('span', { text: '✕', title: '删除该会话', style: 'flex:0 0 auto;color:var(--text-muted);font-size:12px;padding:0 2px;visibility:hidden;' });
+        del.onclick = function (e) {
+          e.stopPropagation();
+          DN.post('/api/ai/agent/' + s.sessionId + '/delete', {}).then(function () {
+            if (s.sessionId === sessionId) newSession(); // 删的是当前会话 → 清空
+            loadSessions();
+          }).catch(function (er) { DN.toast('删除失败：' + (er && er.message ? er.message : er), 'err'); });
+        };
+        row.appendChild(del);
+        row.onmouseenter = function () { if (!active) row.style.background = 'var(--bg-hover, rgba(0,0,0,.04))'; del.style.visibility = 'visible'; };
+        row.onmouseleave = function () { if (!active) row.style.background = ''; del.style.visibility = 'hidden'; };
         row.onclick = function () { openSession(s.sessionId); };
         histListEl.appendChild(row);
       });
