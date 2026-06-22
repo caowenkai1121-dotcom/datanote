@@ -1251,6 +1251,15 @@
     flowEl = DN.h('div', { class: 'dn-ai-chat' });
     flowEl.appendChild(welcome());
     rightCol.appendChild(flowEl);
+    // 回到底部浮钮: 用户上滚查看历史时出现, 点击回到最新
+    rightCol.style.position = rightCol.style.position || 'relative';
+    var toBottom = DN.h('div', { text: '↓', title: '回到最新', style: 'position:absolute;right:22px;bottom:96px;width:34px;height:34px;border-radius:50%;background:var(--primary);color:var(--text-inverse);display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:18px;z-index:5;' });
+    toBottom.onclick = function () { scrollBottom(); };
+    rightCol.appendChild(toBottom);
+    flowEl.addEventListener('scroll', function () {
+      var nearBottom = flowEl.scrollHeight - flowEl.scrollTop - flowEl.clientHeight < 120;
+      toBottom.style.display = nearBottom ? 'none' : 'flex';
+    });
 
     // 输入区
     inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
