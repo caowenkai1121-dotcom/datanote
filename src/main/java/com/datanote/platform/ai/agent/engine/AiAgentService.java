@@ -1098,8 +1098,10 @@ public class AiAgentService {
     }
 
     private int nextSeq(String sessionId) {
-        Long cnt = stepMapper.selectCount(new QueryWrapper<DnAiStep>().eq("session_id", sessionId));
-        return cnt == null ? 0 : cnt.intValue();
+        // 用 MAX(seq)+1 而非 COUNT(*): 运行标记行(writeRunningMarker)插入后删除会让 COUNT 回退, 致后续 seq 与历史碰撞
+        DnAiStep last = stepMapper.selectOne(new QueryWrapper<DnAiStep>()
+                .eq("session_id", sessionId).orderByDesc("seq").last("LIMIT 1"));
+        return (last == null || last.getSeq() == null) ? 0 : last.getSeq() + 1;
     }
 
     /** seed 既往会话的 FINAL 摘要进 trace（多轮记忆，最多近 3 条）。 */
