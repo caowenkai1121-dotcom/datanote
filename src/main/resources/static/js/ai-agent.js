@@ -349,6 +349,16 @@
       DN.h('span', { text: '✕', title: '关闭预览', style: 'cursor:pointer;font-size:15px;color:var(--text-muted);padding:0 4px;flex:0 0 auto;', onclick: closePreview })
     ]));
     panel.appendChild(DN.h('iframe', { src: url, sandbox: 'allow-scripts allow-popups allow-modals', style: 'flex:1;border:0;width:100%;background:#fff;min-height:0;' }));
+    // 左边缘拖拽调宽(artifact 体验)
+    panel.style.position = 'relative';
+    var grip = DN.h('div', { style: 'position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:6;' });
+    grip.onmousedown = function (e) {
+      e.preventDefault();
+      function mv(ev) { var r = root.getBoundingClientRect(); var w = r.right - ev.clientX; if (w > 300 && w < r.width - 300) { panel.style.flex = '0 0 ' + w + 'px'; panel.style.maxWidth = 'none'; } }
+      function up() { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); }
+      document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+    };
+    panel.appendChild(grip);
   }
   function closePreview() {
     var p = document.getElementById('aiPreviewPanel'); if (p) p.remove();
