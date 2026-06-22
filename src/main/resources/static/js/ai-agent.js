@@ -325,6 +325,11 @@
     panel.innerHTML = '';
     panel.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex:0 0 auto;' }, [
       DN.h('div', { text: '🌐 ' + (title || '网页预览'), style: 'flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);' }),
+      DN.h('span', { text: '⛶', title: '全屏/还原', style: 'cursor:pointer;font-size:14px;color:var(--text-muted);padding:0 2px;flex:0 0 auto;', onclick: function () {
+        var full = panel.getAttribute('data-full') === '1';
+        if (full) { panel.style.flex = '0 0 46%'; panel.style.maxWidth = '62%'; panel.setAttribute('data-full', '0'); var sd = root.querySelector('.dn-ai-side'); /* 保持隐藏 */ }
+        else { panel.style.flex = '1 1 100%'; panel.style.maxWidth = 'none'; panel.setAttribute('data-full', '1'); }
+      } }),
       DN.h('a', { href: url, target: '_blank', rel: 'noopener', text: '↗ 新窗口', title: '在新标签打开', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' }),
       DN.h('span', { text: '✕', title: '关闭预览', style: 'cursor:pointer;font-size:15px;color:var(--text-muted);padding:0 4px;flex:0 0 auto;', onclick: closePreview })
     ]));
