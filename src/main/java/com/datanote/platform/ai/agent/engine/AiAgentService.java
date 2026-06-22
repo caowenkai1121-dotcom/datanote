@@ -75,7 +75,8 @@ public class AiAgentService {
 
     /** 生产步上限(成功执行工具/给出终答才计数); 借鉴 hermes IterationBudget, 可纠正废步退还不蚕食。
      *  16 步: 支撑多工序长链(如探查→建表→建脚本→运行 的分层加工), 墙钟 300s 仍为最终兜底防失控 */
-    private static final int MAX_PRODUCTIVE_STEPS = 16;
+    @org.springframework.beans.factory.annotation.Value("${datanote.ai.max-steps:16}")
+    private int maxProductiveSteps; // 单轮生产步上限(可配, ops 按环境调)
     /** 总迭代硬顶(含被退还的废步), 防模型连犯格式错时失控刷屏 */
     private static final int HARD_ITER_CAP = 40;
     /** 周期性规划检查点间隔(生产步): 每 N 步暂停审视目标/剩余, 防长任务漂移(借鉴 smolagents planning_interval) */
@@ -211,7 +212,7 @@ public class AiAgentService {
         String userProfileText = aiProfileService.userProfileText(ctx == null ? null : ctx.getUserName()); // 长久记忆·用户画像(隔离)
         String projectProfileText = aiProfileService.projectProfileText(); // 长久记忆·项目画像(全局)
         boolean first = true;
-        IterationBudget budget = new IterationBudget(MAX_PRODUCTIVE_STEPS);
+        IterationBudget budget = new IterationBudget(maxProductiveSteps);
         int iter = 0;
         long runDeadline = System.currentTimeMillis() + RUN_WALLCLOCK_MS; // 墙钟封顶
         java.util.Map<String, Integer> seenCalls = new java.util.HashMap<>(); // 死循环护栏: 工具+参数签名计数
@@ -606,7 +607,7 @@ public class AiAgentService {
         if (taskEnded) try { approvalGate.markSessionExecuted(session.getSessionId()); } catch (Exception ignore) {}
         if (st.exitReason != null) {
             log.info("[agent] run 退出 session={} reason={} iter={} budget={}/{} steps={}",
-                    session.getSessionId(), st.exitReason, iter, budget.used(), MAX_PRODUCTIVE_STEPS, st.seq);
+                    session.getSessionId(), st.exitReason, iter, budget.used(), maxProductiveSteps, st.seq);
         }
 
         // 自学习: 成功完成且有实质工具调用时, 异步蒸馏经验入库+向量化(cron 无人值守不写记忆防噪声)
