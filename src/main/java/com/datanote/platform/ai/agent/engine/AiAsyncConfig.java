@@ -65,6 +65,22 @@ public class AiAsyncConfig {
     }
 
     /**
+     * 画像汇总执行器(单线程): 每日/手动画像蒸馏(多次 LLM)独占线程, 不与 learn 抢 aiLearnExecutor; 满则丢(下次再汇总)。
+     */
+    @Bean("aiDigestExecutor")
+    public ThreadPoolTaskExecutor aiDigestExecutor() {
+        ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
+        ex.setCorePoolSize(1);
+        ex.setMaxPoolSize(1);
+        ex.setQueueCapacity(4);
+        ex.setThreadNamePrefix("ai-digest-");
+        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        ex.setWaitForTasksToCompleteOnShutdown(false);
+        ex.initialize();
+        return ex;
+    }
+
+    /**
      * 无人值守自主执行器: 后台驱动器持续推进自主会话(每会话占一线程循环跑数小时直到计划完成/预算耗尽)。
      * core2/max2 → 至多 2 个自主会话并发; 满则丢(下次 tick 凭心跳过期重新领取, 不重复)。
      */

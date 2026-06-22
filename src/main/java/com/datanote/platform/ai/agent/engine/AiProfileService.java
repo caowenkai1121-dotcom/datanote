@@ -57,7 +57,7 @@ public class AiProfileService {
     }
 
     /** 手动异步触发汇总(运维/测试用, 免等每日 tick)。 */
-    @org.springframework.scheduling.annotation.Async("aiLearnExecutor")
+    @org.springframework.scheduling.annotation.Async("aiDigestExecutor")
     public void runDailyDigestAsync() { runDailyDigest(); }
 
     // ===== 每日汇总: 蒸馏画像 + 裁剪原始经验 =====

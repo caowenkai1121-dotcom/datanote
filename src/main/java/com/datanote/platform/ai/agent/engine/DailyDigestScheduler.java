@@ -25,7 +25,7 @@ public class DailyDigestScheduler {
     private final DnAiProjectProfileMapper projectProfileMapper;
     private final AiProfileService profileService;
 
-    @javax.annotation.Resource(name = "aiLearnExecutor")
+    @javax.annotation.Resource(name = "aiDigestExecutor")
     private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
 
     /** ops 开关: 可关闭每日画像汇总(LLM 成本作业), 默认开 */
