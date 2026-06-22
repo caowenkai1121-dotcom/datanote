@@ -350,7 +350,12 @@
       DN.h('a', { href: url, target: '_blank', rel: 'noopener', text: '↗ 新窗口', title: '在新标签打开', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' }),
       DN.h('span', { text: '✕', title: '关闭预览', style: 'cursor:pointer;font-size:15px;color:var(--text-muted);padding:0 4px;flex:0 0 auto;', onclick: closePreview })
     ]));
-    panel.appendChild(DN.h('iframe', { src: url, sandbox: 'allow-scripts allow-popups allow-modals', style: 'flex:1;border:0;width:100%;background:#fff;min-height:0;' }));
+    var wrap = DN.h('div', { style: 'flex:1;position:relative;min-height:0;' });
+    var loading = DN.h('div', { text: '加载中…', style: 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;background:#fff;' });
+    var frame = DN.h('iframe', { src: url, sandbox: 'allow-scripts allow-popups allow-modals', style: 'border:0;width:100%;height:100%;background:#fff;' });
+    frame.addEventListener('load', function () { loading.style.display = 'none'; });
+    wrap.appendChild(frame); wrap.appendChild(loading);
+    panel.appendChild(wrap);
     // 左边缘拖拽调宽(artifact 体验)
     panel.style.position = 'relative';
     var grip = DN.h('div', { style: 'position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:6;' });
