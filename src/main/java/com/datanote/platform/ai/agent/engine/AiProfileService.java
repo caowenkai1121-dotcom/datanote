@@ -29,6 +29,7 @@ public class AiProfileService {
     private final DnAiUserProfileMapper userProfileMapper;
     private final DnAiProjectProfileMapper projectProfileMapper;
     private final DnAiMemorySkillMapper memoryMapper;
+    private final com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper approvalMapper;
     private final AiAssistService aiAssistService;
 
     public static final String GLOBAL = "global";
@@ -74,6 +75,7 @@ public class AiProfileService {
             try { pruneOwner(owner); } catch (Exception e) { log.warn("[profile] 裁剪经验失败 {}: {}", owner, e.getMessage()); }
         }
         try { pruneGlobalStale(); } catch (Exception e) { log.warn("[profile] 全局裁剪失败: {}", e.getMessage()); }
+        try { pruneStaleApprovals(); } catch (Exception e) { log.warn("[profile] 清理过期审批失败: {}", e.getMessage()); }
         log.info("[profile] 每日汇总完成: {} 个用户, 耗时 {}ms", owners.size(), System.currentTimeMillis() - t0);
     }
 
@@ -119,6 +121,13 @@ public class AiProfileService {
                     .in("id", archiveIds).set("status", "archived").set("updated_at", LocalDateTime.now()));
             log.info("[profile] 裁剪 {} 条经验(用户 {}, 已蒸馏入画像)", archiveIds.size(), owner);
         }
+    }
+
+    /** 清理僵尸审批: 超 7 天仍 pending 的写审批自动转 rejected(防无人处理长期堆积占列表)。 */
+    private void pruneStaleApprovals() {
+        approvalMapper.update(null, new UpdateWrapper<com.datanote.platform.ai.agent.model.DnAiApproval>()
+                .eq("status", "pending").lt("created_at", LocalDateTime.now().minusDays(7))
+                .set("status", "rejected").set("decided_by", "auto-expired").set("decided_at", LocalDateTime.now()));
     }
 
     /** 全局裁剪: 30 天未更新且命中<2 的活跃经验归档(降噪)。 */
