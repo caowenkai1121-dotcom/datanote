@@ -321,6 +321,13 @@ public class AiAgentController {
         return R.ok(aiAgentService.resume(sessionId, ctx));
     }
 
+    /** 批量审批并续跑(本任务): 批准本会话待审写操作 + 开启 auto_approve, 续跑剩余步骤免逐个审批(仍受功能/数据权限拦截)。 */
+    @PostMapping("/{sessionId}/approve-all")
+    public R<Map<String, Object>> approveAll(@PathVariable("sessionId") String sessionId, HttpServletRequest req) {
+        AgentContext ctx = buildCtx(sessionId, null, req);
+        return R.ok(aiAgentService.approveAllAndContinue(sessionId, ctx));
+    }
+
     /** 构造执行上下文并填充发起人权限快照。 */
     private AgentContext buildCtx(String sessionId, Map<String, Object> bizCtx, HttpServletRequest req) {
         AgentContext ctx = new AgentContext(currentUser(), clientIp(req), null, sessionId, bizCtx);

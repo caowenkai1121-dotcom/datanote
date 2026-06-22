@@ -1230,6 +1230,7 @@ CREATE TABLE IF NOT EXISTS dn_ai_session (
     interrupt_flag  TINYINT      NOT NULL DEFAULT 0 COMMENT '中断标志(轮询载体, 替代SSE)',
     steer_text      TEXT         DEFAULT NULL COMMENT '中途转向插话(下一轮并入context)',
     plan_json       LONGTEXT     DEFAULT NULL COMMENT 'M3流水线规划快照',
+    auto_approve    TINYINT      NOT NULL DEFAULT 0 COMMENT '本任务批量自动批准写操作(1=后续写操作免逐个审批; done时清0)',
     budget_steps_used INT        NOT NULL DEFAULT 0 COMMENT '已消耗步数',
     version         INT          NOT NULL DEFAULT 0 COMMENT '乐观锁',
     created_at      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

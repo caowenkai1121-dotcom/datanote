@@ -21,6 +21,8 @@ public class DnAiSession {
     private Integer interruptFlag;
     private String steerText;
     private String planJson;
+    /** 本任务批量自动批准写操作: 1=后续写操作免逐个审批(仍受 PermGate/DataAcl 拦截); 任务 done 时清 0 */
+    private Integer autoApprove;
     private Integer budgetStepsUsed;
     private Integer version;
     private LocalDateTime createdAt;

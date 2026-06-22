@@ -451,11 +451,14 @@ public class AiAgentService {
                 continue;
             }
             if (gate == Guardrail.Gate.NEED_APPROVAL) {
-                ApprovalGate.Outcome oc = approvalGate.check(st.session.getSessionId(), st.seq, tool, argsToStr(argsNode), Guardrail.isHigh(tool));
+                boolean autoAppr = live != null && Integer.valueOf(1).equals(live.getAutoApprove()); // 本任务批量自动批准
+                ApprovalGate.Outcome oc = approvalGate.check(st.session.getSessionId(), st.seq, tool, argsToStr(argsNode), Guardrail.isHigh(tool), autoAppr);
                 if (oc == ApprovalGate.Outcome.PENDING) {
                     st.awaitingApproval = true; st.exitReason = "AWAIT_APPROVAL";
                     st.pendingSkill = toolName;
-                    st.finalAnswer = "写操作「" + toolName + "」需人工审批,已挂起会话。请在审批面板批准后继续。";
+                    st.finalAnswer = "写操作「" + toolName + "」需人工审批,已挂起会话。\n"
+                            + "· 单步审批: 点「批准并继续」逐个确认;\n"
+                            + "· 多步任务想一次到位: 点「批准并自动批准后续」, 本任务剩余写操作将免逐个审批、一路执行到底。";
                     newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
                             null, "pending", "need_approval", false, riskName, latency));
                     break;
@@ -575,11 +578,17 @@ public class AiAgentService {
                 : (st.awaitingApproval ? "wait_approval"
                 : ("INTERRUPTED".equals(st.exitReason) ? "cancelled" : (st.blocked ? "blocked" : "done")));
         // 定向更新: 仅改 status/budget/updated_at, 不用 updateById(陈旧 session 会把 todo 写的 plan_json / drainSteer 清的 steer_text 按旧值回写)
-        sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+        // 任务终态(非 wait_input/wait_approval): 清本任务批量自动批准开关, 边界=只当前任务; 下个新任务重新逐个审批
+        boolean taskEnded = !"wait_input".equals(finalStatus) && !"wait_approval".equals(finalStatus);
+        UpdateWrapper<DnAiSession> finUw = new UpdateWrapper<DnAiSession>()
                 .eq("session_id", session.getSessionId())
                 .set("status", finalStatus)
                 .set("budget_steps_used", st.seq)
-                .set("updated_at", LocalDateTime.now()));
+                .set("updated_at", LocalDateTime.now());
+        if (taskEnded) finUw.set("auto_approve", 0);
+        sessionMapper.update(null, finUw);
+        // 批量任务收尾: 已批未执行的审批标记已执行, 防后续 resume 重放与本次 run 内联执行双跑
+        if (taskEnded) try { approvalGate.markSessionExecuted(session.getSessionId()); } catch (Exception ignore) {}
         if (st.exitReason != null) {
             log.info("[agent] run 退出 session={} reason={} iter={} budget={}/{} steps={}",
                     session.getSessionId(), st.exitReason, iter, budget.used(), MAX_PRODUCTIVE_STEPS, st.seq);
@@ -809,6 +818,7 @@ public class AiAgentService {
                 .eq("session_id", sessionId)
                 .set("status", "done")
                 .set("budget_steps_used", st.seq)
+                .set("auto_approve", 0)
                 .set("updated_at", LocalDateTime.now()));
 
         if (executed > 0) {
@@ -825,6 +835,37 @@ public class AiAgentService {
         resp.put("finalAnswer", st.finalAnswer);
         resp.put("steps", stepsToDto(newSteps));
         return resp;
+    }
+
+    /**
+     * 批量审批并续跑(只当前任务): 批准本会话所有待审写操作 + 置 auto_approve=1, 再重驱 agent 循环,
+     * 后续写操作免逐个审批一路执行到底。安全: 仅短路审批门, PermGate(功能权限)/DataAcl(数据权限) 仍逐个拦截;
+     * 任务 done 时自动清 auto_approve(见 run/resume 收尾), 故仅本任务生效。
+     */
+    public Map<String, Object> approveAllAndContinue(String sessionId, AgentContext ctx) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        DnAiSession session = sessionMapper.selectOne(
+                new QueryWrapper<DnAiSession>().eq("session_id", sessionId).last("LIMIT 1"));
+        if (session == null) {
+            resp.put("status", "error"); resp.put("finalAnswer", "会话不存在"); resp.put("steps", new ArrayList<>());
+            return resp;
+        }
+        if (!ownerOk(session, ctx)) { // 越权隔离: 仅本人(或admin/匿名态)可对自己 agent 开批量自批
+            resp.put("status", "blocked"); resp.put("finalAnswer", "无权操作该会话(越权隔离)。"); resp.put("steps", new ArrayList<>());
+            return resp;
+        }
+        String actor = ctx == null ? null : ctx.getUserName();
+        // 批准本会话所有待审项(留痕 decided_by=实际触发者)
+        approvalMapper.update(null, new UpdateWrapper<DnAiApproval>()
+                .eq("session_id", sessionId).eq("status", "pending")
+                .set("status", "approved").set("decided_by", actor).set("decided_at", LocalDateTime.now()));
+        // 开启本任务批量自动批准(任务 done 时由 run/resume 收尾清 0)
+        sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId).set("auto_approve", 1).set("updated_at", LocalDateTime.now()));
+        // 重驱循环: 续跑剩余所有步骤, 写操作免逐个审批
+        return run(sessionId,
+                "已开启本任务批量自动批准。请继续执行计划中所有剩余步骤(逐层 ODS→DWD→DWS→ADS), 一路做到全部完成, 无需再逐个等待审批。",
+                ctx);
     }
 
     /** 标记审批已执行(防 resume 重复执行同一写动作)。 */
@@ -908,7 +949,10 @@ public class AiAgentService {
             for (int i = prior.size() - 1; i >= 0; i--) {
                 DnAiStep s = prior.get(i);
                 if (s != null && s.getContent() != null) {
-                    h.append("- 先前答复: ").append(cap(s.getContent(), 300)).append('\n');
+                    // 最近一轮答复(i==0, prior 按 seq 降序)给足额度: 多层设计/方案常达数千字,
+                    // 砍到 300 字会丢失上一轮产出 → 用户说"执行/继续"时 agent 无据可依而跑偏; 更早两条仍摘要
+                    int lim = (i == 0) ? 3000 : 300;
+                    h.append("- 先前答复: ").append(cap(s.getContent(), lim)).append('\n');
                 }
             }
             st.trace.append(h).append('\n');

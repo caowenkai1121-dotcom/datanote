@@ -1,6 +1,7 @@
 package com.datanote.platform.ai.agent.engine;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper;
 import com.datanote.platform.ai.agent.model.DnAiApproval;
 import com.datanote.platform.ai.agent.tool.AiTool;
@@ -25,12 +26,27 @@ public class ApprovalGate {
 
     /** 检查/挂起审批。stepSeq 仅用于首次 insert 留痕(查询按 args 稳定匹配)。 */
     public Outcome check(String sessionId, int stepSeq, AiTool tool, String argsJson, boolean isHigh) {
+        return check(sessionId, stepSeq, tool, argsJson, isHigh, false);
+    }
+
+    /**
+     * autoApprove=true(本任务批量自动批准): 待审/新建一律置 approved 放行, 已 rejected 仍尊重拒绝。
+     * 仅短路本审批门; 调用方的 PermGate(功能权限)/DataAcl(数据权限) 仍逐个拦截, 不被绕过。
+     */
+    public Outcome check(String sessionId, int stepSeq, AiTool tool, String argsJson, boolean isHigh, boolean autoApprove) {
         String args = (argsJson == null || argsJson.isEmpty()) ? "{}" : argsJson;
         if (args.length() > 8000) args = args.substring(0, 8000);
         DnAiApproval exist = findOne(sessionId, tool.name(), args);
         if (exist != null) {
             if ("approved".equals(exist.getStatus())) return Outcome.APPROVED;
             if ("rejected".equals(exist.getStatus())) return Outcome.REJECTED;
+            // pending: 批量模式直接批准放行
+            if (autoApprove) {
+                approvalMapper.update(null, new UpdateWrapper<DnAiApproval>()
+                        .eq("id", exist.getId()).eq("status", "pending")
+                        .set("status", "approved").set("decided_by", "auto").set("decided_at", LocalDateTime.now()));
+                return Outcome.APPROVED;
+            }
             return Outcome.PENDING;
         }
         // 安全: 审批严格绑定 args(session+skill+完全相同 args 命中 approved 才放行)。
@@ -42,7 +58,8 @@ public class ApprovalGate {
         a.setSkillName(tool.name());
         a.setArgsJson(args);
         a.setRiskLevel(tool.risk() == null ? "HIGH" : tool.risk().name());
-        a.setStatus("pending");
+        a.setStatus(autoApprove ? "approved" : "pending");
+        if (autoApprove) { a.setDecidedBy("auto"); a.setDecidedAt(LocalDateTime.now()); }
         a.setCreatedAt(LocalDateTime.now());
         try {
             approvalMapper.insert(a);
@@ -52,7 +69,14 @@ public class ApprovalGate {
             if (r != null && "approved".equals(r.getStatus())) return Outcome.APPROVED;
             if (r != null && "rejected".equals(r.getStatus())) return Outcome.REJECTED;
         }
-        return Outcome.PENDING;
+        return autoApprove ? Outcome.APPROVED : Outcome.PENDING;
+    }
+
+    /** 批量任务收尾: 本会话所有已批未执行的审批标记为已执行, 防 resume 重放与 run 内联执行双跑(at-most-once)。 */
+    public void markSessionExecuted(String sessionId) {
+        approvalMapper.update(null, new UpdateWrapper<DnAiApproval>()
+                .eq("session_id", sessionId).eq("status", "approved").isNull("executed_at")
+                .set("executed_at", LocalDateTime.now()));
     }
 
     private DnAiApproval findOne(String sessionId, String skill, String args) {

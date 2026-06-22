@@ -740,6 +740,7 @@
       if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+      var allBtn = DN.h('button', { class: 'btn btn-sm', text: '批准并自动批准后续', title: '本任务剩余写操作免逐个审批, 一路执行到底(仍受功能/数据权限拦截)', 'data-perm': 'assistant:approve' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve' });
       okBtn.onclick = function () {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
@@ -754,14 +755,27 @@
           })
           .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('审批/恢复失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; okBtn.textContent = '批准并继续'; });
       };
+      allBtn.onclick = function () {
+        if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
+        var ep = _epoch; setSending(true);
+        okBtn.disabled = true; allBtn.disabled = true; noBtn.disabled = true; allBtn.textContent = '执行中…';
+        // 一步到位: 后端批准本会话待审项 + 开 auto_approve + 续跑剩余所有步骤
+        DN.post('/api/ai/agent/' + sid + '/approve-all', {})
+          .then(function (res) {
+            if (ep !== _epoch) { interruptSession(sid); return; }
+            setSending(false);
+            card.remove(); renderTurn(res || {}); scrollBottom();
+          })
+          .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('批量执行失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; allBtn.disabled = false; noBtn.disabled = false; allBtn.textContent = '批准并自动批准后续'; });
+      };
       noBtn.onclick = function () {
         var ep = _epoch; // 捕获发起纪元: 新会话后不再往新消息流写旧拒绝提示
-        okBtn.disabled = true; noBtn.disabled = true;
+        okBtn.disabled = true; allBtn.disabled = true; noBtn.disabled = true;
         DN.post('/api/ai/agent/approval/' + ap.id + '/decide', { decision: 'rejected' })
           .then(function () { card.remove(); if (ep !== _epoch) return; flowEl.appendChild(assistantBubble('已拒绝该写操作。', 'err')); scrollBottom(); })
-          .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; });
+          .catch(function (e) { DN.toast('拒绝失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; allBtn.disabled = false; noBtn.disabled = false; });
       };
-      btns.appendChild(okBtn); btns.appendChild(noBtn); card.appendChild(btns);
+      btns.appendChild(okBtn); btns.appendChild(allBtn); btns.appendChild(noBtn); card.appendChild(btns);
       flowEl.appendChild(card); scrollBottom();
     }).catch(function () {});
   }

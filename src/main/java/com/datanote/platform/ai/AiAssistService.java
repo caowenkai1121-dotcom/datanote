@@ -49,6 +49,9 @@ public class AiAssistService {
     }
     private volatile AiConf conf = new AiConf("", "claude-sonnet-4-6", "https://api.anthropic.com", "anthropic");
 
+    /** 单次回复输出上限: 4096 偏小, 多层建模(ODS→DWD→DWS→ADS)等长答复会被截断; 8192 对 Anthropic/DeepSeek/百炼均安全 */
+    private static final int MAX_TOKENS = 8192;
+
     /** 每请求模型热切覆盖(同 provider 下换 model 档位): 由 Controller 在请求边界 set/clear, chat 读取优先于快照。 */
     private static final ThreadLocal<String> MODEL_OVERRIDE = new ThreadLocal<>();
     public static void setModelOverride(String m) { if (m != null && !m.trim().isEmpty()) MODEL_OVERRIDE.set(m.trim()); }
@@ -137,14 +140,14 @@ public class AiAssistService {
             List<Map<String, String>> messages = new ArrayList<>();
             if (isOpenAiCompatible(c.provider)) {
                 // OpenAI 兼容格式（百炼/OpenAI/DeepSeek）：system 作为 message
-                requestBody.put("max_tokens", 4096);
+                requestBody.put("max_tokens", MAX_TOKENS);
                 Map<String, String> sysMsg = new HashMap<>();
                 sysMsg.put("role", "system");
                 sysMsg.put("content", SYSTEM_PROMPT);
                 messages.add(sysMsg);
             } else {
                 // Anthropic 格式：system 是顶层字段
-                requestBody.put("max_tokens", 4096);
+                requestBody.put("max_tokens", MAX_TOKENS);
                 requestBody.put("system", SYSTEM_PROMPT);
             }
             Map<String, String> msg = new HashMap<>();
@@ -218,7 +221,7 @@ public class AiAssistService {
             boolean openai = isOpenAiCompatible(c.provider);
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", activeModel);
-            requestBody.put("max_tokens", 4096);
+            requestBody.put("max_tokens", MAX_TOKENS);
             requestBody.put("stream", true);
             List<Map<String, String>> messages = new ArrayList<>();
             if (openai) {
