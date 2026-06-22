@@ -1276,6 +1276,7 @@ CREATE TABLE IF NOT EXISTS dn_ai_approval (
     step_seq        INT          DEFAULT NULL COMMENT '对应步序号',
     skill_name      VARCHAR(64)  NOT NULL COMMENT '待审批工具',
     args_json       TEXT         DEFAULT NULL COMMENT '工具入参',
+    action_summary  VARCHAR(500) DEFAULT NULL COMMENT '人类可读操作摘要(审批卡展示)',
     risk_level      VARCHAR(8)   DEFAULT 'HIGH' COMMENT '风险级',
     status          VARCHAR(16)  NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
     decided_by      VARCHAR(128) DEFAULT NULL COMMENT '审批人',
@@ -1301,3 +1302,22 @@ CREATE TABLE IF NOT EXISTS dn_ai_memory_skill (
     PRIMARY KEY (id),
     KEY idx_type_status (type, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI Agent 自学习经验/技能(M4)';
+
+-- ===== 长久记忆: 用户画像(隔离) + 项目画像(全局) =====
+CREATE TABLE IF NOT EXISTS dn_ai_user_profile (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    user_name   VARCHAR(128) NOT NULL COMMENT '用户(隔离键)',
+    content     LONGTEXT     DEFAULT NULL COMMENT '画像正文(已蒸馏精简)',
+    updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id), UNIQUE KEY uk_user (user_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 用户画像(用户隔离)';
+
+CREATE TABLE IF NOT EXISTS dn_ai_project_profile (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    profile_key VARCHAR(64)  NOT NULL COMMENT "'global'=项目全局画像; '__digest_date__'=每日汇总占位",
+    content     LONGTEXT     DEFAULT NULL,
+    updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id), UNIQUE KEY uk_key (profile_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 项目画像(全局)';

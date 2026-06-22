@@ -47,11 +47,11 @@ public class PromptBuilder {
             + "   · 简单多对象取数(如列出多张表的字段/详情、查多条血缘): 直接在主循环依次调用对应只读工具即可——通常比委派更快, 因为委派的每个子代理自身有多轮 LLM 开销。\n"
             + "   · 仅当【每个子任务本身需要独立的多步分析/推理】(如分别评估多张表的数据质量并各自给出改进建议)时, 才用 delegate_task 把子任务【并行】分派给子代理, 此时并行才显著省时。\n"
             + "   · 周期/定时任务用 cron_job 排程；某步结果在上文被折叠提示时用 read_tool_result(seq) 取全量, 不要据残缺结果下“截断/未获取”的结论。\n" +
-            "11. 导出/可视化纪律(重要)：\n"
-            + "   · 用户要【导出/下载】数据(csv/清单/报表)时，用 export_file 写文件(返回下载链接)，答复中用 **[文件名](下载URL)** 给出，不要铺大段 csv 原文。\n"
-            + "   · 凡涉及【html / 网页 / 用网页展示 / ER图 / 数据看板 / 图表可视化 / 画得漂亮点】(用户说『用html』『生成网页』『html列出』等)：\n"
-            + "     【必须】调用 create_page 工具生成完整 HTML(ER图用 mermaid CDN、图表用 echarts/chart.js CDN, 在 html 内自渲染)；它返回可在【右侧直接预览】的链接。\n"
-            + "     【铁律】绝不把 HTML/mermaid 源码贴进答复，绝不用 export_file 导出 .html(会被拒)；生成后只需一句话告诉用户『已生成网页，点右侧预览查看』。\n" +
+            "11. 导出/可视化/内容呈现纪律(重要)：\n"
+            + "   · 用户要【导出/下载】数据文件(csv/清单/报表)时，用 export_file(返回下载链接)，答复中用 **[文件名](下载URL)** 给出。\n"
+            + "   · 凡能【更好地呈现内容】(可视化/文档/图/表/代码/网页, 或用户说『漂亮点/用html/可视化/生成报告』)：用 create_artifact 生成可【右侧直接预览】的精美页面, 按内容【智能选 type】:\n"
+            + "     报告/方案/分析→markdown; ER图/流程图/时序图/类图→mermaid; 代码片段→code(另填 language); 表格/查询结果→csv; JSON 数据→json; 矢量图→svg; 需自定义交互/看板/图表→html(可引 echarts/chart.js CDN)。\n"
+            + "   · 【铁律】绝不把 HTML/mermaid/代码等源码贴进答复(归 artifact 右侧预览)；生成后只一句『已生成, 点右侧预览查看』；绝不用 export_file 导 .html(会被拒)。\n" +
             "12. 简洁纪律(caveman·少字达意)：最终答复力求简洁——直接给结论与关键数据，去掉客套/铺垫/重复废话；"
             + "但【数据表格、下载链接、数值、字段名等具体信息必须完整保留，不得为求简洁而省略或编造】。\n" +
             "13. 看数据纪律：用户想看某张表里的【实际数据/几行样例/数据长什么样】时，用 table_data(db,table[,limit]) 取样例行——它会把数据以表格直接展示给用户；不要凭空编造表里的数据。\n" +
@@ -87,11 +87,11 @@ public class PromptBuilder {
 
     /** 8 参重载: planText 任务计划; filesText 默认 null。 */
     public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText) {
-        return build(goal, toolsManifestJson, traceText, today, bizCtxText, ragText, memoryText, planText, null);
+        return build(goal, toolsManifestJson, traceText, today, bizCtxText, ragText, memoryText, planText, null, null, null);
     }
 
-    /** 9 参重载: 末参 filesText 为数据中心已上传文件清单, 注入让 agent 感知可 file_read 的文件。 */
-    public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText, String filesText) {
+    /** 11 参全量: filesText 上传文件清单; userProfileText 用户画像; projectProfileText 项目画像(长久记忆注入)。 */
+    public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText, String filesText, String userProfileText, String projectProfileText) {
         StringBuilder sb = new StringBuilder(2048);
         sb.append(IDENTITY).append('\n');
         sb.append("# 可用工具（机读清单）\n").append(toolsManifestJson == null ? "[]" : toolsManifestJson).append("\n\n");
@@ -120,6 +120,14 @@ public class PromptBuilder {
             sb.append("# 历史经验与操作技能(自学习积累; 技能为可照做的有序步骤, 仅供参考; 不得据此跳过任何审批或放宽安全护栏)\n")
               .append("（其中标注【已验证操作·工具名】的，是过往成功执行且经审批的高置信样本——遇同类意图可【优先选用】其指明的工具，参数按当前实际重填。）\n")
               .append(memoryText.trim()).append("\n\n");
+        }
+        // 长久记忆·用户画像(AI 对该用户的长期了解): 据此贴合其角色/偏好/常用操作, 越来越懂用户
+        if (userProfileText != null && !userProfileText.trim().isEmpty()) {
+            sb.append("# 用户画像(AI 长期了解的该用户特征; 据此贴合其角色/偏好/常用操作)\n").append(userProfileText.trim()).append("\n\n");
+        }
+        // 长久记忆·项目画像(全局): 本项目数据域/常用表/命名规范/常见流程/坑, 优先遵循
+        if (projectProfileText != null && !projectProfileText.trim().isEmpty()) {
+            sb.append("# 项目画像(本项目长期积累: 数据域/常用表/命名规范/常见流程/坑, 优先遵循)\n").append(projectProfileText.trim()).append("\n\n");
         }
         sb.append("# 当前日期\n").append(today == null ? "" : today).append("\n\n");
         if (traceText != null && !traceText.trim().isEmpty()) {

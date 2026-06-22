@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 public class ApprovalGate {
 
     private final DnAiApprovalMapper approvalMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public enum Outcome { APPROVED, REJECTED, PENDING }
 
@@ -57,6 +58,7 @@ public class ApprovalGate {
         a.setStepSeq(stepSeq);
         a.setSkillName(tool.name());
         a.setArgsJson(args);
+        a.setActionSummary(ApprovalActionDescriber.describe(tool.name(), args, objectMapper)); // 人话摘要供审批卡展示
         a.setRiskLevel(tool.risk() == null ? "HIGH" : tool.risk().name());
         a.setStatus(autoApprove ? "approved" : "pending");
         if (autoApprove) { a.setDecidedBy("auto"); a.setDecidedAt(LocalDateTime.now()); }

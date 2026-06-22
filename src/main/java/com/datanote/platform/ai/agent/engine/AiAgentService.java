@@ -46,6 +46,7 @@ public class AiAgentService {
     private final com.datanote.domain.orchestration.LineageEdgeService lineageEdgeService;
     private final com.datanote.platform.audit.AuditService auditService;
     private final ApprovalGate approvalGate;
+    private final AiProfileService aiProfileService;
     private final AiMemoryService aiMemoryService;
     private final DnAiApprovalMapper approvalMapper;
     private final ContextCompressorService contextCompressor;
@@ -207,6 +208,8 @@ public class AiAgentService {
         String ragText = buildRagText(userMessage, ctx == null ? null : ctx.getUserName());   // 循环外算一次, 自动 grounding(资产+文档)
         String memoryText = aiMemoryService.recall(userMessage, ctx == null ? null : ctx.getUserName(), MEM_TOPK); // 自学习记忆召回(只读上下文)
         String filesText = buildFilesText(ctx == null ? null : ctx.getUserName()); // 已上传文件清单(让 agent 感知, 可 file_read)
+        String userProfileText = aiProfileService.userProfileText(ctx == null ? null : ctx.getUserName()); // 长久记忆·用户画像(隔离)
+        String projectProfileText = aiProfileService.projectProfileText(); // 长久记忆·项目画像(全局)
         boolean first = true;
         IterationBudget budget = new IterationBudget(MAX_PRODUCTIVE_STEPS);
         int iter = 0;
@@ -243,7 +246,7 @@ public class AiAgentService {
                         .append(" 步。请暂停审视: 对照目标更新『已知事实/剩余步骤』(可 todo update), 判断是否已可收口或是否偏题, 再继续下一步。\n");
             }
             String planText = live == null ? null : renderPlan(live.getPlanJson());
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText);
             String userPrompt = first
                     ? userMessage
                     : "请根据上面的『已执行步骤与工具结果』继续：若仍需信息就只输出一个 <tool_call>，否则直接给出最终中文答复（不要再输出 tool_call）。";
@@ -258,7 +261,7 @@ public class AiAgentService {
             // 反应式超窗恢复: 若报上下文超长, 强制压缩后重试一次(借鉴 hermes context overflow 压缩重试)
             if (isAiError(raw) && ErrorClassifier.classify(raw) == ErrorClassifier.Action.CONTEXT_OVERFLOW
                     && contextCompressor.forceCompress(st, userMessage)) {
-                context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText);
+                context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText);
                 raw = callLlmWithRetry(userPrompt, context);
             }
             long latency = System.currentTimeMillis() - t0;
@@ -280,7 +283,7 @@ public class AiAgentService {
                 if (draft == null || draft.trim().isEmpty()) {
                     String reAsk = callLlmWithRetry(
                             "请直接面向用户给出最终中文答复(结论+关键信息, 有下载链接请用 [文件名](URL) 给出), 不要只写思考过程, 不要再调用工具。",
-                            promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText));
+                            promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText));
                     draft = AgentTextUtil.cleanFinal(reAsk);
                     if (draft == null || draft.trim().isEmpty()) draft = "已完成。如需更多信息或具体数据/下载，请告诉我。";
                 }
@@ -466,7 +469,8 @@ public class AiAgentService {
                 if (oc == ApprovalGate.Outcome.PENDING) {
                     st.awaitingApproval = true; st.exitReason = "AWAIT_APPROVAL";
                     st.pendingSkill = toolName;
-                    st.finalAnswer = "写操作「" + toolName + "」需人工审批,已挂起会话。\n"
+                    String _human = ApprovalActionDescriber.describe(toolName, argsToStr(argsNode), objectMapper);
+                    st.finalAnswer = "写操作「" + _human + "」需人工审批,已挂起会话。\n"
                             + "· 单步审批: 点「批准并继续」逐个确认;\n"
                             + "· 多步任务想一次到位: 点「批准并自动批准后续」, 本任务剩余写操作将免逐个审批、一路执行到底。";
                     newSteps.add(writeStep(st, "SKILL_CALL", "tool", null, null, toolName, argsToStr(argsNode),
@@ -562,7 +566,7 @@ public class AiAgentService {
                 st.done = true; st.exitReason = "WALLCLOCK_EXHAUSTED";
                 newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, null, null, null, null, "ok", null, true, "LOW", null));
             } else {
-                String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText);
+                String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, null, filesText, userProfileText, projectProfileText);
                 String raw = callLlmWithRetry(
                         "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
                 String think = AgentTextUtil.extractThink(raw);

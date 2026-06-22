@@ -296,7 +296,7 @@
     card.appendChild(DN.h('div', { text: '🌐', style: 'font-size:22px;flex:0 0 auto;' }));
     card.appendChild(DN.h('div', { style: 'flex:1;min-width:0;' }, [
       DN.h('div', { text: pg.title || pg.fileName || '网页', style: 'font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-      DN.h('div', { text: '点击预览，在右侧渲染', style: 'font-size:12px;color:var(--text-muted);' })
+      DN.h('div', { text: (pg.artifactType ? String(pg.artifactType).toUpperCase() + ' · ' : '') + '点击预览，在右侧渲染', style: 'font-size:12px;color:var(--text-muted);' })
     ]));
     var open = DN.h('button', { class: 'btn btn-sm btn-primary', text: '预览', style: 'flex:0 0 auto;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
     open.onclick = function () { openPreview(pg.previewUrl, pg.title || pg.fileName); };
@@ -895,8 +895,8 @@
       for (var i = 0; i < list.length; i++) { if (list[i] && list[i].sessionId === sid) { ap = list[i]; break; } }
       if (!ap) return;
       var card = DN.h('div', { class: 'dn-ai-approval', style: 'margin-left:18px;' });
-      card.appendChild(DN.h('div', { style: 'font-weight:600;color:var(--warning-text);margin-bottom:6px;', text: '⚠ 写操作待人工审批: ' + (ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
-      if (ap.argsJson) card.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;word-break:break-all;', text: '参数: ' + ap.argsJson }));
+      card.appendChild(DN.h('div', { style: 'font-weight:600;color:var(--warning-text);margin-bottom:6px;', text: '⚠ 待审批: ' + (ap.actionSummary || ap.skillName || '') + '  (风险 ' + (ap.riskLevel || '') + ')' }));
+      if (ap.argsJson) { var dt = DN.h('details', { style: 'margin-bottom:8px;' }, [DN.h('summary', { text: '查看参数', style: 'font-size:12px;color:var(--text-muted);cursor:pointer;' }), DN.h('div', { style: 'font-size:12px;color:var(--text-muted);word-break:break-all;margin-top:4px;', text: ap.argsJson })]); card.appendChild(dt); }
       var btns = DN.h('div', { style: 'display:flex;gap:8px;' });
       var okBtn = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并继续', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
       var allBtn = DN.h('button', { class: 'btn btn-sm', text: '批准并自动批准后续', title: '本任务剩余写操作免逐个审批, 一路执行到底(仍受功能/数据权限拦截)', 'data-perm': 'assistant:approve' });
@@ -990,12 +990,27 @@
       });
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
   }
+  // 自动生成的画像(长久记忆): 用户画像(隔离) + 项目画像(全局), 经验抽屉顶部展示
+  function renderProfiles(box) {
+    function sec(title) {
+      var c = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:var(--primary-bg, rgba(99,102,241,.06));' });
+      c.appendChild(DN.h('div', { text: title, style: 'font-weight:600;font-size:13px;margin-bottom:4px;color:var(--text-primary);' }));
+      var b = DN.h('div', { text: '（暂未生成，每日汇总后出现）', style: 'font-size:12.5px;color:var(--text-secondary);line-height:1.7;white-space:pre-wrap;word-break:break-word;' });
+      c.appendChild(b); box.appendChild(c); return b;
+    }
+    var uB = sec('👤 用户画像 · AI 对你的了解');
+    var pB = sec('📦 项目画像 · 全局积累');
+    DN.get('/api/ai/agent/user-profile').then(function (d) { if (d && d.content) uB.textContent = d.content; }).catch(function () {});
+    DN.get('/api/ai/agent/project-profile').then(function (d) { if (d && d.content) pB.textContent = d.content; }).catch(function () {});
+  }
   function renderMemories(body) {
+    body.innerHTML = '';
+    renderProfiles(body); // 顶部: 自动生成的用户/项目画像
+    var memBox = DN.h('div', {}); body.appendChild(memBox);
     DN.get('/api/ai/agent/memories').then(function (list) {
-      body.innerHTML = '';
       var arr = list || [];
-      if (!arr.length) { body.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
-      body.appendChild(DN.h('div', { text: '共 ' + arr.length + ' 条沉淀经验', style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
+      if (!arr.length) { memBox.appendChild(DN.h('div', { text: '暂无沉淀经验。AI 完成带工具调用的任务后会自动学习。', style: 'color:var(--text-muted);font-size:13px;line-height:1.8;' })); return; }
+      memBox.appendChild(DN.h('div', { text: '共 ' + arr.length + ' 条沉淀经验', style: 'font-size:12px;color:var(--text-muted);margin:4px 0 8px;' }));
       arr.forEach(function (m) {
         var isSkill = m.type === 'skill';
         var isReview = m.type === 'review';
@@ -1016,9 +1031,9 @@
         if (m.triggerHint) meta.push('适用: ' + m.triggerHint);
         meta.push('命中 ' + (m.hitCount || 0));
         card.appendChild(DN.h('div', { text: meta.join(' · '), style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px;' }));
-        body.appendChild(card);
+        memBox.appendChild(card);
       });
-    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
+    }).catch(function (e) { memBox.innerHTML = ''; memBox.appendChild(DN.h('div', { text: '加载失败：' + (e && e.message ? e.message : e), style: 'color:var(--danger);font-size:13px;' })); });
   }
   function renderApprovals(body) {
     DN.get('/api/ai/agent/approvals?status=pending').then(function (list) {
@@ -1029,10 +1044,13 @@
       arr.forEach(function (a) {
         var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;' });
         card.appendChild(DN.h('div', {}, [
-          DN.h('span', { text: a.skillName || '?', style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
+          DN.h('span', { text: a.actionSummary || a.skillName || '?', style: 'font-weight:600;font-size:13px;color:var(--text-primary);' }),
           DN.h('span', { text: a.riskLevel || '', class: 'dn-ai-badge ' + (a.riskLevel === 'HIGH' ? 'err' : 'warn'), style: 'margin-left:8px;' })
         ]));
-        card.appendChild(DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:var(--fs-xs);color:var(--text-secondary);background:var(--bg-body);border-radius:var(--radius);padding:6px 8px;margin:6px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' }));
+        card.appendChild(DN.h('details', { style: 'margin:6px 0;' }, [
+          DN.h('summary', { text: '查看参数 (' + (a.skillName || '') + ')', style: 'font-size:var(--fs-xs);color:var(--text-muted);cursor:pointer;' }),
+          DN.h('pre', { text: a.argsJson || '{}', style: 'font-size:var(--fs-xs);color:var(--text-secondary);background:var(--bg-body);border-radius:var(--radius);padding:6px 8px;margin:4px 0;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;' })
+        ]));
         var ok = DN.h('button', { class: 'btn btn-primary btn-sm', text: '批准并执行', 'data-perm': 'assistant:approve', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
         var no = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve', style: 'margin-left:8px;' });
         ok.onclick = function () {

@@ -46,6 +46,7 @@ public class AiAgentController {
     private final com.datanote.platform.ai.agent.engine.AgentPermResolver permResolver;
     private final com.datanote.platform.iam.RbacService rbacService;
     private final com.datanote.platform.ai.agent.engine.AgentEventBus eventBus;
+    private final com.datanote.platform.ai.agent.engine.AiProfileService aiProfileService;
 
     /** 发起一轮：body {sessionId?, message, ctx?:{route,db,table,...}}，返回 {sessionId, status, finalAnswer, steps}。 */
     @PostMapping("/chat")
@@ -145,6 +146,28 @@ public class AiAgentController {
             out.add(m);
         }
         return R.ok(out);
+    }
+
+    /** 当前用户的【用户画像】(用户隔离的长久记忆; 经验抽屉展示)。 */
+    @GetMapping("/user-profile")
+    public R<Map<String, Object>> userProfile() {
+        String me = currentUser();
+        com.datanote.platform.ai.agent.model.DnAiUserProfile p = aiProfileService.getUserProfile(me);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("userName", me);
+        m.put("content", p == null ? null : p.getContent());
+        m.put("updatedAt", p == null ? null : p.getUpdatedAt());
+        return R.ok(m);
+    }
+
+    /** 【项目画像】(全局长久记忆; 经验抽屉展示)。 */
+    @GetMapping("/project-profile")
+    public R<Map<String, Object>> projectProfile() {
+        com.datanote.platform.ai.agent.model.DnAiProjectProfile p = aiProfileService.getProjectProfile();
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("content", p == null ? null : p.getContent());
+        m.put("updatedAt", p == null ? null : p.getUpdatedAt());
+        return R.ok(m);
     }
 
     /** 列出已注册工具（机读清单）。 */

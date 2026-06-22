@@ -17,6 +17,8 @@ public class DnAiApproval {
     private Integer stepSeq;
     private String skillName;
     private String argsJson;
+    /** 人类可读操作摘要(审批卡展示, 替代 skillName+argsJson 原文) */
+    private String actionSummary;
     private String riskLevel;
     /** pending / approved / rejected */
     private String status;
