@@ -10,6 +10,8 @@
   var selectedModel = '';  // 模型热切档位(空=默认), 随 chat 上送 model 覆盖
   var fileListEl = null;   // 数据中心文件列表容器
   var histListEl = null;   // 左侧历史会话列表容器
+  var _sessionList = [];   // 历史会话原始列表(供搜索过滤)
+  var _sessionFilter = ''; // 历史搜索关键词
   var _kbBound = false;    // 全局快捷键是否已绑定(防重复)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
@@ -776,14 +778,20 @@
   function loadSessions() {
     if (!histListEl) return;
     DN.get('/api/ai/agent/sessions?limit=50').then(function (list) {
-      if (!histListEl) return;
-      list = list || [];
-      histListEl.innerHTML = '';
-      if (!list.length) {
-        histListEl.appendChild(DN.h('div', { text: '暂无历史会话', style: 'color:var(--text-muted);font-size:12px;padding:6px 2px;' }));
-        return;
-      }
-      list.forEach(function (s) {
+      _sessionList = list || [];
+      renderSessionRows();
+    }).catch(function () {});
+  }
+  function renderSessionRows() {
+    if (!histListEl) return;
+    histListEl.innerHTML = '';
+    var q = (_sessionFilter || '').trim().toLowerCase();
+    var arr = q ? _sessionList.filter(function (s) { return s && (s.title || '').toLowerCase().indexOf(q) >= 0; }) : _sessionList;
+    if (!arr.length) {
+      histListEl.appendChild(DN.h('div', { text: q ? '无匹配会话' : '暂无历史会话', style: 'color:var(--text-muted);font-size:12px;padding:6px 2px;' }));
+      return;
+    }
+    arr.forEach(function (s) {
         if (!s || !s.sessionId) return;
         var active = s.sessionId === sessionId;
         var title = (s.title && String(s.title).trim()) ? String(s.title).trim() : '未命名会话';
@@ -822,7 +830,6 @@
         row.onclick = function () { openSession(s.sessionId); };
         histListEl.appendChild(row);
       });
-    }).catch(function () {});
   }
 
   function statusLabel(st) {
@@ -1194,6 +1201,9 @@
       DN.h('span', { text: '✚ 新', title: '开始新会话', style: 'cursor:pointer;font-size:12px;color:var(--primary);', onclick: newSession })
     ]);
     panel.appendChild(histHd);
+    var histSearch = DN.h('input', { type: 'text', placeholder: '搜索历史…', style: 'margin:0 18px 6px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-body);color:var(--text-primary);flex:0 0 auto;' });
+    histSearch.addEventListener('input', function () { _sessionFilter = histSearch.value; renderSessionRows(); });
+    panel.appendChild(histSearch);
     histListEl = DN.h('div', { id: 'aiHistList', style: 'flex:0 0 auto;max-height:240px;overflow-y:auto;padding:0 18px 8px;border-bottom:1px solid var(--border);margin-bottom:6px;' });
     panel.appendChild(histListEl);
 
