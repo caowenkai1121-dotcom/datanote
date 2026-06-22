@@ -156,7 +156,10 @@ public class AiAssistService {
             messages.add(msg);
             requestBody.put("messages", messages);
 
+            long _t0 = System.currentTimeMillis();
             String responseBody = callApi(objectMapper.writeValueAsString(requestBody), c.provider, c.apiKey, c.baseUrl);
+            // 可观测性: 记录 LLM 调用耗时/模型/输入规模, 便于排查慢调用与成本
+            if (log.isInfoEnabled()) log.info("[llm] model={} inChars={} latency={}ms", activeModel, fullMessage.length(), System.currentTimeMillis() - _t0);
             if (responseBody == null || responseBody.isEmpty()) {
                 log.error("AI API 返回空响应: provider={}, model={}", c.provider, activeModel);
                 return "AI 返回格式异常";
