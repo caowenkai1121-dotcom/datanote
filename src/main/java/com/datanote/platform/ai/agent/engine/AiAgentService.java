@@ -92,7 +92,7 @@ public class AiAgentService {
     /** RAG 注入文本上限(控 token) */
     private static final int RAG_TEXT_CAP = 800;
     /** 自学习记忆召回条数 */
-    private static final int MEM_TOPK = 3;
+    private static final int MEM_TOPK = 5; // 经验已每日汇总精简, 召回更多相关先例(R23)
 
     /** 单轮并行多工具(提速·减往返): 复用子代理线程池跑【独立只读】工具批 */
     @javax.annotation.Resource(name = "aiChildExecutor")
