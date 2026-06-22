@@ -795,7 +795,10 @@
         }, [
           DN.h('div', { style: 'flex:1;min-width:0;' }, [
             DN.h('div', { text: title, style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
-            DN.h('div', { text: (statusLabel(s.status) + ' · ' + fmtTime(s.updatedAt)), style: 'font-size:11px;color:var(--text-muted);margin-top:1px;' })
+            DN.h('div', { style: 'font-size:11px;color:var(--text-muted);margin-top:1px;display:flex;align-items:center;gap:4px;' }, [
+              DN.h('span', { style: 'flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:' + ({ running: '#22c55e', wait_approval: '#f59e0b', wait_input: '#f59e0b', blocked: '#ef4444', cancelled: '#9ca3af' }[s.status] || '#9ca3af') + ';' }),
+              DN.h('span', { text: statusLabel(s.status) + ' · ' + fmtTime(s.updatedAt) })
+            ])
           ])
         ]);
         var ren = DN.h('span', { text: '✎', title: '重命名', style: 'flex:0 0 auto;color:var(--text-muted);font-size:12px;padding:0 2px;visibility:hidden;' });
