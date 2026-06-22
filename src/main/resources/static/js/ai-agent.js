@@ -187,7 +187,7 @@
   // 工具调用卡（天工开物·逐道工序详记）
   function toolCard(step) {
     var col = groupColor(step.skillGroup);
-    var card = DN.card({ title: (step.skillName || '工具') , icon: 'layers' });
+    var card = DN.card({ title: (step.skillName ? (TOOL_LABEL[step.skillName] || step.skillName) : '工具'), icon: 'layers' });
     card.el.style.cssText = (card.el.style.cssText || '') + ';margin:8px 0 8px 18px;border-left:3px solid ' + col + ';';
     // 头部标签
     var tags = DN.h('span', { style: 'margin-left:8px;display:inline-flex;gap:6px;vertical-align:middle;' });
