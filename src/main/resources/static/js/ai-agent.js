@@ -658,6 +658,26 @@
 
   function scrollBottom() { if (flowEl) flowEl.scrollTop = flowEl.scrollHeight; }
 
+  // 导出当前会话为 Markdown(用户/助手轮 + 工具步留痕)
+  function exportChat() {
+    if (!sessionId) { DN.toast('当前无会话', 'warn'); return; }
+    DN.get('/api/ai/agent/session/' + sessionId).then(function (d) {
+      var steps = (d && d.steps) || [];
+      if (!steps.length) { DN.toast('无内容可导出', 'warn'); return; }
+      var md = ['# 天工司辰 对话记录', ''];
+      steps.forEach(function (s) {
+        if (!s) return;
+        if (s.stepType === 'USER') md.push('', '## 🧑 我', '', s.content || '');
+        else if (s.stepType === 'FINAL') md.push('', '## 🤖 天工司辰', '', s.content || '');
+        else if (s.stepType === 'ASK_USER') md.push('', '## 🤖 天工司辰（询问）', '', s.content || '');
+        else if (s.stepType === 'SKILL_CALL' && s.skillName) md.push('', '> 🔧 调用 ' + s.skillName);
+      });
+      var blob = new Blob([md.join('\n')], { type: 'text/markdown;charset=utf-8' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '对话记录.md'; a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    }).catch(function (e) { DN.toast('导出失败：' + (e && e.message ? e.message : e), 'err'); });
+  }
+
   function genSid() {
     try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, ''); } catch (e) {}
     var s = ''; for (var i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16); return s;
@@ -1269,6 +1289,7 @@
       ]),
       modelPicker(),
       DN.h('button', { class: 'btn btn-sm', text: '✚ 新会话', title: '清空当前对话, 开始新会话', style: 'flex:0 0 auto;', onclick: newSession }),
+      DN.h('button', { class: 'btn btn-sm', text: '⤓ 导出', title: '导出当前对话为 Markdown', style: 'flex:0 0 auto;', onclick: exportChat }),
       DN.h('button', { class: 'btn btn-sm', text: '🧠 经验', title: 'AI 自学习记忆', style: 'flex:0 0 auto;', onclick: function () { openDrawer('memory'); } }),
       DN.h('button', { class: 'btn btn-sm', text: '⏰ 定时', title: '定时自治任务', style: 'flex:0 0 auto;', onclick: function () { openDrawer('cron'); } }),
       DN.h('button', { class: 'btn btn-sm', text: '🛡️ 审批', title: '待审批写操作', style: 'flex:0 0 auto;', onclick: function () { openDrawer('approval'); } })
