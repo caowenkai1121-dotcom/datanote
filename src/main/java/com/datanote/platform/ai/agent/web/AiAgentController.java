@@ -161,6 +161,15 @@ public class AiAgentController {
         return R.ok(m);
     }
 
+    /** 手动触发画像汇总(运维/测试用, 异步; 仅登录用户)。 */
+    @PostMapping("/profile-digest/run")
+    public R<Void> runProfileDigest() {
+        String me = currentUser();
+        if (me == null || "anonymous".equals(me)) return R.fail("请登录后再触发");
+        aiProfileService.runDailyDigestAsync();
+        return R.ok();
+    }
+
     /** 【项目画像】(全局长久记忆; 经验抽屉展示)。 */
     @GetMapping("/project-profile")
     public R<Map<String, Object>> projectProfile() {
