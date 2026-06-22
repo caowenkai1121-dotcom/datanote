@@ -1316,7 +1316,7 @@
 
     var rightCol = DN.h('div', { class: 'dn-ai-main' });
     // 顶栏
-    var head = DN.h('div', { class: 'dn-ai-topbar' }, [
+    var head = DN.h('div', { class: 'dn-ai-topbar', style: 'flex-wrap:wrap;' }, [
       DN.h('div', { html: DN.icon('layers'), style: 'width:26px;height:26px;font-size:26px;color:var(--primary);display:flex;' }),
       DN.h('div', { style: 'min-width:0;' }, [
         DN.h('div', { text: '天工·自由意志数据智能体', style: 'font-size:16px;font-weight:650;color:var(--text-primary);' }),
