@@ -344,6 +344,20 @@ public class AiAgentController {
         return (me == null || "anonymous".equals(me) || "admin".equals(me)) ? null : me;
     }
 
+    /** 重命名自己的历史会话(改 goal_intent 作标题; 仅本人)。 */
+    @PostMapping("/{sessionId}/rename")
+    public R<Void> renameSession(@PathVariable("sessionId") String sessionId, @RequestBody Map<String, String> body) {
+        String title = body == null ? null : body.get("title");
+        if (title == null || title.trim().isEmpty()) return R.fail("标题不能为空");
+        R<Void> denied = assertSessionOwner(sessionId);
+        if (denied != null) return denied;
+        String t = title.trim();
+        if (t.length() > 200) t = t.substring(0, 200);
+        int n = sessionMapper.update(null, new UpdateWrapper<DnAiSession>()
+                .eq("session_id", sessionId).set("goal_intent", t).set("updated_at", LocalDateTime.now()));
+        return n > 0 ? R.ok() : R.fail("会话不存在");
+    }
+
     /** 软删除自己的历史会话(从历史列表隐藏, 同时停掉其自主执行; 仅本人)。 */
     @PostMapping("/{sessionId}/delete")
     public R<Void> deleteSession(@PathVariable("sessionId") String sessionId) {
