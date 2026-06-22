@@ -1381,7 +1381,10 @@
   function welcome() {
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
     box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
-    box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
+    var greet = DN.h('div', { text: '你好，我是天工司辰', style: 'font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:4px;' });
+    box.appendChild(greet);
+    DN.get('/api/rbac/me').then(function (u) { var n = u && (u.nickname || u.name || u.username); if (n) greet.textContent = '你好，' + n + '，我是天工司辰'; }).catch(function () {});
+    box.appendChild(DN.h('div', { text: '可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
     box.appendChild(DN.h('div', { text: '试试 (点击直接问):', style: 'color:var(--text-muted);margin-top:10px;' }));
     var chips = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;' });
     ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告'].forEach(function (t) {
