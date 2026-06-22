@@ -1247,10 +1247,10 @@
     var box = DN.h('div', { style: 'text-align:center;color:var(--text-muted);padding:36px 16px;font-size:13px;line-height:1.9;' });
     box.appendChild(DN.h('div', { html: DN.icon('layers'), style: 'width:40px;height:40px;font-size:40px;margin:0 auto 10px;color:var(--primary);opacity:.8;display:flex;align-items:center;justify-content:center;' }));
     box.appendChild(DN.h('div', { text: '我是天工司辰，可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
-    box.appendChild(DN.h('div', { text: '试试 (点击填入):', style: 'color:var(--text-muted);margin-top:10px;' }));
+    box.appendChild(DN.h('div', { text: '试试 (点击直接问):', style: 'color:var(--text-muted);margin-top:10px;' }));
     var chips = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;' });
-    ['看下治理总览，再查 dwd_order 的下游影响', '建一个名为风控的项目', '某表质量为什么下降'].forEach(function (t) {
-      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: '点击填入输入框', style: 'font-size:12px;', onclick: function () { if (inputEl) { inputEl.value = t; inputEl.focus(); } } }));
+    ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告'].forEach(function (t) {
+      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: '点击直接发送', style: 'font-size:12px;', onclick: function () { if (inputEl && !sending) { inputEl.value = t; send(); } } }));
     });
     box.appendChild(chips);
     return box;
