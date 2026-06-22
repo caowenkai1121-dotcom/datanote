@@ -143,6 +143,7 @@ public class AiAgentController {
             m.put("sessionId", s.getSessionId());
             m.put("title", s.getGoalIntent());             // 标题=会话目标/意图(为空时前端兜底)
             m.put("status", s.getStatus());
+            m.put("autonomous", s.getAutonomous());        // 自主运行中标记(前端显示🚀)
             m.put("updatedAt", s.getUpdatedAt());
             out.add(m);
         }
