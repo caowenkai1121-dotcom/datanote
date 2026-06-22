@@ -64,7 +64,7 @@ public class ChildAgentRunner {
     private String childModelDefault;
 
     private static final int MAX_CHILD_STEPS = 5;
-    private static final int CHILD_RESULT_CAP = 3000; // 放宽: 子代理工具结果(字段/表清单)不被切, 父汇总不丢明细
+    private static final int CHILD_RESULT_CAP = 40000; // 放大到模型量级: 子代理工具结果(字段/表清单)不被切, 父汇总不丢明细
     private static final long CHILD_TIMEOUT_SEC = 180;
     /** 子代理禁用工具: 写须父审批, 委派防递归, 求助/规划/排程是父职责(cron_job 纳入防 cron 模式子绕过自排程) */
     private static final Set<String> CHILD_BLOCKED = new HashSet<>(Arrays.asList("delegate_task", "ask_user", "todo", "cron_job"));

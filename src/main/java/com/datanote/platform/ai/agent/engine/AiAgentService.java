@@ -74,10 +74,10 @@ public class AiAgentService {
     private static final int PLAN_INTERVAL = 6;
     /** 单轮 run 墙钟上限(ms): 防 LLM 挂起/超长把 Tomcat 工作线程长期占满拖垮 Web 服务 */
     private static final long RUN_WALLCLOCK_MS = 300_000L;
-    /** trace 中单条结果摘要上限(放宽: 表/字段清单等不被折叠致 agent 看不全, 解决"仅提取前5字段") */
-    private static final int TRACE_RESULT_CAP = 4000;
-    /** 入库 result_data 上限(read_tool_result 可取更全) */
-    private static final int STORE_RESULT_CAP = 16000;
+    /** trace 中单条结果上限(放大到模型量级: 表/字段清单等不折叠, agent 看全; 字段清单走 compactColumns 完全不截) */
+    private static final int TRACE_RESULT_CAP = 40000;
+    /** 入库 result_data 上限(LONGTEXT; read_tool_result 取全量) */
+    private static final int STORE_RESULT_CAP = 200000;
     /** RAG 召回条数 */
     private static final int RAG_TOPK = 5;
     private static final int DOC_TOPK = 4; // 文档知识库 RAG 召回片段数
@@ -1004,11 +1004,12 @@ public class AiAgentService {
                 Object pv = dm.get("_preview");
                 Object cols = (pv instanceof Map) ? ((Map<?, ?>) pv).get("columns") : null;
                 st.trace.append(": 已取 ").append(dm.get("table")).append(" ").append(dm.get("returned"))
-                        .append(" 行(数据表已直接展示给用户, 答复里不必再逐行罗列; 若用户还要求导出/下载等后续动作请继续完成), 列: ").append(cap(toJson(cols), 800));
+                        .append(" 行(数据表已直接展示给用户, 答复里不必再逐行罗列; 若用户还要求导出/下载等后续动作请继续完成), 列: ").append(cap(toJson(cols), 3000));
             } else {
-                // 字段清单紧凑化(asset_detail 等): 整张列表压成 name(type)[注释] 形式, 宽表也放得下→省去 read_tool_result 往返
+                // 字段清单紧凑化(asset_detail 等): 整张列表压成 name(type)[注释] 形式 —— 这是有界且对建模必需的语义,
+                // 【永不截断】(本身已是 caveman 式压缩), 宽表 84/200 字段也完整给到 agent, 根除"仅提取前N字段/字段被截断"
                 String compactCols = compactColumnsIfAny(data);
-                if (compactCols != null && compactCols.length() <= TRACE_RESULT_CAP) {
+                if (compactCols != null) {
                     st.trace.append(": ").append(compactCols);
                 } else {
                     String full = AgentTextUtil.redactSecrets(toJson(result.getData())); // trace 喂 learn/reflect/compress, 脱敏防凭据扩散

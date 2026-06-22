@@ -22,8 +22,8 @@ public class ContextCompressorService {
 
     private final AiAssistService aiAssistService;
 
-    /** trace 超此字符数触发压缩(可配, 默认 18000) */
-    @Value("${datanote.ai.compress-threshold:18000}")
+    /** trace 超此字符数触发压缩(可配, 默认 120000): 放到模型量级再压, 让上下文尽量大、保留更多语义; 真超窗有 forceCompress 兜底 */
+    @Value("${datanote.ai.compress-threshold:120000}")
     private int compressThreshold;
     /** 保护近期比例: 保后 45% 逐字, 压前 55% 为摘要 */
     private static final double PROTECT_TAIL_RATIO = 0.45;
@@ -111,13 +111,14 @@ public class ContextCompressorService {
     /** 辅助 LLM 把早期步骤压成简明摘要; 失败返 null。 */
     private String summarize(String head, String goal) {
         try {
-            String prompt = "你是 agent 的『上下文压缩器』。下面是某次任务早期已执行的步骤与工具结果。"
-                    + "请压成简明中文摘要, 严格遵守:\n"
-                    + "1. 逐字保留对完成【任务目标】仍关键的: 已查明的事实/数据、已创建对象的ID与名称、已确认的结论、待办与卡点。\n"
-                    + "2. 去重与冗余, 合并同类信息; 一次性的大段数据只留关键数值。\n"
-                    + "3. 绝不包含任何密钥/密码/口令/token/连接串等敏感信息。\n"
-                    + "4. 只输出摘要正文, 不要前后缀解释。\n\n"
-                    + "【任务目标】" + cap(goal, 400) + "\n\n【早期步骤】\n" + cap(head, 6000);
+            String prompt = "你是 agent 的『上下文压缩器』(caveman 式: 去废话留事实, 最少字承载最大语义)。"
+                    + "下面是某次任务早期已执行的步骤与工具结果。请压成 caveman 式中文摘要, 严格遵守:\n"
+                    + "1. 【完整保留全部技术事实, 不得丢失语义】: 库名/表名/字段名(及类型/注释)、已创建对象的ID与名称、关联键、数值、口径、已确认结论、待办与卡点——这些一个都不能少。\n"
+                    + "2. 只砍【客套/铺垫/重复/过程性废话/语气词】, 用短句与符号(→ / | 表形式)压缩表达; 同类信息合并但不丢条目。\n"
+                    + "3. 字段清单等结构化信息用『表名: f1(类型)[注释], f2…』紧凑形式完整列出, 不得只留前N个或写『等若干字段』。\n"
+                    + "4. 绝不包含任何密钥/密码/口令/token/连接串等敏感信息。\n"
+                    + "5. 只输出摘要正文, 不要前后缀解释。\n\n"
+                    + "【任务目标】" + cap(goal, 400) + "\n\n【早期步骤】\n" + cap(head, 60000);
             String raw = aiAssistService.chat(prompt, "");
             if (ErrorClassifier.classify(raw) != ErrorClassifier.Action.RETRY && isErr(raw)) return null;
             return isErr(raw) ? null : raw;
