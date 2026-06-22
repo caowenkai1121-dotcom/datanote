@@ -1353,6 +1353,7 @@
       _kbBound = true;
       document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { var el = document.getElementById('aiAgentRoot'); if (el && el.offsetParent !== null && inputEl) { e.preventDefault(); inputEl.focus(); } }
+        else if (e.key === 'Escape' && document.getElementById('aiPreviewPanel')) { closePreview(); } // Esc 关预览
       });
       document.addEventListener('visibilitychange', function () { if (!document.hidden && _origTitle != null) { document.title = _origTitle; _origTitle = null; } });
     }
