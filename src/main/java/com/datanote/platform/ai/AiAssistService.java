@@ -156,6 +156,8 @@ public class AiAssistService {
             messages.add(msg);
             requestBody.put("messages", messages);
 
+            // 近窗口告警: 输入过大时提示(配合 ContextCompressor; 防默默超窗失败)
+            if (fullMessage.length() > 160000) log.warn("[llm] 输入较大 {} 字符, 接近上下文窗口, 建议压缩 trace", fullMessage.length());
             long _t0 = System.currentTimeMillis();
             String responseBody = callApi(objectMapper.writeValueAsString(requestBody), c.provider, c.apiKey, c.baseUrl);
             // 可观测性: 记录 LLM 调用耗时/模型/输入规模, 便于排查慢调用与成本
