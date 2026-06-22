@@ -91,7 +91,7 @@ public class AiAgentService {
     private static final int RAG_TOPK = 5;
     private static final int DOC_TOPK = 4; // 文档知识库 RAG 召回片段数
     /** RAG 注入文本上限(控 token) */
-    private static final int RAG_TEXT_CAP = 800;
+    private static final int RAG_TEXT_CAP = 1500; // 窗口已大, 放宽 RAG grounding 更充分(R40)
     /** 自学习记忆召回条数 */
     private static final int MEM_TOPK = 5; // 经验已每日汇总精简, 召回更多相关先例(R23)
 
