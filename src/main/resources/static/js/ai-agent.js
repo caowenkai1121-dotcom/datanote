@@ -668,6 +668,10 @@
 
   function scrollBottom() { if (flowEl) flowEl.scrollTop = flowEl.scrollHeight; }
 
+  // 标签页隐藏时任务完成 → 标题闪提示(用户切走也能感知完成); 回到页面自动还原
+  var _origTitle = null;
+  function flashTitle() { try { if (document.hidden) { if (_origTitle == null) _origTitle = document.title; document.title = '✅ 天工司辰已完成'; } } catch (e) {} }
+
   // 导出当前会话为 Markdown(用户/助手轮 + 工具步留痕)
   function exportChat() {
     if (!sessionId) { DN.toast('当前无会话', 'warn'); return; }
@@ -866,6 +870,7 @@
         // 终态: 收尾
         removeAutoBanner(); _autoWatch = null;
         DN.toast(st === 'done' ? '✅ 自主任务已完成，成品见上方' : ('自主任务结束：' + statusLabel(st)), st === 'done' ? 'ok' : 'warn');
+        flashTitle(); // 标签页隐藏时提示自主任务完成
         loadSessions();
       }).catch(function () { if (ep === _epoch && _autoWatch === id) setTimeout(poll, 5000); });
     })();
@@ -942,6 +947,7 @@
     if (firstPage) openPreview(firstPage.previewUrl, firstPage.title || firstPage.fileName); // 生成网页即自动右侧预览(Codex 式)
     var tone = res.status === 'blocked' ? 'err' : null;
     flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
+    flashTitle(); // 标签页隐藏时提示完成
     if (res.status === 'wait_approval') loadApproval(res.sessionId);
   }
 
@@ -1330,11 +1336,12 @@
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);
     setTimeout(function () { try { inputEl.focus(); } catch (e) {} }, 80);   // 聊天UI: 进入即聚焦输入, 直接开问
-    if (!_kbBound) { // Ctrl/Cmd+K 快速聚焦输入框(一次性绑定)
+    if (!_kbBound) { // Ctrl/Cmd+K 快速聚焦 + 回到页面还原标题(一次性绑定)
       _kbBound = true;
       document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { var el = document.getElementById('aiAgentRoot'); if (el && el.offsetParent !== null && inputEl) { e.preventDefault(); inputEl.focus(); } }
       });
+      document.addEventListener('visibilitychange', function () { if (!document.hidden && _origTitle != null) { document.title = _origTitle; _origTitle = null; } });
     }
 
     root.appendChild(rightCol);
