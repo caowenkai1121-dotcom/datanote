@@ -936,6 +936,7 @@ public class AiAgentService {
                     .set("last_heartbeat", LocalDateTime.now()).set("updated_at", LocalDateTime.now()));
             AgentContext ctx = new AgentContext(s.getUserName(), null, null, sessionId, null);
             permResolver.resolveInto(ctx, s.getUserName());   // 写入归属=会话发起人
+            log.info("[autonomous] 驱动周期 session={} 步数={}/{} 截止={}", sessionId, used, s.getAutoMaxSteps(), s.getAutonomousUntil());
             Map<String, Object> r;
             try {
                 r = run(sessionId, "【无人值守自主模式】请继续按 todo 计划执行剩余步骤: 不要调用 ask_user(按合理默认自决继续); "
