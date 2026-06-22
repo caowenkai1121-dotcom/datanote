@@ -10,6 +10,7 @@
   var selectedModel = '';  // 模型热切档位(空=默认), 随 chat 上送 model 覆盖
   var fileListEl = null;   // 数据中心文件列表容器
   var histListEl = null;   // 左侧历史会话列表容器
+  var _kbBound = false;    // 全局快捷键是否已绑定(防重复)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -1283,6 +1284,12 @@
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);
     setTimeout(function () { try { inputEl.focus(); } catch (e) {} }, 80);   // 聊天UI: 进入即聚焦输入, 直接开问
+    if (!_kbBound) { // Ctrl/Cmd+K 快速聚焦输入框(一次性绑定)
+      _kbBound = true;
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { var el = document.getElementById('aiAgentRoot'); if (el && el.offsetParent !== null && inputEl) { e.preventDefault(); inputEl.focus(); } }
+      });
+    }
 
     root.appendChild(rightCol);
 
