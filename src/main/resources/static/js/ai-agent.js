@@ -15,6 +15,7 @@
   var _kbBound = false;    // 全局快捷键是否已绑定(防重复)
   var _previewW = '46%';   // 预览面板上次宽度(跨打开记忆)
   var _lastSent = '';      // 上一条发送的消息(↑ 调出)
+  var _userFiles = [];     // 已上传文件名(供输入框 @ 补全)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -680,6 +681,40 @@
 
   function scrollBottom() { if (flowEl) flowEl.scrollTop = flowEl.scrollHeight; }
 
+  // 输入框 @ 补全已上传文件名: 输入 @ + 关键词 → 弹文件名候选, 点选插入(agent 据 filesText 解析 fileId)
+  function setupMention() {
+    if (!inputEl || !inputBarEl) return;
+    var dd = null;
+    function closeDD() { if (dd) { dd.remove(); dd = null; } }
+    inputEl.addEventListener('input', function () {
+      var val = inputEl.value, pos = inputEl.selectionStart;
+      var m = val.slice(0, pos).match(/@([^\s@]*)$/);
+      if (!m || !_userFiles.length) { closeDD(); return; }
+      var q = m[1].toLowerCase();
+      var matches = _userFiles.filter(function (n) { return n.toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+      closeDD();
+      if (!matches.length) return;
+      dd = DN.h('div', { style: 'position:absolute;bottom:100%;left:0;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:220px;overflow:auto;z-index:20;min-width:220px;' });
+      matches.forEach(function (n) {
+        var it = DN.h('div', { text: '📎 ' + n, style: 'padding:6px 10px;cursor:pointer;font-size:12.5px;white-space:nowrap;' });
+        it.onmouseenter = function () { it.style.background = 'var(--bg-hover, rgba(0,0,0,.05))'; };
+        it.onmouseleave = function () { it.style.background = ''; };
+        it.onmousedown = function (e) { // mousedown 先于 blur
+          e.preventDefault();
+          var start = pos - m[0].length;
+          inputEl.value = val.slice(0, start) + '@' + n + ' ' + val.slice(pos);
+          closeDD(); inputEl.focus();
+          var np = start + n.length + 2; try { inputEl.setSelectionRange(np, np); } catch (e2) {}
+        };
+        dd.appendChild(it);
+      });
+      inputBarEl.style.position = inputBarEl.style.position || 'relative';
+      inputBarEl.appendChild(dd);
+    });
+    inputEl.addEventListener('blur', function () { setTimeout(closeDD, 160); });
+    inputEl.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDD(); });
+  }
+
   // 标签页隐藏时任务完成 → 标题闪提示(用户切走也能感知完成); 回到页面自动还原
   var _origTitle = null;
   function flashTitle() { try { if (document.hidden) { if (_origTitle == null) _origTitle = document.title; document.title = '✅ 天工司辰已完成'; } } catch (e) {} }
@@ -1271,6 +1306,7 @@
     DN.get('/api/ai/agent/files').then(function (list) {
       fileListEl.innerHTML = '';
       var arr = (list || []).filter(function (f) { return f && f.source !== 'agent'; }); // 只展示用户上传, AI生成的artifact不混入(在对话卡片里看)
+      _userFiles = arr.map(function (f) { return f.fileName; }).filter(Boolean); // 供 @ 补全
       if (!arr.length) { fileListEl.appendChild(DN.h('div', { text: '暂无文件。上传后在此查看与下载。', style: 'color:var(--text-muted);font-size:12px;line-height:1.8;' })); return; }
       arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
       // 文档异步索引中: 单次延迟刷新拿到最终状态(终态后不再轮询)
@@ -1370,6 +1406,7 @@
     sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);
+    setupMention(); // 输入框 @ 补全已上传文件
     setTimeout(function () { try { inputEl.focus(); } catch (e) {} }, 80);   // 聊天UI: 进入即聚焦输入, 直接开问
     if (!_kbBound) { // Ctrl/Cmd+K 快速聚焦 + 回到页面还原标题(一次性绑定)
       _kbBound = true;
