@@ -206,7 +206,7 @@
 
     // 决策推理留痕(天工开物·逐道工序透明; 后端从 <think> 抽取, 不混入终答)
     if (step.thinkContent) {
-      card.body.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);font-style:italic;margin-bottom:6px;padding:6px 10px;border-left:2px solid ' + col + ';background:var(--bg-body);border-radius:var(--radius);', text: '💭 ' + step.thinkContent }));
+      card.body.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);font-style:italic;margin-bottom:6px;padding:6px 10px;border-left:2px solid ' + col + ';background:var(--bg-body);border-radius:var(--radius);max-height:140px;overflow:auto;white-space:pre-wrap;', text: '💭 ' + step.thinkContent }));
     }
 
     if (step.argsJson && step.argsJson !== '{}' && step.argsJson !== 'null') {
