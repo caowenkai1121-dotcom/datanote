@@ -118,7 +118,7 @@ public class PromptBuilder {
         }
         // 数据中心已上传文件(让 agent 感知用户上传的文件, 可用 file_read 按 id 读取内容分析)
         if (filesText != null && !filesText.trim().isEmpty()) {
-            sb.append("# 已上传文件(用户在数据中心上传, 需分析其内容时用 file_read(fileId) 读取)\n").append(filesText.trim()).append("\n\n");
+            sb.append("# 已上传文件(用户在数据中心上传; 用户消息里 @文件名 即指这些文件, 需其内容时用 file_read(fileId) 读取)\n").append(filesText.trim()).append("\n\n");
         }
         // 情境注入：各模块情境入口透传的业务上下文，让 agent 首轮即知用户在哪、看什么（缺参时工具也可据此回退）
         if (bizCtxText != null && !bizCtxText.trim().isEmpty()) {
