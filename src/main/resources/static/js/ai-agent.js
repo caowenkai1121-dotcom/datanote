@@ -53,6 +53,12 @@
         DN.h('a', { href: 'javascript:void(0)', text: '⧉ 复制', title: '复制此回答', style: 'font-size:11px;color:var(--text-muted);text-decoration:none;', onclick: function () { if (window.DN && DN.copy) DN.copy(raw); } })
       ]));
     }
+    // 错误答复加"重试"(重发上条, 应对瞬时失败)
+    if (tone === 'err' && _lastSent) {
+      inner.appendChild(DN.h('div', { style: 'text-align:right;margin-top:6px;' }, [
+        DN.h('a', { href: 'javascript:void(0)', text: '↻ 重试', title: '重新发送上一条', style: 'font-size:11px;color:var(--primary);text-decoration:none;', onclick: function () { if (inputEl && !sending) { inputEl.value = _lastSent; send(); } } })
+      ]));
+    }
     return inner;
   }
 
