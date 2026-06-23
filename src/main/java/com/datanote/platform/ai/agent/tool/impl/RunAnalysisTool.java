@@ -29,7 +29,7 @@ public class RunAnalysisTool implements AiTool {
     @Override public String name() { return "run_analysis"; }
     @Override public String group() { return "analysis"; }
     @Override public String description() {
-        return "运行只读分析查询(仅 SELECT/WITH 单语句; 自动限 2000 行/30s 超时; 受发起人数据权限与脱敏策略约束)。"
+        return "运行只读分析查询(仅 SELECT/WITH 单语句; 结果自动限 2000 行/30s 超时, 无 LIMIT 会自动补 LIMIT 2000——需精确总量请用 COUNT/聚合而非数行; 受发起人数据权限与脱敏策略约束)。"
                 + "db 指定库(默认数仓Doris)。用于聚合统计后配合 chart 出图。";
     }
     @Override public String paramsSchemaJson() {
