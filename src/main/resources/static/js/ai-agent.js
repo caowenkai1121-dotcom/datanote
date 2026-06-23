@@ -1405,7 +1405,7 @@
         DN.h('div', { id: 'aiToolsHint', text: '在护栏内自主编排工具，写操作经人工审批，逐道工序可复核', style: 'font-size:12px;color:var(--text-muted);margin-top:2px;' })
       ]),
       modelPicker(),
-      DN.h('button', { class: 'btn btn-sm', text: '📚', title: '收起/展开左侧数据中心(更宽聊天)', style: 'flex:0 0 auto;', onclick: function () { var el = document.querySelector('#aiAgentRoot .dn-ai-side'); if (el) el.style.display = el.style.display === 'none' ? '' : 'none'; } }),
+      DN.h('button', { class: 'btn btn-sm', text: '📚', title: '收起/展开左侧数据中心(更宽聊天)', style: 'flex:0 0 auto;', onclick: function () { var el = document.querySelector('#aiAgentRoot .dn-ai-side'); if (el) { var hide = el.style.display !== 'none'; el.style.display = hide ? 'none' : ''; this.textContent = hide ? '📖' : '📚'; } } }),
       DN.h('button', { class: 'btn btn-sm', text: '✚ 新会话', title: '清空当前对话, 开始新会话', style: 'flex:0 0 auto;', onclick: newSession }),
       DN.h('button', { class: 'btn btn-sm', text: '⤓ 导出', title: '导出当前对话为 Markdown', style: 'flex:0 0 auto;', onclick: exportChat }),
       DN.h('button', { class: 'btn btn-sm', text: '🧠 经验', title: 'AI 自学习记忆', style: 'flex:0 0 auto;', onclick: function () { openDrawer('memory'); } }),
