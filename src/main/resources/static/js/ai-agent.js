@@ -268,15 +268,36 @@
     var scroll = DN.h('div', { style: 'overflow:auto;max-height:340px;' });
     var tbl = DN.h('table', { style: 'border-collapse:collapse;width:100%;font-size:12px;' });
     var thr = DN.h('tr', {});
+    var sort = { idx: -1, dir: 1 }; // 点列头排序: idx=列, dir=1升/-1降
+    var ths = [];
     thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;z-index:1;color:var(--text-muted);' }));
-    cols.forEach(function (c) { thr.appendChild(DN.h('th', { text: String(c), style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1;' })); });
-    tbl.appendChild(thr);
-    rows.forEach(function (row, ri) {
-      var tr = DN.h('tr', {});
-      tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;' }));
-      (row || []).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
-      tbl.appendChild(tr);
+    cols.forEach(function (c, ci) {
+      var th = DN.h('th', { title: '点击按此列排序', style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;' });
+      th.textContent = String(c);
+      th.onclick = function () { if (sort.idx === ci) sort.dir = -sort.dir; else { sort.idx = ci; sort.dir = 1; } renderBody(); };
+      ths.push(th); thr.appendChild(th);
     });
+    tbl.appendChild(thr);
+    var tbody = DN.h('tbody', {});
+    tbl.appendChild(tbody);
+    function cmp(a, b) {
+      var na = parseFloat(a), nb = parseFloat(b);
+      if (!isNaN(na) && !isNaN(nb) && a !== '' && a != null && b !== '' && b != null) return na - nb;
+      return String(a == null ? '' : a).localeCompare(String(b == null ? '' : b), 'zh');
+    }
+    function renderBody() {
+      ths.forEach(function (th, i) { var base = String(cols[i]); th.textContent = base + (sort.idx === i ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''); });
+      var data = rows.slice();
+      if (sort.idx >= 0) data.sort(function (r1, r2) { return cmp((r1 || [])[sort.idx], (r2 || [])[sort.idx]) * sort.dir; });
+      tbody.innerHTML = '';
+      data.forEach(function (row, ri) {
+        var tr = DN.h('tr', {});
+        tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;' }));
+        (row || []).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
+        tbody.appendChild(tr);
+      });
+    }
+    renderBody();
     scroll.appendChild(tbl); card.appendChild(scroll);
     return card;
   }
