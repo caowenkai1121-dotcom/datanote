@@ -1486,7 +1486,8 @@
     box.appendChild(DN.h('div', { text: '试试 (点击直接问):', style: 'color:var(--text-muted);margin-top:10px;' }));
     var chips = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;' });
     ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告', '帮我把某表做成 ODS→DWD→DWS→ADS 分层'].forEach(function (t) {
-      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: '点击直接发送', style: 'font-size:12px;', onclick: function () { if (inputEl && !sending) { inputEl.value = t; send(); } } }));
+      var needTable = /某表|某张表/.test(t); // 含占位需用户填具体表 → 填入待编辑; 其余直接发送
+      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: needTable ? '点击填入, 把"某表"换成你的表名再发送' : '点击直接发送', style: 'font-size:12px;', onclick: function () { if (!inputEl || sending) return; inputEl.value = t; if (needTable) { inputEl.focus(); inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; var p = t.indexOf('某'); try { inputEl.setSelectionRange(p, p + (t.indexOf('某张表') >= 0 ? 3 : 2)); } catch (e) {} } else send(); } }));
     });
     box.appendChild(chips);
     return box;
