@@ -357,7 +357,8 @@
     var wrap = DN.h('div', { style: 'flex:1;position:relative;min-height:0;' });
     var loading = DN.h('div', { text: '加载中…', style: 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;background:#fff;' });
     var frame = DN.h('iframe', { src: url, sandbox: 'allow-scripts allow-popups allow-modals', style: 'border:0;width:100%;height:100%;background:#fff;' });
-    frame.addEventListener('load', function () { loading.style.display = 'none'; });
+    var _lt = setTimeout(function () { loading.textContent = '加载较慢…可点右上 ↗ 新窗口打开'; }, 8000); // 超时兜底
+    frame.addEventListener('load', function () { clearTimeout(_lt); loading.style.display = 'none'; });
     wrap.appendChild(frame); wrap.appendChild(loading);
     panel.appendChild(wrap);
     // 左边缘拖拽调宽(artifact 体验)
