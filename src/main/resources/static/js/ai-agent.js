@@ -1279,7 +1279,7 @@
     dz.ondrop = function (e) { e.preventDefault(); dzOff(); if (e.dataTransfer && e.dataTransfer.files) uploadFiles(e.dataTransfer.files); };
     panel.appendChild(DN.h('div', { style: 'padding:0 18px;flex:0 0 auto;' }, [dz, fileInput]));
 
-    panel.appendChild(DN.h('div', { text: '已上传文件', style: 'padding:14px 18px 6px;font-size:12.5px;font-weight:600;color:var(--text-regular);flex:0 0 auto;' }));
+    panel.appendChild(DN.h('div', { id: 'aiFileTitle', text: '已上传文件', style: 'padding:14px 18px 6px;font-size:12.5px;font-weight:600;color:var(--text-regular);flex:0 0 auto;' }));
     fileListEl = DN.h('div', { id: 'aiFileList', style: 'flex:1;min-height:0;overflow-y:auto;padding:0 18px 16px;' });
     panel.appendChild(fileListEl);
     return panel;
@@ -1309,6 +1309,7 @@
       fileListEl.innerHTML = '';
       var arr = (list || []).filter(function (f) { return f && f.source !== 'agent'; }); // 只展示用户上传, AI生成的artifact不混入(在对话卡片里看)
       _userFiles = arr.map(function (f) { return f.fileName; }).filter(Boolean); // 供 @ 补全
+      var ttl = document.getElementById('aiFileTitle'); if (ttl) ttl.textContent = arr.length ? '已上传文件 (' + arr.length + ')' : '已上传文件';
       if (!arr.length) { fileListEl.appendChild(DN.h('div', { text: '暂无文件。上传后在此查看与下载。', style: 'color:var(--text-muted);font-size:12px;line-height:1.8;' })); return; }
       arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
       // 文档异步索引中: 单次延迟刷新拿到最终状态(终态后不再轮询)
