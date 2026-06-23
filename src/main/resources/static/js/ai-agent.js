@@ -307,7 +307,12 @@
       data.forEach(function (row, ri) {
         var tr = DN.h('tr', {});
         tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;position:sticky;left:0;background:var(--bg-card);z-index:1;' }));
-        cells(row).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
+        cells(row).forEach(function (v) {
+          var isNull = v == null, isEmpty = v === '';
+          var disp = isNull ? 'NULL' : (isEmpty ? '(空串)' : String(v)); // 区分 NULL/空串/0, 防误判
+          var muted = isNull || isEmpty;
+          tr.appendChild(DN.h('td', { text: disp, title: isNull ? 'NULL' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (muted ? 'color:var(--text-muted);font-style:italic;' : '') }));
+        });
         tbody.appendChild(tr);
       });
     }
