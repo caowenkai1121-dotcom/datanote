@@ -29,8 +29,9 @@ public class CreatePageTool implements AiTool {
     @Override public String group() { return "agent"; }
     @Override public String description() {
         return "把你生成的【完整 HTML 网页】存入数据中心并返回可【点击右侧预览】的链接(用户点击即在右侧面板渲染网页, 像 Codex/Claude 的 artifact)。"
-                + "适合: 可视化报表 / ER 图(在 html 内用 mermaid CDN) / 图表(echarts/chart.js CDN) / 数据看板 / 富文本页面。"
-                + "参数 title(页面标题) + html(完整 HTML 文档文本, 须含 <!DOCTYPE html><html>…; 需图表/ER图请在 html 内引 CDN 脚本自渲染)。"
+                + "适合: 可视化报表 / ER 图(html 内用 mermaid) / 图表(echarts/chart.js) / 数据看板 / 富文本页面。"
+                + "【国内CDN铁律】引外部库务必用 https://cdn.staticfile.org/...(如 echarts/5.4.3/echarts.min.js、mermaid/10.6.1/mermaid.min.js), 禁用 jsdelivr/cdnjs/unpkg(国内常被墙→白屏); 纯文档/报告优先改用 create_artifact(type=markdown)(服务端渲染最稳)。"
+                + "参数 title(页面标题) + html(完整 HTML 文档文本, 须含 <!DOCTYPE html><html>…)。"
                 + "返回后请用一句话告诉用户『点右侧预览查看』, 不要把 HTML 源码贴进答复。";
     }
     @Override public String paramsSchemaJson() {
