@@ -576,6 +576,8 @@ public class AiAgentService {
                     key = "sql_syntax"; hint = "SQL 语法错误; 注意 Doris 语法(标识符反引号、LIMIT、日期函数如 date_format), 修正后重试。";
                 } else if (em.contains("permission") || em.contains("权限") || em.contains("denied")) {
                     key = "perm"; hint = "权限不足; 该操作当前用户无权, 换只读方式或如实告知用户需管理员授权, 勿反复重试。";
+                } else if (em.contains("timeout") || em.contains("超时") || em.contains("connection") || em.contains("连接")) {
+                    key = "timeout"; hint = "后端超时/不可达; 缩小查询范围重试(加 LIMIT、缩时间窗、减字段), 仍失败则如实告知用户服务暂不可用。";
                 }
                 if (hint != null && errHintShown.add(key)) st.trace.append("【纠错提示】").append(toolName).append(": ").append(hint).append("\n");
             }
