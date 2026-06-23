@@ -218,6 +218,7 @@ public class AiAgentService {
         java.util.Map<String, Integer> seenCalls = new java.util.HashMap<>(); // 死循环护栏: 工具+参数签名计数
         java.util.Set<String> critiqueNudged = new java.util.HashSet<>();     // CRITIC 自校验: 每类写工具只提示核实一次, 防刷屏
         int[] consecToolFails = {0};                                          // 连续错误熔断(借鉴 Cline): 连续工具失败计数, 成功清零
+        java.util.Set<String> errHintShown = new java.util.HashSet<>();        // 定向纠错提示: 每类错误每次运行只提示一次, 防刷屏
         String[] lastReadKey = {null};                                        // 只读复用: 上一步只读调用键(工具+参数)
         AiToolResult[] lastReadResult = {null};                               // 只读复用: 上一步只读结果; 连续完全相同只读调用(其间无写)直接复用, 防LLM自循环空转
 
@@ -558,6 +559,21 @@ public class AiAgentService {
                         .append(cronMode ? ", 或如实记录失败原因并结束本次自治运行(定时模式不可询问用户)。\n"
                                          : ", 或调用 ask_user 让用户补充信息/确认方向。\n");
                 consecToolFails[0] = 0;
+            }
+            // 定向纠错: 按错误特征给具体修复指引, 比通用重试更快收敛(每类每次运行只提示一次)
+            if (!result.isOk()) {
+                String em = ((result.getType() == null ? "" : result.getType()) + " " + (result.getMessage() == null ? "" : result.getMessage())).toLowerCase();
+                String hint = null, key = null;
+                if (em.contains("doesn't exist") || em.contains("unknown table") || em.contains("不存在") || em.contains("not found")) {
+                    key = "no_table"; hint = "目标库/表可能不存在或名称有误; 先用 asset_search/table_profile 确认准确库表名再重试, 勿臆测表名。";
+                } else if (em.contains("unknown column") || em.contains("字段") && em.contains("不存在")) {
+                    key = "no_col"; hint = "字段名有误; 先用 asset_detail 查该表真实字段名, 按实际字段重写。";
+                } else if (em.contains("syntax") || em.contains("语法")) {
+                    key = "sql_syntax"; hint = "SQL 语法错误; 注意 Doris 语法(标识符反引号、LIMIT、日期函数如 date_format), 修正后重试。";
+                } else if (em.contains("permission") || em.contains("权限") || em.contains("denied")) {
+                    key = "perm"; hint = "权限不足; 该操作当前用户无权, 换只读方式或如实告知用户需管理员授权, 勿反复重试。";
+                }
+                if (hint != null && errHintShown.add(key)) st.trace.append("【纠错提示】").append(toolName).append(": ").append(hint).append("\n");
             }
             // 表数据预览: 用【未截断】的原始结果走独立通道回传(stepsToDto 的 resultData 会被 cap 截断, 宽表 JSON 解析不出),
             // 让前端能完整渲染数据表格
