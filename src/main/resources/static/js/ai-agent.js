@@ -351,7 +351,8 @@
   // 网页 artifact 卡片(create_page 产物): 点击在右侧面板渲染, 像 Codex/Claude artifact
   function pageCard(pg) {
     if (!pg) return DN.h('span');
-    var card = DN.h('div', { class: 'dn-ai-pagecard', style: 'margin:4px 0 8px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;background:var(--bg-body);display:flex;align-items:center;gap:10px;' });
+    var card = DN.h('div', { class: 'dn-ai-pagecard', style: 'margin:4px 0 8px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;background:var(--bg-body);display:flex;align-items:center;gap:10px;cursor:pointer;' });
+    card.onclick = function () { openPreview(pg.previewUrl, pg.title || pg.fileName); }; // 整卡可点预览(大点击区)
     var icon = ({ markdown: '📝', mermaid: '🧩', code: '💻', csv: '📊', json: '🔧', svg: '🖼', html: '🌐' })[pg.artifactType] || '🌐';
     card.appendChild(DN.h('div', { text: icon, style: 'font-size:22px;flex:0 0 auto;' }));
     card.appendChild(DN.h('div', { style: 'flex:1;min-width:0;' }, [
@@ -361,7 +362,7 @@
     var open = DN.h('button', { class: 'btn btn-sm btn-primary', text: '预览', style: 'flex:0 0 auto;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
     open.onclick = function () { openPreview(pg.previewUrl, pg.title || pg.fileName); };
     card.appendChild(open);
-    if (pg.downloadUrl) card.appendChild(DN.h('a', { href: pg.downloadUrl, title: '下载', text: '↓', style: 'flex:0 0 auto;color:var(--primary);text-decoration:none;font-size:17px;font-weight:700;padding:0 4px;' }));
+    if (pg.downloadUrl) { var dla = DN.h('a', { href: pg.downloadUrl, title: '下载', text: '↓', style: 'flex:0 0 auto;color:var(--primary);text-decoration:none;font-size:17px;font-weight:700;padding:0 4px;' }); dla.onclick = function (e) { e.stopPropagation(); }; card.appendChild(dla); }
     return card;
   }
 
