@@ -184,7 +184,7 @@ public class CreateArtifactTool implements AiTool {
             + ".md-body p{margin:.6em 0}.md-body code{background:#f1f5f9;color:#db2777;padding:2px 6px;border-radius:4px;font-size:.9em}"
             + ".md-body pre{background:#0f172a;color:#e2e8f0;padding:16px;border-radius:10px;overflow:auto}.md-body pre code{background:none;color:inherit;padding:0}"
             + ".md-body blockquote{border-left:4px solid #c7d2fe;margin:.8em 0;padding:.4em 1em;color:#475569;background:#f8fafc}"
-            + ".md-body table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14px}.md-body th,.md-body td{border:1px solid #e5e7eb;padding:8px 12px;text-align:left}.md-body th{background:#f3f4f6}"
+            + ".md-body .tbl-wrap{overflow-x:auto;margin:1em 0}.md-body table{border-collapse:collapse;width:100%;font-size:14px}.md-body th,.md-body td{border:1px solid #e5e7eb;padding:8px 12px;text-align:left}.md-body th{background:#f3f4f6}"
             + ".md-body a{color:#4f46e5}.md-body ul,.md-body ol{padding-left:1.6em}"
             + "pre{background:#1e293b;color:#e2e8f0;padding:18px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.6;margin:0}"
             + "table{border-collapse:collapse;width:100%;font-size:13px}"
@@ -218,7 +218,7 @@ public class CreateArtifactTool implements AiTool {
             if (t.contains("|") && i + 1 < lines.length && lines[i + 1].trim().matches("\\|?[\\s:|-]*-[\\s:|-]*\\|?")) {
                 if (inUl) { out.append("</ul>"); inUl = false; }
                 if (inOl) { out.append("</ol>"); inOl = false; }
-                out.append("<table><thead><tr>");
+                out.append("<div class=\"tbl-wrap\"><table><thead><tr>");
                 for (String c : splitRow(t)) out.append("<th>").append(inline(c.trim())).append("</th>");
                 out.append("</tr></thead><tbody>");
                 i += 2; // 跳过表头与分隔行
@@ -227,7 +227,7 @@ public class CreateArtifactTool implements AiTool {
                     for (String c : splitRow(lines[i].trim())) out.append("<td>").append(inline(c.trim())).append("</td>");
                     out.append("</tr>"); i++;
                 }
-                i--; out.append("</tbody></table>");
+                i--; out.append("</tbody></table></div>");
                 continue;
             }
             if (t.isEmpty()) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; } continue; }
