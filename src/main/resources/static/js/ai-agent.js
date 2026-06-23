@@ -1047,7 +1047,7 @@
         var ep = _epoch; // 捕获纪元: 启动期间若切了会话则丢弃, 不在旧会话起监视
         okBtn.disabled = true; allBtn.disabled = true; autoBtn.disabled = true; noBtn.disabled = true; autoBtn.textContent = '启动中…';
         // 进入无人值守自主执行: 后端置 autonomous=1, 后台驱动器接管; 前端转为监视轮询
-        DN.post('/api/ai/agent/' + sid + '/autonomous', { maxSteps: 300, maxHours: 2 })
+        DN.post('/api/ai/agent/' + sid + '/autonomous', {})
           .then(function (res) {
             if (ep !== _epoch) return; // 已切会话: 丢弃
             card.remove();
