@@ -350,6 +350,7 @@
         if (full) { panel.style.flex = '0 0 46%'; panel.style.maxWidth = '62%'; panel.setAttribute('data-full', '0'); var sd = root.querySelector('.dn-ai-side'); /* 保持隐藏 */ }
         else { panel.style.flex = '1 1 100%'; panel.style.maxWidth = 'none'; panel.setAttribute('data-full', '1'); }
       } }),
+      DN.h('span', { text: '⧉ 链接', title: '复制分享链接', style: 'cursor:pointer;font-size:12px;color:var(--primary);flex:0 0 auto;', onclick: function () { try { if (window.DN && DN.copy) DN.copy(location.origin + url); DN.toast('已复制链接', 'ok'); } catch (e) {} } }),
       DN.h('a', { href: url, target: '_blank', rel: 'noopener', text: '↗ 新窗口', title: '在新标签打开', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' }),
       DN.h('span', { text: '✕', title: '关闭预览', style: 'cursor:pointer;font-size:15px;color:var(--text-muted);padding:0 4px;flex:0 0 auto;', onclick: closePreview })
     ]));
