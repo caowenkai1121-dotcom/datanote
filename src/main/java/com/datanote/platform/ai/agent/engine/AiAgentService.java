@@ -1187,6 +1187,7 @@ public class AiAgentService {
             }
             st.trace.append(h).append('\n');
         } catch (Exception e) {
+            st.trace.append("【提示】历史对话加载失败, 本轮缺少多轮上下文, 如答复需要请向用户确认。\n"); // 不静默降级: 让 LLM 知上下文缺失
             log.warn("seed 历史失败 session={}: {}", st.session.getSessionId(), e.getMessage());
         }
     }
@@ -1214,6 +1215,7 @@ public class AiAgentService {
             }
             if (any) st.trace.append("（本任务此前已获取的信息）\n").append(h).append('\n');
         } catch (Exception e) {
+            st.trace.append("【提示】续跑上下文加载失败, 此前已获取的信息可能缺失, 关键处请重新核实再断言。\n"); // 不静默降级
             log.warn("seedContinuation 失败 session={}: {}", st.session.getSessionId(), e.getMessage());
         }
     }
