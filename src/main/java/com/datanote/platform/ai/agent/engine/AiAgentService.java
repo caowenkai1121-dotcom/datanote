@@ -550,11 +550,13 @@ public class AiAgentService {
             // CRITIC 工具增强自校验(借鉴 CRITIC, arXiv 2305.11738): HIGH 写成功后提示 agent 调只读工具查真值核实再报成功,
             // 把"内省式自纠"升级为"对真值验证"(数据平台 DDL/行数/血缘可验), 防仅凭返回值谎报成功。每类写工具只提示一次。
             if (!tool.readOnly() && result.isOk()
-                    && tool.risk() == com.datanote.platform.ai.agent.tool.RiskLevel.HIGH
+                    && tool.risk() != null && tool.risk() != com.datanote.platform.ai.agent.tool.RiskLevel.LOW // 扩到 MEDIUM+HIGH
                     && critiqueNudged.add(toolName)) {
-                st.trace.append("【自校验提示】写操作 ").append(toolName)
-                        .append(" 已执行成功; 在向用户断言成功前, 请调用只读工具核实真实结果")
-                        .append("(如建表/同步后用 asset_detail 或 table_profile 核对表存在与行数, 建质量规则后用 quality_score 看影响面), 勿仅凭返回值即报成功。\n");
+                boolean high = tool.risk() == com.datanote.platform.ai.agent.tool.RiskLevel.HIGH;
+                st.trace.append("【自校验提示】写操作 ").append(toolName).append(" 已执行成功; 在向用户断言成功前, ")
+                        .append(high ? "请调用只读工具核实真实结果(如建表/同步后用 asset_detail 或 table_profile 核对表存在与行数, 建质量规则后用 quality_score 看影响面)"
+                                     : "请轻量核对关键属性(如建指标后看定义/建规则后看是否生效)")
+                        .append(", 勿仅凭返回值即报成功。\n");
             }
             // 连续错误熔断(借鉴 Cline): 连续多步工具失败 → 提示换思路/ask_user, 防在错误里空转烧预算
             if (result.isOk()) {
@@ -1652,14 +1654,18 @@ public class AiAgentService {
     private String reflectIfNeeded(String draft, List<DnAiStep> steps, String goal, String manifest,
                                    String trace, String today, String bizCtx, String rag, String memory) {
         if (draft == null || draft.trim().isEmpty()) return draft;
-        if (toolCallCount(steps) < 2) return draft; // 单工具/无工具不值得反思, 省一次调用
+        int tc = toolCallCount(steps);
+        if (tc < 1) return draft; // 纯问答无工具, 不反思
+        boolean light = tc == 1; // 单工具: 轻量自检(省 token); 多工具: 全量逐项核对
         try {
             String ctx = promptBuilder.build(goal, manifest, trace, today, bizCtx, rag, memory);
             String reflected = callLlmWithRetry(
                     "以下是你对用户问题的答复草稿:\n" + cap(draft, 1500)
-                    + "\n\n请对照上方『已执行步骤与工具结果』做【反幻觉自检】: 逐一核对草稿里每个具体的库名/表名/字段名/数值/口径, "
-                    + "是否都能在工具结果里找到【出处】? 凡是找不到出处的, 一律【删除或改为『未查到/不确定』】, 严禁保留臆造内容; "
-                    + "若与证据矛盾则按证据更正; 若关键信息缺失就如实告知用户缺什么、建议怎么补(或提示需要 ask_user 澄清)。"
+                    + (light
+                        ? "\n\n请对照上方『工具结果』做【轻量自检】: 仅检查(a)草稿有无明显与结果矛盾的论断 (b)有无『等若干字段/略』这类遗漏表述。有则更正/补全, 无则原样输出。"
+                        : "\n\n请对照上方『已执行步骤与工具结果』做【反幻觉自检】: 逐一核对草稿里每个具体的库名/表名/字段名/数值/口径, "
+                          + "是否都能在工具结果里找到【出处】? 凡是找不到出处的, 一律【删除或改为『未查到/不确定』】, 严禁保留臆造内容; "
+                          + "若与证据矛盾则按证据更正; 若关键信息缺失就如实告知用户缺什么、建议怎么补(或提示需要 ask_user 澄清)。")
                     + "直接输出修正后的最终中文答复, 不要再调用任何工具, 不要解释你改了什么。", ctx);
             if (isAiError(reflected)) return draft;
             String r = AgentTextUtil.cleanFinal(reflected);
