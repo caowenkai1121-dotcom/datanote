@@ -238,37 +238,37 @@ public class IndustryKnowledgeService {
     public void digestIndustryProfiles() {
         if (!aiAssistService.isAvailable()) { log.info("[industry] AI 未配置, 跳过行业画像蒸馏"); return; }
         long t0 = System.currentTimeMillis();
-        // 1) 业务域 = 有表关联的主题域, 取表数最多的前 N 个
-        Map<Long, Integer> tblCntBySubject = new LinkedHashMap<>();
-        Map<Long, List<DnTableMeta>> tablesBySubject = new LinkedHashMap<>();
-        try {
-            List<DnTableMeta> tbls = tableMetaMapper.selectList(new QueryWrapper<DnTableMeta>()
-                    .isNotNull("subject_id").last("LIMIT 3000"));
-            for (DnTableMeta t : tbls) {
-                if (t.getSubjectId() == null) continue;
-                tblCntBySubject.merge(t.getSubjectId(), 1, Integer::sum);
-                tablesBySubject.computeIfAbsent(t.getSubjectId(), k -> new ArrayList<>()).add(t);
-            }
-        } catch (Exception e) { log.warn("[industry] 取表元数据失败: {}", e.getMessage()); }
-
-        // 主题域 id → 名称
+        // 主题域 id → 名称(用于把表归到业务域)
         Map<Long, String> subjectName = new LinkedHashMap<>();
         try {
             List<DnSubject> subs = subjectMapper.selectList(new QueryWrapper<DnSubject>().last("LIMIT 500"));
             for (DnSubject s : subs) subjectName.put(s.getId(), s.getName());
         } catch (Exception e) { log.warn("[industry] 取主题域失败: {}", e.getMessage()); }
 
+        // 1) 业务域分组: 优先主题域名; 表未挂主题域则回退按库名(database)分域 —— 保证无主题域标注时也能产出分域画像
+        Map<String, List<DnTableMeta>> tablesByDomain = new LinkedHashMap<>();
+        try {
+            List<DnTableMeta> tbls = tableMetaMapper.selectList(new QueryWrapper<DnTableMeta>().last("LIMIT 3000"));
+            for (DnTableMeta t : tbls) {
+                String dom = t.getSubjectId() != null ? subjectName.get(t.getSubjectId()) : null;
+                if (!notBlank(dom)) dom = nz(t.getDatabaseName()); // 回退库名
+                if (!notBlank(dom)) continue;
+                tablesByDomain.computeIfAbsent(dom, k -> new ArrayList<>()).add(t);
+            }
+        } catch (Exception e) { log.warn("[industry] 取表元数据失败: {}", e.getMessage()); }
+
         // 指标(口径) 全局素材
         String metricMaterial = metricMaterial();
+
+        // 域按表数降序
+        List<Map.Entry<String, List<DnTableMeta>>> topDomains = new ArrayList<>(tablesByDomain.entrySet());
+        topDomains.sort((a, b) -> b.getValue().size() - a.getValue().size());
 
         // 2) 全局概览蒸馏
         try {
             StringBuilder dm = new StringBuilder("业务域清单(按表数):\n");
-            tblCntBySubject.entrySet().stream()
-                    .sorted((a, b) -> b.getValue() - a.getValue())
-                    .limit(30)
-                    .forEach(e -> dm.append("- ").append(nz(subjectName.get(e.getKey())))
-                            .append(" (").append(e.getValue()).append(" 表)\n"));
+            topDomains.stream().limit(30)
+                    .forEach(e -> dm.append("- ").append(e.getKey()).append(" (").append(e.getValue().size()).append(" 表)\n"));
             String prompt = "你在为数据开发平台构建【行业全局概览】(全局共享, 帮助新人快速理解业务)。基于以下业务域与关键指标, "
                     + "蒸馏成简明中文概览(≤" + PROFILE_CAP + "字), 覆盖: 主要业务域及其职责、关键业务指标及口径、数仓分层惯例(ODS→DWD→DWS→ADS)、通用命名与开发约定。"
                     + "面向小白可读。只输出正文, 不含密钥。\n\n【业务域】\n" + dm + "\n【关键指标】\n" + cap(metricMaterial, 4000);
@@ -277,15 +277,13 @@ public class IndustryKnowledgeService {
         } catch (Exception e) { log.warn("[industry] 全局概览蒸馏失败: {}", e.getMessage()); }
 
         // 3) 各业务域画像蒸馏(取表数最多的前 DOMAIN_LIMIT 个域)
-        List<Map.Entry<Long, Integer>> topDomains = new ArrayList<>(tblCntBySubject.entrySet());
-        topDomains.sort((a, b) -> b.getValue() - a.getValue());
         int done = 0;
-        for (Map.Entry<Long, Integer> e : topDomains) {
+        for (Map.Entry<String, List<DnTableMeta>> e : topDomains) {
             if (done >= DOMAIN_LIMIT) break;
-            String name = subjectName.get(e.getKey());
+            String name = e.getKey();
             if (!notBlank(name)) continue;
             try {
-                String material = domainMaterial(name, tablesBySubject.get(e.getKey()));
+                String material = domainMaterial(name, e.getValue());
                 String sopMat = domainSopMaterial(name);
                 String prompt = "你在为业务域【" + name + "】构建【行业经验画像】, 让小白能照此准确完成该域的业务流与报表开发。"
                         + "基于该域的核心表/字段、相关指标口径、已沉淀业务流程SOP, 蒸馏成简明中文经验(≤" + PROFILE_CAP + "字), 覆盖: "
