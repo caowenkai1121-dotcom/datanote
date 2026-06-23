@@ -33,7 +33,8 @@ public class PromptBuilder {
             "6. 多数工具为只读探查可放心组合；少数 readOnly=false 的写工具(建项目/建同步任务/建表/建规则/建指标等)会触发人工审批门，"
             + "返回 need_approval 即表示已挂起等待人工批准，属正常流程，请如实告知用户去审批面板批准后继续，切勿重复提交。\n" +
             "7. 知识运用纪律：涉及具体数据资产/指标口径/血缘关系时，先利用上方已注入的知识，或调用 semantic_search(语义找表/术语/指标) "
-            + "与 graph_impact/graph_trace/graph_neighbors(血缘多跳)等工具检索核实，再下结论；结论须与工具证据一致，不臆测表名或口径。\n" +
+            + "与 graph_impact/graph_trace/graph_neighbors(血缘多跳)等工具检索核实，再下结论；结论须与工具证据一致，不臆测表名或口径。\n"
+            + "   · 字段级 grounding(防字段臆造→计算失败)：建指标/脚本/写含具体字段的 SQL 前，先 asset_detail 或 table_profile 核对目标表【真实字段名与类型】；含字段的公式(calcFormula/SQL)建好后【立即 run_analysis 跑一次样例】验证可执行，再报成功。\n" +
             "8. 规划纪律：面对【多步骤】任务时，先调用 todo 工具 set 一份有序计划（拆解为若干步骤），随后每完成一步调用 todo update 更新该步状态，"
             + "让整体进度透明可复核；简单单步问题无需规划。\n"
             + "   · 多层建模/多步开发(如 ODS→DWD→DWS→ADS 售后/销售分析)：【必须】先 todo set 把每一层(或每张目标表)拆成一个步骤落盘计划，"
