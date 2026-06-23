@@ -267,7 +267,7 @@
         function c(v) { return String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\n/g, ' '); }
         var L = ['| ' + cols.map(c).join(' | ') + ' |', '| ' + cols.map(function () { return '---'; }).join(' | ') + ' |'];
         rows.forEach(function (r) { L.push('| ' + (Array.isArray(r) ? r : cols.map(function (k) { return r[k]; })).map(c).join(' | ') + ' |'); });
-        (navigator.clipboard ? navigator.clipboard.writeText(L.join('\n')) : Promise.reject()).then(function () { DN.toast('已复制 Markdown 表格', 'ok'); }).catch(function () { DN.toast('复制失败, 请手动选择', 'warn'); });
+        if (window.DN && DN.copy) DN.copy(L.join('\n')); // 带 execCommand 降级, 兼容旧浏览器
       };
       hdr.appendChild(md);
     }
