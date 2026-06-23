@@ -124,9 +124,11 @@ public class IndustryKnowledgeService {
         if (notBlank(domain)) qw.and(w -> w.eq("domain", domain).or().eq("domain", "global"));
         String q = query == null ? "" : query.trim();
         if (!q.isEmpty()) {
-            // 取关键词(最长几段)做 LIKE; 简单务实
-            String kw = q.length() > 40 ? q.substring(0, 40) : q;
-            qw.and(w -> w.like("title", kw).or().like("trigger_hint", kw).or().like("content", kw));
+            // 多关键词 OR 召回(替代单一长串 substring, 召回更全): 拆词后每词匹配 标题/触发词/正文 任一
+            java.util.List<String> kws = new ArrayList<>();
+            for (String t : q.split("[\\s,，、。/;；:：\\-]+")) { t = t.trim(); if (t.length() >= 2 && kws.size() < 6 && !kws.contains(t)) kws.add(t); }
+            if (kws.isEmpty()) kws.add(q.length() > 40 ? q.substring(0, 40) : q);
+            qw.and(w -> { for (String k : kws) w.or(x -> x.like("title", k).or().like("trigger_hint", k).or().like("content", k)); });
         }
         qw.orderByDesc("hit_count").orderByDesc("updated_at").last("LIMIT " + Math.max(1, topN));
         List<DnAiIndustrySop> list = sopMapper.selectList(qw);
