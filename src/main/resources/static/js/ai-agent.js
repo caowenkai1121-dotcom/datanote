@@ -1397,7 +1397,7 @@
     box.appendChild(DN.h('div', { text: '可自主调用治理/质量/血缘等工具排障评估，也能建项目/同步任务/表/规则/指标/脚本（写操作需你审批）。' }));
     box.appendChild(DN.h('div', { text: '试试 (点击直接问):', style: 'color:var(--text-muted);margin-top:10px;' }));
     var chips = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;' });
-    ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告'].forEach(function (t) {
+    ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告', '帮我把某表做成 ODS→DWD→DWS→ADS 分层'].forEach(function (t) {
       chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: '点击直接发送', style: 'font-size:12px;', onclick: function () { if (inputEl && !sending) { inputEl.value = t; send(); } } }));
     });
     box.appendChild(chips);
