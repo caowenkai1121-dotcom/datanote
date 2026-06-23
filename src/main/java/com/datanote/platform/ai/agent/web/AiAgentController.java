@@ -48,6 +48,8 @@ public class AiAgentController {
     private final com.datanote.platform.ai.agent.engine.AgentEventBus eventBus;
     private final com.datanote.platform.ai.agent.engine.AiProfileService aiProfileService;
 
+    private final com.datanote.platform.ai.AiAssistService aiAssistService;
+
     @org.springframework.beans.factory.annotation.Value("${datanote.ai.auto-default-steps:300}")
     private int autoDefaultSteps;
     @org.springframework.beans.factory.annotation.Value("${datanote.ai.auto-default-hours:2}")
@@ -190,6 +192,7 @@ public class AiAgentController {
     @GetMapping("/health")
     public R<Map<String, Object>> health() {
         Map<String, Object> m = new LinkedHashMap<>();
+        try { m.put("aiConfigured", aiAssistService.isAvailable()); } catch (Exception e) { m.put("aiConfigured", false); }
         m.put("tools", toolRegistry.size());
         try { m.put("pendingApprovals", approvalMapper.selectCount(new QueryWrapper<DnAiApproval>().eq("status", "pending"))); } catch (Exception e) { m.put("pendingApprovals", -1); }
         try { m.put("runningSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().eq("status", "running"))); } catch (Exception e) { m.put("runningSessions", -1); }
