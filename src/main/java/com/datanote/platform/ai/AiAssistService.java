@@ -353,37 +353,56 @@ public class AiAssistService {
         boolean openai = isOpenAiCompatible(prov);
         String endpoint = openai ? "/v1/chat/completions" : "/v1/messages";
         URL url = new URL(base + endpoint);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(30000);
-        conn.setReadTimeout(120000);
-        conn.setRequestProperty("Content-Type", "application/json");
-        if (openai) {
-            conn.setRequestProperty("Authorization", "Bearer " + key);
-        } else {
-            conn.setRequestProperty("x-api-key", key);
-            conn.setRequestProperty("anthropic-version", "2023-06-01");
-        }
-
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(body.getBytes(StandardCharsets.UTF_8));
-        }
-
-        int code = conn.getResponseCode();
-        java.io.InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-        byte[] bytes = new byte[0];
-        if (is != null) {
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            int n;
-            while ((n = is.read(buf)) != -1) {
-                baos.write(buf, 0, n);
+        int maxAttempts = 3; // 瞬时错误(限流/网关/超时)线性退避重试, 防偶发抖动整步失败
+        java.io.IOException lastEx = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(30000);
+                conn.setReadTimeout(120000);
+                conn.setRequestProperty("Content-Type", "application/json");
+                if (openai) {
+                    conn.setRequestProperty("Authorization", "Bearer " + key);
+                } else {
+                    conn.setRequestProperty("x-api-key", key);
+                    conn.setRequestProperty("anthropic-version", "2023-06-01");
+                }
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.getBytes(StandardCharsets.UTF_8));
+                }
+                int code = conn.getResponseCode();
+                java.io.InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                byte[] bytes = new byte[0];
+                if (is != null) {
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+                    bytes = baos.toByteArray();
+                    is.close();
+                }
+                // 限流/网关错误退避重试(429/500/502/503/504); 其余(含4xx鉴权/参数)直接返回交上层解析
+                if ((code == 429 || code == 500 || code == 502 || code == 503 || code == 504) && attempt < maxAttempts) {
+                    long wait = 1000L * attempt; // 线性退避 1s, 2s
+                    log.warn("[llm] HTTP {} 第{}次, {}ms 后重试", code, attempt, wait);
+                    Thread.sleep(wait);
+                    continue;
+                }
+                return new String(bytes, StandardCharsets.UTF_8);
+            } catch (java.io.IOException e) {
+                lastEx = e; // 含 SocketTimeoutException
+                if (attempt < maxAttempts) {
+                    log.warn("[llm] 网络异常 第{}次重试: {}", attempt, e.getMessage());
+                    Thread.sleep(1000L * attempt);
+                    continue;
+                }
+                throw e;
             }
-            bytes = baos.toByteArray();
-            is.close();
         }
-        return new String(bytes, StandardCharsets.UTF_8);
+        if (lastEx != null) throw lastEx;
+        return ""; // 不可达
     }
 
     /**
