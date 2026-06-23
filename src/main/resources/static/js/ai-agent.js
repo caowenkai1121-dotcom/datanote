@@ -1602,7 +1602,8 @@
       _kbBound = true;
       document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { var el = document.getElementById('aiAgentRoot'); if (el && el.offsetParent !== null && inputEl) { e.preventDefault(); inputEl.focus(); } }
-        if (e.key === '?' && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { var rt = document.getElementById('aiAgentRoot'); if (rt && rt.offsetParent !== null) DN.toast('快捷键: Ctrl+K 聚焦输入 · ↑ 调出上条 · @ 引用文件 · Esc 关预览', 'info'); }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { var rt2 = document.getElementById('aiAgentRoot'); if (rt2 && rt2.offsetParent !== null) { var tg = document.getElementById('aiSideToggle'); if (tg) { e.preventDefault(); tg.click(); } } } // Ctrl+B 收起/展开数据中心
+        if (e.key === '?' && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { var rt = document.getElementById('aiAgentRoot'); if (rt && rt.offsetParent !== null) DN.toast('快捷键: Ctrl+K 聚焦输入 · Ctrl+B 收展数据中心 · ↑ 调出上条 · @ 引用文件 · Esc 关预览', 'info'); }
         else if (e.key === 'Escape' && document.getElementById('aiPreviewPanel')) { closePreview(); } // Esc 关预览
       });
       document.addEventListener('visibilitychange', function () { if (!document.hidden && _origTitle != null) { document.title = _origTitle; _origTitle = null; } });
