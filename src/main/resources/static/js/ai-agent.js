@@ -140,7 +140,7 @@
           });
           tbl.appendChild(tr);
         });
-        container.appendChild(tbl); continue;
+        container.appendChild(DN.h('div', { style: 'overflow-x:auto;margin:8px 0;' }, [tbl])); continue; // 宽表横向滚动
       }
       // 无序列表
       if (/^\s*[-*+]\s+/.test(line)) {
