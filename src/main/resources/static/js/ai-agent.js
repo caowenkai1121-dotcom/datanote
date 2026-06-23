@@ -1378,6 +1378,17 @@
     return DN.h('span', { text: t[0], style: 'font-size:var(--fs-xs);color:' + t[1] + ';margin-left:6px;white-space:nowrap;' });
   }
 
+  function fileIcon(name) {
+    var e = String(name || '').toLowerCase().split('.').pop();
+    if (/^(csv|xlsx|xls)$/.test(e)) return '📊';
+    if (e === 'pdf') return '📕';
+    if (/^(doc|docx)$/.test(e)) return '📘';
+    if (/^(txt|md)$/.test(e)) return '📝';
+    if (/^(png|jpg|jpeg|gif)$/.test(e)) return '🖼';
+    if (e === 'json') return '🔧';
+    if (/^(html|htm)$/.test(e)) return '🌐';
+    return '📄';
+  }
   function fileRow(f) {
     var agent = f.source === 'agent';
     var row = DN.h('div', { class: 'dn-ai-file' });
@@ -1386,12 +1397,12 @@
     ]);
     var badge = idxBadge(f); if (badge) meta2.appendChild(badge);
     var info = DN.h('div', { style: 'flex:1;min-width:0;' }, [
-      DN.h('div', { text: (agent ? '🤖 ' : '📄 ') + (f.fileName || ''), title: f.fileName, style: 'font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
+      DN.h('div', { text: (agent ? '🤖 ' : fileIcon(f.fileName) + ' ') + (f.fileName || ''), title: f.fileName, style: 'font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
       meta2
     ]);
     var dl = DN.h('a', { href: '/api/ai/agent/files/' + f.id + '/download', title: '下载', text: '↓', style: 'flex:0 0 auto;text-decoration:none;color:var(--primary);font-size:17px;font-weight:700;padding:0 5px;' });
     var del = DN.h('span', { title: '删除', text: '✕', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 4px;' });
-    del.onclick = function () { DN.confirm('确认删除文件「' + (f.name || '') + '」？', { title: '删除文件', danger: true }).then(function (ok) { if (!ok) return; DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); }); };
+    del.onclick = function () { DN.confirm('确认删除文件「' + (f.fileName || '') + '」？', { title: '删除文件', danger: true }).then(function (ok) { if (!ok) return; DN.post('/api/ai/agent/files/' + f.id + '/remove', {}).then(function () { loadFiles(); }).catch(function (e) { DN.toast('删除失败：' + (e && e.message ? e.message : e), 'err'); }); }); };
     row.appendChild(info); row.appendChild(dl); row.appendChild(del);
     return row;
   }
