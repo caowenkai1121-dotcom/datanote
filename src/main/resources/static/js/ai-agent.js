@@ -694,7 +694,7 @@
       var matches = _userFiles.filter(function (n) { return n.toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
       closeDD();
       if (!matches.length) return;
-      var dd = DN.h('div', { style: 'position:absolute;bottom:100%;left:0;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:220px;overflow:auto;z-index:20;min-width:220px;' });
+      var dd = DN.h('div', { style: 'position:absolute;bottom:100%;left:0;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:220px;overflow:auto;z-index:20;min-width:220px;max-width:340px;' });
       function insert(n) {
         var start = pos - m[0].length;
         inputEl.value = val.slice(0, start) + '@' + n + ' ' + val.slice(pos);
@@ -703,7 +703,7 @@
       }
       dd._first = function () { insert(matches[0]); }; // 回车选首项
       matches.forEach(function (n) {
-        var it = DN.h('div', { text: '📎 ' + n, style: 'padding:6px 10px;cursor:pointer;font-size:12.5px;white-space:nowrap;' });
+        var it = DN.h('div', { text: '📎 ' + n, title: n, style: 'padding:6px 10px;cursor:pointer;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' });
         it.onmouseenter = function () { it.style.background = 'var(--bg-hover, rgba(0,0,0,.05))'; };
         it.onmouseleave = function () { it.style.background = ''; };
         it.onmousedown = function (e) { e.preventDefault(); insert(n); }; // mousedown 先于 blur
