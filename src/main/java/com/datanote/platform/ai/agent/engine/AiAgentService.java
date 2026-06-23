@@ -209,17 +209,11 @@ public class AiAgentService {
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
         final String _owner = ctx == null ? null : ctx.getUserName();
         final String _um = userMessage;
-        // 3 个网络重的上下文(RAG/记忆/行业)并行算, 省首轮 ~500-800ms(无相互依赖; 各服务内已有超时, 异常退化为 null)
-        java.util.concurrent.CompletableFuture<String> fRag, fMem, fInd;
-        try {
-            fRag = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildRagText(_um, _owner)), parallelExecutor);
-            fMem = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> aiMemoryService.recall(_um, _owner, MEM_TOPK)), parallelExecutor);
-            fInd = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildIndustryText(_um)), parallelExecutor);
-        } catch (java.util.concurrent.RejectedExecutionException rex) { // 池满: 退回串行
-            fRag = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> buildRagText(_um, _owner)));
-            fMem = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> aiMemoryService.recall(_um, _owner, MEM_TOPK)));
-            fInd = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> buildIndustryText(_um)));
-        }
+        // 3 个网络重的上下文(RAG/记忆/行业)并行算, 省首轮 ~500-800ms(无相互依赖)。
+        // 用公共 ForkJoinPool(不传 executor): 不会 RejectedExecution → 无需 fallback/无主线程阻塞/无孤儿任务; safeStr 吞内部异常→null, joinCtx 30s 超时兜底。
+        java.util.concurrent.CompletableFuture<String> fRag = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildRagText(_um, _owner)));
+        java.util.concurrent.CompletableFuture<String> fMem = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> aiMemoryService.recall(_um, _owner, MEM_TOPK)));
+        java.util.concurrent.CompletableFuture<String> fInd = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildIndustryText(_um)));
         String filesText = buildFilesText(_owner); // 已上传文件清单(让 agent 感知, 可 file_read) —— 轻量本地查询, 同步
         String userProfileText = aiProfileService.userProfileText(_owner); // 长久记忆·用户画像(隔离)
         String projectProfileText = aiProfileService.projectProfileText(); // 长久记忆·项目画像(全局)
