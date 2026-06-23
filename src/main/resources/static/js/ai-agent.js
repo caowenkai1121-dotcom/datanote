@@ -107,11 +107,13 @@
       var line = lines[i];
       // 代码块 ```
       if (/^```/.test(line.trim())) {
+        var lang = line.trim().replace(/^`+/, '').trim(); // fence 语言(```sql → sql)
         var buf = []; i++;
         while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++; }
         i++; // 跳过收尾 ```
         var _code = buf.join('\n');
-        var pre = DN.h('pre', { style: 'position:relative;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius-lg);padding:10px 12px;overflow-x:auto;margin:8px 0;' });
+        var pre = DN.h('pre', { style: 'position:relative;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius-lg);padding:' + (lang ? '24px' : '10px') + ' 12px 10px;overflow-x:auto;margin:8px 0;' });
+        if (lang) pre.appendChild(DN.h('span', { text: lang.toUpperCase(), style: 'position:absolute;top:5px;left:10px;font-size:10px;letter-spacing:.5px;color:var(--text-muted);font-family:ui-monospace,monospace;' }));
         pre.appendChild(DN.h('code', { text: _code, style: 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre;' }));
         // 代码块右上角复制按钮(ChatGPT 式, 复制纯代码; DN.copy execCommand 降级 HTTP 安全)
         pre.appendChild(DN.h('button', { text: '复制', title: '复制代码', style: 'position:absolute;top:6px;right:6px;font-size:11px;padding:1px 7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-muted);cursor:pointer;opacity:.85;', onclick: (function (c) { return function (e) { e.stopPropagation(); if (window.DN && DN.copy) DN.copy(c); }; })(_code) }));
