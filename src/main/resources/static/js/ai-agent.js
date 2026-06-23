@@ -38,7 +38,7 @@
   // 助手终答气泡（识别 [表:库.表]/[规则:#id]/[任务:#id] token 渲染可点深链 chip, XSS 安全用 DN.h text）
   function assistantBubble(text, tone) {
     var raw = String(text == null ? '' : text);
-    var inner = DN.h('div', { class: 'ai-md dn-ai-bubble assistant' + (tone === 'err' ? ' err' : ''), style: 'width:fit-content;overflow-x:auto;' });
+    var inner = DN.h('div', { class: 'ai-md dn-ai-bubble assistant' + (tone === 'err' ? ' err' : ''), style: 'width:fit-content;max-width:min(100%,820px);overflow-x:auto;' });
     renderMarkdown(inner, raw);
     // 网页深链拦截: 答复里指向 /files/{id}/view 的链接, 点击改为右侧预览(不跳新页, 与 artifact 体验一致)
     try {
