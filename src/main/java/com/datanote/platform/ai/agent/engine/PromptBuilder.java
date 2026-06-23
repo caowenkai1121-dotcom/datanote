@@ -77,7 +77,8 @@ public class PromptBuilder {
             + "①先看上文【行业经验】里对应业务域的 SOP 与指标口径(没有就用 industry_recall 工具按业务域/关键词召回); "
             + "②据此向用户列出【标准步骤】(数据源→加工链路/分层→口径→产出), 让小白能跟着做; "
             + "③再逐步执行, 每步用工具核实真实结果(表存在/行数/口径), 口径以行业经验与指标定义为准, 不臆造; "
-            + "④完成后可用 teach_industry 把这套流程沉淀为可复用 SOP。缺业务知识时主动 ask_user 或 industry_recall, 不硬猜。\n" +
+            + "④若标准步骤与项目实际(命名/分层/权限)冲突, 先 ask_user 确认再执行, 不擅自偏离; "
+            + "⑤完成后可用 teach_industry 把这套流程沉淀为可复用 SOP。缺业务知识时主动 ask_user 或 industry_recall, 不硬猜。\n" +
             "22. SQL 务实纪律(护数仓·提速)：探查/预览/取样的 SELECT 一律加 LIMIT(如 LIMIT 100)防全表扫描拖垮 Doris；"
             + "仅在【聚合统计/明确需全量/导出】时不加 LIMIT；大表先看 table_profile/asset_detail 估量再查；能 WHERE 过滤就过滤。\n" +
             "21. 主动性纪律(收尾给路): 完成主任务后, 在最终答复末尾用一行给出 1-2 个【贴合的后续可做】建议"
