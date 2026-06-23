@@ -77,6 +77,7 @@ public class CronScheduler {
         // 占行成功后异步执行(不阻塞 @Scheduled tick 线程, 防拖死全局调度器); 池满则丢, 下次 tick 再领
         final Long jobId = job.getId();
         final String jobName = job.getName(), prompt = job.getPrompt(), owner = job.getOwner();
+        try {
         cronExecutor.execute(() -> {
             String status = "error", sid = null;
             try {
@@ -94,6 +95,11 @@ public class CronScheduler {
                     .setSql("run_count = run_count + 1").set("updated_at", LocalDateTime.now()));
             log.info("[cron] 任务 {} 执行完 status={} session={} next={}", jobName, status, sid, next);
         });
+        } catch (java.util.concurrent.RejectedExecutionException rex) { // 池满: 标记可见, 不抛断 tick; 下周期 next_run 到点再跑
+            log.warn("[cron] 线程池忙跳过本次 job={}, 下周期重试", jobName);
+            try { cronMapper.update(null, new UpdateWrapper<DnAiCronJob>().eq("id", jobId)
+                    .set("last_status", "error:pool_busy").set("updated_at", LocalDateTime.now())); } catch (Exception ignore) {}
+        }
     }
 
     /** schedule → 下次执行时间。支持 everyNm/everyNh/everyNd 与 Spring 6 段 cron。无法解析返 null。 */
