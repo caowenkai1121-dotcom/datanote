@@ -1062,7 +1062,9 @@
   function processToggle(steps, plan, elapsed) {
     var wrap = DN.h('div', { style: 'margin:4px 0 8px 0;' });
     var bar = DN.h('div', { class: 'dn-ai-fold', style: 'user-select:none;' });
-    var head = (elapsed != null ? '✅ 已处理 ' + fmtDur(elapsed) + ' · ' : '🔧 ') + '执行了 ' + steps.length + ' 步 · 点击查看过程';
+    var names = []; steps.forEach(function (s) { var nm = s.skillName ? (TOOL_LABEL[s.skillName] || s.skillName) : null; if (nm && names.indexOf(nm) < 0) names.push(nm); }); // 用到的工具(去重)
+    var tip = names.length ? '（' + names.slice(0, 4).join('、') + (names.length > 4 ? '…' : '') + '）' : '';
+    var head = (elapsed != null ? '✅ 已处理 ' + fmtDur(elapsed) + ' · ' : '🔧 ') + '执行了 ' + steps.length + ' 步' + tip + ' · 点击查看过程';
     bar.appendChild(DN.h('span', { text: head }));
     var caret = DN.h('span', { text: '▾' });
     bar.appendChild(caret);
