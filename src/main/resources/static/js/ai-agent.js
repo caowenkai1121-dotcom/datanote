@@ -262,6 +262,14 @@
         var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (p.table || 'data') + '.csv'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
       };
       hdr.appendChild(exp);
+      var md = DN.h('span', { text: '⧉ 复制MD', title: '复制为 Markdown 表格(粘进报告/wiki)', style: 'flex:0 0 auto;cursor:pointer;font-size:11px;color:var(--primary);' });
+      md.onclick = function () {
+        function c(v) { return String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\n/g, ' '); }
+        var L = ['| ' + cols.map(c).join(' | ') + ' |', '| ' + cols.map(function () { return '---'; }).join(' | ') + ' |'];
+        rows.forEach(function (r) { L.push('| ' + (Array.isArray(r) ? r : cols.map(function (k) { return r[k]; })).map(c).join(' | ') + ' |'); });
+        (navigator.clipboard ? navigator.clipboard.writeText(L.join('\n')) : Promise.reject()).then(function () { DN.toast('已复制 Markdown 表格', 'ok'); }).catch(function () { DN.toast('复制失败, 请手动选择', 'warn'); });
+      };
+      hdr.appendChild(md);
     }
     card.appendChild(hdr);
     if (!rows.length) { card.appendChild(DN.h('div', { text: '（表中无数据行）', style: 'padding:10px 12px;color:var(--text-muted);font-size:12px;' })); return card; }
