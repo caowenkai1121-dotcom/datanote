@@ -411,7 +411,9 @@
   function closePreview() {
     var p = document.getElementById('aiPreviewPanel'); if (p) p.remove();
     var root = document.getElementById('aiAgentRoot');
-    var side = root && root.querySelector('.dn-ai-side'); if (side) side.style.display = ''; // 恢复左数据中心栏
+    var side = root && root.querySelector('.dn-ai-side');
+    var userHid = false; try { userHid = localStorage.getItem('aiSideHidden') === '1'; } catch (e) {}
+    if (side && !userHid) side.style.display = ''; // 恢复左数据中心栏(除非用户手动折叠了)
   }
   function extractPage(resultData) {
     try { var o = JSON.parse(resultData); var data = (o && o.data) ? o.data : o; return (data && data._page) ? data._page : null; }
