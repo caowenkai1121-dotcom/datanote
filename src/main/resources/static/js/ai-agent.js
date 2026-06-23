@@ -1298,7 +1298,7 @@
     dz.appendChild(DN.h('div', { html: DN.icon('upload') || '⬆', style: 'font-size:26px;color:var(--primary);opacity:.8;margin-bottom:8px;display:flex;justify-content:center;' }));
     dz.appendChild(DN.h('div', { text: '点击或拖拽文件到此区域', style: 'font-size:13px;color:var(--text-regular);' }));
     dz.appendChild(DN.h('div', { text: '支持 xlsx/pdf/csv/txt/图片 等, ≤20MB', style: 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;' }));
-    var fileInput = DN.h('input', { type: 'file', multiple: 'multiple', style: 'display:none;' });
+    var fileInput = DN.h('input', { type: 'file', multiple: 'multiple', accept: '.xlsx,.xls,.csv,.pdf,.txt,.json,.docx,.doc,.md,.png,.jpg,.jpeg,.gif,.html,.htm', style: 'display:none;' });
     fileInput.onchange = function () { uploadFiles(fileInput.files); fileInput.value = ''; };
     dz.onclick = function () { fileInput.click(); };
     function dzOn() { dz.classList.add('is-drag'); }
