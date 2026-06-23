@@ -246,8 +246,8 @@ public class CreateArtifactTool implements AiTool {
             if (t.startsWith("> ")) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; }
                 out.append("<blockquote>").append(inline(t.substring(2))).append("</blockquote>"); continue; }
             // 有序列表
-            if (t.matches("\\d+\\.\\s+.*")) { if (inUl) { out.append("</ul>"); inUl = false; } if (!inOl) { out.append("<ol>"); inOl = true; }
-                out.append("<li>").append(inline(t.replaceFirst("\\d+\\.\\s+", ""))).append("</li>"); continue; }
+            if (t.matches("\\d+[.)]\\s+.*")) { if (inUl) { out.append("</ul>"); inUl = false; } if (!inOl) { out.append("<ol>"); inOl = true; }
+                out.append("<li>").append(inline(t.replaceFirst("\\d+[.)]\\s+", ""))).append("</li>"); continue; }
             // 无序列表
             if (t.matches("[-*+]\\s+.*")) { if (inOl) { out.append("</ol>"); inOl = false; } if (!inUl) { out.append("<ul>"); inUl = true; }
                 out.append("<li>").append(inline(t.replaceFirst("[-*+]\\s+", ""))).append("</li>"); continue; }
