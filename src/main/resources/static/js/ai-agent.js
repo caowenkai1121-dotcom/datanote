@@ -915,7 +915,15 @@
   function fmtTime(t) {
     if (!t) return '';
     var s = String(t).replace('T', ' ');
-    return s.length >= 16 ? s.slice(5, 16) : s; // MM-DD HH:mm
+    var d = new Date(s.replace(/-/g, '/')); // -→/ 兼容 Safari 解析
+    if (!isNaN(d.getTime())) {
+      var diff = (Date.now() - d.getTime()) / 1000;
+      if (diff >= 0 && diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+      if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+      if (diff < 172800) return '昨天';
+    }
+    return s.length >= 16 ? s.slice(5, 16) : s; // 更早: MM-DD HH:mm
   }
 
   // 无人值守自主执行: 后台监视轮询(进度横幅 + 步数变化时重建对话 + 高危写挂起时弹审批 + 终态收尾)
