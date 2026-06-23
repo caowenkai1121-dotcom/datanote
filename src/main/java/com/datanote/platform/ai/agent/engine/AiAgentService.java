@@ -249,6 +249,10 @@ public class AiAgentService {
                 st.trace.append("【规划检查点】已执行 ").append(budget.used())
                         .append(" 步。请暂停审视: 对照目标更新『已知事实/剩余步骤』(可 todo update), 判断是否已可收口或是否偏题, 再继续下一步。\n");
             }
+            // 接近步数上限: 提示优先收尾(优雅降级), 基于已知给结论而非被硬截断在半路
+            if (!first && budget.remaining() <= 1) {
+                st.trace.append("【收尾提示】已接近本轮步数上限, 请勿再发起新查询; 基于现有已掌握信息直接给出最终中文答复; 若确有未完成项, 在答复中说明进度并提示用户回复\"继续\"推进。\n");
+            }
             String planText = live == null ? null : renderPlan(live.getPlanJson());
             String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText);
             String userPrompt = first
