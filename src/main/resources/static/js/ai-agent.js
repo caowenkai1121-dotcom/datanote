@@ -1114,8 +1114,13 @@
     }
     var uB = sec('👤 用户画像 · AI 对你的了解');
     var pB = sec('📦 项目画像 · 全局积累');
-    DN.get('/api/ai/agent/user-profile').then(function (d) { if (d && d.content) uB.textContent = d.content; }).catch(function () {});
-    DN.get('/api/ai/agent/project-profile').then(function (d) { if (d && d.content) pB.textContent = d.content; }).catch(function () {});
+    function setProfile(b, d) {
+      if (!d) return;
+      if (d.content) b.textContent = d.content;
+      if (d.updatedAt && b.parentNode) b.parentNode.appendChild(DN.h('div', { text: '更新于 ' + fmtTime(d.updatedAt), style: 'font-size:11px;color:var(--text-muted);margin-top:4px;' }));
+    }
+    DN.get('/api/ai/agent/user-profile').then(function (d) { setProfile(uB, d); }).catch(function () {});
+    DN.get('/api/ai/agent/project-profile').then(function (d) { setProfile(pB, d); }).catch(function () {});
     var gen = DN.h('a', { href: 'javascript:void(0)', text: '↻ 立即生成/更新画像', title: '从近期经验蒸馏画像(异步, 稍候刷新)', style: 'font-size:12px;color:var(--primary);text-decoration:none;display:inline-block;margin-bottom:8px;' });
     gen.onclick = function () { DN.post('/api/ai/agent/profile-digest/run', {}).then(function () { DN.toast('已触发画像汇总, 约 30s 后重开本面板查看', 'ok'); }).catch(function (e) { DN.toast('触发失败：' + (e && e.message ? e.message : e), 'err'); }); };
     box.appendChild(gen);
