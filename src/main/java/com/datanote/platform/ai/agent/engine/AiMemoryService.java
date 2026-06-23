@@ -85,17 +85,17 @@ public class AiMemoryService {
         if (!embeddingService.isAvailable() || !vectorStoreClient.available()) return null;
         float[] vec = embeddingService.embed(query);
         if (vec == null) return null;
-        List<Map<String, Object>> raw = vectorStoreClient.search(vec, "memory", Math.max(topK, 5));
+        // 取 2 倍候选, 再三维加权重排(语义+命中频次+近因), 让高频/近期经验优先浮出, 改善同义召回
+        List<Map<String, Object>> raw = vectorStoreClient.search(vec, "memory", Math.max(topK * 2, 10));
         if (raw == null || raw.isEmpty()) return null;
-        List<DnAiMemorySkill> out = new ArrayList<>();
+        List<Object[]> cand = new ArrayList<>(); // [m, weightedScore]
         for (Map<String, Object> r : raw) {
             Object pObj = r.get("payload");
             if (!(pObj instanceof Map)) continue;
             @SuppressWarnings("unchecked")
             Map<String, Object> p = (Map<String, Object>) pObj;
-            Object po = p.get("owner");
             // 同租户隔离: 仅召回本人或全局经验(匿名单用户态放行全部)
-            if (!ownerVisible(po, owner)) continue;
+            if (!ownerVisible(p.get("owner"), owner)) continue;
             Object mid = p.get("mysqlId");
             DnAiMemorySkill m = null;
             if (mid != null) {
@@ -107,10 +107,26 @@ public class AiMemoryService {
                 m.setContent(str(p.get("content")));
                 m.setTriggerHint(str(p.get("trigger")));
             }
-            if (m.getContent() != null && !"archived".equals(m.getStatus())) out.add(m);
-            if (out.size() >= topK) break;
+            if (m.getContent() == null || "archived".equals(m.getStatus())) continue;
+            double sim = toD(r.get("score"));                                  // 语义相似度(0~1)
+            double hit = m.getHitCount() == null ? 0 : m.getHitCount();
+            double normHit = hit / (hit + 5.0);                               // 命中频次饱和归一(0~1)
+            double recency = 0.3;
+            if (m.getUpdatedAt() != null) {
+                long days = Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(m.getUpdatedAt(), LocalDateTime.now()));
+                recency = 1.0 / (1.0 + days / 30.0);                          // 越近越高(0~1)
+            }
+            cand.add(new Object[]{m, 0.5 * sim + 0.3 * normHit + 0.2 * recency});
         }
+        cand.sort((a, b) -> Double.compare((Double) b[1], (Double) a[1]));
+        List<DnAiMemorySkill> out = new ArrayList<>();
+        for (Object[] c : cand) { out.add((DnAiMemorySkill) c[0]); if (out.size() >= topK) break; }
         return out;
+    }
+
+    private static double toD(Object o) {
+        if (o instanceof Number) return ((Number) o).doubleValue();
+        try { return o == null ? 0 : Double.parseDouble(String.valueOf(o)); } catch (Exception e) { return 0; }
     }
 
     /** 兜底召回: 本人(或全局)active 经验, 按命中次数+近因排序。 */
