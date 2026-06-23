@@ -988,8 +988,9 @@
       ? '运行中…回车可补充指引(中途转向)，或点 ⏹ 停止'
       : '问我：看下治理总览；某表质量为什么下降… (输入 @ 可引用已上传文件)';
     if (!sendBtn) return;
-    sendBtn.disabled = false;
     sendBtn.textContent = sending ? '⏹ 停止' : '发送';
+    sendBtn.disabled = sending ? false : !(inputEl && (inputEl.value || '').trim()); // 非运行态: 输入为空则禁用发送(即时反馈)
+    sendBtn.style.opacity = sendBtn.disabled ? '.55' : '';
   }
 
   // 发送按钮统一入口: 空闲=发送, 运行中=请求停止(协作式中断, agent 在下一工序边界停下)
@@ -1591,8 +1592,8 @@
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
       else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条(先关 @候选)
     });
-    inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; });   // 聊天输入随内容自动增高(≤160px)
-    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
+    inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; if (sendBtn && !sending) { sendBtn.disabled = !(inputEl.value || '').trim(); sendBtn.style.opacity = sendBtn.disabled ? '.55' : ''; } });   // 聊天输入随内容自动增高(≤160px)+空则禁用发送
+    sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);opacity:.55;', disabled: 'disabled', onclick: onSendClick });
     inputBarEl = DN.h('div', { class: 'dn-ai-inputbar' }, [inputEl, sendBtn]);
     rightCol.appendChild(inputBarEl);
     setupMention(); // 输入框 @ 补全已上传文件
