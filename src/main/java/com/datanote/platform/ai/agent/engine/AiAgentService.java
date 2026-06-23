@@ -316,7 +316,7 @@ public class AiAgentService {
                     String nm = c.path("name").asText(null);
                     AiTool t = toolRegistry.find(nm);
                     JsonNode a = c.get("arguments");
-                    String sig = nm + "|" + argsToStr(a);
+                    String sig = nm + "|" + argsSig(a);
                     if (t == null || PARALLEL_EXCLUDE.contains(nm) || Guardrail.gate(t) != Guardrail.Gate.PASS
                             || PermGate.check(t, ctx) != PermGate.Decision.ALLOW
                             || accessChecker.dataDeny(nm, a, ctx) != null
@@ -349,7 +349,7 @@ public class AiAgentService {
                             AiToolResult res;
                             try { res = fs.get(k).get(PARALLEL_TOOL_TIMEOUT_SEC, java.util.concurrent.TimeUnit.SECONDS); }
                             catch (Exception e) { fs.get(k).cancel(true); res = AiToolResult.fail("exec_failed", msgOf(e)); }
-                            seenCalls.merge(nm + "|" + argsToStr(a), 1, Integer::sum);
+                            seenCalls.merge(nm + "|" + argsSig(a), 1, Integer::sum);
                             appendTrace(st, nm, c.toString(), res);
                             if (res.isOk() && res.getData() instanceof Map && (((Map<?, ?>) res.getData()).containsKey("_preview") || ((Map<?, ?>) res.getData()).containsKey("_chart"))) {
                                 previews.add((Map<String, Object>) res.getData());
@@ -431,7 +431,7 @@ public class AiAgentService {
             }
 
             // 死循环护栏 + nudge: 相同工具+参数重复调用结果不变, 拦下并提示换思路(退还预算不计步)
-            String callSig = toolName + "|" + argsToStr(argsNode);
+            String callSig = toolName + "|" + argsSig(argsNode);
             if (seenCalls.merge(callSig, 1, Integer::sum) >= 2) {
                 budget.refund();
                 st.trace.append("【提示】你已用相同参数调用过 ").append(toolName)
@@ -510,7 +510,7 @@ public class AiAgentService {
 
             AiToolResult result;
             long e0 = System.currentTimeMillis();
-            String readKey = tool.readOnly() ? (toolName + "|" + argsToStr(argsNode)) : null;
+            String readKey = tool.readOnly() ? (toolName + "|" + argsSig(argsNode)) : null;
             if (readKey != null && lastReadResult[0] != null && readKey.equals(lastReadKey[0])) {
                 // 连续完全相同的只读调用(其间无写操作): 结果必不变, 复用并提示, 防 LLM 自循环空转烧预算
                 result = lastReadResult[0];
@@ -1674,6 +1674,11 @@ public class AiAgentService {
 
     private String argsToStr(JsonNode args) {
         return args == null ? null : cap(args.toString(), 2000);
+    }
+
+    /** 去重/缓存键专用: 用完整参数(不截断), 防长 SQL/JSON 参数前 2000 字符相同导致键碰撞误复用/误拦截。 */
+    private String argsSig(JsonNode args) {
+        return args == null ? null : args.toString();
     }
 
     private String toJson(Object o) {

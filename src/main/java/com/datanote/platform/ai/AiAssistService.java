@@ -361,11 +361,13 @@ public class AiAssistService {
         boolean openai = isOpenAiCompatible(prov);
         String endpoint = openai ? "/v1/chat/completions" : "/v1/messages";
         URL url = new URL(base + endpoint);
-        int maxAttempts = 3; // 瞬时错误(限流/网关/超时)线性退避重试, 防偶发抖动整步失败
+        int maxAttempts = 3; // 网关/网络抖动(5xx/超时)线性退避重试; 429限流交上层 callLlmWithRetry 智能退避, 不在此重试(防双层叠加)
         java.io.IOException lastEx = null;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            HttpURLConnection conn = null;
+            java.io.InputStream is = null;
             try {
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(30000);
@@ -381,7 +383,7 @@ public class AiAssistService {
                     os.write(body.getBytes(StandardCharsets.UTF_8));
                 }
                 int code = conn.getResponseCode();
-                java.io.InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
                 byte[] bytes = new byte[0];
                 if (is != null) {
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
@@ -389,10 +391,9 @@ public class AiAssistService {
                     int n;
                     while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
                     bytes = baos.toByteArray();
-                    is.close();
                 }
-                // 限流/网关错误退避重试(429/500/502/503/504); 其余(含4xx鉴权/参数)直接返回交上层解析
-                if ((code == 429 || code == 500 || code == 502 || code == 503 || code == 504) && attempt < maxAttempts) {
+                // 网关错误(5xx)退避重试; 429限流直接返回交上层指数退避(避免与 callLlmWithRetry 双层叠加致 8-11s); 4xx鉴权/参数直接返回解析
+                if ((code == 500 || code == 502 || code == 503 || code == 504) && attempt < maxAttempts) {
                     long wait = 1000L * attempt; // 线性退避 1s, 2s
                     log.warn("[llm] HTTP {} 第{}次, {}ms 后重试", code, attempt, wait);
                     Thread.sleep(wait);
@@ -407,6 +408,9 @@ public class AiAssistService {
                     continue;
                 }
                 throw e;
+            } finally {
+                if (is != null) try { is.close(); } catch (Exception ignore) {} // 防 read 抛异常时流泄漏
+                if (conn != null) conn.disconnect();                           // 每次迭代释放连接, 防泄漏耗尽连接池
             }
         }
         if (lastEx != null) throw lastEx;
@@ -426,11 +430,12 @@ public class AiAssistService {
      */
     public boolean testConnection(String prov, String testKey, String testBaseUrl, String testModel) {
         if (testKey == null || testKey.isEmpty()) return false;
+        HttpURLConnection conn = null;
         try {
             boolean openai = isOpenAiCompatible(prov);
             String base = testBaseUrl != null && !testBaseUrl.isEmpty() ? testBaseUrl : "https://api.anthropic.com";
             String endpoint = openai ? "/v1/chat/completions" : "/v1/messages";
-            HttpURLConnection conn = (HttpURLConnection) new URL(base + endpoint).openConnection();
+            conn = (HttpURLConnection) new URL(base + endpoint).openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             if (openai) {
@@ -454,6 +459,8 @@ public class AiAssistService {
         } catch (Exception e) {
             log.warn("AI connection test failed: {}", e.getMessage());
             return false;
+        } finally {
+            if (conn != null) conn.disconnect(); // 释放连接, 防反复测试配置泄漏
         }
     }
 }

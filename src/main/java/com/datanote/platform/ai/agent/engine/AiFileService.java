@@ -113,10 +113,11 @@ public class AiFileService {
         try { root = storageRoot(); } catch (IOException e) { return 0; }
         int n = 0;
         for (DnAiFile m : old) {
+            // 先删库后删盘: 库删失败则盘文件保留(下次可重试); 盘删失败则库记录已删(垃圾无害), 保证库一致避免孤立记录
+            try { fileMapper.deleteById(m.getId()); n++; } catch (Exception ignore) { continue; }
             try { Path p = root.resolve(m.getStoredName()).normalize(); if (p.startsWith(root)) Files.deleteIfExists(p); } catch (Exception ignore) {}
-            try { fileMapper.deleteById(m.getId()); n++; } catch (Exception ignore) {}
         }
-        log.info("[file] 清理超期AI生成文件 {} 个(>{}天)", n, days);
+        log.info("[file] 清理超期AI生成文件 {} 个(保留期{}天, 删更早的)", n, days);
         return n;
     }
 

@@ -298,14 +298,16 @@
     }
     function renderBody() {
       ths.forEach(function (th, i) { var base = String(cols[i]); th.textContent = base + (sort.idx === i ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''); });
+      function cellAt(r, i) { return Array.isArray(r) ? (r || [])[i] : (r ? r[cols[i]] : undefined); } // 兼容数组行与对象行(按列名取)
+      function cells(r) { return Array.isArray(r) ? (r || []) : cols.map(function (c) { return r ? r[c] : undefined; }); }
       var data = rows.slice();
-      if (sort.idx >= 0) data.sort(function (r1, r2) { return cmp((r1 || [])[sort.idx], (r2 || [])[sort.idx]) * sort.dir; });
+      if (sort.idx >= 0) data.sort(function (r1, r2) { return cmp(cellAt(r1, sort.idx), cellAt(r2, sort.idx)) * sort.dir; });
       view = data; // 导出跟随当前排序
       tbody.innerHTML = '';
       data.forEach(function (row, ri) {
         var tr = DN.h('tr', {});
         tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;position:sticky;left:0;background:var(--bg-card);z-index:1;' }));
-        (row || []).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
+        cells(row).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
         tbody.appendChild(tr);
       });
     }
@@ -1019,6 +1021,7 @@
     _lastSent = msg; // 记上一条供 ↑ 调出
     flowEl.appendChild(userBubble(msg));
     inputEl.value = ''; inputEl.style.height = '';   // 发送后高度复位(配合自动增高)
+    if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } // 显式关 @候选(发送后聚焦不触发 blur, 防遗留)
     runRequest('/api/ai/agent/chat', { message: msg, ctx: pendingCtx, model: selectedModel || undefined })
       .then(function () {}).catch(function () {}).then(function () { if (inputEl) inputEl.focus(); });
   }
@@ -1462,7 +1465,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && _mentionDD && _mentionDD._first) { e.preventDefault(); _mentionDD._first(); return; } // @候选开着: 回车选首项, 不发送
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
-      else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条
+      else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条(先关 @候选)
     });
     inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; });   // 聊天输入随内容自动增高(≤160px)
     sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);', onclick: onSendClick });
