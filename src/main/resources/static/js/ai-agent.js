@@ -882,6 +882,7 @@
       histListEl.appendChild(DN.h('div', { text: q ? '无匹配会话' : '暂无历史会话', style: 'color:var(--text-muted);font-size:12px;padding:6px 2px;' }));
       return;
     }
+    if (q) histListEl.appendChild(DN.h('div', { text: '找到 ' + arr.length + ' / ' + _sessionList.length + ' 条', style: 'color:var(--text-muted);font-size:11px;padding:2px 2px 4px;' })); // 搜索命中计数
     arr.forEach(function (s) {
         if (!s || !s.sessionId) return;
         var active = s.sessionId === sessionId;
