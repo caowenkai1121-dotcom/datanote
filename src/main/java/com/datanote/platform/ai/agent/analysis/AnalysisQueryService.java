@@ -134,6 +134,11 @@ public class AnalysisQueryService {
         // rewrite 在策略存在但 SELECT*/子查询/解析失败时抛 MaskRewriteException，直接向上传播
         String finalSql = SqlMaskRewriter.rewrite(sql, db, masks, filters);
 
+        // 无 LIMIT 的查询自动补 LIMIT, 让 Doris 提前短路减少全表扫描(聚合查询补了也无害; 已有 LIMIT 则不动)
+        String execSql = finalSql.trim();
+        while (execSql.endsWith(";")) execSql = execSql.substring(0, execSql.length() - 1).trim();
+        if (!execSql.toLowerCase().matches("(?s).*\\blimit\\b.*")) execSql = execSql + " LIMIT " + MAX_ROWS;
+
         // ── 第四层：执行 ────────────────────────────────────────────────────
         SourceRoute route = resolveRoute(db);
         Connection conn = null;
@@ -145,7 +150,7 @@ public class AnalysisQueryService {
             try (Statement st = conn.createStatement()) {
                 st.setQueryTimeout(QUERY_TIMEOUT_SEC);
                 st.setMaxRows(MAX_ROWS);
-                try (ResultSet rs = st.executeQuery(finalSql)) {
+                try (ResultSet rs = st.executeQuery(execSql)) {
                     ResultSetMetaData md = rs.getMetaData();
                     int cc = md.getColumnCount();
                     for (int i = 1; i <= cc; i++) {
