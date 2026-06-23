@@ -1321,3 +1321,33 @@ CREATE TABLE IF NOT EXISTS dn_ai_project_profile (
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id), UNIQUE KEY uk_key (profile_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 项目画像(全局)';
+
+-- 行业画像/行业经验: 业务流程SOP库 + 版本历史(行业画像正文复用 dn_ai_project_profile, profile_key='industry_*')
+CREATE TABLE IF NOT EXISTS dn_ai_industry_sop (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    domain       VARCHAR(64)  NOT NULL DEFAULT 'global' COMMENT '业务域(销售/库存/财务/会员; global=通用)',
+    sop_type     VARCHAR(24)  NOT NULL DEFAULT 'flow' COMMENT 'flow/report/caliber/pitfall/glossary',
+    title        VARCHAR(255) NOT NULL,
+    content      LONGTEXT     DEFAULT NULL,
+    trigger_hint VARCHAR(500) DEFAULT NULL,
+    source       VARCHAR(16)  NOT NULL DEFAULT 'taught' COMMENT 'harvest/learned/taught',
+    status       VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active/draft/archived',
+    version      INT          NOT NULL DEFAULT 1,
+    hit_count    INT          NOT NULL DEFAULT 0,
+    created_by   VARCHAR(128) DEFAULT NULL,
+    created_at   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id), KEY idx_domain_status (domain, status), KEY idx_type (sop_type), KEY idx_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 业务流程SOP/行业经验';
+
+CREATE TABLE IF NOT EXISTS dn_ai_industry_sop_hist (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    sop_id      BIGINT       NOT NULL,
+    version     INT          NOT NULL,
+    title       VARCHAR(255) DEFAULT NULL,
+    content     LONGTEXT     DEFAULT NULL,
+    op          VARCHAR(16)  DEFAULT NULL,
+    editor      VARCHAR(128) DEFAULT NULL,
+    snapshot_at DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id), KEY idx_sop (sop_id, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 业务流程SOP 版本历史';

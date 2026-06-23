@@ -70,6 +70,11 @@ public class PromptBuilder {
             + "   · 这是【通用原则, 不限于上述例子】: 任何工具调用前, 先想『这个参数能不能自己查到/有没有合理默认』, 能则自动补全, 把需要用户填的压到最少, 一步到位完成任务。\n" +
             "17. 模块归属(别建错任务)：『把表抽到 Doris 数仓 ODS 层 / 新建ODS任务 / 拉数到数仓 / 接入ODS』一律用 create_ods_table(它在『数据开发 ODS层』建任务并建表)；"
             + "『数据同步』模块(create_sync_job)是给【其它库到库的通用同步】用的，【不要】拿它来抽到数仓 ODS。\n" +
+            "23. 业务流/报表引导(让小白也能准确完成)：当用户要做业务流程、报表/取数, 或问业务口径时——"
+            + "①先看上文【行业经验】里对应业务域的 SOP 与指标口径(没有就用 industry_recall 工具按业务域/关键词召回); "
+            + "②据此向用户列出【标准步骤】(数据源→加工链路/分层→口径→产出), 让小白能跟着做; "
+            + "③再逐步执行, 每步用工具核实真实结果(表存在/行数/口径), 口径以行业经验与指标定义为准, 不臆造; "
+            + "④完成后可用 teach_industry 把这套流程沉淀为可复用 SOP。缺业务知识时主动 ask_user 或 industry_recall, 不硬猜。\n" +
             "22. SQL 务实纪律(护数仓·提速)：探查/预览/取样的 SELECT 一律加 LIMIT(如 LIMIT 100)防全表扫描拖垮 Doris；"
             + "仅在【聚合统计/明确需全量/导出】时不加 LIMIT；大表先看 table_profile/asset_detail 估量再查；能 WHERE 过滤就过滤。\n" +
             "21. 主动性纪律(收尾给路): 完成主任务后, 在最终答复末尾用一行给出 1-2 个【贴合的后续可做】建议"
@@ -100,11 +105,16 @@ public class PromptBuilder {
 
     /** 8 参重载: planText 任务计划; filesText 默认 null。 */
     public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText) {
-        return build(goal, toolsManifestJson, traceText, today, bizCtxText, ragText, memoryText, planText, null, null, null);
+        return build(goal, toolsManifestJson, traceText, today, bizCtxText, ragText, memoryText, planText, null, null, null, null);
     }
 
-    /** 11 参全量: filesText 上传文件清单; userProfileText 用户画像; projectProfileText 项目画像(长久记忆注入)。 */
+    /** 11 参重载(兼容旧调用): 不带行业画像。 */
     public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText, String filesText, String userProfileText, String projectProfileText) {
+        return build(goal, toolsManifestJson, traceText, today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText, null);
+    }
+
+    /** 12 参全量: industryText 行业画像/业务经验(行业全局概览 + 相关业务域经验 + 业务流程SOP, 让小白被引导着准确完成业务流/报表)。 */
+    public String build(String goal, String toolsManifestJson, String traceText, String today, String bizCtxText, String ragText, String memoryText, String planText, String filesText, String userProfileText, String projectProfileText, String industryText) {
         StringBuilder sb = new StringBuilder(2048);
         sb.append(IDENTITY).append('\n');
         sb.append("# 可用工具（机读清单）\n").append(toolsManifestJson == null ? "[]" : toolsManifestJson).append("\n\n");
@@ -141,6 +151,10 @@ public class PromptBuilder {
         // 长久记忆·项目画像(全局): 本项目数据域/常用表/命名规范/常见流程/坑, 优先遵循
         if (projectProfileText != null && !projectProfileText.trim().isEmpty()) {
             sb.append("# 项目画像(本项目长期积累: 数据域/常用表/命名规范/常见流程/坑, 优先遵循)\n").append(projectProfileText.trim()).append("\n\n");
+        }
+        // 行业画像/业务经验(全局沉淀的业务域知识+标准业务流程SOP+指标口径): 引导小白准确完成业务流与报表开发, 是权威业务依据, 优先据此规划步骤
+        if (industryText != null && !industryText.trim().isEmpty()) {
+            sb.append("# 行业经验(业务域知识/标准业务流程SOP/指标口径; 用户做业务流或报表时, 据此给出标准步骤并核实, 是业务权威依据)\n").append(industryText.trim()).append("\n\n");
         }
         sb.append("# 当前日期\n").append(today == null ? "" : today).append("\n\n");
         if (traceText != null && !traceText.trim().isEmpty()) {

@@ -1212,6 +1212,124 @@
     var gen = DN.h('a', { href: 'javascript:void(0)', text: '↻ 立即生成/更新画像', title: '从近期经验蒸馏画像(异步, 稍候刷新)', style: 'font-size:12px;color:var(--primary);text-decoration:none;display:inline-block;margin-bottom:8px;' });
     gen.onclick = function () { DN.post('/api/ai/agent/profile-digest/run', {}).then(function () { DN.toast('已触发画像汇总, 约 30s 后重开本面板查看', 'ok'); }).catch(function (e) { DN.toast('触发失败：' + (e && e.message ? e.message : e), 'err'); }); };
     box.appendChild(gen);
+    renderIndustry(box); // 行业经验: 业务域画像 + 业务流程SOP
+  }
+
+  var SOP_TYPE = { flow: '业务流程', report: '报表开发', caliber: '指标口径', pitfall: '坑/注意', glossary: '术语' };
+
+  // 行业经验区: 行业画像(按业务域) + 业务流程SOP管理(增改/历史/归档) + 教学/归纳入口
+  function renderIndustry(box) {
+    var wrap = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;background:rgba(16,185,129,.07);' });
+    var hd = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;' });
+    hd.appendChild(DN.h('div', { text: '🏭 行业经验 · 业务域知识 + 流程SOP', style: 'flex:1;font-weight:600;font-size:13px;color:var(--text-primary);' }));
+    var teach = DN.h('a', { href: 'javascript:void(0)', text: '+ 教AI业务知识', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' });
+    var digest = DN.h('a', { href: 'javascript:void(0)', text: '↻ 归纳画像', title: '从平台元数据(指标/主题域/血缘/字段描述)归纳行业画像(异步, 约30s后重开查看)', style: 'font-size:12px;color:var(--primary);text-decoration:none;flex:0 0 auto;' });
+    hd.appendChild(teach); hd.appendChild(digest);
+    wrap.appendChild(hd);
+    var pBox = DN.h('div', {}); wrap.appendChild(pBox);
+    wrap.appendChild(DN.h('div', { text: '业务流程 SOP', style: 'font-weight:600;font-size:12.5px;margin:8px 0 4px;color:var(--text-regular);' }));
+    var sBox = DN.h('div', {}); wrap.appendChild(sBox);
+    box.appendChild(wrap);
+    function loadIndustry() {
+      pBox.innerHTML = '';
+      DN.get('/api/ai/agent/industry/profiles').then(function (list) {
+        list = list || [];
+        if (!list.length) { pBox.appendChild(DN.h('div', { text: '（暂无行业画像，点"归纳画像"或每日自动生成）', style: 'font-size:12px;color:var(--text-muted);' })); return; }
+        list.forEach(function (p) {
+          var dom = p.domain === 'global' ? '全局概览' : p.domain;
+          pBox.appendChild(DN.h('details', { style: 'margin-bottom:4px;' }, [
+            DN.h('summary', { text: '🗂 ' + dom, style: 'cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-primary);' }),
+            DN.h('div', { text: p.content || '', style: 'font-size:12px;color:var(--text-secondary);line-height:1.7;white-space:pre-wrap;margin:4px 0 6px;' })
+          ]));
+        });
+      }).catch(function () {});
+      sBox.innerHTML = '';
+      DN.get('/api/ai/agent/industry/sops').then(function (list) {
+        list = list || [];
+        if (!list.length) { sBox.appendChild(DN.h('div', { text: '（暂无SOP，点"+教AI业务知识"录入，或AI完成业务流后自动沉淀）', style: 'font-size:12px;color:var(--text-muted);' })); return; }
+        list.forEach(function (s) { sBox.appendChild(sopRow(s, loadIndustry)); });
+      }).catch(function () {});
+    }
+    digest.onclick = function () { DN.post('/api/ai/agent/industry/digest/run', {}).then(function () { DN.toast('已触发行业画像归纳, 约30s后重开查看', 'ok'); }).catch(function (e) { DN.toast('触发失败：' + (e && e.message ? e.message : e), 'err'); }); };
+    teach.onclick = function () { sopEditor(null, loadIndustry); };
+    loadIndustry();
+  }
+
+  function sopRow(s, reload) {
+    var row = DN.h('div', { style: 'border:1px solid var(--divider);border-radius:var(--radius);padding:6px 8px;margin-bottom:5px;background:var(--bg-card);' });
+    var top = DN.h('div', { style: 'display:flex;align-items:center;gap:6px;' });
+    top.appendChild(DN.h('span', { text: SOP_TYPE[s.sopType] || '经验', style: 'flex:0 0 auto;font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(16,185,129,.15);color:#0a7d54;' }));
+    top.appendChild(DN.h('span', { text: (s.domain && s.domain !== 'global' ? s.domain + ' · ' : '') + (s.title || ''), title: s.title, style: 'flex:1;font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }));
+    if (s.status === 'draft') top.appendChild(DN.h('span', { text: '草稿', style: 'flex:0 0 auto;font-size:10px;color:var(--warning-text,#b97e00);' }));
+    row.appendChild(top);
+    var act = DN.h('div', { style: 'display:flex;gap:10px;margin-top:4px;' });
+    function lnk(t, fn) { var a = DN.h('a', { href: 'javascript:void(0)', text: t, style: 'font-size:11px;color:var(--text-muted);text-decoration:none;' }); a.onclick = fn; return a; }
+    act.appendChild(lnk('查看/编辑', function () { sopEditor(s, reload); }));
+    act.appendChild(lnk('历史', function () { sopHistory(s.id); }));
+    act.appendChild(lnk('归档', function () { DN.confirm('归档该SOP？归档后不再注入。', { title: '归档SOP' }).then(function (ok) { if (!ok) return; DN.post('/api/ai/agent/industry/sop/' + s.id + '/archive', {}).then(function () { DN.toast('已归档', 'ok'); reload && reload(); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); }); }); }));
+    row.appendChild(act);
+    return row;
+  }
+
+  // SOP 编辑/新建浮层
+  function sopEditor(s, onSaved) {
+    var isNew = !s;
+    var ov = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;' });
+    var panel = DN.h('div', { style: 'background:var(--bg-card);border-radius:var(--radius-lg);padding:16px;width:min(560px,92vw);max-height:88vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.25);' });
+    panel.appendChild(DN.h('div', { text: isNew ? '教 AI 业务知识 · 新建SOP' : '编辑业务流程SOP', style: 'font-weight:700;font-size:15px;margin-bottom:12px;' }));
+    function field(label, el) { var w = DN.h('div', { style: 'margin-bottom:10px;' }); w.appendChild(DN.h('div', { text: label, style: 'font-size:12px;color:var(--text-muted);margin-bottom:3px;' })); w.appendChild(el); return w; }
+    var inDomain = DN.h('input', { class: 'dn-input', value: s ? (s.domain || '') : '', placeholder: '业务域，如 销售/库存/财务/会员 (留空=通用)', style: 'width:100%;box-sizing:border-box;' });
+    var inType = DN.h('select', { class: 'dn-input', style: 'width:100%;box-sizing:border-box;' });
+    Object.keys(SOP_TYPE).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = SOP_TYPE[k]; if (s && s.sopType === k) o.selected = true; inType.appendChild(o); });
+    var inTitle = DN.h('input', { class: 'dn-input', value: s ? (s.title || '') : '', placeholder: '标题，如 "日销售汇总报表开发流程"', style: 'width:100%;box-sizing:border-box;' });
+    var inTrig = DN.h('input', { class: 'dn-input', value: s ? (s.triggerHint || '') : '', placeholder: '触发词/适用场景(便于AI召回)，如 销售日报 GMV 同比', style: 'width:100%;box-sizing:border-box;' });
+    var inContent = DN.h('textarea', { class: 'dn-input', placeholder: '标准步骤/口径/SQL模板/注意事项(Markdown)。\n例:\n1. 源表: ods_xxx\n2. 加工: 关联维表→按日聚合→写 dws_xxx\n3. 口径: GMV=实付金额求和, 含退款剔除\n4. 坑: 时区/退款剔除', style: 'width:100%;box-sizing:border-box;min-height:180px;font-family:ui-monospace,monospace;font-size:12px;' });
+    if (s && s.content) inContent.value = s.content;
+    if (isNew) { panel.appendChild(field('业务域', inDomain)); panel.appendChild(field('类型', inType)); }
+    panel.appendChild(field('标题', inTitle));
+    panel.appendChild(field('内容(标准步骤/口径)', inContent));
+    panel.appendChild(field('触发词(召回用)', inTrig));
+    var bar = DN.h('div', { style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:8px;' });
+    var cancel = DN.h('button', { class: 'btn btn-sm', text: '取消' });
+    var save = DN.h('button', { class: 'btn btn-sm btn-primary', text: '保存', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
+    cancel.onclick = function () { ov.remove(); };
+    ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+    save.onclick = function () {
+      var title = (inTitle.value || '').trim(), content = (inContent.value || '').trim();
+      if (!title || !content) { DN.toast('标题与内容必填', 'warn'); return; }
+      save.disabled = true; save.textContent = '保存中…';
+      var p = isNew
+        ? DN.post('/api/ai/agent/industry/sop', { domain: (inDomain.value || '').trim(), type: inType.value, title: title, content: content, trigger: (inTrig.value || '').trim() })
+        : DN.post('/api/ai/agent/industry/sop/' + s.id, { title: title, content: content, op: 'edit' });
+      p.then(function () { DN.toast('已保存', 'ok'); ov.remove(); onSaved && onSaved(); })
+       .catch(function (e) { DN.toast('保存失败：' + (e && e.message ? e.message : e), 'err'); save.disabled = false; save.textContent = '保存'; });
+    };
+    bar.appendChild(cancel); bar.appendChild(save); panel.appendChild(bar);
+    ov.appendChild(panel); document.body.appendChild(ov);
+    setTimeout(function () { try { (isNew ? inTitle : inContent).focus(); } catch (e) {} }, 60);
+  }
+
+  // SOP 版本历史浮层
+  function sopHistory(id) {
+    DN.get('/api/ai/agent/industry/sop/' + id + '/history').then(function (list) {
+      list = list || [];
+      var ov = DN.h('div', { style: 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;' });
+      var panel = DN.h('div', { style: 'background:var(--bg-card);border-radius:var(--radius-lg);padding:16px;width:min(560px,92vw);max-height:88vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.25);' });
+      panel.appendChild(DN.h('div', { text: '版本历史', style: 'font-weight:700;font-size:15px;margin-bottom:12px;' }));
+      if (!list.length) panel.appendChild(DN.h('div', { text: '（无历史）', style: 'font-size:12px;color:var(--text-muted);' }));
+      list.forEach(function (h) {
+        var row = DN.h('div', { style: 'border:1px solid var(--divider);border-radius:var(--radius);padding:6px 8px;margin-bottom:6px;' });
+        row.appendChild(DN.h('div', { style: 'display:flex;gap:8px;align-items:center;', }, [
+          DN.h('span', { text: 'v' + h.version + ' · ' + (h.op || '') + ' · ' + fmtTime(h.snapshotAt), style: 'flex:1;font-size:11px;color:var(--text-muted);' }),
+          (function () { var a = DN.h('a', { href: 'javascript:void(0)', text: '回滚到此版', style: 'font-size:11px;color:var(--primary);text-decoration:none;' }); a.onclick = function () { DN.post('/api/ai/agent/industry/sop/' + id + '/rollback', { version: h.version }).then(function () { DN.toast('已回滚', 'ok'); ov.remove(); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); }); }; return a; })()
+        ]));
+        row.appendChild(DN.h('div', { text: h.content || '', style: 'font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.6;max-height:120px;overflow:auto;margin-top:4px;' }));
+        panel.appendChild(row);
+      });
+      var close = DN.h('button', { class: 'btn btn-sm', text: '关闭', style: 'margin-top:6px;' }); close.onclick = function () { ov.remove(); };
+      panel.appendChild(close); ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+      ov.appendChild(panel); document.body.appendChild(ov);
+    }).catch(function (e) { DN.toast('加载历史失败：' + (e && e.message ? e.message : e), 'err'); });
   }
   function renderMemories(body) {
     body.innerHTML = '';

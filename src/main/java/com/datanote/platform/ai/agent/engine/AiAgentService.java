@@ -47,6 +47,7 @@ public class AiAgentService {
     private final com.datanote.platform.audit.AuditService auditService;
     private final ApprovalGate approvalGate;
     private final AiProfileService aiProfileService;
+    private final IndustryKnowledgeService industryKnowledgeService;
     private final AiMemoryService aiMemoryService;
     private final DnAiApprovalMapper approvalMapper;
     private final ContextCompressorService contextCompressor;
@@ -211,6 +212,7 @@ public class AiAgentService {
         String filesText = buildFilesText(ctx == null ? null : ctx.getUserName()); // 已上传文件清单(让 agent 感知, 可 file_read)
         String userProfileText = aiProfileService.userProfileText(ctx == null ? null : ctx.getUserName()); // 长久记忆·用户画像(隔离)
         String projectProfileText = aiProfileService.projectProfileText(); // 长久记忆·项目画像(全局)
+        String industryText = buildIndustryText(userMessage); // 行业经验: 行业画像(相关业务域) + 业务流程SOP, 引导小白准确完成业务流/报表
         boolean first = true;
         IterationBudget budget = new IterationBudget(maxProductiveSteps);
         int iter = 0;
@@ -254,7 +256,7 @@ public class AiAgentService {
                 st.trace.append("【收尾提示】已接近本轮步数上限, 请勿再发起新查询; 基于现有已掌握信息直接给出最终中文答复; 若确有未完成项, 在答复中说明进度并提示用户回复\"继续\"推进。\n");
             }
             String planText = live == null ? null : renderPlan(live.getPlanJson());
-            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText);
+            String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText, industryText);
             String userPrompt = first
                     ? userMessage
                     : "请根据上面的『已执行步骤与工具结果』继续：若仍需信息就只输出一个 <tool_call>，否则直接给出最终中文答复（不要再输出 tool_call）。";
@@ -269,7 +271,7 @@ public class AiAgentService {
             // 反应式超窗恢复: 若报上下文超长, 强制压缩后重试一次(借鉴 hermes context overflow 压缩重试)
             if (isAiError(raw) && ErrorClassifier.classify(raw) == ErrorClassifier.Action.CONTEXT_OVERFLOW
                     && contextCompressor.forceCompress(st, userMessage)) {
-                context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText);
+                context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText, industryText);
                 raw = callLlmWithRetry(userPrompt, context);
             }
             long latency = System.currentTimeMillis() - t0;
@@ -291,7 +293,7 @@ public class AiAgentService {
                 if (draft == null || draft.trim().isEmpty()) {
                     String reAsk = callLlmWithRetry(
                             "请直接面向用户给出最终中文答复(结论+关键信息, 有下载链接请用 [文件名](URL) 给出), 不要只写思考过程, 不要再调用工具。",
-                            promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText));
+                            promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, planText, filesText, userProfileText, projectProfileText, industryText));
                     draft = AgentTextUtil.cleanFinal(reAsk);
                     if (draft == null || draft.trim().isEmpty()) draft = "已完成。如需更多信息或具体数据/下载，请告诉我。";
                 }
@@ -601,7 +603,7 @@ public class AiAgentService {
                 st.done = true; st.exitReason = "WALLCLOCK_EXHAUSTED";
                 newSteps.add(writeStep(st, "FINAL", "assistant", st.finalAnswer, null, null, null, null, "ok", null, true, "LOW", null));
             } else {
-                String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, null, filesText, userProfileText, projectProfileText);
+                String context = promptBuilder.build(userMessage, manifest, st.trace.toString(), today, bizCtxText, ragText, memoryText, null, filesText, userProfileText, projectProfileText, industryText);
                 String raw = callLlmWithRetry(
                         "已达步数上限，请基于以上已获取的信息直接给出最终中文答复，不要再调用工具。", context);
                 String think = AgentTextUtil.extractThink(raw);
@@ -1389,6 +1391,19 @@ public class AiAgentService {
         sb.append("回答时优先围绕该情境；如涉及具体表/规则/任务，在结论中用 [表:库.表] / [规则:#id] / [任务:#id] 标记以便用户一键跳转。");
         String s = sb.toString().trim();
         return s.isEmpty() ? null : AgentTextUtil.sanitize(s);
+    }
+
+    /** 行业经验注入: 行业画像(全局概览+与问题相关业务域) + 相关业务流程SOP, 控 token; 引导小白准确完成业务流/报表。 */
+    private String buildIndustryText(String query) {
+        try {
+            String prof = industryKnowledgeService.industryProfileText(query);
+            String sop = industryKnowledgeService.sopText(query, 1800);
+            if (prof == null && sop == null) return null;
+            StringBuilder sb = new StringBuilder();
+            if (prof != null) sb.append(prof).append("\n\n");
+            if (sop != null) sb.append("【相关业务流程SOP(可照做的标准步骤)】\n").append(sop);
+            return sb.toString().trim();
+        } catch (Exception e) { return null; }
     }
 
     /** 资产 RAG + 文档知识库 RAG 合并注入首轮 prompt(文档按发起人 owner 隔离)。 */

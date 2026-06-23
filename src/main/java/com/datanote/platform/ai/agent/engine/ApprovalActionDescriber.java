@@ -17,6 +17,7 @@ public final class ApprovalActionDescriber {
     /** 写工具 → 中文动作名 */
     private static final Map<String, String> LABEL = new LinkedHashMap<>();
     static {
+        LABEL.put("teach_industry", "沉淀业务流程SOP/行业经验");
         LABEL.put("create_ods_table", "同步接入到数仓ODS层");
         LABEL.put("run_ods_task", "运行ODS同步·拉数");
         LABEL.put("create_sync_job", "新建数据同步任务");

@@ -24,6 +24,7 @@ public class DailyDigestScheduler {
 
     private final DnAiProjectProfileMapper projectProfileMapper;
     private final AiProfileService profileService;
+    private final IndustryKnowledgeService industryService;
 
     @javax.annotation.Resource(name = "aiDigestExecutor")
     private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor;
@@ -64,6 +65,8 @@ public class DailyDigestScheduler {
             executor.execute(() -> {
                 try { profileService.runDailyDigest(); }
                 catch (Exception e) { log.warn("[digest] 每日汇总执行异常", e); }
+                try { industryService.digestIndustryProfiles(); } // 行业画像: 元数据归纳 + 各业务域经验蒸馏
+                catch (Exception e) { log.warn("[digest] 行业画像蒸馏异常", e); }
             });
         } catch (Exception rejected) {
             log.warn("[digest] 执行器忙, 跳过本次(下次再领): {}", rejected.getMessage());
