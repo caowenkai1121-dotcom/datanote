@@ -1445,6 +1445,7 @@
       _kbBound = true;
       document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { var el = document.getElementById('aiAgentRoot'); if (el && el.offsetParent !== null && inputEl) { e.preventDefault(); inputEl.focus(); } }
+        if (e.key === '?' && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { var rt = document.getElementById('aiAgentRoot'); if (rt && rt.offsetParent !== null) DN.toast('快捷键: Ctrl+K 聚焦输入 · ↑ 调出上条 · @ 引用文件 · Esc 关预览', 'info'); }
         else if (e.key === 'Escape' && document.getElementById('aiPreviewPanel')) { closePreview(); } // Esc 关预览
       });
       document.addEventListener('visibilitychange', function () { if (!document.hidden && _origTitle != null) { document.title = _origTitle; _origTitle = null; } });
