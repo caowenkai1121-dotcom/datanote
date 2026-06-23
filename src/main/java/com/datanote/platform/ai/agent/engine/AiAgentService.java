@@ -1167,7 +1167,7 @@ public class AiAgentService {
                 if (s != null && s.getContent() != null) {
                     // 最近一轮答复(i==0, prior 按 seq 降序)给足额度: 多层设计/方案常达数千字,
                     // 砍到 300 字会丢失上一轮产出 → 用户说"执行/继续"时 agent 无据可依而跑偏; 更早两条仍摘要
-                    int lim = (i == 0) ? 3000 : 300;
+                    int lim = (i == 0) ? 8000 : (i == 1 ? 1500 : 300); // 最近一轮给足(分层设计/报告常数千字), 倒二轮中量, 更早摘要
                     h.append("- 先前答复: ").append(cap(s.getContent(), lim)).append('\n');
                 }
             }
@@ -1194,7 +1194,7 @@ public class AiAgentService {
                 if (s == null || !"SKILL_CALL".equals(s.getStepType()) || s.getSkillName() == null) continue;
                 h.append("- 工具 ").append(s.getSkillName()).append(" → ")
                         .append(s.getResultStatus() == null ? "" : s.getResultStatus());
-                if (s.getResultData() != null) h.append(": ").append(cap(s.getResultData(), 400));
+                if (s.getResultData() != null) h.append(": ").append(cap(s.getResultData(), 1200)); // 字段清单/血缘等结构化结果 400 字常截断, 放宽防续跑信息不全
                 h.append('\n');
                 any = true;
             }
