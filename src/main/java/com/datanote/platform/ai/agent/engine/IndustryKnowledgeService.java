@@ -289,7 +289,7 @@ public class IndustryKnowledgeService {
                         + "基于该域的核心表/字段、相关指标口径、已沉淀业务流程SOP, 蒸馏成简明中文经验(≤" + PROFILE_CAP + "字), 覆盖: "
                         + "该域核心实体与常用表、关键指标与口径、标准业务流程/加工链路(分层)、报表开发要点、已知坑与注意事项。"
                         + "务实可操作, 面向小白。只输出正文, 不含密钥。\n\n【核心表/字段】\n" + cap(material, 4000)
-                        + "\n\n【相关指标口径】\n" + cap(metricMaterial, 1500)
+                        + "\n\n【相关指标口径】\n" + cap(domainMetricMaterial(name, metricMaterial), 1500)
                         + "\n\n【已沉淀SOP】\n" + (sopMat == null ? "(无)" : cap(sopMat, 2000));
                 String distilled = distill(prompt);
                 if (distilled != null) { upsertProfile(PREFIX + name, cap(distilled, PROFILE_CAP)); done++; }
@@ -317,6 +317,25 @@ public class IndustryKnowledgeService {
             }
             return sb.toString();
         } catch (Exception e) { return "(指标读取失败)"; }
+    }
+
+    /** 该业务域相关指标(名称/分类/标签匹配域名), 缺则回退全局指标素材 —— 提升口径准确性。 */
+    private String domainMetricMaterial(String domain, String fallback) {
+        try {
+            List<DnMetric> ms = metricMapper.selectList(new QueryWrapper<DnMetric>()
+                    .and(w -> w.like("metric_name", domain).or().like("category", domain).or().like("tags", domain))
+                    .orderByDesc("updated_at").last("LIMIT 40"));
+            if (ms == null || ms.isEmpty()) return fallback;
+            StringBuilder sb = new StringBuilder();
+            for (DnMetric m : ms) {
+                sb.append("- ").append(nz(m.getMetricName()));
+                if (notBlank(m.getMetricCode())) sb.append("[").append(m.getMetricCode()).append("]");
+                if (notBlank(m.getCalcFormula())) sb.append(" 口径=").append(cap(m.getCalcFormula(), 160));
+                if (notBlank(m.getUnit())) sb.append(" 单位=").append(m.getUnit());
+                sb.append('\n');
+            }
+            return sb.toString();
+        } catch (Exception e) { return fallback; }
     }
 
     private String domainMaterial(String domainName, List<DnTableMeta> tables) {
