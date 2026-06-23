@@ -247,6 +247,7 @@
   function dataGridCard(p) {
     var pv = p.pv;
     var rows = pv.rows || [], cols = pv.columns || [];
+    var view = rows.slice(); // 当前显示顺序(随排序变), 导出跟随所见
     var title = '📋 ' + (p.db ? p.db + '.' : '') + (p.table || '表') + ' 数据预览（' + (pv.returned != null ? pv.returned : rows.length) + ' 行）';
     var card = DN.h('div', { style: 'margin:8px 0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;' });
     var hdr = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-main);border-bottom:1px solid var(--divider);' }, [
@@ -257,7 +258,7 @@
       exp.onclick = function () {
         function esc(v) { v = (v == null ? '' : String(v)); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
         var lines = [cols.map(esc).join(',')];
-        rows.forEach(function (r) { lines.push((Array.isArray(r) ? r : cols.map(function (c) { return r[c]; })).map(esc).join(',')); });
+        view.forEach(function (r) { lines.push((Array.isArray(r) ? r : cols.map(function (c) { return r[c]; })).map(esc).join(',')); });
         var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
         var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (p.table || 'data') + '.csv'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
       };
@@ -266,7 +267,7 @@
       md.onclick = function () {
         function c(v) { return String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\n/g, ' '); }
         var L = ['| ' + cols.map(c).join(' | ') + ' |', '| ' + cols.map(function () { return '---'; }).join(' | ') + ' |'];
-        rows.forEach(function (r) { L.push('| ' + (Array.isArray(r) ? r : cols.map(function (k) { return r[k]; })).map(c).join(' | ') + ' |'); });
+        view.forEach(function (r) { L.push('| ' + (Array.isArray(r) ? r : cols.map(function (k) { return r[k]; })).map(c).join(' | ') + ' |'); });
         if (window.DN && DN.copy) DN.copy(L.join('\n')); // 带 execCommand 降级, 兼容旧浏览器
       };
       hdr.appendChild(md);
@@ -297,6 +298,7 @@
       ths.forEach(function (th, i) { var base = String(cols[i]); th.textContent = base + (sort.idx === i ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''); });
       var data = rows.slice();
       if (sort.idx >= 0) data.sort(function (r1, r2) { return cmp((r1 || [])[sort.idx], (r2 || [])[sort.idx]) * sort.dir; });
+      view = data; // 导出跟随当前排序
       tbody.innerHTML = '';
       data.forEach(function (row, ri) {
         var tr = DN.h('tr', {});
