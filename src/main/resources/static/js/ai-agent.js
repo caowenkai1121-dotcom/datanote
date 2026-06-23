@@ -1270,7 +1270,7 @@
     if (!fileListEl) return;
     DN.get('/api/ai/agent/files').then(function (list) {
       fileListEl.innerHTML = '';
-      var arr = list || [];
+      var arr = (list || []).filter(function (f) { return f && f.source !== 'agent'; }); // 只展示用户上传, AI生成的artifact不混入(在对话卡片里看)
       if (!arr.length) { fileListEl.appendChild(DN.h('div', { text: '暂无文件。上传后在此查看与下载。', style: 'color:var(--text-muted);font-size:12px;line-height:1.8;' })); return; }
       arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
       // 文档异步索引中: 单次延迟刷新拿到最终状态(终态后不再轮询)
