@@ -765,6 +765,14 @@ public class AiAgentService {
             resp.put("steps", new ArrayList<>());
             return resp;
         }
+        // 会话级互斥(与 run() 对称): resume 也持锁, 防与 run/approveAllAndContinue/driveAutonomous 并发致 nextSeq 竞态/seq 重复/快照不一致
+        java.util.concurrent.locks.ReentrantLock _lk = sessionLock(sessionId);
+        if (!_lk.tryLock()) {
+            resp.put("sessionId", sessionId); resp.put("status", "running");
+            resp.put("finalAnswer", "该会话正在执行中, 请稍候再试。"); resp.put("steps", new ArrayList<>());
+            return resp;
+        }
+        try {
         List<DnAiApproval> approved = approvalMapper.selectList(new QueryWrapper<DnAiApproval>()
                 .eq("session_id", sessionId).eq("status", "approved").isNull("executed_at")
                 .orderByAsc("step_seq").orderByAsc("id"));
@@ -895,6 +903,7 @@ public class AiAgentService {
         resp.put("finalAnswer", st.finalAnswer);
         resp.put("steps", stepsToDto(newSteps));
         return resp;
+        } finally { _lk.unlock(); }
     }
 
     /**
