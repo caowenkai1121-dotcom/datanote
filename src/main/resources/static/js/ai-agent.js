@@ -16,6 +16,7 @@
   var _previewW = '46%';   // 预览面板上次宽度(跨打开记忆)
   var _lastSent = '';      // 上一条发送的消息(↑ 调出)
   var _userFiles = [];     // 已上传文件名(供输入框 @ 补全)
+  var _mentionDD = null;   // 当前 @ 候选弹层(回车选首项用)
   var flowEl = null, inputEl = null, sendBtn = null, inputBarEl = null, built = false;
 
   function groupColor(g) {
@@ -684,8 +685,7 @@
   // 输入框 @ 补全已上传文件名: 输入 @ + 关键词 → 弹文件名候选, 点选插入(agent 据 filesText 解析 fileId)
   function setupMention() {
     if (!inputEl || !inputBarEl) return;
-    var dd = null;
-    function closeDD() { if (dd) { dd.remove(); dd = null; } }
+    function closeDD() { if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } }
     inputEl.addEventListener('input', function () {
       var val = inputEl.value, pos = inputEl.selectionStart;
       var m = val.slice(0, pos).match(/@([^\s@]*)$/);
@@ -694,22 +694,24 @@
       var matches = _userFiles.filter(function (n) { return n.toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
       closeDD();
       if (!matches.length) return;
-      dd = DN.h('div', { style: 'position:absolute;bottom:100%;left:0;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:220px;overflow:auto;z-index:20;min-width:220px;' });
+      var dd = DN.h('div', { style: 'position:absolute;bottom:100%;left:0;margin-bottom:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:220px;overflow:auto;z-index:20;min-width:220px;' });
+      function insert(n) {
+        var start = pos - m[0].length;
+        inputEl.value = val.slice(0, start) + '@' + n + ' ' + val.slice(pos);
+        closeDD(); inputEl.focus();
+        var np = start + n.length + 2; try { inputEl.setSelectionRange(np, np); } catch (e2) {}
+      }
+      dd._first = function () { insert(matches[0]); }; // 回车选首项
       matches.forEach(function (n) {
         var it = DN.h('div', { text: '📎 ' + n, style: 'padding:6px 10px;cursor:pointer;font-size:12.5px;white-space:nowrap;' });
         it.onmouseenter = function () { it.style.background = 'var(--bg-hover, rgba(0,0,0,.05))'; };
         it.onmouseleave = function () { it.style.background = ''; };
-        it.onmousedown = function (e) { // mousedown 先于 blur
-          e.preventDefault();
-          var start = pos - m[0].length;
-          inputEl.value = val.slice(0, start) + '@' + n + ' ' + val.slice(pos);
-          closeDD(); inputEl.focus();
-          var np = start + n.length + 2; try { inputEl.setSelectionRange(np, np); } catch (e2) {}
-        };
+        it.onmousedown = function (e) { e.preventDefault(); insert(n); }; // mousedown 先于 blur
         dd.appendChild(it);
       });
       inputBarEl.style.position = inputBarEl.style.position || 'relative';
       inputBarEl.appendChild(dd);
+      _mentionDD = dd;
     });
     inputEl.addEventListener('blur', function () { setTimeout(closeDD, 160); });
     inputEl.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDD(); });
@@ -1399,6 +1401,7 @@
     // 输入区
     inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
     inputEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && _mentionDD && _mentionDD._first) { e.preventDefault(); _mentionDD._first(); return; } // @候选开着: 回车选首项, 不发送
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
       else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条
     });
