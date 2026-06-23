@@ -29,7 +29,7 @@
     b.appendChild(document.createTextNode(text == null ? '' : text));
     if (text && String(text).trim().length > 6) {
       b.appendChild(DN.h('div', { style: 'text-align:right;margin-top:4px;' }, [
-        DN.h('a', { href: 'javascript:void(0)', text: '↻ 重问', title: '把这条问题填回输入框, 可编辑后重新发送', style: 'font-size:11px;color:var(--text-inverse);opacity:.85;text-decoration:underline;', onclick: function () { if (inputEl) { inputEl.value = text; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; inputEl.focus(); } } })
+        DN.h('a', { href: 'javascript:void(0)', text: '↻ 重问', title: '把这条问题填回输入框, 可编辑后重新发送', style: 'font-size:11px;color:var(--text-inverse);opacity:.85;text-decoration:underline;', onclick: function () { if (inputEl) { inputEl.value = text; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; inputEl.focus(); inputEl.dispatchEvent(new Event('input')); } } })
       ]));
     }
     return b;
@@ -1590,7 +1590,7 @@
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && _mentionDD && _mentionDD._first) { e.preventDefault(); _mentionDD._first(); return; } // @候选开着: 回车选首项, 不发送
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
-      else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; } // ↑ 调出上条(先关 @候选)
+      else if (e.key === 'ArrowUp' && !(inputEl.value || '').trim() && _lastSent) { e.preventDefault(); if (_mentionDD) { _mentionDD.remove(); _mentionDD = null; } inputEl.value = _lastSent; inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; inputEl.dispatchEvent(new Event('input')); } // ↑ 调出上条(先关 @候选)
     });
     inputEl.addEventListener('input', function () { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; if (sendBtn && !sending) { sendBtn.disabled = !(inputEl.value || '').trim(); sendBtn.style.opacity = sendBtn.disabled ? '.55' : ''; } });   // 聊天输入随内容自动增高(≤160px)+空则禁用发送
     sendBtn = DN.h('button', { class: 'btn btn-primary', text: '发送', 'data-perm': 'assistant:use', style: 'flex:0 0 auto;height:40px;padding:0 22px;background:var(--primary);color:var(--text-inverse);border-color:var(--primary);opacity:.55;', disabled: 'disabled', onclick: onSendClick });
@@ -1629,7 +1629,7 @@
     var chips = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;' });
     ['看下治理总览', '把某张表用 HTML ER 图展示', '某表质量为什么下降', '用 markdown 出一份数据分析报告', '帮我把某表做成 ODS→DWD→DWS→ADS 分层', '我是新手，带我开发一张销售报表'].forEach(function (t) {
       var needTable = /某表|某张表/.test(t); // 含占位需用户填具体表 → 填入待编辑; 其余直接发送
-      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: needTable ? '点击填入, 把"某表"换成你的表名再发送' : '点击直接发送', style: 'font-size:12px;', onclick: function () { if (!inputEl || sending) return; inputEl.value = t; if (needTable) { inputEl.focus(); inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; var p = t.indexOf('某'); try { inputEl.setSelectionRange(p, p + (t.indexOf('某张表') >= 0 ? 3 : 2)); } catch (e) {} } else send(); } }));
+      chips.appendChild(DN.h('button', { class: 'btn btn-sm', text: t, title: needTable ? '点击填入, 把"某表"换成你的表名再发送' : '点击直接发送', style: 'font-size:12px;', onclick: function () { if (!inputEl || sending) return; inputEl.value = t; if (needTable) { inputEl.focus(); inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px'; inputEl.dispatchEvent(new Event('input')); var p = t.indexOf('某'); try { inputEl.setSelectionRange(p, p + (t.indexOf('某张表') >= 0 ? 3 : 2)); } catch (e) {} } else send(); } }));
     });
     box.appendChild(chips);
     return box;
@@ -1645,7 +1645,7 @@
   global.initAiAssistant = function (opts) {
     if (!built) build();
     if (opts) {
-      if (opts.prefill && inputEl) inputEl.value = opts.prefill;
+      if (opts.prefill && inputEl) { inputEl.value = opts.prefill; inputEl.dispatchEvent(new Event('input')); }
       if (opts.ctx) pendingCtx = opts.ctx;
     }
     setTimeout(function () { if (inputEl) try { inputEl.focus(); } catch (e) {} }, 60);
