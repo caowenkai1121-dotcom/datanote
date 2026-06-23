@@ -353,7 +353,7 @@ public class AiAgentService {
                             catch (Exception e) { fs.get(k).cancel(true); res = AiToolResult.fail("exec_failed", msgOf(e)); }
                             seenCalls.merge(nm + "|" + argsSig(a), 1, Integer::sum);
                             appendTrace(st, nm, c.toString(), res);
-                            if (res.isOk() && res.getData() instanceof Map && (((Map<?, ?>) res.getData()).containsKey("_preview") || ((Map<?, ?>) res.getData()).containsKey("_chart"))) {
+                            if (res.isOk() && res.getData() instanceof Map && (((Map<?, ?>) res.getData()).containsKey("_preview") || ((Map<?, ?>) res.getData()).containsKey("_chart") || ((Map<?, ?>) res.getData()).containsKey("_page"))) {
                                 previews.add((Map<String, Object>) res.getData());
                             }
                             AiTool t = toolRegistry.find(nm);
