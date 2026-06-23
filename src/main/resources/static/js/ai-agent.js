@@ -481,7 +481,7 @@
     var ep = _epoch, sid = sessionId, staled = false; // 捕获发起时纪元与会话: 新会话后旧回调据此丢弃
     function dropStale() { if (!staled) { staled = true; interruptSession(sid); } } // 止损只发一次中断
     setSending(true); // 运行中: 按钮变"⏹ 停止", 回车改走 steer 插话
-    var th = thinking(); flowEl.appendChild(th); scrollBottom();
+    var th = thinking(); flowEl.appendChild(th); scrollBottom(true); // 用户刚发送, 强制滚到底显示思考中
     var s0 = document.getElementById('aiThinkSub'); if (s0) s0.textContent = '· 正在理解你的问题…';
     var stopped = false;
     var t0 = Date.now();
@@ -709,7 +709,7 @@
     return sel;
   }
 
-  function scrollBottom() { if (flowEl) flowEl.scrollTop = flowEl.scrollHeight; }
+  function scrollBottom(force) { if (!flowEl) return; if (force || flowEl.scrollHeight - flowEl.scrollTop - flowEl.clientHeight < 140) flowEl.scrollTop = flowEl.scrollHeight; } // 默认仅近底才滚, 不打断用户上翻阅读; force=用户主动操作强制滚
 
   // 输入框 @ 补全已上传文件名: 输入 @ + 关键词 → 弹文件名候选, 点选插入(agent 据 filesText 解析 fileId)
   function setupMention() {
@@ -1421,7 +1421,7 @@
     // 回到底部浮钮: 用户上滚查看历史时出现, 点击回到最新
     rightCol.style.position = rightCol.style.position || 'relative';
     var toBottom = DN.h('div', { text: '↓', title: '回到最新', style: 'position:absolute;right:22px;bottom:96px;width:34px;height:34px;border-radius:50%;background:var(--primary);color:var(--text-inverse);display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:18px;z-index:5;' });
-    toBottom.onclick = function () { scrollBottom(); };
+    toBottom.onclick = function () { scrollBottom(true); };
     rightCol.appendChild(toBottom);
     flowEl.addEventListener('scroll', function () {
       var nearBottom = flowEl.scrollHeight - flowEl.scrollTop - flowEl.clientHeight < 120;
