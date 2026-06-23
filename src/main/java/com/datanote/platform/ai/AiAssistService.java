@@ -168,6 +168,14 @@ public class AiAssistService {
             }
             JsonNode root = objectMapper.readTree(responseBody);
 
+            // 成本可观测: 记录 token 用量(Anthropic input/output_tokens; OpenAI prompt/completion_tokens)
+            JsonNode usage = root.get("usage");
+            if (usage != null && log.isInfoEnabled()) {
+                int in = usage.has("input_tokens") ? usage.get("input_tokens").asInt() : (usage.has("prompt_tokens") ? usage.get("prompt_tokens").asInt() : -1);
+                int out = usage.has("output_tokens") ? usage.get("output_tokens").asInt() : (usage.has("completion_tokens") ? usage.get("completion_tokens").asInt() : -1);
+                log.info("[llm] tokens in={} out={}", in, out);
+            }
+
             // Anthropic 格式响应
             JsonNode contentArr = root.get("content");
             if (contentArr != null && contentArr.isArray() && contentArr.size() > 0) {
