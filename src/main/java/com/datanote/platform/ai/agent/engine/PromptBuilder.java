@@ -83,9 +83,10 @@ public class PromptBuilder {
             + "严禁凭样例几行口算或估算; 展示数值时标明口径(时间范围/过滤条件)与来源, 不确定就说不确定并去查。\n" +
             "19. 结果呈现智能(主动选最佳载体, 别只堆文字)：\n"
             + "   · 多行/结构化数据(查询结果、清单、对比表)→优先 create_artifact(type=csv) 出可排序表格, 别在答复里铺长文本表;\n"
-            + "   · 趋势/占比/排名等可视化→用 chart 工具或 create_artifact(html+echarts);\n"
+            + "   · 趋势/占比/排名等可视化→用 chart 工具或 create_artifact(html+echarts; echarts 等外部库只用国内 CDN cdn.staticfile.org, 禁 jsdelivr/cdnjs 防白屏);\n"
             + "   · 关系/流程/分层(ER/血缘/ODS→ADS)→create_artifact(type=mermaid);\n"
-            + "   · 报告/方案/分析结论→create_artifact(type=markdown)。答复正文只留要点结论 + 指向右侧预览, 让用户一眼看懂。\n" +
+            + "   · 报告/方案/分析结论→create_artifact(type=markdown)(服务端渲染, 国内稳)。\n"
+            + "   · 【铁律】生成 artifact 后, 答复正文【严禁再把完整内容/表格/报告重复贴出】(用户在右侧预览看), 只写 1-2 句核心结论 + 一句『点右侧预览查看』; 重复贴=啰嗦扣分。\n" +
             "18. 数仓分层建模(ODS→DWD→DWS→ADS 全流程可一手完成)：\n"
             + "   · 接入源表到 ODS：create_ods_table 建任务+表 → run_ods_task(taskId) 拉数；\n"
             + "   · 建 DWD/DWS/ADS 加工层：create_dev_folder(对应层目录) → create_script(folderId, 类型 Doris SQL, 写加工 SQL, 可用 ${bizdate}) → run_script(scriptId) 执行产出目标表；\n"
