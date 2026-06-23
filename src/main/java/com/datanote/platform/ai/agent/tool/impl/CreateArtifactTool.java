@@ -33,7 +33,8 @@ public class CreateArtifactTool implements AiTool {
                 + " · mermaid: ER图/流程图/时序图/类图(content 填 mermaid 源码, 不含```围栏)\n"
                 + " · code: 代码片段(语法高亮, 另填 language 如 sql/python/java)\n"
                 + " · csv: 表格数据(content 填 CSV 全文, 渲染为可排序表格)\n"
-                + " · json: JSON 数据(语法高亮)\n · svg: 矢量图(content 填 <svg>…</svg>)\n · html: 完整 HTML 文档(自带样式/可引 CDN)\n"
+                + " · json: JSON 数据(语法高亮)\n · svg: 矢量图(content 填 <svg>…</svg>)\n · html: 完整 HTML 文档(自带样式)\n"
+                + "报告/文档优先 markdown(服务端渲染最稳)。html 若引外部库(echarts等), 务必用国内可达 CDN『https://cdn.staticfile.org/...』, 禁用 jsdelivr/cdnjs/unpkg(国内常被墙→白屏)。\n"
                 + "参数 type + title + content(+ language, code时)。返回后只需一句话告诉用户『点右侧预览查看』, 【不要】把源码贴进答复。";
     }
     @Override public String paramsSchemaJson() {
@@ -89,38 +90,25 @@ public class CreateArtifactTool implements AiTool {
             case "html": case "htm":
                 return content; // 完整 HTML 文档原样
             case "mermaid":
+                // 国内可靠 CDN(staticfile/七牛), 替代被墙的 jsdelivr; ESM 动态导入兜底
                 return shell(title, "mermaid",
-                        "<script src=\"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js\"></script>",
+                        "<script src=\"https://cdn.staticfile.org/mermaid/10.6.1/mermaid.min.js\"></script>",
                         "<div class=\"mermaid\">" + esc(content) + "</div>",
-                        "mermaid.initialize({startOnLoad:true,theme:'default',securityLevel:'loose'});");
+                        "try{mermaid.initialize({startOnLoad:true,theme:'default',securityLevel:'loose'});}catch(e){document.querySelector('.mermaid').insertAdjacentHTML('beforebegin','<p style=\\'color:#b91c1c\\'>图表库加载失败(网络受限), 源码如下:</p>');}");
             case "markdown": case "md":
-                return shell(title, "markdown",
-                        "<script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
-                        "<div id=\"md\" class=\"md-body\"></div>\n<script id=\"src\" type=\"text/plain\">" + escScript(content) + "</script>",
-                        "document.getElementById('md').innerHTML=marked.parse(document.getElementById('src').textContent);");
+                // 服务端渲染, 零 CDN 依赖, 国内稳定
+                return shell(title, "markdown", "", "<div class=\"md-body\">" + mdToHtml(content) + "</div>", null);
             case "code":
-                return shell(title, "code · " + (language == null ? "text" : language),
-                        "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css\">"
-                        + "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js\"></script>"
-                        + "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js\"></script>",
-                        "<pre><code class=\"language-" + esc(language == null ? "text" : language) + "\">" + esc(content) + "</code></pre>",
-                        null);
+                return shell(title, "code · " + (language == null ? "text" : language), "",
+                        "<pre><code>" + esc(content) + "</code></pre>", null);
             case "json":
-                return shell(title, "json",
-                        "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css\">"
-                        + "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js\"></script>"
-                        + "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js\"></script>",
-                        "<pre><code class=\"language-json\">" + esc(content) + "</code></pre>",
-                        null);
+                return shell(title, "json", "", "<pre><code>" + esc(content) + "</code></pre>", null);
             case "svg":
                 return shell(title, "svg", "", "<div class=\"svg-box\">" + content + "</div>", null);
             case "csv":
                 return shell(title, "csv", "", csvToTable(content), CSV_SORT_JS);
-            default: // 当作 markdown
-                return shell(title, type,
-                        "<script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
-                        "<div id=\"md\" class=\"md-body\"></div>\n<script id=\"src\" type=\"text/plain\">" + escScript(content) + "</script>",
-                        "document.getElementById('md').innerHTML=marked.parse(document.getElementById('src').textContent);");
+            default: // 当作 markdown(服务端渲染)
+                return shell(title, type, "", "<div class=\"md-body\">" + mdToHtml(content) + "</div>", null);
         }
     }
 
@@ -206,6 +194,82 @@ public class CreateArtifactTool implements AiTool {
             + ".svg-box{display:flex;justify-content:center;padding:10px}.svg-box svg{max-width:100%;height:auto}"
             + ".mermaid{display:flex;justify-content:center}"
             + "@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0;max-width:none}.hd{background:#fff}pre{white-space:pre-wrap}}"; // Ctrl+P 存干净 PDF
+
+    /** 服务端 Markdown→HTML(零 CDN, 自包含; 国内可靠预览)。覆盖标题/列表/表格/代码块/引用/分割线/粗斜体/行内码/链接。 */
+    public static String mdToHtml(String md) {
+        if (md == null) return "";
+        String[] lines = md.replace("\r\n", "\n").replace("\r", "\n").split("\n", -1);
+        StringBuilder out = new StringBuilder();
+        boolean inUl = false, inOl = false;
+        for (int i = 0; i < lines.length; i++) {
+            String ln = lines[i];
+            String t = ln.trim();
+            // 代码块 ```
+            if (t.startsWith("```")) {
+                if (inUl) { out.append("</ul>"); inUl = false; }
+                if (inOl) { out.append("</ol>"); inOl = false; }
+                StringBuilder code = new StringBuilder();
+                i++;
+                while (i < lines.length && !lines[i].trim().startsWith("```")) { code.append(esc(lines[i])).append('\n'); i++; }
+                out.append("<pre><code>").append(code).append("</code></pre>");
+                continue;
+            }
+            // 表格: 当前行含 | 且下一行是分隔(|---|)
+            if (t.contains("|") && i + 1 < lines.length && lines[i + 1].trim().matches("\\|?[\\s:|-]*-[\\s:|-]*\\|?")) {
+                if (inUl) { out.append("</ul>"); inUl = false; }
+                if (inOl) { out.append("</ol>"); inOl = false; }
+                out.append("<table><thead><tr>");
+                for (String c : splitRow(t)) out.append("<th>").append(inline(c.trim())).append("</th>");
+                out.append("</tr></thead><tbody>");
+                i += 2; // 跳过表头与分隔行
+                while (i < lines.length && lines[i].trim().contains("|")) {
+                    out.append("<tr>");
+                    for (String c : splitRow(lines[i].trim())) out.append("<td>").append(inline(c.trim())).append("</td>");
+                    out.append("</tr>"); i++;
+                }
+                i--; out.append("</tbody></table>");
+                continue;
+            }
+            if (t.isEmpty()) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; } continue; }
+            // 分割线
+            if (t.matches("(-{3,}|\\*{3,}|_{3,})")) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; } out.append("<hr>"); continue; }
+            // 标题
+            java.util.regex.Matcher hm = java.util.regex.Pattern.compile("^(#{1,6})\\s+(.*)$").matcher(t);
+            if (hm.matches()) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; }
+                int lv = hm.group(1).length(); out.append("<h").append(lv).append(">").append(inline(hm.group(2))).append("</h").append(lv).append(">"); continue; }
+            // 引用
+            if (t.startsWith("> ")) { if (inUl) { out.append("</ul>"); inUl = false; } if (inOl) { out.append("</ol>"); inOl = false; }
+                out.append("<blockquote>").append(inline(t.substring(2))).append("</blockquote>"); continue; }
+            // 有序列表
+            if (t.matches("\\d+\\.\\s+.*")) { if (inUl) { out.append("</ul>"); inUl = false; } if (!inOl) { out.append("<ol>"); inOl = true; }
+                out.append("<li>").append(inline(t.replaceFirst("\\d+\\.\\s+", ""))).append("</li>"); continue; }
+            // 无序列表
+            if (t.matches("[-*+]\\s+.*")) { if (inOl) { out.append("</ol>"); inOl = false; } if (!inUl) { out.append("<ul>"); inUl = true; }
+                out.append("<li>").append(inline(t.replaceFirst("[-*+]\\s+", ""))).append("</li>"); continue; }
+            // 段落
+            if (inUl) { out.append("</ul>"); inUl = false; }
+            if (inOl) { out.append("</ol>"); inOl = false; }
+            out.append("<p>").append(inline(t)).append("</p>");
+        }
+        if (inUl) out.append("</ul>");
+        if (inOl) out.append("</ol>");
+        return out.toString();
+    }
+    private static String[] splitRow(String row) {
+        String r = row;
+        if (r.startsWith("|")) r = r.substring(1);
+        if (r.endsWith("|")) r = r.substring(0, r.length() - 1);
+        return r.split("\\|", -1);
+    }
+    /** 行内: 先转义, 再处理 行内码 / 粗体 / 斜体 / 链接。 */
+    private static String inline(String s) {
+        String x = esc(s);
+        x = x.replaceAll("`([^`]+)`", "<code>$1</code>");
+        x = x.replaceAll("\\*\\*([^*]+)\\*\\*", "<strong>$1</strong>");
+        x = x.replaceAll("(?<![*\\w])\\*([^*\\n]+)\\*(?![*\\w])", "<em>$1</em>");
+        x = x.replaceAll("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)", "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");
+        return x;
+    }
 
     private static String esc(String s) {
         return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
