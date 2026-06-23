@@ -30,7 +30,11 @@ public class AiProfileService {
     private final DnAiProjectProfileMapper projectProfileMapper;
     private final DnAiMemorySkillMapper memoryMapper;
     private final com.datanote.platform.ai.agent.mapper.DnAiApprovalMapper approvalMapper;
+    private final AiFileService fileService;
     private final AiAssistService aiAssistService;
+
+    @org.springframework.beans.factory.annotation.Value("${datanote.ai.artifact-keep-days:14}")
+    private int artifactKeepDays; // AI 生成文件(artifact/导出)保留天数, 超期每日清理
 
     public static final String GLOBAL = "global";
     private static final int KEEP_PER_OWNER = 80;     // 每用户保留活跃经验上限, 余裁为 archived
@@ -80,6 +84,7 @@ public class AiProfileService {
         }
         try { pruneGlobalStale(); } catch (Exception e) { log.warn("[profile] 全局裁剪失败: {}", e.getMessage()); }
         try { pruneStaleApprovals(); } catch (Exception e) { log.warn("[profile] 清理过期审批失败: {}", e.getMessage()); }
+        try { if (artifactKeepDays > 0) fileService.pruneAgentFilesOlderThan(artifactKeepDays); } catch (Exception e) { log.warn("[profile] 清理AI生成文件失败: {}", e.getMessage()); }
         log.info("[profile] 每日汇总完成: {} 个用户, 耗时 {}ms", owners.size(), System.currentTimeMillis() - t0);
     }
 

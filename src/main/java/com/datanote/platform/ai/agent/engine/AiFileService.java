@@ -103,6 +103,23 @@ public class AiFileService {
         return m;
     }
 
+    /** 清理超期的 AI 生成文件(source=agent; artifact/导出等临时产物), 释放磁盘。返回删除数。 */
+    public int pruneAgentFilesOlderThan(int days) {
+        java.time.LocalDateTime cutoff = LocalDateTime.now().minusDays(days);
+        List<DnAiFile> old = fileMapper.selectList(new QueryWrapper<DnAiFile>()
+                .eq("source", "agent").lt("created_at", cutoff).last("LIMIT 500"));
+        if (old == null || old.isEmpty()) return 0;
+        Path root;
+        try { root = storageRoot(); } catch (IOException e) { return 0; }
+        int n = 0;
+        for (DnAiFile m : old) {
+            try { Path p = root.resolve(m.getStoredName()).normalize(); if (p.startsWith(root)) Files.deleteIfExists(p); } catch (Exception ignore) {}
+            try { fileMapper.deleteById(m.getId()); n++; } catch (Exception ignore) {}
+        }
+        log.info("[file] 清理超期AI生成文件 {} 个(>{}天)", n, days);
+        return n;
+    }
+
     /** 列表(owner 作用域, 匿名看全部)。 */
     public List<DnAiFile> list(String owner) {
         QueryWrapper<DnAiFile> qw = new QueryWrapper<>();
