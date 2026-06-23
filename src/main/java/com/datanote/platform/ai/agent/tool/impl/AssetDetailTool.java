@@ -18,6 +18,7 @@ import java.util.Map;
 public class AssetDetailTool implements AiTool {
 
     private final AssetDetailService assetDetailService;
+    private final com.datanote.platform.ai.agent.engine.AgentAccessChecker accessChecker;
 
     @Override public String name() { return "asset_detail"; }
     @Override public String group() { return "gov"; }
@@ -41,6 +42,7 @@ public class AssetDetailTool implements AiTool {
             // 表不存在: 返回【真实】相近表候选, 让 agent 据此求证/求助, 严禁臆造一个表名
             if (detail == null || detail.get("table") == null) {
                 java.util.List<String> cands = assetDetailService.findSimilarTables(db, table, 8);
+                cands.removeIf(c -> !accessChecker.canAccess(db, c, ctx)); // 过滤无权表, 不向用户暴露其无权访问的表名
                 String msg = "未找到表 " + db + "." + table + "。"
                         + (cands.isEmpty() ? "元数据库中无相近表。请勿臆造表名, 用 semantic_search 检索或 ask_user 向用户澄清。"
                         : "相近的真实表有: " + String.join("、", cands) + "。请确认正确库表名, 或用 ask_user 让用户选择, 切勿臆造。");

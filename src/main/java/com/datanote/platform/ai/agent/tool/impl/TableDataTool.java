@@ -26,6 +26,7 @@ public class TableDataTool implements AiTool {
     private static final int MAX_LIMIT = 50;
 
     private final AssetDetailService assetDetailService;
+    private final com.datanote.platform.ai.agent.engine.AgentAccessChecker accessChecker;
     private final MaskingService maskingService;   // P0: AI 读样例对脱敏列 fail-closed 盖 ***, 防明文泄露
 
     @Override public String name() { return "table_data"; }
@@ -60,6 +61,7 @@ public class TableDataTool implements AiTool {
                 // 表不存在: 给【真实】相近表候选, 让 agent 求证/求助勿臆造; 其它错误如实回传(诚实纪律)
                 if (m.contains("does not exist") || m.contains("doesn't exist") || m.contains("not exist") || m.contains("unknown table") || m.contains("不存在")) {
                     java.util.List<String> cands = assetDetailService.findSimilarTables(db, table, 8);
+                    cands.removeIf(c -> !accessChecker.canAccess(db, c, ctx)); // 过滤无权表
                     String msg = "未找到表 " + db + "." + table + "。"
                             + (cands.isEmpty() ? "元数据库中无相近表。请勿臆造, 用 semantic_search 检索或 ask_user 澄清。"
                             : "相近的真实表有: " + String.join("、", cands) + "。请确认正确库表名或 ask_user 让用户选择, 切勿臆造数据。");

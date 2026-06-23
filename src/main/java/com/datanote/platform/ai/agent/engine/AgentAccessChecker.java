@@ -42,6 +42,16 @@ public class AgentAccessChecker {
         return ok ? null : ("当前用户无数据资源 " + resourceId + " 的访问权限(请联系管理员在数据授权中开放)");
     }
 
+    /** 单表数据级可访问判定(供工具过滤"相近表候选", 防把用户无权的表暴露给其探测)。无库表信息→放行。 */
+    public boolean canAccess(String db, String table, AgentContext ctx) {
+        if (db == null || db.isEmpty() || table == null || table.isEmpty()) return true;
+        return dataAclService.canAccessAs(
+                ctx == null ? null : ctx.getUserName(),
+                ctx == null ? null : ctx.getRoles(),
+                ctx == null ? null : ctx.getPerms(),
+                "TABLE", db + "." + table);
+    }
+
     /** 先从 args 取, 缺则从 bizCtx 回退(与 AgentArgs 缺参回退一致)。 */
     private String pick(JsonNode args, AgentContext ctx, String key) {
         if (args != null && args.hasNonNull(key)) {
