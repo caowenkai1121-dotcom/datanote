@@ -1399,7 +1399,7 @@
     });
 
     // 输入区
-    inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…', rows: '2' });
+    inputEl = DN.h('textarea', { placeholder: '问我：看下治理总览；某表质量为什么下降… (输入 @ 可引用已上传文件)', rows: '2' });
     inputEl.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && _mentionDD && _mentionDD._first) { e.preventDefault(); _mentionDD._first(); return; } // @候选开着: 回车选首项, 不发送
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (sending) steer(); else send(); } // 运行中回车=插话引导
