@@ -279,7 +279,7 @@
     var thr = DN.h('tr', {});
     var sort = { idx: -1, dir: 1 }; // 点列头排序: idx=列, dir=1升/-1降
     var ths = [];
-    thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;z-index:1;color:var(--text-muted);' }));
+    thr.appendChild(DN.h('th', { text: '#', style: 'border:1px solid var(--border);padding:5px 8px;background:var(--bg-main);font-weight:600;position:sticky;top:0;left:0;z-index:2;color:var(--text-muted);' }));
     cols.forEach(function (c, ci) {
       var th = DN.h('th', { title: '点击按此列排序', style: 'border:1px solid var(--border);padding:5px 9px;text-align:left;background:var(--bg-main);font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;' });
       th.textContent = String(c);
@@ -302,7 +302,7 @@
       tbody.innerHTML = '';
       data.forEach(function (row, ri) {
         var tr = DN.h('tr', {});
-        tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;' }));
+        tr.appendChild(DN.h('td', { text: String(ri + 1), style: 'border:1px solid var(--border);padding:5px 8px;color:var(--text-muted);text-align:right;position:sticky;left:0;background:var(--bg-card);z-index:1;' }));
         (row || []).forEach(function (v) { tr.appendChild(DN.h('td', { text: v == null ? '∅' : String(v), title: v == null ? '' : String(v), style: 'border:1px solid var(--border);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;' + (v == null ? 'color:var(--text-muted);' : '') })); });
         tbody.appendChild(tr);
       });
