@@ -137,7 +137,7 @@ public class AnalysisQueryService {
         // 无 LIMIT 的查询自动补 LIMIT, 让 Doris 提前短路减少全表扫描(聚合查询补了也无害; 已有 LIMIT 则不动)
         String execSql = finalSql.trim();
         while (execSql.endsWith(";")) execSql = execSql.substring(0, execSql.length() - 1).trim();
-        if (!execSql.toLowerCase().matches("(?s).*\\blimit\\b.*")) execSql = execSql + " LIMIT " + MAX_ROWS;
+        if (!execSql.toLowerCase().matches("(?s).*\\blimit\\s+\\d.*")) execSql = execSql + " LIMIT " + MAX_ROWS; // 须 limit+数字, 排除字符串/列名里的 limit
 
         // ── 第四层：执行 ────────────────────────────────────────────────────
         SourceRoute route = resolveRoute(db);

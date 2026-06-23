@@ -106,7 +106,7 @@ public class IndustryKnowledgeService {
 
     /** 异步触发行业画像归纳+蒸馏(运维/手动用, 免等每日 tick)。 */
     @org.springframework.scheduling.annotation.Async("aiDigestExecutor")
-    public void digestIndustryProfilesAsync() { digestIndustryProfiles(); }
+    public void digestIndustryProfilesAsync() { try { digestIndustryProfiles(); } finally { bootstrapping = false; } } // finally 复位, 防异常致自举标志永久卡死
 
     private volatile boolean bootstrapping = false; // 自举去重: 防 industry_recall 多次触发重复蒸馏
     /** 首次使用自举: 行业画像为空时自动触发一次归纳(免用户手动点"归纳画像")。 */

@@ -204,15 +204,20 @@ public class CreateArtifactTool implements AiTool {
         for (int i = 0; i < lines.length; i++) {
             String ln = lines[i];
             String t = ln.trim();
-            // 代码块 ```
+            // 代码块 ```: 须有闭合围栏才当代码块, 否则按普通行处理(防未闭合 ``` 吞掉后续全部内容)
             if (t.startsWith("```")) {
-                if (inUl) { out.append("</ul>"); inUl = false; }
-                if (inOl) { out.append("</ol>"); inOl = false; }
-                StringBuilder code = new StringBuilder();
-                i++;
-                while (i < lines.length && !lines[i].trim().startsWith("```")) { code.append(esc(lines[i])).append('\n'); i++; }
-                out.append("<pre><code>").append(code).append("</code></pre>");
-                continue;
+                boolean closed = false;
+                for (int j = i + 1; j < lines.length; j++) { if (lines[j].trim().startsWith("```")) { closed = true; break; } }
+                if (closed) {
+                    if (inUl) { out.append("</ul>"); inUl = false; }
+                    if (inOl) { out.append("</ol>"); inOl = false; }
+                    StringBuilder code = new StringBuilder();
+                    i++;
+                    while (i < lines.length && !lines[i].trim().startsWith("```")) { code.append(esc(lines[i])).append('\n'); i++; }
+                    out.append("<pre><code>").append(code).append("</code></pre>");
+                    continue;
+                }
+                // 无闭合围栏: 落到下方当普通段落渲染(不吞内容)
             }
             // 表格: 当前行含 | 且下一行是分隔(|---|)
             if (t.contains("|") && i + 1 < lines.length && lines[i + 1].trim().matches("\\|?[\\s:|-]*-[\\s:|-]*\\|?")) {
@@ -261,14 +266,25 @@ public class CreateArtifactTool implements AiTool {
         if (r.endsWith("|")) r = r.substring(0, r.length() - 1);
         return r.split("\\|", -1);
     }
-    /** 行内: 先转义, 再处理 行内码 / 粗体 / 斜体 / 链接。 */
+    private static final java.util.regex.Pattern LINK = java.util.regex.Pattern.compile("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)");
+    /** 行内: 先转义, 再处理 行内码 / 粗体 / 斜体 / 链接(协议白名单防 XSS)。 */
     private static String inline(String s) {
         String x = esc(s);
         x = x.replaceAll("`([^`]+)`", "<code>$1</code>");
         x = x.replaceAll("\\*\\*([^*]+)\\*\\*", "<strong>$1</strong>");
         x = x.replaceAll("(?<![*\\w])\\*(?=\\S)([^*\\n]+?)(?<=\\S)\\*(?![*\\w])", "<em>$1</em>"); // 紧邻非空格才算斜体, 避免 a * b 误判
-        x = x.replaceAll("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)", "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");
-        return x;
+        // 链接: 校验协议(拒 javascript:/data:/vbscript:/file: 防 XSS) + href 引号转义
+        java.util.regex.Matcher lm = LINK.matcher(x);
+        StringBuffer sb = new StringBuffer();
+        while (lm.find()) {
+            String text = lm.group(1), url = lm.group(2), low = url.toLowerCase().trim();
+            String rep = (low.startsWith("javascript:") || low.startsWith("data:") || low.startsWith("vbscript:") || low.startsWith("file:"))
+                    ? text // 危险协议: 只留文本, 不渲染链接
+                    : "<a href=\"" + url.replace("\"", "&quot;") + "\" target=\"_blank\" rel=\"noopener\">" + text + "</a>";
+            lm.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(rep));
+        }
+        lm.appendTail(sb);
+        return sb.toString();
     }
 
     private static String esc(String s) {

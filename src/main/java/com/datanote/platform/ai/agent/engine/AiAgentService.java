@@ -1648,8 +1648,8 @@ public class AiAgentService {
     }
 
     /**
-     * 反思自检(借鉴 Reflexion): 仅当本轮已有 ≥2 次工具证据时, 让 LLM 把答复草稿与『已执行步骤与工具结果』
-     * 对齐, 修正未被证据支撑或与证据矛盾的论断(降幻觉); 已严谨则基本保持。单次额外 LLM 调用, 任何错误/空返回退回草稿。
+     * 反思自检(借鉴 Reflexion): 本轮有 ≥1 次工具证据即触发, 让 LLM 把答复草稿与『已执行步骤与工具结果』
+     * 对齐, 修正未被证据支撑或与证据矛盾的论断(降幻觉); 单工具走轻量自检(省token), 多工具走全量逐项核对。单次额外 LLM 调用, 错误/空返回退回草稿。
      */
     private String reflectIfNeeded(String draft, List<DnAiStep> steps, String goal, String manifest,
                                    String trace, String today, String bizCtx, String rag, String memory) {
