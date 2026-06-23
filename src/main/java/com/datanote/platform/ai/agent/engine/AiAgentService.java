@@ -100,7 +100,7 @@ public class AiAgentService {
     @javax.annotation.Resource(name = "aiChildExecutor")
     private org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor parallelExecutor;
     /** 一轮内最多并行执行的工具数(防一次喂太多压垮数仓/池) */
-    private static final int MAX_PARALLEL_TOOLS = 4;
+    private static final int MAX_PARALLEL_TOOLS = 6; // 只读工具基本无竞争, 6 路并行加速长链多查(对数仓/连接池无压力)
     /** 单个并行工具墙钟(秒) */
     private static final long PARALLEL_TOOL_TIMEOUT_SEC = 60;
     /** 不参与并行批的工具(需串行/特殊处理: 求助暂停/委派子代理/排程) */
