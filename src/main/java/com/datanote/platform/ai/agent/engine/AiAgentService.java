@@ -218,6 +218,8 @@ public class AiAgentService {
         java.util.Map<String, Integer> seenCalls = new java.util.HashMap<>(); // 死循环护栏: 工具+参数签名计数
         java.util.Set<String> critiqueNudged = new java.util.HashSet<>();     // CRITIC 自校验: 每类写工具只提示核实一次, 防刷屏
         int[] consecToolFails = {0};                                          // 连续错误熔断(借鉴 Cline): 连续工具失败计数, 成功清零
+        String[] lastReadKey = {null};                                        // 只读复用: 上一步只读调用键(工具+参数)
+        AiToolResult[] lastReadResult = {null};                               // 只读复用: 上一步只读结果; 连续完全相同只读调用(其间无写)直接复用, 防LLM自循环空转
 
         while (budget.remaining() > 0 && iter < HARD_ITER_CAP && System.currentTimeMillis() < runDeadline
                 && !st.done && !st.blocked && !st.awaitingApproval && !st.awaitingInput) {
@@ -503,13 +505,23 @@ public class AiAgentService {
 
             AiToolResult result;
             long e0 = System.currentTimeMillis();
-            try {
-                result = tool.invoke(argsNode, ctx);
-            } catch (Exception ex) {
-                log.warn("工具 {} 执行异常", toolName, ex);
-                result = AiToolResult.fail("exec_failed", msgOf(ex));
+            String readKey = tool.readOnly() ? (toolName + "|" + argsToStr(argsNode)) : null;
+            if (readKey != null && lastReadResult[0] != null && readKey.equals(lastReadKey[0])) {
+                // 连续完全相同的只读调用(其间无写操作): 结果必不变, 复用并提示, 防 LLM 自循环空转烧预算
+                result = lastReadResult[0];
+                st.trace.append("【复用提示】与上一步为完全相同的只读调用 ").append(toolName)
+                        .append(", 结果同上已复用; 请基于现有结果推进, 勿重复同一查询。\n");
+            } else {
+                try {
+                    result = tool.invoke(argsNode, ctx);
+                } catch (Exception ex) {
+                    log.warn("工具 {} 执行异常", toolName, ex);
+                    result = AiToolResult.fail("exec_failed", msgOf(ex));
+                }
             }
             long execLatency = System.currentTimeMillis() - e0;
+            if (!tool.readOnly()) { lastReadKey[0] = null; lastReadResult[0] = null; } // 写后清缓存: 后续只读结果可能已变
+            else if (result.isOk()) { lastReadKey[0] = readKey; lastReadResult[0] = result; }
             if (runningMarkerId != null) try { stepMapper.deleteById(runningMarkerId); } catch (Exception ignore) {}
 
             // 写工具: 补一条结果审计(发起+结果 双流水)
