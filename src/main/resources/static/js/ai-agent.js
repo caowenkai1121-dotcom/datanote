@@ -949,11 +949,12 @@
   function watchAutonomous(id) {
     if (!id || _autoWatch === id) return; // 幂等: 已在监视该会话则不重复启动(防 renderHistory/autoBtn 多入口重复起轮询)
     _autoWatch = id;
-    var ep = _epoch, lastLen = -1;
+    var ep = _epoch, lastLen = -1, fails = 0;
     (function poll() {
       if (ep !== _epoch || _autoWatch !== id) { removeAutoBanner(); return; } // 切会话/开新会话 → 停止监视
       DN.get('/api/ai/agent/session/' + id).then(function (d) {
         if (ep !== _epoch || _autoWatch !== id) { removeAutoBanner(); return; }
+        fails = 0; // 成功一次清零
         var sess = (d && d.session) || {}, steps = (d && d.steps) || [];
         if (steps.length !== lastLen) { lastLen = steps.length; renderHistory(id); } // 仅步数变化才重建, 防闪烁
         var st = sess.status, auton = Number(sess.autonomous) === 1;
@@ -972,7 +973,7 @@
         DN.toast(st === 'done' ? '✅ 自主任务已完成，成品见上方' : ('自主任务结束：' + statusLabel(st)), st === 'done' ? 'ok' : 'warn');
         flashTitle(); // 标签页隐藏时提示自主任务完成
         loadSessions();
-      }).catch(function () { if (ep === _epoch && _autoWatch === id) setTimeout(poll, 5000); });
+      }).catch(function () { if (ep === _epoch && _autoWatch === id) { if (++fails >= 6) { removeAutoBanner(); _autoWatch = null; return; } setTimeout(poll, 5000); } }); // 连续失败(会话被删/服务异常)≥6次停止, 防空转
     })();
   }
 
