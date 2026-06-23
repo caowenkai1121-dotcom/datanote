@@ -657,7 +657,7 @@
       // 选项行
       (q.options || []).forEach(function (o, oi) {
         var selected = !!picks[idx].set[o.label];
-        var row = DN.h('div', { class: 'dn-ai-opt' + (selected ? ' selected' : '') });
+        var row = DN.h('div', { class: 'dn-ai-opt' + (selected ? ' selected' : ''), tabindex: '0', role: 'button' });
         var txt = DN.h('div', { style: 'flex:1;min-width:0;' }, [
           DN.h('div', { text: o.label, style: 'font-size:14px;color:var(--text-primary);font-weight:500;' })
         ]);
@@ -669,11 +669,14 @@
         } else {
           row.appendChild(DN.h('span', { text: String(oi + 1), style: 'flex:0 0 auto;font-size:12px;color:var(--text-muted);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xs);padding:1px 8px;' }));
         }
-        row.onclick = function () {
+        function choose() {
           if (multi) { if (picks[idx].set[o.label]) delete picks[idx].set[o.label]; else picks[idx].set[o.label] = true; }
           else { picks[idx].set = {}; picks[idx].set[o.label] = true; }
           render();
-        };
+        }
+        row.onclick = choose;
+        row.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); } }; // 键盘可达
+        row.style.cursor = 'pointer';
         card.appendChild(row);
       });
 
