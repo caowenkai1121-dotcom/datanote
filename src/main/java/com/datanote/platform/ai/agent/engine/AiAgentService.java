@@ -207,12 +207,23 @@ public class AiAgentService {
         }
         String today = richToday(); // 富日期: 周几 + 本月/上月起止, 助相对日期计算
         String bizCtxText = buildBizCtxText(ctx == null ? null : ctx.getBizCtx());
-        String ragText = buildRagText(userMessage, ctx == null ? null : ctx.getUserName());   // 循环外算一次, 自动 grounding(资产+文档)
-        String memoryText = aiMemoryService.recall(userMessage, ctx == null ? null : ctx.getUserName(), MEM_TOPK); // 自学习记忆召回(只读上下文)
-        String filesText = buildFilesText(ctx == null ? null : ctx.getUserName()); // 已上传文件清单(让 agent 感知, 可 file_read)
-        String userProfileText = aiProfileService.userProfileText(ctx == null ? null : ctx.getUserName()); // 长久记忆·用户画像(隔离)
+        final String _owner = ctx == null ? null : ctx.getUserName();
+        final String _um = userMessage;
+        // 3 个网络重的上下文(RAG/记忆/行业)并行算, 省首轮 ~500-800ms(无相互依赖; 各服务内已有超时, 异常退化为 null)
+        java.util.concurrent.CompletableFuture<String> fRag, fMem, fInd;
+        try {
+            fRag = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildRagText(_um, _owner)), parallelExecutor);
+            fMem = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> aiMemoryService.recall(_um, _owner, MEM_TOPK)), parallelExecutor);
+            fInd = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeStr(() -> buildIndustryText(_um)), parallelExecutor);
+        } catch (java.util.concurrent.RejectedExecutionException rex) { // 池满: 退回串行
+            fRag = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> buildRagText(_um, _owner)));
+            fMem = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> aiMemoryService.recall(_um, _owner, MEM_TOPK)));
+            fInd = java.util.concurrent.CompletableFuture.completedFuture(safeStr(() -> buildIndustryText(_um)));
+        }
+        String filesText = buildFilesText(_owner); // 已上传文件清单(让 agent 感知, 可 file_read) —— 轻量本地查询, 同步
+        String userProfileText = aiProfileService.userProfileText(_owner); // 长久记忆·用户画像(隔离)
         String projectProfileText = aiProfileService.projectProfileText(); // 长久记忆·项目画像(全局)
-        String industryText = buildIndustryText(userMessage); // 行业经验: 行业画像(相关业务域) + 业务流程SOP, 引导小白准确完成业务流/报表
+        String ragText = joinCtx(fRag), memoryText = joinCtx(fMem), industryText = joinCtx(fInd); // 收齐并行结果(30s 兜底)
         boolean first = true;
         IterationBudget budget = new IterationBudget(maxProductiveSteps);
         int iter = 0;
@@ -1406,6 +1417,11 @@ public class AiAgentService {
             if (sop != null) sb.append("【相关业务流程SOP(可照做的标准步骤)】\n").append(sop);
             return sb.toString().trim();
         } catch (Exception e) { return null; }
+    }
+
+    private static String safeStr(java.util.function.Supplier<String> s) { try { return s.get(); } catch (Exception e) { return null; } }
+    private static String joinCtx(java.util.concurrent.CompletableFuture<String> f) {
+        try { return f.get(30, java.util.concurrent.TimeUnit.SECONDS); } catch (Exception e) { return null; }
     }
 
     /** 资产 RAG + 文档知识库 RAG 合并注入首轮 prompt(文档按发起人 owner 隔离)。 */
