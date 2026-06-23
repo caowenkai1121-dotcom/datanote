@@ -49,6 +49,7 @@ public class RunScriptTool implements AiTool {
             }
             String user = ctx != null ? ctx.getUserName() : null;
             com.datanote.domain.orchestration.model.DnTaskExecution exec = taskExecutionService.runScriptManually(scriptId, user);
+            if (exec == null) return AiToolResult.fail("exec_failed", "脚本 " + scriptId + " 执行未返回结果(可能调度未启动或超时), 请稍后用脚本详情核对");
             boolean ok = "SUCCESS".equals(exec.getStatus());
             if (!ok) {
                 String lg = exec.getLog();
