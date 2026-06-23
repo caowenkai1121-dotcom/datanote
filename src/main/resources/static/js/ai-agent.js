@@ -979,7 +979,7 @@
     sending = !!on;
     if (inputEl) inputEl.placeholder = sending
       ? '运行中…回车可补充指引(中途转向)，或点 ⏹ 停止'
-      : '问我：看下治理总览；查 dwd_order 的下游影响；某表质量为什么下降…';
+      : '问我：看下治理总览；某表质量为什么下降… (输入 @ 可引用已上传文件)';
     if (!sendBtn) return;
     sendBtn.disabled = false;
     sendBtn.textContent = sending ? '⏹ 停止' : '发送';
