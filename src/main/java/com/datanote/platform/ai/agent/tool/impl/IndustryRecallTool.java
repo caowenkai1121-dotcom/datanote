@@ -40,8 +40,9 @@ public class IndustryRecallTool implements AiTool {
             String domain = AgentArgs.str(args, "domain");
             List<DnAiIndustrySop> sops = industryKnowledgeService.recallSop(domain, query, 6);
             String profile = industryKnowledgeService.industryProfileText(query == null ? (domain == null ? "" : domain) : query);
+            if (profile == null && sops.isEmpty()) industryKnowledgeService.bootstrapIfEmpty(); // 首次为空: 自动触发归纳, 下次即有料
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("profile", profile == null ? "(暂无行业画像, 可让用户用\"教AI业务知识\"录入或等每日归纳)" : profile);
+            out.put("profile", profile == null ? "(暂无行业画像, 已自动触发后台归纳; 本次先据元数据/用户澄清推进, 稍后会有积累)" : profile);
             List<Map<String, Object>> list = new ArrayList<>();
             for (DnAiIndustrySop s : sops) {
                 Map<String, Object> m = new LinkedHashMap<>();

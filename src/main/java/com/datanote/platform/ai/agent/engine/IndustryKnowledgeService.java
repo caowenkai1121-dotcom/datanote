@@ -108,6 +108,15 @@ public class IndustryKnowledgeService {
     @org.springframework.scheduling.annotation.Async("aiDigestExecutor")
     public void digestIndustryProfilesAsync() { digestIndustryProfiles(); }
 
+    private volatile boolean bootstrapping = false; // 自举去重: 防 industry_recall 多次触发重复蒸馏
+    /** 首次使用自举: 行业画像为空时自动触发一次归纳(免用户手动点"归纳画像")。 */
+    public void bootstrapIfEmpty() {
+        if (bootstrapping || !aiAssistService.isAvailable()) return;
+        try { if (!listIndustryProfiles().isEmpty()) return; } catch (Exception e) { return; }
+        bootstrapping = true;
+        try { digestIndustryProfilesAsync(); } catch (Exception e) { bootstrapping = false; }
+    }
+
     // ============ SOP 召回 ============
     /** 召回 SOP: 按 域 + 关键词命中(标题/触发词/正文), 按命中次数+近因排序。命中 hit_count+1。 */
     public List<DnAiIndustrySop> recallSop(String domain, String query, int topN) {
@@ -289,6 +298,7 @@ public class IndustryKnowledgeService {
             } catch (Exception ex) { log.warn("[industry] 业务域画像蒸馏失败 {}: {}", name, ex.getMessage()); }
         }
         log.info("[industry] 行业画像蒸馏完成: 全局 + {} 个业务域, 耗时 {}ms", done, System.currentTimeMillis() - t0);
+        bootstrapping = false; // 自举完成, 允许后续按需再触发
     }
 
     private String metricMaterial() {
