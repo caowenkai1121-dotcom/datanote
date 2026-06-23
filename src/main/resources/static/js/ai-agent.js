@@ -1111,7 +1111,7 @@
       var allBtn = DN.h('button', { class: 'btn btn-sm', text: '批准并自动批准后续', title: '本任务剩余写操作免逐个审批, 一路执行到底(仍受功能/数据权限拦截)', 'data-perm': 'assistant:approve' });
       var autoBtn = DN.h('button', { class: 'btn btn-sm', text: '🚀 自主执行', title: '无人值守: 批准并让 AI 按计划自主跑到交付(常规写自动, 高危写仍会挂起等批)', 'data-perm': 'assistant:approve', style: 'border-color:var(--primary);color:var(--primary);' });
       var noBtn = DN.h('button', { class: 'btn btn-sm', text: '拒绝', 'data-perm': 'assistant:approve' });
-      okBtn.onclick = function () {
+      function doApprove() {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
         var ep = _epoch; setSending(true); // 捕获发起纪元: 新会话后丢弃旧审批结果
         okBtn.disabled = true; noBtn.disabled = true; okBtn.textContent = '执行中…';
@@ -1123,6 +1123,13 @@
             card.remove(); renderTurn(res || {}); scrollBottom();
           })
           .catch(function (e) { if (ep === _epoch) setSending(false); DN.toast('审批/恢复失败：' + (e && e.message ? e.message : e), 'err'); okBtn.disabled = false; noBtn.disabled = false; okBtn.textContent = '批准并继续'; });
+      }
+      // 高危操作: 批准前二次确认(可能不可逆), 防误点
+      okBtn.onclick = function () {
+        if (ap.riskLevel === 'HIGH') {
+          DN.confirm('高危操作「' + (ap.actionSummary || ap.skillName || '') + '」可能不可逆。已核对参数, 确认执行？', { title: '⚠ 确认高危操作', danger: true })
+            .then(function (ok) { if (ok) doApprove(); });
+        } else doApprove();
       };
       allBtn.onclick = function () {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
