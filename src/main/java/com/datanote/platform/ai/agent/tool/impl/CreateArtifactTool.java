@@ -266,7 +266,7 @@ public class CreateArtifactTool implements AiTool {
         String x = esc(s);
         x = x.replaceAll("`([^`]+)`", "<code>$1</code>");
         x = x.replaceAll("\\*\\*([^*]+)\\*\\*", "<strong>$1</strong>");
-        x = x.replaceAll("(?<![*\\w])\\*([^*\\n]+)\\*(?![*\\w])", "<em>$1</em>");
+        x = x.replaceAll("(?<![*\\w])\\*(?=\\S)([^*\\n]+?)(?<=\\S)\\*(?![*\\w])", "<em>$1</em>"); // 紧邻非空格才算斜体, 避免 a * b 误判
         x = x.replaceAll("\\[([^\\]]+)\\]\\(([^)\\s]+)\\)", "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");
         return x;
     }
