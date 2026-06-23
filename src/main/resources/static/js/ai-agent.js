@@ -1292,20 +1292,23 @@
     var bar = DN.h('div', { style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:8px;' });
     var cancel = DN.h('button', { class: 'btn btn-sm', text: '取消' });
     var save = DN.h('button', { class: 'btn btn-sm btn-primary', text: '保存', style: 'background:var(--primary);color:var(--text-inverse);border-color:var(--primary);' });
-    cancel.onclick = function () { ov.remove(); };
-    ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+    function closeOv() { ov.remove(); document.removeEventListener('keydown', escH, true); }
+    function escH(e) { if (e.key === 'Escape') { e.stopPropagation(); closeOv(); } }
+    cancel.onclick = closeOv;
+    ov.onclick = function (e) { if (e.target === ov) closeOv(); };
     save.onclick = function () {
       var title = (inTitle.value || '').trim(), content = (inContent.value || '').trim();
       if (!title || !content) { DN.toast('标题与内容必填', 'warn'); return; }
       save.disabled = true; save.textContent = '保存中…';
       var p = isNew
         ? DN.post('/api/ai/agent/industry/sop', { domain: (inDomain.value || '').trim(), type: inType.value, title: title, content: content, trigger: (inTrig.value || '').trim() })
-        : DN.post('/api/ai/agent/industry/sop/' + s.id, { title: title, content: content, op: 'edit' });
-      p.then(function () { DN.toast('已保存', 'ok'); ov.remove(); onSaved && onSaved(); })
+        : DN.post('/api/ai/agent/industry/sop/' + s.id, { title: title, content: content, trigger: (inTrig.value || '').trim(), op: 'edit' });
+      p.then(function () { DN.toast('已保存', 'ok'); closeOv(); onSaved && onSaved(); })
        .catch(function (e) { DN.toast('保存失败：' + (e && e.message ? e.message : e), 'err'); save.disabled = false; save.textContent = '保存'; });
     };
     bar.appendChild(cancel); bar.appendChild(save); panel.appendChild(bar);
     ov.appendChild(panel); document.body.appendChild(ov);
+    document.addEventListener('keydown', escH, true); // Esc 关闭(capture, 不波及抽屉)
     setTimeout(function () { try { (isNew ? inTitle : inContent).focus(); } catch (e) {} }, 60);
   }
 
@@ -1321,14 +1324,17 @@
         var row = DN.h('div', { style: 'border:1px solid var(--divider);border-radius:var(--radius);padding:6px 8px;margin-bottom:6px;' });
         row.appendChild(DN.h('div', { style: 'display:flex;gap:8px;align-items:center;', }, [
           DN.h('span', { text: 'v' + h.version + ' · ' + (h.op || '') + ' · ' + fmtTime(h.snapshotAt), style: 'flex:1;font-size:11px;color:var(--text-muted);' }),
-          (function () { var a = DN.h('a', { href: 'javascript:void(0)', text: '回滚到此版', style: 'font-size:11px;color:var(--primary);text-decoration:none;' }); a.onclick = function () { DN.post('/api/ai/agent/industry/sop/' + id + '/rollback', { version: h.version }).then(function () { DN.toast('已回滚', 'ok'); ov.remove(); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); }); }; return a; })()
+          (function () { var a = DN.h('a', { href: 'javascript:void(0)', text: '回滚到此版', style: 'font-size:11px;color:var(--primary);text-decoration:none;' }); a.onclick = function () { DN.post('/api/ai/agent/industry/sop/' + id + '/rollback', { version: h.version }).then(function () { DN.toast('已回滚', 'ok'); closeOv(); }).catch(function (e) { DN.toast('失败：' + (e && e.message ? e.message : e), 'err'); }); }; return a; })()
         ]));
         row.appendChild(DN.h('div', { text: h.content || '', style: 'font-size:12px;color:var(--text-secondary);white-space:pre-wrap;line-height:1.6;max-height:120px;overflow:auto;margin-top:4px;' }));
         panel.appendChild(row);
       });
-      var close = DN.h('button', { class: 'btn btn-sm', text: '关闭', style: 'margin-top:6px;' }); close.onclick = function () { ov.remove(); };
-      panel.appendChild(close); ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+      function closeOv() { ov.remove(); document.removeEventListener('keydown', escH, true); }
+      function escH(e) { if (e.key === 'Escape') { e.stopPropagation(); closeOv(); } }
+      var close = DN.h('button', { class: 'btn btn-sm', text: '关闭', style: 'margin-top:6px;' }); close.onclick = closeOv;
+      panel.appendChild(close); ov.onclick = function (e) { if (e.target === ov) closeOv(); };
       ov.appendChild(panel); document.body.appendChild(ov);
+      document.addEventListener('keydown', escH, true);
     }).catch(function (e) { DN.toast('加载历史失败：' + (e && e.message ? e.message : e), 'err'); });
   }
   function renderMemories(body) {

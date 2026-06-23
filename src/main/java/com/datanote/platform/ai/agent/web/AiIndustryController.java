@@ -59,36 +59,41 @@ public class AiIndustryController {
         return R.ok(industryService.history(id));
     }
 
-    /** 新建/教学 SOP。body {domain,type,title,content,trigger}。 */
+    /** 新建/教学 SOP。body {domain,type,title,content,trigger}。需登录。 */
     @PostMapping("/sop")
     public R<DnAiIndustrySop> create(@RequestBody Map<String, String> body) {
+        String me = requireUser(); if (me == null) return R.fail("请登录后再操作");
         if (body == null || isBlank(body.get("title")) || isBlank(body.get("content")))
             return R.fail("title 与 content 必填");
         DnAiIndustrySop s = industryService.saveSop(body.get("domain"), body.get("type"),
-                body.get("title"), body.get("content"), body.get("trigger"), "taught", "active", currentUser());
+                body.get("title"), body.get("content"), body.get("trigger"), "taught", "active", me);
         return R.ok(s);
     }
 
-    /** 更新 SOP(编辑/纠正), 自动版本+历史。body {title,content,op}。 */
+    /** 更新 SOP(编辑/纠正), 自动版本+历史。body {title,content,trigger,op}。需登录。 */
     @PostMapping("/sop/{id}")
     public R<DnAiIndustrySop> update(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String me = requireUser(); if (me == null) return R.fail("请登录后再操作");
         DnAiIndustrySop s = industryService.updateSop(id, body == null ? null : body.get("title"),
-                body == null ? null : body.get("content"), body == null ? "edit" : body.get("op"), currentUser());
+                body == null ? null : body.get("content"), body == null ? null : body.get("trigger"),
+                body == null ? "edit" : body.get("op"), me);
         return s == null ? R.fail("SOP 不存在") : R.ok(s);
     }
 
-    /** 归档 SOP。 */
+    /** 归档 SOP。需登录。 */
     @PostMapping("/sop/{id}/archive")
     public R<Void> archive(@PathVariable Long id) {
-        return industryService.archiveSop(id, currentUser()) ? R.ok() : R.fail("SOP 不存在");
+        String me = requireUser(); if (me == null) return R.fail("请登录后再操作");
+        return industryService.archiveSop(id, me) ? R.ok() : R.fail("SOP 不存在");
     }
 
-    /** 回滚 SOP 到指定版本。body {version}。 */
+    /** 回滚 SOP 到指定版本。body {version}。需登录。 */
     @PostMapping("/sop/{id}/rollback")
     public R<Void> rollback(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String me = requireUser(); if (me == null) return R.fail("请登录后再操作");
         Integer v = body == null ? null : toInt(body.get("version"));
         if (v == null) return R.fail("version 必填");
-        return industryService.rollbackSop(id, v, currentUser()) ? R.ok() : R.fail("版本不存在");
+        return industryService.rollbackSop(id, v, me) ? R.ok() : R.fail("版本不存在");
     }
 
     /** 手动触发行业画像归纳+蒸馏(异步; 仅登录用户)。 */
@@ -112,5 +117,10 @@ public class AiIndustryController {
             if (a != null && a.getName() != null && !"anonymousUser".equals(a.getName())) return a.getName();
         } catch (Exception ignore) {}
         return "anonymous";
+    }
+    /** 写操作要求已登录: 返回用户名, 匿名返回 null(拒绝)。防未登录改全局业务知识。 */
+    private String requireUser() {
+        String me = currentUser();
+        return (me == null || "anonymous".equals(me)) ? null : me;
     }
 }

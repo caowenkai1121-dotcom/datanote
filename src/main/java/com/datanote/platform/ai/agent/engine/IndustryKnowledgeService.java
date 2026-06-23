@@ -81,7 +81,7 @@ public class IndustryKnowledgeService {
             }
         }
         String r = sb.toString().trim();
-        return r.isEmpty() ? null : r;
+        return r.isEmpty() ? null : cap(r, PROFILE_CAP * 3); // 封顶注入(全局+最多3域), 控 token
     }
 
     /** 取与问题相关的业务流程 SOP 文本(注入/工具用)。 */
@@ -166,16 +166,16 @@ public class IndustryKnowledgeService {
         return s;
     }
 
-    /** 更新 SOP(编辑/对话纠正): version++, 旧版入历史。 */
-    public DnAiIndustrySop updateSop(Long id, String title, String content, String op, String editor) {
+    /** 更新 SOP(编辑/对话纠正): version++, 旧版入历史。trigger 为 null 则不改。 */
+    public DnAiIndustrySop updateSop(Long id, String title, String content, String trigger, String op, String editor) {
         DnAiIndustrySop s = sopMapper.selectById(id);
         if (s == null) return null;
         snapshot(s, op == null ? "edit" : op, editor); // 先存改前快照
         if (notBlank(title)) s.setTitle(cap(title, 250));
         if (content != null) s.setContent(content);
+        if (trigger != null) s.setTriggerHint(cap(trigger, 480));
         s.setVersion((s.getVersion() == null ? 1 : s.getVersion()) + 1);
-        s.setCreatedBy(editor);
-        s.setUpdatedAt(LocalDateTime.now());
+        s.setUpdatedAt(LocalDateTime.now()); // 保留原 createdBy(创建者), 不被编辑者覆盖
         sopMapper.updateById(s);
         return s;
     }
@@ -196,7 +196,7 @@ public class IndustryKnowledgeService {
         DnAiIndustrySopHist h = sopHistMapper.selectOne(new QueryWrapper<DnAiIndustrySopHist>()
                 .eq("sop_id", id).eq("version", version).last("LIMIT 1"));
         if (h == null) return false;
-        return updateSop(id, h.getTitle(), h.getContent(), "rollback", editor) != null;
+        return updateSop(id, h.getTitle(), h.getContent(), null, "rollback", editor) != null;
     }
 
     private void snapshot(DnAiIndustrySop s, String op, String editor) {
@@ -206,7 +206,7 @@ public class IndustryKnowledgeService {
             h.setTitle(s.getTitle()); h.setContent(s.getContent());
             h.setOp(op); h.setEditor(editor); h.setSnapshotAt(LocalDateTime.now());
             sopHistMapper.insert(h);
-        } catch (Exception ignore) {}
+        } catch (Exception e) { log.warn("[industry] SOP 版本快照失败 sop={} op={}: {}", s == null ? null : s.getId(), op, e.getMessage()); }
     }
 
     /** 实战自学习: 成功完成的业务流/报表 → 异步沉淀为 SOP 草稿(人工或后续确认转 active)。 */
@@ -319,30 +319,38 @@ public class IndustryKnowledgeService {
             long rb = b.getRowCount() == null ? 0 : b.getRowCount();
             return Long.compare(rb, ra);
         });
-        int n = 0, withCols = 0;
+        // 批量取前 COLS_TABLES 张表的字段(一次 IN 查询, 避免 N+1), 按 table_meta_id 分组
+        Map<Long, List<DnColumnMeta>> colsByTable = new LinkedHashMap<>();
+        List<Long> colTableIds = new ArrayList<>();
+        for (DnTableMeta t : tables) { if (t.getId() != null && colTableIds.size() < COLS_TABLES) colTableIds.add(t.getId()); }
+        if (!colTableIds.isEmpty()) {
+            try {
+                List<DnColumnMeta> allCols = columnMetaMapper.selectList(new QueryWrapper<DnColumnMeta>()
+                        .in("table_meta_id", colTableIds).orderByAsc("ordinal").last("LIMIT " + (45 * COLS_TABLES)));
+                for (DnColumnMeta c : allCols) colsByTable.computeIfAbsent(c.getTableMetaId(), k -> new ArrayList<>()).add(c);
+            } catch (Exception ignore) {}
+        }
+        int n = 0;
         for (DnTableMeta t : tables) {
             if (n >= TABLES_PER_DOMAIN) break;
             sb.append("- ").append(nz(t.getDatabaseName())).append(".").append(nz(t.getTableName()));
             if (notBlank(t.getTableComment())) sb.append(" (").append(cap(t.getTableComment(), 60)).append(")");
             sb.append('\n');
-            // 前若干表给关键字段(有业务名/描述的)
-            if (withCols < COLS_TABLES && t.getId() != null) {
-                try {
-                    List<DnColumnMeta> cols = columnMetaMapper.selectList(new QueryWrapper<DnColumnMeta>()
-                            .eq("table_meta_id", t.getId()).orderByAsc("ordinal").last("LIMIT 40"));
-                    StringBuilder cb = new StringBuilder();
-                    int cc = 0;
-                    for (DnColumnMeta c : cols) {
-                        if (notBlank(c.getBusinessName()) || notBlank(c.getBusinessDesc())) {
-                            cb.append("    · ").append(nz(c.getColumnName()));
-                            if (notBlank(c.getBusinessName())) cb.append("=").append(c.getBusinessName());
-                            if (notBlank(c.getBusinessDesc())) cb.append("(").append(cap(c.getBusinessDesc(), 40)).append(")");
-                            cb.append('\n');
-                            if (++cc >= 12) break;
-                        }
+            // 关键字段(有业务名/描述的; 来自预加载批量结果)
+            List<DnColumnMeta> cols = t.getId() == null ? null : colsByTable.get(t.getId());
+            if (cols != null) {
+                StringBuilder cb = new StringBuilder();
+                int cc = 0;
+                for (DnColumnMeta c : cols) {
+                    if (notBlank(c.getBusinessName()) || notBlank(c.getBusinessDesc())) {
+                        cb.append("    · ").append(nz(c.getColumnName()));
+                        if (notBlank(c.getBusinessName())) cb.append("=").append(c.getBusinessName());
+                        if (notBlank(c.getBusinessDesc())) cb.append("(").append(cap(c.getBusinessDesc(), 40)).append(")");
+                        cb.append('\n');
+                        if (++cc >= 12) break;
                     }
-                    if (cb.length() > 0) { sb.append(cb); withCols++; }
-                } catch (Exception ignore) {}
+                }
+                if (cb.length() > 0) sb.append(cb);
             }
             n++;
             if (sb.length() > 5000) break;
