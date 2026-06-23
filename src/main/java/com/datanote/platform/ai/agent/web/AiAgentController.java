@@ -198,6 +198,8 @@ public class AiAgentController {
         try { m.put("runningSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().eq("status", "running"))); } catch (Exception e) { m.put("runningSessions", -1); }
         try { m.put("autonomousSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().eq("autonomous", 1).eq("status", "running"))); } catch (Exception e) { m.put("autonomousSessions", -1); }
         try { m.put("todayActiveSessions", sessionMapper.selectCount(new QueryWrapper<DnAiSession>().ge("updated_at", java.time.LocalDate.now().atStartOfDay()))); } catch (Exception e) { m.put("todayActiveSessions", -1); }
+        m.put("autoDefaultSteps", autoDefaultSteps);
+        m.put("autoDefaultHours", autoDefaultHours);
         return R.ok(m);
     }
 
