@@ -490,7 +490,19 @@
     scroll.addEventListener('wheel', function (e) {
       if (!e.ctrlKey) return; e.preventDefault(); zoom(e.deltaY < 0 ? 0.1 : -0.1);
     }, { passive: false });
-    var tb = DN.h('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:8px' }, [
+    // 表搜索定位: 大图找不到目标表时, 输入表名→高亮+滚动居中(gap H)
+    var fsearch = DN.h('input', { placeholder: '🔍 搜表名定位…', style: 'width:160px;padding:4px 9px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-body);color:var(--text-primary);' });
+    fsearch.oninput = function () {
+      var kw = (fsearch.value || '').trim().toLowerCase();
+      if (!kw) { highlight(null); fsearch.style.borderColor = 'var(--border)'; return; }
+      var hit = Object.keys(nodeEls).filter(function (k) { return String(k).toLowerCase().indexOf(kw) >= 0; });
+      if (!hit.length) { highlight(null); fsearch.style.borderColor = 'var(--error)'; return; }
+      fsearch.style.borderColor = 'var(--success)';
+      highlight(hit[0]);
+      var p = pos[hit[0]]; if (p && scroll) { scroll.scrollLeft = Math.max(0, p.x * scale - scroll.clientWidth / 2); scroll.scrollTop = Math.max(0, p.y * scale - scroll.clientHeight / 2); }
+    };
+    var tb = DN.h('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap' }, [
+      fsearch,
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋', title: '放大', onclick: function () { zoom(0.2); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '－', title: '缩小', onclick: function () { zoom(-0.2); } }),
       DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复位', onclick: function () { scale = 1; applyScale(); } }),
