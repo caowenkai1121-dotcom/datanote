@@ -56,6 +56,12 @@
     var icCard = DN.card({
       title: '治理工单', icon: 'inbox',
       actions: [fsel, batchSel,
+        DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '全选/反选', title: '全选/全不选当前工单(批量操作)', onclick: function () {
+          var box = document.getElementById('hsIssues'); if (!box) return;
+          var cbs = box.querySelectorAll('input[type=checkbox][aria-label^="选择工单"]'); if (!cbs.length) { DN.toast('当前无工单', 'warn'); return; }
+          var target = !Array.prototype.every.call(cbs, function (c) { return c.checked; });
+          Array.prototype.forEach.call(cbs, function (c) { if (c.checked !== target) { c.checked = target; if (c.onchange) c.onchange(); } });
+        } }),
         DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '应用批量', 'data-perm': 'governance:issue', onclick: batchTransition }),
         DN.h('a', { class: 'btn btn-ghost', href: 'javascript:void(0)', text: '批量指派', 'data-perm': 'governance:issue', onclick: batchAssign }),
         DN.h('a', { class: 'btn btn-danger', href: 'javascript:void(0)', text: '批量删除', 'data-perm': 'governance:issue', onclick: batchDelete }),
