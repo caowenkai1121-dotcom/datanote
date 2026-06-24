@@ -153,7 +153,7 @@
       + '</span>'
       + '<span style="font-size:12px;color:var(--text-muted);">共 ' + DM.models.length + ' 个模型</span>'
       + '<button class="btn btn-sm" style="margin-left:auto;" onclick="dmExportModels()" title="导出模型列表为 CSV">导出CSV</button></div>'
-      + '<table class="dbsync-exec-table" style="width:100%;"><thead><tr>'
+      + '<div style="overflow-x:auto;"><table class="dbsync-exec-table" style="width:100%;min-width:880px;"><thead><tr style="white-space:nowrap;">'
       + '<th onclick="dmSortBy(\'code\')" style="cursor:pointer;" title="点击排序">编码<span data-dmarr="code"> ⇅</span></th>'
       + '<th onclick="dmSortBy(\'name\')" style="cursor:pointer;" title="点击排序">名称<span data-dmarr="name"> ⇅</span></th>'
       + '<th onclick="dmSortBy(\'type\')" style="cursor:pointer;" title="点击排序">类型<span data-dmarr="type"> ⇅</span></th>'
@@ -165,7 +165,7 @@
       + '<th style="width:280px;">操作</th></tr></thead><tbody>';
     DM.models.forEach(function (m) {
       var tc = TYPE_COLOR[m.modelType] || 'var(--text-muted)';
-      var typeBadge = '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);background:' + tc + '1a;color:' + tc + ';">' + (TYPE_LABEL[m.modelType] || m.modelType) + '</span>';
+      var typeBadge = '<span style="font-size:var(--fs-xs);padding:1px 7px;border-radius:var(--radius-lg);white-space:nowrap;background:' + tc + '1a;color:' + tc + ';">' + (TYPE_LABEL[m.modelType] || m.modelType) + '</span>';
       var st = '<span class="gov-pill ' + (STATUS_PILL[m.status] || 'is-muted') + '">' + (STATUS_LABEL[m.status] || m.status) + '</span>';
       var subName = findSubjectName(DM.subjects, m.subjectId) || '-';
       var ops = '<a href="#" onclick="dmOpenModel(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>';
@@ -190,7 +190,7 @@
         + '<td>' + (m.dwLayer ? esc(m.dwLayer) : '-') + '</td><td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(subName) + '">' + esc(subName) + '</td><td>' + st + '</td>'
         + '<td>v' + (m.version || 1) + '</td><td>' + (m.entityCount || 0) + '</td><td style="white-space:nowrap;">' + ops + '</td></tr>';
     });
-    box.innerHTML = h + '</tbody></table>';
+    box.innerHTML = h + '</tbody></table></div>';
     if (window.dnApplyBtnPerms) dnApplyBtnPerms(box);
     if (window.dnA11yEnhance) dnA11yEnhance(box);   // 排序表头键盘可达
     _dmApplySort(); // 重载后复用已选排序, 防切主题/类型后排序丢失
