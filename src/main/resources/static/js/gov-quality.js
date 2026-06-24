@@ -541,9 +541,9 @@
               wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '看来源表血缘',
                 style: 'color:var(--primary)', title: '在血缘模块查看该来源表的血缘关系',
                 onclick: function () { if (window.navigateTo) navigateTo('governance', { gov: 'lineage', table: { db: db, table: tbl } }); } }));
-              wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '数据地图',
-                style: 'color:var(--primary)', title: '在数据地图中打开该来源表',
-                onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
+              wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '表预览',
+                style: 'color:var(--primary)', title: '原地预览该表(摘要+字段), 不跳页',
+                onclick: function () { if (DN.tablePreview) DN.tablePreview(db, tbl); else if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
             }
             return wrap;
           } }
