@@ -109,6 +109,9 @@
 .gov-drawer .dh .x { margin-left:auto; cursor:pointer; color:var(--text-muted,var(--text-muted)); border:0; background:none; font-size:20px; line-height:1; width:32px; height:32px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius,6px); transition:background var(--dur),color var(--dur); }
 .gov-drawer .dh .x:hover { background:var(--bg-hover,var(--bg-hover)); color:var(--text-regular); }
 .gov-drawer .dh .x:focus-visible { outline:2px solid var(--primary); outline-offset:2px; background:var(--bg-hover); } /* 键盘焦点反馈 */
+/* 项目 KPI 卡: 悬浮提升反馈(原仅静态阴影) */
+.proj-kpi-tile { transition:box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.proj-kpi-tile:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); }
 .gov-drawer .db { padding:18px 20px; overflow-y:auto; flex:1; }
 
 /* ---- 内联表单(替代弹窗手输) ---- */
