@@ -543,7 +543,7 @@
           attrs.href = 'javascript:void(0)';
           attrs.title = fqn + ' · 点击在资产目录打开';
           attrs.style += ';cursor:pointer;text-decoration:none';
-          attrs.onclick = function () { navigateTo('catalog', { openTable: { db: n.db, table: n.table } }); };
+          attrs.onclick = function () { if (DN.tablePreview) DN.tablePreview(n.db, n.table); else navigateTo('catalog', { openTable: { db: n.db, table: n.table } }); }; // 原地预览, 不离开血缘图
           return DN.h('a', attrs);
         }
         return DN.h('span', attrs);
