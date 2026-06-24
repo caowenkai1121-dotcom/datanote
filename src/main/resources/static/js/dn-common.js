@@ -177,6 +177,50 @@
   DN.metaColumns = function (db, table) {
     return DN.get('/api/metadata/columns?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table));
   };
+  /** 表预览抽屉(点表名【原地出结果】, 不跳数据地图): 摘要+字段表, 末尾可跳完整视图。供任意模块复用(禁跳转#5)。 */
+  DN.tablePreview = function (db, table) {
+    if (!db || !table) return;
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'padding:20px;color:var(--text-muted);font-size:13px;' }));
+    var dr = DN.drawer(db + '.' + table, body);
+    function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;font-size:12.5px;margin:3px 0;' }, [DN.h('span', { text: k, style: 'color:var(--text-muted);min-width:56px;flex:0 0 auto;' }), DN.h('span', { text: String(v == null ? '-' : v), style: 'color:var(--text-regular);word-break:break-all;' })]); }
+    Promise.all([
+      DN.get('/api/metadata/table-detail?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).catch(function () { return null; }),
+      DN.metaColumns(db, table).catch(function () { return []; })
+    ]).then(function (rs) {
+      var d = rs[0] || {}, info = d.tableInfo || {}, tm = d.tableMeta || {}, cols = rs[1] || [];
+      body.innerHTML = '';
+      var sum = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:12px;background:var(--bg-card);' });
+      if (info.comment) sum.appendChild(row('说明', info.comment));
+      sum.appendChild(row('行数', info.rowCount != null ? info.rowCount : '-'));
+      if (info.engine) sum.appendChild(row('引擎', info.engine));
+      if (tm.owner) sum.appendChild(row('负责人', tm.owner));
+      if (tm.tags) sum.appendChild(row('标签', tm.tags));
+      if (info.updateTime) sum.appendChild(row('更新', info.updateTime));
+      body.appendChild(sum);
+      body.appendChild(DN.h('div', { text: '字段 (' + cols.length + ')', style: 'font-weight:600;font-size:13px;margin:8px 0 6px;color:var(--text-primary);' }));
+      if (!cols.length) {
+        body.appendChild(DN.h('div', { text: '暂无字段信息', style: 'color:var(--text-muted);font-size:12px;' }));
+      } else {
+        var scroll = DN.h('div', { style: 'max-height:46vh;overflow:auto;border:1px solid var(--divider);border-radius:var(--radius);' });
+        var tbl = DN.h('table', { style: 'width:100%;font-size:12px;border-collapse:collapse;' });
+        var thr = DN.h('tr', {});
+        ['#', '字段', '中文名', '类型'].forEach(function (h) { thr.appendChild(DN.h('th', { text: h, style: 'text-align:left;padding:5px 9px;border-bottom:1px solid var(--divider);position:sticky;top:0;background:var(--bg-main);font-weight:600;' })); });
+        tbl.appendChild(thr);
+        cols.forEach(function (c, i) {
+          c = c || {}; var tr = DN.h('tr', {});
+          [String(i + 1), c.name || '', c.comment || '', c.type || ''].forEach(function (v) { tr.appendChild(DN.h('td', { text: v, title: v, style: 'padding:5px 9px;border-bottom:1px solid var(--divider);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;' })); });
+          tbl.appendChild(tr);
+        });
+        scroll.appendChild(tbl); body.appendChild(scroll);
+      }
+      if (window.navigateTo) {
+        var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '在数据地图查看完整(血缘/质量/评论) →', style: 'margin-top:12px;display:inline-block;' });
+        full.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('catalog', { openTable: { db: db, table: table } }); };
+        body.appendChild(full);
+      }
+    });
+  };
 
   /**
    * 级联库/表(/列)下拉选择器，用 dn-form-select 表单体系，避免用户手输。
