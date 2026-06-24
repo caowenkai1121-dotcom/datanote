@@ -108,6 +108,7 @@
 .gov-drawer .dh > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gov-drawer .dh .x { margin-left:auto; cursor:pointer; color:var(--text-muted,var(--text-muted)); border:0; background:none; font-size:20px; line-height:1; width:32px; height:32px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius,6px); transition:background var(--dur),color var(--dur); }
 .gov-drawer .dh .x:hover { background:var(--bg-hover,var(--bg-hover)); color:var(--text-regular); }
+.gov-drawer .dh .x:focus-visible { outline:2px solid var(--primary); outline-offset:2px; background:var(--bg-hover); } /* 键盘焦点反馈 */
 .gov-drawer .db { padding:18px 20px; overflow-y:auto; flex:1; }
 
 /* ---- 内联表单(替代弹窗手输) ---- */
