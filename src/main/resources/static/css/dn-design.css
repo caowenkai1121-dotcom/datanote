@@ -173,6 +173,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   border-radius: var(--radius);
   font-size: var(--fs-sm);
   font-weight: 500;
+  white-space: nowrap; /* 根治: 按钮标签永不换行/CJK竖排堆叠(窄列场景) */
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease),
               border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
               transform var(--dur-fast) var(--ease);
