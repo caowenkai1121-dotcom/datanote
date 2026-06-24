@@ -216,7 +216,10 @@
       var pts = (Array.isArray(list) ? list : []).map(function (t) { return num(pick(t.totalScore, t.score)); });
       if (pts.length < 2) { c.body.appendChild(DN.empty('趋势数据不足（需≥2天历史）', 'chart')); return; }
       c.body.appendChild(DN.line(pts, { height: 120 }));
-      c.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', text: '近30天治理健康分走势' }));
+      // 平直趋势也要有信息量: 当前值 + 区间 + 净变化
+      var cur = pts[pts.length - 1], lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), delta = round1(cur - pts[0]);
+      var deltaTxt = delta > 0 ? ('▲ ' + delta) : (delta < 0 ? ('▼ ' + Math.abs(delta)) : '持平');
+      c.body.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin:8px 0 0', html: '近30天 · 当前 <b>' + round1(cur) + '</b> · 区间 ' + round1(lo) + '~' + round1(hi) + ' · 较30天前 ' + deltaTxt }));
     }).catch(function (e) { fail(c, d, e); });
   }
 
