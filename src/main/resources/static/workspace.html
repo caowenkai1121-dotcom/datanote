@@ -9480,11 +9480,18 @@ function metricBackToList() {
 }
 window.metricBackToList = metricBackToList;
 
-window.openMetricDetail = function(id) {
+// 完整驾驶舱(跳 metrics 视图渲染详情面板); 供预览抽屉"完整"入口与显式深链用
+window.openMetricFull = function(id) {
   if (typeof navigateTo === 'function' && window.currentRoute !== 'metrics') {
     navigateTo('metrics');
     setTimeout(function() { _openMetricDetail(id); }, 150);
   } else { _openMetricDetail(id); }
+};
+window.openMetricDetail = function(id) {
+  // 在指标视图内: 直接渲染页面详情面板(原体验); 跨视图(从首页/其它列表点指标): 原地弹预览抽屉, 不跳转(#5)
+  if (window.currentRoute === 'metrics') { _openMetricDetail(id); return; }
+  if (window.DN && DN.metricPreview) { DN.metricPreview(id); return; }
+  window.openMetricFull(id); // 兜底
 };
 function _openMetricDetail(id) {
   ['metricsListPanel', 'metricsConsumePanel'].forEach(function(p) { var e = document.getElementById(p); if (e) e.style.display = 'none'; });

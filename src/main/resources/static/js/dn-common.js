@@ -261,7 +261,8 @@
       grid.appendChild(tile('同比', delta(d.yoy)));
       body.appendChild(grid);
       if (m.calcFormula) { body.appendChild(DN.h('div', { text: '口径', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('pre', { text: m.calcFormula, style: 'font-size:12px;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius);padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:0;' })); }
-      if (window.openMetricDetail) { var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '完整指标驾驶舱(预警/预测/趋势) →', style: 'margin-top:12px;display:inline-block;' }); full.onclick = function () { if (dr && dr.close) dr.close(); window.openMetricDetail(id); }; body.appendChild(full); }
+      var openFull = window.openMetricFull || window.openMetricDetail; // 用 Full 避免回到预览(防自循环)
+      if (openFull) { var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '完整指标驾驶舱(预警/预测/趋势) →', style: 'margin-top:12px;display:inline-block;' }); full.onclick = function () { if (dr && dr.close) dr.close(); openFull(id); }; body.appendChild(full); }
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
   };
 
