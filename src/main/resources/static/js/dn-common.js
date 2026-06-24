@@ -237,6 +237,34 @@
     });
   };
 
+  /** 指标预览抽屉(点指标【原地看 KPI 摘要】, 不跳驾驶舱): 当前/目标/达成/环同比+口径, 末尾可跳完整驾驶舱。复用(禁跳转#5)。 */
+  DN.metricPreview = function (id) {
+    if (id == null) return;
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'padding:20px;color:var(--text-muted);font-size:13px;' }));
+    var dr = DN.drawer('指标预览', body);
+    function num(v) { if (v == null || v === '') return '-'; var n = Number(v); return isNaN(n) ? String(v) : (Math.round(n * 100) / 100).toLocaleString(); }
+    function delta(p) { if (p == null) return DN.h('span', { text: '-', style: 'color:var(--text-faint);' }); var up = Number(p) >= 0; return DN.h('span', { text: (up ? '▲ ' : '▼ ') + Math.abs(Number(p)) + '%', style: 'color:' + (up ? 'var(--success)' : 'var(--error)') + ';font-weight:600;' }); }
+    function tile(label, valNode) { var t = DN.h('div', { style: 'flex:1;min-width:96px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;' }); t.appendChild(DN.h('div', { text: label, style: 'font-size:11px;color:var(--text-muted);margin-bottom:4px;' })); t.appendChild(valNode); return t; }
+    DN.get('/api/consumption/metric/' + id + '/detail').then(function (d) {
+      d = d || {}; var m = d.metric || {}, unit = m.unit || '';
+      body.innerHTML = '';
+      if (dr && dr.setTitle) dr.setTitle('指标: ' + (m.metricName || ('#' + id)));
+      body.appendChild(DN.h('div', { text: (m.metricName || ('指标#' + id)) + (m.metricCode ? ' (' + m.metricCode + ')' : ''), style: 'font-weight:600;font-size:14px;margin-bottom:4px;color:var(--text-primary);' }));
+      if (m.category) body.appendChild(DN.h('div', { text: '分类: ' + m.category, style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
+      var ach = d.achievement, achColor = ach == null ? 'var(--text-regular)' : (ach >= 100 ? 'var(--success)' : (ach >= 80 ? 'var(--warning)' : 'var(--error)'));
+      var grid = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;' });
+      grid.appendChild(tile('当前值', DN.h('div', { text: num(d.current != null ? d.current : d.currentText) + ' ' + unit, style: 'font-size:18px;font-weight:700;color:var(--primary);' })));
+      grid.appendChild(tile('目标值', DN.h('div', { text: num(d.target) + ' ' + unit, style: 'font-size:18px;font-weight:700;' })));
+      grid.appendChild(tile('达成率', DN.h('div', { text: ach != null ? ach + '%' : '-', style: 'font-size:18px;font-weight:700;color:' + achColor + ';' })));
+      grid.appendChild(tile('环比', delta(d.mom)));
+      grid.appendChild(tile('同比', delta(d.yoy)));
+      body.appendChild(grid);
+      if (m.calcFormula) { body.appendChild(DN.h('div', { text: '口径', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('pre', { text: m.calcFormula, style: 'font-size:12px;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius);padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:0;' })); }
+      if (window.openMetricDetail) { var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '完整指标驾驶舱(预警/预测/趋势) →', style: 'margin-top:12px;display:inline-block;' }); full.onclick = function () { if (dr && dr.close) dr.close(); window.openMetricDetail(id); }; body.appendChild(full); }
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
+  };
+
   /**
    * 级联库/表(/列)下拉选择器，用 dn-form-select 表单体系，避免用户手输。
    * opts: { withColumn, defaultDb, onChange(db,table,column) }
