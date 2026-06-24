@@ -2307,7 +2307,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 .ops-health-label { font-size: 13px; color: var(--text-muted); }
 .ops-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* 恰 4 张卡, 等分一行(原 auto-fill 致 3+1 换行不齐) */
   gap: 12px;
   flex: 1;
 }
@@ -2435,6 +2435,7 @@ input[readonly], textarea[readonly] { cursor: not-allowed; opacity: .7; }
 @media (max-width: 900px) {
   .ops-charts-row { grid-template-columns: 1fr; }
   .ops-header-row { flex-direction: column; }
+  .ops-metrics { grid-template-columns: repeat(2, 1fr); } /* 窄屏 2 列, 不挤 */
 }
 .sched-header {
   padding: 16px 20px 12px;
