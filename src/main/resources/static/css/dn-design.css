@@ -348,11 +348,13 @@ select.dn-form-select, input.dn-form-input { width: auto; }
   border-bottom: 1px solid var(--divider);
 }
 .g-modal-close, .sched-log-modal-close {
-  width: 30px; height: 30px; border-radius: var(--radius); font-size: 18px;
+  width: 32px; height: 32px; border-radius: var(--radius); font-size: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
   color: var(--text-muted);
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .g-modal-close:hover, .sched-log-modal-close:hover { background: var(--bg-hover); color: var(--text-regular); }
+.g-modal-close:focus-visible, .sched-log-modal-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* v3 唯一新弹窗(确认/告知): DN.confirm 使用 */
 .dn-modal-mask {
