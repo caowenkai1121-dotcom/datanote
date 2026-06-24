@@ -14,7 +14,7 @@ window.projQuickSwitch = function() {
   ov.id = 'projQsOverlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:var(--z-spotlight);display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
-  ov.innerHTML = '<div style="width:560px;max-width:92vw;background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;">'
+  ov.innerHTML = '<div style="width:560px;min-width:300px;max-width:92vw;background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden;">'
     + '<input id="projQsInput" placeholder="搜索项目名 / 编码 / 负责人，↑↓ 选择，Enter 打开，Esc 关闭" autocomplete="off" style="width:100%;box-sizing:border-box;padding:14px 16px;border:0;border-bottom:1px solid var(--divider);font-size:14px;outline:none;background:transparent;color:var(--text-regular);">'
     + '<div id="projQsList" style="max-height:50vh;overflow:auto;"></div></div>';
   document.body.appendChild(ov);
