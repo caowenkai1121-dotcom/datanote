@@ -214,11 +214,18 @@
         });
         scroll.appendChild(tbl); body.appendChild(scroll);
       }
-      if (window.navigateTo) {
-        var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '在数据地图查看完整(血缘/质量/评论) →', style: 'margin-top:12px;display:inline-block;' });
-        full.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('catalog', { openTable: { db: db, table: table } }); };
-        body.appendChild(full);
+      var actBar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
+      if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
+        var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
+        qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };
+        actBar.appendChild(qr);
       }
+      if (window.navigateTo) {
+        var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '在数据地图查看完整(血缘/质量/评论) →' });
+        full.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('catalog', { openTable: { db: db, table: table } }); };
+        actBar.appendChild(full);
+      }
+      if (actBar.children.length) body.appendChild(actBar);
     });
   };
 
