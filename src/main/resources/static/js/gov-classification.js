@@ -341,7 +341,7 @@
               return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
                 title: '回到数据地图查看 ' + db + '.' + table + ' 的字段与血缘',
                 style: 'color:var(--primary);text-decoration:none',
-                onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: table } }); } });
+                onclick: function () { if (DN.tablePreview) DN.tablePreview(db, table); else if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: table } }); } });
             } }
           ],
           rows: rows,
@@ -520,7 +520,7 @@
           return DN.h('a', { href: 'javascript:void(0)', text: '查看该表',
             title: '回到数据地图查看 ' + (r.db || '') + '.' + (r.table || '') + ' 的字段与血缘',
             style: 'color:var(--primary);text-decoration:none',
-            onclick: function () { if (window.navigateTo) navigateTo('catalog', { openTable: { db: r.db, table: r.table } }); } });
+            onclick: function () { if (DN.tablePreview) DN.tablePreview(r.db, r.table); else if (window.navigateTo) navigateTo('catalog', { openTable: { db: r.db, table: r.table } }); } });
         } }
       ],
       rows: rows,
