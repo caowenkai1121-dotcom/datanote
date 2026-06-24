@@ -499,7 +499,7 @@
       var v = (res && res.code === 0 && res.data) || { valid: true, errors: [], warnings: [] };
       var errs = v.errors || [], warns = v.warnings || [];
       var chk = '';
-      if (errs.length) chk += '<div style="background:rgba(224,65,78,.08);border:1px solid var(--error);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b style="color:var(--error);font-size:12px;">✗ 须修正(' + errs.length + ')，修正后方可提交</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:var(--error);">' + errs.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>';
+      if (errs.length) chk += '<div style="background:var(--error-bg);border:1px solid var(--error-ring);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b style="color:var(--error);font-size:12px;">✗ 须修正(' + errs.length + ')，修正后方可提交</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:var(--error);">' + errs.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>';
       if (warns.length) chk += '<div style="background:rgba(245,159,0,.08);border:1px solid var(--warning,#f59f00);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;"><b style="color:#b8860b;font-size:12px;">⚠ 建议(' + warns.length + ')</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px;color:var(--text-regular);">' + warns.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
       if (!errs.length && !warns.length) chk = '<div style="color:var(--success);font-size:12.5px;margin-bottom:8px;">✓ 规范校验通过</div>';
       var btn = errs.length ? '<button class="btn btn-sm btn-primary" disabled style="opacity:.5;cursor:not-allowed;">提交</button>' : '<button class="btn btn-sm btn-primary" onclick="dmDoSubmit(' + id + ')">提交</button>';
@@ -655,8 +655,8 @@
         var attrs = (e.attributes || []).map(function (a) {
           return '<div style="padding:2px 8px;font-size:11px;border-top:1px solid var(--border);white-space:nowrap;">' + (a.isPk == 1 ? '🔑 ' : '') + esc(a.attrCode) + ' <span style="color:var(--text-faint);">' + esc(a.dataType || '') + '</span></div>';
         }).join('');
-        return '<div class="dm-er-ent" data-eid="' + e.id + '" style="display:inline-block;vertical-align:top;border:1.5px solid var(--primary);border-radius:6px;margin:14px;min-width:148px;background:var(--bg-card);box-shadow:var(--shadow-sm);position:relative;z-index:2;">'
-          + '<div style="background:var(--primary);color:#fff;padding:4px 10px;font-weight:600;font-size:12px;border-radius:4px 4px 0 0;">' + esc(e.entityName) + '</div>' + attrs + '</div>';
+        return '<div class="dm-er-ent" data-eid="' + e.id + '" style="display:inline-block;vertical-align:top;border:1px solid var(--primary);border-radius:var(--radius-lg);margin:14px;min-width:148px;background:var(--bg-card);box-shadow:var(--shadow-md);position:relative;z-index:2;overflow:hidden;">'
+          + '<div style="background:var(--primary);color:var(--text-inverse);padding:5px 12px;font-weight:600;font-size:12px;">' + esc(e.entityName) + '</div>' + attrs + '</div>';
       }).join('');
       var relList = rels.length ? '<div style="margin-top:12px;font-size:12px;"><b>关系</b>' + rels.map(function (r) {
         var sn = (ents.filter(function (e) { return e.id === r.sourceEntityId; })[0] || {}).entityName || ('#' + r.sourceEntityId);
