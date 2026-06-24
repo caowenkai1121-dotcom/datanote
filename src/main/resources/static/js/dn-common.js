@@ -709,8 +709,10 @@
     opts = opts || {}; var data = (values || []).map(Number).filter(function (x) { return !isNaN(x); });
     if (data.length < 2) return DN.empty('趋势数据不足（需至少 2 个数据点）', 'chart');
     var h = opts.height || 72, pad = 6, vw = 300, n = data.length;
-    var max = opts.max != null ? opts.max : Math.max.apply(null, data.concat([1])), min = opts.min != null ? opts.min : Math.min.apply(null, data.concat([0]));
-    if (max === min) max = min + 1;
+    // 自适应区间(原强塞 0/1 致平直序列贴边+面积满填, 看似空块): 按数据范围留白, 平直则居中
+    var max = opts.max != null ? opts.max : Math.max.apply(null, data), min = opts.min != null ? opts.min : Math.min.apply(null, data);
+    if (max === min) { max = min + 1; min = min - 1; }
+    else { var _pd = (max - min) * 0.15; max += _pd; min -= _pd; }
     var stepX = n > 1 ? (vw - pad * 2) / (n - 1) : 0, col = opts.color || 'var(--primary)';
     function X(i) { return pad + i * stepX; } function Y(v) { return (h - pad) - ((v - min) / (max - min)) * (h - pad * 2); }
     var pts = data.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
