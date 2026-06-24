@@ -9300,7 +9300,7 @@ function metricLoadRefs(id) {
     box.innerHTML = refs.map(function(r) {
       var dbEsc = (r.dbName || '').replace(/'/g, "\\'"), tbEsc = (r.tableName || '').replace(/'/g, "\\'");
       return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-hover);border-radius:var(--radius-lg);padding:1px 8px;margin:2px 4px 2px 0;font-size:var(--fs-xs);white-space:nowrap;">'
-        + '<a href="#" onclick="navigateTo(\'catalog\',{openTable:{db:\'' + dbEsc + '\',table:\'' + tbEsc + '\'}});return false;" title="在数据地图查看该表(字段/血缘/质量)" style="color:var(--text-regular);text-decoration:none;">' + escapeHtml((r.dbName || '') + '.' + (r.tableName || '')) + '</a>'
+        + '<a href="#" onclick="DN.tablePreview(\'' + dbEsc + '\',\'' + tbEsc + '\');return false;" title="原地预览该表(摘要+字段, 不跳页)" style="color:var(--text-regular);text-decoration:none;">' + escapeHtml((r.dbName || '') + '.' + (r.tableName || '')) + '</a>'
         + '<a href="#" data-perm="metrics:edit" onclick="metricDelRef(' + r.id + ');return false;" style="color:var(--error);text-decoration:none;" title="删除该来源表登记">×</a></span>';
     }).join('');
   }).catch(function() { box.innerHTML = '<span style="color:var(--error);">来源表加载失败</span>'; });
@@ -9859,7 +9859,7 @@ function loadQualityRules() {
           '<td style="text-align:center;"><input type="checkbox" class="qr-chk" value="' + r.id + '" onchange="qualityUpdateSelCount()"></td>' +
           '<td>' + escapeHtml(r.ruleName || '') + '<span class="dnpj" data-id="' + r.id + '"></span></td>' +
           '<td><span class="quality-type-badge">' + escapeHtml(typeLabels[r.ruleType] || r.ruleType) + '</span></td>' +
-          '<td><a href="#" onclick="navigateTo(\'catalog\',{openTable:{db:\'' + qDbEsc + '\',table:\'' + qTbEsc + '\'}});return false;" title="在数据地图查看该表" style="color:var(--text-regular);text-decoration:none;">' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</a></td>' +
+          '<td><a href="#" onclick="DN.tablePreview(\'' + qDbEsc + '\',\'' + qTbEsc + '\');return false;" title="原地预览该表(不跳页)" style="color:var(--text-regular);text-decoration:none;">' + escapeHtml(r.databaseName || '') + '.' + escapeHtml(r.tableName || '') + '</a></td>' +
           '<td>' + escapeHtml(r.columnName || '-') + '</td>' +
           '<td style="color:var(--text-muted);">' + escapeHtml(r.createdBy || '-') + '</td>' +
           '<td><span style="color:' + sevColor + '">' + escapeHtml(severityLabels[sevKey(r.severity)] || r.severity || '') + '</span></td>' +
