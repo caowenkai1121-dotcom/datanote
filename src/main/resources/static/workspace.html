@@ -9024,7 +9024,10 @@ function dmGotoMetric(code) {
 // R22 数据质量闭环: 数据探查字段 → 质量模块一键预填新建规则
 function dmBuildRule(column, dimension) {
   if (!dmCurrentDb || !dmCurrentTable) return;
-  navigateTo('governance', { gov: 'quality', prefillRule: { db: dmCurrentDb, table: dmCurrentTable, column: column, dimension: dimension } });
+  var pf = { db: dmCurrentDb, table: dmCurrentTable, column: column, dimension: dimension };
+  // 原地弹"新建质量规则"抽屉(不跳转治理页, 提升体验); 老路径兜底
+  if (window.openQualityRuleForm) window.openQualityRuleForm(pf);
+  else navigateTo('governance', { gov: 'quality', prefillRule: pf });
 }
 
 /* --- Tab: 评论 --- */

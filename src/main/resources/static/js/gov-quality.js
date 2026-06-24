@@ -455,7 +455,7 @@
       DN.post('/api/quality/rule/save', payload).then(function () {
         DN.toast('质量规则已创建', 'ok');
         if (dr && dr.close) dr.close();
-        loadRules(rulesBox);   // 刷新规则列表(新规则即时可见)
+        if (rulesBox) loadRules(rulesBox);   // 刷新规则列表(新规则即时可见); 无列表容器(从数据地图等内联调用)则跳过刷新
       }).catch(function (e) {
         DN.toast('创建失败: ' + (e && e.message ? e.message : '未知错误'), 'err');
         foot.reset('创建规则');
@@ -465,6 +465,8 @@
     dr = DN.drawer('新建质量规则', body, foot.el);
     DN.enterSubmit(body, doSave);
   }
+  // 暴露: 供数据地图等模块【原地】弹建规则抽屉(不跳转治理页), prefill={db,table,column,dimension,threshold}
+  window.openQualityRuleForm = function (prefill) { openPrefillRuleDrawer(prefill || {}, null); };
 
   function buildToolbarAndTable() {
     // 状态筛选下拉（放进 DN.table 工具条）
