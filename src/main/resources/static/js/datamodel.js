@@ -738,7 +738,7 @@
   window.dmShowDashboard = function () {
     api('/api/datamodel/dashboard').then(function (res) {
       var d = (res && res.code === 0 && res.data) || {};
-      function card(label, val, color) { return '<div style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;"><div style="font-size:22px;font-weight:700;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>'; }
+      function card(label, val, color) { return '<div style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;background:var(--bg-card);"><div style="font-size:22px;font-weight:700;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + label + '</div></div>'; }
       var bt = d.byType || {}, bs = d.byStatus || {};
       var typeBar = Object.keys(bt).map(function (k) { return '<span style="margin-right:14px;">' + (TYPE_LABEL[k] || k) + ': <b>' + bt[k] + '</b></span>'; }).join('');
       var statusBar = Object.keys(bs).map(function (k) { return '<span style="margin-right:14px;">' + (STATUS_LABEL[k] || k) + ': <b>' + bs[k] + '</b></span>'; }).join('');
