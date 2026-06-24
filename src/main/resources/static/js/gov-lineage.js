@@ -234,7 +234,7 @@
     if (window.navigateTo) {
       acts.push({ text: '质量', title: '查看 ' + fqn + ' 的质量规则', go: function () { navigateTo('governance', { gov: 'quality', table: { db: db, table: table } }); } });
       acts.push({ text: '工单', title: '查看 ' + fqn + ' 的相关工单', go: function () { navigateTo('governance', { gov: 'health', issueFilter: { relTable: fqn } }); } });
-      acts.push({ text: '目录', title: '在资产目录打开 ' + fqn, go: function () { navigateTo('catalog', { openTable: { db: db, table: table } }); } });
+      acts.push({ text: '预览', title: '原地预览 ' + fqn + '(摘要+字段, 不跳页)', go: function () { if (DN.tablePreview) DN.tablePreview(db, table); else navigateTo('catalog', { openTable: { db: db, table: table } }); } });
       acts.push({ text: '🤖AI', title: '让AI分析 ' + fqn + ' 的血缘与下游影响', go: function () {
         if (window.dnAskAi) window.dnAskAi('评估表 ' + fqn + ' 的下游影响面与变更/下线前检查清单。[表:' + fqn + ']',
           { route: 'governance', gov: 'lineage', db: db, table: table }); } });
