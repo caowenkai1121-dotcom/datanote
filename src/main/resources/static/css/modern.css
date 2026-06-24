@@ -118,6 +118,9 @@ a .gov-pill:hover, .gov-pill[onclick]:hover { filter: brightness(.97); }
   background: var(--bg-card);
   backdrop-filter: blur(2px);
 }
+/* 防多列窄表表头与操作按钮 CJK 竖排堆叠(承 R27/R28) */
+.quality-rules-table th { white-space: nowrap; }
+.quality-actions { white-space: nowrap; }
 .quality-rules-table tbody tr, .dbsync-exec-table tbody tr { transition: background var(--dur-fast, .12s) ease, box-shadow var(--dur-fast, .12s) ease; }
 .quality-rules-table tbody tr:hover, .dbsync-exec-table tbody tr:hover {
   box-shadow: inset 3px 0 0 var(--primary);

@@ -9229,7 +9229,7 @@ function renderMetricList(metrics) {
   }
   var _mtotal = (window._metricListData || []).length;
   var html = '<div style="padding:0 2px 8px;font-size:12px;color:var(--text-muted);">共 ' + metrics.length + (metrics.length !== _mtotal ? ' / ' + _mtotal : '') + ' 个指标</div>' +
-    '<table class="quality-rules-table"><thead><tr>' +
+    '<div style="overflow-x:auto;"><table class="quality-rules-table" style="min-width:920px;"><thead><tr>' +
     _mth('指标名称', 'metricName') + _mth('编码', 'metricCode') + _mth('分类', 'category') + '<th>单位</th><th title="数据最近取值的新鲜程度: 最新/陈旧(>26h)/未取值">新鲜度</th><th title="该指标的来源库表">数据来源</th>' + _mth('负责人', 'owner') + _mth('状态', 'status') + '<th>操作</th>' +
     '</tr></thead><tbody>';
   metrics.forEach(function(m) {
@@ -9253,7 +9253,7 @@ function renderMetricList(metrics) {
         '<button class="btn btn-sm btn-danger" data-perm="metrics:edit" onclick="deleteMetric(' + m.id + ')">删除</button>' +
       '</td></tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   container.innerHTML = html;
   if (window.dnApplyBtnPerms) dnApplyBtnPerms(container);
   if (window.dnA11yEnhance) dnA11yEnhance(container);   // 排序表头键盘可达
