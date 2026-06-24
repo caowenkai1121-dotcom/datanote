@@ -202,13 +202,21 @@
       if (!cols.length) {
         body.appendChild(DN.h('div', { text: '暂无字段信息', style: 'color:var(--text-muted);font-size:12px;' }));
       } else {
+        if (cols.length > 8) { // 宽表: 字段搜索过滤
+          var fsearch = DN.h('input', { placeholder: '搜索字段名/中文名/类型…', style: 'width:100%;box-sizing:border-box;margin-bottom:6px;padding:5px 9px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-body);color:var(--text-primary);' });
+          fsearch.oninput = function () {
+            var kw = (fsearch.value || '').trim().toLowerCase();
+            for (var i = 0; i < tbl.rows.length; i++) { var rw = tbl.rows[i]; if (rw === thr) continue; rw.style.display = (!kw || (rw.getAttribute('data-fk') || '').indexOf(kw) >= 0) ? '' : 'none'; }
+          };
+          body.appendChild(fsearch);
+        }
         var scroll = DN.h('div', { style: 'max-height:46vh;overflow:auto;border:1px solid var(--divider);border-radius:var(--radius);' });
         var tbl = DN.h('table', { style: 'width:100%;font-size:12px;border-collapse:collapse;' });
         var thr = DN.h('tr', {});
         ['#', '字段', '中文名', '类型'].forEach(function (h) { thr.appendChild(DN.h('th', { text: h, style: 'text-align:left;padding:5px 9px;border-bottom:1px solid var(--divider);position:sticky;top:0;background:var(--bg-main);font-weight:600;' })); });
         tbl.appendChild(thr);
         cols.forEach(function (c, i) {
-          c = c || {}; var tr = DN.h('tr', {});
+          c = c || {}; var tr = DN.h('tr', { 'data-fk': ((c.name || '') + ' ' + (c.comment || '') + ' ' + (c.type || '')).toLowerCase() });
           [String(i + 1), c.name || '', c.comment || '', c.type || ''].forEach(function (v) { tr.appendChild(DN.h('td', { text: v, title: v, style: 'padding:5px 9px;border-bottom:1px solid var(--divider);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;' })); });
           tbl.appendChild(tr);
         });
