@@ -313,6 +313,7 @@
     a.href = url; a.download = (name || 'export') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    if (DN.toast) DN.toast('已导出 ' + ((rows || []).length) + ' 行 CSV', 'ok'); // 成功反馈
   };
 
   DN.empty = function (text, icon, action) {
