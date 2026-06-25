@@ -320,7 +320,20 @@
       if (it.createdAt) meta.appendChild(row('创建', String(it.createdAt).replace('T', ' ').slice(0, 16)));
       body.appendChild(meta);
       if (it.description) { body.appendChild(DN.h('div', { text: '描述', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('div', { text: it.description, style: 'font-size:12.5px;color:var(--text-regular);white-space:pre-wrap;word-break:break-all;line-height:1.5;' })); }
-      if (window.navigateTo) { var go = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '去治理工单中心处理(流转/指派) →', style: 'margin-top:12px;display:inline-block;' }); go.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('governance', { gov: 'health', focusIssue: id }); }; body.appendChild(go); }
+      var ibar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
+      // 原地快捷流转: 未关闭工单可直接标记已解决, 无需跳治理页(#5)
+      if (it.status && it.status !== 'CLOSED' && it.status !== 'RESOLVED') {
+        var rs = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '标记已解决', 'data-perm': 'governance:issue' });
+        rs.onclick = function () {
+          if (rs.dataset.busy) return; rs.dataset.busy = '1'; rs.textContent = '处理中…';
+          DN.post('/api/gov/health/issues/' + id + '/transition', { status: 'RESOLVED' })
+            .then(function () { DN.toast('已标记解决', 'ok'); if (dr && dr.close) dr.close(); })
+            .catch(function (e) { DN.toast('流转失败: ' + (e && e.message ? e.message : e), 'err'); rs.dataset.busy = ''; rs.textContent = '标记已解决'; });
+        };
+        ibar.appendChild(rs);
+      }
+      if (window.navigateTo) { var go = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '去治理工单中心(流转/指派) →' }); go.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('governance', { gov: 'health', focusIssue: id }); }; ibar.appendChild(go); }
+      if (ibar.children.length) body.appendChild(ibar);
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
   };
 
