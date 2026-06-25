@@ -64,6 +64,10 @@ public class TaskExecutionService {
     @Value("${datanote.task.shell-enabled:false}")
     private boolean shellEnabled;
 
+    // 大数据调度优化: Doris 并行度(0=不设, 默认8提升亿级聚合/扫描); 调度SQL查询超时秒(0=不限, 防失控)
+    @Value("${datanote.schedule.doris-parallel:8}")
+    private int dorisParallel;
+
     // 指数退避参数
     private static final long RETRY_BASE_MS = 5000;    // 5 秒
     private static final long RETRY_MAX_MS = 300000;   // 5 分钟
@@ -465,13 +469,21 @@ public class TaskExecutionService {
                 throw new RuntimeException("Shell 执行失败，退出码: " + result.getExitCode());
             }
         } else {
+            // 大数据调度优化: 并行度会话变量(守卫式, 不支持自动忽略) + 脚本配置的查询超时(防亿级查询失控)
+            java.util.List<String> sessionSets = new java.util.ArrayList<>();
+            if (dorisParallel > 0) sessionSets.add("SET parallel_fragment_exec_instance_num = " + dorisParallel);
+            int sqlTimeout = script.getTimeoutSeconds() != null && script.getTimeoutSeconds() > 0 ? script.getTimeoutSeconds() : 0;
+            if (!sessionSets.isEmpty() || sqlTimeout > 0) {
+                logBuilder.append("[大数据优化] 并行度=").append(dorisParallel > 0 ? dorisParallel : "默认")
+                          .append(sqlTimeout > 0 ? ("，查询超时=" + sqlTimeout + "s") : "").append("\n");
+            }
             String[] statements = splitSQL(executeSql);
             for (int i = 0; i < statements.length; i++) {
                 String stmt = statements[i].trim();
                 if (stmt.isEmpty()) continue;
 
                 logBuilder.append("[执行第 ").append(i + 1).append("/").append(statements.length).append(" 条语句]\n");
-                Map<String, Object> result = hiveService.executeSQL(stmt);
+                Map<String, Object> result = hiveService.executeSQL(stmt, false, sqlTimeout, sessionSets);
                 Boolean success = (Boolean) result.get("success");
                 if (success == null || !success) {
                     throw new RuntimeException("DorisSQL 执行失败: " + result.get("error"));

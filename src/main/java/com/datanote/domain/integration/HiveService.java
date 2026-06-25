@@ -79,11 +79,29 @@ public class HiveService {
 
     /** readOnly=true 供只读消费路径(指标取数等)纵深防御; 开发脚本通道保持 false 不受影响 */
     public Map<String, Object> executeSQL(String sql, boolean readOnly) throws Exception {
+        return executeSQL(sql, readOnly, 0, null);
+    }
+
+    /**
+     * 大数据调度优化重载：queryTimeoutSec&gt;0 设语句查询超时（防亿级查询失控）；
+     * sessionSets 在【同一连接】先执行（如 Doris 并行度 SET parallel_fragment_exec_instance_num=8），
+     * 每条 SET 用 try/catch 守卫——版本/驱动不支持则忽略，绝不影响主 SQL。
+     */
+    public Map<String, Object> executeSQL(String sql, boolean readOnly, int queryTimeoutSec, List<String> sessionSets) throws Exception {
         Map<String, Object> result = new HashMap<>();
         long start = System.currentTimeMillis();
 
         try (Connection conn = hiveConfig.getRawConnection();
              Statement stmt = conn.createStatement()) {
+            if (queryTimeoutSec > 0) {
+                try { stmt.setQueryTimeout(queryTimeoutSec); } catch (Exception ignore) { /* 驱动不支持忽略 */ }
+            }
+            if (sessionSets != null) {
+                for (String s : sessionSets) {
+                    if (s == null || s.trim().isEmpty()) continue;
+                    try { stmt.execute(s); } catch (Exception ex) { /* 会话变量不支持(版本差异)则忽略, 不影响主SQL */ }
+                }
+            }
             if (readOnly) {
                 try { conn.setReadOnly(true); } catch (Exception ignore) { /* 驱动不支持时退化为仅依赖语句守卫 */ }
             }
