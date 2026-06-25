@@ -663,6 +663,31 @@
     loadGlossary(listBox);
   }
 
+  // 术语编辑(后端 saveTerm 按 id upsert): 自包含抽屉, 预填+带id保存
+  function editTerm(g, box) {
+    var term = DN.h('input', { class: 'dn-form-input', value: g.term || '' });
+    var cat = DN.h('input', { class: 'dn-form-input', value: g.category || '' });
+    var def = DN.h('input', { class: 'dn-form-input', value: g.definition || '' });
+    var body = DN.h('div');
+    var sec = DN.formSection('编辑术语');
+    sec.add(DN.formGrid2([DN.field('术语', term, { required: true }), DN.field('分类', cat)]));
+    sec.add(DN.field('定义', def));
+    body.appendChild(sec.el);
+    var dr, foot;
+    var save = function () {
+      var tv = term.value.trim();
+      if (!tv) { DN.toast('术语名必填', 'error'); term.focus(); return; }
+      if (tv.length > 50 || cat.value.length > 30 || def.value.length > 500) { DN.toast('字段超长(术语≤50/分类≤30/定义≤500)', 'error'); return; }
+      foot.busy('保存中…');
+      DN.post('/api/gov/asset/glossary', { id: g.id, term: tv, category: cat.value.trim(), definition: def.value.trim() })
+        .then(function () { DN.toast('已保存', 'success'); dr.close(); loadGlossary(box); })
+        .catch(function (e) { foot.reset('保存'); DN.toast(e && e.message || '保存失败', 'error'); });
+    };
+    foot = DN.drawerFoot({ okText: '保存', onOk: save, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('编辑术语', body, foot.el);
+    DN.enterSubmit(body, save);
+  }
+
   function loadGlossary(box) {
     if (!box) return;
     DN.get('/api/gov/asset/glossary').then(function (list) {
@@ -673,7 +698,9 @@
           { key: 'category', label: '分类', render: function (g) { return g.category || '-'; } },
           { key: 'definition', label: '定义', render: function (g) { return clip(g.definition, 80) || '-'; } },
           { key: '_op', label: '操作', render: function (g) {
-              return DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', 'data-perm': 'catalog:edit',
+              var w = DN.h('span', { style: 'display:inline-flex;gap:6px;align-items:center;' });
+              w.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '编辑', 'data-perm': 'catalog:edit', onclick: function () { editTerm(g, box); } }));
+              w.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', 'data-perm': 'catalog:edit',
                 onclick: function () {
                   DN.confirm('确认删除术语「' + (g.term || '') + '」？此操作不可撤销。', { title: '删除确认', danger: true }).then(function (ok) {
                     if (!ok) return;
@@ -681,7 +708,8 @@
                       .then(function () { DN.toast('已删除', 'success'); loadGlossary(box); })
                       .catch(function (e) { DN.toast(e.message, 'error'); });
                   });
-                } });
+                } }));
+              return w;
             } }
         ],
         rows: Array.isArray(list) ? list : [], pageSize: 10, search: false, empty: '暂无术语，可在上方表单新增'
