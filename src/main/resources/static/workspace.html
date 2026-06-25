@@ -1316,7 +1316,7 @@
 
     <!-- ===== 数据集成 新建/编辑任务弹窗(原 view-dbsync, 浮层独立于视图) ===== -->
     <div class="dbsync-modal-overlay" id="dbsyncFormModal">
-      <div class="dbsync-modal" role="dialog" aria-modal="true" aria-labelledby="dbsyncFormTitle">
+      <div class="dbsync-modal" role="dialog" aria-modal="true" aria-labelledby="dbsyncFormTitle" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.target.tagName!=='TEXTAREA'&&event.target.tagName!=='BUTTON'&&event.target.tagName!=='SELECT'){var b=this.querySelector('.dbsync-modal-footer .btn-primary,.btn-primary');if(b&&!b.disabled){event.preventDefault();b.click();}}">
         <div class="dbsync-modal-header">
           <span id="dbsyncFormTitle">新建同步任务</span>
           <button class="g-modal-close" onclick="dbsyncCloseFormModal()">&times;</button>
