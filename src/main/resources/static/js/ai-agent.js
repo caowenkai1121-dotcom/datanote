@@ -1458,7 +1458,8 @@
     ]);
     panel.appendChild(histHd);
     var histSearch = DN.h('input', { id: 'aiHistSearch', type: 'text', placeholder: '搜索历史…', style: 'margin:0 18px 6px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-body);color:var(--text-primary);flex:0 0 auto;' });
-    histSearch.addEventListener('input', function () { _sessionFilter = histSearch.value; renderSessionRows(); });
+    var _histSearchTm;
+    histSearch.addEventListener('input', function () { _sessionFilter = histSearch.value; clearTimeout(_histSearchTm); _histSearchTm = setTimeout(renderSessionRows, 250); });   // 防抖, 避免每键重渲会话列表
     panel.appendChild(histSearch);
     histListEl = DN.h('div', { id: 'aiHistList', style: 'flex:0 0 auto;max-height:240px;overflow-y:auto;padding:0 18px 8px;border-bottom:1px solid var(--border);margin-bottom:6px;' });
     panel.appendChild(histListEl);
