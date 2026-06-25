@@ -14531,6 +14531,8 @@ window.dbsyncAddTableRow = function() {
   if (!container) return;
   var idx = container.children.length;
   container.insertAdjacentHTML('beforeend', dbsyncMakeTableRowHtml(idx));
+  var newRow = container.lastElementChild;   // 新增行自动聚焦首个选择/输入, 省一次点击
+  if (newRow) { var f = newRow.querySelector('select,input'); if (f) { try { f.focus(); f.scrollIntoView({ block: 'nearest' }); } catch (e) {} } }
 };
 
 /* DS-M10：按表名正则批量添加（整库/分表汇聚多对一） */
