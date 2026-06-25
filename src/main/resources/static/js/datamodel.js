@@ -469,6 +469,7 @@
       + '<div style="margin-top:8px;"><button class="btn btn-sm" onclick="dmAttrAddRow()">+ 添加属性</button></div>'
       + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveAttrs()">保存属性</button></div></div>';
     projShowModalBox('编辑实体属性', h);
+    setTimeout(function () { var f = document.querySelector('#dmAttrRows .dmA-code'); if (f) { try { f.focus(); } catch (e) {} } }, 50);   // 打开即聚焦首行编码
   }
   function collectAttrRows() {
     var rows = [];
