@@ -500,7 +500,21 @@
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: 'idleDays', label: '闲置', render: function (r) { return r.idleDays == null ? DN.pill('从未消费', 'err') : DN.pill(r.idleDays + ' 天', r.idleDays >= 90 ? 'err' : 'warn'); } },
           { key: 'lastConsumedAt', label: '最近消费', render: function (r) { return DN.h('span', { text: r.lastConsumedAt || '-', style: 'font-size:12px;color:var(--text-muted)' }); } },
-          { key: '_op', label: '操作', render: function (r) { return zombieOps(r); } }
+          { key: '_op', label: '操作', render: function (r) {
+            var wrap = DN.h('span', { style: 'display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;' });
+            wrap.appendChild(zombieOps(r));
+            // 闭环: 为长期未消费指标一键建治理工单(僵尸指标→治理跟进)
+            var mk = DN.h('a', { href: 'javascript:void(0)', text: '建工单', 'data-perm': 'governance:issue', title: '为此长期未消费指标建治理工单' });
+            mk.onclick = function () {
+              if (mk.dataset.busy) return; mk.dataset.busy = '1'; mk.textContent = '建单中…';
+              var days = (document.getElementById('consUnusedDays') || {}).value || '30';
+              DN.post('/api/gov/health/issues', { title: '指标长期未消费: ' + (r.metricName || r.metricCode || ('#' + r.id)), issueType: 'GOVERNANCE', severity: 'low', objectRef: r.metricCode || ('metric:' + r.id), description: '该启用指标超过 ' + days + ' 天未被查询/导出/取值(闲置 ' + (r.idleDays == null ? '从未消费' : r.idleDays + ' 天') + '), 建议排查消费方或下线。' })
+                .then(function () { DN.toast('已建治理工单', 'ok'); mk.textContent = '已建单'; })
+                .catch(function (e) { DN.toast('建工单失败: ' + errMsg(e), 'err'); mk.dataset.busy = ''; mk.textContent = '建工单'; });
+            };
+            wrap.appendChild(mk);
+            return wrap;
+          } }
         ]
       }));
     }).catch(function (e) {
