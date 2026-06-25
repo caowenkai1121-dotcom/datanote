@@ -194,9 +194,11 @@
     function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;font-size:12.5px;margin:3px 0;' }, [DN.h('span', { text: k, style: 'color:var(--text-muted);min-width:56px;flex:0 0 auto;' }), DN.h('span', { text: String(v == null ? '-' : v), style: 'color:var(--text-regular);word-break:break-all;' })]); }
     Promise.all([
       DN.get('/api/metadata/table-detail?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table)).catch(function () { return null; }),
-      DN.metaColumns(db, table).catch(function () { return []; })
+      DN.metaColumns(db, table).catch(function () { return []; }),
+      DN.get('/api/quality/rules').catch(function () { return []; })   // 质量覆盖: 该表已配几条质量规则
     ]).then(function (rs) {
       var d = rs[0] || {}, info = d.tableInfo || {}, tm = d.tableMeta || {}, cols = rs[1] || [];
+      var ruleN = (Array.isArray(rs[2]) ? rs[2] : []).filter(function (r) { return r && r.databaseName === db && r.tableName === table; }).length;
       body.innerHTML = '';
       var sum = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:12px;background:var(--bg-card);' });
       if (info.comment) sum.appendChild(row('说明', info.comment));
@@ -204,6 +206,7 @@
       if (info.engine) sum.appendChild(row('引擎', info.engine));
       if (tm.owner) sum.appendChild(row('负责人', tm.owner));
       if (tm.tags) sum.appendChild(row('标签', tm.tags));
+      sum.appendChild(row('质量规则', ruleN > 0 ? (ruleN + ' 条') : '未配置(建议加)'));   // 治理覆盖可见
       if (info.updateTime) sum.appendChild(row('更新', info.updateTime));
       body.appendChild(sum);
       body.appendChild(DN.h('div', { text: '字段 (' + cols.length + ')', style: 'font-weight:600;font-size:13px;margin:8px 0 6px;color:var(--text-primary);' }));
