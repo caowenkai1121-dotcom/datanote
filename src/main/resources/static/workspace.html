@@ -9243,7 +9243,7 @@ function renderMetricList(metrics) {
     }).join('');
     html += '<tr data-mid="' + m.id + '" style="cursor:pointer;" onclick="if(!event.target.closest(\'button,a,input,select\'))openMetricDetail(' + m.id + ')">' +
       '<td style="font-weight:500;max-width:200px;"><a href="#" onclick="openMetricDetail(' + m.id + ');return false;" style="color:var(--primary);display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;" title="查看详情驾驶舱: ' + escapeHtml(m.metricName || '') + '">' + hlMetric(m.metricName || '') + '</a><span class="dnpj" data-id="' + m.id + '"></span></td>' +
-      '<td><code style="font-size:var(--fs-xs);background:var(--bg-body);padding:1px 4px;border-radius:var(--radius-sm);">' + hlMetric(m.metricCode || '') + '</code></td>' +
+      '<td><code onclick="event.stopPropagation();if(window.DN&&DN.copyText)DN.copyText(\'' + escapeHtml(String(m.metricCode || '').replace(/\x27/g, '')) + '\',\'已复制编码\')" title="点击复制编码" style="cursor:pointer;font-size:var(--fs-xs);background:var(--bg-body);padding:1px 4px;border-radius:var(--radius-sm);">' + hlMetric(m.metricCode || '') + '</code></td>' +
       '<td>' + escapeHtml(m.category || '-') + '</td>' +
       '<td>' + escapeHtml(m.unit || '-') + '</td>' +
       '<td>' + _metricFreshBadge(fresh[m.id]) + '</td>' +
