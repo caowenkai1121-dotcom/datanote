@@ -11412,6 +11412,23 @@ document.addEventListener('mouseover', function(e) {
   if (t && t.length < 400) el.title = t;
 });
 
+// a11y: div+onclick 的关键交互元素(运维侧栏/状态过滤/首页快捷)键盘可达——全局委托, 免逐元素改
+(function() {
+  var A11Y_SEL = '.ops-sidebar-item, .sched-stat, .wlc-action, .wlc-newbtn';
+  function a11yEnhance() {
+    document.querySelectorAll(A11Y_SEL).forEach(function(el) {
+      if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); if (!el.getAttribute('role')) el.setAttribute('role', 'button'); }
+    });
+  }
+  document.addEventListener('keydown', function(e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.matches && e.target.matches(A11Y_SEL)) {
+      e.preventDefault(); e.target.click();
+    }
+  });
+  window.a11yEnhance = a11yEnhance;   // 视图切换后可手动再补
+  if (document.readyState !== 'loading') a11yEnhance(); else document.addEventListener('DOMContentLoaded', a11yEnhance);
+})();
+
 // 返回顶部浮动按钮: 捕获阶段监听任意滚动容器, 超阈值显现, 点击平滑回顶(排除弹窗/抽屉/编辑器, 避免遮挡)
 (function() {
   var btn = document.createElement('button');
