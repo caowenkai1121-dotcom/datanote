@@ -2036,7 +2036,7 @@
           <div class="prop-row">
             <span class="prop-label">告警方式</span>
             <div class="prop-value">
-              <select class="prop-select" id="schedAlertChannel" onchange="onAlertChannelChange()">
+              <select class="prop-select" id="schedAlertChannel" onchange="onAlertChannelChange(true)">
                 <option value="none">不通知</option>
                 <option value="feishu_group" selected>飞书群组</option>
                 <option value="feishu_user">飞书个人</option>
@@ -6213,7 +6213,7 @@ function saveBasicInfo() {
 }
 
 // ===== 告警方式切换 =====
-function onAlertChannelChange() {
+function onAlertChannelChange(userTriggered) {
   var ch = document.getElementById('schedAlertChannel').value;
   var row = document.getElementById('alertContactRow');
   var input = document.getElementById('schedAlertContact');
@@ -6230,6 +6230,7 @@ function onAlertChannelChange() {
       hint.textContent = '接收人的飞书登录账号，多人用逗号分隔';
     }
   }
+  if (userTriggered && input) input.value = '';   // 用户手动切渠道清旧值(渠道格式不同), init加载已存配置不清
 }
 
 // ===== 基本信息：加载主题域下拉 =====
