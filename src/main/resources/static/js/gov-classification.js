@@ -431,7 +431,7 @@
     var jobs = scanList.map(function (t) {
       return DN.get('/api/gov/classification/scan?db=' + encodeURIComponent(t.db) + '&table=' + encodeURIComponent(t.table))
         .then(function (cols) { return { db: t.db, table: t.table, cols: Array.isArray(cols) ? cols : [] }; })
-        .catch(function () { return { db: t.db, table: t.table, cols: [] }; });
+        .catch(function () { return { db: t.db, table: t.table, cols: [], failed: true }; });   // 标记失败, 区分"无敏感列"与"扫描失败"
     });
     Promise.all(jobs).then(function (results) {
       _busy.pending = false; unlock();
@@ -453,6 +453,13 @@
       });
       pending.sort(function (a, b) { return b.confidence - a.confidence; }); // 高置信优先（更接近可确认）
       renderPendingCols(box, pending, scanList.length, tables.length);
+      // 扫描失败的表单独提示, 避免被误认为"无敏感列"
+      var failed = results.filter(function (r) { return r.failed; });
+      if (failed.length) {
+        var fnames = failed.slice(0, 5).map(function (r) { return r.db + '.' + r.table; }).join('、') + (failed.length > 5 ? ' 等' : '');
+        var warn = DN.h('div', { style: 'margin:0 0 10px;padding:8px 12px;border-radius:var(--radius-md);background:var(--warning-light,rgba(245,166,35,.12));color:var(--warning);font-size:12px;border:1px solid var(--warning);', text: '⚠ ' + failed.length + ' 张表扫描失败(权限/网络/超时), 结果可能不完整: ' + fnames });
+        box.insertBefore(warn, box.firstChild);
+      }
     }).catch(function (e) {
       _busy.pending = false; unlock();
       box.innerHTML = ''; box.appendChild(DN.errorBox('待确认列扫描失败：' + errMsg(e), loadPendingCols));
