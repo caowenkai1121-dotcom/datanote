@@ -13062,6 +13062,8 @@ function saveDatasourceConfig() {
   var host = document.getElementById('cfgHiveHost').value;
   if (!(host || '').trim()) { showToast('请填写 Doris 主机地址', 'error'); return; }
   var port = document.getElementById('cfgHivePort').value || '9030';
+  var _pn = parseInt(port, 10);
+  if (isNaN(_pn) || _pn < 1 || _pn > 65535) { showToast('端口需为 1-65535 的数字', 'error'); var pe = document.getElementById('cfgHivePort'); if (pe) pe.focus(); return; }
   var auth = document.getElementById('cfgHiveAuth').value;
   var db = document.getElementById('cfgHiveDb').value || 'ods';
   var user = document.getElementById('cfgHiveUser').value;
