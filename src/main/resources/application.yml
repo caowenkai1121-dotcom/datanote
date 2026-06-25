@@ -96,12 +96,6 @@ datanote:
     channel: ${DATAX_CHANNEL:3}                    # 基础并发通道
     big-batch-size: ${DATAX_BIG_BATCH:8192}        # 源表>1亿: 写批
     big-channel: ${DATAX_BIG_CHANNEL:6}            # 源表>1亿: 并发通道
-  sync:
-    table-parallel: ${SYNC_TABLE_PARALLEL:1}       # 大任务: 单作业多表并行同步度(1=顺序默认; 2-4加速多表大作业, 受连接池约束, 每表占源+目标各1连接)
-    circuit-breaker:                                # 守卫式熔断(默认关): 源/目标过载连续失败时快速失败防踩踏, 冷却后半开恢复
-      enabled: ${SYNC_CB_ENABLED:false}
-      threshold: ${SYNC_CB_THRESHOLD:5}            # 连续失败达此数熔断
-      cooldown-ms: ${SYNC_CB_COOLDOWN:60000}       # 熔断冷却毫秒
   ai:
     api-key: ${CLAUDE_API_KEY:}
     model: ${CLAUDE_MODEL:claude-sonnet-4-6}
@@ -125,6 +119,11 @@ datanote:
     user: ${NEO4J_USER:neo4j}
     password: ${NEO4J_PWD:}
   sync:
+    table-parallel: ${SYNC_TABLE_PARALLEL:1}       # 大任务: 单作业多表并行同步度(1=顺序默认; 2-4加速多表大作业, 受连接池约束)
+    circuit-breaker:                                # 守卫式熔断(默认关): 源/目标过载连续失败时快速失败防踩踏, 冷却后半开
+      enabled: ${SYNC_CB_ENABLED:false}
+      threshold: ${SYNC_CB_THRESHOLD:5}
+      cooldown-ms: ${SYNC_CB_COOLDOWN:60000}
     executor:
       # FULL/INCREMENTAL 同步线程池大小（优先级池），高优先级任务先跑
       pool-size: ${SYNC_EXECUTOR_POOL:4}
