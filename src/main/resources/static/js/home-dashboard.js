@@ -338,6 +338,7 @@
       if (!vh || vh.style.display === 'none' || !document.body.contains(box)) {
         clearInterval(_timer); _timer = null; return;
       }
+      if (document.hidden) return;   // 标签页切到后台时跳过刷新省流量, 回前台下一tick自然刷新
       window.renderHomeDashboard(box);
     }, 60000);
   }
