@@ -129,6 +129,20 @@ public class MysqlConnector implements DbConnector {
         return SqlIdentifiers.quote(id);
     }
 
+    /** 廉价估算行数: information_schema.TABLES.TABLE_ROWS（即时、近似, 亿级表也毫秒返回）。失败返回 -1。 */
+    @Override
+    public long estimateRowCount(Connection conn, String db, String table) {
+        String sql = "SELECT TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, db);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) { long v = rs.getLong(1); return rs.wasNull() ? -1L : v; }
+            }
+        } catch (Exception e) { /* 估算失败不影响同步 */ }
+        return -1L;
+    }
+
     // ===== 纯逻辑：可单测的 SQL 构建 =====
 
     /** keyset 分页查询 SQL。hasCursor=true 时带 WHERE 游标。 */

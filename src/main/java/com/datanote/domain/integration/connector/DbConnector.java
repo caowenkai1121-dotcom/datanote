@@ -42,4 +42,11 @@ public interface DbConnector {
 
     /** 按本库方言引用标识符（MySQL/Doris 反引号、PG/Oracle 双引号、SQLServer 方括号）。 */
     String quoteIdentifier(String id);
+
+    /**
+     * 廉价估算表行数（用于大表自适应批次，避免对亿级表跑全表 COUNT(*)）。
+     * 默认 -1=未知（调用方按基础批次处理）；MySQL/Doris 用 information_schema.TABLES.TABLE_ROWS（即时、近似）。
+     * 复用调用方已开的源连接，不另开连接。估算失败不得影响同步，返回 -1。
+     */
+    default long estimateRowCount(Connection conn, String db, String table) { return -1L; }
 }

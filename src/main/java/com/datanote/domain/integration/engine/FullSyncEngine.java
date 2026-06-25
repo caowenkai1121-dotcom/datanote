@@ -43,6 +43,21 @@ public class FullSyncEngine implements SyncEngine {
         }
     }
 
+    /**
+     * 大表自适应批次：用 information_schema 估行数（即时近似），>1亿用 10000、>1千万用 5000，否则用配置基础值。
+     * 减少 keyset 分页往返与目标端提交次数（1亿行 @1000/批=10万次往返 → @10000=1万次）。估算失败回退基础批次。
+     */
+    private int effectiveBatchSize(SyncContext ctx, String srcDb, String table, java.sql.Connection srcConn) {
+        int base = ctx.getBatchSize();
+        long est = -1L;
+        try { est = ctx.getSource().estimateRowCount(srcConn, srcDb, table); } catch (Exception e) { /* 回退基础 */ }
+        int eff = base;
+        if (est >= 100_000_000L) eff = Math.max(base, 10000);
+        else if (est >= 10_000_000L) eff = Math.max(base, 5000);
+        if (eff != base) ctx.log("INFO", "大表自适应批次: " + table + " 约 " + est + " 行, batchSize " + base + " -> " + eff);
+        return eff;
+    }
+
     private void syncOneTable(SyncContext ctx, TableSyncConfig tc) throws Exception {
         DbConnector source = ctx.getSource();
         DbConnector target = ctx.getTarget();
@@ -133,7 +148,7 @@ public class FullSyncEngine implements SyncEngine {
         }
 
         long tableRead = 0;
-        int batchSize = ctx.getBatchSize();
+        int batchSize = effectiveBatchSize(ctx, srcDb, tc.getSourceTable(), srcConn);   // 大表(>千万/亿)自适应调大批次, 减往返
         boolean binaryWarned = false;
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql)) {
             BatchWriter bw = new BatchWriter(writePs, tgtConn, ctx, writeColumns, tc.getSourceTable(), tc.getTargetTable());
@@ -225,7 +240,7 @@ public class FullSyncEngine implements SyncEngine {
         String pageSql = ctx.getSource().scanSql(srcDb, tc.getSourceTable(), srcColumns, extraWhere);
 
         long tableRead = 0;
-        int batchSize = ctx.getBatchSize();
+        int batchSize = effectiveBatchSize(ctx, srcDb, tc.getSourceTable(), srcConn);   // 大表自适应写批, 减提交次数
         try (PreparedStatement writePs = tgtConn.prepareStatement(writeSql);
              PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
             readPs.setFetchSize(Integer.MIN_VALUE); // MySQL 流式：逐行游标，避免整表载入内存
