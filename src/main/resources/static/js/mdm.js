@@ -719,12 +719,12 @@
     var doSave = function () {
       if (foot.ok.disabled) return;
       var data = {};
-      var missing = null, invalid = null;
+      var missing = null, missingEl = null, invalid = null;
       _grAttrs.forEach(function (a) {
         if (invalid) return;
         var el = inputs[a.attrCode];
         var v = (el && el.value != null ? String(el.value).trim() : '');
-        if (a.required === 1 && !v && !missing) missing = a.attrName;
+        if (a.required === 1 && !v && !missing) { missing = a.attrName; missingEl = el; }
         if (v !== '') {
           var t = (a.dataType || 'STRING').toUpperCase();
           // 类型校验：数值类必须可解析为数字；超长按长度限制拦截
@@ -735,7 +735,7 @@
         }
       });
       if (invalid) { DN.toast('属性校验失败：' + invalid, 'err'); return; }
-      if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
+      if (missing) { if (missingEl) { try { missingEl.focus(); } catch (e) {} } DN.toast('必填属性未填写：' + missing, 'err'); return; }
       var payload = { id: row.id, entityId: _grEntity.id, dataJson: JSON.stringify(data), status: statusSel.value, sourceSystem: srcInput.value.trim() };
       foot.busy();
       DN.post('/api/mdm/golden/save', payload).then(function () { DN.toast('已保存', 'ok'); dr.close(); reloadGolden(); })
@@ -772,12 +772,12 @@
       var reason = fReason.value.trim();
       if (!reason) { DN.toast('请填写变更原因', 'err'); fReason.focus(); return; }
       // 与 goldenForm 同口径的必填/类型/长度校验; 仅把改动过的字段作为 patch 提交, 审批通过后合并进记录
-      var patch = {}, missing = null, invalid = null, changed = 0;
+      var patch = {}, missing = null, missingEl = null, invalid = null, changed = 0;
       _grAttrs.forEach(function (a) {
         if (invalid) return;
         var el = inputs[a.attrCode];
         var v = (el && el.value != null ? String(el.value).trim() : '');
-        if (a.required === 1 && !v && !missing) missing = a.attrName;
+        if (a.required === 1 && !v && !missing) { missing = a.attrName; missingEl = el; }
         if (v !== '') {
           var t = (a.dataType || 'STRING').toUpperCase();
           if ((t === 'INT' || t === 'DECIMAL') && isNaN(Number(v))) { invalid = a.attrName + ' 需为数字'; return; }
@@ -788,7 +788,7 @@
         if (v !== old) { patch[a.attrCode] = v; changed++; }
       });
       if (invalid) { DN.toast('属性校验失败：' + invalid, 'err'); return; }
-      if (missing) { DN.toast('必填属性未填写：' + missing, 'err'); return; }
+      if (missing) { if (missingEl) { try { missingEl.focus(); } catch (e) {} } DN.toast('必填属性未填写：' + missing, 'err'); return; }
       if (!changed) { DN.toast('未修改任何字段，无需提交变更申请', 'warn'); return; }
       var reqBody = { entityId: _grEntity.id, goldenRecordId: row.id, changeType: 'update', bizKey: row.bizKey || null, reason: reason, payloadJson: JSON.stringify(patch) };
       foot.busy();
