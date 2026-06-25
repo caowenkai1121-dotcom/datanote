@@ -115,6 +115,7 @@ public class IncrementalSyncEngine implements SyncEngine {
         try (Connection srcConn = source.getConnection();
              Connection tgtConn = target.getConnection()) {
             tgtConn.setAutoCommit(false);
+            int batchSize = SyncEngine.adaptiveBatch(ctx, srcDb, tc.getSourceTable(), srcConn);   // 大表(增量首跑/历史回灌)自适应批次; 读LIMIT与末页判定须同值
             String preSql = ctx.getPreSql(tc);
             if (preSql != null) {
                 ctx.log("INFO", "执行前置SQL: " + tc.getSourceTable());
@@ -136,15 +137,15 @@ public class IncrementalSyncEngine implements SyncEngine {
                     try (PreparedStatement readPs = srcConn.prepareStatement(pageSql)) {
                         if (firstPage) {
                             readPs.setObject(1, cursorInc);
-                            readPs.setInt(2, ctx.getBatchSize());
+                            readPs.setInt(2, batchSize);
                         } else {
                             readPs.setObject(1, cursorInc);
                             readPs.setObject(2, cursorInc);
                             int p = 3;
                             for (Object v : cursorPk) readPs.setObject(p++, v);
-                            readPs.setInt(p, ctx.getBatchSize());
+                            readPs.setInt(p, batchSize);
                         }
-                        readPs.setFetchSize(ctx.getBatchSize()); // 流式读取，控制客户端内存峰值
+                        readPs.setFetchSize(batchSize); // 流式读取，控制客户端内存峰值
 
                         try (ResultSet rs = readPs.executeQuery()) {
                             int rowsWritten = 0;
@@ -185,7 +186,7 @@ public class IncrementalSyncEngine implements SyncEngine {
                     ctx.getReadCount().addAndGet(rowsThisPage);
                     firstPage = false;
 
-                    if (rowsThisPage < ctx.getBatchSize()) {
+                    if (rowsThisPage < batchSize) {
                         break;
                     }
                     // 整页都是增量值为 NULL 的行(游标无法推进)，再查会拿同一页死循环，保守终止本表
