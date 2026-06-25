@@ -289,6 +289,7 @@
       var it = (Array.isArray(rows) ? rows : []).filter(function (x) { return x && String(x.id) === String(id); })[0];
       body.innerHTML = '';
       if (!it) { body.appendChild(DN.h('div', { text: '未找到该工单(可能已关闭或被删除)', style: 'color:var(--text-muted);font-size:13px;padding:16px;' })); return; }
+      if (dr && dr.setTitle) dr.setTitle('工单: ' + (it.title ? it.title.slice(0, 24) : ('#' + id)));
       body.appendChild(DN.h('div', { text: it.title || ('工单#' + id), style: 'font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text-primary);line-height:1.4;' }));
       var pills = DN.h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;' });
       pills.appendChild(DN.pill(it.status || 'OPEN', TONE[it.status] || 'muted'));
@@ -320,6 +321,7 @@
       var runs = Array.isArray(rs[1]) ? rs[1] : [];
       body.innerHTML = '';
       if (!r) { body.appendChild(DN.h('div', { text: '未找到该规则', style: 'color:var(--text-muted);font-size:13px;padding:16px;' })); return; }
+      if (dr && dr.setTitle) dr.setTitle('规则: ' + (r.ruleName ? r.ruleName.slice(0, 24) : ('#' + id)));
       body.appendChild(DN.h('div', { text: r.ruleName || ('规则#' + id), style: 'font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text-primary);' }));
       var pills = DN.h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;' });
       pills.appendChild(DN.pill(r.status === 1 ? '启用' : '停用', r.status === 1 ? 'ok' : 'muted'));
