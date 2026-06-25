@@ -96,6 +96,8 @@ datanote:
     channel: ${DATAX_CHANNEL:3}                    # 基础并发通道
     big-batch-size: ${DATAX_BIG_BATCH:8192}        # 源表>1亿: 写批
     big-channel: ${DATAX_BIG_CHANNEL:6}            # 源表>1亿: 并发通道
+  sync:
+    table-parallel: ${SYNC_TABLE_PARALLEL:1}       # 大任务: 单作业多表并行同步度(1=顺序默认; 2-4加速多表大作业, 受连接池约束, 每表占源+目标各1连接)
   ai:
     api-key: ${CLAUDE_API_KEY:}
     model: ${CLAUDE_MODEL:claude-sonnet-4-6}

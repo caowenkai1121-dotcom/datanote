@@ -23,6 +23,8 @@ public class SyncContext {
     private List<TableSyncConfig> tables;
     private String writeMode;
     private int batchSize = 1000;
+    /** 大任务优化: 多表并行同步度(1=顺序, 默认; >1 时单作业内多表并发, 受连接池约束)。执行层按配置注入。 */
+    private int tableParallel = 1;
 
     /** M1：任务级前置/后置 SQL（表级未配置时回退此值）。 */
     private String globalPreSql;

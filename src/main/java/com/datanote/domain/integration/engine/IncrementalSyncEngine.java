@@ -26,18 +26,40 @@ public class IncrementalSyncEngine implements SyncEngine {
 
     @Override
     public void sync(SyncContext ctx) {
-        for (TableSyncConfig tc : ctx.getTables()) {
-            if (ctx.getStopped().get()) {
-                ctx.log("WARN", "任务被停止，中断");
-                break;
+        List<TableSyncConfig> tables = ctx.getTables();
+        int par = Math.max(1, ctx.getTableParallel());
+        if (par <= 1 || tables.size() <= 1) {   // 默认: 顺序(零行为变更)
+            for (TableSyncConfig tc : tables) {
+                if (ctx.getStopped().get()) { ctx.log("WARN", "任务被停止，中断"); break; }
+                syncOneTableSafe(ctx, tc);
             }
-            try {
-                syncOneTable(ctx, tc);
-            } catch (Exception e) {
-                ctx.getErrorCount().incrementAndGet();
-                ctx.log("ERROR", "表增量同步失败 " + tc.getSourceTable() + ": " + e.getMessage());
-                log.error("表增量同步失败: {}", tc.getSourceTable(), e);
+            return;
+        }
+        int threads = Math.min(par, tables.size());
+        ctx.log("INFO", "多表并行增量同步: 并行度=" + threads + ", 表数=" + tables.size());
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(
+                threads, r -> { Thread t = new Thread(r, "sync-inc-table"); t.setDaemon(true); return t; });
+        try {
+            java.util.List<java.util.concurrent.Future<?>> futs = new java.util.ArrayList<>();
+            for (TableSyncConfig tc : tables) {
+                futs.add(pool.submit(() -> { if (!ctx.getStopped().get()) syncOneTableSafe(ctx, tc); }));
             }
+            for (java.util.concurrent.Future<?> f : futs) {
+                try { f.get(); } catch (Exception e) { /* 单表错误已在 syncOneTableSafe 内计数 */ }
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    /** 单表增量同步并隔离错误(顺序/并行共用): 失败仅计数+记录, 不中断其他表; 各表断点独立回写。 */
+    private void syncOneTableSafe(SyncContext ctx, TableSyncConfig tc) {
+        try {
+            syncOneTable(ctx, tc);
+        } catch (Exception e) {
+            ctx.getErrorCount().incrementAndGet();
+            ctx.log("ERROR", "表增量同步失败 " + tc.getSourceTable() + ": " + e.getMessage());
+            log.error("表增量同步失败: {}", tc.getSourceTable(), e);
         }
     }
 

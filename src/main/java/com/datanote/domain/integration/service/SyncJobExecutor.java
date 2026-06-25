@@ -59,6 +59,10 @@ public class SyncJobExecutor {
     private final com.datanote.domain.project.mapper.DnProjectAssetMapper projectAssetMapper;      // 反查任务归属项目
     private final com.datanote.domain.project.mapper.DnProjectMapper projectMapper;
 
+    // 大任务: 单作业多表并行同步度(1=顺序, 默认零变更; 受 HikariCP 池约束, 每表占源+目标各1连接)
+    @org.springframework.beans.factory.annotation.Value("${datanote.sync.table-parallel:1}")
+    private int tableParallel;
+
     private static final String TASK_TYPE = "DbSync";
     private static final int MAX_LOG = 1_000_000;
 
@@ -207,6 +211,7 @@ public class SyncJobExecutor {
         ctx.setTargetDb(job.getTargetDb());
         ctx.setWriteMode(job.getWriteMode() == null ? "UPSERT" : job.getWriteMode());
         ctx.setBatchSize(job.getBatchSize() == null ? 1000 : job.getBatchSize());
+        ctx.setTableParallel(tableParallel);   // 大任务多表并行(默认1=顺序; 配置 datanote.sync.table-parallel 开启)
         // 迭代V3：同步时间戳标记透传给引擎
         ctx.setMarkSyncTs(job.getMarkSyncTs());
         ctx.setSyncTsField(job.getSyncTsField());
