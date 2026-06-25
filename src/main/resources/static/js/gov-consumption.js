@@ -149,6 +149,9 @@
       }).catch(function (e) { setLinkBusy(run, false, '运行'); DN.toast('运行失败：' + errMsg(e), 'err'); });
     };
     wrap.appendChild(run);
+    var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', 'data-perm': 'metrics:edit' });
+    edit.onclick = function () { if (r.id == null) { DN.toast('数据集缺少 ID', 'err'); return; } addDataset(r); };
+    wrap.appendChild(edit);
     var del = DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'metrics:edit' });
     del.onclick = function () {
       if (r.id == null) { DN.toast('数据集缺少 ID，无法删除', 'err'); return; }
@@ -181,12 +184,14 @@
 
   function addDataset(prefill) {
     prefill = prefill || {};
-    var nameI = DN.h('input', { class: 'dn-form-input', placeholder: '数据集名称' });
-    var codeI = DN.h('input', { class: 'dn-form-input', placeholder: '编码(唯一,如 daily_gmv)' });
+    var isEdit = prefill.id != null;   // 带 id = 编辑现有数据集
+    var nameI = DN.h('input', { class: 'dn-form-input', placeholder: '数据集名称', value: prefill.datasetName || '' });
+    var codeI = DN.h('input', { class: 'dn-form-input', placeholder: '编码(唯一,如 daily_gmv)', value: prefill.datasetCode || '' });
+    if (isEdit) { codeI.disabled = true; codeI.title = '编码为唯一标识, 不可修改'; }   // 编辑禁改唯一编码
     var dbI = DN.h('input', { class: 'dn-form-input', placeholder: '默认库(如 ods,可空)', value: prefill.defaultDb || '' });
     var sqlI = DN.h('textarea', { class: 'dn-form-input', rows: '4', placeholder: '精选 SELECT 查询' });
     if (prefill.querySql) sqlI.value = prefill.querySql; // R21 深链预填 SQL
-    var ownerI = DN.h('input', { class: 'dn-form-input', placeholder: '负责人(可空)' });
+    var ownerI = DN.h('input', { class: 'dn-form-input', placeholder: '负责人(可空)', value: prefill.owner || '' });
 
     var body = DN.h('div');
     var secBase = DN.formSection('基本信息');
@@ -215,12 +220,14 @@
       // 与行过滤口径一致：拦截分号/注释符，仅允许单条 SELECT（服务端仍强制只读单语句）
       if (/;|--|\/\*|\*\//.test(sql)) { DN.toast('查询 SQL 不能包含分号或注释符（仅支持单条 SELECT）', 'err'); sqlI.focus(); return; }
       foot.busy();
-      DN.post('/api/consumption/dataset/save', { datasetName: name, datasetCode: code, defaultDb: dbI.value.trim(), querySql: sql, owner: ownerI.value.trim(), status: 1 })
+      var payload = { datasetName: name, datasetCode: code, defaultDb: dbI.value.trim(), querySql: sql, owner: ownerI.value.trim(), status: prefill.status != null ? prefill.status : 1 };
+      if (isEdit) payload.id = prefill.id;   // 带 id 走 upsert 更新
+      DN.post('/api/consumption/dataset/save', payload)
         .then(function () { DN.toast('已保存', 'ok'); dr.close(); loadDatasets(); })
         .catch(function (e) { foot.reset(); DN.toast('保存失败：' + errMsg(e), 'err'); });
     };
     foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
-    dr = DN.drawer('新建数据集', body, foot.el);
+    dr = DN.drawer(isEdit ? '编辑数据集' : '新建数据集', body, foot.el);
     DN.enterSubmit(body, doSave);
   }
 
