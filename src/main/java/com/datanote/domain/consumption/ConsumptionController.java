@@ -130,6 +130,12 @@ public class ConsumptionController {
         return R.ok(valueService.zombies());
     }
 
+    /** 未消费预警: 最近 days 天无消费(查询/导出/取值)的启用指标, 含从未消费, 按闲置天数倒序。默认 30。 */
+    @GetMapping("/metric/unused")
+    public R<List<Map<String, Object>>> metricsUnused(@RequestParam(required = false) Integer days) {
+        return R.ok(valueService.metricsUnused(days));
+    }
+
     @Operation(summary = "消费层概览")
     @GetMapping("/overview")
     public R<Map<String, Object>> overview() {

@@ -232,6 +232,52 @@ public class MetricValueService {
         return out;
     }
 
+    /** 未消费预警: 启用指标中最近 N 天无消费记录(查询/导出/取值)的, 含从未消费; 按闲置天数倒序。默认 30 天。 */
+    public List<Map<String, Object>> metricsUnused(Integer days) {
+        int d = (days == null || days <= 0) ? 30 : days;
+        List<DnMetric> metrics = enabledMetrics();
+        if (metrics.isEmpty()) return new ArrayList<>();
+        QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
+        qw.select("target_code", "MAX(created_at) AS lastAt")
+          .in("target_type", java.util.Arrays.asList("METRIC_VALUE", "METRIC_HISTORY", "EXPORT"))
+          .isNotNull("target_code").ne("target_code", "")
+          .groupBy("target_code");
+        Map<String, Object> lastByCode = new HashMap<>();
+        for (Map<String, Object> r : logMapper.selectMaps(qw)) {
+            Object code = r.get("target_code");
+            if (code != null) lastByCode.put(String.valueOf(code), r.get("lastAt"));
+        }
+        LocalDateTime threshold = LocalDateTime.now().minusDays(d);
+        LocalDateTime now = LocalDateTime.now();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (DnMetric m : metrics) {
+            LocalDateTime last = toLdt(m.getMetricCode() == null ? null : lastByCode.get(m.getMetricCode()));
+            if (last != null && last.isAfter(threshold)) continue; // 近 N 天有消费, 非闲置
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("id", m.getId());
+            o.put("metricCode", m.getMetricCode());
+            o.put("metricName", m.getMetricName());
+            o.put("owner", m.getOwner());
+            o.put("lastConsumedAt", last == null ? null : last.toString().replace('T', ' '));
+            o.put("idleDays", last == null ? null : java.time.temporal.ChronoUnit.DAYS.between(last.toLocalDate(), now.toLocalDate()));
+            out.add(o);
+        }
+        out.sort((a, b) -> {
+            Object ia = a.get("idleDays"), ib = b.get("idleDays");
+            long la = ia == null ? Long.MAX_VALUE : ((Number) ia).longValue();
+            long lb = ib == null ? Long.MAX_VALUE : ((Number) ib).longValue();
+            return Long.compare(lb, la);   // 闲置久的(含从未消费)排最前
+        });
+        return out;
+    }
+
+    private LocalDateTime toLdt(Object v) {
+        if (v == null) return null;
+        if (v instanceof LocalDateTime) return (LocalDateTime) v;
+        if (v instanceof java.sql.Timestamp) return ((java.sql.Timestamp) v).toLocalDateTime();
+        try { return LocalDateTime.parse(String.valueOf(v).replace(' ', 'T')); } catch (Exception e) { return null; }
+    }
+
     /** 消费层概览聚合 */
     public Map<String, Object> overview() {
         Map<String, Object> o = new LinkedHashMap<>();
