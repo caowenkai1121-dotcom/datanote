@@ -469,7 +469,11 @@
       + '<div style="margin-top:8px;"><button class="btn btn-sm" onclick="dmAttrAddRow()">+ 添加属性</button></div>'
       + '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveAttrs()">保存属性</button></div></div>';
     projShowModalBox('编辑实体属性', h);
-    setTimeout(function () { var f = document.querySelector('#dmAttrRows .dmA-code'); if (f) { try { f.focus(); } catch (e) {} } }, 50);   // 打开即聚焦首行编码
+    setTimeout(function () {   // 打开聚焦首行编码; 新增行后聚焦新(末)行
+      var sel = st._focusLast ? '#dmAttrRows tr:last-child .dmA-code' : '#dmAttrRows .dmA-code';
+      st._focusLast = false;
+      var f = document.querySelector(sel); if (f) { try { f.focus(); } catch (e) {} }
+    }, 50);
   }
   function collectAttrRows() {
     var rows = [];
@@ -484,7 +488,7 @@
     });
     return rows;
   }
-  window.dmAttrAddRow = function () { window.__dmAttrEdit.rows = collectAttrRows(); window.__dmAttrEdit.rows.push({ dataType: 'STRING', isNullable: 1 }); renderAttrEditor(); };
+  window.dmAttrAddRow = function () { window.__dmAttrEdit.rows = collectAttrRows(); window.__dmAttrEdit.rows.push({ dataType: 'STRING', isNullable: 1 }); window.__dmAttrEdit._focusLast = true; renderAttrEditor(); };
   window.dmAttrDelRow = function (i) { window.__dmAttrEdit.rows = collectAttrRows(); window.__dmAttrEdit.rows.splice(i, 1); renderAttrEditor(); };
   window.dmSaveAttrs = function () {
     var st = window.__dmAttrEdit, rows = collectAttrRows();
