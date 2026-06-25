@@ -1,0 +1,23 @@
+# round4 横切 gap (w3iqr0thu, 21)
+
+- [loading] 项目成员删除(projRemoveMember) 缺加载态/防重复 | e/src/main/resources/static/js/project.js:753-759行
+- [loading] 项目删除(projDelete) 缺防重复提交守卫 | e/src/main/resources/static/js/project.js:547-555行
+- [loading] 项目标签删除(projDeleteTag) 缺防重复点击守卫 | e/src/main/resources/static/js/project.js:368-377行
+- [loading] 项目成员角色变更(projChangeRole) 缺防重复操作守卫 | e/src/main/resources/static/js/project.js:746-752行
+- [error] gov-assets.js:544 - asset/detail 加载无错误处理导致界面卡死 | ote\src\main\resources\static\js\gov-assets.js:544
+- [error] gov-assets.js:862 - lifecycle/unused 查询无错误处理导致页面永久loading | ote\src\main\resources\static\js\gov-assets.js:862
+- [error] gov-assets.js:957 - lifecycle/cost 汇总查询缺错误处理导致成本卡片卡死 | ote\src\main\resources\static\js\gov-assets.js:957
+- [error] workspace.html:2657 - 剪贴板复制无错误处理导致复制失败静默 | note\src\main\resources\static\workspace.html:2657
+- [error] workspace.html:2723 - 脚本树加载无错误处理导致文件树卡死 | note\src\main\resources\static\workspace.html:2723
+- [error] workspace.html:2867 - 数据源库列表查询缺错误处理导致下拉框卡死 | note\src\main\resources\static\workspace.html:2867
+- [error] workspace.html:2886 - 表列表查询缺错误处理导致表下拉框卡死 | note\src\main\resources\static\workspace.html:2886
+- [error] workspace.html:3252 - 脚本详情加载无错误处理导致编辑器卡住 | note\src\main\resources\static\workspace.html:3252
+- [empty] 代码审查完成 - 空态处理检查 | \data\datanote\src\main\resources\static\js (全量审计)
+- [a11y] wlc-newbtn: 新建脚本按钮缺键盘可达性 | workspace.html:259
+- [a11y] wlc-action: 首页快捷操作卡片缺键盘支持 | workspace.html:271,275,279
+- [a11y] ops-sidebar-item: 数据运维模块导航选项卡缺键盘可达 | workspace.html:504-511
+- [a11y] sched-stat: 周期任务状态过滤器缺键盘可达 | workspace.html:559-563
+- [a11y] ops-sidebar-item: 质量/指标/项目/设置导航缺键盘支持 | workspace.html:781-782,912-913,992-996,1163-1169
+- [a11y] projToggleRoleFilter: 成员过滤芯片缺键盘可达 | project.js:679
+- [a11y] projFilterOverviewActs: 活动过滤芯片缺键盘可达 | project.js:1091-1092
+- [a11y] datamodel.js: 主题域选择树节点缺键盘可达 | datamodel.js:74,86

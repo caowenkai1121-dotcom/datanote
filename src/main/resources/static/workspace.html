@@ -2724,7 +2724,7 @@ function showMoveModal(scriptId) {
     if (res.code !== 0) return;
     var html = buildMoveFolderTree(res.data || []);
     document.getElementById('moveFolderTree').innerHTML = html || '<div style="color:var(--text-muted);padding:8px;">无文件夹</div>';
-  });
+  }).catch(function() { var t = document.getElementById('moveFolderTree'); if (t) t.innerHTML = '<div style="color:var(--error);padding:8px;">文件夹加载失败，请重试</div>'; });
 }
 
 function buildMoveFolderTree(nodes, depth) {
@@ -2871,7 +2871,7 @@ function syncModalLoadDbs() {
         sel.innerHTML += '<option value="' + escapeHtml(db) + '">' + escapeHtml(db) + '</option>';
       });
     }
-  });
+  }).catch(function() { sel.innerHTML = '<option value="">加载失败，请重试</option>'; });
 }
 
 function syncModalLoadTables() {
@@ -2890,7 +2890,7 @@ function syncModalLoadTables() {
         sel.innerHTML += '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>';
       });
     }
-  });
+  }).catch(function() { sel.innerHTML = '<option value="">加载失败，请重试</option>'; });
 }
 
 function syncModalGenName() {
@@ -3261,7 +3261,7 @@ function refreshRightPanelIfOpen() {
             }
           }
         }
-      });
+      }).catch(function() { if (window.showToast) showToast('属性信息加载失败', 'warning'); });
     }
   } else if (currentRightTab === 1) {
     // 调度配置
