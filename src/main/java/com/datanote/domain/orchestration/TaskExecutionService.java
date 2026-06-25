@@ -83,6 +83,12 @@ public class TaskExecutionService {
     private static final long RETRY_BASE_MS = 5000;    // 5 秒
     private static final long RETRY_MAX_MS = 300000;   // 5 分钟
 
+    // 重试延迟调度: 专用调度池(2 daemon线程), 避免在工作线程里 Thread.sleep 占满主池(重试风暴致新任务无线程)
+    private final java.util.concurrent.ScheduledExecutorService retryScheduler =
+            java.util.concurrent.Executors.newScheduledThreadPool(2, r -> {
+                Thread t = new Thread(r, "task-retry-sched"); t.setDaemon(true); return t;
+            });
+
     // 引用全局常量
     private static final int MAX_LOG_SIZE = Constants.MAX_LOG_SIZE;
 
@@ -217,16 +223,10 @@ public class TaskExecutionService {
             run.setLog(truncateLog(logBuilder));
             runMapper.updateById(run);
 
-            // 延迟后重新触发
-            ExecutorService executor = taskSchedulerService.getExecutor();
-            executor.submit(() -> {
-                try {
-                    Thread.sleep(delayMs);
-                    taskSchedulerService.processWaitingTasks(run.getRunDate(), run.getRunType());
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-            });
+            // 延迟后重新触发: 用专用调度池延时, 不占工作线程(原 submit+sleep 会占满主池, 重试风暴时新任务饿死)
+            retryScheduler.schedule(
+                    () -> taskSchedulerService.processWaitingTasks(run.getRunDate(), run.getRunType()),
+                    delayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
         } else {
             // 达到最大重试次数，标记为失败
             if (maxRetries > 0) {
