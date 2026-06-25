@@ -211,6 +211,11 @@
       }
     });
     wrap.appendChild(toggleA);
+    var editA = DN.h('a', {
+      href: 'javascript:void(0)', text: '编辑', 'data-perm': 'governance:manage', style: 'margin-right:12px',
+      onclick: function () { toggleRuleForm(r); var f = document.getElementById('clRuleForm'); if (f && f.scrollIntoView) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    });
+    wrap.appendChild(editA);
     var delA = DN.h('a', {
       href: 'javascript:void(0)', text: '删除', 'data-perm': 'governance:manage', style: 'color:var(--error)',
       onclick: function () {
@@ -228,24 +233,26 @@
   }
 
   // 就近 .gov-form 新增规则表单（替代 window.prompt 链）
-  function toggleRuleForm() {
+  function toggleRuleForm(existing) {
     var box = document.getElementById('clRuleForm');
     if (!box) return;
-    if (box.firstChild) { box.innerHTML = ''; return; }
+    var isEdit = !!(existing && existing.id);
+    if (!isEdit && box.firstChild) { box.innerHTML = ''; return; }   // 仅新增态切换收起; 编辑总是重开预填
     box.innerHTML = '';
 
-    var name = DN.h('input', { class: 'dn-form-input', placeholder: '规则名' });
+    var name = DN.h('input', { class: 'dn-form-input', placeholder: '规则名', value: isEdit ? (existing.ruleName || '') : '' });
     var matchSel = DN.h('select', { class: 'dn-form-select' });
     [['COLUMN_NAME', '按列名关键词'], ['REGEX', '按正则'], ['VALIDATOR', '按校验器']].forEach(function (m) {
       matchSel.appendChild(DN.h('option', { value: m[0], text: m[1] + '(' + m[0] + ')' }));
     });
-    var pattern = DN.h('input', { class: 'dn-form-input', placeholder: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)' });
-    var sensitiveType = DN.h('input', { class: 'dn-form-input', placeholder: '敏感类型(如 PHONE)' });
-    var suggestLevel = DN.h('input', { class: 'dn-form-input', placeholder: '建议密级(如 重要，可空)' });
+    if (isEdit && existing.matchType) matchSel.value = existing.matchType;
+    var pattern = DN.h('input', { class: 'dn-form-input', placeholder: '关键词逗号分隔 / 正则 / 校验器名(PHONE,EMAIL,ID_CARD,BANKCARD,USCC)', value: isEdit ? (existing.pattern || '') : '' });
+    var sensitiveType = DN.h('input', { class: 'dn-form-input', placeholder: '敏感类型(如 PHONE)', value: isEdit ? (existing.sensitiveType || '') : '' });
+    var suggestLevel = DN.h('input', { class: 'dn-form-input', placeholder: '建议密级(如 重要，可空)', value: isEdit ? (existing.suggestLevel || '') : '' });
 
     var panel = DN.h('div', { class: 'gov-form', style: 'max-width:560px' });
 
-    var sec = DN.formSection('新增敏感规则');
+    var sec = DN.formSection(isEdit ? '编辑敏感规则' : '新增敏感规则');
     sec.add(DN.formGrid2([
       DN.field('规则名', name, { required: true }),
       DN.field('匹配方式', matchSel, { required: true })
@@ -273,11 +280,14 @@
         if (_busy.rules) return; // 去重:保存进行中不再并发提交
         _busy.rules = true;
         var restore = lockBtn(saveBtn, '保存中…');
-        DN.post('/api/gov/classification/rules', {
+        var rulePayload = {
           ruleName: nm, matchType: matchSel.value,
           pattern: pt, sensitiveType: st,
-          suggestLevel: suggestLevel.value.trim(), enabled: 1
-        }).then(function () { _busy.rules = false; DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
+          suggestLevel: suggestLevel.value.trim(), enabled: isEdit && existing.enabled != null ? existing.enabled : 1
+        };
+        if (isEdit) rulePayload.id = existing.id;   // 带 id 走 updateById
+        DN.post('/api/gov/classification/rules', rulePayload)
+          .then(function () { _busy.rules = false; DN.toast('已保存', 'success'); box.innerHTML = ''; loadRules(); })
           .catch(function (e) { _busy.rules = false; restore(); DN.toast(errMsg(e), 'error'); });
       } });
     var actions = DN.h('div', { style: 'display:flex;gap:8px;margin-top:4px' });
