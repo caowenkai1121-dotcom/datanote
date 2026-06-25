@@ -382,6 +382,7 @@
     if (it.objectRef && (/^qrule:/.test(it.objectRef) || /^metric:/.test(it.objectRef))) {
       wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '查看对象', onclick: function () { gotoIssueObject(it.objectRef); } }));
     }
+    wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑', 'data-perm': 'governance:issue', onclick: function () { addIssue(it); } }));
     wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '指派', 'data-perm': 'governance:issue', onclick: function () { assignIssue(it.id); } }));
     // N5: 已转任务→显示进度徽标(可跳项目任务页); 未转→"转任务"入口(创建前还有服务端反查双保险)
     var refs = _issueTaskRefs[it.id] || _issueTaskRefs[String(it.id)] || [];
@@ -546,13 +547,23 @@
     });
   }
 
-  function addIssue() {
+  function addIssue(existing) {
+    var isEdit = !!(existing && existing.id);
     var titleInput = DN.h('input', { class: 'dn-form-input', placeholder: '工单标题', maxlength: '120' });
     var typeSel = selectOf(['STANDARD', 'QUALITY', 'SECURITY', 'LINEAGE', 'LIFECYCLE', 'OTHER'], 'OTHER');
     var dimSel = selectOf(DIMS, '', '（不限维度）');
     var sevSel = selectOf(['HIGH', 'MEDIUM', 'LOW'], 'MEDIUM');
     var ownerInput = DN.h('input', { class: 'dn-form-input', placeholder: '负责人（可空）', list: 'dnUserList', maxlength: '60' });
     var descInput = DN.h('input', { class: 'dn-form-input', placeholder: '描述（可空）', maxlength: '500' });
+    if (isEdit) {   // 编辑模式: 预填现有值(负责人/状态各有专门入口, 此处只改基本字段)
+      titleInput.value = existing.title || '';
+      if (existing.issueType) typeSel.value = existing.issueType;
+      if (existing.dimension) dimSel.value = existing.dimension;
+      if (existing.severity) sevSel.value = existing.severity;
+      ownerInput.value = existing.owner || '';
+      ownerInput.disabled = true; ownerInput.title = '负责人请用「指派」操作修改';   // 负责人走专门指派(带通知), 编辑表单不改
+      descInput.value = existing.description || '';
+    }
 
     var body = DN.h('div');
 
@@ -579,17 +590,18 @@
       if (title.length > 120) { DN.toast('标题过长（不超过 120 字）', 'error'); return; }
       if (foot.ok.disabled) return;
       foot.busy('提交中…');
-      DN.post('/api/gov/health/issues', {
-        title: title, issueType: typeSel.value, dimension: dimSel.value,
-        severity: sevSel.value, owner: ownerInput.value.trim(), description: descInput.value.trim()
-      }).then(function () {
-        DN.toast('已新建'); dr.close(); loadIssues(); loadBoard();
+      var payload = { title: title, issueType: typeSel.value, dimension: dimSel.value, severity: sevSel.value, description: descInput.value.trim() };
+      var req = isEdit
+        ? DN.put('/api/gov/health/issues/' + existing.id, payload)
+        : DN.post('/api/gov/health/issues', Object.assign({ owner: ownerInput.value.trim() }, payload));
+      req.then(function () {
+        DN.toast(isEdit ? '已保存' : '已新建'); dr.close(); loadIssues(); loadBoard();
       }).catch(function (e) {
         DN.toast(errMsg(e), 'error');
       }).then(function () { foot.reset('保存'); });
     };
     foot = DN.drawerFoot({ okText: '保存', onOk: doSave, onCancel: function () { dr.close(); } });
-    dr = DN.drawer('新建工单', body, foot.el);
+    dr = DN.drawer(isEdit ? '编辑工单' : '新建工单', body, foot.el);
     DN.enterSubmit(body, doSave);
   }
 

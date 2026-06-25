@@ -102,6 +102,21 @@ public class IssueService {
         issueMapper.deleteById(id);
     }
 
+    /** 编辑工单基本字段(标题/类型/维度/级别/描述); 状态走 transition, 负责人走 assign, 此处不动 */
+    public DnGovernanceIssue updateFields(Long id, DnGovernanceIssue patch) {
+        if (id == null) throw new IllegalStateException("工单ID不能为空");
+        DnGovernanceIssue issue = issueMapper.selectById(id);
+        if (issue == null) throw new IllegalStateException("工单不存在: " + id);
+        if (patch.getTitle() != null && !patch.getTitle().trim().isEmpty()) issue.setTitle(patch.getTitle().trim());
+        if (patch.getIssueType() != null && !patch.getIssueType().trim().isEmpty()) issue.setIssueType(patch.getIssueType());
+        if (patch.getDimension() != null) issue.setDimension(patch.getDimension());
+        if (patch.getSeverity() != null && !patch.getSeverity().trim().isEmpty()) issue.setSeverity(patch.getSeverity());
+        if (patch.getDescription() != null) issue.setDescription(patch.getDescription());
+        issue.setUpdatedAt(LocalDateTime.now());
+        issueMapper.updateById(issue);
+        return issue;
+    }
+
     /** 状态流转：校验合法性，非法抛 IllegalStateException(由 controller 捕获转 R.fail) */
     public DnGovernanceIssue transition(Long id, String toStatus, String operator) {
         if (id == null) throw new IllegalStateException("工单ID不能为空");

@@ -100,6 +100,17 @@ public class HealthController {
         }
     }
 
+    @Operation(summary = "编辑工单基本字段")
+    @PutMapping("/issues/{id}")
+    public R<DnGovernanceIssue> updateIssue(@PathVariable Long id, @RequestBody DnGovernanceIssue issue) {
+        if (issue.getTitle() != null && issue.getTitle().trim().isEmpty()) return R.fail("标题不能为空");
+        try {
+            return R.ok(issueService.updateFields(id, issue));
+        } catch (IllegalStateException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
     @Operation(summary = "删除工单")
     @DeleteMapping("/issues/{id}")
     public R<String> deleteIssue(@PathVariable Long id) {

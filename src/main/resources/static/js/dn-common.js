@@ -57,6 +57,14 @@
     });
   };
 
+  DN.put = function (url, data) {
+    return DN.api(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: data != null ? JSON.stringify(data) : undefined
+    });
+  };
+
   DN.del = function (url) { return DN.api(url, { method: 'DELETE' }); };
 
   /** 轻量 toast 提示 */
