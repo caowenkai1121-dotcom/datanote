@@ -66,7 +66,7 @@ public class TaskSchedulerService {
 
     @PostConstruct
     public void init() {
-        concurrencySemaphore = new Semaphore(MAX_CONCURRENT_TASKS);
+        concurrencySemaphore = new Semaphore(MAX_CONCURRENT_TASKS, true);   // 公平模式: FIFO 取许可, 防长任务占用时短任务/部分任务持续饥饿
         executor = new ThreadPoolExecutor(MAX_CONCURRENT_TASKS, MAX_CONCURRENT_TASKS * 2,
                 60, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(200),
@@ -399,14 +399,27 @@ public class TaskSchedulerService {
         }
     }
 
+    // cron 极少变, 每 tick 逐 WAITING 任务 selectById 是 N+1; 加 60s TTL 缓存削减 DB 往返(高任务量下显著)
+    private final java.util.concurrent.ConcurrentHashMap<String, long[]> _cronCacheTs = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, String> _cronCacheVal = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long CRON_CACHE_TTL_MS = 60000;
+
     private String getTaskCron(Long taskId, String taskType) {
+        String key = taskType + ":" + taskId;
+        long[] ts = _cronCacheTs.get(key);
+        long now = System.currentTimeMillis();
+        if (ts != null && now - ts[0] < CRON_CACHE_TTL_MS) return _cronCacheVal.get(key);
+        String cron;
         if (Constants.TASK_TYPE_SYNC_TASK.equals(taskType)) {
             DnSyncTask task = syncTaskMapper.selectById(taskId);
-            return task != null ? task.getScheduleCron() : null;
+            cron = task != null ? task.getScheduleCron() : null;
         } else {
             DnScript script = scriptMapper.selectById(taskId);
-            return script != null ? script.getScheduleCron() : null;
+            cron = script != null ? script.getScheduleCron() : null;
         }
+        _cronCacheTs.put(key, new long[]{now});
+        if (cron != null) _cronCacheVal.put(key, cron); else _cronCacheVal.remove(key);
+        return cron;
     }
 
     // ======================== 补数据 ========================
