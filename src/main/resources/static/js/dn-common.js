@@ -223,6 +223,16 @@
         scroll.appendChild(tbl); body.appendChild(scroll);
       }
       var actBar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
+      // 复制 db.table(写SQL常用): clipboard API + execCommand 兜底
+      var cp = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制表名' });
+      cp.onclick = function () {
+        var txt = db + '.' + table;
+        var done = function () { if (DN.toast) DN.toast('已复制 ' + txt, 'ok'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done).catch(function () { fallbackCopy(txt); done(); }); }
+        else { fallbackCopy(txt); done(); }
+      };
+      function fallbackCopy(t) { try { var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {} }
+      actBar.appendChild(cp);
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
         qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };
