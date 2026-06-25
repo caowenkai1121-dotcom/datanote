@@ -177,6 +177,14 @@
   DN.metaColumns = function (db, table) {
     return DN.get('/api/metadata/columns?db=' + encodeURIComponent(db) + '&table=' + encodeURIComponent(table));
   };
+  /** 复制文本到剪贴板(clipboard API + execCommand 兜底) + 成功 toast。供各处复用。 */
+  DN.copyText = function (text, okMsg) {
+    var t = String(text == null ? '' : text);
+    var done = function () { if (DN.toast) DN.toast(okMsg || ('已复制 ' + t), 'ok'); };
+    var fb = function () { try { var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {} };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(done).catch(function () { fb(); done(); }); }
+    else { fb(); done(); }
+  };
   /** 表预览抽屉(点表名【原地出结果】, 不跳数据地图): 摘要+字段表, 末尾可跳完整视图。供任意模块复用(禁跳转#5)。 */
   DN.tablePreview = function (db, table) {
     if (!db || !table) return;
@@ -223,15 +231,9 @@
         scroll.appendChild(tbl); body.appendChild(scroll);
       }
       var actBar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
-      // 复制 db.table(写SQL常用): clipboard API + execCommand 兜底
+      // 复制 db.table(写SQL常用)
       var cp = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制表名' });
-      cp.onclick = function () {
-        var txt = db + '.' + table;
-        var done = function () { if (DN.toast) DN.toast('已复制 ' + txt, 'ok'); };
-        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done).catch(function () { fallbackCopy(txt); done(); }); }
-        else { fallbackCopy(txt); done(); }
-      };
-      function fallbackCopy(t) { try { var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {} }
+      cp.onclick = function () { DN.copyText(db + '.' + table); };
       actBar.appendChild(cp);
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
@@ -260,7 +262,10 @@
       d = d || {}; var m = d.metric || {}, unit = m.unit || '';
       body.innerHTML = '';
       if (dr && dr.setTitle) dr.setTitle('指标: ' + (m.metricName || ('#' + id)));
-      body.appendChild(DN.h('div', { text: (m.metricName || ('指标#' + id)) + (m.metricCode ? ' (' + m.metricCode + ')' : ''), style: 'font-weight:600;font-size:14px;margin-bottom:4px;color:var(--text-primary);' }));
+      var nameLine = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:4px;flex-wrap:wrap;' });
+      nameLine.appendChild(DN.h('span', { text: (m.metricName || ('指标#' + id)) + (m.metricCode ? ' (' + m.metricCode + ')' : ''), style: 'font-weight:600;font-size:14px;color:var(--text-primary);' }));
+      if (m.metricCode) { var cpc = DN.h('a', { href: 'javascript:void(0)', text: '复制编码', title: '复制指标编码', style: 'font-size:12px;color:var(--primary);' }); cpc.onclick = function () { DN.copyText(m.metricCode); }; nameLine.appendChild(cpc); }
+      body.appendChild(nameLine);
       if (m.category) body.appendChild(DN.h('div', { text: '分类: ' + m.category, style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
       var ach = d.achievement, achColor = ach == null ? 'var(--text-regular)' : (ach >= 100 ? 'var(--success)' : (ach >= 80 ? 'var(--warning)' : 'var(--error)'));
       var grid = DN.h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;' });
