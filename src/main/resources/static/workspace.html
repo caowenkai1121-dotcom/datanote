@@ -9614,7 +9614,7 @@ function renderMetricDetail(d, id) {
       + '<table class="quality-rules-table" style="width:100%;"><thead><tr><th>工单</th><th>严重度</th><th>状态</th><th>时间</th></tr></thead><tbody>'
       + issues.map(function(it) {
           var stTone = it.status === 'CLOSED' ? 'is-muted' : (it.status === 'OPEN' ? 'is-err' : 'is-warn');
-          return '<tr><td><a href="#" onclick="navigateTo(\'governance\',{gov:\'issues\',issueId:' + it.id + '});return false;" style="color:var(--primary);" title="' + escapeHtml(it.title || '') + '">#' + it.id + ' ' + escapeHtml((it.title || '').slice(0, 28)) + '</a></td>'
+          return '<tr><td><a href="#" onclick="DN.issuePreview(' + it.id + ');return false;" style="color:var(--primary);" title="原地预览工单(不跳页): ' + escapeHtml(it.title || '') + '">#' + it.id + ' ' + escapeHtml((it.title || '').slice(0, 28)) + '</a></td>'
             + '<td>' + escapeHtml(it.severity || '-') + '</td><td><span class="gov-pill ' + stTone + '">' + escapeHtml(it.status || '') + '</span></td>'
             + '<td style="white-space:nowrap;font-size:var(--fs-xs);">' + escapeHtml(String(it.updatedAt || it.createdAt || '').replace('T', ' ').slice(0, 16)) + '</td></tr>';
         }).join('') + '</tbody></table></div>';
