@@ -295,6 +295,50 @@
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
   };
 
+  /** 质量规则预览抽屉(点规则【原地看配置+近期执行】, 不跳治理质量页)。ponytail: 拉 /quality/rules 筛 id。*/
+  DN.qualityRulePreview = function (id) {
+    if (id == null) return;
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'padding:20px;color:var(--text-muted);font-size:13px;' }));
+    var dr = DN.drawer('质量规则预览', body);
+    function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;font-size:12.5px;margin:4px 0;' }, [DN.h('span', { text: k, style: 'color:var(--text-muted);min-width:56px;flex:0 0 auto;' }), DN.h('span', { text: String(v == null || v === '' ? '-' : v), style: 'color:var(--text-regular);word-break:break-all;' })]); }
+    Promise.all([
+      DN.get('/api/quality/rules').catch(function () { return []; }),
+      DN.get('/api/quality/rule/' + encodeURIComponent(id) + '/runs').catch(function () { return []; })
+    ]).then(function (rs) {
+      var r = (Array.isArray(rs[0]) ? rs[0] : []).filter(function (x) { return x && String(x.id) === String(id); })[0];
+      var runs = Array.isArray(rs[1]) ? rs[1] : [];
+      body.innerHTML = '';
+      if (!r) { body.appendChild(DN.h('div', { text: '未找到该规则', style: 'color:var(--text-muted);font-size:13px;padding:16px;' })); return; }
+      body.appendChild(DN.h('div', { text: r.ruleName || ('规则#' + id), style: 'font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text-primary);' }));
+      var pills = DN.h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;' });
+      pills.appendChild(DN.pill(r.status === 1 ? '启用' : '停用', r.status === 1 ? 'ok' : 'muted'));
+      if (r.severity) pills.appendChild(DN.pill(r.severity, r.severity === 'error' ? 'err' : r.severity === 'warning' ? 'warn' : 'muted'));
+      if (r.blockDownstream === 1) pills.appendChild(DN.pill('强阻断', 'warn'));
+      body.appendChild(pills);
+      var meta = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;background:var(--bg-card);' });
+      meta.appendChild(row('目标', (r.databaseName || '') + '.' + (r.tableName || '') + (r.columnName ? ('.' + r.columnName) : '')));
+      if (r.ruleType) meta.appendChild(row('类型', r.ruleType));
+      if (r.dimension) meta.appendChild(row('维度', r.dimension));
+      if (r.passThreshold != null) meta.appendChild(row('阈值', r.passThreshold + '%'));
+      if (r.scheduleCron) meta.appendChild(row('调度', r.scheduleCron));
+      body.appendChild(meta);
+      body.appendChild(DN.h('div', { text: '近期执行 (' + runs.length + ')', style: 'font-weight:600;font-size:13px;margin:6px 0 4px;' }));
+      if (!runs.length) { body.appendChild(DN.h('div', { text: '暂无执行记录', style: 'color:var(--text-muted);font-size:12px;' })); }
+      else {
+        runs.slice(0, 5).forEach(function (rn) {
+          var ok = (rn.passRate != null ? rn.passRate : 100) >= (r.passThreshold != null ? r.passThreshold : 100);
+          var line = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--divider);' });
+          line.appendChild(DN.h('span', { text: ok ? '✓' : '✗', style: 'color:' + (ok ? 'var(--success)' : 'var(--error)') + ';font-weight:700;' }));
+          line.appendChild(DN.h('span', { text: (rn.passRate != null ? rn.passRate + '%' : '-') + (rn.failCount != null ? (' · 失败 ' + rn.failCount) : ''), style: 'color:var(--text-regular);' }));
+          line.appendChild(DN.h('span', { text: rn.runAt ? String(rn.runAt).replace('T', ' ').slice(5, 16) : '', style: 'margin-left:auto;color:var(--text-muted);' }));
+          body.appendChild(line);
+        });
+      }
+      if (window.navigateTo) { var go = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '去质量中心(编辑/执行) →', style: 'margin-top:12px;display:inline-block;' }); go.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('governance', { gov: 'quality' }); }; body.appendChild(go); }
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
+  };
+
   /**
    * 级联库/表(/列)下拉选择器，用 dn-form-select 表单体系，避免用户手输。
    * opts: { withColumn, defaultDb, onChange(db,table,column) }

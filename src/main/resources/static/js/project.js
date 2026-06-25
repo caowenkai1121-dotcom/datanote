@@ -929,7 +929,7 @@ window.projBatchBindDo = function(btn) {
 };
 window.projAssetGoto = function(type, assetId) {
   if (type === 'SYNC_JOB') navigateTo('dbsync', { openDetail: assetId });
-  else if (type === 'QUALITY_RULE') navigateTo('governance', { gov: 'quality' });
+  else if (type === 'QUALITY_RULE') { if (window.DN && DN.qualityRulePreview) { DN.qualityRulePreview(assetId); return; } navigateTo('governance', { gov: 'quality' }); } // 原地预览规则, 不跳页
   else if (type === 'GOV_ISSUE') { if (window.DN && DN.issuePreview) { DN.issuePreview(assetId); return; } navigateTo('governance', { gov: 'health', focusIssue: assetId }); } // 原地预览工单, 不跳页
   else if (type === 'METRIC') { if (window.DN && DN.metricPreview) { DN.metricPreview(assetId); return; } window.__metricsFocusId = assetId; navigateTo('metrics'); } // 原地预览指标, 不跳页
   else if (type === 'DATASOURCE') navigateTo('settings', { sm: 'datasource' });
