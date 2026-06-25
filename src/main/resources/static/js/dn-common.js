@@ -242,6 +242,12 @@
       var cq = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制查询' });
       cq.onclick = function () { DN.copyText('SELECT * FROM `' + db + '`.`' + table + '` LIMIT 100', '已复制查询 SQL'); };
       actBar.appendChild(cq);
+      // 导出字段清单CSV(建表文档/对接常用)
+      if (cols.length && DN.exportRows) {
+        var ex = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '导出字段' });
+        ex.onclick = function () { DN.exportRows(db + '.' + table + '_字段', ['字段', '中文名', '类型'], cols.map(function (c) { c = c || {}; return [c.name || '', c.comment || '', c.type || '']; })); };
+        actBar.appendChild(ex);
+      }
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
         qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };
