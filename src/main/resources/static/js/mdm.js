@@ -403,9 +403,16 @@
     sec2.add(refRow.el);
     function syncRefRow() {
       var t = (fType.value || '').toUpperCase();
-      refRow.el.style.display = (t === 'ENUM' || t === 'REFERENCE') ? '' : 'none';
+      var need = (t === 'ENUM' || t === 'REFERENCE');
+      refRow.el.style.display = need ? '' : 'none';
+      // ENUM/REFERENCE 时即时提示枚举值必填(原仅靠静态 hint, 切类型后无视觉变化)
+      if (fEnum) {
+        fEnum.placeholder = need ? '必填: 逗号分隔候选值, 或从下方码表引用' : '仅 ENUM/REFERENCE 类型时填写';
+        fEnum.style.borderColor = (need && !(fEnum.value || '').trim()) ? 'var(--warning)' : '';
+      }
     }
     fType.addEventListener('change', syncRefRow);
+    if (fEnum) fEnum.addEventListener('input', syncRefRow);
     syncRefRow();
     sec2.add(field('默认值', fDefault));
     body.appendChild(sec2.el);
