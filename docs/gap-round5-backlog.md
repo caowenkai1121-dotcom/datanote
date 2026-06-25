@@ -1,0 +1,30 @@
+# round5 视觉 gap (wnbs7nptr, 28)
+
+- [color] gov-pill.is-ok 背景色硬编码，未用 --success-bg 变量 | c/main/resources/static/css/gov-modern.css:68
+- [color] gov-pill.is-warn 背景色硬编码，未用 --warning-light 变量 | c/main/resources/static/css/gov-modern.css:69
+- [color] gov-pill.is-err 背景色硬编码，未用 --error-light 变量 | c/main/resources/static/css/gov-modern.css:70
+- [color] gov-stat.tone-ok .ic 背景色硬编码，应用 --success-light 变量 | c/main/resources/static/css/gov-modern.css:26
+- [color] gov-stat.tone-warn .ic 背景色硬编码，应用 --warning-light 变 | c/main/resources/static/css/gov-modern.css:27
+- [color] gov-stat.tone-err .ic 背景色硬编码，应用 --error-light 变量 | c/main/resources/static/css/gov-modern.css:28
+- [color] gov-pill.is-ok box-shadow 硬编码，应用 --success-ring 变量 | /main/resources/static/css/gov-modern.css:148
+- [color] gov-pill.is-warn box-shadow 硬编码，应用 --warning-ring  | /main/resources/static/css/gov-modern.css:149
+- [spacing] 【间距不一致】KPI卡/数据卡 padding 混乱：18px 20px 与 14px 18px 与 | redesign.css + gov-modern.css + dn-design.css
+- [spacing] 【圆角不一致】同类图标容器：.gov-stat .ic 有 12px、14px、8px 三种 | gov-modern.css + redesign.css + dn-design.css
+- [spacing] 【圆角不一致】欢迎页卡片图标：.wlc-stat .si 11px vs .wlc-action . | modern.css:101-109
+- [spacing] 【间距不一致】Hero区顶部刷新按钮与卡片头：padding 6px 14px vs 14px 18 | redesign.css:85-88 vs redesign.css:229
+- [spacing] 【圆角不一致】datamap搜索框自身与装饰线：border-radius 12px vs 13px | app.css:1265 vs 1275
+- [spacing] 【间距不一致】KPI卡与欢迎卡的gap：14px vs 13px vs 8px | .css:21 vs modern.css:105 vs redesign.css:227
+- [spacing] 【圆角不一致】buttons/pills全站多个12px硬编码未用var(--radius-lg/- | modern.css:96(.wlc-kbd kbd border-radius:5px)
+- [spacing] 【间距不一致】卡片内部padding上下左右不对称定义：margin-bottom 28px/26p | + redesign.css + modern.css多处margin-bottom不统一
+- [align] 文件树筛选按钮垂直错位 | workspace.html:155
+- [align] SQL编辑器AI助手面板：select/input/button基线错位 | workspace.html:223-236
+- [align] 指标消费界面：输入框与按钮错位 | workspace.html:965-968
+- [align] 项目管理：按钮组水平排列高度不一 | workspace.html:1010-1012
+- [align] 状态徽章内容混合基线不齐 | dn-design.css:400-405 .dn-dot
+- [type] Badge font-size hardcoded instead of var(--fs-xs) | workspace.html:132, 7288
+- [type] Section titles hardcoded to 16px instead of using  | 96, 918, 1000, 1004, 1009, 1033 (h2 elements)
+- [type] Muted metadata text color has insufficient contras | --text-muted: rgb(118,124,130) on #f3f5f9 bg)
+- [type] Form label text hardcoded 13px without variable in |  1034 (label elements with font-size:12-13px)
+- [type] Filter buttons have inconsistent styling with hard | pace.html:156-159 (.filter-btn inline styles)
+- [type] Small helper text 11px hardcoded in generated HTML | 2755 (JS-generated spans with font-size:11px)
+- [type] Help text and hints hardcoded 12px and gray color  | r(--fs-xs) and color:var(--text-muted) hints)
