@@ -12331,7 +12331,7 @@ window.umRenderUsers = function() {
     });
   }
   function _uth(label, key) { var _on = _us && _us.key === key; var arr = _on ? (_us.dir === 1 ? ' ▲' : ' ▼') : ' ⇅'; var as = _on ? (_us.dir === 1 ? 'ascending' : 'descending') : 'none'; return '<th aria-sort="' + as + '" style="cursor:pointer;user-select:none;" onclick="umSortBy(\'' + key + '\')" title="点击排序">' + label + arr + '</th>'; }
-  var h = '<table class="dbsync-exec-table" style="width:100%;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th>' + _uth('用户名', 'username') + _uth('昵称', 'nickname') + '<th>邮箱</th><th>手机号</th>' + _uth('部门', 'department') + '<th>岗位</th><th>状态</th><th>角色</th>' + _uth('最后登录', 'lastLoginAt') + '<th style="width:260px;">操作</th></tr></thead><tbody>';
+  var h = '<div style="overflow-x:auto;"><table class="dbsync-exec-table" style="width:100%;min-width:1080px;"><thead><tr><th style="width:32px;"><input type="checkbox" id="umSelAll" onclick="umToggleSelectAll(this.checked)" title="全选当前"></th>' + _uth('用户名', 'username') + _uth('昵称', 'nickname') + '<th>邮箱</th><th>手机号</th>' + _uth('部门', 'department') + '<th>岗位</th><th>状态</th><th>角色</th>' + _uth('最后登录', 'lastLoginAt') + '<th style="width:260px;">操作</th></tr></thead><tbody>';
   list.forEach(function(u) {
     var on = u.status === 1 || u.status === '1';
     // 优先用后端返回的 roleNames(无需本地映射); 回退 roleIds
@@ -12356,7 +12356,7 @@ window.umRenderUsers = function() {
       + '<a href="#" data-perm="settings:user" onclick="umToggleStatus(' + u.id + ',' + (on ? 1 : 0) + ');return false;" style="color:var(--primary);margin-right:8px;">' + (on ? '停用' : '启用') + '</a>'
       + '<a href="#" data-perm="settings:user" onclick="umDeleteUser(' + u.id + ');return false;" style="color:var(--error);">删除</a></td></tr>';
   });
-  box.innerHTML = h + '</tbody></table>';
+  box.innerHTML = h + '</tbody></table></div>';
   umRenderBatchBar(); umSyncSelAll();
 };
 // --- 批量用户操作 ---
