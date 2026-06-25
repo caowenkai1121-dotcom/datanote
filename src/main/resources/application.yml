@@ -29,7 +29,7 @@ spring:
   task:
     scheduling:
       pool:
-        size: 4   # @Scheduled 默认单线程, 指标计算/健康分快照/调度tick互相阻塞; fixedDelay 同任务不重入语义不变
+        size: ${SCHEDULE_POOL:8}   # @Scheduled 池: 调大避免指标计算/健康分快照/调度tick互相阻塞(高并发/长任务); fixedDelay 同任务不重入语义不变
   servlet:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE:20MB}      # AI 数据中心单文件上限
@@ -41,8 +41,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # HikariCP 连接池: 防闲置连接被 MySQL 关闭后仍被取用(No operations after connection closed)
     hikari:
-      maximum-pool-size: ${DB_POOL_MAX:20}     # 并发/长事务(质量检查/ETL)需要更大池
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_MAX:32}     # 并发/长事务(质量检查/ETL/调度tick)需更大池; 高并发下20易等待, MySQL默认max_connections=151留足余量
+      minimum-idle: ${DB_POOL_MIN:10}          # 预热常驻连接, 削减突发流量建连延迟
       max-lifetime: 580000                     # 580s, 须 < MySQL wait_timeout, 主动回收旧连接
       keepalive-time: 120000                   # 120s 保活探测, 剔除已失效连接
       connection-timeout: 30000
