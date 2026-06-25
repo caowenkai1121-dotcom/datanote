@@ -54,21 +54,9 @@ public class ProjectFavoriteService {
                 .eq(DnProjectFavorite::getUsername, ProjectService.currentUser()));
     }
 
-    /** 记录访问（按 用户+项目 唯一，access_at 自动刷新）。 */
-    public synchronized void recordAccess(Long projectId) {
-        String user = ProjectService.currentUser();
-        DnProjectAccess a = accessMapper.selectOne(new LambdaQueryWrapper<DnProjectAccess>()
-                .eq(DnProjectAccess::getUsername, user).eq(DnProjectAccess::getProjectId, projectId));
-        if (a == null) {
-            a = new DnProjectAccess();
-            a.setUsername(user);
-            a.setProjectId(projectId);
-            a.setAccessAt(LocalDateTime.now());
-            accessMapper.insert(a);
-        } else {
-            a.setAccessAt(LocalDateTime.now());
-            accessMapper.updateById(a);
-        }
+    /** 记录访问（按 用户+项目 唯一，access_at 自动刷新）。原子 upsert, 去除 select-then-insert+全局锁: 每次开项目都调, 高并发下不再串行。 */
+    public void recordAccess(Long projectId) {
+        accessMapper.upsertAccess(ProjectService.currentUser(), projectId, LocalDateTime.now());
     }
 
     public List<DnProjectAccess> recent(int limit) {
