@@ -4,8 +4,12 @@
 function _handleResponse(r) {
   if (!r.ok) {
     if (r.status === 401) {
-      // 强制登录模式下登录态失效/未登录 → 跳登录页(防在登录页自身循环)
-      if (location.pathname.indexOf('login') < 0) { location.replace('login.html'); }
+      // 登录态失效 → 先提示再跳(原直接跳突兀); 单次守卫: 并发多个401只跳一次, 不toast刷屏/多次跳
+      if (location.pathname.indexOf('login') < 0 && !window._authExpiredHandled) {
+        window._authExpiredHandled = true;
+        if (window.showToast) showToast('会话已失效, 正在跳转登录…', 'warning');
+        setTimeout(function() { location.replace('login.html'); }, 1500);
+      }
       return Promise.reject(new Error('未登录'));
     }
     if (r.status === 403) {
