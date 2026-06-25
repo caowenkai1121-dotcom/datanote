@@ -1,0 +1,24 @@
+# round3 gap (wb28rkkjr, 22)
+
+- [datamap/ux] 属性编辑行 - 首行编码输入框未自动获焦 | datamodel.js:450-471, renderAttrEditor()
+- [datamap/ui] 属性编辑表 - 编码列缺标题标签 | datamodel.js:468
+- [datamap/ui] 属性表编码列过窄，长编码截断无tooltip | datamodel.js:458
+- [datamap/ui] 模型详情 - 实体卡片长编码未转义显示 | datamodel.js:372
+- [datamap/feature] 实体详情 - 属性表无 tbody 明确边界，整行onclick冲突风险 | datamodel.js:376-378
+- [ops-monitor/feature] 权限编辑页面搜索框ID重复 | D:\data\datanote\src\main\resources\static\workspace.ht
+- [ops-monitor/ux] 告警方式切换后联系人输入框placeholder滞后更新 | D:\data\datanote\src\main\resources\static\workspace.ht
+- [ops-monitor/dedup] 搜索清除按钮重复代码(至少15处) | D:\data\datanote\src\main\resources\ static\workspace.h
+- [ops-monitor/nav] 权限项搜索逻辑对象层级不清(umfPermSearch重复) | D:\data\datanote\src\main\resources\static\workspace.ht
+- [gov-score/feature] 工单缺少编辑功能 | gov-health.js:371-403 issueOps函数
+- [gov-score/feature] 工单表缺少导出CSV功能 | gov-health.js:326-342 issueTable配置
+- [gov-score/ui] 工单表缺少创建时间列 | gov-health.js:332-341 table columns定义
+- [gov-score/feature] 工单级别枚举缺少定义 | gov-health.js:549、365-369行
+- [deadcode/dedup] 未被引用的函数 DN.formInput - 零引用 | src/main/resources/static/js/dn-common.js:753-761
+- [deadcode/dedup] 未被引用的函数 DN.formSelect - 零引用 | src/main/resources/static/js/dn-common.js:763-772
+- [deadcode/dedup] 未被引用的函数 DN.forecast - 零引用 | src/main/resources/static/js/dn-common.js:853-883
+- [deadcode/dedup] 未被引用的函数 DN.delta - 零引用 | src/main/resources/static/js/dn-common.js:923-929
+- [deadcode/dedup] 重复的工具函数 tone/round1/fmtInt | home-dashboard.js:11-13, gov-overview.js:98-101 各自独立实现
+- [deadcode/dedup] 内联重复的 delta 计算逻辑 | home-dashboard.js:220-221 vs dn-common.js:923-929
+- [deadcode/feature] 错误恢复不一致 - drawer/modal 关闭逻辑未兜底 | dn-common.js:307-346 (issuePreview), 338-340 (异步更新后关闭抽屉
+- [deadcode/ux] AI 助手文件上传无大小限制提示 | ai-agent.js:1472 (fileInput accept='.xlsx,.xls,.csv,...
+- [deadcode/ux] 表格长文本溢出无 tooltip - 用户体验缺口 | dn-common.js:589-700 (DN.table), 数据地图/质量/消费表格

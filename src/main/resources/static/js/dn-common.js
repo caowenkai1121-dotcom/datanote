@@ -760,16 +760,6 @@
     return el;
   };
   /** 下拉: options 为 [val|[val,label],...], val 为当前值 */
-  DN.formSelect = function (options, val) {
-    var s = DN.h('select', { class: 'dn-form-select' });
-    (options || []).forEach(function (o) {
-      var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o;
-      var op = DN.h('option', { value: ov, text: ol });
-      if (val != null && String(val) === String(ov)) op.selected = true;
-      s.appendChild(op);
-    });
-    return s;
-  };
   /** 字段: 标签(可必填红星) + 控件 + 提示。opts {hint, required} */
   DN.field = function (label, control, opts) {
     opts = opts || {};
@@ -919,15 +909,6 @@
     return w;
   };
 
-  /** 趋势增量标记 ↑↓→。opts:{lowerBetter,decimals,eps} */
-  DN.delta = function (cur, prev, opts) {
-    opts = opts || {}; var d = (Number(cur) || 0) - (Number(prev) || 0);
-    var dir = Math.abs(d) < (opts.eps || 0.05) ? 'flat' : (d > 0 ? 'up' : 'down');
-    var good = opts.lowerBetter ? dir === 'down' : dir === 'up';
-    var tone = dir === 'flat' ? 'muted' : (good ? 'ok' : 'err');
-    var txt = (d > 0 ? '+' : '') + (opts.decimals != null ? d.toFixed(opts.decimals) : Math.round(d));
-    return DN.h('span', { class: 'gov-delta is-' + tone, text: (dir === 'flat' ? '→ ' : dir === 'up' ? '↑ ' : '↓ ') + txt });
-  };
 
   /** 可关闭的持久告警条节点。tone: warn|err|ok|info */
   DN.alertNode = function (msg, tone) {
