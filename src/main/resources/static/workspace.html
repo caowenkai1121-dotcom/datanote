@@ -12534,6 +12534,7 @@ window.umSaveUser = function(id) {
   var profile = { email: email, phone: phone, department: department, position: position, employeeId: employeeId, remark: remark };
   var req;
   if (id) {
+    if (pwd && pwd.length < 6) { showToast('密码至少 6 位', 'error'); var pe2 = document.getElementById('umfPwd'); if (pe2) pe2.focus(); return; }
     var body = { nickname: nickname, status: status };
     if (pwd) body.password = pwd;
     Object.keys(profile).forEach(function(k){ body[k] = profile[k]; });
@@ -12542,6 +12543,7 @@ window.umSaveUser = function(id) {
     var username = (document.getElementById('umfUser').value || '').trim();
     if (!username) { showToast('请填写用户名', 'error'); return; }
     if (!pwd) { showToast('请填写密码', 'error'); return; }
+    if (pwd.length < 6) { showToast('密码至少 6 位', 'error'); var pe = document.getElementById('umfPwd'); if (pe) pe.focus(); return; }
     var createBody = { username: username, nickname: nickname, password: pwd, status: status };
     Object.keys(profile).forEach(function(k){ createBody[k] = profile[k]; });
     req = apiPost('/api/rbac/users', createBody);
