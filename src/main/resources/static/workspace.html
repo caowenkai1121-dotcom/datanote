@@ -6854,18 +6854,21 @@ function depAddManual(upstreamTaskId, upstreamTaskType, upstreamName) {
 }
 
 function depDeleteManual(depId) {
-  fetch('/api/lineage/dep/' + depId, { method: 'DELETE' })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.code === 0) {
-        msgBox('依赖已删除');
-        if (currentScriptId) {
-          loadDependencies();
+  msgConfirm('删除依赖', '确认删除该血缘依赖关系？').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/lineage/dep/' + depId, { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.code === 0) {
+          showToast('依赖已删除', 'success');
+          if (currentScriptId) {
+            loadDependencies();
+          }
+        } else {
+          msgBox('删除失败: ' + (res.msg || '请稍后重试'));
         }
-      } else {
-        msgBox('删除失败: ' + (res.msg || '请稍后重试'));
-      }
-    }).catch(function(e) { msgBox('删除请求失败: ' + ((e && e.message) || '请检查网络')); });
+      }).catch(function(e) { msgBox('删除请求失败: ' + ((e && e.message) || '请检查网络')); });
+  });
 }
 
 // ===== 依赖关系（自动解析 SQL FROM 表名） =====
