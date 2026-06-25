@@ -68,6 +68,11 @@ public class TaskExecutionService {
     @Value("${datanote.schedule.doris-parallel:8}")
     private int dorisParallel;
 
+    // 深度调优(DWD/DWS/ADS 跑大表): 额外 Doris 会话变量, 逗号分隔 "k=v"(如 exec_mem_limit=8589934592,parallel_pipeline_task_num=8),
+    // 在每条脚本SQL同连接守卫式 SET(版本不支持自动忽略不破坏)。按集群算力调, 默认空。
+    @Value("${datanote.schedule.doris-session-vars:}")
+    private String dorisSessionVars;
+
     // ODS 抽取(DataX)自适应: 基础批次/并发, 与大表(>千万/>亿)放大值; 大表减写往返+并行抽取
     @Value("${datanote.datax.batch-size:2048}") private int dataxBatch;
     @Value("${datanote.datax.channel:3}") private int dataxChannel;
@@ -489,6 +494,13 @@ public class TaskExecutionService {
             // 大数据调度优化: 并行度会话变量(守卫式, 不支持自动忽略) + 脚本配置的查询超时(防亿级查询失控)
             java.util.List<String> sessionSets = new java.util.ArrayList<>();
             if (dorisParallel > 0) sessionSets.add("SET parallel_fragment_exec_instance_num = " + dorisParallel);
+            // 深度调优: 注入按集群配置的额外会话变量(exec_mem_limit 等), 守卫式
+            if (dorisSessionVars != null && !dorisSessionVars.trim().isEmpty()) {
+                for (String kv : dorisSessionVars.split(",")) {
+                    String t = kv.trim();
+                    if (!t.isEmpty()) sessionSets.add(t.toUpperCase().startsWith("SET ") ? t : ("SET " + t));
+                }
+            }
             int sqlTimeout = script.getTimeoutSeconds() != null && script.getTimeoutSeconds() > 0 ? script.getTimeoutSeconds() : 0;
             if (!sessionSets.isEmpty() || sqlTimeout > 0) {
                 logBuilder.append("[大数据优化] 并行度=").append(dorisParallel > 0 ? dorisParallel : "默认")
