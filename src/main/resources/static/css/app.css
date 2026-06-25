@@ -3380,7 +3380,7 @@ textarea.dn-form-input { height: auto; min-height: 74px; padding: 9px 11px; resi
   position: sticky; top: 0; z-index: 2;
   white-space: nowrap; /* 防多列窄表表头 CJK 竖排堆叠 */
 }
-.dbsync-exec-table td { padding: 7px 10px; border-bottom: 1px solid var(--divider); color: var(--text-regular); }
+.dbsync-exec-table td { padding: 7px 10px; border-bottom: 1px solid var(--divider); color: var(--text-regular); white-space: nowrap; } /* 防窄列单元格 CJK 竖排堆叠(长文本列多已内联 ellipsis 截断) */
 .dbsync-exec-table td.num, .dbsync-exec-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .dbsync-exec-table tr:last-child td { border-bottom: none; }
 /* 字段映射区 */
