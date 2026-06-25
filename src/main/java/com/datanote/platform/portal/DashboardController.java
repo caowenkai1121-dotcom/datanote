@@ -105,20 +105,21 @@ public class DashboardController {
         long onlineSyncCount = syncTaskMapper.selectCount(onlineSyncQw);
         data.put("onlineCount", onlineScriptCount + onlineSyncCount);
 
+        // 今日执行/成功/失败 3 计数合并为 1 条 GROUP BY status(原 3 次 selectCount → 1 次, 命中 idx_status_date_type)
         LocalDate today = LocalDate.now().minusDays(1);
-        QueryWrapper<DnSchedulerRun> todayRunQw = new QueryWrapper<>();
-        todayRunQw.eq("run_date", today).eq("run_type", Constants.RUN_TYPE_DAILY);
-        data.put("todayExec", schedulerRunMapper.selectCount(todayRunQw));
-
-        QueryWrapper<DnSchedulerRun> todaySuccessQw = new QueryWrapper<>();
-        todaySuccessQw.eq("run_date", today).eq("run_type", Constants.RUN_TYPE_DAILY)
-                .eq("status", DnSchedulerRun.STATUS_SUCCESS);
-        data.put("todaySuccess", schedulerRunMapper.selectCount(todaySuccessQw));
-
-        QueryWrapper<DnSchedulerRun> todayFailQw = new QueryWrapper<>();
-        todayFailQw.eq("run_date", today).eq("run_type", Constants.RUN_TYPE_DAILY)
-                .eq("status", DnSchedulerRun.STATUS_FAILED);
-        data.put("todayFailed", schedulerRunMapper.selectCount(todayFailQw));
+        QueryWrapper<DnSchedulerRun> todayQw = new QueryWrapper<>();
+        todayQw.select("status", "COUNT(*) AS cnt").eq("run_date", today).eq("run_type", Constants.RUN_TYPE_DAILY).groupBy("status");
+        long todayExec = 0, todaySuccess = 0, todayFailed = 0;
+        for (Map<String, Object> row : schedulerRunMapper.selectMaps(todayQw)) {
+            Object co = row.get("cnt"); long c = co instanceof Number ? ((Number) co).longValue() : 0L;
+            todayExec += c;
+            Object so = row.get("status"); int st = so instanceof Number ? ((Number) so).intValue() : Integer.MIN_VALUE;
+            if (st == DnSchedulerRun.STATUS_SUCCESS) todaySuccess = c;
+            else if (st == DnSchedulerRun.STATUS_FAILED) todayFailed = c;
+        }
+        data.put("todayExec", todayExec);
+        data.put("todaySuccess", todaySuccess);
+        data.put("todayFailed", todayFailed);
 
         return data;
     }
