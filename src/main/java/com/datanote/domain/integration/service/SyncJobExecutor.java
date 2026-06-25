@@ -58,6 +58,7 @@ public class SyncJobExecutor {
     private final com.datanote.platform.notify.NotificationService notificationService;            // 全站#25 同步终败通知
     private final com.datanote.domain.project.mapper.DnProjectAssetMapper projectAssetMapper;      // 反查任务归属项目
     private final com.datanote.domain.project.mapper.DnProjectMapper projectMapper;
+    private final SyncCircuitBreaker circuitBreaker;   // 守卫式熔断(默认关), 源过载时快速失败防踩踏
 
     // 大任务: 单作业多表并行同步度(1=顺序, 默认零变更; 受 HikariCP 池约束, 每表占源+目标各1连接)
     @org.springframework.beans.factory.annotation.Value("${datanote.sync.table-parallel:1}")
@@ -150,6 +151,11 @@ public class SyncJobExecutor {
         }
         if (isBlank(job.getSourceDb()) || isBlank(job.getTargetDb())) {
             throw new IllegalArgumentException("sourceDb 和 targetDb 不能为空");
+        }
+        // 守卫式熔断(默认关): 源/目标近期连续失败达阈值则快速失败, 冷却后自动半开恢复
+        String cbKey = job.getSourceDsId() + ":" + job.getTargetDsId();
+        if (!circuitBreaker.allow(cbKey)) {
+            throw new IllegalStateException("熔断中: 该数据源近期连续失败, 暂停同步避免踩踏(冷却后自动恢复)");
         }
         if (!runningJobs.add(jobId)) {
             throw new IllegalStateException("任务正在运行中: " + jobId);
@@ -321,6 +327,11 @@ public class SyncJobExecutor {
             finalStatus = "FAILED";
             caught = e;
         }
+
+        // 熔断器记录成败(默认关时为空操作): SUCCESS 复位, FAILED 累计达阈值则熔断
+        String cbKey = job.getSourceDsId() + ":" + job.getTargetDsId();
+        if ("SUCCESS".equals(finalStatus)) circuitBreaker.recordSuccess(cbKey);
+        else if ("FAILED".equals(finalStatus)) circuitBreaker.recordFailure(cbKey);
 
         LocalDateTime end = LocalDateTime.now();
         if (exec != null) {
