@@ -9319,10 +9319,14 @@ function metricAddRef() {
   }).catch(function() { showToast('登记失败', 'error'); });
 }
 function metricDelRef(refId) {
-  fetch('/api/metric/refs/' + refId, { method: 'DELETE' }).then(_handleResponse).then(function() {
-    var id = document.getElementById('mId').value;
-    metricLoadRefs(id ? parseInt(id) : null);
-  }).catch(function() { showToast('删除失败', 'error'); });
+  msgConfirm('删除来源表登记', '确认删除该指标的此条来源表登记？').then(function(ok) {
+    if (!ok) return;
+    fetch('/api/metric/refs/' + refId, { method: 'DELETE' }).then(_handleResponse).then(function() {
+      var id = document.getElementById('mId').value;
+      metricLoadRefs(id ? parseInt(id) : null);
+      showToast('已删除', 'success');
+    }).catch(function() { showToast('删除失败', 'error'); });
+  });
 }
 
 // R23 联动: 指标列表 → 指标取值签聚焦该指标(同模块切签, 不再跨治理)

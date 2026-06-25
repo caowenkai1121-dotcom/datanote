@@ -1,0 +1,50 @@
+# #2/#3 前端真缺口 vetted (workflow w573pfbvj, 48项纯前端)
+
+- [ux/small] 资产清单：缺少选中项批量操作 | gov-assets.js: renderAssetTable 表格构建 (L297-343) | 在表格 toolbar 增【批量删除】【批量标签】按钮, 勾选行后激活(disable态). 删除前二次confirm, 支持 Promise.all 并发提交
+- [ux/small] 审计模块：导出后无toast反馈 | gov-audit.js: exportCsv (L428-437) | open成功后立即 DN.toast('正在导出... 请检查下载', 'ok'), 含可选延迟关闭dialog. 浏览器拦截时 toast 同时disable导出按钮 500ms 防连点
+- [ux/small] 分类分级：识别结果置信度过滤缺默认 | gov-classification.js: scanTable (L308-377) | 初始化 minConfSel.value='70'(≥70%), 首次 tbl.reload 时自动过滤展示中高置信度. 用户可自主调阈值重新筛
+- [ux/small] 消费模块：指标搜索缺快速回到全量 | gov-consumption.js: loadBoard 表格 (L235-249) | 搜索输入框右侧加【清除 ✕】按钮(搜索框有值时可见), 点击清空输入并调 tbl.reload(全量行). 或回车直接搜索触发焦点到输入
+- [ux/small] 质量模块：失败规则表缺行级复跑确认 | gov-quality.js: renderFailFocus (L223-328) | 点击后按钮置灰+改文案'复跑中...', 异步完成后恢复. 或用 dataset.busy 标志位. response 返回后判定通过/失败改按钮文案
+- [ux/small] 质量模块：规则覆盖矩阵缺清除筛选快捷 | gov-quality.js: buildCoverageMatrix (L132-166) | 筛选后表格顶部加【清除筛选】按钮, 点击重置 filterDim/filterType='' 并 reload. 或矩阵下方加【已按xxx筛选】chip 可点删
+- [feature/small] 资产清单：缺最近查看历史快速跳转 | gov-assets.js: openAssetDetail (L422-431) | 在 localStorage 维护最近5张查看过的表 [{db, table, timestamp}], 清单右上角加【最近查看】下拉, 展示历史表并可一键跳转详情
+- [ux/small] 黄金记录表 - 复制到剪贴板时业务主键缺失反馈 | mdm.js:586-614 goldenRecordId无法复制至业务主键列 | 为 bizKey 列添加 exportValue 回调：若 bizKey 为空则用 '#' + goldenRecordId；复制后给 DN.toast('已复制业务主键') 确认反馈
+- [ux/small] 属性编码校验 - 实时反馈词根检查状态 | mdm.js:350-371 词根命名校验提示只在 checkRoots 完成后显示 | 输入时立即显示 rootHint，改文案为 '检查中...'；checkRoots 返回 Promise 前显示骨架；超时(2s)改提示为 '检查超时'
+- [ux/small] 新建黄金记录 - 快速二次确认（防误点发布） | mdm.js:603 发布草稿记录只有单次 DN.confirm 无二次门槛 | 发布前弹出额外对话：'该记录发布后将作为生效版本，其他来源数据都需参考本版本。确认发布？' + 倒数(3s)可点，避免快速误点；或添加 checkbox 'I understand'
+- [feature/small] 属性 ENUM/REFERENCE 枚举值 - 候选值编辑后实时预览 | mdm.js:337-410 属性表单 fEnum 输入框仅保存时校验 | fEnum 输入框 onchange 实时展示候选值清单数：'3 个值' pill；若为空加黄色警示 icon 与提示文；从'选码表'引用后自动填充计数
+- [ux/small] 变更审批 - 批准/驳回后自动刷新并定位到该记录 | mdm-approval.js:260-261 审批完成后 loadApproval 重拉整个列表 | 审批完成后先 toast('已批准，3秒后定位...')；1.5s 后加载列表，找到该记录所在行，class 加 'highlight' 闪烁动画 + scrollIntoView
+- [ux/small] 发布订阅 - 模拟发布后自动展示匹配的订阅清单 | mdm-pubsub.js:262-268 模拟发布返回 matchedSubscriptions count，无详细清单 | 发布完成后在 logBox 上方新增临时提示卡：'本次发布匹配订阅' + 列表(订阅方、实体、变更类型)；5s 后自动消失；点击可保留或导出
+- [ux/small] 指标模块：快速清空所有筛选的一键按钮在空态中缺失 | workspace.html:9205-9208 | 在指标列表顶部（搜索框旁）永久显示「清空筛选」按钮，且在空态界面增加该按钮引导。同时在筛选项任意一个被启用时高亮该按钮（如加粗/改色），提示用户当前有活跃筛选。
+- [ux/small] 指标模块：指标新鲜度数据无实时更新反馈 | workspace.html:9101-9122 | 在新鲜度列加载前显示骨架屏/加载中占位符。或者改为异步加载新鲜度数据：先渲染列表，再并发加载新鲜度，加载完后局部更新对应行的新鲜度列。
+- [ux/small] 指标模块：来源库表管理的删除操作缺二次确认 | workspace.html:9321-9326 | 为 metricDelRef() 添加 msgConfirm/DN.confirm 二次确认，确认后才执行 DELETE。例如："确认删除来源表 db.table 的登记吗？"
+- [ux/small] 指标模块：启停开关操作后缺即时反馈图示 | workspace.html:9280-9289 | 在操作后立即在该行状态列本地改为目标态（乐观更新），同时显示 toast。若后端返回错误则回滚。
+- [ux/small] 数据地图：表收藏/取消收藏后缺即时UI反馈 | workspace.html:8427-8440 | 操作成功后即时更新：若收藏，则将该表插到我的收藏列表顶部；若取消，则移除该表。若当前在收藏列表中删除该表，界面直接刷新列表显示。
+- [ux/small] 数据地图：消费指标tab加载无超时兜底UI | workspace.html:8393-8425 | 在加载失败时显示错误消息并提供"重试"按钮，且给出可帮助用户自诊的信息（如"请检查网络连接"）。同时添加加载超时时间戳提示（如"已耗时 X 秒"）。
+- [ux/small] 数据地图：字段搜索无搜索命中数统计 | workspace.html:8501-8504 | 在搜索框下显示实时匹配数，格式如"匹配 3 / 共 28 字段"。若无匹配则显示空态消息。
+- [ux/small] 用户管理：新建/编辑用户时缺密码强度提示 | workspace.html:12473 | 在密码输入框下实时显示强度条（绿/黄/红），并根据长度/大小写/数字/特殊符号组合判断强度。
+- [ux/small] 用户管理：用户列表导出按钮缺导出进度反馈 | workspace.html:12374-12390 | 导出前显示 toast "导出中...",并在创建 blob 后更新为 "已导出 N 个用户"。对超大数据集可分批导出。
+- [ux/small] 同步模块：高级设置的收起/展开状态未持久化 | workspace.html:14873 | 用 localStorage 记住高级设置的展开/收起状态，下次打开编辑该任务时自动恢复。"dbsyncFormModal:advancedExpanded"。
+- [ux/small] 同步模块：表行删除操作缺二次确认 | workspace.html:15071-15078 | 为删除行操作添加 msgConfirm，确认删除该表的全部配置后才执行。或提供"撤销"功能（见撤销需求）。
+- [ux/small] 同步模块：任务列表筛选条件不持久化 | workspace.html:15576 | 用 localStorage 记住当前筛选条件（status/env/type），页面打开时自动恢复。如 "dn.dbsyncFilters"。
+- [ux/small] 全局：各模块列表无记忆上次浏览位置 | workspace.html:9101, 12303, 15576 | 用 sessionStorage 记住每个列表的滚动位置，返回列表时自动滚动到之前的位置。同时保存当前搜索/筛选条件。
+- [ux/small] 属性编辑后的撤销/重做(Undo/Redo) | datamodel.js:445-493 | 维护编辑栈window.__dmAttrEditHistory=[{rows:[...],timestamp}],界面加「↶撤销上一步」按钮(disabled when len<=1),点击pop()并重渲renderAttrEditor()。保存时清空历史。单元素操作(加删行)
+- [ux/small] 实体/属性批量删除时的分组确认反馈 | datamodel.js:438,375 | 在属性编辑器的「保存属性」按钮旁加<span>已删除3个属性</span>,实时根据collectAttrRows()与初始行数对比计算并展示。保存前弹框显示「确认保存?删除X个属性,新增Y个」的摘要
+- [ux/small] 模型列表搜索时的空态引导与快速新建 | datamodel.js:145-259 | 在dmFilterModels()无匹配分支的nm行增加快速新建button: 无匹配模型 <button class="btn btn-sm btn-primary" onclick="dmNewModel();">快速新建同名</button>(搜索词作为模型名预填)
+- [ux/small] 数据元素(标准)绑定时的自动类型推导反馈 | datamodel.js:619-630 | dmElemChanged()执行成功后向输入框右侧显示小toast或绿色✓icon提示「已自动填充类型XXX,长度YYY」,消退时间1.5s。或在标准编码下拉关闭时即时填充,并高亮对应行让用户确认变更
+- [ux/small] 属性编辑的行号映射鲁棒性问题 | datamodel.js:456-487 | 给每行属性加data-attr-id="${attrCode}"唯一标识,删除操作改为按属性编码移除(window.__dmAttrEdit.rows.filter(a=>a.attrCode!==code))而非按索引splice,增强鲁棒性。新增属性时自动生成临时ID(tem
+- [ux/small] 物理模型DDL预览时的copy-to-clipboard反馈增强 | datamodel.js:578-590 | DDL展示框改为<textarea readonly>,用户可原生Ctrl+C复制。复制按钮点击后显示「已复制"提示(1.5s后消退)。新增「一键全选」按钮便于手工复制(兼容无copy权限的环境)
+- [ux/med] 主题域模块：删除级联警告缺清晰说明影响 | gov-subject.js: deleteNode (L334-347) | 删除前弹 drawer 罗列该主题下的资产表(前端按已加载 subjectId 过滤, 不调新API), 显示影响表数/字段数. 确认后再删
+- [feature/med] 治理工单：新建工单缺模板/快捷初值 | gov-health.js: addIssue (L547-592) | 支持 ctx.prefillIssue={title, dimension, objectRef, owner} 自动回填表单. 从质量规则点【查看相关工单】→新建时, 预填维度=QUALITY 和规则ID到 objectRef
+- [feature/med] 标准管理：数据元批量编辑缺入口 | gov-standard.js: renderElements (L215-316) | 表格 toolbar 增【批量编辑】, 勾选行后激活. 点击弹 drawer 选【更新敏感分级】或【更新密级】, 填新值后批量 POST /api/gov/standard/element/batch-update
+- [feature/med] 黄金记录 - 数据来源系统统计与来源追溯面包屑 | mdm.js:560-620 黄金记录列表仅展示 sourceSystem 列，无聚合视图 | statRow 新增磁贴：'来源系统 N 个' + 最常见的前3个系统 pill（CRM 2条、ERP 1条）；点击磁贴可按来源系统快速筛选；支持多选源系统
+- [feature/med] 层级关系 - 快速批量删除确认（多选模式） | mdm-hierarchy.js:122-145 关系明细表仅单行删除，无多选 | 表格头添加 checkbox 支持多选；表头下新增 action bar：'已选 N 个'、'批量删除' button；删除前确认 '删除 N 个关系？'
+- [feature/med] 质量监控 - 不合规记录按问题类型聚合统计 | mdm-quality.js:113-146 问题分类磁贴仅展示数字，无问题清单 | 在问题分类磁贴下新增 mini filter bar：按问题类型(缺必填/枚举越界/唯一冲突/类型错误)快速切换，表格实时筛选仅显示该类问题的记录
+- [feature/med] 指标模块：指标搜索支持按编码/分类的快捷键或标签选择 | workspace.html:9101-9128 | 搜索框支持快捷语法，如 "cat:用户指标" 快速按分类过滤，或在搜索框下方显示热门分类/最近搜索的tag云，点击直接过滤。
+- [ux/med] 用户管理：批量操作后缺成功/失败详情对话框 | workspace.html:12421-12431 | 若有失败项，显示更详细的对话框列表，包含用户名和具体失败原因。成功项用绿色标记，失败项用红色标记。
+- [feature/med] 同步模块：新建任务时缺数据源/库的常用快捷记忆 | workspace.html:14849-14891 | 在新建任务弹窗打开时，显示"最近使用"或"常用配置"按钮，用户可点击一键快速填充上次的源/目标库组合。同时显示最近3次使用的库对。
+- [feature/med] 同步模块：表配置行缺快速复制/粘贴功能 | workspace.html:15071-15078 | 在每行右侧增加"复制此行"和"粘贴到新行"按钮，或右键菜单支持复制行配置。点击后在下一行快速预填相同的转换规则、过滤条件等。
+- [ux/med] 开发模块：脚本批量删除前缺强确认与影响评估 | workspace.html:5826-5840 | 在删除前显示详细的二次确认，列出待删脚本名单及其任务调度状态/下游依赖数。给出警示："这些脚本正在被 N 个任务依赖，删除后需更新这些任务"。
+- [feature/med] 开发模块：脚本编辑后缺自动保存与草稿恢复 | workspace.html:4773 | 编辑时每 5-10 秒自动保存代码到 localStorage。页面关闭前若有未保存更改弹出确认。重新打开脚本时如果有本地草稿，提示用户恢复或丢弃。
+- [ux/med] 开发模块：脚本执行日志无折叠面板，长日志难扫读 | workspace.html:6338-6350 | 为日志按类型（INFO/WARN/ERROR）分组，用折叠面板展现。默认展开 ERROR，折叠 INFO。用户可按需展开查看。
+- [feature/med] 关系列表的批量勾选与删除 | datamodel.js:381-390 | 在关系区域头部加「全选"checkbox与「批量删除」按钮(disabled when none checked)。关系列表每行前加checkbox(class='dmRelChk')。dmDelRelation改为单条用,新增dmBatchDelRelations(modelI
+- [ux/med] 模型主题域快速切换面板(类似项目Ctrl+K) | datamodel.js:64-98 | 模仿projQuickSwitch实现dmQuickSwitchSubject(Ctrl+Shift+S): 弹框输入即筛主题域,上下键选择,Enter打开。或直接扩展Ctrl+K面板在模型视图时同时搜索「主题域+模型」,支持「domain:model名」格式快速跳转
+- [feature/med] 模型详情中的实体排序与拖拽调整 | datamodel.js:366-378 | 实体card头部增加「↑↓排序」按钮或drag handle(兼容touch),用户可拖拽重排实体card顺序。顺序存储到localStorage作为个人偏好(key: 'dmModelEntityOrder_{modelId}'),刷新后保留。无需后端改
