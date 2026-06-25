@@ -33,6 +33,16 @@
     zCard.body.appendChild(DN.h('div', { id: 'consZombie' }, DN.skeleton(2)));
     c.appendChild(zCard.el);
 
+    // 消费预警: 长期未消费(查询/导出/取值)的启用指标, 阈值可调(承后端 /metric/unused)
+    var unusedDaysSel = DN.h('select', { id: 'consUnusedDays', class: 'dn-form-select', style: 'width:auto' });
+    [['7', '7 天'], ['30', '30 天'], ['60', '60 天'], ['90', '90 天']].forEach(function (o) { unusedDaysSel.appendChild(DN.h('option', { value: o[0], text: '未消费 ≥ ' + o[1] })); });
+    unusedDaysSel.value = '30';
+    unusedDaysSel.onchange = function () { loadUnused(); };
+    var uCard = DN.card({ title: '消费预警（长期未消费指标）', icon: 'clock', actions: [unusedDaysSel] });
+    uCard.el.id = 'consUnusedCard';
+    uCard.body.appendChild(DN.h('div', { id: 'consUnused' }, DN.skeleton(2)));
+    c.appendChild(uCard.el);
+
     // 数据集卡: 指标取值签默认隐藏(消费产物非指标主线); 深链 newDataset 时显示
     var newDs = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '新建数据集', 'data-perm': 'metrics:edit', onclick: function () { addDataset(); } });
     var dsCard = DN.card({ title: '数据集 / 数据产品（受治理可复用查询）', icon: 'list', actions: [newDs] });
@@ -51,7 +61,7 @@
           DN.toast('计算完成：成功 ' + (r.success || 0) + ' / 失败 ' + (r.failed || 0) + ' / 共 ' + (r.total || 0), 'ok');
           setLinkBusy(calcAll, false, '一键计算全部指标');
           // 计算后多张卡片数据均变化：概览/看板/排行/僵尸全部刷新保持联动
-          loadOverview(); loadBoard(); loadRanking(); loadZombies();
+          loadOverview(); loadBoard(); loadRanking(); loadZombies(); loadUnused();
         }).catch(function (e) {
           DN.toast('计算失败：' + errMsg(e), 'err');
           setLinkBusy(calcAll, false, '一键计算全部指标');
@@ -59,7 +69,7 @@
       });
     };
 
-    loadOverview(); loadBoard(); loadRanking(); loadZombies();
+    loadOverview(); loadBoard(); loadRanking(); loadZombies(); loadUnused();
     if (ctx.newDataset) loadDatasets();
 
     // R21 深链：从其他模块带 newDataset 进来 → 自动开「新建数据集」抽屉并预填 SQL
@@ -472,6 +482,29 @@
       }));
     }).catch(function (e) {
       var box = document.getElementById('consZombie'); if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('僵尸指标加载失败：' + errMsg(e), loadZombies)); }
+    });
+  }
+
+  function loadUnused() {
+    var sel = document.getElementById('consUnusedDays');
+    var days = sel ? (sel.value || '30') : '30';
+    var box0 = document.getElementById('consUnused'); if (box0) { box0.innerHTML = ''; box0.appendChild(DN.skeleton(2)); }
+    DN.get('/api/consumption/metric/unused?days=' + encodeURIComponent(days)).then(function (rows) {
+      var box = document.getElementById('consUnused'); if (!box) return; box.innerHTML = '';
+      if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('近 ' + days + ' 天内全部启用指标都有消费 👍', 'check')); return; }
+      box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:8px', text: '共 ' + rows.length + ' 个启用指标超过 ' + days + ' 天未被查询/导出/取值，建议排查或下线' }));
+      box.appendChild(DN.table({
+        rows: rows, pageSize: 8, searchKeys: ['metricName', 'metricCode', 'owner'], searchPlaceholder: '搜索未消费指标',
+        columns: [
+          { key: 'metricName', label: '指标', render: function (r) { var t = r.metricName || r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 28) }); } },
+          { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
+          { key: 'idleDays', label: '闲置', render: function (r) { return r.idleDays == null ? DN.pill('从未消费', 'err') : DN.pill(r.idleDays + ' 天', r.idleDays >= 90 ? 'err' : 'warn'); } },
+          { key: 'lastConsumedAt', label: '最近消费', render: function (r) { return DN.h('span', { text: r.lastConsumedAt || '-', style: 'font-size:12px;color:var(--text-muted)' }); } },
+          { key: '_op', label: '操作', render: function (r) { return zombieOps(r); } }
+        ]
+      }));
+    }).catch(function (e) {
+      var box = document.getElementById('consUnused'); if (box) { box.innerHTML = ''; box.appendChild(DN.errorBox('未消费预警加载失败：' + errMsg(e), loadUnused)); }
     });
   }
 
