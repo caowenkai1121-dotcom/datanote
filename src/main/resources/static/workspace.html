@@ -6796,6 +6796,7 @@ function depShowAddDialog() {
   document.getElementById('depSearchInput').value = '';
   var _depClr = document.getElementById('depSearchInputClr'); if (_depClr) _depClr.style.display = 'none';
   document.getElementById('depSearchResults').innerHTML = '<div style="color:var(--text-muted);padding:8px;">输入任务名搜索...</div>';
+  setTimeout(function() { var i = document.getElementById('depSearchInput'); if (i) try { i.focus(); } catch (e) {} }, 30);   // 打开即聚焦搜索框, 省一次点击
 }
 
 var depSearchTimer = null;
