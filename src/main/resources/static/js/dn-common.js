@@ -61,15 +61,23 @@
 
   /** 轻量 toast 提示 */
   DN.toast = function (msg, type) {
+    // 容器纵向堆叠(原各 toast 都 fixed top:64 right:24 会重叠丢信息): 多 toast 依次排列
+    var box = document.getElementById('dn-toast-box');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'dn-toast-box';
+      box.style.cssText = 'position:fixed;top:64px;right:24px;z-index:var(--z-toast,9999);display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;';
+      document.body.appendChild(box);
+    }
     var t = document.createElement('div');
     t.className = 'dn-toast dn-toast-' + (type || 'info');
+    t.style.position = 'static'; t.style.pointerEvents = 'auto';   // 覆盖 .dn-toast 的 fixed, 改由容器排布
     t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); // 屏幕阅读器播报提示
     t.textContent = msg;
-    document.body.appendChild(t);
+    box.appendChild(t);
     setTimeout(function () { t.classList.add('dn-toast-show'); }, 10);
     setTimeout(function () {
       t.classList.remove('dn-toast-show');
-      setTimeout(function () { if (t.parentNode && document.body.contains(t)) t.parentNode.removeChild(t); }, 300);
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
     }, 2600);
   };
 
