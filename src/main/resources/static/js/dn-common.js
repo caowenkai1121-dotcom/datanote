@@ -714,7 +714,8 @@
     var _closing = false;
     function close() { if (_closing) return; _closing = true; mask.onclick = null; document.removeEventListener('keydown', onKey); if (DN._drawerKey === onKey) DN._drawerKey = null; mask.classList.remove('show'); dr.classList.remove('show'); try { if (_prevFocus && _prevFocus.focus) _prevFocus.focus(); } catch (e) {} try { if (typeof onClose === 'function') onClose(); } catch (e) {} setTimeout(function () { if (mask.parentNode) mask.remove(); if (dr.parentNode) dr.remove(); }, 250); }
     var titleSpan = DN.h('span', { text: title || '' });   // 暴露 setTitle, 供异步加载后更新标题(如 metricPreview)
-    var drKids = [DN.h('div', { class: 'dh' }, [titleSpan, DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭' })]), bd];
+    var escHint = DN.h('span', { text: 'Esc', title: '按 Esc 关闭', style: 'font-size:11px;color:var(--text-faint);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 5px;margin-left:auto;line-height:1.6;' });
+    var drKids = [DN.h('div', { class: 'dh' }, [titleSpan, escHint, DN.h('button', { class: 'x', text: '×', onclick: close, 'aria-label': '关闭', style: 'margin-left:8px;' })]), bd];
     if (df) drKids.push(df);
     var dr = DN.h('div', { class: 'gov-drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '详情' }, drKids);
     mask.onclick = close;
