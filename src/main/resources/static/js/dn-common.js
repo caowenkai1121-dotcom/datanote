@@ -238,6 +238,10 @@
       var cp = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制表名' });
       cp.onclick = function () { DN.copyText(db + '.' + table); };
       actBar.appendChild(cp);
+      // 复制起手查询 SQL(写脚本常用)
+      var cq = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制查询' });
+      cq.onclick = function () { DN.copyText('SELECT * FROM `' + db + '`.`' + table + '` LIMIT 100', '已复制查询 SQL'); };
+      actBar.appendChild(cq);
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
         qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };
