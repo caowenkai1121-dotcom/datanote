@@ -266,6 +266,35 @@
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
   };
 
+  /** 治理工单预览抽屉(点工单【原地看详情】, 不跳治理页): 标题/状态/级别/负责人/对象/描述+去处理入口。
+   *  ponytail: 无单工单接口, 拉工单列表筛 id(列表通常 <数百, 可接受); 量大时再加后端 /issues/{id}。*/
+  DN.issuePreview = function (id) {
+    if (id == null) return;
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'padding:20px;color:var(--text-muted);font-size:13px;' }));
+    var dr = DN.drawer('工单预览', body);
+    var TONE = { OPEN: 'warn', FIXING: 'info', RESOLVED: 'ok', VERIFIED: 'ok', CLOSED: 'muted', REJECTED: 'err' };
+    function row(k, v) { return DN.h('div', { style: 'display:flex;gap:10px;font-size:12.5px;margin:4px 0;' }, [DN.h('span', { text: k, style: 'color:var(--text-muted);min-width:56px;flex:0 0 auto;' }), DN.h('span', { text: String(v == null || v === '' ? '-' : v), style: 'color:var(--text-regular);word-break:break-all;' })]); }
+    DN.get('/api/gov/health/issues').then(function (rows) {
+      var it = (Array.isArray(rows) ? rows : []).filter(function (x) { return x && String(x.id) === String(id); })[0];
+      body.innerHTML = '';
+      if (!it) { body.appendChild(DN.h('div', { text: '未找到该工单(可能已关闭或被删除)', style: 'color:var(--text-muted);font-size:13px;padding:16px;' })); return; }
+      body.appendChild(DN.h('div', { text: it.title || ('工单#' + id), style: 'font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text-primary);line-height:1.4;' }));
+      var pills = DN.h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;' });
+      pills.appendChild(DN.pill(it.status || 'OPEN', TONE[it.status] || 'muted'));
+      if (it.severity) pills.appendChild(DN.pill(it.severity, it.severity === 'HIGH' ? 'err' : it.severity === 'MEDIUM' ? 'warn' : 'muted'));
+      if (it.issueType) pills.appendChild(DN.pill(it.issueType, 'info'));
+      body.appendChild(pills);
+      var meta = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;background:var(--bg-card);' });
+      meta.appendChild(row('负责人', it.owner || '未分配'));
+      if (it.objectRef) meta.appendChild(row('对象', it.objectRef));
+      if (it.createdAt) meta.appendChild(row('创建', String(it.createdAt).replace('T', ' ').slice(0, 16)));
+      body.appendChild(meta);
+      if (it.description) { body.appendChild(DN.h('div', { text: '描述', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('div', { text: it.description, style: 'font-size:12.5px;color:var(--text-regular);white-space:pre-wrap;word-break:break-all;line-height:1.5;' })); }
+      if (window.navigateTo) { var go = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '去治理工单中心处理(流转/指派) →', style: 'margin-top:12px;display:inline-block;' }); go.onclick = function () { if (dr && dr.close) dr.close(); navigateTo('governance', { gov: 'health', focusIssue: id }); }; body.appendChild(go); }
+    }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
+  };
+
   /**
    * 级联库/表(/列)下拉选择器，用 dn-form-select 表单体系，避免用户手输。
    * opts: { withColumn, defaultDb, onChange(db,table,column) }
