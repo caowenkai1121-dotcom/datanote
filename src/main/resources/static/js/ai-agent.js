@@ -1135,10 +1135,12 @@
       }
       // 高危操作: 批准前二次确认(可能不可逆), 防误点
       okBtn.onclick = function () {
+        if (okBtn.disabled) return;   // 防重复点击触发多个确认框/多次提交
         if (ap.riskLevel === 'HIGH') {
+          okBtn.disabled = true;
           DN.confirm('高危操作「' + (ap.actionSummary || ap.skillName || '') + '」可能不可逆。已核对参数, 确认执行？', { title: '⚠ 确认高危操作', danger: true })
-            .then(function (ok) { if (ok) doApprove(); });
-        } else doApprove();
+            .then(function (ok) { if (ok) { doApprove(); } else { okBtn.disabled = false; } });
+        } else { okBtn.disabled = true; doApprove(); }
       };
       allBtn.onclick = function () {
         if (sending) { DN.toast('正在处理中，请稍候', 'warn'); return; } // 共用全局发送锁
