@@ -1487,8 +1487,13 @@
 
   function uploadFiles(files) {
     if (!files || !files.length) return;
+    // 前置大小校验(server 上限 20MB), 超大文件先跳过不白传
+    var valid = [], over = [];
+    for (var k = 0; k < files.length; k++) { (files[k].size > 20 * 1048576 ? over : valid).push(files[k]); }
+    if (over.length && DN.toast) DN.toast(over.length + ' 个文件超 20MB 已跳过: ' + over.slice(0, 3).map(function (f) { return f.name; }).join('、'), 'warn');
+    if (!valid.length) return;
     var fd = new FormData();
-    for (var i = 0; i < files.length; i++) fd.append('files', files[i]);
+    for (var i = 0; i < valid.length; i++) fd.append('files', valid[i]);
     if (sessionId) fd.append('sessionId', sessionId);
     if (DN.toast) DN.toast('上传中…', 'info');
     fetch('/api/ai/agent/files/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
