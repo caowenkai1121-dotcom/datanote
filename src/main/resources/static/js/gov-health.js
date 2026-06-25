@@ -329,6 +329,7 @@
       searchKeys: ['title', 'dimension', 'owner', 'status'],
       searchPlaceholder: '搜索标题/维度/负责人/状态',
       empty: '暂无工单', emptyIcon: 'inbox',
+      exportName: 'governance_issues',
       columns: [
         { key: '_sel', label: '', render: function (it) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择工单 ' + (it.title || it.id) }); cb.checked = !!selectedIssues[it.id]; cb.onchange = function () { if (cb.checked) selectedIssues[it.id] = it.status; else delete selectedIssues[it.id]; }; return cb; } },
         { key: 'id', label: 'ID', align: 'right', copyable: true },
@@ -337,6 +338,7 @@
         { key: 'severity', label: '级别', render: function (it) { return severityPill(it.severity); } },
         { key: 'owner', label: '负责人', render: function (it) { return truncSpan(it.owner || '未分配', 24); } },
         { key: 'status', label: '状态', render: function (it) { return DN.pill(it.status || 'OPEN', STATUS_TONE[it.status] || 'muted'); } },
+        { key: 'createdAt', label: '创建', render: function (it) { var t = it.createdAt || it.createTime; return DN.h('span', { text: t ? DN.timeAgo(t) : '-', title: t || '', style: 'font-size:12px;color:var(--text-muted)' }); } },
         { key: 'ops', label: '操作', render: function (it) { return issueOps(it); } }
       ]
     });
