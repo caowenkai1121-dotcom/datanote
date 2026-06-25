@@ -813,6 +813,34 @@
     return 'muted';
   }
 
+  // 策略编辑(savePolicy 按 id upsert): 库表为策略对象不可改, 仅改类型/天数
+  function editPolicy(p) {
+    p = p || {};
+    var typeSel = DN.h('select', { class: 'dn-form-select' });
+    ['TTL', 'HOT_COLD', 'ARCHIVE'].forEach(function (t) { typeSel.appendChild(DN.h('option', { value: t, text: t, selected: p.policyType === t })); });
+    var curDays = p.policyType === 'HOT_COLD' ? p.coldDays : p.ttlDays;
+    var daysI = DN.h('input', { class: 'dn-form-input', value: curDays == null ? '' : curDays, placeholder: 'TTL天/冷下沉天' });
+    var body = DN.h('div');
+    var sec = DN.formSection('编辑策略 — ' + (p.dbName || '') + '.' + (p.tableName || ''));
+    sec.add(DN.formGrid2([DN.field('类型', typeSel), DN.field('天数', daysI, { hint: 'TTL天或冷下沉天, 可空' })]));
+    body.appendChild(sec.el);
+    var dr, foot;
+    var save = function () {
+      var dv = daysI.value.trim(), d = parseInt(dv, 10);
+      if (dv && (isNaN(d) || d <= 0)) { DN.toast('天数需为正整数', 'error'); daysI.focus(); return; }
+      if (!isNaN(d) && d > 36500) { DN.toast('天数过大(≤36500)', 'error'); daysI.focus(); return; }
+      var payload = { id: p.id, dbName: p.dbName, tableName: p.tableName, policyType: typeSel.value, enabled: p.enabled != null ? p.enabled : 1 };
+      if (typeSel.value === 'HOT_COLD') payload.coldDays = isNaN(d) ? null : d; else payload.ttlDays = isNaN(d) ? null : d;
+      foot.busy('保存中…');
+      DN.post('/api/gov/lifecycle/policies', payload)
+        .then(function () { DN.toast('已保存', 'success'); dr.close(); loadPolicies(); })
+        .catch(function (e) { foot.reset('保存'); DN.toast(e && e.message || '保存失败', 'error'); });
+    };
+    foot = DN.drawerFoot({ okText: '保存', onOk: save, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('编辑策略', body, foot.el);
+    DN.enterSubmit(body, save);
+  }
+
   function loadPolicies() {
     DN.get('/api/gov/lifecycle/policies').then(function (list) {
       var box = document.getElementById('policyList');
@@ -837,6 +865,7 @@
                       .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                   });
                 } });
+              var editP = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '编辑', style: 'margin-left:6px;', 'data-perm': 'governance:manage', onclick: function () { editPolicy(p); } });
               var del = DN.h('a', { class: 'btn', href: 'javascript:void(0)', text: '删', style: 'margin-left:6px;', 'data-perm': 'governance:manage',
                 onclick: function () {
                   DN.confirm('确认删除该生命周期策略？此操作不可撤销。', { title: '删除确认', danger: true }).then(function (ok) {
@@ -847,7 +876,7 @@
                       .catch(function (e) { done(); DN.toast(e.message, 'error'); });
                   });
                 } });
-              return DN.h('span', {}, [apply, del]);
+              return DN.h('span', {}, [apply, editP, del]);
             } }
         ],
         rows: rows, pageSize: 10, search: false, empty: '暂无策略'
