@@ -23,9 +23,9 @@
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat:hover { transform:translateY(-2px); box-shadow:var(--gov-shadow-h); border-color:var(--primary,var(--primary)); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .ic { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-light,rgba(var(--primary-rgb),.08)); color:var(--primary,var(--primary)); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .ic svg { width:22px; height:22px; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-ok .ic { background:rgba(43,138,75,.1); color:var(--gov-ok); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-warn .ic { background:rgba(201,126,16,.12); color:var(--gov-warn); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-err .ic { background:rgba(207,59,59,.1); color:var(--gov-err); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-ok .ic { background:var(--success-light); color:var(--gov-ok); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-warn .ic { background:var(--warning-light); color:var(--gov-warn); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat.tone-err .ic { background:var(--error-light); color:var(--gov-err); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .v { font-size:26px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .l { font-size:12.5px; color:var(--text-muted,var(--text-muted)); margin-top:3px; }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-stat .sub { font-size: var(--fs-xs); color:var(--text-muted,var(--text-muted)); }
@@ -65,9 +65,9 @@
 /* ---- 状态药丸 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill { display:inline-flex; align-items:center; gap:4px; font-size: var(--fs-xs); font-weight:500; padding:2px 9px; border-radius:11px; line-height:1.6; white-space:nowrap; }
 /* 文字色加深至 WCAG AA(≥4.5:1),小字号药丸在浅底上可读 */
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-ok { background:rgba(43,138,75,.14); color:var(--success-text); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-warn { background:rgba(201,126,16,.16); color:var(--warning-text); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-err { background:rgba(207,59,59,.12); color:var(--error-text); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-ok { background:var(--success-light); color:var(--success-text); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-warn { background:var(--warning-light); color:var(--warning-text); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-err { background:var(--error-light); color:var(--error-text); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-info { background:var(--primary-light,rgba(var(--primary-rgb),.1)); color:var(--info-text); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-muted { background:rgba(140,140,140,.16); color:var(--text-muted); }
 
@@ -145,9 +145,9 @@
 
 /* ---- 药丸配色加强 ---- */
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill { font-weight:600; }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-ok { background:var(--success-bg); color:var(--success-text); box-shadow:inset 0 0 0 1px rgba(43,138,75,.25); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-warn { background:var(--warning-bg); color:var(--warning-text); box-shadow:inset 0 0 0 1px rgba(201,126,16,.3); }
-:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-err { background:var(--error-bg); color:var(--error-text); box-shadow:inset 0 0 0 1px rgba(207,59,59,.25); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-ok { background:var(--success-bg); color:var(--success-text); box-shadow:inset 0 0 0 1px var(--success-ring); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-warn { background:var(--warning-bg); color:var(--warning-text); box-shadow:inset 0 0 0 1px var(--warning-ring); }
+:is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-err { background:var(--error-bg); color:var(--error-text); box-shadow:inset 0 0 0 1px var(--error-ring); }
 :is(#govModuleContent,#mdmModuleContent,#homeCockpit,#metricsConsumption) .gov-pill.is-info { background:var(--info-bg); color:var(--info-text); box-shadow:inset 0 0 0 1px rgba(var(--primary-rgb),.25); }
 
 /* ---- 表格斑马纹 + hover 左标记 ---- */
