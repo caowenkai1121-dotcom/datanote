@@ -363,7 +363,9 @@ public class MetricValueService {
      */
     public List<Map<String, Object>> metricRanking(Integer days) {
         QueryWrapper<DnConsumptionLog> qw = new QueryWrapper<>();
-        qw.select("target_code", "COUNT(*) AS cnt")
+        qw.select("target_code", "COUNT(*) AS cnt",
+                  "ROUND(AVG(duration_ms)) AS avgMs",   // 成本维度: 平均耗时(ms), 识别低频高成本指标
+                  "SUM(row_count) AS totalRows")         // 成本维度: 累计扫描/产出行数
           .in("target_type", java.util.Arrays.asList("METRIC_VALUE", "METRIC_HISTORY", "EXPORT"))
           .isNotNull("target_code").ne("target_code", "");
         if (days != null && days > 0) qw.ge("created_at", LocalDateTime.now().minusDays(days));

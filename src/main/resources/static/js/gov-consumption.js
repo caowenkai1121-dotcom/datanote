@@ -88,7 +88,11 @@
         var n = Number(x.cnt || x.CNT || 0); if (isNaN(n) || n < 0) n = 0;
         var code = x.target_code || x.targetCode || x.metricCode || '';
         var label = x.metricName || code || '-';
-        return { label: clip(label, 28), fullLabel: label, value: n, tone: 'primary', display: String(n), code: code };
+        // 成本维度(后端 AVG(duration_ms)/SUM(row_count)): 识别低频高成本指标
+        var avgMs = Math.round(Number(x.avgMs != null ? x.avgMs : (x.avgms != null ? x.avgms : 0))) || 0;
+        var totalRows = Number(x.totalRows != null ? x.totalRows : (x.totalrows != null ? x.totalrows : 0)) || 0;
+        var cost = (avgMs ? (' · 均 ' + avgMs + 'ms') : '') + (totalRows ? (' · 累计 ' + totalRows.toLocaleString() + ' 行') : '');
+        return { label: clip(label, 28), fullLabel: label + cost, value: n, tone: avgMs >= 3000 ? 'warn' : 'primary', display: String(n) + (avgMs ? (' · ' + avgMs + 'ms') : ''), code: code };
       }).filter(function (it) { return it.value > 0; });
       if (!items.length) { box.appendChild(DN.empty('暂无有效消费计数', 'bars')); return; }
       box.appendChild(DN.bars(items.map(function (it) {
