@@ -12001,6 +12001,7 @@ window.dnToggleDensity = function() {
 
 /* ===== 全局命令面板(Ctrl/⌘+K): 跨模块导航 + 常用动作 + 主题, 模糊搜索 + 键盘上下 Enter ===== */
 var _cmdkItems = null, _cmdkActiveIdx = 0, _cmdkFiltered = [];
+var _cmdkTableHits = [], _cmdkTblTimer = null;   // 命令面板内联表搜索(点击→DN.tablePreview 原地预览)
 function dnCmdKCanRun(it) {
   return !it || !it.perm || !window.__authEnabled || !window.dnHasPerm || window.dnHasPerm(it.perm);
 }
@@ -12063,7 +12064,7 @@ window.dnCmdK = function() {
   }
   ov.addEventListener('mousedown', function(e) { if (e.target === ov) dnCmdKClose(); });
   var input = document.getElementById('cmdkInput');
-  input.addEventListener('input', function() { _cmdkActiveIdx = 0; dnCmdKRender(input.value); });
+  input.addEventListener('input', function() { _cmdkActiveIdx = 0; dnCmdKRender(input.value); dnCmdKSearchTables(input.value); });
   input.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { dnCmdKClose(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); _cmdkActiveIdx = Math.min(_cmdkActiveIdx + 1, _cmdkFiltered.length - 1); dnCmdKHighlight(); }
@@ -12073,7 +12074,7 @@ window.dnCmdK = function() {
   dnCmdKRender('');
   setTimeout(function() { input.focus(); }, 30);
 };
-function dnCmdKClose() { var ov = document.getElementById('cmdkOverlay'); if (ov) ov.remove(); }
+function dnCmdKClose() { var ov = document.getElementById('cmdkOverlay'); if (ov) ov.remove(); _cmdkTableHits = []; if (_cmdkTblTimer) { clearTimeout(_cmdkTblTimer); _cmdkTblTimer = null; } }
 function dnCmdKRecentLabels() { try { return JSON.parse(localStorage.getItem('dn-cmdk-recent') || '[]'); } catch (e) { return []; } }
 function dnCmdKRecord(label) { try { var r = dnCmdKRecentLabels().filter(function(x) { return x !== label; }); r.unshift(label); localStorage.setItem('dn-cmdk-recent', JSON.stringify(r.slice(0, 4))); } catch (e) {} }
 function dnCmdKRender(q) {
@@ -12085,7 +12086,7 @@ function dnCmdKRender(q) {
     // 默认视图只显顶级模块+常用动作, 子页深链(前往 · xxx)仅搜索时浮现, 保持打开整洁
     var topLevel = base.filter(function(it) { return it.group.indexOf('前往 · ') !== 0; });
     _cmdkFiltered = recent.concat(topLevel);
-  } else { _cmdkFiltered = base; }
+  } else { _cmdkFiltered = base.concat(_cmdkTableHits); }   // 搜索时附加内联表命中(数据表组)
   var list = document.getElementById('cmdkList');
   if (!_cmdkFiltered.length) { list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-muted);font-size:13px;">无匹配命令</div>'; return; }
   // 高亮 label 中命中查询的片段(仅 label 命中时, 提升可扫读性)
@@ -12105,6 +12106,26 @@ function dnCmdKRender(q) {
   dnCmdKHighlight();
 }
 window.dnCmdKRun = function(i) { var it = _cmdkFiltered[i]; if (it && dnCmdKCanRun(it)) { dnCmdKRecord(it.label); dnCmdKClose(); setTimeout(it.run, 0); } };
+// 命令面板内联表搜索: 输入≥2字符 → 防抖查 /metadata/search → 表项点击 DN.tablePreview 原地预览(不跳数据地图)
+function dnCmdKSearchTables(q) {
+  q = (q || '').trim();
+  if (_cmdkTblTimer) clearTimeout(_cmdkTblTimer);
+  if (q.length < 2) { if (_cmdkTableHits.length) { _cmdkTableHits = []; if (document.getElementById('cmdkInput')) dnCmdKRender(q); } return; }
+  _cmdkTblTimer = setTimeout(function() {
+    fetch('/api/metadata/search?keyword=' + encodeURIComponent(q)).then(function(r){ return r.json(); }).then(function(res) {
+      var inp = document.getElementById('cmdkInput'); if (!inp || (inp.value || '').trim() !== q) return; // 输入已变, 丢弃过期结果
+      var rows = (res && res.code === 0 && Array.isArray(res.data)) ? res.data : [];
+      _cmdkTableHits = rows.slice(0, 8).map(function(t) {
+        var db = t.TABLE_SCHEMA || t.databaseName || t.db || t.dbName || '';
+        var tb = t.TABLE_NAME || t.tableName || t.name || '';
+        var cmt = t.TABLE_COMMENT || t.comment || '';
+        return { group: '数据表 (原地预览)', label: (db ? db + '.' : '') + tb + (cmt ? ('  ' + cmt) : ''), icon: '🗂', kw: '',
+          run: (function(d, n){ return function(){ if (window.DN && DN.tablePreview) DN.tablePreview(d, n); else navigateTo('catalog', { openTable: { db: d, table: n } }); }; })(db, tb) };
+      });
+      dnCmdKRender(q);
+    }).catch(function(){ /* 搜索失败静默, 不影响命令面板主功能 */ });
+  }, 220);
+}
 window.dnCmdKHover = function(i) { if (i === _cmdkActiveIdx) return; _cmdkActiveIdx = i; dnCmdKHighlight(); };
 function dnCmdKHighlight() {
   var items = document.querySelectorAll('#cmdkList .cmdk-item');
