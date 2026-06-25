@@ -1,0 +1,26 @@
+# round2 gap (workflow w7nmtnw9l, 24)
+
+- [gov-sub/feature/small] 编辑状态下，表单值域/描述字段无maxlength限制，超长输入后保存报错无前端防护 | /d/data/datanote/src/main/resources/static/js/gov-stand | 在 input() 函数处或针对超长字段（value_domain、description）单独补上 maxlength 属性，例如：f.value_domain = DN.h('input', { class: 'dn-form-inpu
+- [gov-sub/ux/small] 码表项编辑抽屉内无Esc关闭快捷键，必须点取消按钮才能退出 | /d/data/datanote/src/main/resources/static/js/gov-stand | 在创建抽屉后补上 Escape 快捷键监听：dr.el.addEventListener('keydown', function(e){ if(e.key==='Escape') dr.close(); })。或使用统一的抽屉工厂函数确保所
+- [ai-internal/ux/small] 历史会话搜索无防抖，大量快速输入触发多次查询 | js/ai-agent.js 第1459行 histSearch.addEventListener('inpu | 加debounce：var _histSearchTm; histSearch.addEventListener('input', function () { clearTimeout(_histSearchTm); _sessionFil
+- [ai-internal/ui/small] 输入框自动高度计算未限制最大高度回弹时的 reflow 抖动 | js/ai-agent.js 第1617行 inputEl.addEventListener('input') | 合并赋值：inputEl.style.height = Math.min(inputEl.scrollHeight || 0, 160) + 'px'; 或先检查scrollHeight再赋值，防止auto中间态触发重排
+- [ai-internal/feature/small] 审批卡高危操作确认按钮无禁用反馈，多次点击可能重复提交 | js/ai-agent.js 第1137-1141行 okBtn.onclick | 在DN.confirm前置okBtn.disabled=true防止重复触发对话框；或在doApprove入口前捕获已提交态
+- [ai-internal/ux/small] 数据表CSV导出无进度反馈，大表导出时用户无法感知是否卡死 | js/ai-agent.js 第265-272行 dataGridCard导出逻辑 | 导出前显示toast('导出中…')或禁用按钮；blob生成后清除；大表可分片生成
+- [ai-internal/ux/small] @ 提及候选弹层点击后未恢复光标位置，用户继续输入会错位 | js/ai-agent.js 第750-754行 setupMention insert函数 | 选区设置失败时补充focus()或asyncsetSelectionRange(e.g. setTimeout(..., 0))；或改为mousedown而非click防focus丢失
+- [ai-internal/feature/small] 文件索引状态轮询无上限，索引失败/超时后仍无限轮询损耗浏览器 | js/ai-agent.js 第1513-1515行 loadFiles | 加全局计数器：_fileReloadCount=0; 每轮++，超过8次停止；或改为once-only监听后端推送事件（若支持）
+- [ai-internal/ux/small] SOP编辑浮层textarea焦点初始化延迟60ms，快速操作会输入到错误元素 | js/ai-agent.js 第1335行 setTimeout(function () { (isNew ? | 改为同步focus或改setTimeout(fn, 0)；或用autofocus属性；或创建前inputEl.blur()断开焦点
+- [ai-internal/ux/small] 工具卡参数/结果JSON超长截断提示不人性，无快速查看全文入口 | js/ai-agent.js 第460行 summarizeResult | 改为details/summary HTML: <details><summary>完整结果</summary><pre>..全文..</pre></details> 或加可点"展开全部"链接调出全文弹层
+- [home-cockpit/ux/small] 快捷操作按钮缺乏异常处理/加载态 | home-dashboard.js 第 98-102 行快速操作行(qa 函数) | 1.按钮加 disabled+loading 态(点击后禁用;navigateTo 前设文本为'加载中…';完成或失败后恢复)  2.setTimeout 链改 Promise 链+.catch 逻捕获错误，失败时 toast 提示  3.
+- [home-cockpit/ui/small] 项目待办卡片行点击无视觉反馈状态切换 | home-dashboard.js cardMyTodos 第 315/322 行行元素 | 行元素加 pointer-events:none + opacity:.5 或改 disabled 样式状态，直到项目页真正打开；或在行上显示加载动画(骨架或旋转icon)
+- [home-cockpit/ux/small] 卡片错误重试按钮缺少重试中状态管理 | home-dashboard.js fail 函数第 176-180 行、mountCards 第 169-1 | 重试按钮点击后禁用(disabled=true)，d.build 入口时显示骨架(loading(c, 3))，完成时自动恢复；或在 fail 函数中为重试按钮绑定 disabled 状态管理
+- [home-cockpit/ux/small] 刷新按钮文本变「刷新中…」后无法恢复，整页 500 时卡死 | home-dashboard.js renderHero 第 74-83 行 | 用 try/finally 或在 renderHomeDashboard 开头/结尾确保恢复按钮文本；或监听 .catch 统一恢复：DN.get().catch(() => { refreshBtn.textContent = '刷新';
+- [gov-sub/feature/med] 删除链接确认态倒计时2.5秒后自动回复，用户若沉思>2.5s再点击会意外删除 | /d/data/datanote/src/main/resources/static/js/gov-stand | 增强确认态的可靠性：①增加文案提示「点击2次确认删除，确认态将在N秒后过期」②在 data-confirm 自动复位前，先检查是否有删除请求在途（via _busy 标记），若有则延迟复位，避免用户困惑。或改用模态框确认（调用 DN.con
+- [gov-sub/ux/med] 敏感规则新增表单验证失败后，仅 toast 提示 + 焦点定位，无视觉错误样式反馈（红边框等） | /d/data/datanote/src/main/resources/static/js/gov-class | 在验证失败时为出错字段补上错误样式：name.classList.add('is-error'); name.focus(); 验证通过或用户修改后移除样式：name.addEventListener('input', function()
+- [gov-sub/feature/med] 分类分级「待确认列」扫描过程中，若网络超时或库里某些表无权限，整体扫描卡死无错误提示，用户无法知晓具体哪张表失败 | /d/data/datanote/src/main/resources/static/js/gov-class | 在 catch 分支区分错误类型：jobs.map(...catch(e) { return { db, table, cols: [], error: e ? e.message : 'unknown' } })。然后在 renderPe
+- [home-cockpit/feature/med] 自动刷新定时器无法正确判断「离开首页」，存在泄漏风险 | home-dashboard.js setupAuto 第 333-342 行 | 增加停止条件：(1) 加 document.hidden 判断(页面隐藏时暂停)  (2) renderHomeDashboard 入口检查是否已有 _timer，若有则先 clearInterval 再新建(防重)  (3) 页面 vis
+- [project-board/feature/] 任务列表无批量改状态/指派功能，只能逐条编辑 | /d/data/datanote/src/main/resources/static/js/project.j | 在表头加全选复选框 + 右上角新增『批量改状态』『批量指派』按钮，选中行后激活。批量改状态时弹窗让用户选目标状态；批量指派时弹窗选指派人。删除前再次弹窗确认列表。
+- [project-board/feature/] 里程碑只能删不能编辑，创建后名称/日期无法修改 | /d/data/datanote/src/main/resources/static/js/project.j | 每条里程碑后加『编辑』链接，点击改为行内编辑状态（name/startDate/endDate 三个 input 浮出），旁边两个按钮『保存』『取消』。保存时调用 PUT /api/project/{id}/milestones/{msId
+- [project-board/ux/] 成员角色修改无确认机制，dropdown 改选立即执行 | /d/data/datanote/src/main/resources/static/js/project.j | 改为点击行右侧『编辑』按钮打开弹窗，select 内确认后弹窗底部『保存』『取消』按钮；或改为 select change 后弹 msgConfirm 二次确认：『确认改为 XXX 角色吗？』。
+- [project-board/feature/] 已提交的发布无法查看关联资产，只在新建时能勾选 | /d/data/datanote/src/main/resources/static/js/project.j | projRelDetail 详情弹窗增加『资产』section，显示本次发布关联的 assetJson 列表（类型+名称+ID），可点击每个资产跳到资产详情。若发布还在 PENDING 状态且有编辑权，加『编辑』按钮支持增删资产。
+- [project-board/ux/] 任务表内状态 dropdown 改选立即执行，无网络异常撤销 | /d/data/datanote/src/main/resources/static/js/project.j | 改为 select change 后弹 msgConfirm『确认改为 {目标状态}？』，用户二次确认后才调 API。或在 API 失败后自动回滚 select 到原值，并 toast 『改状态失败，已撤销』。
+- [project-board/ux/] 看板拖拽无失败撤销提示，网络错误后卡在新位置 | /d/data/datanote/src/main/resources/static/js/project.j | projTaskStatus 失败时不仅 showToast，还应立即刷新 projLoadTasks 让卡片回到原列。或在拖拽 drop 时先本地移动 UI 作乐观更新，失败后自动回滚+toast『状态改失败，已撤销』。

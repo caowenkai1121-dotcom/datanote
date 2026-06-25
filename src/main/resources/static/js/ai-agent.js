@@ -1500,8 +1500,10 @@
       .catch(function (e) { DN.toast('上传失败: ' + (e && e.message ? e.message : e), 'err'); });
   }
 
-  function loadFiles() {
+  var _filesPollN = 0;   // 索引轮询计数, 防卡死无限轮询
+  function loadFiles(isPoll) {
     if (!fileListEl) return;
+    if (!isPoll) _filesPollN = 0;   // 非轮询触发(上传/打开)重置计数
     DN.get('/api/ai/agent/files').then(function (list) {
       fileListEl.innerHTML = '';
       var arr = (list || []).filter(function (f) { return f && f.source !== 'agent'; }); // 只展示用户上传, AI生成的artifact不混入(在对话卡片里看)
@@ -1511,8 +1513,8 @@
       arr.forEach(function (f) { fileListEl.appendChild(fileRow(f)); });
       // 文档异步索引中: 单次延迟刷新拿到最终状态(终态后不再轮询)
       if (arr.some(function (f) { return f && (f.indexStatus === 'indexing' || f.indexStatus === 'pending'); })) {
-        setTimeout(loadFiles, 2500);
-      }
+        if (_filesPollN++ < 20) setTimeout(function () { loadFiles(true); }, 2500);   // 上限~50s, 防索引卡死无限轮询耗资源
+      } else { _filesPollN = 0; }
     }).catch(function () {});
   }
 
