@@ -14263,7 +14263,7 @@ function dbsyncRenderFieldMapHtml(fields, targetColumns) {
   });
   html += '</tbody></table>';
   // 宽表(>8列)加源字段搜索, 快速定位
-  var search = (fields.length > 8) ? '<input class="dbsync-form-input dfs-fm-search" placeholder="🔍 搜索源字段(' + fields.length + ' 列)" oninput="dbsyncFilterFieldMap(this)" style="margin-bottom:6px;width:220px;max-width:100%;font-size:12px;">' : '';
+  var search = (fields.length > 8) ? '<input class="dbsync-form-input dfs-fm-search" placeholder="🔍 搜索字段(源/目标, ' + fields.length + ' 列)" oninput="dbsyncFilterFieldMap(this)" style="margin-bottom:6px;width:220px;max-width:100%;font-size:12px;">' : '';
   return search + html;
 }
 
@@ -14274,9 +14274,9 @@ window.dbsyncFilterFieldMap = function(inp) {
   var tbl = container ? container.querySelector('table.dfs-field-map-table') : null;
   if (!tbl) return;
   tbl.querySelectorAll('tr.dfs-field-map-row').forEach(function(tr) {
-    var srcEl = tr.querySelector('.dfs-fm-src');
-    var src = srcEl ? (srcEl.value || '').toLowerCase() : '';
-    tr.style.display = (!kw || src.indexOf(kw) >= 0) ? '' : 'none';
+    var srcEl = tr.querySelector('.dfs-fm-src'), tgtEl = tr.querySelector('.dfs-fm-tgt');
+    var hay = ((srcEl ? srcEl.value : '') + ' ' + (tgtEl ? tgtEl.value : '')).toLowerCase();
+    tr.style.display = (!kw || hay.indexOf(kw) >= 0) ? '' : 'none';   // 源+目标字段都可搜
   });
 };
 
