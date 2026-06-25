@@ -113,6 +113,15 @@ public class DataxService {
                                   String sourceDb, String sourceTable,
                                   String odsTable, List<ColumnInfo> columns,
                                   String bizdate) throws IOException {
+        return generateJobJson(mysqlHost, mysqlPort, mysqlUser, mysqlPassword,
+                sourceDb, sourceTable, odsTable, columns, bizdate, 2048, 3);
+    }
+
+    /** ODS 抽取大表自适应重载：batchSize=writer 每批写入行数（大表调大减 Doris 写往返），channel=DataX 并发通道数（大表调大并行抽取）。 */
+    public String generateJobJson(String mysqlHost, int mysqlPort, String mysqlUser, String mysqlPassword,
+                                  String sourceDb, String sourceTable,
+                                  String odsTable, List<ColumnInfo> columns,
+                                  String bizdate, int batchSize, int channel) throws IOException {
         if (columns == null || columns.isEmpty()) {
             throw new IllegalArgumentException("无源字段,无法生成 DataX 作业: " + sourceDb + "." + sourceTable);
         }
@@ -150,7 +159,7 @@ public class DataxService {
         writerParam.put("username", dorisUsername);
         writerParam.put("password", dorisPassword);
         writerParam.put("writeMode", "insert");
-        writerParam.put("batchSize", 2048);
+        writerParam.put("batchSize", batchSize);
 
         JSONArray writerColumns = new JSONArray();
         writerColumns.add("dt");
@@ -181,7 +190,7 @@ public class DataxService {
 
         JSONObject setting = new JSONObject(true);
         JSONObject speed = new JSONObject(true);
-        speed.put("channel", 3);
+        speed.put("channel", channel);
         setting.put("speed", speed);
 
         jobContent.put("content", contentArr);

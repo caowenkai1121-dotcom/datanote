@@ -88,6 +88,20 @@ public class MetadataService {
         }
     }
 
+    /** 廉价估算源表行数（ODS 抽取大表自适应 DataX 批次/并发用）：information_schema.TABLES.TABLE_ROWS，即时近似；失败返回 -1。 */
+    public long estimateRowsByConnection(String host, int port, String username, String password, String db, String table) {
+        String sql = "SELECT TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?";
+        try (Connection conn = getExternalConnection(host, port, username, password);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, db);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) { long v = rs.getLong(1); return rs.wasNull() ? -1L : v; }
+            }
+        } catch (Exception e) { /* 估算失败不影响抽取 */ }
+        return -1L;
+    }
+
     // ========== 核心查询逻辑（消除重复） ==========
 
     private List<String> queryDatabases(Connection conn) throws SQLException {

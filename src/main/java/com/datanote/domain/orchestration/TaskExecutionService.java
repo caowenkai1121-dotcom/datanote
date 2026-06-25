@@ -68,6 +68,12 @@ public class TaskExecutionService {
     @Value("${datanote.schedule.doris-parallel:8}")
     private int dorisParallel;
 
+    // ODS 抽取(DataX)自适应: 基础批次/并发, 与大表(>千万/>亿)放大值; 大表减写往返+并行抽取
+    @Value("${datanote.datax.batch-size:2048}") private int dataxBatch;
+    @Value("${datanote.datax.channel:3}") private int dataxChannel;
+    @Value("${datanote.datax.big-batch-size:8192}") private int dataxBigBatch;
+    @Value("${datanote.datax.big-channel:6}") private int dataxBigChannel;
+
     // 指数退避参数
     private static final long RETRY_BASE_MS = 5000;    // 5 秒
     private static final long RETRY_MAX_MS = 300000;   // 5 分钟
@@ -313,9 +319,20 @@ public class TaskExecutionService {
         // ========== 第二步：生成 DataX 配置（每次动态生成，确保日期和列是最新的） ==========
 
         logBuilder.append("[DataX] 生成配置...\n");
+        // 大表自适应: 估源表行数(information_schema 即时近似), >亿/>千万 放大批次与并发, 提升 ODS 抽取吞吐
+        int dxBatch = dataxBatch, dxChannel = dataxChannel;
+        long srcEst = metadataService.estimateRowsByConnection(ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
+                task.getSourceDb(), task.getSourceTable());
+        if (srcEst >= 100_000_000L) {
+            dxBatch = dataxBigBatch; dxChannel = dataxBigChannel;
+            logBuilder.append("[大表优化] 源表约 ").append(srcEst).append(" 行(>1亿): DataX 批次=").append(dxBatch).append(", 并发=").append(dxChannel).append("\n");
+        } else if (srcEst >= 10_000_000L) {
+            dxBatch = Math.max(dataxBatch, 4096); dxChannel = Math.max(dataxChannel, 4);
+            logBuilder.append("[大表优化] 源表约 ").append(srcEst).append(" 行(>千万): DataX 批次=").append(dxBatch).append(", 并发=").append(dxChannel).append("\n");
+        }
         String jobFile = dataxService.generateJobJson(
                 ds.getHost(), ds.getPort(), ds.getUsername(), ds.getPassword(),
-                task.getSourceDb(), task.getSourceTable(), task.getTargetTable(), columns, bizdate);
+                task.getSourceDb(), task.getSourceTable(), task.getTargetTable(), columns, bizdate, dxBatch, dxChannel);
         logBuilder.append("[DataX] 配置生成完成: ").append(jobFile).append("\n");
 
         // ========== 第三步：执行 DataX ==========
