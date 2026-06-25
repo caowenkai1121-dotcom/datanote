@@ -260,13 +260,15 @@
     var saveBtn = DN.h('a', { class: 'btn btn-primary', href: 'javascript:void(0)', text: '保存', 'data-perm': 'governance:manage',
       onclick: function () {
         var nm = name.value.trim(), pt = pattern.value.trim(), st = sensitiveType.value.trim();
-        if (!nm) { DN.toast('规则名必填', 'error'); name.focus(); return; }
-        if (nm.length > 60) { DN.toast('规则名过长（最多 60 字）', 'error'); name.focus(); return; }
-        if (!pt) { DN.toast('模式必填', 'error'); pattern.focus(); return; }
-        if (!st) { DN.toast('敏感类型必填', 'error'); sensitiveType.focus(); return; }
+        // 校验失败: toast + 红边框 + 聚焦, 输入后清除边框(直观定位错误字段)
+        function bad(el, msg) { DN.toast(msg, 'error'); if (el) { el.style.borderColor = 'var(--error)'; el.focus(); el.addEventListener('input', function h() { el.style.borderColor = ''; el.removeEventListener('input', h); }); } return; }
+        if (!nm) { bad(name, '规则名必填'); return; }
+        if (nm.length > 60) { bad(name, '规则名过长（最多 60 字）'); return; }
+        if (!pt) { bad(pattern, '模式必填'); return; }
+        if (!st) { bad(sensitiveType, '敏感类型必填'); return; }
         // 正则匹配方式：校验模式是否为合法正则，避免存入坏规则
         if (matchSel.value === 'REGEX') {
-          try { new RegExp(pt); } catch (re) { DN.toast('正则表达式不合法：' + re.message, 'error'); pattern.focus(); return; }
+          try { new RegExp(pt); } catch (re) { bad(pattern, '正则表达式不合法：' + re.message); return; }
         }
         if (_busy.rules) return; // 去重:保存进行中不再并发提交
         _busy.rules = true;
