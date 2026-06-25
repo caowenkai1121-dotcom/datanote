@@ -87,6 +87,15 @@ datanote:
     enabled: ${DATANOTE_AUTH_ENABLED:true}
     username: ${DATANOTE_USERNAME:admin}
     password: ${DATANOTE_PASSWORD:}
+  # 大数据性能调优(任务开发/调度/同步): 按集群算力调, 默认值适配中等规模; 守卫式应用, 不支持自动忽略不破坏
+  schedule:
+    doris-parallel: ${DORIS_PARALLEL:8}            # 调度SQL(DWD/DWS/ADS)Doris并行度(0=不设), 提升大表聚合/扫描
+    doris-session-vars: ${DORIS_SESSION_VARS:}     # 深度调优额外会话变量,逗号分隔 k=v, 如 exec_mem_limit=8589934592,parallel_pipeline_task_num=8
+  datax:                                            # ODS 抽取(DataX)大表自适应; 源表>千万自动 4096/4, >1亿用下列 big 值
+    batch-size: ${DATAX_BATCH:2048}                # 基础写批(Doris)
+    channel: ${DATAX_CHANNEL:3}                    # 基础并发通道
+    big-batch-size: ${DATAX_BIG_BATCH:8192}        # 源表>1亿: 写批
+    big-channel: ${DATAX_BIG_CHANNEL:6}            # 源表>1亿: 并发通道
   ai:
     api-key: ${CLAUDE_API_KEY:}
     model: ${CLAUDE_MODEL:claude-sonnet-4-6}
