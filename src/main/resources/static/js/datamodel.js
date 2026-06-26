@@ -385,7 +385,9 @@
     var box = document.getElementById('dmEntityBox'); if (!box) return;
     var canEdit = _dmCanEdit;
     if (!m.entities || !m.entities.length) { box.innerHTML = '<div style="padding:16px;color:var(--text-muted);">暂无实体</div>'; if (window.dnApplyBtnPerms) dnApplyBtnPerms(box); return; }
+    window._dmEntCache = {};   // 供"编辑实体"按钮取实体对象(字符串模板内不便内联)
     box.innerHTML = m.entities.map(function (e) {
+      window._dmEntCache[e.id] = e;
       var attrs = e.attributes || [];
       var rows = attrs.map(function (a) {
         return '<tr><td style="font-family:monospace;">' + esc(a.attrCode) + (a.isPk == 1 ? ' <span style="color:#e8590c;font-size:var(--fs-xs);">PK</span>' : '') + '</td><td>' + esc(a.attrName || '') + '</td><td>' + esc(a.dataType || '') + (a.dataLength ? '(' + esc(a.dataLength) + ')' : '') + '</td><td>' + (a.isNullable == 0 ? '否' : '是') + '</td><td style="font-size:12px;color:var(--text-muted);">' + esc(a.elementCode || '') + '</td></tr>';
@@ -394,7 +396,7 @@
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityName) + '">' + esc(e.entityName) + '</b> <span style="font-family:monospace;font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(e.entityCode) + '">' + esc(e.entityCode) + '</span> <span style="font-size:var(--fs-xs);color:var(--primary);flex-shrink:0;">L' + (e.level || 4) + '</span>'
         + (e.physicalTable ? ' <span style="font-size:var(--fs-xs);color:var(--text-faint);">→ ' + esc(e.physicalTable) + '</span>' : '')
         + ' <span style="font-size:var(--fs-xs);color:var(--text-muted);flex-shrink:0;">' + attrs.length + ' 属性</span>'
-        + (canEdit ? '<a href="#" data-perm="datamodel:edit" onclick="dmEditAttrs(' + e.id + ',' + m.id + ');return false;" style="margin-left:auto;font-size:12px;color:var(--primary);">编辑属性</a> <a href="#" data-perm="datamodel:edit" onclick="dmDelEntity(' + e.id + ',' + m.id + ');return false;" style="font-size:12px;color:var(--error);">删除</a>' : '')
+        + (canEdit ? '<a href="#" data-perm="datamodel:edit" onclick="dmEditEntity(window._dmEntCache[' + e.id + '],' + m.id + ');return false;" style="margin-left:auto;font-size:12px;color:var(--primary);">编辑实体</a> <a href="#" data-perm="datamodel:edit" onclick="dmEditAttrs(' + e.id + ',' + m.id + ');return false;" style="font-size:12px;color:var(--primary);">编辑属性</a> <a href="#" data-perm="datamodel:edit" onclick="dmDelEntity(' + e.id + ',' + m.id + ');return false;" style="font-size:12px;color:var(--error);">删除</a>' : '')
         + '</div>'
         + '<table class="dbsync-exec-table" style="width:100%;font-size:12px;"><thead><tr><th>属性</th><th>名称</th><th>类型</th><th>可空</th><th>数据标准</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }).join('');
@@ -440,19 +442,30 @@
       api('/api/datamodel/relation/' + relId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); }).catch(function () { toast('删除失败', 'error'); });
     });
   };
-  window.dmAddEntity = function (modelId) {
+  window.dmEditEntity = function (ent, modelId) { window.dmAddEntity(modelId, ent); };
+  window.dmAddEntity = function (modelId, ent) {
+    var isEdit = !!(ent && ent.id);
+    window._dmEditEntityId = isEdit ? ent.id : null;
     var fi = 'class="dbsync-form-input" style="width:100%;"', lab = 'style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:3px;"';
     var h = '<div style="display:flex;flex-direction:column;gap:10px;min-width:340px;">'
       + '<div><label ' + lab + '>实体编码</label><input id="dmeCode" ' + fi + ' placeholder="字母开头, 如 OrderHead"></div>'
       + '<div><label ' + lab + '>实体名称</label><input id="dmeName" ' + fi + ' placeholder="如 订单主体"></div>'
-      + '<div><label ' + lab + '>层级</label><select id="dmeLevel" class="dbsync-form-select" style="width:100%;"><option value="3">L3 业务对象</option><option value="4" selected>L4 逻辑实体</option></select></div>'
+      + '<div><label ' + lab + '>层级</label><select id="dmeLevel" class="dbsync-form-select" style="width:100%;"><option value="3">L3 业务对象</option><option value="4">L4 逻辑实体</option></select></div>'
       + '<div><label ' + lab + '>业务定义</label><input id="dmeDef" ' + fi + ' placeholder="可选"></div>'
       + '<div style="text-align:right;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveEntity(' + modelId + ')">保存</button></div></div>';
-    projShowModalBox('新建实体', h);
+    projShowModalBox(isEdit ? '编辑实体' : '新建实体', h);
+    var lvSel = document.getElementById('dmeLevel');
+    if (isEdit) {
+      document.getElementById('dmeCode').value = ent.entityCode || '';
+      document.getElementById('dmeName').value = ent.entityName || '';
+      if (ent.level != null) lvSel.value = String(ent.level);
+      document.getElementById('dmeDef').value = ent.bizDefinition || ent.bizDef || '';
+    } else { lvSel.value = '4'; }
   };
   window.dmSaveEntity = function (modelId) {
     var body = { modelId: modelId, entityCode: (document.getElementById('dmeCode').value || '').trim(), entityName: (document.getElementById('dmeName').value || '').trim(), level: parseInt(document.getElementById('dmeLevel').value), bizDefinition: (document.getElementById('dmeDef').value || '').trim() };
     if (!body.entityCode || !body.entityName) { toast('请填写编码与名称', 'error'); return; }
+    if (window._dmEditEntityId) body.id = window._dmEditEntityId;   // 带 id 走更新
     apiPost('/api/datamodel/entity', body).then(function (res) {
       if (res && res.code === 0) { toast('已保存', 'success'); projCloseModalBox(); dmReopenModel(modelId); } else toast((res && res.msg) || '失败', 'error');
     }).catch(function () { toast('保存失败', 'error'); });
