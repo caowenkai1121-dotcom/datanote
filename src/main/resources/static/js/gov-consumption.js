@@ -512,9 +512,21 @@
       var box = document.getElementById('consUnused'); if (!box) return; box.innerHTML = '';
       if (!Array.isArray(rows) || !rows.length) { box.appendChild(DN.empty('近 ' + days + ' 天内全部启用指标都有消费 👍', 'check')); return; }
       box.appendChild(DN.h('div', { class: 'gov-desc', style: 'margin-bottom:8px', text: '共 ' + rows.length + ' 个启用指标超过 ' + days + ' 天未被查询/导出/取值，建议排查或下线' }));
+      var _selUn = {};   // 批量选中僵尸指标
+      var unBatchOff = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '批量停用选中', 'data-perm': 'metrics:edit', style: 'color:var(--warning)' });
+      unBatchOff.onclick = function () {
+        var ids = Object.keys(_selUn); if (!ids.length) { DN.toast('请先勾选指标', 'warn'); return; }
+        DN.confirm('停用选中的 ' + ids.length + ' 个未消费指标？停用后停止取值/退出消费层(历史保留)。', { title: '批量停用', danger: true }).then(function (ok) {
+          if (!ok) return;
+          unBatchOff.style.pointerEvents = 'none'; unBatchOff.style.opacity = '0.5';
+          Promise.all(ids.map(function (id) { return DN.post('/api/metric/save', { id: Number(id), status: 0 }).catch(function () {}); })).then(function () { DN.toast('已批量停用 ' + ids.length + ' 个', 'ok'); loadUnused(); });
+        });
+      };
       box.appendChild(DN.table({
         rows: rows, pageSize: 8, searchKeys: ['metricName', 'metricCode', 'owner'], searchPlaceholder: '搜索未消费指标',
+        toolbar: [unBatchOff],
         columns: [
+          { key: '_sel', label: '', render: function (r) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (r.metricName || r.id) }); cb.checked = !!_selUn[r.id]; cb.onchange = function () { if (cb.checked) _selUn[r.id] = 1; else delete _selUn[r.id]; }; return cb; } },
           { key: 'metricName', label: '指标', render: function (r) { var t = r.metricName || r.metricCode || '-'; return DN.h('span', { title: t, text: clip(t, 28) }); } },
           { key: 'owner', label: '负责人', render: function (r) { return r.owner || '-'; } },
           { key: 'idleDays', label: '闲置', render: function (r) { return r.idleDays == null ? DN.pill('从未消费', 'err') : DN.pill(r.idleDays + ' 天', r.idleDays >= 90 ? 'err' : 'warn'); } },
