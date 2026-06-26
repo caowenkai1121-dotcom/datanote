@@ -1,6 +1,7 @@
 package com.datanote.domain.approval;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.datanote.domain.approval.mapper.DnApprovalMapper;
 import com.datanote.domain.approval.model.DnApproval;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

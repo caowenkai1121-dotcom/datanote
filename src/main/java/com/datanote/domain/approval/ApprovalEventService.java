@@ -1,5 +1,6 @@
 package com.datanote.domain.approval;
 
+import com.datanote.domain.approval.mapper.DnApprovalMapper;
 import com.datanote.domain.approval.model.DnApproval;
 import com.datanote.platform.notify.NotificationService;
 import lombok.extern.slf4j.Slf4j;

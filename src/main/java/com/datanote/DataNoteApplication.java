@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * DataNote 数据开发平台启动类
  */
 @SpringBootApplication
-@MapperScan({"com.datanote.domain.consumption.mapper", "com.datanote.domain.datasource.mapper", "com.datanote.domain.datamodel.mapper", "com.datanote.domain.develop.mapper", "com.datanote.domain.governance.mapper", "com.datanote.domain.integration.mapper", "com.datanote.domain.mdm.mapper", "com.datanote.domain.metadata.mapper", "com.datanote.domain.orchestration.mapper", "com.datanote.domain.project.mapper", "com.datanote.platform.alert.mapper", "com.datanote.platform.audit.mapper", "com.datanote.platform.config.mapper", "com.datanote.platform.iam.mapper", "com.datanote.platform.portal.mapper", "com.datanote.platform.ai.agent.mapper", "com.datanote.platform.notify"})
+@MapperScan({"com.datanote.domain.approval.mapper", "com.datanote.domain.consumption.mapper", "com.datanote.domain.datasource.mapper", "com.datanote.domain.datamodel.mapper", "com.datanote.domain.develop.mapper", "com.datanote.domain.governance.mapper", "com.datanote.domain.integration.mapper", "com.datanote.domain.mdm.mapper", "com.datanote.domain.metadata.mapper", "com.datanote.domain.orchestration.mapper", "com.datanote.domain.project.mapper", "com.datanote.platform.alert.mapper", "com.datanote.platform.audit.mapper", "com.datanote.platform.config.mapper", "com.datanote.platform.iam.mapper", "com.datanote.platform.portal.mapper", "com.datanote.platform.ai.agent.mapper", "com.datanote.platform.notify"})
 @EnableScheduling
 @EnableAsync
 public class DataNoteApplication {

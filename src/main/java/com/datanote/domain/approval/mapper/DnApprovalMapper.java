@@ -1,4 +1,4 @@
-package com.datanote.domain.approval;
+package com.datanote.domain.approval.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.datanote.domain.approval.model.DnApproval;
