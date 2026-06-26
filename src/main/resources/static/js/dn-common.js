@@ -350,8 +350,12 @@
       grid.appendChild(tile('同比', delta(d.yoy)));
       body.appendChild(grid);
       if (m.calcFormula) { body.appendChild(DN.h('div', { text: '口径', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('pre', { text: m.calcFormula, style: 'font-size:12px;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius);padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:0;' })); }
+      var mbar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
+      // 原地编辑(editMetric 全局弹窗常驻), 不跳指标管理(#5)
+      if (window.editMetric) { var edm = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '编辑', 'data-perm': 'metrics:edit' }); edm.onclick = function () { if (dr && dr.close) dr.close(); window.editMetric(id); }; mbar.appendChild(edm); }
       var openFull = window.openMetricFull || window.openMetricDetail; // 用 Full 避免回到预览(防自循环)
-      if (openFull) { var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '完整指标驾驶舱(预警/预测/趋势) →', style: 'margin-top:12px;display:inline-block;' }); full.onclick = function () { if (dr && dr.close) dr.close(); openFull(id); }; body.appendChild(full); }
+      if (openFull) { var full = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '完整指标驾驶舱(预警/预测/趋势) →' }); full.onclick = function () { if (dr && dr.close) dr.close(); openFull(id); }; mbar.appendChild(full); }
+      if (mbar.children.length) body.appendChild(mbar);
     }).catch(function (e) { body.innerHTML = ''; body.appendChild(DN.h('div', { text: '加载失败: ' + (e && e.message ? e.message : e), style: 'color:var(--error);font-size:13px;padding:16px;' })); });
   };
 
