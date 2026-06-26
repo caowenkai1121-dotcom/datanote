@@ -520,6 +520,9 @@
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '编辑',
               style: 'color:var(--primary)', 'data-perm': 'governance:quality',
               onclick: function () { if (window.editQualityRule) editQualityRule(r.id); } }));
+            // 复制为新规则: 预填同表/列/维度/阈值, 快速建相似规则
+            wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '复制', style: 'color:var(--primary)', 'data-perm': 'governance:quality',
+              onclick: function () { openPrefillRuleDrawer({ db: r.databaseName || r.dbName, table: r.tableName, column: r.columnName || r.column, dimension: r.dimension, threshold: r.passThreshold }, box); } }));
             var togText = r.status === 1 ? '停用' : '启用';
             wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: togText,
               style: r.status === 1 ? 'color:var(--text-muted)' : 'color:var(--success)', 'data-perm': 'governance:quality',
