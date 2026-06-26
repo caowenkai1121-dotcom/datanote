@@ -54,7 +54,9 @@
     bulkOwnerBtn.onclick = function () { _bulkSteward('owner'); };
     var bulkTagBtn = DN.h('a', { class: 'btn btn-sm', 'data-perm': 'catalog:edit', href: 'javascript:void(0)', text: '批量设标签', title: '给勾选资产批量设业务标签' });
     bulkTagBtn.onclick = function () { _bulkSteward('tags'); };
-    assetToolbar = [crawlBtn, srcSel, quickSel, viewSel, bulkOwnerBtn, bulkTagBtn];
+    var selAllBtn = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '全选/清空', title: '全选当前筛选结果 / 再次点击清空' });
+    selAllBtn.onclick = function () { _assetSelectAll(); };
+    assetToolbar = [crawlBtn, srcSel, quickSel, viewSel, selAllBtn, bulkOwnerBtn, bulkTagBtn];
 
     loadAssets();
 
@@ -76,6 +78,14 @@
   var assetState = { src: '', quick: '', subjectId: '', view: (function () { try { var v = localStorage.getItem('gov.assetView') || 'table'; return v === 'treemap' ? 'table' : v; } catch (e) { return 'table'; } })() };
   var assetTbl = null;
   var _selAsset = {};   // 资产批量选中(键 db.table)
+  var _assetCurRows = [];
+  function _assetSelectAll() {
+    var on = _assetCurRows.some(function (t) { return !_selAsset[(t.databaseName || '') + '.' + (t.tableName || '')]; }); // 有未选→全选, 否则清空
+    _selAsset = {};
+    if (on) _assetCurRows.forEach(function (t) { _selAsset[(t.databaseName || '') + '.' + (t.tableName || '')] = 1; });
+    if (assetTbl) assetTbl.reload(_assetCurRows);
+    DN.toast(on ? ('已选 ' + _assetCurRows.length + ' 个') : '已清空选择', 'info');
+  }
   function _selAssetList() { return (assetAll || []).filter(function (t) { return _selAsset[(t.databaseName || '') + '.' + (t.tableName || '')]; }); }
   function _bulkSteward(kind) {   // kind: owner | tags —— 循环已验端点批量设置
     var sel = _selAssetList();
@@ -334,6 +344,7 @@
       }
       return true;
     });
+    _assetCurRows = rows;   // 供"全选"批量治理
     if (assetState.view === 'tree') { renderAssetTree(rows); return; }
     if (assetState.quick === 'bigsize') rows = rows.slice().sort(function (a, b) { return (b.sizeBytes || 0) - (a.sizeBytes || 0); });
     else if (assetState.quick === 'bigrow') rows = rows.slice().sort(function (a, b) { return (b.rowCount || 0) - (a.rowCount || 0); });
