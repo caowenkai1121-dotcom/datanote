@@ -221,7 +221,10 @@
       sum.appendChild(row('行数', info.rowCount != null ? info.rowCount : '-'));
       if (info.engine) sum.appendChild(row('引擎', info.engine));
       if (tm.owner) sum.appendChild(row('负责人', tm.owner));
-      if (tm.tags) sum.appendChild(row('标签', tm.tags));
+      if (tm.tags) sum.appendChild(DN.h('div', { style: 'display:flex;gap:10px;font-size:12.5px;margin:3px 0;align-items:flex-start;' }, [
+        DN.h('span', { text: '标签', style: 'color:var(--text-muted);min-width:56px;flex:0 0 auto;' }),
+        DN.h('span', { style: 'display:flex;flex-wrap:wrap;gap:4px;' }, String(tm.tags).split(',').map(function (t) { t = t.trim(); return t ? DN.pill(t, 'info') : null; }).filter(Boolean))
+      ]));
       sum.appendChild(row('质量规则', ruleN > 0 ? (ruleN + ' 条') : '未配置(建议加)'));   // 治理覆盖可见
       if (info.updateTime) sum.appendChild(row('更新', info.updateTime));
       body.appendChild(sum);
