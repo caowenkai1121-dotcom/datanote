@@ -8,9 +8,7 @@
   // ========== 本地工具（与 gov-overview.js 对齐） ==========
   // 分值映射磁贴/药丸色调：>=85 绿(ok) / >=60 黄(warn) / 其余红(err)
   // NaN/null 先归一化为数字，避免 undefined>=85 恒 false 把"无数据"误判成红色危险态
-  function tone(v) { var n = Number(v); if (!isFinite(n)) n = 0; return n >= 85 ? 'ok' : (n >= 60 ? 'warn' : 'err'); }
-  function round1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
-  function fmtInt(v) { return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  var tone = DN.tone, round1 = DN.round1, fmtInt = DN.fmtInt;   // 合并至 DN.*(原本地重复)
   function go(route) { return function () { if (window.navigateTo) navigateTo(route); }; }
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
   // 超长文本截断 + 完整值挂 title（图表 label 防溢出）

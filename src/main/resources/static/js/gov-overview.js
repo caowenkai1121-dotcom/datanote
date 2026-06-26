@@ -95,8 +95,6 @@
     if (window.govGoModule) { govGoModule(key, ctx || {}); return; }
     DN.toast('暂无法跳转该模块', 'warn');
   }
-  function tone(v) { return v >= 85 ? 'ok' : (v >= 60 ? 'warn' : 'err'); }
+  var tone = DN.tone, round1 = DN.round1, fmtInt = DN.fmtInt;   // 合并至 DN.*(原本地重复)
   function toneColor(t) { return t === 'ok' ? 'var(--success)' : t === 'warn' ? 'var(--warning)' : t === 'err' ? 'var(--error)' : 'var(--primary)'; }
-  function round1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
-  function fmtInt(v) { v = Number(v) || 0; return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 })();
