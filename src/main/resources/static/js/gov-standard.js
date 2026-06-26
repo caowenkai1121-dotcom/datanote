@@ -226,6 +226,11 @@
       description: input('描述（可选）')
     };
     form.appendChild(formRow('编码', f.element_code));
+    // 编码实时格式反馈(原仅保存时报错): 字母开头, 仅字母/数字/下划线
+    f.element_code.addEventListener('input', function () {
+      var v = f.element_code.value.trim();
+      f.element_code.style.borderColor = (v && !/^[A-Za-z][A-Za-z0-9_]*$/.test(v)) ? 'var(--error)' : '';
+    });
     form.appendChild(formRow('中文名', f.name_cn));
     form.appendChild(formRow('类型', f.data_type));
     form.appendChild(formRow('长度', f.length));
