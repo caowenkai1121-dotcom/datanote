@@ -414,7 +414,7 @@
     var keys = Object.keys(byDb).sort();
     box.innerHTML = '';
     box.appendChild(bar);
-    if (!keys.length) { box.appendChild(DN.empty('暂无资产', 'inbox')); return; }
+    if (!keys.length) { box.appendChild(DN.empty('暂无资产，点击上方「采集全部」补全元数据', 'inbox')); return; }
     var wrap = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden' });
     var manyDb = keys.length > 12;  // 库很多时默认折叠, 避免一次性展开全部库造成卡顿
     keys.forEach(function (k) {
