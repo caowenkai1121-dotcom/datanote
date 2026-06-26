@@ -1033,6 +1033,58 @@
     });
   };
 
+  // ===== 统一审批中心(各流待办聚合 + 内联通过/驳回, 不跳转) =====
+  var APV_FLOW = { MDM_CHANGE: '主数据变更', DATAMODEL_CHANGE: '数据模型变更', SCRIPT_CHANGE: '脚本上线' };
+  DN.approvalBadge = function (n) {
+    var b = document.getElementById('dnApprovalBadge'); if (!b) return;
+    if (n > 0) { b.textContent = n > 99 ? '99+' : String(n); b.style.display = ''; } else b.style.display = 'none';
+  };
+  DN.approvalBadgeRefresh = function () {
+    DN.get('/api/approval/pending').then(function (rows) { DN.approvalBadge(Array.isArray(rows) ? rows.length : 0); }).catch(function () {});
+  };
+  DN.approvalCenter = function () {
+    var body = DN.h('div', {});
+    body.appendChild(DN.h('div', { text: '加载中…', style: 'padding:20px;color:var(--text-muted);font-size:13px;' }));
+    var dr = DN.drawer('审批中心 · 待办', body);
+    function review(a, approve, btn, comment) {
+      btn.style.pointerEvents = 'none'; btn.textContent = '处理中…';
+      DN.post('/api/approval/' + a.id + '/review', { approve: approve, comment: comment || '' })
+        .then(function () { DN.toast(approve ? '已通过' : '已驳回', 'ok'); load(); })
+        .catch(function (e) { btn.style.pointerEvents = ''; btn.textContent = approve ? '通过' : '驳回'; DN.toast('失败: ' + (e && e.message ? e.message : ''), 'err'); });
+    }
+    function load() {
+      DN.get('/api/approval/pending').then(function (rows) {
+        body.innerHTML = '';
+        rows = Array.isArray(rows) ? rows : [];
+        DN.approvalBadge(rows.length);
+        if (!rows.length) { body.appendChild(DN.empty('暂无待审批事项 👍', 'check')); return; }
+        rows.forEach(function (a) {
+          a = a || {};
+          var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;background:var(--bg-card);' });
+          card.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' }, [
+            DN.pill(APV_FLOW[a.flowType] || a.flowType || '审批', 'info'),
+            DN.h('span', { text: a.title || ('#' + a.id), title: a.title || '', style: 'font-weight:600;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' })
+          ]));
+          card.appendChild(DN.h('div', { text: '提交人 ' + (a.submitter || '-') + ' · ' + (a.createdAt || ''), style: 'font-size:12px;color:var(--text-muted);margin-bottom:8px;' }));
+          var bar = DN.h('div', { style: 'display:flex;gap:8px;align-items:center;' });
+          var ok = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '通过', 'data-perm': 'governance:manage' });
+          ok.onclick = function () { review(a, true, ok); };
+          var no = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '驳回', style: 'color:var(--error)', 'data-perm': 'governance:manage' });
+          no.onclick = function () { var c = window.prompt('驳回原因(必填):', ''); if (c == null) return; if (!c.trim()) { DN.toast('请填驳回原因', 'warn'); return; } review(a, false, no, c.trim()); }; // ponytail: 用 prompt 取原因, 简单够用
+          bar.appendChild(ok); bar.appendChild(no);
+          card.appendChild(bar);
+          body.appendChild(card);
+        });
+      }).catch(function (e) {
+        body.innerHTML = '';
+        body.appendChild(DN.errorBox ? DN.errorBox('审批待办加载失败', load) : DN.h('div', { text: '加载失败', style: 'color:var(--error);padding:16px;' }));
+      });
+    }
+    load();
+  };
+  // 顶栏徽标: 载入后拉一次待审数(轻量)
+  try { setTimeout(function () { DN.approvalBadgeRefresh(); }, 2500); } catch (e) {}
+
   global.DN = DN;
   // 治理模块渲染器注册表：各 js/gov-<key>.js 注册 render 到此，governance.html 据此渲染
   global.GOV_RENDERERS = global.GOV_RENDERERS || {};

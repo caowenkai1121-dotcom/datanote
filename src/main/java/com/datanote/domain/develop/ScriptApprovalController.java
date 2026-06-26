@@ -20,13 +20,19 @@ import java.util.Map;
 public class ScriptApprovalController {
 
     private final ScriptApprovalService approvalService;
+    private final com.datanote.domain.approval.ApprovalService unifiedApproval;   // 统一审批中心
 
     @Operation(summary = "提交脚本上线/下线审批")
     @PostMapping("/{id}/submit-change")
     public R<DnScriptChange> submit(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         String changeType = body != null ? body.getOrDefault("changeType", "ONLINE") : "ONLINE";
         String reason = body != null ? body.get("reason") : null;
-        return R.ok(approvalService.submit(id, changeType, reason));
+        DnScriptChange c = approvalService.submit(id, changeType, reason);
+        // 同建统一审批记录(统一中心可见 + Redis Streams 事件)
+        unifiedApproval.submit(com.datanote.domain.approval.handler.ScriptApprovalHandler.FLOW,
+                String.valueOf(c.getId()), "脚本" + ("OFFLINE".equalsIgnoreCase(changeType) ? "下线" : "上线") + " #" + id,
+                c.getRequestedBy(), reason);
+        return R.ok(c);
     }
 
     @Operation(summary = "脚本审批工单列表")

@@ -25,6 +25,7 @@ public class DataModelController {
 
     private final DataModelService service;
     private final com.datanote.platform.iam.DataAclService dataAclService;   // 数据权限: 过滤/守卫受限模型
+    private final com.datanote.domain.approval.ApprovalService unifiedApproval;   // 统一审批中心
 
     // -------- 模型 --------
 
@@ -111,7 +112,11 @@ public class DataModelController {
     @PostMapping("/model/{id}/submit")
     public R<DnModelChange> submit(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         String reason = body == null ? null : body.get("reason");
-        return R.ok(service.submitForApproval(id, reason));
+        DnModelChange c = service.submitForApproval(id, reason);
+        // 同建统一审批记录(统一中心可见 + Redis Streams 事件)
+        unifiedApproval.submit(com.datanote.domain.approval.handler.DataModelApprovalHandler.FLOW,
+                String.valueOf(c.getId()), "数据模型变更 #" + id, c.getRequestedBy(), reason);
+        return R.ok(c);
     }
 
     @Operation(summary = "变更工单列表")
