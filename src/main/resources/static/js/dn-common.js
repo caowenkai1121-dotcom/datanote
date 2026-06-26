@@ -81,12 +81,13 @@
     t.style.position = 'static'; t.style.pointerEvents = 'auto';   // 覆盖 .dn-toast 的 fixed, 改由容器排布
     t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); // 屏幕阅读器播报提示
     t.textContent = msg;
+    t.title = '点击关闭';
     box.appendChild(t);
     setTimeout(function () { t.classList.add('dn-toast-show'); }, 10);
-    setTimeout(function () {
-      t.classList.remove('dn-toast-show');
-      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
-    }, 2600);
+    function hide() { t.classList.remove('dn-toast-show'); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300); }
+    // 错误更重要且常更长, 停留更久; 其余 2.6s。点击可提前关闭。
+    var timer = setTimeout(hide, type === 'err' ? 4500 : 2600);
+    t.onclick = function () { clearTimeout(timer); hide(); };
   };
 
   /** 复制文本到剪贴板：优先 navigator.clipboard，降级 textarea+execCommand。silent=true 不弹 toast(调用方自定义反馈) */
