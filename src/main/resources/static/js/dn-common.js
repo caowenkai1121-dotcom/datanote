@@ -264,6 +264,24 @@
         ex.onclick = function () { DN.exportRows(db + '.' + table + '_字段', ['字段', '中文名', '类型'], cols.map(function (c) { c = c || {}; return [c.name || '', c.comment || '', c.type || '']; })); };
         actBar.appendChild(ex);
       }
+      // 编辑业务标签(原标签仅展示不可改): 内联输入逗号分隔标签 → 保存
+      var etag = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '编辑标签', 'data-perm': 'catalog:edit' });
+      etag.onclick = function () {
+        if (document.getElementById('dnTagEditRow')) return;
+        var inp = DN.h('input', { class: 'dn-form-input', value: (tm.tags || ''), placeholder: '业务标签(逗号分隔, 如 核心,交易域)', style: 'flex:1;min-width:160px;' });
+        var sv = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '保存' });
+        var cc = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '取消' });
+        var rowE = DN.h('div', { id: 'dnTagEditRow', style: 'margin-top:8px;display:flex;gap:8px;align-items:center;width:100%;' }, [inp, sv, cc]);
+        cc.onclick = function () { rowE.remove(); };
+        sv.onclick = function () {
+          sv.style.pointerEvents = 'none'; sv.textContent = '保存中…';
+          DN.post('/api/metadata/table/set-tags', { db: db, table: table, tags: inp.value.trim() })
+            .then(function () { DN.toast('标签已保存', 'ok'); rowE.remove(); if (DN.tablePreview) { if (dr && dr.close) dr.close(); DN.tablePreview(db, table); } })
+            .catch(function (e) { sv.style.pointerEvents = ''; sv.textContent = '保存'; DN.toast('保存失败: ' + (e && e.message || ''), 'err'); });
+        };
+        actBar.parentNode.insertBefore(rowE, actBar.nextSibling); inp.focus();
+      };
+      actBar.appendChild(etag);
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
         qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };

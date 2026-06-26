@@ -58,6 +58,29 @@ public class MetadataController {
         return R.ok("已设置主题域");
     }
 
+    @Operation(summary = "设置表业务标签(手动, CSV 逗号分隔)")
+    @PostMapping("/table/set-tags")
+    public R<String> setTags(@RequestBody Map<String, Object> req) {
+        String db = req.get("db") == null ? null : String.valueOf(req.get("db"));
+        String table = req.get("table") == null ? null : String.valueOf(req.get("table"));
+        if (db == null || table == null) return R.fail("缺少 db/table");
+        if (!canAccessTable(db, table)) return tableDenied();
+        String tags = req.get("tags") == null ? "" : String.valueOf(req.get("tags")).trim();
+        if (tags.length() > 200) return R.fail("标签过长(≤200字符)");
+        DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
+                .eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
+        if (tm == null) {
+            tm = new DnTableMeta();
+            tm.setDatasourceId(0L);
+            tm.setDatabaseName(db); tm.setTableName(table); tm.setTags(tags);
+            tableMetaMapper.insert(tm);
+        } else {
+            tm.setTags(tags);
+            tableMetaMapper.updateById(tm);
+        }
+        return R.ok("已保存标签");
+    }
+
     @Operation(summary = "查询表所属主题域(R35)")
     @GetMapping("/table/subject")
     public R<Map<String, Object>> getSubject(@RequestParam String db, @RequestParam String table) {
