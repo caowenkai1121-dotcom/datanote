@@ -315,13 +315,8 @@ public class MdmCoreController {
             String rc = body == null ? null : body.getReviewComment();
             if (rc == null || rc.trim().isEmpty()) throw new BusinessException("驳回必须填写原因");
         }
-        // #19: 审批人改取当前登录用户, 不再信任请求体(防冒名审批)。严格职责分离(SoD):
-        //      任何人(含 admin)都不能审批自己提交的变更申请(见 MdmCoreControllerReviewTest)。
-        //      单管理员环境如需推进 MDM 审批, 由另一账号提交或审批。
+        // 审批人取当前登录用户(不信任请求体, 防冒名)。允许自审自批: 有审批权限即可审批自己提交的变更(权限由 PermInterceptor 把关)。
         String reviewer = currentUser();
-        if (reviewer.equals(req.getRequestedBy())) {
-            throw new BusinessException("不能审批自己的变更申请");
-        }
         // 并发幂等: 用条件更新 status=pending→target 原子占行, 影响行数为 0 说明已被他人处理,
         //          直接抛错; 这样后续 applyChange 不会被并发重复执行(避免重复黄金记录)。
         int claimed = changeMapper.update(null, new UpdateWrapper<DnMdmChangeRequest>()

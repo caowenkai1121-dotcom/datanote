@@ -103,14 +103,19 @@ class ScriptApprovalServiceTest {
     }
 
     @Test
-    void review_selfApproval_throws() {
+    void review_selfApproval_isAllowed() {
+        // 允许自审自批: 自己提交的可由自己审批通过(有权限即可)
         DnScriptChange c = new DnScriptChange();
         c.setId(5L);
         c.setStatus("pending");
-        c.setRequestedBy("anonymous");   // 与单测中的 currentUser 相同 → 禁自批
+        c.setChangeType("ONLINE");
+        c.setScriptId(1L);
+        c.setRequestedBy("anonymous");   // 与单测中的 currentUser 相同 → 自审, 现放行
+        c.setPayloadJson("select 1");    // 快照与现内容一致 → 无漂移
         when(changeMapper.selectById(5L)).thenReturn(c);
-        assertThrows(BusinessException.class, () -> svc().review(5L, "approved", "ok"));
-        verify(scheduleLifecycleService, never()).onlineLocalAfterApproval(any(), any());
+        when(scriptMapper.selectById(1L)).thenReturn(script("draft", "select 1"));
+        DnScriptChange out = svc().review(5L, "approved", "self ok"); // 不抛异常
+        assertEquals("approved", out.getStatus());
     }
 
     @Test

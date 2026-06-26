@@ -347,10 +347,7 @@ public class DataModelService {
 
         requireModelAccess(c.getModelId());
         String reviewer = CurrentUserUtil.currentUser();
-        // 禁自批: 自己提交的申请不能自己审批(admin 例外, 防单管理员环境锁死)
-        if (reviewer != null && reviewer.equals(c.getRequestedBy()) && !"admin".equals(reviewer)) {
-            throw new BusinessException("不能审批自己提交的申请");
-        }
+        // 允许自审自批: 有审批权限即可审批自己提交的申请(权限由 PermInterceptor 把关)。
 
         boolean approved = "approved".equals(target);
         // 驳回须有原因(便于申请人修正, 与前端必填一致)

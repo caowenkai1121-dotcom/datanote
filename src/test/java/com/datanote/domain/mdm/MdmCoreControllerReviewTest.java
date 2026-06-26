@@ -38,7 +38,8 @@ class MdmCoreControllerReviewTest {
     }
 
     @Test
-    void reject_selfSubmittedAdminRequest_isDeniedBeforeClaim() {
+    void review_selfSubmittedRequest_isAllowed() {
+        // 允许自审自批: 自己提交的变更可由自己审批(有权限即可), 不再抛"不能审批自己", 直接占行处理
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("admin", "n/a", Collections.emptyList()));
         DnMdmChangeRequest req = new DnMdmChangeRequest();
@@ -46,13 +47,14 @@ class MdmCoreControllerReviewTest {
         req.setStatus("pending");
         req.setRequestedBy("admin");
         when(changeMapper.selectById(5L)).thenReturn(req);
+        when(changeMapper.update(any(), any())).thenReturn(1); // 条件占行成功
         DnMdmChangeRequest body = new DnMdmChangeRequest();
-        body.setReviewComment("no");
+        body.setReviewComment("self review ok");
 
         MdmCoreController controller = new MdmCoreController(domainMapper, entityMapper, attributeMapper,
                 mdmService, changeMapper, goldenMapper, matchService, new ObjectMapper(), notificationService);
 
-        assertThrows(BusinessException.class, () -> controller.reject(5L, body));
-        verify(changeMapper, never()).update(any(), any());
+        controller.reject(5L, body); // 不抛异常
+        verify(changeMapper).update(any(), any()); // 已占行 = 自审被放行
     }
 }
