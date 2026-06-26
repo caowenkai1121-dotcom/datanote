@@ -349,7 +349,14 @@
       grid.appendChild(tile('环比', delta(d.mom)));
       grid.appendChild(tile('同比', delta(d.yoy)));
       body.appendChild(grid);
-      if (m.calcFormula) { body.appendChild(DN.h('div', { text: '口径', style: 'font-size:12px;color:var(--text-muted);margin:6px 0 2px;' })); body.appendChild(DN.h('pre', { text: m.calcFormula, style: 'font-size:12px;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius);padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:0;' })); }
+      if (m.calcFormula) {
+        var capHd = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin:6px 0 2px;' }, [
+          DN.h('span', { text: '口径', style: 'font-size:12px;color:var(--text-muted);' }),
+          (function () { var cpf = DN.h('a', { href: 'javascript:void(0)', text: '复制', style: 'font-size:11px;color:var(--primary);' }); cpf.onclick = function () { DN.copyText(m.calcFormula, '已复制口径'); }; return cpf; })()
+        ]);
+        body.appendChild(capHd);
+        body.appendChild(DN.h('pre', { text: m.calcFormula, style: 'font-size:12px;background:var(--bg-main);border:1px solid var(--divider);border-radius:var(--radius);padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:0;' }));
+      }
       var mbar = DN.h('div', { style: 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;' });
       // 原地编辑(editMetric 全局弹窗常驻), 不跳指标管理(#5)
       if (window.editMetric) { var edm = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '编辑', 'data-perm': 'metrics:edit' }); edm.onclick = function () { if (dr && dr.close) dr.close(); window.editMetric(id); }; mbar.appendChild(edm); }
