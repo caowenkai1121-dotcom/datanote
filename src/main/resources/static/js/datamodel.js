@@ -483,7 +483,7 @@
   window.dmDelEntity = function (entityId, modelId) {
     DN.confirm('删除该实体及其全部属性？', { title: '删除实体', danger: true }).then(function (ok) {
       if (!ok) return;
-      api('/api/datamodel/entity/' + entityId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); });
+      api('/api/datamodel/entity/' + entityId, { method: 'DELETE' }).then(function () { toast('已删除', 'success'); dmReopenModel(modelId); }).catch(function (e) { toast('删除失败: ' + (e && e.message ? e.message : ''), 'error'); });
     });
   };
   // 属性编辑器(可加行/删行)

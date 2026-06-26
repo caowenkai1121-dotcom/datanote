@@ -31,6 +31,7 @@
   }
 
   window.MDM_RENDERERS.quality = function (c) {
+    _qEntsCache = null;   // 每次进模块清实体缓存, 防新增/删实体后列表陈旧(切换实体时仍走缓存)
     var ctx = window.__mdmCtx || {};   // R26/R37 深链：上游(govmap/工作台)可带 entityId 直达指定实体
     var selWrap = DN.h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px' });
     selWrap.appendChild(DN.h('span', { class: 'gov-desc', style: 'margin:0', text: '选择实体：' }));
