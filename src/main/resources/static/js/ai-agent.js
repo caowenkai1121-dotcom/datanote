@@ -256,7 +256,7 @@
     var pv = p.pv;
     var rows = pv.rows || [], cols = pv.columns || [];
     var view = rows.slice(); // 当前显示顺序(随排序变), 导出跟随所见
-    var title = '📋 ' + (p.db ? p.db + '.' : '') + (p.table || '表') + ' 数据预览（' + (pv.returned != null ? pv.returned : rows.length) + ' 行 × ' + cols.length + ' 列）';
+    var title = '📋 ' + (p.db ? p.db + '.' : '') + (p.table || '表') + ' 数据预览（样例 ' + (pv.returned != null ? pv.returned : rows.length) + ' 行 × ' + cols.length + ' 列）';
     var card = DN.h('div', { style: 'margin:8px 0;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;' });
     var hdr = DN.h('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-main);border-bottom:1px solid var(--divider);' }, [
       DN.h('div', { text: title, style: 'flex:1;font-weight:600;font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' })
