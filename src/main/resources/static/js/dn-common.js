@@ -261,6 +261,12 @@
       var cq = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制查询' });
       cq.onclick = function () { DN.copyText('SELECT * FROM `' + db + '`.`' + table + '` LIMIT 100', '已复制查询 SQL'); };
       actBar.appendChild(cq);
+      // 复制全部字段名(逗号分隔, 写 SELECT 列清单常用)
+      if (cols.length) {
+        var cf = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '复制字段名' });
+        cf.onclick = function () { DN.copyText(cols.map(function (c) { return (c && c.name) || ''; }).filter(Boolean).join(', '), '已复制 ' + cols.length + ' 个字段名'); };
+        actBar.appendChild(cf);
+      }
       // 导出字段清单CSV(建表文档/对接常用)
       if (cols.length && DN.exportRows) {
         var ex = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '导出字段' });
