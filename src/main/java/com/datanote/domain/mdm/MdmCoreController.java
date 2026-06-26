@@ -353,6 +353,11 @@ public class MdmCoreController {
         } catch (Exception ne) {
             // 通知失败不影响审批结果
         }
+        // 同步统一审批记录(旧 mdm 审批入口直审时, 防审批中心残留陈旧待办; 中心路径下 WHERE PENDING 幂等空操作)
+        if (unifiedApproval != null) {
+            unifiedApproval.resolveByBiz(com.datanote.domain.approval.handler.MdmApprovalHandler.FLOW,
+                    String.valueOf(req.getId()), "approved".equals(target), reviewer, req.getReviewComment());
+        }
         return R.ok(req);
     }
 

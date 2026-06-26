@@ -128,13 +128,17 @@ public class DataModelController {
     @Operation(summary = "审批通过")
     @PostMapping("/change/{id}/approve")
     public R<DnModelChange> approve(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
-        return R.ok(service.review(id, "approved", body == null ? null : body.get("comment")));
+        DnModelChange c = service.review(id, "approved", body == null ? null : body.get("comment"));
+        unifiedApproval.resolveByBiz(com.datanote.domain.approval.handler.DataModelApprovalHandler.FLOW, String.valueOf(id), true, c.getReviewer(), c.getReviewComment());
+        return R.ok(c);
     }
 
     @Operation(summary = "审批驳回")
     @PostMapping("/change/{id}/reject")
     public R<DnModelChange> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
-        return R.ok(service.review(id, "rejected", body == null ? null : body.get("comment")));
+        DnModelChange c = service.review(id, "rejected", body == null ? null : body.get("comment"));
+        unifiedApproval.resolveByBiz(com.datanote.domain.approval.handler.DataModelApprovalHandler.FLOW, String.valueOf(id), false, c.getReviewer(), c.getReviewComment());
+        return R.ok(c);
     }
 
     // -------- 生成 --------

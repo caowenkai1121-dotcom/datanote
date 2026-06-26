@@ -83,6 +83,10 @@ public class ScriptApprovalController {
     public R<DnScriptChange> review(@PathVariable Long changeId, @RequestBody Map<String, String> body) {
         String target = body == null ? null : body.get("target");
         String comment = body == null ? null : body.get("comment");
-        return R.ok(approvalService.review(changeId, target, comment));
+        DnScriptChange c = approvalService.review(changeId, target, comment);
+        // 同步统一审批记录(旧入口直审时防中心残留陈旧待办; 中心路径不经此端点)
+        unifiedApproval.resolveByBiz(com.datanote.domain.approval.handler.ScriptApprovalHandler.FLOW,
+                String.valueOf(changeId), "approved".equalsIgnoreCase(target), c.getReviewer(), c.getReviewComment());
+        return R.ok(c);
     }
 }

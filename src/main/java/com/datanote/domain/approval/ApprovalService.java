@@ -79,6 +79,25 @@ public class ApprovalService {
         return mapper.selectList(qw);
     }
 
+    /** 旧入口(各流自身审批UI)处理后同步统一审批记录状态, 避免审批中心显示陈旧待办。
+     *  WHERE status=PENDING 幂等: 中心路径已先置为非 PENDING, 故此处空操作; 仅旧路径(记录仍 PENDING)生效。fail-safe 不影响主流程。 */
+    public void resolveByBiz(String flowType, String bizId, boolean approve, String reviewer, String comment) {
+        try {
+            DnApproval a = mapper.selectOne(new LambdaQueryWrapper<DnApproval>()
+                    .eq(DnApproval::getFlowType, flowType).eq(DnApproval::getBizId, bizId)
+                    .eq(DnApproval::getStatus, "PENDING").orderByDesc(DnApproval::getId).last("LIMIT 1"));
+            if (a == null) return;
+            a.setStatus(approve ? "APPROVED" : "REJECTED");
+            a.setReviewer(reviewer);
+            a.setReviewComment(comment);
+            a.setReviewedAt(LocalDateTime.now());
+            mapper.updateById(a);
+            eventService.publish(a.getId(), approve ? "APPROVED" : "REJECTED");
+        } catch (Exception e) {
+            log.warn("旧入口同步统一审批记录失败(不影响主流程): flow={} biz={} err={}", flowType, bizId, e.getMessage());
+        }
+    }
+
     public DnApproval get(Long id) { return mapper.selectById(id); }
 
     /** 按底层业务记录查最近一条审批(供各流防重复提交/状态联动)。 */
