@@ -1,0 +1,79 @@
+- [mdm/crud] 实体/域列表缺编辑入口但可查看详情 | mdm.js:129-164 (域列表), 167-201 (实体列表) | 为属性表新增编辑操作链,复用attrForm()即可(纯前端,后端已有upsert)
+- [mdm/op] 属性列表缺复制/导出功能(仅表默认导出) | mdm.js:240-241 (属性表配置未见copy) | 给属性表添加exportName:'属性_'+entityCode, 无需后端(纯表格导出功能)
+- [mdm/friction] 去重合并后无自动刷新状态反馈 | mdm.js:915-923 (合并后loadDedup) | 合并后toast中含'规则应用',无需额外代码(已有mdm.js:920行逻辑)
+- [gov-standard/op] 数据元清单缺导出 | gov-standard.js:300-320 renderElements() 表格配置 | 纯前端：在DN.table()调用时添加exportName:'数据标准_数据元'，自动出现导出按钮。可选增加exportValue处理长字段截断。
+- [gov-standard/op] 命名词根清单缺导出 | gov-standard.js:383-399 renderRoots() 表格配置 | 纯前端：在DN.table()调用时添加exportName:'数据标准_命名词根'。
+- [gov-standard/friction] 码表编码重复时误导提示 | gov-standard.js:426-438 saveDict()保存逻辑和StandardC | 纯前端：在dict_code input blur或change时异步GET /api/gov/standard/dicts检查是否存在该编码(排除当前编辑id)，即时红框提示。后
+- [gov-standard/friction] 数据元和命名词根无编码重复实时校验 | gov-standard.js:230-233 编码input监听,StandardContro | 纯前端：在element_code、word_en的blur事件异步检查重复(GET /api/gov/standard/elements或/roots，过滤当前编辑id)，同步前
+- [gov-standard/friction] 长字段(值域/描述)在列表中无截断+title提示完整 | gov-standard.js:306 valueDomain渲染、243行cancelEdit | 纯前端：为description列加render:function(e){return truncCell(e.description,36);}，与code标准保持一致。列表看摘
+- [gov-standard/friction] 码表项排序字段无默认值指导+范围校验宽松 | gov-standard.js:519-524 排序校验逻辑 | 纯前端：hint改为'非负整数，越小越靠前(默认0)'；加regex校验/^\d{1,5}$/限制5位以内(0-99999)，防异常大值。
+- [gov-quality/crud] 规则列表缺删除操作入口 | gov-quality.js:517-549 | 在操作列append删除链接，类似health模块的delLink()(gov-health.js:182-197)，调用DN.del('/api/quality/rule/'+r
+- [gov-quality/op] 失败规则聚焦缺复制规则快速路径 | gov-quality.js:243-328 | 在失败规则操作列添加'复制'按钮，调用openPrefillRuleDrawer(预填当前规则的维度/阈值/类型/数据源等)或直接DN.post(/api/quality/rule
+- [gov-quality/nav] 表预览导航在抽屉内不可用 | gov-quality.js:544-546 | 确保DN.tablePreview在dn-common.js中实现，若缺失需补全。或统一改为window.navigateTo('catalog',...)保持跳转行为，但需补充注
+- [gov-quality/friction] 失败规则聚焦缺刷新触发选项 | gov-quality.js:179-221 | 在扫描卡片添加选项：'扫描范围'(全部/前N条，下拉)和'时间范围'(仅最近执行/最近24h/自定义)，通过form选项联动修改扫描入参后端已支持多行扫描(chain promis
+- [gov-quality/op] 覆盖矩阵无导出能力 | gov-quality.js:132-166 | 在矩阵卡片header添加导出按钮，导出为CSV(维度|类型|计数)或JSON，或补充右键菜单复制表格data(纯前端)
+- [consumption/batch] 预警规则列表仅支持逐条删除，无批量删除入口 | src/main/resources/static/js/gov-consumption.js: | 在alertRulesDrawer的规则列表header添加checkbox列和'批量删除'按钮，渲染时为每行添加checkbox，支持全选/反选。后端已有单条DELETE端点(/
+- [consumption/op] 消费排行卡标题声称可导出但仅展示条形图，无实际导出按钮 | src/main/resources/static/js/gov-consumption.js: | 在rankCard actions中添加'导出排行'按钮或在条形图上方添加导出链接，调用后端导出端点(如/api/consumption/metric-ranking/export
+- [consumption/friction] 数据集编辑时编码字段禁改但无inline编码合并提示，易导致新建重名 | src/main/resources/static/js/gov-consumption.js: | 编辑模式下在编码字段下方inline提示'编码为唯一标识，新建前搜索检重'，或显示'该编码已被引用N处，修改将影响依赖'。可选在保存前client-side调/api/consum
+- [consumption/friction] 预警规则表单无实时数值校验与视觉反馈，误填会后端拒绝 | src/main/resources/static/js/gov-consumption.js: | 将minI/maxI改为DN.h('input',{type:'number',...})，并添加onchange监听实时验证上下界关系、显示错误inline提示。或添加helpe
+- [consumption/friction] 指标条形图下钻定位(focusBoardRow)卡顿时无加载态，用户体验割裂 | src/main/resources/static/js/gov-consumption.js: | 在focusBoardRow初始显示toast('搜索中...')，或在board表上方显示'定位中'skeleton。驾驶舱表本身无延迟(已加载)，但为一致性和未来扩展，建议加l
+- [consumption/op] 数据集运行结果超长单元格截断仅tooltip但无copy/export，信息获取困难 | src/main/resources/static/js/gov-consumption.js: | 在showDatasetResult的DN.table中添加exportName:'dataset_query_result'，或为超长文本列添加'复制'按钮(DN.copyBtn
+- [project/crud] 任务/里程碑/文档 标签页函数未定义 | project.js:649-650 | 补充 window.projLoadMilestones/projLoadWiki 函数定义(本可内联简单表格,参考 projLoadMembers 模式)
+- [project/friction] 发布关联资产无搜索/编辑 | project.js:2149-2161 | 资产列表加搜索输入,支持名称/ID快速定位;PENDING发布应可修改资产关联
+- [project/nav] 健康分维度导航交互不清晰 | project.js:1149-1182 | 统一为:点击直达对应标签页并自动加载,task维度自动勾 overdue 筛选,释放维度切到quality规则模块(已做),toast提示引导
+- [develop/op] 脚本列表缺导出功能 | workspace.html 脚本树/列表 | 在文件树右键菜单或脚本列表工具栏新增「导出脚本列表CSV」选项, 纯前端可调用既有的表格导出库(与其他模块保持一致)',
+- [mdm/batch] 黄金记录列表逐条删除,缺批量删操作 | mdm.js:602-622 (黄金记录表操作列) | 参考mdm-refdata.js批量删方案,在黄金记录表头加checkbox+批量删按钮, 调用/api/mdm/golden/batch/delete
+- [mdm/batch] 黄金记录批量启停, 仅支持单条 | mdm.js:605-616 (黄金记录操作) | 参考参考数据批删方案,增checkbox+批量发布/停用按钮, 调用/api/mdm/golden/batch/publish
+- [mdm/batch] 质量不合规记录无批量修复到黄金记录 | mdm-quality.js:182-185 (修复按钮) | 表头加checkbox+"打开修复列表"按钮, 跳转黄金记录时带多记录ID, 前端tab页显示多条待修复记录
+- [gov-quality/batch] 规则列表无批量操作能力 | gov-quality.js:471-559 | 1)在toolbar添加全选/反选按钮(参考gov-health.js:59行)；2)在table列首加checkbox，支持row级勾选；3)添加'批量启停'和'批量删除'操作，
+- [gov-quality/friction] 调度Cron无在线编辑入口 | gov-quality.js:513 | 在调度列render函数添加编辑链接，弹抽屉(DN.drawer)复用cron选择器(类似前端日期/时间选择器逻辑)，或直接在表格行内渲染cron下拉选择框(inline-edit
+- [gov-quality/friction] 新建规则缺字段级联选择 | gov-quality.js:385-467 | 在表单数据源change事件后加载该源的库清单(DN.metaDatabases或后端/api/metadata/databases)，库选中后级联加载表(DN.metaTable
+- [gov-other/batch] 行级权限：无批量删除入口 | gov-security.js:290-315 | 在卡片 actions 增加「批量删除」按钮（勾选框模式），前端遍历已选行调用 DELETE /api/gov/masking/row-policies/{id}。后端 upser
+- [gov-other/batch] 脱敏策略：无批量启停入口 | gov-security.js:195-222 | 增加批量启停：卡片 actions 添「批量启用/停用」下拉 + 全选逻辑，批量 PATCH /api/gov/masking/policies/{id} 仅改 enabled 字
+- [gov-other/crud] 分类分级规则：编辑后无法反显原值 | gov-classification.js:200-250 | 若编辑表单存在：确保 toggleRuleForm(r) 时预填所有字段(ruleName/matchType/pattern/sensitiveType/suggestLevel
+- [gov-other/batch] 质量规则：无批量删除/启停入口 | gov-quality.js:150+ 区间 | 在规则卡片 actions 增加「批量启用」「批量停用」「批量删除」下拉，支持勾选框多选。调用 DELETE /api/quality/rules/{id} 或新增批量端点。后端单
+- [gov-other/batch] 数据标准·数据元：无批量编辑密级/敏感类型 | gov-standard.js:150+ 数据元表区间 | 表格卡片 actions 增「批量补全密级」「批量标注敏感」功能，支持范围选择(如「未定密级的元素」)，弹窗选择目标值，批量 PATCH /api/gov/standard/ele
+- [gov-other/friction] 主题域：删除非叶子主题时，界面提示但无「级联删除预览」 | gov-subject.js:332-348 | 删除确认前，若检测到子主题数 > 0，弹出抽屉预览完整被删后代树(用 DOM 局部渲染或树表)。用户看到完整风险后再确认删除
+- [gov-other/nav] 血缘·孤儿表检测：检测结果点击跳转必须重新选库表(无保留导航) | gov-lineage.js:281-284 | 点击孤儿表下钻后，记录当前筛选状态(孤儿表检测的库+当前过滤词)，返回时恢复。或在孤儿表卡下方用「返回孤儿表列表」链接+状态栈
+- [gov-other/op] 审计中心：异常活跃检测-路径高频项无法批量导出/复制 | gov-audit.js:300-310 | 异常卡下方增「批量导出路径清单」按钮，生成 txt/csv 包含所有异常路径(按倍数降序)，或一键复制 JSON 格式到剪贴板
+- [consumption/batch] 驾驶舱表和僵尸指标表无批量停用/启用入口，仅逐条操作 | src/main/resources/static/js/gov-consumption.js: | 为驾驶舱表和僵尸表首列添加checkbox，header添加'全选'按钮和'批量停用'操作(调用/api/metric/save批量更新status=0)。或仅供僵尸表批量停用闭环
+- [catalog/crud] 主题域树无编辑/删除入口 | datamodel.js:70-92 | 在主题域节点右侧加编辑/删除按钮，新增 dmEditSubject/dmDelSubject 函数调用后端 PUT/DELETE /api/subject/{id}
+- [catalog/batch] 模型列表无行复选和批量删除 | datamodel.js:156-177，表头无 checkbox，操作列仅单条删除 | 在表首加 <thead><th><input type=checkbox id=dmCheckAll></th></thead>，行加 dmModelChk 类复选框，新增 dmB
+- [catalog/crud] 实体无编辑入口（仅新建+删除） | datamodel.js:375，实体卡片仅有编辑属性和删除，无编辑实体本身 | 实体卡片标题旁加编辑按钮，调用 dmEditEntity(entityId, modelId) 打开模态框编辑 entityCode/entityName/level/bizDef
+- [catalog/friction] 模型详情无直接改名/改主题域（嵌入编辑） | datamodel.js:322-332，模型名称/主题域为只读显示 | 模型名称旁加编辑笔形图标，点击启用内联编辑或打开编辑对话框（复用 dmNewModel(model)），或新增"编辑模型"按钮在详情抽屉顶部
+- [catalog/op] 属性表格无导出为 CSV | datamodel.js:369-377（属性表格），对比 dmExportModels():2 | 在实体属性表上方加"导出属性 CSV"按钮，调用 dmExportEntityAttrs(entityId, entityName) 生成 CSV (编码/名称/类型/长度/主键/
+- [catalog/batch] 实体/关系无批量删除 | datamodel.js:366-387（实体卡片渲染），关系列表无 checkbox | 实体列表和关系列表前各加 checkbox，新增 dmBatchDelEntities/dmBatchDelRelations 函数，可一次确认删除多条
+- [catalog/friction] 主题域树无搜索/筛选 | datamodel.js:17-23（侧边栏），仅有"主题域 (L1-L5)"标题和新建按钮 | 在"主题域 (L1-L5)"下方加搜索输入框，oninput 时实时过滤 renderSubjectTree() 的树节点（按名称模糊匹配），高亮匹配项
+- [catalog/friction] 属性绑定数据标准无实时反填类型 | datamodel.js:624-634（dmElemChanged），仅在绑定时触发一次 | 改 onchange 为 oninput 以支持实时反馈；若绑定标准的类型与当前字段类型不符，给黄色警告提示；支持数据标准版本选择时的类型覆盖确认
+- [ops/batch] 数据集成任务表级/字段级批量删除 | src/main/resources/static/workspace.html:14613-1 | 在表行容器前加 <input type='checkbox' onclick='dbsyncSelectAllTables(this)'> 全选框，表行添加 checkbox 便于
+- [ops/crud] 数据集成字段映射无单字段编辑，仅批量展开/折叠 | src/main/resources/static/workspace.html:14228-1 | 支持字段行内快速编辑（点击行弹 inline editor），或为高频操作（名称/同步状态/转换表达式）提供行操作菜单(编辑/删除)，无需展开全表；同时保留批量展开用于整体审视。
+- [ops/op] 执行历史、错误行、断点等明细页纯查看无导出/复制功能 | src/main/resources/static/workspace.html:16045-1 | 在上述三个 tab 的 toolbar 添加"导出CSV"按钮(仿照 dbsyncExportDashCsv 15704行)，支持一键导出当前表格数据供分析/共享。
+- [ops/crud] 数据源列表建后无编辑/更新入口(仅新建+删除+测试) | src/main/resources/static/workspace.html:463-495 | 数据源列表添加行操作菜单(编辑/删除)，点击后填充表单允许修改(类似 dbsyncOpenEditModal)；或提供"编辑"按钮 直接进入编辑模式。
+- [ops/batch] 数据集成文件夹批量删除缺失 | src/main/resources/static/workspace.html:15371-1 | 文件夹导航区支持 Ctrl+click 多选，或添加文件夹项的 checkbox，提供"删除选中"批量操作。
+- [ops/friction] 数据集成同步配置页无快速复制/导入配置模板入口 | src/main/resources/static/workspace.html:16197 ( | 补充"从模板导入"功能: 弹 dialog 展示常用配置模板列表(如"全量覆盖"、"增量追加"、"CDC 实时")，选一个自动填充表单；或支持导入 JSON 配置文件(与导出对称)
+- [settings/crud] 开发目录：无法编辑名称和层级 | D:\data\datanote\src\main\resources\static\works | 添加编辑按钮→弹窗编辑名称/层级字段→调用 PUT /api/script/folder/{id}
+- [settings/batch] 用户列表：缺批量禁用启用、批量删除等快速操作 | D:\data\datanote\src\main\resources\static\works | 扩展批量栏：添加「批量删除角色」、「批量导出当前结果为CSV」、状态快速筛选按钮
+- [settings/batch] 角色列表：无批量删除功能 | D:\data\datanote\src\main\resources\static\works | 添加表头全选+行复选框→批量删除按钮，调用 POST /api/rbac/roles/batch-delete
+- [settings/op] 用户档案：缺复制按钮快速克隆用户 | D:\data\datanote\src\main\resources\static\works | 添加「复制」按钮→预填用户名(+_copy后缀)、邮箱、部门等，快速创建相似账号
+- [mdm/batch] 存活规则按属性逐条配置,缺批量配 | mdm-survivorship.js:136-156 (属性列表配) | 在属性表新增'策略过滤'下拉+批量设置button, 但后端batch接口需实装(/api/mdm/survivorship/batch/save)
+- [mdm/batch] 发布订阅无批量创建订阅(仅单个) | mdm-pubsub.js:79-82 (新建/发布) | 新增'导入/批量创建'入口(上传CSV或表格复制粘贴多行), 调用/api/mdm/pubsub/subscription/batch/save
+- [mdm/batch] 交叉引用无批量创建映射(逐条新增) | mdm.js:1048-1050 (交叉引用表操作) | 新增'导入映射'入口(CSV/Excel上传), 解析后批量调用/api/mdm/xref/batch/save
+- [gov-standard/batch] 码表项批删缺口 | gov-standard.js:543-558 refreshDictItems() | 前端：在码表项列表顶部加checkbox全选+批删按钮。后端：新增POST /api/gov/standard/dict/items/batch-delete?ids=1,2,3接
+- [gov-standard/friction] 数据元编辑后码表清单无自动刷新 | gov-standard.js:247-261 startEdit(),StandardCont | 后端在保存前check：若dataType改变且被模型属性引用(可调用/api/datamodel/standard-impact复用逻辑)，则toast警告而不阻止，由用户自判。
+- [catalog/op] 模型无复制（跨项目/主题域复用） | datamodel.js:166-177（操作列），仅有详情/提交/删除，无复制 | 在操作列添加"复制模型"链接，打开对话框输入新模型编码/名称，后端 POST /api/datamodel/model/{id}/duplicate，前端调用后刷新列表
+- [project/crud] 发布版本缺编辑功能 | project.js:2099-2136 | 已提交但未通过的发布(PENDING)应可编辑,补充编辑入口+保存接口调用
+- [project/batch] 项目列表批量操作缺失 | project.js:274-331(表格渲染) | 列表表头加全选复选框,批量操作工具栏(删除/归档/标签),仅前端过滤+逐条API调用(无upsert类单批接口则须循环)
+- [project/batch] 成员角色批量修改缺失 | project.js:663-695 | 成员表头加全选框,批量操作栏支持批量删除/批量转移角色,参考资产批量绑定(900行)UI模式
+- [project/crud] 模板管理缺编辑/导出功能 | project.js:1975-2028 | 模板表格加编辑链接(编辑名/描述/预配置),支持导出模板配置JSON,支持复制模板
+- [project/batch] 发布中心无全选/批量审批 | project.js:2251-2287 | 列表加全选+批量操作栏(批量通过/批量驳回),支持选中多条后统一操作
+- [develop/crud] 脚本无法复制/克隆 | workspace.html 文件树右键菜单 (line 2638-2645) | 右键菜单新增「复制脚本」, 调用/api/script/{id}/clone后端接口(若无则需后端支持) 或前端预填: 打开新脚本弹窗+自动复制现有脚本名称/描述/调度配置
+- [develop/batch] 数据同步任务列表缺批量启停 | workspace.html 数据集成面板 (line 673-676, 同步任务列表) | 同步任务列表顶部新增选择框+批量启停按钮, 调用后端新增的/api/sync-job/batch-status接口(POST {ids[], status:'online'|'of
+- [develop/crud] 脚本属性缺标签编辑 | workspace.html 右侧信息面板 基本信息 (line 1850-1912) | 右面板基本信息组新增「标签」输入框(可逗号分隔多个), 调用/api/script/save时一并提交; 后端Script实体需添加tags字段
+- [develop/op] 脚本导出后缺导入/上传功能 | workspace.html 文件树 | 文件树「新建脚本」按钮旁新增「导入脚本」, 选择CSV/JSON文件→解析→批量创建脚本; 或文件树拖拽上传
+- [ops/crud] 数据集成任务已上线后无编辑入口(仅下线后可改) | src/main/resources/static/workspace.html:6074, 1 | 当点击已上线任务的'编辑'按钮时，自动进行一键下线+转草稿操作(类似脚本的 dnScriptToDraft)，允许用户直接进入编辑模式；或提供"草稿编辑"模式并行维护(已上线版本+
+- [ops/batch] 数据集成任务列表缺批量标签/打标签功能 | src/main/resources/static/workspace.html:15785-1 | 若后端已有批量标签接口，添加"批量打标签"操作(弹 dialog 选择/输入标签，调用 /api/sync-job/batch-tag)；若无，建议后端补充该接口以支持分类管理。
+- [ops/friction] 数据源/数据集成任务列表无实时字段校验提示(保存后才知道错误) | src/main/resources/static/workspace.html:470-485 | 添加失焦或输入后 500ms 防抖的实时校验，如: datasource 的 host/port 联动检查连通性(执行 testDatasource API)；dbsync 的源表
+- [settings/friction] 开发目录：删除需清空子项限制不友好 | D:\data\datanote\src\main\resources\static\works | 改为级联删除子项，或提供「清空并删除」确认按钮（需后端支持级联）
+- [settings/friction] 开发目录：层级字段仅预设无自定义 | D:\data\datanote\src\main\resources\static\works | 改为文本输入允许自定义层级名，或后端配置层级目录
+- [settings/crud] 数据源配置：仅单一Doris连接，无多源管理界面 | D:\data\datanote\src\main\resources\static\works | 添加数据源列表表格（名称/类型/连接状态/操作）→新建弹窗支持多种DB类型→编辑/删除/测连接
+- [settings/friction] 环境配置：缺预生产/测试环境切换 | D:\data\datanote\src\main\resources\static\works | 添加环境选项卡/下拉菜单→分环境保存DataX路径/JVM等配置→快速切换

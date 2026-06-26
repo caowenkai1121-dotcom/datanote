@@ -545,6 +545,18 @@
                 style: 'color:var(--primary)', title: '原地预览该表(摘要+字段), 不跳页',
                 onclick: function () { if (DN.tablePreview) DN.tablePreview(db, tbl); else if (window.navigateTo) navigateTo('catalog', { openTable: { db: db, table: tbl } }); } }));
             }
+            // 删除规则(原列表无删除入口, 后端 DELETE 已支持)
+            wrap.appendChild(DN.h('a', { href: 'javascript:void(0)', text: '删除', style: 'color:var(--error)', 'data-perm': 'governance:quality',
+              onclick: function () {
+                DN.confirm('确认删除质量规则「' + (r.ruleName || r.id) + '」？此操作不可恢复。', { title: '删除确认', danger: true }).then(function (ok) {
+                  if (!ok) return;
+                  DN.del('/api/quality/rule/' + r.id).then(function () {
+                    var i = allRules.indexOf(r); if (i >= 0) allRules.splice(i, 1);
+                    if (tableEl) tableEl.reload(filtered());
+                    DN.toast('已删除: ' + (r.ruleName || r.id), 'ok');
+                  }).catch(function (e) { DN.toast('删除失败: ' + (e && e.message || ''), 'err'); });
+                });
+              } }));
             return wrap;
           } }
       ],
