@@ -320,6 +320,10 @@
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
         { key: 'tableComment', label: '业务描述', render: function (r) { return r.tableComment ? clip(r.tableComment, 60) : '-'; } },
+        { key: 'tags', label: '标签', exportValue: function (r) { return r.tags || ''; }, render: function (r) {
+            if (!r.tags) return DN.h('span', { text: '-', style: 'color:var(--text-muted)' });
+            return DN.h('span', { style: 'display:inline-flex;flex-wrap:wrap;gap:3px;' }, String(r.tags).split(',').map(function (t) { t = t.trim(); return t ? DN.pill(t, 'info') : null; }).filter(Boolean));
+          } },
         { key: 'rowCount', label: '行数', align: 'right', sortable: true, html: true, render: function (r) { return r.rowCount == null ? '-' : magBar(Number(r.rowCount) || 0, _maxRow, fmtInt(r.rowCount)); } },
         { key: 'sizeBytes', label: '体量', align: 'right', sortable: true, html: true, render: function (r) { return r.sizeBytes == null ? '-' : magBar(Number(r.sizeBytes) || 0, _maxSize, DN.fmtBytes(r.sizeBytes)); } },
         { key: '_op', label: '操作', render: function (r) {
@@ -329,8 +333,8 @@
       ],
       rows: rows,
       pageSize: 20,
-      searchKeys: ['databaseName', 'tableName', 'tableComment', 'dbType'],
-      searchPlaceholder: '搜索库 / 表 / 描述 / 来源',
+      searchKeys: ['databaseName', 'tableName', 'tableComment', 'dbType', 'tags'],
+      searchPlaceholder: '搜索库 / 表 / 描述 / 来源 / 标签',
       toolbar: assetToolbar,
       exportName: '资产清单',
       empty: '暂无资产，点击“采集全部”按钮',
