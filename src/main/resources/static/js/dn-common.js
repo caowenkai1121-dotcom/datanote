@@ -148,7 +148,7 @@
   // 评分着色档(>=85 ok / >=60 warn / else err) —— 原 home-dashboard/gov-overview 各重复一份, 合并至此
   DN.tone = function (v) { var n = Number(v); if (!isFinite(n)) n = 0; return n >= 85 ? 'ok' : (n >= 60 ? 'warn' : 'err'); };
   DN.round1 = function (v) { return Math.round((Number(v) || 0) * 10) / 10; };
-  DN.fmtInt = function (v) { return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+  DN.fmtInt = function (v) { if (v == null) return '-'; return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
 
   // 友好相对时间："3分钟前"/"2小时前"/"昨天 14:30"，超 7 天回退绝对时间。无效/空返回 '-'。
   DN.fmtAgo = function (ts) {

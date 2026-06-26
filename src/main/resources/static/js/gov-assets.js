@@ -1101,11 +1101,7 @@
   }
 
   // ===== 工具 =====
-  function fmtInt(v) {
-    if (v == null) return '-';
-    v = Number(v) || 0;
-    return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }
+  var fmtInt = DN.fmtInt;  // #4 去重: 复用全局 DN.fmtInt(已含 null→'-')
   // 超长文本截断 + title 悬浮看全文(返回 DOM 节点, 安全转义)
   function clip(s, max) {
     s = s == null ? '' : String(s);
