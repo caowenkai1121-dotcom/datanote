@@ -46,6 +46,8 @@ public class MdmCoreController {
     private final MdmMatchService matchService;
     private final ObjectMapper objectMapper;
     private final com.datanote.platform.notify.NotificationService notificationService;   // 全站#25 审批结果通知
+    @org.springframework.beans.factory.annotation.Autowired   // 字段注入(不入 @RequiredArgsConstructor, 保持构造器/单测不变); 统一审批中心
+    private com.datanote.domain.approval.ApprovalService unifiedApproval;
 
     // ===== 源自 MdmController.java =====
     // ===================== 总览 =====================
@@ -286,6 +288,11 @@ public class MdmCoreController {
         req.setCreatedAt(LocalDateTime.now());
         req.setUpdatedAt(LocalDateTime.now());
         changeMapper.insert(req);
+        // 同建统一审批记录(统一中心可见 + Redis Streams 事件)
+        if (unifiedApproval != null) {
+            unifiedApproval.submit(com.datanote.domain.approval.handler.MdmApprovalHandler.FLOW,
+                    String.valueOf(req.getId()), "主数据" + type + "变更 #" + req.getEntityId(), req.getRequestedBy(), req.getReason());
+        }
         return R.ok(req);
     }
 
