@@ -42,7 +42,7 @@
 <script src="js/mdm-quality.js?v=u416"></script>
 <script src="js/mdm-pubsub.js?v=u402"></script>
 <script src="js/mdm-hierarchy.js?v=u402"></script>
-<script src="js/ai-agent.js?v=u414"></script>
+<script src="js/ai-agent.js?v=u417"></script>
 <style>
   /* v3: toast 样式已收敛到 dn-design.css; 此处仅留 AI 启动按钮与治理占位(待波次迁出) */
   .ai-launcher-btn { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; margin-right:10px; border:1px solid var(--primary); background:var(--primary); color:var(--text-inverse); border-radius:var(--radius-full); font-size:var(--fs-sm); font-weight:600; cursor:pointer; transition:background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
@@ -151,7 +151,7 @@
     <div class="left-search">
       <div style="position:relative;">
         <input id="fileTreeSearchInput" type="text" placeholder="搜索节点..." oninput="filterFileTree(this.value)" style="padding-right:24px;">
-        <span id="fileTreeSearchClr" onclick="filterFileTreeClear()" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>
+        <span id="fileTreeSearchClr" onclick="filterFileTreeClear()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>
       </div>
     </div>
     <div style="display:flex;gap:4px;padding:2px 8px 6px;align-items:center;">
@@ -567,7 +567,7 @@
               </div>
               <!-- 筛选栏 -->
               <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
-                <span style="position:relative;display:inline-flex;align-items:center;"><input type="text" id="schedFilterName" oninput="var c=document.getElementById('schedFilterNameClr');if(c)c.style.display=this.value?'':'none';schedFilterTasks()" placeholder="搜索任务名..." style="padding:5px 24px 5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);"><span id="schedFilterNameClr" onclick="var i=document.getElementById('schedFilterName');i.value='';this.style.display='none';schedFilterTasks();i.focus();" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span></span>
+                <span style="position:relative;display:inline-flex;align-items:center;"><input type="text" id="schedFilterName" oninput="var c=document.getElementById('schedFilterNameClr');if(c)c.style.display=this.value?'':'none';schedFilterTasks()" placeholder="搜索任务名..." style="padding:5px 24px 5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);"><span id="schedFilterNameClr" onclick="var i=document.getElementById('schedFilterName');i.value='';this.style.display='none';schedFilterTasks();i.focus();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span></span>
                 <select id="schedFilterStatus" onchange="schedFilterTasks()" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg-card);">
                   <option value="">全部状态</option>
                   <option value="1">成功</option>
@@ -653,7 +653,7 @@
                 <span style="position:relative;display:inline-flex;align-items:center;">
                   <input type="text" id="dbsyncSearchInput" placeholder="搜索任务名/源/目标..." oninput="var c=document.getElementById('dbsyncSearchClr');if(c)c.style.display=this.value?'':'none';dbsyncFilterJobsDebounced()"
                     style="padding:5px 24px 5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;width:180px;background:var(--bg-card);">
-                  <span id="dbsyncSearchClr" onclick="dbsyncSearchClear()" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>
+                  <span id="dbsyncSearchClr" onclick="dbsyncSearchClear()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" role="button" tabindex="0" title="清除搜索" aria-label="清除搜索" style="display:none;position:absolute;right:6px;cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;padding:2px;">×</span>
                 </span>
                 <button class="btn btn-primary btn-sm" data-perm="dbsync:edit" onclick="dbsyncOpenCreateModal()">
                   <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v10M2 7h10"/></svg>
@@ -9746,7 +9746,7 @@ window.metricDetailCalc = function(id, btn) {
   if (btn) { if (btn.disabled) return; btn.disabled = true; btn.dataset.txt = btn.textContent; btn.textContent = '计算中…'; btn.style.opacity = '.7'; }
   showToast('计算中...', 'info');
   apiPost('/api/consumption/metric/' + id + '/calc?operator=detail').then(function(res) {
-    if (res && res.code === 0) { showToast('已计算', 'success'); _openMetricDetail(id); }
+    if (res && res.code === 0) { showToast('已计算', 'success'); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.txt || '立即计算'; btn.style.opacity = ''; } _openMetricDetail(id); }
     else { showToast((res && res.msg) || '计算失败', 'error'); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.txt || '立即计算'; btn.style.opacity = ''; } }
   }).catch(function() { showToast('计算失败', 'error'); if (btn) { btn.disabled = false; btn.textContent = btn.dataset.txt || '立即计算'; btn.style.opacity = ''; } });
 };
