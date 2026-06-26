@@ -547,8 +547,10 @@
     var edit = DN.h('a', { href: 'javascript:void(0)', text: '编辑', style: 'color:var(--primary)', 'data-perm': 'metrics:edit' });
     edit.onclick = function () {
       if (r.id == null) { DN.toast('指标缺少 ID，无法编辑', 'err'); return; }
-      if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id });
-      else DN.toast('当前环境不支持跳转指标管理', 'warn');
+      // #5 原地编辑: 指标编辑弹窗(metricModal)全局常驻, 直接开, 不跳转离开消费看板
+      if (typeof window.editMetric === 'function') window.editMetric(r.id);
+      else if (typeof navigateTo === 'function') navigateTo('metrics', { editId: r.id });
+      else DN.toast('当前环境不支持编辑', 'warn');
     };
     wrap.appendChild(edit);
     // I-1: 僵尸处置闭环——确实不用的指标可就地停用(退出取值/新鲜度监控, 历史保留)
