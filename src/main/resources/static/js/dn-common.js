@@ -1082,15 +1082,18 @@
     var mode = 'pending';
     var tabP = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '待办' });
     var tabA = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '历史/全部' });
+    var tabM = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '我的提交' });
     var flowSel = DN.h('select', { class: 'dn-form-select', style: 'margin-left:auto;height:28px;font-size:12px;padding:0 8px;', title: '按流类型筛选' });
     [['', '全部类型'], ['MDM_CHANGE', '主数据'], ['DATAMODEL_CHANGE', '数据模型'], ['SCRIPT_CHANGE', '脚本']].forEach(function (o) { flowSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     flowSel.onchange = function () { load(); };
-    var tabBar = DN.h('div', { style: 'display:flex;gap:8px;margin-bottom:10px;align-items:center;' }, [tabP, tabA, flowSel]);
+    var tabBar = DN.h('div', { style: 'display:flex;gap:8px;margin-bottom:10px;align-items:center;' }, [tabP, tabA, tabM, flowSel]);
     var listBox = DN.h('div', {});
     body.appendChild(tabBar); body.appendChild(listBox);
     var dr = DN.drawer('审批中心', body);
-    tabP.onclick = function () { mode = 'pending'; tabP.className = 'btn btn-sm btn-primary'; tabA.className = 'btn btn-sm'; load(); };
-    tabA.onclick = function () { mode = 'all'; tabA.className = 'btn btn-sm btn-primary'; tabP.className = 'btn btn-sm'; load(); };
+    function setMode(m, active) { mode = m; [tabP, tabA, tabM].forEach(function (t) { t.className = 'btn btn-sm'; }); active.className = 'btn btn-sm btn-primary'; load(); }
+    tabP.onclick = function () { setMode('pending', tabP); };
+    tabA.onclick = function () { setMode('all', tabA); };
+    tabM.onclick = function () { setMode('mine', tabM); };
     function review(a, approve, btn, comment) {
       btn.style.pointerEvents = 'none'; btn.textContent = '处理中…';
       DN.post('/api/approval/' + a.id + '/review', { approve: approve, comment: comment || '' })
@@ -1104,8 +1107,9 @@
         listBox.innerHTML = '';
         rows = Array.isArray(rows) ? rows : [];
         if (mode === 'pending') DN.approvalBadge(rows.length);   // 徽标计全量(不受筛选影响)
+        if (mode === 'mine') { var me = window.__user || ''; rows = rows.filter(function (r) { return r && r.submitter === me; }); }   // 我的提交: 仅看自己发起的
         if (flowSel.value) rows = rows.filter(function (r) { return r && r.flowType === flowSel.value; });
-        if (!rows.length) { listBox.appendChild(DN.empty(flowSel.value ? '该类型下无记录' : (mode === 'pending' ? '暂无待审批事项 👍' : '暂无审批记录'), 'check')); return; }
+        if (!rows.length) { listBox.appendChild(DN.empty(flowSel.value ? '该类型下无记录' : (mode === 'pending' ? '暂无待审批事项 👍' : mode === 'mine' ? '你还没有提交过审批' : '暂无审批记录'), 'check')); return; }
         rows.forEach(function (a) {
           a = a || {};
           var accent = a.status === 'APPROVED' ? 'var(--success)' : a.status === 'REJECTED' ? 'var(--error)' : 'var(--warning)';
