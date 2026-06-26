@@ -49,8 +49,12 @@
     [['table', '表格视图'], ['tree', '目录树']].forEach(function (o) { viewSel.appendChild(DN.h('option', { value: o[0], text: o[1] })); });
     viewSel.value = assetState.view;
     viewSel.onchange = function () { assetState.view = viewSel.value; try { localStorage.setItem('gov.assetView', viewSel.value); } catch (e) {} assetTbl = null; renderAssetTable(); };
-    // 把工具条（采集按钮 + 来源筛选 + 快捷视图 + 视图切换）通过 DN.table 的 toolbar 注入，先缓存引用
-    assetToolbar = [crawlBtn, srcSel, quickSel, viewSel];
+    // 把工具条（采集按钮 + 来源筛选 + 快捷视图 + 视图切换 + 批量治理）通过 DN.table 的 toolbar 注入，先缓存引用
+    var bulkOwnerBtn = DN.h('a', { class: 'btn btn-sm', 'data-perm': 'catalog:edit', href: 'javascript:void(0)', text: '批量设负责人', title: '给勾选资产批量设负责人' });
+    bulkOwnerBtn.onclick = function () { _bulkSteward('owner'); };
+    var bulkTagBtn = DN.h('a', { class: 'btn btn-sm', 'data-perm': 'catalog:edit', href: 'javascript:void(0)', text: '批量设标签', title: '给勾选资产批量设业务标签' });
+    bulkTagBtn.onclick = function () { _bulkSteward('tags'); };
+    assetToolbar = [crawlBtn, srcSel, quickSel, viewSel, bulkOwnerBtn, bulkTagBtn];
 
     loadAssets();
 
@@ -71,6 +75,26 @@
   var assetTotal = 0;   // #16 同条件全量总数(服务端 selectCount), 列表只加载前 N 条时据此提示截断
   var assetState = { src: '', quick: '', subjectId: '', view: (function () { try { var v = localStorage.getItem('gov.assetView') || 'table'; return v === 'treemap' ? 'table' : v; } catch (e) { return 'table'; } })() };
   var assetTbl = null;
+  var _selAsset = {};   // 资产批量选中(键 db.table)
+  function _selAssetList() { return (assetAll || []).filter(function (t) { return _selAsset[(t.databaseName || '') + '.' + (t.tableName || '')]; }); }
+  function _bulkSteward(kind) {   // kind: owner | tags —— 循环已验端点批量设置
+    var sel = _selAssetList();
+    if (!sel.length) { DN.toast('请先勾选资产', 'warn'); return; }
+    var label = kind === 'owner' ? '负责人' : '标签';
+    var inp = DN.h('input', { class: 'dn-form-input', placeholder: kind === 'owner' ? '负责人(账号/姓名), 留空=清除' : '标签(逗号分隔), 留空=清除', style: 'width:100%;' });
+    var body = DN.h('div', {}, [DN.h('div', { text: '将对选中的 ' + sel.length + ' 个资产设置' + label + '(覆盖原值):', style: 'font-size:13px;margin-bottom:8px;color:var(--text-regular);' }), inp]);
+    var dr, foot;
+    foot = DN.drawerFoot({ okText: '应用', onOk: function () {
+      var v = inp.value.trim();
+      foot.busy('应用中…');
+      var url = kind === 'owner' ? '/api/metadata/table/set-owner' : '/api/metadata/table/set-tags';
+      var key = kind === 'owner' ? 'owner' : 'tags';
+      Promise.all(sel.map(function (t) { var b = { db: t.databaseName, table: t.tableName }; b[key] = v; return DN.post(url, b).catch(function () {}); }))
+        .then(function () { DN.toast('已对 ' + sel.length + ' 个资产设置' + label, 'ok'); _selAsset = {}; if (dr && dr.close) dr.close(); loadAssets(); });
+    }, onCancel: function () { dr.close(); } });
+    dr = DN.drawer('批量设' + label, body, foot.el);
+    setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30);
+  }
   var assetToolbar = null;
   var quickSelEl = null;      // 快捷视图下拉（供统计磁贴联动同步）
 
@@ -316,6 +340,7 @@
     if (assetTbl) { assetTbl.reload(rows); updateLoadNote(box); return; }
     assetTbl = DN.table({
       columns: [
+        { key: '_sel', label: '', render: function (r) { var k = (r.databaseName || '') + '.' + (r.tableName || ''); var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + k }); cb.checked = !!_selAsset[k]; cb.onchange = function () { if (cb.checked) _selAsset[k] = 1; else delete _selAsset[k]; }; return cb; } },
         { key: 'dbType', label: '来源', render: function (r) { var cm = { MYSQL: 'ok', DORIS: 'info', HIVE: 'warn', POSTGRESQL: 'info', ORACLE: 'err', SQLSERVER: 'warn' }; return DN.pill(r.dbType || '-', cm[r.dbType] || 'muted'); } },
         { key: 'databaseName', label: '库', copyable: true },
         { key: 'tableName', label: '表', copyable: true },
