@@ -521,6 +521,7 @@
       if (sortRaw) {
         if (!/^\d+$/.test(sortRaw)) { DN.toast('排序须为非负整数', 'err'); s.focus(); return; }
         sortVal = parseInt(sortRaw, 10);
+        if (sortVal > 99999) { DN.toast('排序值过大(请≤99999)', 'err'); s.focus(); return; }
       }
       var payload = { dictId: Number(dictId), itemKey: k.value.trim(), itemValue: v.value.trim(), sort: sortVal };
       if (editingItemId != null) payload.id = editingItemId;
