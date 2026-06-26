@@ -17,7 +17,8 @@ class DataModelControllerTest {
     void listModels_filtersDeniedImmutableListWithoutMutatingSource() {
         DataModelService service = mock(DataModelService.class);
         DataAclService dataAclService = mock(DataAclService.class);
-        DataModelController controller = new DataModelController(service, dataAclService);
+        com.datanote.domain.approval.ApprovalService unifiedApproval = mock(com.datanote.domain.approval.ApprovalService.class);
+        DataModelController controller = new DataModelController(service, dataAclService, unifiedApproval);
 
         DnModel denied = new DnModel();
         denied.setId(2L);
