@@ -1091,6 +1091,7 @@
               var row = DN.h('div', { class: 'dn-apv-reject', style: 'display:flex;gap:8px;align-items:center;margin-top:8px;' }, [inp, cfm, cnl]);
               cnl.onclick = function () { row.remove(); };
               cfm.onclick = function () { var c = inp.value.trim(); if (!c) { DN.toast('请填驳回原因', 'warn'); inp.focus(); return; } review(a, false, cfm, c); };
+              inp.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); cfm.onclick(); } else if (e.key === 'Escape') { e.preventDefault(); cnl.onclick(); } };  // 键盘: Enter确认/Esc取消
               card.appendChild(row); try { inp.focus(); } catch (e) {}
             };
             bar.appendChild(ok); bar.appendChild(no);
