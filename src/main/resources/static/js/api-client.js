@@ -36,3 +36,13 @@ function apiPost(url, body) {
     body: JSON.stringify(body)
   }).then(_handleResponse);
 }
+function apiPut(url, body) {
+  return fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(_handleResponse);
+}
+function apiDel(url) {
+  return fetch(url, { method: 'DELETE' }).then(_handleResponse);
+}

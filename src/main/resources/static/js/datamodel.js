@@ -83,8 +83,13 @@
       var lt = n.layerType ? ' <span style="font-size:var(--fs-xs);color:var(--text-faint);">' + esc(n.layerType) + '</span>' : '';
       var on = DM.curSubject === n.id;
       var pad = 8 + depth * 14;
-      var s = '<div style="padding:4px 8px 4px ' + pad + 'px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (on ? DM_SEL_STYLE : '') + '" onclick="dmSetSubject(' + n.id + ')">'
-        + '<span style="font-size:var(--fs-xs);color:var(--primary);">L' + lv + '</span> ' + esc(n.name) + lt + '</div>';
+      var nmeta = "{id:" + n.id + ",name:'" + esc(String(n.name || '')).replace(/'/g, '') + "',parentId:" + (n.parentId == null ? 'null' : n.parentId) + ",layerType:'" + esc(String(n.layerType || '')) + "',level:" + lv + "}";
+      var s = '<div class="dm-subj-node" style="display:flex;align-items:center;padding:4px 8px 4px ' + pad + 'px;font-size:13px;cursor:pointer;border-radius:var(--radius);' + (on ? DM_SEL_STYLE : '') + '" onclick="dmSetSubject(' + n.id + ')">'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span style="font-size:var(--fs-xs);color:var(--primary);">L' + lv + '</span> ' + esc(n.name) + lt + '</span>'
+        + '<span class="dm-subj-ops" data-perm="datamodel:edit" style="flex:0 0 auto;margin-left:6px;opacity:.6;">'
+        + '<a href="#" title="编辑主题域" onclick="event.stopPropagation();dmEditSubject(' + nmeta + ');return false;" style="font-size:11px;color:var(--primary);">改</a> '
+        + '<a href="#" title="删除主题域" onclick="event.stopPropagation();dmDelSubject(' + n.id + ",'" + esc(String(n.name || '')).replace(/'/g, '') + "'" + ');return false;" style="font-size:11px;color:var(--error);">删</a>'
+        + '</span></div>';
       s += renderSubNodes(n.children, depth + 1);
       return s;
     }).join('');
@@ -109,8 +114,11 @@
     return out;
   }
 
-  window.dmNewSubject = function () {
-    var flat = flatSubjects(DM.subjects);
+  window.dmEditSubject = function (sub) { window.dmNewSubject(sub); };
+  window.dmNewSubject = function (sub) {
+    var isEdit = !!(sub && sub.id);
+    window._dmEditSubjectId = isEdit ? sub.id : null;
+    var flat = flatSubjects(DM.subjects).filter(function (s) { return !isEdit || s.id !== sub.id; });   // 编辑时父选项排除自身
     var opts = '<option value="">— 顶层(L1) —</option>' + flat.map(function (s) {
       return '<option value="' + s.id + '">' + esc(s.name) + ' (L' + (s.level || '?') + ')</option>';
     }).join('');
@@ -121,16 +129,30 @@
       + '<div><label ' + lab + '>父主题域(决定 L 层级)</label><select id="dmsParent" class="dbsync-form-select" style="width:100%;">' + opts + '</select></div>'
       + '<div><label ' + lab + '>数仓分层(可选)</label><select id="dmsLayer" class="dbsync-form-select" style="width:100%;">' + layerOpts + '</select></div>'
       + '<div style="text-align:right;margin-top:4px;"><button class="btn btn-sm" onclick="projCloseModalBox()">取消</button> <button class="btn btn-sm btn-primary" onclick="dmSaveSubject()">保存</button></div></div>';
-    projShowModalBox('新建主题域', h);
+    projShowModalBox(isEdit ? '编辑主题域' : '新建主题域', h);
+    if (isEdit) {   // 预填现值
+      document.getElementById('dmsName').value = sub.name || '';
+      if (sub.parentId != null) document.getElementById('dmsParent').value = String(sub.parentId);
+      if (sub.layerType) document.getElementById('dmsLayer').value = sub.layerType;
+    }
   };
   window.dmSaveSubject = function () {
     var name = (document.getElementById('dmsName').value || '').trim();
     if (!name) { toast('请填写名称', 'error'); return; }
     var parentId = document.getElementById('dmsParent').value;
     var layerType = document.getElementById('dmsLayer').value;
-    apiPost('/api/subject', { name: name, parentId: parentId ? parseInt(parentId) : null, layerType: layerType || null })
-      .then(function (res) { if (res && res.code === 0) { toast('已创建', 'success'); projCloseModalBox(); dmLoadSubjects(); } else toast((res && res.msg) || '失败', 'error'); })
+    var editId = window._dmEditSubjectId;
+    var payload = { name: name, parentId: parentId ? parseInt(parentId) : null, layerType: layerType || null };
+    var req = editId ? apiPut('/api/subject/' + editId, payload) : apiPost('/api/subject', payload);
+    req.then(function (res) { if (res && res.code === 0) { toast(editId ? '已保存' : '已创建', 'success'); projCloseModalBox(); dmLoadSubjects(); } else toast((res && res.msg) || '失败', 'error'); })
       .catch(function () { toast('保存失败', 'error'); });
+  };
+  window.dmDelSubject = function (id, name) {
+    msgConfirm('删除主题域', '确认删除主题域「' + (name || id) + '」？若其下有子域或已绑定模型, 后端会拦截。', '确定删除').then(function (ok) {
+      if (!ok) return;
+      apiDel('/api/subject/' + id).then(function (res) { if (res && res.code === 0) { toast('已删除', 'success'); if (DM.curSubject === id) DM.curSubject = null; dmLoadSubjects(); } else toast((res && res.msg) || '删除失败', 'error'); })
+        .catch(function () { toast('删除失败', 'error'); });
+    });
   };
 
   // ---------- 模型列表 ----------
