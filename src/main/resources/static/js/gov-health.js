@@ -643,11 +643,7 @@
     return s;
   }
 
-  function formRow(label, control) {
-    return DN.h('div', { class: 'ds-form-row', style: 'align-items:flex-start' }, [
-      DN.h('label', { text: label }), control
-    ]);
-  }
+  var formRow = DN.formRow;  // #4 复用全局(原本地副本)
 
   /** 在右侧抽屉里渲染表单 + 操作按钮，onOk(close, okBtn) —— okBtn 传给 submitGuard 防重复提交 */
   function drawerForm(title, bodyNodes, onOk) {

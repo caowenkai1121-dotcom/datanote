@@ -142,12 +142,7 @@
   }
 
   // ========== 表单控件 ==========
-  function formRow(label, control) {
-    var row = DN.h('div', { class: 'ds-form-row' });
-    row.appendChild(DN.h('label', { text: label }));
-    row.appendChild(control);
-    return row;
-  }
+  var formRow = DN.formRow;  // #4 复用全局(原本地副本)
   function input(ph) { return DN.h('input', { class: 'dn-form-input', placeholder: ph }); }
   function select(opts, placeholder) {
     var s = DN.h('select', { class: 'dn-form-select' });

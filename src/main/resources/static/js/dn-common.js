@@ -624,6 +624,8 @@
   DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
 
   DN.toneColor = function (t) { return t === 'ok' ? 'var(--success)' : t === 'warn' ? 'var(--warning)' : t === 'err' ? 'var(--error)' : 'var(--primary)'; };
+  // 抽屉/弹窗表单行(label + 控件), 各治理模块原各有本地副本, 统一到此(#4 去重)
+  DN.formRow = function (label, control) { return DN.h('div', { class: 'ds-form-row', style: 'align-items:flex-start' }, [DN.h('label', { text: label }), control]); };
   DN.bars = function (items) {
     items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
     var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));

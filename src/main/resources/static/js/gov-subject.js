@@ -380,11 +380,7 @@
     return DN.h('input', { class: 'dn-form-input', placeholder: ph, style: 'width:auto' });
   }
 
-  function formRow(label, control) {
-    return DN.h('div', { class: 'ds-form-row', style: 'align-items:flex-start' }, [
-      DN.h('label', { text: label }), control
-    ]);
-  }
+  var formRow = DN.formRow;  // #4 复用全局(原本地副本)
 
   function confirmModal(text, onOk) {
     modal('确认操作', [DN.h('div', { style: 'font-size:13px;color:var(--text-regular)', text: text })],
