@@ -575,11 +575,6 @@
   }
 
   // 终答前的决策推理气泡(从 FINAL 步 thinkContent 渲染; 过程透明, 与结论分离)
-  function thinkBubble(text) {
-    return DN.h('div', { style: 'display:flex;justify-content:flex-start;margin:6px 0;' },
-      [DN.h('div', { style: 'max-width:80%;background:var(--bg-body);border:1px dashed var(--border);padding:7px 12px;border-radius:var(--radius-full);font-size:12px;font-style:italic;color:var(--text-muted);white-space:pre-wrap;word-break:break-word;', text: '💭 ' + text })]);
-  }
-
   // 任务计划清单卡(自主规划透明化, 天工开物·逐道工序): 渲染 plan_json 的有序步骤+状态
   function planCard(planJson) {
     var steps = null;
@@ -1184,7 +1179,6 @@
   }
 
   // ===== 经验/审批 抽屉(全站统一: 改用 DN.drawer 工厂, 与 gov/mdm 抽屉同一套视觉/动画/Esc·遮罩关闭/焦点陷阱/closeAllDrawers 管理) =====
-  function closeDrawer() { if (window.DN && DN.closeAllDrawers) DN.closeAllDrawers(); }
   function openDrawer(kind) {
     var title = kind === 'memory' ? '🧠 AI 自学习记忆' : (kind === 'cron' ? '⏰ 定时自治任务' : '🛡️ 待审批写操作');
     var body = DN.h('div', {});

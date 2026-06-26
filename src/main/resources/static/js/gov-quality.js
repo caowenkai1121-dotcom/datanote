@@ -384,12 +384,6 @@
   // 后端 /api/quality/rule/save 接收 DnQualityRule(库/表/列/维度/阈值/类型/数据源/严重级), 与工作台同源
   function openPrefillRuleDrawer(pf, rulesBox) {
     pf = pf || {};
-    function formRow(label, input) {
-      var row = DN.h('div', { class: 'ds-form-row', style: 'margin-bottom:10px' });
-      row.appendChild(DN.h('div', { style: 'font-size:12px;color:var(--text-muted);margin-bottom:4px', text: label }));
-      row.appendChild(input);
-      return row;
-    }
     var nameIn = DN.h('input', { class: 'dn-form-input', placeholder: '如：订单表主键非空检查',
       value: pf.db && pf.table ? ((pf.column ? pf.column + ' ' : '') + (pf.dimension || '') + '检查').trim() : '' });
     var typeSel = DN.h('select', { class: 'dn-form-select' });

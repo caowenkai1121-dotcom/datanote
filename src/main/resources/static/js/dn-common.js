@@ -623,14 +623,14 @@
   };
   DN.pill = function (text, tone) { return DN.h('span', { class: 'gov-pill is-' + (tone || 'muted'), text: text }); };
 
-  function toneColor(t) { return t === 'ok' ? 'var(--success)' : t === 'warn' ? 'var(--warning)' : t === 'err' ? 'var(--error)' : 'var(--primary)'; }
+  DN.toneColor = function (t) { return t === 'ok' ? 'var(--success)' : t === 'warn' ? 'var(--warning)' : t === 'err' ? 'var(--error)' : 'var(--primary)'; };
   DN.bars = function (items) {
     items = (items || []).filter(function (i) { return i != null; });   // 剔除空项,防 i.max/i.value 取值崩
     var max = Math.max.apply(null, items.map(function (i) { return i.max || i.value || 0; }).concat([1]));
     var w = DN.h('div', {});
     items.forEach(function (i) {
       var pct = Math.round((i.value || 0) / (i.max || max || 1) * 100);
-      var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + toneColor(i.tone) });
+      var fill = DN.h('div', { class: 'bf', style: 'width:' + pct + '%;background:' + DN.toneColor(i.tone) });
       var bar = DN.h('div', { class: 'gov-bar' }, [DN.h('span', { class: 'bl', text: i.label, title: i.label == null ? '' : String(i.label) }), DN.h('div', { class: 'bt' }, [fill]), DN.h('span', { class: 'bv', text: (i.display != null ? i.display : i.value) })]);
       if (typeof i.onClick === 'function') { bar.style.cursor = 'pointer'; bar.title = '点击筛选'; bar.addEventListener('click', function () { i.onClick(i); }); }
       w.appendChild(bar);
