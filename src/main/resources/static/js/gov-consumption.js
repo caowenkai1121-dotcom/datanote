@@ -105,6 +105,18 @@
         return { label: clip(label, 28), fullLabel: label + cost, value: n, tone: avgMs >= 3000 ? 'warn' : 'primary', display: String(n) + (avgMs ? (' · ' + avgMs + 'ms') : ''), code: code };
       }).filter(function (it) { return it.value > 0; });
       if (!items.length) { box.appendChild(DN.empty('暂无有效消费计数', 'bars')); return; }
+      // 导出排行(标题已声明可导出): 指标/编码/次数/均耗时/累计行
+      if (DN.exportRows) {
+        var top = rows.slice(0, 20);
+        var expA = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '⬇ 导出排行', style: 'margin-bottom:8px;display:inline-block;' });
+        expA.onclick = function () {
+          DN.exportRows('消费排行', ['指标', '编码', '消费次数', '均耗时ms', '累计行'], top.map(function (x) {
+            x = x || {};
+            return [x.metricName || '', x.target_code || x.targetCode || x.metricCode || '', Number(x.cnt || x.CNT || 0), Math.round(Number(x.avgMs != null ? x.avgMs : x.avgms || 0)) || 0, Number(x.totalRows != null ? x.totalRows : x.totalrows || 0) || 0];
+          }));
+        };
+        box.appendChild(expA);
+      }
       box.appendChild(DN.bars(items.map(function (it) {
         return { label: it.label, value: it.value, tone: it.tone, display: it.display,
           onClick: function () { focusBoardRow(it.code); } };
