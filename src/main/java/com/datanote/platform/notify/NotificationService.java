@@ -21,6 +21,9 @@ import java.util.List;
 public class NotificationService {
 
     private final DnNotificationMapper mapper;
+    // 实时推送(WebSocket): notify 后推一帧给收件人, 前端订阅 /user/queue/notify 即时刷新铃铛(替代纯30s轮询)。field 注入避免改构造器, required=false 测试/无WS环境降级
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.messaging.simp.SimpMessagingTemplate messaging;
 
     /** fail-safe 写入: receiver 空或写库失败只记日志 */
     public void notify(String receiver, String type, String title, String refRoute, Long refId, String refTab) {
@@ -35,6 +38,8 @@ public class NotificationService {
             n.setRefTab(refTab);
             n.setCreatedAt(LocalDateTime.now());
             mapper.insert(n);
+            // 实时推送给收件人(best-effort, 失败不影响): 前端 /user/queue/notify 收到即刷新铃铛
+            try { if (messaging != null) messaging.convertAndSendToUser(receiver.trim(), "/queue/notify", "1"); } catch (Exception ignore) {}
         } catch (Exception e) {
             log.warn("通知写入失败(不影响主流程) receiver={} type={}: {}", receiver, type, e.getMessage());
         }
