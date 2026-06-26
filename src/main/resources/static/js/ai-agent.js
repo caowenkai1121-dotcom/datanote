@@ -434,11 +434,18 @@
   }
 
   function renderPreviews(steps) {
+    var hadPage = false;
     (steps || []).forEach(function (s) {
       if (!s || !s.resultData) return;
       var p = extractPreview(s.resultData); if (p) flowEl.appendChild(dataGridCard(p));
-      var pg = extractPage(s.resultData); if (pg) flowEl.appendChild(pageCard(pg));
+      var pg = extractPage(s.resultData); if (pg) { flowEl.appendChild(pageCard(pg)); hadPage = true; }
     });
+    return hadPage;
+  }
+  // 模型常说"点右侧预览查看"却没真生成 artifact 卡片(跳过 create_artifact)→去掉找不到的指引, 免用户白找。结论已在答复/上方
+  function stripDeadPreviewHint(ans, hadPage) {
+    if (hadPage || !ans || !/右侧预览|点右侧/.test(ans)) return ans;
+    return ans.replace(/[，,。;；、\s]*(请)?点?击?(右侧|在右侧|到右侧)预览查?看?[）)]?[。.]?/g, '').trim() || ans;
   }
 
   function routeName(r) {
@@ -1053,19 +1060,19 @@
     var toolSteps = (res.steps || []).filter(function (s) { return s && s.stepType === 'SKILL_CALL' && s.skillName; });
     if (toolSteps.length) flowEl.appendChild(processToggle(toolSteps, res.plan, elapsed));
     // 表数据预览常显(不折叠): 优先用未截断的 previews 通道(宽表完整); 回退到步骤结果解析
-    var firstPage = null;
+    var firstPage = null, hadPage = false;
     if (res.previews && res.previews.length) {
       res.previews.forEach(function (d) {
         if (d && d._chart) flowEl.appendChild(chartCard(d._chart));
-        else if (d && d._page) { flowEl.appendChild(pageCard(d._page)); if (!firstPage) firstPage = d._page; }
+        else if (d && d._page) { flowEl.appendChild(pageCard(d._page)); if (!firstPage) firstPage = d._page; hadPage = true; }
         else if (d && d._preview && d._preview.columns) flowEl.appendChild(dataGridCard({ pv: d._preview, db: d.db, table: d.table }));
       });
     } else {
-      renderPreviews(res.steps);
+      hadPage = renderPreviews(res.steps);
     }
     if (firstPage) openPreview(firstPage.previewUrl, firstPage.title || firstPage.fileName); // 生成网页即自动右侧预览(Codex 式)
     var tone = res.status === 'blocked' ? 'err' : null;
-    flowEl.appendChild(assistantBubble(res.finalAnswer || '（无答复）', tone));
+    flowEl.appendChild(assistantBubble(stripDeadPreviewHint(res.finalAnswer || '（无答复）', hadPage), tone));
     flashTitle(); // 标签页隐藏时提示完成
     if (res.status === 'wait_approval') loadApproval(res.sessionId);
   }
