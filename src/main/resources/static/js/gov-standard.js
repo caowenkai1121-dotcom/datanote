@@ -203,7 +203,7 @@
         : '<div style="padding:20px;color:var(--text-muted);text-align:center;">无数据模型引用该数据元</div>';
       var h = '<div style="min-width:560px;max-height:440px;overflow:auto;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">引用数据元 <b>' + DN.esc(code) + '</b> 的模型属性（改动标准前评估影响面，共 <b>' + rows.length + '</b> 处）</div>' + tbl + '</div>';
       if (window.projShowModalBox) window.projShowModalBox('数据标准影响分析 · ' + DN.esc(code), h);
-    }).catch(function (e) { DN.toast('影响分析加载失败: ' + (e && e.message ? e.message : e), 'error'); });
+    }).catch(function (e) { DN.toast('影响分析加载失败: ' + (e && e.message ? e.message : e), 'err'); });
   }
 
   // ========== 数据元 ==========

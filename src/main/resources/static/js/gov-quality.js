@@ -225,7 +225,7 @@
     if (!fails.length) {
       var emp = DN.empty('所有已启用规则最近一次执行均通过，数据质量良好', 'check');
       emp.appendChild(DN.h('a', { class: 'btn', href: 'javascript:void(0)', style: 'margin-top:10px',
-        text: '查看全部规则趋势', onclick: function () { var first = allRules.filter(function (r) { return r.status === 1 && r.id != null; })[0]; if (first) loadRuleDetail(first.id, first.ruleName); } }));
+        text: '查看全部规则趋势', onclick: function () { var first = allRules.filter(function (r) { return r.status === 1 && r.id != null; })[0]; if (first) loadRuleDetail(first.id, first.ruleName); else DN.toast('暂无已启用规则可展示趋势', 'warn'); } }));
       resultBox.appendChild(emp);
       return;
     }

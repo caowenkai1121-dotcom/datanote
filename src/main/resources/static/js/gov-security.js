@@ -66,7 +66,7 @@
         ovBox.appendChild(DN.errorBox('安全数据加载失败: ' + (e && e.message || '未知错误'), function () { loadAllOnce(ovBox); }));
       }
       DN.get('/api/rbac/roles').then(function (roles) { rolesCache = roles || []; }).catch(function () {});
-      loadMaskingPolicies().then(loadRowPolicies);
+      loadMaskingPolicies(); loadRowPolicies();   // 各自独立加载/重试: 脱敏失败不再阻断行级策略加载(原串联 .then 会挂起后者)
     });
   }
 
