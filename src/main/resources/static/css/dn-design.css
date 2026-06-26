@@ -435,9 +435,11 @@ select.dn-form-select, input.dn-form-input { width: auto; }
 
 /* 同款全局化(R176): 区块标题/空态/折线容器/统计网格 原仅治理作用域内有样式, 内联模块(项目/详情等)复用时失效 → 提升为全局(类选择器低优先级, 不影响治理作用域已有) */
 .gov-section-title { font-size: 13px; font-weight: 650; color: var(--text-regular); margin: 6px 0 10px; padding-left: 9px; border-left: 3px solid var(--primary); }
-.gov-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: var(--text-muted); text-align: center; }
-.gov-empty svg { width: 44px; height: 44px; opacity: .5; }
-.gov-empty .et { font-size: 13px; }
+.gov-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 44px 20px; color: var(--text-muted); text-align: center; }
+/* 图标加柔和圆形底衬, 空态/错误态更精致有层次(全站统一) */
+.gov-empty > span:first-child { display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 50%; background: var(--bg-hover, var(--bg-body)); }
+.gov-empty svg { width: 34px; height: 34px; opacity: .5; }
+.gov-empty .et { font-size: 13px; line-height: 1.5; max-width: 300px; }
 .gov-line { display: flex; justify-content: center; width: 100%; }
 .gov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
 
