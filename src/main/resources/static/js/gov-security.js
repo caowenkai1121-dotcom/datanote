@@ -303,8 +303,20 @@
   function renderRowTable(list) {
     if (!rowTbl) return;
     rowTbl.innerHTML = '';
+    var _selRow = {};
+    var rowBatchDel = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '批量删除', 'data-perm': 'governance:manage', style: 'color:var(--error)' });
+    rowBatchDel.onclick = function () {
+      var ids = Object.keys(_selRow); if (!ids.length) { DN.toast('请先勾选策略', 'warn'); return; }
+      DN.confirm('确认删除选中的 ' + ids.length + ' 条行级策略？', { title: '批量删除', danger: true }).then(function (ok) {
+        if (!ok) return;
+        rowBatchDel.style.pointerEvents = 'none'; rowBatchDel.style.opacity = '0.5';
+        Promise.all(ids.map(function (id) { return DN.del('/api/gov/masking/row-policies/' + id).catch(function () {}); })).then(function () { DN.toast('已批量删除', 'ok'); loadRowPolicies(); });
+      });
+    };
     rowTbl.appendChild(DN.table({
+      toolbar: [rowBatchDel],
       columns: [
+        { key: '_sel', label: '', render: function (p) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (p.roleCode || p.id) }); cb.checked = !!_selRow[p.id]; cb.onchange = function () { if (cb.checked) _selRow[p.id] = 1; else delete _selRow[p.id]; }; return cb; } },
         { key: 'roleCode', label: '角色编码' },
         { key: 'dbName', label: '库', copyable: true, exportValue: function (p) { return p.dbName || ''; }, render: function (p) { return truncText(p.dbName, 24); } },
         { key: 'tableName', label: '表', copyable: true, exportValue: function (p) { return p.tableName || ''; }, render: function (p) {
