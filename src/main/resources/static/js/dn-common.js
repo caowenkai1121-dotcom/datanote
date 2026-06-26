@@ -1081,7 +1081,17 @@
             var ok = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '通过', 'data-perm': 'governance:manage' });
             ok.onclick = function () { review(a, true, ok); };
             var no = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '驳回', style: 'color:var(--error)', 'data-perm': 'governance:manage' });
-            no.onclick = function () { var c = window.prompt('驳回原因(必填):', ''); if (c == null) return; if (!c.trim()) { DN.toast('请填驳回原因', 'warn'); return; } review(a, false, no, c.trim()); };
+            // 内联驳回原因(替代 window.prompt, 更美更顺): 点驳回→展开输入框+确认/取消
+            no.onclick = function () {
+              if (card.querySelector('.dn-apv-reject')) return;
+              var inp = DN.h('input', { class: 'dn-form-input', placeholder: '驳回原因(必填)', style: 'flex:1;min-width:140px;' });
+              var cfm = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '确认驳回', style: 'color:var(--error)' });
+              var cnl = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '取消' });
+              var row = DN.h('div', { class: 'dn-apv-reject', style: 'display:flex;gap:8px;align-items:center;margin-top:8px;' }, [inp, cfm, cnl]);
+              cnl.onclick = function () { row.remove(); };
+              cfm.onclick = function () { var c = inp.value.trim(); if (!c) { DN.toast('请填驳回原因', 'warn'); inp.focus(); return; } review(a, false, cfm, c); };
+              card.appendChild(row); try { inp.focus(); } catch (e) {}
+            };
             bar.appendChild(ok); bar.appendChild(no);
             card.appendChild(bar);
           } else if (a.reviewComment) {
