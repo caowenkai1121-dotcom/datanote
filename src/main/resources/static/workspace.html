@@ -12616,6 +12616,9 @@ window.umResetPwdSubmit = function(id) {
   var el = document.getElementById('umResetPwdInput');
   var p = el ? el.value : '';
   if (!p.trim()) { showToast('密码不能为空', 'error'); return; }
+  // 与占位符承诺/改密一致: ≥8位 且 字母/数字/符号 至少2类(防管理员设弱临时密码)
+  var pwTypes = (/[a-zA-Z]/.test(p) ? 1 : 0) + (/[0-9]/.test(p) ? 1 : 0) + (/[^a-zA-Z0-9]/.test(p) ? 1 : 0);
+  if (p.length < 8 || pwTypes < 2) { showToast('密码需≥8位, 且含字母/数字/符号至少两类', 'error'); return; }
   api('/api/rbac/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p }) })
     .then(function(res) { if (res && res.code === 0) { showToast('密码已重置', 'success'); projCloseModalBox(); } else showToast((res && res.msg) || '操作失败', 'error'); })
     .catch(function() { showToast('操作失败', 'error'); });
