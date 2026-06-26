@@ -1069,7 +1069,8 @@
         if (!rows.length) { listBox.appendChild(DN.empty(mode === 'pending' ? '暂无待审批事项 👍' : '暂无审批记录', 'check')); return; }
         rows.forEach(function (a) {
           a = a || {};
-          var card = DN.h('div', { style: 'border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;background:var(--bg-card);' });
+          var accent = a.status === 'APPROVED' ? 'var(--success)' : a.status === 'REJECTED' ? 'var(--error)' : 'var(--warning)';
+          var card = DN.h('div', { style: 'border:1px solid var(--border);border-left:3px solid ' + accent + ';border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;background:var(--bg-card);' });
           card.appendChild(DN.h('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' }, [
             DN.pill(APV_FLOW[a.flowType] || a.flowType || '审批', 'info'),
             DN.h('span', { text: a.title || ('#' + a.id), title: a.title || '', style: 'font-weight:600;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }),
