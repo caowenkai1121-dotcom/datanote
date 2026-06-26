@@ -81,6 +81,29 @@ public class MetadataController {
         return R.ok("已保存标签");
     }
 
+    @Operation(summary = "设置表负责人(数据 steward)")
+    @PostMapping("/table/set-owner")
+    public R<String> setOwner(@RequestBody Map<String, Object> req) {
+        String db = req.get("db") == null ? null : String.valueOf(req.get("db"));
+        String table = req.get("table") == null ? null : String.valueOf(req.get("table"));
+        if (db == null || table == null) return R.fail("缺少 db/table");
+        if (!canAccessTable(db, table)) return tableDenied();
+        String owner = req.get("owner") == null ? "" : String.valueOf(req.get("owner")).trim();
+        if (owner.length() > 60) return R.fail("负责人过长(≤60字符)");
+        DnTableMeta tm = tableMetaMapper.selectOne(new QueryWrapper<DnTableMeta>()
+                .eq("database_name", db).eq("table_name", table).last("LIMIT 1"));
+        if (tm == null) {
+            tm = new DnTableMeta();
+            tm.setDatasourceId(0L);
+            tm.setDatabaseName(db); tm.setTableName(table); tm.setOwner(owner);
+            tableMetaMapper.insert(tm);
+        } else {
+            tm.setOwner(owner);
+            tableMetaMapper.updateById(tm);
+        }
+        return R.ok("已保存负责人");
+    }
+
     @Operation(summary = "查询表所属主题域(R35)")
     @GetMapping("/table/subject")
     public R<Map<String, Object>> getSubject(@RequestParam String db, @RequestParam String table) {

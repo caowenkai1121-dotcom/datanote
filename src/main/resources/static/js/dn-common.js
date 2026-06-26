@@ -291,6 +291,24 @@
         actBar.parentNode.insertBefore(rowE, actBar.nextSibling); inp.focus();
       };
       actBar.appendChild(etag);
+      // 编辑负责人(数据 steward; 原仅展示)
+      var eown = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '编辑负责人', 'data-perm': 'catalog:edit' });
+      eown.onclick = function () {
+        if (document.getElementById('dnOwnerEditRow')) return;
+        var inp = DN.h('input', { class: 'dn-form-input', value: (tm.owner || ''), placeholder: '负责人(账号/姓名)', list: 'dnUserList', style: 'flex:1;min-width:160px;' });
+        var sv = DN.h('a', { class: 'btn btn-sm btn-primary', href: 'javascript:void(0)', text: '保存' });
+        var cc = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '取消' });
+        var rowE = DN.h('div', { id: 'dnOwnerEditRow', style: 'margin-top:8px;display:flex;gap:8px;align-items:center;width:100%;' }, [inp, sv, cc]);
+        cc.onclick = function () { rowE.remove(); };
+        sv.onclick = function () {
+          sv.style.pointerEvents = 'none'; sv.textContent = '保存中…';
+          DN.post('/api/metadata/table/set-owner', { db: db, table: table, owner: inp.value.trim() })
+            .then(function () { DN.toast('负责人已保存', 'ok'); rowE.remove(); if (DN.tablePreview) { if (dr && dr.close) dr.close(); DN.tablePreview(db, table); } })
+            .catch(function (e) { sv.style.pointerEvents = ''; sv.textContent = '保存'; DN.toast('保存失败: ' + (e && e.message || ''), 'err'); });
+        };
+        actBar.parentNode.insertBefore(rowE, actBar.nextSibling); inp.focus();
+      };
+      actBar.appendChild(eown);
       if (window.openQualityRuleForm) { // 原地闭环: 预览表时直接为它建质量规则, 不跳治理页
         var qr = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '＋ 为此表建质量规则' });
         qr.onclick = function () { window.openQualityRuleForm({ db: db, table: table }); };
