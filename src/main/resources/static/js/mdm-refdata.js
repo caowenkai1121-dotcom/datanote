@@ -88,8 +88,26 @@
         box.appendChild(card.el);
         return;
       }
+      var selIds = {};   // 批量选中码值 id 集
+      var batchDel = DN.h('a', { class: 'btn', 'data-perm': 'mdm:manage', href: 'javascript:void(0)', text: '批量删除', style: 'color:var(--error)' });
+      batchDel.onclick = function () {
+        var ids = Object.keys(selIds);
+        if (!ids.length) { DN.toast('请先勾选要删除的码值', 'warn'); return; }
+        // 子级保护: 选中项若有子级则拦下(与单删一致)
+        var blocked = ids.filter(function (id) { var row = _rows.find(function (x) { return String(x.id) === id; }); return row && _rows.some(function (x) { return x.parentCode === row.code; }); });
+        if (blocked.length) { DN.toast(blocked.length + ' 个码值存在子级, 请先删子级再批删', 'warn'); return; }
+        DN.confirm('确认删除选中的 ' + ids.length + ' 个码值？此操作不可恢复。', { title: '批量删除确认', danger: true }).then(function (ok) {
+          if (!ok) return;
+          batchDel.style.pointerEvents = 'none'; batchDel.style.opacity = '0.5'; batchDel.textContent = '删除中…';
+          var okN = 0, failN = 0;
+          Promise.all(ids.map(function (id) { return DN.del('/api/mdm/refdata/' + id).then(function () { okN++; }, function () { failN++; }); }))
+            .then(function () { DN.toast('已删除 ' + okN + (failN ? '，失败 ' + failN : '') + ' 个', failN ? 'warn' : 'ok'); loadCategories(tileBox, box); });
+        });
+      };
       card.body.appendChild(DN.table({
+        toolbar: [batchDel],
         columns: [
+          { key: '_sel', label: '', render: function (r) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (r.code || r.id) }); cb.checked = !!selIds[r.id]; cb.onchange = function () { if (cb.checked) selIds[r.id] = 1; else delete selIds[r.id]; }; return cb; } },
           { key: 'code', label: '码值', copyable: true, sortable: true, render: function (r) { return r.code == null ? '-' : String(r.code); } },
           { key: 'name', label: '名称', sortable: true, render: function (r) {
               if (r.name == null) return '-';
