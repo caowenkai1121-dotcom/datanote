@@ -19,6 +19,7 @@
       + '<div class="ops-sidebar" style="width:248px;overflow:auto;">'
       + '  <div style="padding:12px 14px;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;">主题域 (L1-L5)'
       + '    <a href="#" data-perm="datamodel:edit" onclick="dmNewSubject();return false;" style="font-size:12px;color:var(--primary);">+ 新建</a></div>'
+      + '  <div style="padding:0 10px 6px;"><input id="dmSubjSearch" class="dbsync-form-input" placeholder="🔍 搜索主题域" style="width:100%;font-size:12px;height:28px;" oninput="dmFilterSubjects(this.value)"></div>'
       + '  <div id="dmSubjectTree" style="padding:0 6px 12px;"></div>'
       + '  <div style="border-top:1px solid var(--border);margin-top:6px;padding:10px 14px;">'
       + '    <a href="#" data-perm="datamodel:approve" onclick="dmShowChanges();return false;" style="font-size:13px;color:var(--primary);">审批工单 <span id="dmChangeBadge" style="font-size:var(--fs-xs);"></span></a></div>'
@@ -76,6 +77,13 @@
     box.innerHTML = h;
     if (window.dnA11yEnhance) dnA11yEnhance(box);   // 动态树节点(div[onclick])补键盘可达
   }
+  window.dmFilterSubjects = function (kw) {   // 主题域树搜索: 隐藏不匹配节点(树多时快速定位)
+    kw = (kw || '').trim().toLowerCase();
+    var tree = document.getElementById('dmSubjectTree'); if (!tree) return;
+    tree.querySelectorAll('.dm-subj-node').forEach(function (n) {
+      n.style.display = (!kw || (n.textContent || '').toLowerCase().indexOf(kw) >= 0) ? '' : 'none';
+    });
+  };
   function renderSubNodes(nodes, depth) {
     if (!nodes || !nodes.length) return '';
     return nodes.map(function (n) {
