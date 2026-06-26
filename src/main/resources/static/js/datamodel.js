@@ -191,6 +191,7 @@
       var st = '<span class="gov-pill ' + (STATUS_PILL[m.status] || 'is-muted') + '">' + (STATUS_LABEL[m.status] || m.status) + '</span>';
       var subName = findSubjectName(DM.subjects, m.subjectId) || '-';
       var ops = '<a href="#" onclick="dmOpenModel(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">详情</a>';
+      if (m.status === 'DRAFT' || m.status === 'REJECTED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmEditModelById(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">编辑</a>';
       if (m.status === 'DRAFT' || m.status === 'REJECTED') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmSubmit(' + m.id + ');return false;" style="color:var(--primary);margin-right:8px;">提交审批</a>';
       if (m.modelType === 'BIZ') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenLogical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成逻辑</a>';
       if (m.modelType === 'LOGIC') ops += '<a href="#" data-perm="datamodel:edit" onclick="dmGenPhysical(' + m.id + ');return false;" style="color:#2f9e44;margin-right:8px;">生成物理</a>';
@@ -281,6 +282,7 @@
   };
 
   // ---------- 新建/编辑模型 ----------
+  window.dmEditModelById = function (id) { var m = (DM.models || []).find(function (x) { return x.id === id; }); if (m) window.dmNewModel(m); };
   window.dmNewModel = function (model) {
     var flat = flatSubjects(DM.subjects);
     var subOpts = '<option value="">— 不归属 —</option>' + flat.map(function (s) { return '<option value="' + s.id + '"' + (model && model.subjectId === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('');
