@@ -431,8 +431,10 @@
     var t = (els.to && els.to.value || '').trim();
     if (f && t && f > t) { DN.toast('起始日期不能晚于截止日期', 'warn'); return; }
     var p = qsParams();
-    var w = window.open('/api/gov/audit/export' + (p.length ? '?' + p.join('&') : ''), '_blank');
-    if (!w) { DN.toast('导出被浏览器拦截，请允许弹出窗口', 'warn'); return; }
+    // 用隐藏下载锚替代 window.open: 不触发弹窗拦截器, 无闪烁空白标签页(#2 更顺)
+    var a = document.createElement('a');
+    a.href = '/api/gov/audit/export' + (p.length ? '?' + p.join('&') : '');
+    a.download = ''; document.body.appendChild(a); a.click(); a.remove();
     DN.toast('正在导出当前筛选条件的审计 CSV', 'ok');
   }
 
