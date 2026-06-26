@@ -890,7 +890,7 @@ window.dnAssetProjBadgeHtml = function(plist) {
   if (!plist || !plist.length) return '';
   var p = plist[0];
   var more = plist.length > 1 ? ' +' + (plist.length - 1) : '';
-  return ' <a href="#" onclick="event.stopPropagation();navigateTo(\'project\');return false;" title="归属项目: ' + escapeHtml(plist.map(function(x) { return x.projectName; }).join('、')) + '" style="font-size:var(--fs-xs);color:var(--primary);background:var(--bg-hover);padding:0 6px;border-radius:var(--radius-lg);white-space:nowrap;text-decoration:none;">' + escapeHtml(p.projectName) + more + '</a>';
+  return ' <a href="#" onclick="event.stopPropagation();navigateTo(\'project\');setTimeout(function(){if(window.projOpenDetailById)projOpenDetailById(' + p.projectId + ');},800);return false;" title="归属项目: ' + escapeHtml(plist.map(function(x) { return x.projectName; }).join('、')) + '" style="font-size:var(--fs-xs);color:var(--primary);background:var(--bg-hover);padding:0 6px;border-radius:var(--radius-lg);white-space:nowrap;text-decoration:none;">' + escapeHtml(p.projectName) + more + '</a>';
 };
 // II-5: 批量绑定——当前类型候选复选框(预滤已绑)+搜索+逐条容错一次刷新
 window.projBatchBindModal = function() {
