@@ -488,8 +488,28 @@
     typeSel.value = filterType;
     typeSel.onchange = function () { filterType = typeSel.value; if (tableEl) tableEl.reload(filtered()); };
 
+    var _selQ = {};   // 批量选中规则 id
+    function _selRules() { return allRules.filter(function (r) { return _selQ[r.id]; }); }
+    function _qBatch(label, kind) {
+      var danger = kind === 'del';
+      var b = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: label, 'data-perm': 'governance:quality', style: danger ? 'color:var(--error)' : '' });
+      b.onclick = function () {
+        var rs = _selRules(); if (!rs.length) { DN.toast('请先勾选规则', 'warn'); return; }
+        DN.confirm('对选中的 ' + rs.length + ' 条规则执行「' + label + '」？', { title: label, danger: danger }).then(function (ok) {
+          if (!ok) return;
+          b.style.pointerEvents = 'none'; b.style.opacity = '0.5';
+          Promise.all(rs.map(function (r) {
+            if (kind === 'del') return DN.del('/api/quality/rule/' + r.id).then(function () { var i = allRules.indexOf(r); if (i >= 0) allRules.splice(i, 1); }, function () {});
+            var st = kind === 'enable' ? 1 : 0;
+            return DN.post('/api/quality/rule/save', Object.assign({}, r, { status: st })).then(function () { r.status = st; }, function () {});
+          })).then(function () { _selQ = {}; if (tableEl) tableEl.reload(filtered()); DN.toast(label + '完成', danger ? 'info' : 'ok'); });
+        });
+      };
+      return b;
+    }
     tableEl = DN.table({
       columns: [
+        { key: '_sel', label: '', render: function (r) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择规则 ' + (r.ruleName || r.id) }); cb.checked = !!_selQ[r.id]; cb.onchange = function () { if (cb.checked) _selQ[r.id] = 1; else delete _selQ[r.id]; }; return cb; } },
         { key: 'ruleName', label: '规则', render: function (r) {
             var nm = r.ruleName || '-';
             return DN.h('a', { href: 'javascript:void(0)', text: trunc(nm, 40), title: nm, // 超长规则名截断+title 防撑表
@@ -567,7 +587,7 @@
       pageSize: 20,
       searchKeys: ['ruleName', 'ruleType', 'dimension'],
       searchPlaceholder: '搜索规则名/类型/维度',
-      toolbar: [statusSel, dimSel, typeSel],
+      toolbar: [statusSel, dimSel, typeSel, _qBatch('批量启用', 'enable'), _qBatch('批量停用', 'disable'), _qBatch('批量删除', 'del')],
       exportName: '质量规则',
       empty: '暂无质量规则，请前往工作台创建',
       emptyIcon: 'check'
