@@ -1033,6 +1033,40 @@
     });
   };
 
+  // 样式化输入弹窗(替代原生 window.prompt): opts {title,value,placeholder,okText,required}; resolve 修剪后的值或 null
+  DN.prompt = function (opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var prevFocus = document.activeElement;
+      var input = DN.h('input', { class: 'dn-form-input', value: opts.value || '', placeholder: opts.placeholder || '', style: 'width:100%;' });
+      var ok = DN.h('button', { class: 'btn btn-primary', text: opts.okText || '确认' });
+      var cancel = DN.h('button', { class: 'btn', text: opts.cancelText || '取消' });
+      var modal = DN.h('div', { class: 'dn-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': opts.title || '输入' }, [
+        DN.h('div', { class: 'dm-title', text: opts.title || '输入' }),
+        DN.h('div', { class: 'dm-body' }, [input]),
+        DN.h('div', { class: 'dm-foot' }, [cancel, ok])
+      ]);
+      var mask = DN.h('div', { class: 'dn-modal-mask' }, [modal]);
+      var done = false;
+      function close(result) {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey);
+        mask.classList.remove('show');
+        try { if (prevFocus && prevFocus.focus) prevFocus.focus(); } catch (e) {}
+        setTimeout(function () { if (mask.parentNode) mask.remove(); }, 200);
+        resolve(result);
+      }
+      function submit() { var v = input.value.trim(); if (opts.required && !v) { input.focus(); return; } close(v); }
+      function onKey(e) { if (e.key === 'Escape') { close(null); } else if (e.key === 'Enter') { e.preventDefault(); submit(); } }
+      ok.onclick = submit;
+      cancel.onclick = function () { close(null); };
+      mask.onclick = function (e) { if (e.target === mask) close(null); };
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(mask);
+      requestAnimationFrame(function () { mask.classList.add('show'); try { input.focus(); input.select(); } catch (e) {} });
+    });
+  };
+
   // ===== 统一审批中心(各流待办聚合 + 内联通过/驳回, 不跳转) =====
   var APV_FLOW = { MDM_CHANGE: '主数据变更', DATAMODEL_CHANGE: '数据模型变更', SCRIPT_CHANGE: '脚本上线' };
   DN.approvalBadge = function (n) {

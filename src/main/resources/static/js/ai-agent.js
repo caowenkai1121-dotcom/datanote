@@ -913,9 +913,10 @@
         var ren = DN.h('span', { text: '✎', title: '重命名', style: 'flex:0 0 auto;color:var(--text-muted);font-size:12px;padding:0 2px;visibility:hidden;' });
         ren.onclick = function (e) {
           e.stopPropagation();
-          var t = window.prompt('重命名会话', s.title || title);
-          if (t == null || !t.trim()) return;
-          DN.post('/api/ai/agent/' + s.sessionId + '/rename', { title: t.trim() }).then(function () { loadSessions(); }).catch(function (er) { DN.toast('重命名失败：' + (er && er.message ? er.message : er), 'err'); });
+          DN.prompt({ title: '重命名会话', value: s.title || title, required: true }).then(function (t) {
+            if (t == null || !t) return;
+            DN.post('/api/ai/agent/' + s.sessionId + '/rename', { title: t }).then(function () { loadSessions(); }).catch(function (er) { DN.toast('重命名失败：' + (er && er.message ? er.message : er), 'err'); });
+          });
         };
         var del = DN.h('span', { text: '✕', title: '删除该会话', style: 'flex:0 0 auto;color:var(--text-muted);font-size:12px;padding:0 2px;visibility:hidden;' });
         del.onclick = function (e) {
