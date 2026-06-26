@@ -195,8 +195,20 @@
   function renderMaskTable(list) {
     if (!maskTbl) return;
     maskTbl.innerHTML = '';
+    var _selMask = {};
+    var maskBatchDel = DN.h('a', { class: 'btn btn-sm', href: 'javascript:void(0)', text: '批量删除', 'data-perm': 'governance:manage', style: 'color:var(--error)' });
+    maskBatchDel.onclick = function () {
+      var ids = Object.keys(_selMask); if (!ids.length) { DN.toast('请先勾选策略', 'warn'); return; }
+      DN.confirm('确认删除选中的 ' + ids.length + ' 条脱敏策略？', { title: '批量删除', danger: true }).then(function (ok) {
+        if (!ok) return;
+        maskBatchDel.style.pointerEvents = 'none'; maskBatchDel.style.opacity = '0.5';
+        Promise.all(ids.map(function (id) { return DN.del('/api/gov/masking/policies/' + id).catch(function () {}); })).then(function () { DN.toast('已批量删除', 'ok'); loadMaskingPolicies(); });
+      });
+    };
     maskTbl.appendChild(DN.table({
+      toolbar: [maskBatchDel],
       columns: [
+        { key: '_sel', label: '', render: function (p) { var cb = DN.h('input', { type: 'checkbox', 'aria-label': '选择 ' + (p.policyName || p.id) }); cb.checked = !!_selMask[p.id]; cb.onchange = function () { if (cb.checked) _selMask[p.id] = 1; else delete _selMask[p.id]; }; return cb; } },
         { key: 'policyName', label: '策略名', render: function (p) { return truncText(p.policyName, 40); } },
         { key: 'matchDim', label: '维度' },
         { key: 'sensitiveType', label: '敏感类型', render: function (p) { return p.sensitiveType || '-'; } },
