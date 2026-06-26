@@ -31,22 +31,15 @@ public class ApprovalEventService {
     private final RedisConnectionFactory connectionFactory;
     private final DnApprovalMapper approvalMapper;
     private final NotificationService notificationService;
-    private final Map<String, ApprovalApplyHandler> handlers = new HashMap<>();
 
     private StreamMessageListenerContainer<String, MapRecord<String, String, String>> container;
 
     public ApprovalEventService(StringRedisTemplate redis, RedisConnectionFactory connectionFactory,
-                                DnApprovalMapper approvalMapper, NotificationService notificationService,
-                                List<ApprovalApplyHandler> applyHandlers) {
+                                DnApprovalMapper approvalMapper, NotificationService notificationService) {
         this.redis = redis;
         this.connectionFactory = connectionFactory;
         this.approvalMapper = approvalMapper;
         this.notificationService = notificationService;
-        if (applyHandlers != null) {
-            for (ApprovalApplyHandler h : applyHandlers) {
-                if (h != null && h.flowType() != null) handlers.put(h.flowType(), h);
-            }
-        }
     }
 
     /** 发布审批事件(SUBMITTED/APPROVED/REJECTED), best-effort。 */
@@ -74,7 +67,7 @@ public class ApprovalEventService {
             container.receive(Consumer.from(GROUP, "dn-worker"),
                     StreamOffset.create(STREAM, ReadOffset.lastConsumed()), this::onMessage);
             container.start();
-            log.info("审批事件消费者已启动: stream={} group={} handlers={}", STREAM, GROUP, handlers.keySet());
+            log.info("审批事件消费者已启动: stream={} group={}", STREAM, GROUP);
         } catch (Exception e) {
             log.warn("审批事件消费者启动失败(降级, 审批同步仍可用): {}", e.getMessage());
         }
@@ -109,17 +102,14 @@ public class ApprovalEventService {
     }
 
     private void dispatch(DnApproval a, String type) {
+        // apply 已在 ApprovalService.review 同步完成; 此处仅做异步通知(解耦+可扩展审计/下游订阅)
         if ("APPROVED".equals(type)) {
-            ApprovalApplyHandler h = handlers.get(a.getFlowType());
-            if (h != null) h.onApproved(a);
             notify(a.getSubmitter(), "审批通过: " + nz(a.getTitle()), a.getId());
         } else if ("REJECTED".equals(type)) {
-            ApprovalApplyHandler h = handlers.get(a.getFlowType());
-            if (h != null) h.onRejected(a);
             String c = a.getReviewComment() == null || a.getReviewComment().isEmpty() ? "" : " — " + a.getReviewComment();
             notify(a.getSubmitter(), "审批驳回: " + nz(a.getTitle()) + c, a.getId());
         }
-        // SUBMITTED: 仅入队(审批中心可见), 不强制点名通知
+        // SUBMITTED: 仅入队(审批中心可见)
     }
 
     private void notify(String user, String title, Long id) {

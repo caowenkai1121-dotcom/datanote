@@ -2,18 +2,28 @@ package com.datanote.domain.approval;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.datanote.domain.approval.model.DnApproval;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/** 统一审批服务: 各业务流提交即建审批记录, 统一状态机。允许自审自批(权限由拦截器把关), 审批事件经 Redis Streams 异步派发。 */
+/** 统一审批服务: 各业务流提交即建审批记录, 统一状态机。允许自审自批(权限由拦截器把关)。
+ *  apply 在审批的 HTTP 线程内同步派发各流 handler(复用现有 apply 逻辑, 保留 SecurityContext); 事件再经 Redis Streams 异步通知/审计。 */
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class ApprovalService {
     private final DnApprovalMapper mapper;
     private final ApprovalEventService eventService;
+    private final Map<String, ApprovalApplyHandler> handlers = new HashMap<>();
+
+    public ApprovalService(DnApprovalMapper mapper, ApprovalEventService eventService, List<ApprovalApplyHandler> applyHandlers) {
+        this.mapper = mapper;
+        this.eventService = eventService;
+        if (applyHandlers != null) for (ApprovalApplyHandler h : applyHandlers) if (h != null && h.flowType() != null) handlers.put(h.flowType(), h);
+    }
 
     /** 提交审批: 建 PENDING 记录并发 SUBMITTED 事件。 */
     public DnApproval submit(String flowType, String bizId, String title, String submitter, String payloadJson) {
@@ -40,7 +50,18 @@ public class ApprovalService {
         a.setReviewComment(comment);
         a.setReviewedAt(LocalDateTime.now());
         mapper.updateById(a);
-        eventService.publish(a.getId(), approve ? "APPROVED" : "REJECTED");
+        // 同步派发各流 apply(HTTP 线程内, 保留 SecurityContext + 复用现有逻辑)。apply 失败回滚状态, 避免"审批通过但未生效"。
+        ApprovalApplyHandler h = handlers.get(a.getFlowType());
+        if (h != null) {
+            try {
+                if (approve) h.onApproved(a); else h.onRejected(a);
+            } catch (RuntimeException e) {
+                a.setStatus("PENDING"); a.setReviewer(null); a.setReviewedAt(null); mapper.updateById(a); // 回滚, 保持待审
+                log.warn("审批 apply 失败, 已回滚为待审: id={} flow={} err={}", a.getId(), a.getFlowType(), e.getMessage());
+                throw e;
+            }
+        }
+        eventService.publish(a.getId(), approve ? "APPROVED" : "REJECTED"); // 事件: 通知/审计
         return a;
     }
 
